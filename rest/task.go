@@ -3,6 +3,7 @@ package rest
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -131,7 +132,7 @@ func getTaskInfo(r *http.Request) web.HTTPResponse {
 	}
 
 	// Copy over artifacts and binaries
-	files, err := model.FindArtifactFilesForTask(taskId)
+	files, err := artifact.FindAll(artifact.ByTaskId(taskId))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%v'", taskId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)

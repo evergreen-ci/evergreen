@@ -3,6 +3,7 @@ package attach
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/util"
 	"fmt"
@@ -70,11 +71,11 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					if context.Task == nil {
 						return nil, nil
 					}
-					artifactFiles, err := model.FindArtifactFilesForTask(context.Task.Id)
+					artifactEntry, err := artifact.FindOne(artifact.ByTaskId(context.Task.Id))
 					if err != nil {
 						return nil, fmt.Errorf("error finding artifact files for task: %v", err)
 					}
-					return artifactFiles, nil
+					return artifactEntry.Files, nil
 				},
 			},
 			{
@@ -86,7 +87,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					if context.Build == nil {
 						return nil, nil
 					}
-					taskArtifactFiles, err := model.FindArtifactFileEntriesForBuild(context.Build.Id)
+					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(context.Build.Id))
 					if err != nil {
 						return nil, fmt.Errorf("error finding artifact files for build: %v", err)
 					}

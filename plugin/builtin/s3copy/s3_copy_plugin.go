@@ -3,6 +3,7 @@ package s3copy
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/thirdparty"
 	"10gen.com/mci/util"
@@ -401,12 +402,12 @@ func (c *S3CopyCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
 	}
 
 	pluginLogger.LogExecution(slogger.INFO, "attachign file with name %v", displayName)
-	file := model.ArtifactFile{
+	file := artifact.File{
 		Name: displayName,
 		Link: fileLink,
 	}
 
-	files := []*model.ArtifactFile{&file}
+	files := []*artifact.File{&file}
 
 	err := pluginCom.PostTaskFiles(files)
 	if err != nil {

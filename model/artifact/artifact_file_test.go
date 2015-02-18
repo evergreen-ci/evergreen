@@ -1,6 +1,7 @@
-package model
+package artifact
 
 import (
+	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -8,21 +9,25 @@ import (
 	"testing"
 )
 
+func init() {
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+}
+
 func reset(t *testing.T) {
 	util.HandleTestingErr(
-		db.Clear(ArtifactFilesCollection),
+		db.Clear(Collection),
 		t, "Error clearing collection")
 }
 
-func TestArtifactFileEntryUpsert(t *testing.T) {
+func TestEntryUpsert(t *testing.T) {
 	Convey("With an artifact file entry", t, func() {
 		reset(t)
 
-		testEntry := ArtifactFileEntry{
+		testEntry := Entry{
 			TaskId:          "task1",
 			TaskDisplayName: "Task One",
 			BuildId:         "build1",
-			Files: []ArtifactFile{
+			Files: []File{
 				{"cat_pix", "http://placekitten.com/800/600"},
 				{"fast_download", "https://fastdl.mongodb.org"},
 			},
@@ -32,7 +37,7 @@ func TestArtifactFileEntryUpsert(t *testing.T) {
 			So(testEntry.Upsert(), ShouldBeNil)
 
 			Convey("so all fields should be present in the db", func() {
-				entryFromDb, err := FindOneArtifactFileEntryByTask("task1")
+				entryFromDb, err := FindOne(ByTaskId("task1"))
 				So(err, ShouldBeNil)
 				So(entryFromDb.TaskId, ShouldEqual, "task1")
 				So(entryFromDb.TaskDisplayName, ShouldEqual, "Task One")
@@ -47,17 +52,17 @@ func TestArtifactFileEntryUpsert(t *testing.T) {
 			Convey("and with a following update", func() {
 				// reusing test entry but overwriting files field --
 				// consider this as an additional update from the agent
-				testEntry.Files = []ArtifactFile{
+				testEntry.Files = []File{
 					{"cat_pix", "http://placekitten.com/300/400"},
 					{"the_value_of_four", "4"},
 				}
 				So(testEntry.Upsert(), ShouldBeNil)
-				count, err := db.Count(ArtifactFilesCollection, bson.M{})
+				count, err := db.Count(Collection, bson.M{})
 				So(err, ShouldBeNil)
 				So(count, ShouldEqual, 1)
 
 				Convey("all updated fields should change,", func() {
-					entryFromDb, err := FindOneArtifactFileEntryByTask("task1")
+					entryFromDb, err := FindOne(ByTaskId("task1"))
 					So(err, ShouldBeNil)
 					So(len(entryFromDb.Files), ShouldEqual, 4)
 					So(entryFromDb.Files[0].Name, ShouldEqual, "cat_pix")

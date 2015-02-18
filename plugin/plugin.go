@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -150,7 +151,7 @@ type PluginCommunicator interface {
 	TaskPostTestLog(log *model.TestLog) error
 
 	//Make a POST request against the files api endpoint
-	PostTaskFiles(task_files []*model.ArtifactFile) error
+	PostTaskFiles(files []*artifact.File) error
 }
 
 //Plugin defines the interface that all evergreen plugins must implement in order

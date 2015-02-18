@@ -2,6 +2,7 @@ package s3Plugin
 
 import (
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/util"
 	"fmt"
@@ -239,12 +240,12 @@ func (self *S3PutCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
 	if displayName == "" {
 		displayName = filepath.Base(self.LocalFile)
 	}
-	file := model.ArtifactFile{
+	file := artifact.File{
 		Name: displayName,
 		Link: fileLink,
 	}
 
-	files := []*model.ArtifactFile{&file}
+	files := []*artifact.File{&file}
 	err := pluginCom.PostTaskFiles(files)
 	if err != nil {
 		return fmt.Errorf("Attach files failed: %v", err)

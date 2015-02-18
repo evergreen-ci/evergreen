@@ -3,6 +3,7 @@ package attach
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/util"
 	"fmt"
@@ -19,7 +20,7 @@ type AttachTaskFilesCommand struct {
 	// Files is a map of strings to strings storing
 	// name -> link pairs. These pairs are sent to the
 	// server and attached to a task.
-	Files model.ArtifactFileParams
+	Files artifact.Params
 }
 
 func (self *AttachTaskFilesCommand) Name() string {
@@ -129,7 +130,7 @@ func AttachFilesHandler(w http.ResponseWriter, r *http.Request) {
 	task := plugin.GetTask(r)
 	mci.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
 
-	fileEntry := &model.ArtifactFileEntry{}
+	fileEntry := &artifact.Entry{}
 	fileEntry.TaskId = task.Id
 	fileEntry.TaskDisplayName = task.DisplayName
 	fileEntry.BuildId = task.BuildId

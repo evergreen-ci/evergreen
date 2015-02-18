@@ -8,6 +8,7 @@ import (
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/plugin"
 	_ "10gen.com/mci/plugin/config"
@@ -503,22 +504,22 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 	mci.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
 
-	fileEntry := &model.ArtifactFileEntry{
+	entry := &artifact.Entry{
 		TaskId:          task.Id,
 		TaskDisplayName: task.DisplayName,
 		BuildId:         task.BuildId,
 	}
 
-	err := util.ReadJSONInto(r.Body, &fileEntry.Files)
+	err := util.ReadJSONInto(r.Body, &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", task.Id, err)
 		mci.Logger.Errorf(slogger.ERROR, message)
 		as.WriteJSON(w, http.StatusBadRequest, message)
 		return
 	}
-	fmt.Printf("file entry is %#v\n", fileEntry)
+	fmt.Printf("file entry is %#v\n", entry)
 
-	if err := fileEntry.Upsert(); err != nil {
+	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", task.Id, err)
 		mci.Logger.Errorf(slogger.ERROR, message)
 		as.WriteJSON(w, http.StatusInternalServerError, message)

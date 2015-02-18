@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/apiserver"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/plugin"
 	. "10gen.com/mci/plugin/builtin/attach"
 	"10gen.com/mci/plugin/testutil"
@@ -19,7 +20,7 @@ import (
 func reset(t *testing.T) {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
 	util.HandleTestingErr(
-		db.ClearCollections(model.TasksCollection, model.ArtifactFilesCollection), t,
+		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
 		"error clearing test collections")
 }
 
@@ -46,7 +47,7 @@ func TestAttachFilesApi(t *testing.T) {
 
 		Convey("using a well-formed api call", func() {
 			testCommand := AttachTaskFilesCommand{
-				model.ArtifactFileParams{
+				artifact.Params{
 					"upload":   "gopher://mci.equipment",
 					"coverage": "http://www.blankets.com",
 				},
@@ -55,7 +56,7 @@ func TestAttachFilesApi(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			Convey("the given values should be written to the db", func() {
-				entry, err := model.FindOneArtifactFileEntryByTask(testTask.Id)
+				entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
 				So(err, ShouldBeNil)
 				So(entry, ShouldNotBeNil)
 				So(entry.TaskId, ShouldEqual, testTask.Id)
@@ -66,7 +67,7 @@ func TestAttachFilesApi(t *testing.T) {
 
 			Convey("with a second api call", func() {
 				testCommand := AttachTaskFilesCommand{
-					model.ArtifactFileParams{
+					artifact.Params{
 						"3x5":      "15",
 						"$b.o.o.l": "{\"json\":false}",
 						"coverage": "http://tumblr.com/tagged/tarp",
@@ -74,7 +75,7 @@ func TestAttachFilesApi(t *testing.T) {
 				}
 				err := testCommand.SendTaskFiles(taskConfig, logger, pluginCom)
 				So(err, ShouldBeNil)
-				entry, err := model.FindOneArtifactFileEntryByTask(testTask.Id)
+				entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
 				So(err, ShouldBeNil)
 				So(entry, ShouldNotBeNil)
 
@@ -150,15 +151,15 @@ func TestAttachTaskFilesPlugin(t *testing.T) {
 			}
 
 			Convey("and these file entry fields should exist in the db:", func() {
-				entry, err := model.FindOneArtifactFileEntryByTask("testTaskId")
+				entry, err := artifact.FindOne(artifact.ByTaskId("testTaskId"))
 				So(err, ShouldBeNil)
 				So(entry, ShouldNotBeNil)
 				So(entry.TaskDisplayName, ShouldEqual, "testTask")
 				So(len(entry.Files), ShouldEqual, 5)
 
-				var regular model.ArtifactFile
-				var expansion model.ArtifactFile
-				var overwritten model.ArtifactFile
+				var regular artifact.File
+				var expansion artifact.File
+				var overwritten artifact.File
 
 				for _, file := range entry.Files {
 					switch file.Name {
@@ -172,17 +173,17 @@ func TestAttachTaskFilesPlugin(t *testing.T) {
 				}
 				Convey("- regular link", func() {
 					So(regular, ShouldResemble,
-						model.ArtifactFile{"file3", "http://kyle.diamonds"})
+						artifact.File{"file3", "http://kyle.diamonds"})
 				})
 
 				Convey("- link with expansion", func() {
 					So(expansion, ShouldResemble,
-						model.ArtifactFile{"file1", "i am a FILE!"})
+						artifact.File{"file1", "i am a FILE!"})
 				})
 
 				Convey("- link that is overwritten", func() {
 					So(overwritten, ShouldResemble,
-						model.ArtifactFile{"file2", "replaced!"})
+						artifact.File{"file2", "replaced!"})
 				})
 			})
 		})

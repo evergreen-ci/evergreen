@@ -85,13 +85,13 @@ func TestGetTaskInfo(t *testing.T) {
 		}
 		So(task.Insert(), ShouldBeNil)
 
-		file := model.ArtifactFile{
+		file := artifact.File{
 			Name: "Some Artifact",
 			Link: "some-url",
 		}
 		artifact := model.ArtifactFileEntry{
 			TaskId: taskId,
-			Files:  []model.ArtifactFile{file},
+			Files:  []artifact.File{file},
 		}
 		So(artifact.Upsert(), ShouldBeNil)
 

@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apiserver"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
@@ -58,8 +59,20 @@ func TestPushTask(t *testing.T) {
 						So(scanLogsForTask(testTask.Id, "push task pre-run!"), ShouldBeTrue)
 						So(scanLogsForTask(testTask.Id, "push task post-run!"), ShouldBeTrue)
 
+						Convey("s3.put attaches task file properly", func() {
+							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
+							So(err, ShouldBeNil)
+							So(entry.Files, ShouldNotBeEmpty)
+							So(len(entry.Files), ShouldEqual, 2)
+							for _, element := range entry.Files {
+								So(element.Name, ShouldNotEqual, "")
+							}
+							So(entry.Files[0].Name, ShouldEqual, "push_file")
+							link := "https://s3.amazonaws.com/build-push-testing/pushtest-stage/unittest-testTaskId-DISTRO_EXP-BUILDVAR_EXP-FILE_EXP.txt"
+							So(entry.Files[0].Link, ShouldEqual, link)
+						})
 						Convey("s3.copy attached task file properly", func() {
-							entry, err := model.FindOneArtifactFileEntryByTask(testTask.Id)
+							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
 							So(err, ShouldBeNil)
 							So(entry.Files, ShouldNotBeEmpty)
 							So(entry.Files[0].Name, ShouldEqual, "push_file")

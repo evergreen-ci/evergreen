@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/util"
 	"bytes"
 	"crypto/tls"
@@ -110,7 +111,7 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *model.TestResults) error
 }
 
 // Used by PluginCommunicator interface for POST method for attaching task files
-func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*model.ArtifactFile) error {
+func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error {
 	retriableSendFile := util.RetriableFunc(
 		func() error {
 			resp, err := t.tryPostJSON("files", task_files)
