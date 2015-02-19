@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/model"
 	"10gen.com/mci/plugin"
+	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/mitchellh/mapstructure"
@@ -103,10 +104,18 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.PluginLogger,
 	stop chan bool) error {
 	pluginLogger.LogExecution(slogger.DEBUG, "Preparing script...")
 
+	logWriterInfo := pluginLogger.GetTaskLogWriter(slogger.INFO)
+	logWriterErr := pluginLogger.GetTaskLogWriter(slogger.ERROR)
+
+	outBufferWriter := util.NewLineBufferingWriter(logWriterInfo)
+	errorBufferWriter := util.NewLineBufferingWriter(logWriterErr)
+	defer outBufferWriter.Flush()
+	defer errorBufferWriter.Flush()
+
 	command := &command.LocalCommand{
 		CmdString:  self.Script,
-		Stdout:     pluginLogger.GetTaskLogWriter(slogger.INFO),
-		Stderr:     pluginLogger.GetTaskLogWriter(slogger.ERROR),
+		Stdout:     outBufferWriter,
+		Stderr:     errorBufferWriter,
 		ScriptMode: true,
 	}
 

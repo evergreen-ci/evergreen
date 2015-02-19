@@ -247,7 +247,7 @@ func TestTaskSuccess(t *testing.T) {
 						RunTask(testAgent, configAbsPath, workDir)
 						Convey("expansions should be fetched", func() {
 							So(testAgent.taskConfig.Expansions.Get("aws_key"), ShouldEqual, testConfig.Providers.AWS.Id)
-							So(scanLogsForTask(testTask.Id, "echo fetch_expansion_value"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "fetch_expansion_value"), ShouldBeTrue)
 						})
 						time.Sleep(100 * time.Millisecond)
 						testAgent.RemoteAppender.FlushAndWait()
@@ -271,6 +271,9 @@ func TestTaskSuccess(t *testing.T) {
 							So(scanLogsForTask(testTask.Id, "arg2 is BAR"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "arg3 is Expanded: qux"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "arg4 is Default: default_value"), ShouldBeTrue)
+
+							//Check that logging output is only flushing on a newline
+							So(scanLogsForTask(testTask.Id, "this should be on the same line...as this."), ShouldBeTrue)
 
 							testTask, err = model.FindTask(testTask.Id)
 							util.HandleTestingErr(err, t, "Couldn't find test task: %v", err)

@@ -11,7 +11,7 @@ functions:
      command: shell.exec
      params:
        script: |
-         echo "predefined command!"
+         echo "predefined command!\n"
   "silent shell test" :
      command: shell.exec
      params:
@@ -83,6 +83,8 @@ tasks:
             echo "stuff" >> jstests/dont_archive_me_test.pdb
             echo "i am sanity testing!"
             echo ${fetch_key}
+            printf "this should be on the same line..."
+            printf "as this.\n"
             cat README.md
             cat src/mongo/db/modules/enterprise/README
     - command: git.apply_patch
@@ -242,7 +244,7 @@ tasks:
         script: |
           set -o verbose
           set -o errexit
-          echo "push task post-run!"
+          echo "push task post-run!\n"
           date +"%m-%d-%y" > "unittest-${distro_exp}-${buildvar_exp}.txt"
           echo "file_exp: FILE_EXP" > compile_expansions.yml
 modules:

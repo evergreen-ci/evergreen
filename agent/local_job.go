@@ -3,6 +3,7 @@ package agent
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
+	"10gen.com/mci/util"
 	"errors"
 	"github.com/10gen-labs/slogger/v1"
 	"os"
@@ -39,14 +40,16 @@ func (self *AgentCommand) Run(workingDir string) error {
 		ignoreErrors = true
 	}
 
-	outBufferWriter := NewLineBufferingWriter(logWriterInfo)
-	errorBufferWriter := NewLineBufferingWriter(logWriterErr)
+	outBufferWriter := util.NewLineBufferingWriter(logWriterInfo)
+	errorBufferWriter := util.NewLineBufferingWriter(logWriterErr)
+	defer outBufferWriter.Flush()
+	defer errorBufferWriter.Flush()
 
 	cmd := &command.LocalCommand{
 		CmdString:        self.ScriptLine,
 		WorkingDirectory: workingDir,
-		Stdout:           NewLineBufferingWriter(logWriterInfo),
-		Stderr:           NewLineBufferingWriter(logWriterErr),
+		Stdout:           outBufferWriter,
+		Stderr:           errorBufferWriter,
 		Environment:      os.Environ(),
 	}
 	err := cmd.PrepToRun(self.Expansions)
@@ -72,8 +75,6 @@ func (self *AgentCommand) Run(workingDir string) error {
 	case _ = <-self.KillChannel:
 		//try and kill the process
 		self.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.Cmd.Process.Pid)
-		defer outBufferWriter.Flush()
-		defer errorBufferWriter.Flush()
 		if err := cmd.Stop(); err != nil {
 			self.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
 		}
