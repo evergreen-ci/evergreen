@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/agent"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
 	"gopkg.in/yaml.v1"
@@ -102,17 +103,17 @@ func SetupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 	//ignore errs here because the ns might just not exist.
 	util.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, model.BuildsCollection,
-			model.HostsCollection, model.VersionsCollection,
+			host.Collection, model.VersionsCollection,
 			model.PatchCollection),
 		t, "Failed to clear test data collection")
 
-	host := &model.Host{
+	testHost := &host.Host{
 		Id:          "testHost",
 		Host:        "testHost",
 		RunningTask: "testTaskId",
 		StartedBy:   mci.MCIUser,
 	}
-	util.HandleTestingErr(host.Insert(), t, "failed to insert host")
+	util.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 
 	task := &model.Task{
 		Id:           "testTaskId",

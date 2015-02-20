@@ -9,6 +9,8 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
+	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/plugin"
 	_ "10gen.com/mci/plugin/config"
@@ -222,7 +224,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	host, err := model.FindHostByRunningTask(task.Id)
+	host, err := host.FindOne(host.ByRunningTaskId(task.Id))
 	if err != nil {
 		message := fmt.Errorf("Error finding host running task %v: %v", task.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
@@ -314,11 +316,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	as.taskFinished(w, task, finishTime)
 }
 
-func markHostRunningTaskFinished(host *model.Host, task *model.Task, newTaskId string) {
+func markHostRunningTaskFinished(h *host.Host, task *model.Task, newTaskId string) {
 	// update the given host's running_task field accordingly
-	if err := host.UpdateRunningTask(task.Id, newTaskId, time.Now()); err != nil {
+	if err := h.UpdateRunningTask(task.Id, newTaskId, time.Now()); err != nil {
 		mci.Logger.Errorf(slogger.ERROR, "Error updating running task "+
-			"%v on host %v to '': %v", task.Id, host.Id, err)
+			"%v on host %v to '': %v", task.Id, h.Id, err)
 	}
 }
 
@@ -338,7 +340,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 
 	// a. fetch the host this task just completed on to see if it's
 	// now decommissioned
-	host, err := model.FindHostByRunningTask(task.Id)
+	host, err := host.FindOne(host.ByRunningTaskId(task.Id))
 	if err != nil {
 		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", task.Id,
 			task.HostId, err)
@@ -408,7 +410,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 
 // getNextDistroTask fetches the next task to run for the given distro and marks
 // the task as dispatched in the given host's document
-func getNextDistroTask(currentTask *model.Task, host *model.Host) (
+func getNextDistroTask(currentTask *model.Task, host *host.Host) (
 	nextTask *model.Task, err error) {
 	taskQueue, err := model.FindTaskQueueForDistro(currentTask.DistroId)
 	if err != nil {
@@ -680,7 +682,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get the host with the id specified in the request
-func getHostFromRequest(r *http.Request) (*model.Host, error) {
+func getHostFromRequest(r *http.Request) (*host.Host, error) {
 	// get id and secret from the request.
 	vars := mux.Vars(r)
 	tag := vars["tag"]
@@ -688,7 +690,7 @@ func getHostFromRequest(r *http.Request) (*model.Host, error) {
 		return nil, fmt.Errorf("no host tag supplied")
 	}
 	// find the host
-	host, err := model.FindHost(tag)
+	host, err := host.FindOne(host.ById(tag))
 	if host == nil {
 		return nil, fmt.Errorf("no host with tag: %v", tag)
 	}
@@ -727,7 +729,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		model.LogProvisionFailedEvent(hostObj.Id, string(setupLog))
+		event.LogProvisionFailed(hostObj.Id, string(setupLog))
 
 		err = hostObj.SetUnprovisioned()
 		if err != nil {

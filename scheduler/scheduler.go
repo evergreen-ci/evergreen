@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"math"
@@ -127,13 +128,13 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	// fetch all hosts, split by distro
-	allHosts, err := model.FindLiveHosts()
+	allHosts, err := host.Find(host.IsLive)
 	if err != nil {
 		return fmt.Errorf("Error finding live hosts: %v", err)
 	}
 
 	// figure out all hosts we have up - per distro
-	hostsByDistro := make(map[string][]model.Host)
+	hostsByDistro := make(map[string][]host.Host)
 	for _, liveHost := range allHosts {
 		hostsByDistro[liveHost.Distro] = append(hostsByDistro[liveHost.Distro],
 			liveHost)
@@ -279,18 +280,18 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []model.Task) (
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
 func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
-	map[string][]model.Host, error) {
+	map[string][]host.Host, error) {
 
 	// loop over the distros, spawning up the appropriate number of hosts
 	// for each distro
-	hostsSpawnedPerDistro := make(map[string][]model.Host)
+	hostsSpawnedPerDistro := make(map[string][]host.Host)
 	for distroName, numHostsToSpawn := range newHostsNeeded {
 
 		if numHostsToSpawn == 0 {
 			continue
 		}
 
-		hostsSpawnedPerDistro[distroName] = make([]model.Host, 0,
+		hostsSpawnedPerDistro[distroName] = make([]host.Host, 0,
 			numHostsToSpawn)
 		for i := 0; i < numHostsToSpawn; i++ {
 			distro, err := model.LoadOneDistro(self.ConfigDir, distroName)
@@ -298,7 +299,7 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 				mci.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroName, err)
 			}
 
-			allDistroHosts, err := model.FindHostsForDistro(distroName)
+			allDistroHosts, err := host.Find(host.ByDistroId(distroName))
 			if err != nil {
 				mci.Logger.Logf(slogger.ERROR, "Error getting hosts for distro %v: %v", distroName, err)
 				continue

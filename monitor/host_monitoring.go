@@ -4,7 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"time"
@@ -30,7 +30,7 @@ func monitorReachability(mciSettings *mci.MCISettings) []error {
 	// fetch all hosts that have not been checked recently
 	// (> 10 minutes ago)
 	threshold := time.Now().Add(-ReachabilityCheckInterval)
-	hosts, err := model.FindHostsNotMonitoredSince(threshold)
+	hosts, err := host.Find(host.ByNotMonitoredSince(threshold))
 	if err != nil {
 		errors = append(errors, fmt.Errorf("error finding hosts not"+
 			" monitored recently: %v", err))
@@ -55,7 +55,7 @@ func monitorReachability(mciSettings *mci.MCISettings) []error {
 }
 
 // check reachability for a single host, and take any necessary action
-func checkHostReachability(host model.Host,
+func checkHostReachability(host host.Host,
 	mciSettings *mci.MCISettings) error {
 
 	mci.Logger.Logf(slogger.INFO, "Running reachability check for host %v...",

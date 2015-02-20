@@ -3,6 +3,7 @@ package cloud
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"time"
 )
 
@@ -59,7 +60,7 @@ type CloudManager interface {
 
 	// SpawnInstance attempts to create a new host by requesting one from the
 	// provider's API.
-	SpawnInstance(*model.Distro, string, bool) (*model.Host, error)
+	SpawnInstance(*model.Distro, string, bool) (*host.Host, error)
 
 	// CanSpawn indicates if this provider is capable of creating new instances
 	// with SpawnInstance(). If this provider doesn't support spawning new
@@ -68,41 +69,41 @@ type CloudManager interface {
 	CanSpawn() (bool, error)
 
 	// get the status of an instance
-	GetInstanceStatus(*model.Host) (CloudStatus, error)
+	GetInstanceStatus(*host.Host) (CloudStatus, error)
 
 	// TerminateInstances destroys the host in the underlying provider
-	TerminateInstance(*model.Host) error
+	TerminateInstance(*host.Host) error
 
 	//IsUp returns true if the underlying provider has not destroyed the
 	//host (in other words, if the host "should" be reachable. This does not
 	//necessarily mean that the host actually *is* reachable via SSH
-	IsUp(*model.Host) (bool, error)
+	IsUp(*host.Host) (bool, error)
 
 	//Called by the hostinit process when the host is actually up. Used
 	//to set additional provider-specific metadata
-	OnUp(*model.Host) error
+	OnUp(*host.Host) error
 
 	//IsSSHReachable returns true if the host can successfully
 	//accept and run an ssh command.
-	IsSSHReachable(host *model.Host, distro *model.Distro, keyPath string) (bool, error)
+	IsSSHReachable(host *host.Host, distro *model.Distro, keyPath string) (bool, error)
 
 	// GetDNSName returns the DNS name of a host.
-	GetDNSName(*model.Host) (string, error)
+	GetDNSName(*host.Host) (string, error)
 
 	// GetSSHOptions generates the command line args to be passed to ssh to
 	// allow connection to the machine
-	GetSSHOptions(host *model.Host, distro *model.Distro, keyName string) ([]string, error)
+	GetSSHOptions(host *host.Host, distro *model.Distro, keyName string) ([]string, error)
 
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
-	TimeTilNextPayment(host *model.Host) time.Duration
+	TimeTilNextPayment(host *host.Host) time.Duration
 }
 
 //CloudHost is a provider-agnostic host object that delegates methods
 //like status checks, ssh options, DNS name checks, termination, etc. to the
 //underlying provider's implementation.
 type CloudHost struct {
-	Host     *model.Host
+	Host     *host.Host
 	Distro   *model.Distro
 	KeyPath  string
 	CloudMgr CloudManager

@@ -1,4 +1,4 @@
-package model
+package event
 
 import (
 	"10gen.com/mci"
@@ -38,67 +38,55 @@ func (self HostEventData) IsValid() bool {
 	return self.ResourceType == ResourceTypeHost
 }
 
-func NewHostEventFinder() *EventFinder {
-	return &EventFinder{resourceType: ResourceTypeHost}
-}
-
-func FindMostRecentHostEvents(hostId string, n int) ([]Event, error) {
-	return NewHostEventFinder().FindMostRecentEvents(hostId, n)
-}
-
-func FindAllHostEventsInOrder(hostId string) ([]Event, error) {
-	return NewHostEventFinder().FindAllEventsInOrder(hostId)
-}
-
 func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 	eventData.ResourceType = ResourceTypeHost
 	event := Event{
 		Timestamp:  time.Now(),
 		ResourceId: hostId,
 		EventType:  eventType,
-		Data:       EventDataWrapper{eventData},
+		Data:       DataWrapper{eventData},
 	}
 
-	logger := NewDBEventLogger(EventLogCollection)
+	logger := NewDBEventLogger(Collection)
 	if err := logger.LogEvent(event); err != nil {
 		mci.Logger.Errorf(slogger.ERROR, "Error logging host event: %v", err)
 	}
 }
 
-func LogHostCreatedEvent(hostId string) {
+func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{})
 }
 
-func LogHostStatusChangedEvent(hostId string, oldStatus string,
+func LogHostStatusChanged(hostId string, oldStatus string,
 	newStatus string) {
 	LogHostEvent(hostId, EventHostStatusChanged,
 		HostEventData{OldStatus: oldStatus, NewStatus: newStatus})
 }
 
-func LogHostDNSNameSetEvent(hostId string, dnsName string) {
+func LogHostDNSNameSet(hostId string, dnsName string) {
 	LogHostEvent(hostId, EventHostDNSNameSet,
 		HostEventData{Hostname: dnsName})
 }
 
-func LogHostProvisionedEvent(hostId string) {
+func LogHostProvisioned(hostId string) {
 	LogHostEvent(hostId, EventHostProvisioned, HostEventData{})
 }
 
-func LogHostRunningTaskSetEvent(hostId string, taskId string) {
+func LogHostRunningTaskSet(hostId string, taskId string) {
 	LogHostEvent(hostId, EventHostRunningTaskSet,
 		HostEventData{TaskId: taskId})
 }
 
-func LogHostRunningTaskClearedEvent(hostId string, taskId string) {
+func LogHostRunningTaskCleared(hostId string, taskId string) {
 	LogHostEvent(hostId, EventHostRunningTaskCleared,
 		HostEventData{TaskId: taskId})
 }
 
-func LogHostTaskPidSetEvent(hostId string, taskPid string) {
+func LogHostTaskPidSet(hostId string, taskPid string) {
 	LogHostEvent(hostId, EventHostTaskPidSet,
 		HostEventData{TaskPid: taskPid})
 }
 
-func LogProvisionFailedEvent(hostId string, setupLog string) {
+func LogProvisionFailed(hostId string, setupLog string) {
 	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{SetupLog: setupLog})
 }

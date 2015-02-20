@@ -2,7 +2,7 @@ package monitor
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"strconv"
@@ -62,7 +62,7 @@ func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
 	// find all spawned hosts that have passed at least one warning threshold
 	now := time.Now()
 	thresholdTime := now.Add(firstWarningThreshold)
-	hosts, err := model.FindHostsExpiringBetween(now, thresholdTime)
+	hosts, err := host.Find(host.ByExpiringBetween(now, thresholdTime))
 	if err != nil {
 		return nil, fmt.Errorf("error finding spawned hosts that will be"+
 			" expiring soon: %v", err)
@@ -118,7 +118,7 @@ func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
 // determine the most recently crossed expiration notification threshold for
 // the host. any host passed into this function is assumed to have crossed
 // at least the least recent threshold
-func lastWarningThresholdCrossed(host *model.Host) time.Duration {
+func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 
 	// how long til the host expires
 	tilExpiration := host.ExpirationTime.Sub(time.Now())
@@ -146,7 +146,7 @@ func slowProvisioningWarnings(mciSettings *mci.MCISettings) ([]notification,
 
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-SlowProvisioningThreshold)
-	hosts, err := model.FindUnprovisionedHosts(threshold)
+	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))
 	if err != nil {
 		return nil, fmt.Errorf("error finding unprovisioned hosts: %v", err)
 	}

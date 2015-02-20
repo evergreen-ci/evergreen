@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -83,18 +84,18 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 			model.TaskQueueItem{Id: taskIds[6], ExpectedDuration: expDurs[6]},
 		}
 
-		hosts := [][]model.Host{
-			[]model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1]},
-				model.Host{Id: hostIds[2]},
+		hosts := [][]host.Host{
+			[]host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1]},
+				host.Host{Id: hostIds[2]},
 			},
-			[]model.Host{
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4]},
-				model.Host{Id: hostIds[5]},
+			[]host.Host{
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4]},
+				host.Host{Id: hostIds[5]},
 			},
-			[]model.Host{},
+			[]host.Host{},
 		}
 
 		durationBasedHostAllocator := &DurationBasedHostAllocator{}
@@ -108,7 +109,7 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 						distroIds[1]: taskQueueItems,
 						distroIds[2]: taskQueueItems[:4],
 					},
-					existingDistroHosts: map[string][]model.Host{
+					existingDistroHosts: map[string][]host.Host{
 						distroIds[0]: hosts[0],
 						distroIds[1]: hosts[1],
 						distroIds[2]: hosts[2],
@@ -617,12 +618,12 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			}
 
 			// running tasks have a time to completion of about 1 minute
-			existingDistroHosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+			existingDistroHosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 
 			runningTasksDuration, err :=
@@ -642,13 +643,13 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			"from the project task duration data for running tasks", func() {
 
 			// running tasks have a time to completion of about 1 minute
-			existingDistroHosts := []model.Host{
-				model.Host{Id: hostIds[0], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[2]},
-				model.Host{Id: hostIds[3], RunningTask: runningTaskIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[4]},
-				model.Host{Id: hostIds[5], RunningTask: runningTaskIds[5]},
+			existingDistroHosts := []host.Host{
+				host.Host{Id: hostIds[0], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[2]},
+				host.Host{Id: hostIds[3], RunningTask: runningTaskIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[4]},
+				host.Host{Id: hostIds[5], RunningTask: runningTaskIds[5]},
 			}
 
 			// tasks running on hosts
@@ -698,10 +699,10 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			"estimates should be ignored", func() {
 
 			// running tasks have a time to completion of about 1 minute
-			existingDistroHosts := []model.Host{
-				model.Host{Id: hostIds[0], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[2]},
+			existingDistroHosts := []host.Host{
+				host.Host{Id: hostIds[0], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[2]},
 			}
 
 			// tasks running on hosts
@@ -738,10 +739,10 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			"should be ignored", func() {
 
 			// running tasks have a time to completion of about 1 minute
-			existingDistroHosts := []model.Host{
-				model.Host{Id: hostIds[0], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[2]},
+			existingDistroHosts := []host.Host{
+				host.Host{Id: hostIds[0], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[2]},
 			}
 
 			// tasks running on hosts
@@ -777,11 +778,11 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			"zero", func() {
 
 			// running tasks have a time to completion of about 1 minute
-			existingDistroHosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1]},
-				model.Host{Id: hostIds[2]},
-				model.Host{Id: hostIds[3]},
+			existingDistroHosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1]},
+				host.Host{Id: hostIds[2]},
+				host.Host{Id: hostIds[3]},
 			}
 
 			runningTasksDuration, err :=
@@ -949,15 +950,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 		Convey("if there are no tasks to run, no new hosts should be needed",
 			func() {
-				hosts := []model.Host{
-					model.Host{Id: hostIds[0]},
-					model.Host{Id: hostIds[1]},
-					model.Host{Id: hostIds[2]},
+				hosts := []host.Host{
+					host.Host{Id: hostIds[0]},
+					host.Host{Id: hostIds[1]},
+					host.Host{Id: hostIds[2]},
 				}
 				distro.MaxHosts = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
-					existingDistroHosts: map[string][]model.Host{
+					existingDistroHosts: map[string][]host.Host{
 						"": hosts,
 					},
 					distros: map[string]model.Distro{
@@ -986,7 +987,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distro.MaxHosts = 0
 
 			hostAllocatorData := &HostAllocatorData{
-				existingDistroHosts: map[string][]model.Host{},
+				existingDistroHosts: map[string][]host.Host{},
 				distros: map[string]model.Distro{
 					"": distro,
 				},
@@ -1000,8 +1001,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
 			}
 			distro.MaxHosts = len(hosts)
 
@@ -1009,7 +1010,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1036,9 +1037,9 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[2]},
 				model.TaskQueueItem{Id: taskIds[3]},
 			}
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1]},
 			}
 			distro.MaxHosts = 1
 
@@ -1046,7 +1047,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1070,10 +1071,10 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[0]},
 				model.TaskQueueItem{Id: taskIds[1]},
 			}
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1]},
-				model.Host{Id: hostIds[2]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1]},
+				host.Host{Id: hostIds[2]},
 			}
 			distro.MaxHosts = len(hosts) + 5
 
@@ -1081,7 +1082,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1102,11 +1103,11 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of tasks to run is equal to the number of free"+
 			" hosts, no new hosts are needed", func() {
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
 			}
 			taskQueueItems := []model.TaskQueueItem{
 				model.TaskQueueItem{Id: taskIds[0]},
@@ -1119,7 +1120,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1157,12 +1158,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[4], ExpectedDuration: expDur},
 			}
 			// running tasks have a time to completion of about 1 minute
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 			distro.MaxHosts = 9
 
@@ -1188,7 +1189,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1217,7 +1218,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1239,7 +1240,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1263,7 +1264,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1292,12 +1293,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[4], ExpectedDuration: expDur},
 			}
 			// running tasks have a time to completion of about 1 minute
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1]},
-				model.Host{Id: hostIds[2]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1]},
+				host.Host{Id: hostIds[2]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4]},
 			}
 
 			distro.MaxHosts = 20
@@ -1307,7 +1308,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1340,12 +1341,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 
 			// running tasks have a time to completion of about 1 minute
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 			distro.MaxHosts = 20
 
@@ -1353,7 +1354,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1393,12 +1394,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 
 			// running tasks have a time to completion of about 1 minute
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 			distro.MaxHosts = 20
 
@@ -1406,7 +1407,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -1451,13 +1452,13 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 
 			// running tasks have a time to completion of about 1 minute
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
-				model.Host{Id: hostIds[5]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+				host.Host{Id: hostIds[5]},
 			}
 			distro.MaxHosts = 20
 
@@ -1465,7 +1466,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{

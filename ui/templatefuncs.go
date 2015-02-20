@@ -2,17 +2,17 @@ package ui
 
 import (
 	"10gen.com/mci/model"
-	"crypto/md5"
 	"10gen.com/mci/util"
+	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"time"
 	"github.com/gorilla/mux"
 	"html/template"
 	"io"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type FuncOptions struct {

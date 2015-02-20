@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/command"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/spawn"
 	"10gen.com/mci/util"
@@ -36,7 +37,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 
-	hosts, err := model.FindRunningHostsForUser(user.Username())
+	hosts, err := host.Find(host.ByUserWithRunningStatus(user.Username()))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			fmt.Errorf("Error finding running hosts for user %v: %v", user.Username(), err))
@@ -161,7 +162,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hostId := updateParams.HostId
-	host, err := model.FindHost(hostId)
+	host, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error finding host with id %v: %v", hostId, err))
 		return
@@ -235,7 +236,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(mciSettings *mci.MCISettings, hostObj *model.Host,
+func constructPwdUpdateCommand(mciSettings *mci.MCISettings, hostObj *host.Host,
 	password string) (*command.RemoteCommand, error) {
 
 	cloudHost, err := providers.GetCloudHost(hostObj, mciSettings)

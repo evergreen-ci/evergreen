@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -34,15 +35,15 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if there are no tasks to run, no new hosts should be needed",
 			func() {
-				hosts := []model.Host{
-					model.Host{Id: hostIds[0]},
-					model.Host{Id: hostIds[1]},
-					model.Host{Id: hostIds[2]},
+				hosts := []host.Host{
+					host.Host{Id: hostIds[0]},
+					host.Host{Id: hostIds[1]},
+					host.Host{Id: hostIds[2]},
 				}
 				distro.MaxHosts = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
-					existingDistroHosts: map[string][]model.Host{
+					existingDistroHosts: map[string][]host.Host{
 						"": hosts,
 					},
 					distros: map[string]model.Distro{
@@ -65,7 +66,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			distro.MaxHosts = 0
 
 			hostAllocatorData := &HostAllocatorData{
-				existingDistroHosts: map[string][]model.Host{},
+				existingDistroHosts: map[string][]host.Host{},
 				distros: map[string]model.Distro{
 					"": distro,
 				},
@@ -73,8 +74,8 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, distro, hostAllocatorTestConf),
 				ShouldEqual, 0)
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
 			}
 			distro.MaxHosts = len(hosts)
 
@@ -82,7 +83,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -103,9 +104,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[2]},
 				model.TaskQueueItem{Id: taskIds[3]},
 			}
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1]},
 			}
 			distro.MaxHosts = 1
 
@@ -113,7 +114,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -131,11 +132,11 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[0]},
 				model.TaskQueueItem{Id: taskIds[1]},
 			}
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2]},
-				model.Host{Id: hostIds[3]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2]},
+				host.Host{Id: hostIds[3]},
 			}
 			distro.MaxHosts = len(hosts) + 5
 
@@ -143,7 +144,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -162,11 +163,11 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[0]},
 				model.TaskQueueItem{Id: taskIds[1]},
 			}
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
 			}
 			distro.MaxHosts = len(hosts) + 5
 
@@ -174,7 +175,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -196,12 +197,12 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[3]},
 				model.TaskQueueItem{Id: taskIds[4]},
 			}
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
-				model.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				model.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				model.Host{Id: hostIds[3]},
-				model.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
+				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				host.Host{Id: hostIds[3]},
+				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 			distro.MaxHosts = 9
 
@@ -209,7 +210,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -225,7 +226,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -239,7 +240,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -253,7 +254,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{
@@ -266,8 +267,8 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 
 		Convey("if the distro cannot be used to spawn hosts, then no new hosts"+
 			" can be spawned", func() {
-			hosts := []model.Host{
-				model.Host{Id: hostIds[0]},
+			hosts := []host.Host{
+				host.Host{Id: hostIds[0]},
 			}
 			taskQueueItems := []model.TaskQueueItem{
 				model.TaskQueueItem{Id: taskIds[0]},
@@ -280,7 +281,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
 				},
-				existingDistroHosts: map[string][]model.Host{
+				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
 				distros: map[string]model.Distro{

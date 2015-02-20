@@ -8,6 +8,7 @@ import (
 	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/cloud/providers/static"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 )
 
@@ -40,7 +41,7 @@ func GetCloudManager(providerName string, mciSettings *mci.MCISettings) (cloud.C
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
-func GetCloudHost(host *model.Host, mciSettings *mci.MCISettings) (*cloud.CloudHost, error) {
+func GetCloudHost(host *host.Host, mciSettings *mci.MCISettings) (*cloud.CloudHost, error) {
 	mgr, err := GetCloudManager(host.Provider, mciSettings)
 	if err != nil {
 		return nil, err

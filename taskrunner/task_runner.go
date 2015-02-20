@@ -3,6 +3,7 @@ package taskrunner
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"path/filepath"
@@ -134,7 +135,7 @@ func (self *TaskRunner) RunTasks() error {
 
 // DispatchTaskForHost assigns the task at the head of the task queue to the
 // given host, dequeues the task and then marks it as dispatched for the host
-func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *model.Host) (
+func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 	nextTask *model.Task, err error) {
 	if assignedHost == nil {
 		return nil, fmt.Errorf("can not assign task to a nil host")
@@ -193,8 +194,8 @@ func shouldSkipTask(task *model.Task) bool {
 
 // Takes in a list of hosts, and returns the hosts sorted by distro, in the
 // form of a map distro name -> list of hosts
-func (self *TaskRunner) splitHostsByDistro(hostsToSplit []model.Host) map[string][]model.Host {
-	hostsByDistro := make(map[string][]model.Host)
+func (self *TaskRunner) splitHostsByDistro(hostsToSplit []host.Host) map[string][]host.Host {
+	hostsByDistro := make(map[string][]host.Host)
 	for _, host := range hostsToSplit {
 		hostsByDistro[host.Distro] = append(hostsByDistro[host.Distro], host)
 	}

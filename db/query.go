@@ -38,6 +38,8 @@ func (q Q) Limit(limit int) Q {
 	return q
 }
 
+// FindOneQ runs a Q query against the given collection, applying the results to "out."
+// Only reads one document from the DB.
 func FindOneQ(collection string, q Q, out interface{}) error {
 	return FindOne(
 		collection,
@@ -48,6 +50,7 @@ func FindOneQ(collection string, q Q, out interface{}) error {
 	)
 }
 
+// FindAllQ runs a Q query against the given collection, applying the results to "out."
 func FindAllQ(collection string, q Q, out interface{}) error {
 	return FindAll(
 		collection,
@@ -58,4 +61,9 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 		q.limit,
 		out,
 	)
+}
+
+// CountQ runs a Q count query against the given collection.
+func CountQ(collection string, q Q) (int, error) {
+	return Count(collection, q.filter)
 }

@@ -1,4 +1,4 @@
-package model
+package event
 
 import (
 	"10gen.com/mci"
@@ -8,19 +8,14 @@ import (
 	"time"
 )
 
-var (
-	hostEventTestConfig = mci.TestConfig()
-)
-
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(hostEventTestConfig))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
 }
 
 func TestLoggingHostEvents(t *testing.T) {
 	Convey("When logging host events", t, func() {
 
-		So(db.Clear(EventLogCollection), ShouldBeNil)
+		So(db.Clear(Collection), ShouldBeNil)
 
 		Convey("all events logged should be persisted to the database, and"+
 			" fetching them in order should sort by the time they were"+
@@ -32,32 +27,32 @@ func TestLoggingHostEvents(t *testing.T) {
 			taskPid := "12345"
 
 			// log some events, sleeping in between to make sure the times are different
-			LogHostCreatedEvent(hostId)
+			LogHostCreated(hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostStatusChangedEvent(hostId, mci.HostRunning, mci.HostTerminated)
+			LogHostStatusChanged(hostId, mci.HostRunning, mci.HostTerminated)
 			time.Sleep(1 * time.Millisecond)
-			LogHostDNSNameSetEvent(hostId, hostname)
+			LogHostDNSNameSet(hostId, hostname)
 			time.Sleep(1 * time.Millisecond)
-			LogHostProvisionedEvent(hostId)
+			LogHostProvisioned(hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostRunningTaskSetEvent(hostId, taskId)
+			LogHostRunningTaskSet(hostId, taskId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostRunningTaskClearedEvent(hostId, taskId)
+			LogHostRunningTaskCleared(hostId, taskId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostTaskPidSetEvent(hostId, taskPid)
+			LogHostTaskPidSet(hostId, taskPid)
 			time.Sleep(1 * time.Millisecond)
 
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForHost, err := FindAllHostEventsInOrder(hostId)
+			eventsForHost, err := Find(HostEventsInOrder(hostId))
 			So(err, ShouldBeNil)
 
 			event := eventsForHost[0]
 			So(event.EventType, ShouldEqual, EventHostCreated)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok := event.Data.EventData.(*HostEventData)
+			eventData, ok := event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
@@ -71,7 +66,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(event.EventType, ShouldEqual, EventHostStatusChanged)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok = event.Data.EventData.(*HostEventData)
+			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldEqual, mci.HostRunning)
@@ -85,7 +80,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(event.EventType, ShouldEqual, EventHostDNSNameSet)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok = event.Data.EventData.(*HostEventData)
+			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
@@ -99,7 +94,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(event.EventType, ShouldEqual, EventHostProvisioned)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok = event.Data.EventData.(*HostEventData)
+			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
@@ -113,7 +108,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(event.EventType, ShouldEqual, EventHostRunningTaskSet)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok = event.Data.EventData.(*HostEventData)
+			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
@@ -127,7 +122,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(event.EventType, ShouldEqual, EventHostRunningTaskCleared)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok = event.Data.EventData.(*HostEventData)
+			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)
@@ -141,7 +136,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(event.EventType, ShouldEqual, EventHostTaskPidSet)
 			So(event.ResourceId, ShouldEqual, hostId)
 
-			eventData, ok = event.Data.EventData.(*HostEventData)
+			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
 			So(eventData.OldStatus, ShouldBeBlank)

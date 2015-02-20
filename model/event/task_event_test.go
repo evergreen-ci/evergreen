@@ -1,4 +1,4 @@
-package model
+package event
 
 import (
 	"10gen.com/mci"
@@ -9,42 +9,36 @@ import (
 	"time"
 )
 
-var (
-	taskEventTestConfig = mci.TestConfig()
-)
-
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(taskEventTestConfig))
-
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
 }
 
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		util.HandleTestingErr(db.Clear(EventLogCollection), t,
-			"Error clearing '%v' collection", EventLogCollection)
+		util.HandleTestingErr(db.Clear(Collection), t,
+			"Error clearing '%v' collection", Collection)
 
 		Convey("All task events should be logged correctly", func() {
 			taskId := "task_id"
 			hostId := "host_id"
 
-			LogTaskCreatedEvent(taskId)
+			LogTaskCreated(taskId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskDispatchedEvent(taskId, hostId)
+			LogTaskDispatched(taskId, hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskStartedEvent(taskId)
+			LogTaskStarted(taskId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskFinishedEvent(taskId, mci.TaskSucceeded)
+			LogTaskFinished(taskId, mci.TaskSucceeded)
 
-			eventsForTask, err := FindAllTaskEventsInOrder(taskId)
+			eventsForTask, err := Find(TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
 
 			event := eventsForTask[0]
-			So(EventTaskCreated, ShouldEqual, event.EventType)
+			So(TaskCreated, ShouldEqual, event.EventType)
 			So(taskId, ShouldEqual, event.ResourceId)
 
-			eventData, ok := event.Data.EventData.(*TaskEventData)
+			eventData, ok := event.Data.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
@@ -53,10 +47,10 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 
 			event = eventsForTask[1]
-			So(EventTaskDispatched, ShouldEqual, event.EventType)
+			So(TaskDispatched, ShouldEqual, event.EventType)
 			So(taskId, ShouldEqual, event.ResourceId)
 
-			eventData, ok = event.Data.EventData.(*TaskEventData)
+			eventData, ok = event.Data.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldEqual, hostId)
@@ -65,10 +59,10 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 
 			event = eventsForTask[2]
-			So(EventTaskStarted, ShouldEqual, event.EventType)
+			So(TaskStarted, ShouldEqual, event.EventType)
 			So(taskId, ShouldEqual, event.ResourceId)
 
-			eventData, ok = event.Data.EventData.(*TaskEventData)
+			eventData, ok = event.Data.Data.(*TaskEventData)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
@@ -76,10 +70,10 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 
 			event = eventsForTask[3]
-			So(EventTaskFinished, ShouldEqual, event.EventType)
+			So(TaskFinished, ShouldEqual, event.EventType)
 			So(taskId, ShouldEqual, event.ResourceId)
 
-			eventData, ok = event.Data.EventData.(*TaskEventData)
+			eventData, ok = event.Data.Data.(*TaskEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)

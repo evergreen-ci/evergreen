@@ -3,7 +3,7 @@ package taskrunner
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -25,7 +25,7 @@ func TestDBHostFinder(t *testing.T) {
 	var users []string
 	var taskIds []string
 	var hostIds []string
-	var hosts []*model.Host
+	var hosts []*host.Host
 	var hostFinder *DBHostFinder
 
 	Convey("When querying for available hosts", t, func() {
@@ -35,16 +35,16 @@ func TestDBHostFinder(t *testing.T) {
 		users = []string{"u1"}
 		taskIds = []string{"t1"}
 		hostIds = []string{"h1", "h2", "h3"}
-		hosts = []*model.Host{
-			&model.Host{Id: hostIds[0], StartedBy: mci.MCIUser,
+		hosts = []*host.Host{
+			&host.Host{Id: hostIds[0], StartedBy: mci.MCIUser,
 				Status: mci.HostRunning},
-			&model.Host{Id: hostIds[1], StartedBy: mci.MCIUser,
+			&host.Host{Id: hostIds[1], StartedBy: mci.MCIUser,
 				Status: mci.HostRunning},
-			&model.Host{Id: hostIds[2], StartedBy: mci.MCIUser,
+			&host.Host{Id: hostIds[2], StartedBy: mci.MCIUser,
 				Status: mci.HostRunning},
 		}
 
-		So(db.Clear(model.HostsCollection), ShouldBeNil)
+		So(db.Clear(host.Collection), ShouldBeNil)
 
 		Convey("hosts started by users other than the MCI user should not"+
 			" be returned", func() {

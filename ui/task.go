@@ -5,6 +5,8 @@ import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/plugin"
 	"encoding/json"
 	"fmt"
@@ -188,13 +190,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Task.HostId != "" {
 		task.HostDNS = projCtx.Task.HostId
 		task.HostId = projCtx.Task.HostId
-		host, err := model.FindHost(projCtx.Task.HostId)
+		taskHost, err := host.FindOne(host.ById(projCtx.Task.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if host != nil {
-			task.HostDNS = host.Host
+		if taskHost != nil {
+			task.HostDNS = taskHost.Host
 		}
 	}
 
@@ -317,7 +319,7 @@ func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
 
 	wrapper := &taskLogsWrapper{}
 	if logType == "EV" {
-		loggedEvents, err := model.FindMostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages)
+		loggedEvents, err := event.Find(event.MostRecentTaskEvents(projCtx.Task.Id, DefaultLogMessages))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

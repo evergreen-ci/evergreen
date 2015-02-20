@@ -45,7 +45,7 @@ func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request)
 	uis.patchTimelineWrapper(author, w, r)
 }
 
-func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request){
+func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext

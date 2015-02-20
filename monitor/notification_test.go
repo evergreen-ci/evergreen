@@ -3,7 +3,7 @@ package monitor
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -20,7 +20,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 		" soon", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("any hosts not expiring within a threshold should not trigger"+
@@ -28,7 +28,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
 			// this host does not expire within the first notification
 			// threshold
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:             "h1",
 				ExpirationTime: time.Now().Add(time.Hour * 15),
 			}
@@ -44,7 +44,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			" should be ignored", func() {
 
 			// this host meets the first notification warning threshold
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:             "h1",
 				ExpirationTime: time.Now().Add(time.Hour * 10),
 				Notifications: map[string]bool{
@@ -63,7 +63,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			" the warning", func() {
 
 			// this host meets both notification warning thresholds
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:             "h1",
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
@@ -75,7 +75,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
 			// execute the callback, make sure the correct threshold is set
 			So(warnings[0].callback(), ShouldBeNil)
-			host1, err = model.FindHost("h1")
+			host1, err = host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
 			So(host1.Notifications["120"], ShouldBeTrue)
 
@@ -85,7 +85,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			" merit warnings", func() {
 
 			// quarantined host
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:             "h1",
 				Status:         mci.HostQuarantined,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
@@ -93,7 +93,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// terminated host
-			host2 := &model.Host{
+			host2 := &host.Host{
 				Id:             "h2",
 				Status:         mci.HostTerminated,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
@@ -103,7 +103,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			// past the expiration. no warning needs to be sent since this host
 			// is theoretically about to be terminated, at which time a
 			// notification will be sent
-			host3 := &model.Host{
+			host3 := &host.Host{
 				Id:             "h3",
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
@@ -129,13 +129,13 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 		" provision", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts that have not hit the threshold should not trigger a"+
 			" warning", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-10 * time.Minute),
@@ -151,7 +151,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 		Convey("hosts that have already triggered a notification should not"+
 			" trigger another", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-1 * time.Hour),
@@ -169,7 +169,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 		Convey("terminated hosts should not trigger a warning", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				Status:       mci.HostTerminated,
@@ -186,7 +186,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 		Convey("hosts that are at the threshold and have not previously"+
 			" triggered a warning should trigger one", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-1 * time.Hour),
@@ -199,7 +199,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			// make sure running the callback sets the notification key
 			So(warnings[0].callback(), ShouldBeNil)
-			host1, err = model.FindHost("h1")
+			host1, err = host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
 			So(host1.Notifications[SlowProvisioningWarning], ShouldBeTrue)
 

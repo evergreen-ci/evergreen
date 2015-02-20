@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
@@ -415,7 +416,7 @@ func TestSetTaskActivated(t *testing.T) {
 	Convey("With a task and build", t, func() {
 
 		util.HandleTestingErr(
-			db.ClearCollections(TasksCollection, BuildsCollection, HostsCollection),
+			db.ClearCollections(TasksCollection, BuildsCollection, host.Collection),
 			t, "Error clearing test collections")
 
 		taskId := "t1"
@@ -463,7 +464,7 @@ func TestMarkAsDispatched(t *testing.T) {
 	var hostId string
 	var buildId string
 	var task *Task
-	var host *Host
+	var myHost *host.Host
 	var build *Build
 
 	Convey("With a task", t, func() {
@@ -477,7 +478,7 @@ func TestMarkAsDispatched(t *testing.T) {
 			BuildId: buildId,
 		}
 
-		host = &Host{
+		myHost = &host.Host{
 			Id: hostId,
 		}
 
@@ -489,11 +490,11 @@ func TestMarkAsDispatched(t *testing.T) {
 		}
 
 		util.HandleTestingErr(
-			db.ClearCollections(TasksCollection, BuildsCollection, HostsCollection),
+			db.ClearCollections(TasksCollection, BuildsCollection, host.Collection),
 			t, "Error clearing test collections")
 
 		So(task.Insert(), ShouldBeNil)
-		So(host.Insert(), ShouldBeNil)
+		So(myHost.Insert(), ShouldBeNil)
 		So(build.Insert(), ShouldBeNil)
 
 		Convey("when marking the task as dispatched, the fields for"+
@@ -501,19 +502,19 @@ func TestMarkAsDispatched(t *testing.T) {
 			" should be set to reflect this", func() {
 
 			// mark the task as dispatched
-			So(task.MarkAsDispatched(host, time.Now()), ShouldBeNil)
+			So(task.MarkAsDispatched(myHost, time.Now()), ShouldBeNil)
 
 			// make sure the task's fields were updated, both in memory and
 			// in the db
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(task.Status, ShouldEqual, mci.TaskDispatched)
-			So(task.HostId, ShouldEqual, host.Id)
+			So(task.HostId, ShouldEqual, myHost.Id)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 			task, err := FindTask(taskId)
 			So(err, ShouldBeNil)
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(task.Status, ShouldEqual, mci.TaskDispatched)
-			So(task.HostId, ShouldEqual, host.Id)
+			So(task.HostId, ShouldEqual, myHost.Id)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 
 			// make sure the build's fields were updated in the db

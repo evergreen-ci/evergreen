@@ -1,4 +1,4 @@
-package model
+package event
 
 import (
 	"10gen.com/mci/db"

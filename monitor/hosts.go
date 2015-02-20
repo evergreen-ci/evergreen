@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -90,7 +91,7 @@ func (self *HostMonitor) CleanupHosts(distros map[string]model.Distro,
 
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
-func terminateHosts(hosts []model.Host, mciSettings *mci.MCISettings) []error {
+func terminateHosts(hosts []host.Host, mciSettings *mci.MCISettings) []error {
 
 	// used to store any errors that occur
 	var errors []error
@@ -101,21 +102,21 @@ func terminateHosts(hosts []model.Host, mciSettings *mci.MCISettings) []error {
 	// to ensure thread-safe appending to the errors
 	errsLock := &sync.Mutex{}
 
-	for _, host := range hosts {
+	for _, h := range hosts {
 
-		mci.Logger.Logf(slogger.INFO, "Terminating host %v...", host.Id)
+		mci.Logger.Logf(slogger.INFO, "Terminating host %v...", h.Id)
 
 		waitGroup.Add(1)
 
 		// terminate the host in a goroutine. pass the host in as a parameter
 		// so that the variable isn't reused for subsequent iterations
-		go func(host model.Host) {
+		go func(hostToTerminate host.Host) {
 
 			defer waitGroup.Done()
 
 			// wrapper function to terminate the host
 			terminateFunc := func() error {
-				return terminateHost(&host, mciSettings)
+				return terminateHost(&hostToTerminate, mciSettings)
 			}
 
 			// run the function with a timeout
@@ -124,7 +125,7 @@ func terminateHosts(hosts []model.Host, mciSettings *mci.MCISettings) []error {
 			if err == util.ErrTimedOut {
 				errsLock.Lock()
 				errors = append(errors, fmt.Errorf("timeout terminating"+
-					" host %v", host.Id))
+					" host %v", hostToTerminate.Id))
 				errsLock.Unlock()
 			} else if err != nil {
 				errsLock.Lock()
@@ -133,10 +134,10 @@ func terminateHosts(hosts []model.Host, mciSettings *mci.MCISettings) []error {
 				errsLock.Unlock()
 			} else {
 				mci.Logger.Logf(slogger.INFO, "Successfully terminated host"+
-					" %v", host.Id)
+					" %v", hostToTerminate.Id)
 			}
 
-		}(host)
+		}(h)
 
 	}
 
@@ -147,7 +148,7 @@ func terminateHosts(hosts []model.Host, mciSettings *mci.MCISettings) []error {
 }
 
 // helper to terminate a single host
-func terminateHost(host *model.Host, mciSettings *mci.MCISettings) error {
+func terminateHost(host *host.Host, mciSettings *mci.MCISettings) error {
 
 	// convert the host to a cloud host
 	cloudHost, err := providers.GetCloudHost(host, mciSettings)

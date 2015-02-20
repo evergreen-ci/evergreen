@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -24,7 +25,7 @@ func init() {
 
 type MockHostFinder struct{}
 
-func (self *MockHostFinder) FindAvailableHosts() ([]model.Host, error) {
+func (self *MockHostFinder) FindAvailableHosts() ([]host.Host, error) {
 	return nil, fmt.Errorf("FindAvailableHosts not implemented")
 }
 
@@ -45,7 +46,7 @@ func (self *MockHostGateway) GetAgentRevision() (string, error) {
 }
 
 func (self *MockHostGateway) RunTaskOnHost(mciSettings *mci.MCISettings,
-	taskToRun model.Task, targetHost model.Host) (string, error) {
+	taskToRun model.Task, targetHost host.Host) (string, error) {
 	return "", fmt.Errorf("RunTaskOnHost not implemented")
 }
 
@@ -60,11 +61,11 @@ func TestSplitHostsByDistro(t *testing.T) {
 
 		distroIds := []string{"d1", "d2", "d3"}
 		hostIds := []string{"h1", "h2", "h3", "h4"}
-		hosts := []model.Host{
-			model.Host{Id: hostIds[0], Distro: distroIds[0]},
-			model.Host{Id: hostIds[1], Distro: distroIds[1]},
-			model.Host{Id: hostIds[2], Distro: distroIds[2]},
-			model.Host{Id: hostIds[3], Distro: distroIds[1]},
+		hosts := []host.Host{
+			host.Host{Id: hostIds[0], Distro: distroIds[0]},
+			host.Host{Id: hostIds[1], Distro: distroIds[1]},
+			host.Host{Id: hostIds[2], Distro: distroIds[2]},
+			host.Host{Id: hostIds[3], Distro: distroIds[1]},
 		}
 
 		taskRunner := &TaskRunner{

@@ -1,7 +1,9 @@
 package ui
 
 import (
+	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/event"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -14,18 +16,18 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 
 	projCtx := MustHaveProjectContext(r)
 
-	var eventFinder *model.EventFinder
+	var eventQuery db.Q
 	switch resourceType {
-	case model.ResourceTypeTask:
-		eventFinder = model.NewTaskEventFinder()
-	case model.ResourceTypeHost:
-		eventFinder = model.NewHostEventFinder()
+	case event.ResourceTypeTask:
+		eventQuery = event.MostRecentTaskEvents(resourceId, 100)
+	case event.ResourceTypeHost:
+		eventQuery = event.MostRecentHostEvents(resourceId, 100)
 	default:
 		http.Error(w, fmt.Sprintf("Unknown resource: %v", resourceType), http.StatusBadRequest)
 		return
 	}
 
-	loggedEvents, err := eventFinder.FindMostRecentEvents(resourceId, 100)
+	loggedEvents, err := event.Find(eventQuery)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -34,6 +36,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		User        *model.DBUser
-		Data        []model.Event
+		Data        []event.Event
 	}{projCtx, GetUser(r), loggedEvents}, "base", "event_log.html", "base_angular.html")
 }

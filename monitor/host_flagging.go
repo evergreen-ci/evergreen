@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"time"
@@ -18,18 +19,18 @@ const (
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
 type hostFlaggingFunc func(map[string]model.Distro,
-	*mci.MCISettings) ([]model.Host, error)
+	*mci.MCISettings) ([]host.Host, error)
 
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
 func flagDecommissionedHosts(distros map[string]model.Distro,
-	mciSettings *mci.MCISettings) ([]model.Host,
+	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding decommissioned hosts...")
 
 	// fetch the decommissioned hosts
-	hosts, err := model.FindDecommissionedHosts()
+	hosts, err := host.Find(host.IsDecommissioned)
 	if err != nil {
 		return nil, fmt.Errorf("error finding decommissioned hosts: %v", err)
 	}
@@ -42,16 +43,16 @@ func flagDecommissionedHosts(distros map[string]model.Distro,
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
 func flagIdleHosts(distros map[string]model.Distro,
-	mciSettings *mci.MCISettings) ([]model.Host,
+	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding idle hosts...")
 
 	// will ultimately contain all of the hosts determined to be idle
-	idleHosts := []model.Host{}
+	idleHosts := []host.Host{}
 
 	// fetch all hosts not currently running a task
-	freeHosts, err := model.FindFreeHosts()
+	freeHosts, err := host.Find(host.IsFree)
 	if err != nil {
 		return nil, fmt.Errorf("error finding free hosts: %v", err)
 	}
@@ -102,19 +103,19 @@ func flagIdleHosts(distros map[string]model.Distro,
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
 func flagExcessHosts(distros map[string]model.Distro,
-	mciSettings *mci.MCISettings) ([]model.Host,
+	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding excess hosts...")
 
 	// will ultimately contain all the hosts that can be terminated
-	excessHosts := []model.Host{}
+	excessHosts := []host.Host{}
 
 	// figure out the excess hosts for each distro
 	for distroName, distroInfo := range distros {
 
 		// fetch any hosts for the distro that count towards max hosts
-		allHostsForDistro, err := model.FindHostsForDistro(distroName)
+		allHostsForDistro, err := host.Find(host.ByDistroId(distroName))
 		if err != nil {
 			return nil, fmt.Errorf("error fetching hosts for distro %v: %v",
 				distroName, err)
@@ -170,14 +171,14 @@ func flagExcessHosts(distros map[string]model.Distro,
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
 func flagUnprovisionedHosts(distros map[string]model.Distro,
-	mciSettings *mci.MCISettings) ([]model.Host,
+	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding unprovisioned hosts...")
 
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-ProvisioningCutoff)
-	hosts, err := model.FindUnprovisionedHosts(threshold)
+	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))
 	if err != nil {
 		return nil, fmt.Errorf("error finding unprovisioned hosts: %v", err)
 	}
@@ -190,13 +191,13 @@ func flagUnprovisionedHosts(distros map[string]model.Distro,
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
 func flagProvisioningFailedHosts(distros map[string]model.Distro,
-	mciSettings *mci.MCISettings) ([]model.Host,
+	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding hosts whose provisioning failed...")
 
 	// fetch all hosts whose provisioning failed
-	hosts, err := model.FindProvisioningFailedHosts()
+	hosts, err := host.Find(host.IsProvisioningFailure)
 	if err != nil {
 		return nil, fmt.Errorf("error finding hosts whose provisioning"+
 			" failed: %v", err)
@@ -212,13 +213,13 @@ func flagProvisioningFailedHosts(distros map[string]model.Distro,
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
 func flagExpiredHosts(distros map[string]model.Distro,
-	mciSettings *mci.MCISettings) ([]model.Host,
+	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding expired hosts")
 
 	// fetch the expired hosts
-	hosts, err := model.FindExpiredSpawnedHosts()
+	hosts, err := host.Find(host.ByExpiredSince(time.Now()))
 	if err != nil {
 		return nil, fmt.Errorf("error finding expired spawned hosts: %v", err)
 	}
@@ -230,7 +231,7 @@ func flagExpiredHosts(distros map[string]model.Distro,
 }
 
 // helper to check if a host can be terminated
-func hostCanBeTerminated(host model.Host, mciSettings *mci.MCISettings) (bool,
+func hostCanBeTerminated(host host.Host, mciSettings *mci.MCISettings) (bool,
 	error) {
 
 	// get a cloud manager for the host

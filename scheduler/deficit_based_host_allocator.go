@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -69,7 +70,7 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 	runnableDistroTasks := hostAllocatorData.
 		taskQueueItems[distro.Name]
 
-	freeHosts := make([]model.Host, 0, len(existingDistroHosts))
+	freeHosts := make([]host.Host, 0, len(existingDistroHosts))
 	for _, existingDistroHost := range existingDistroHosts {
 		if existingDistroHost.RunningTask == "" {
 			freeHosts = append(freeHosts, existingDistroHost)

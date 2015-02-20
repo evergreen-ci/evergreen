@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"time"
 )
@@ -12,8 +13,8 @@ const ProviderName = "mock"
 
 type MockCloudManager struct{}
 
-func (staticMgr *MockCloudManager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*model.Host, error) {
-	return &model.Host{
+func (staticMgr *MockCloudManager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*host.Host, error) {
+	return &host.Host{
 		Id:        util.RandomString(),
 		Distro:    distro.Name,
 		StartedBy: owner,
@@ -21,12 +22,12 @@ func (staticMgr *MockCloudManager) SpawnInstance(distro *model.Distro, owner str
 }
 
 // get the status of an instance
-func (staticMgr *MockCloudManager) GetInstanceStatus(host *model.Host) (cloud.CloudStatus, error) {
+func (staticMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	return cloud.StatusRunning, nil
 }
 
 // get instance DNS
-func (staticMgr *MockCloudManager) GetDNSName(host *model.Host) (string, error) {
+func (staticMgr *MockCloudManager) GetDNSName(host *host.Host) (string, error) {
 	return host.Host, nil
 }
 
@@ -35,7 +36,7 @@ func (staticMgr *MockCloudManager) CanSpawn() (bool, error) {
 }
 
 // terminate an instance
-func (staticMgr *MockCloudManager) TerminateInstance(host *model.Host) error {
+func (staticMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
 	return nil
 }
 
@@ -44,24 +45,24 @@ func (staticMgr *MockCloudManager) Configure(mciSettings *mci.MCISettings) error
 	return nil
 }
 
-func (staticMgr *MockCloudManager) IsSSHReachable(host *model.Host, distro *model.Distro,
+func (staticMgr *MockCloudManager) IsSSHReachable(host *host.Host, distro *model.Distro,
 	keyPath string) (bool, error) {
 	return true, nil
 }
 
-func (staticMgr *MockCloudManager) IsUp(host *model.Host) (bool, error) {
+func (staticMgr *MockCloudManager) IsUp(host *host.Host) (bool, error) {
 	return true, nil
 }
 
-func (staticMsg *MockCloudManager) OnUp(host *model.Host) error {
+func (staticMsg *MockCloudManager) OnUp(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *MockCloudManager) GetSSHOptions(host *model.Host, distro *model.Distro,
+func (staticMgr *MockCloudManager) GetSSHOptions(host *host.Host, distro *model.Distro,
 	keyPath string) ([]string, error) {
 	return []string{}, nil
 }
 
-func (staticMgr *MockCloudManager) TimeTilNextPayment(host *model.Host) time.Duration {
+func (staticMgr *MockCloudManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return time.Duration(0)
 }

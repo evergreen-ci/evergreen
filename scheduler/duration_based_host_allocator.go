@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -183,7 +184,7 @@ func computeScheduledTasksDuration(
 
 // computeRunningTasksDuration returns the estimated time to completion of all
 // currently running tasks for a given distro given its hosts
-func computeRunningTasksDuration(existingDistroHosts []model.Host,
+func computeRunningTasksDuration(existingDistroHosts []host.Host,
 	taskDurations model.ProjectTaskDurations) (runningTasksDuration float64,
 	err error) {
 

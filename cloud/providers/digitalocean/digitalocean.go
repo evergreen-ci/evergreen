@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	digo "github.com/dynport/gocloud/digitalocean"
@@ -57,7 +58,7 @@ func (self *DigitalOceanSettings) Validate() error {
 }
 
 //SpawnInstance creates a new droplet for the given distro.
-func (digoMgr *DigitalOceanManager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*model.Host, error) {
+func (digoMgr *DigitalOceanManager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*host.Host, error) {
 	if distro.Provider != ProviderName {
 		return nil, fmt.Errorf("Can't use DigitalOcean provider on distro '%v'")
 	}
@@ -73,7 +74,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(distro *model.Distro, owner st
 
 	instanceName := "droplet-" +
 		fmt.Sprintf("%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-	intentHost := &model.Host{
+	intentHost := &host.Host{
 		Id:               instanceName,
 		User:             distro.User,
 		Distro:           distro.Name,
@@ -118,7 +119,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(distro *model.Distro, owner st
 	}
 
 	// find old intent host
-	host, err := model.FindHost(intentHost.Id)
+	host, err := host.FindOne(host.ById(intentHost.Id))
 	if host == nil {
 		return nil, mci.Logger.Errorf(slogger.ERROR, "Can't locate "+
 			"record inserted for intended host “%v”", intentHost.Id)
@@ -161,7 +162,7 @@ func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet
 
 //GetInstanceStatus returns a universal status code representing the state
 //of a droplet.
-func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *model.Host) (cloud.CloudStatus, error) {
+func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		return cloud.StatusUnknown, mci.Logger.Errorf(slogger.ERROR,
@@ -188,7 +189,7 @@ func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *model.Host) (cloud.C
 
 //GetDNSName gets the DNS hostname of a droplet by reading it directly from
 //the DigitalOcean API
-func (digoMgr *DigitalOceanManager) GetDNSName(host *model.Host) (string, error) {
+func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		return "", mci.Logger.Errorf(slogger.ERROR,
@@ -209,7 +210,7 @@ func (digoMgr *DigitalOceanManager) CanSpawn() (bool, error) {
 }
 
 //TerminateInstance destroys a droplet.
-func (digoMgr *DigitalOceanManager) TerminateInstance(host *model.Host) error {
+func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
 		return mci.Logger.Errorf(slogger.ERROR, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
@@ -236,7 +237,7 @@ func (digoMgr *DigitalOceanManager) Configure(mciSettings *mci.MCISettings) erro
 
 //IsSSHReachable checks if a droplet appears to be reachable via SSH by
 //attempting to contact the host directly.
-func (digoMgr *DigitalOceanManager) IsSSHReachable(host *model.Host,
+func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host,
 	distro *model.Distro, keyPath string) (bool, error) {
 	sshOpts, err := digoMgr.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
@@ -247,7 +248,7 @@ func (digoMgr *DigitalOceanManager) IsSSHReachable(host *model.Host,
 
 //IsUp checks the droplet's state by querying the DigitalOcean API and
 //returns true if the host should be available to connect with SSH.
-func (digoMgr *DigitalOceanManager) IsUp(host *model.Host) (bool, error) {
+func (digoMgr *DigitalOceanManager) IsUp(host *host.Host) (bool, error) {
 	cloudStatus, err := digoMgr.GetInstanceStatus(host)
 	if err != nil {
 		return false, err
@@ -258,14 +259,14 @@ func (digoMgr *DigitalOceanManager) IsUp(host *model.Host) (bool, error) {
 	return false, nil
 }
 
-func (digoMgr *DigitalOceanManager) OnUp(host *model.Host) error {
+func (digoMgr *DigitalOceanManager) OnUp(host *host.Host) error {
 	//Currently a no-op as DigitalOcean doesn't support tags.
 	return nil
 }
 
 //GetSSHOptions returns an array of default SSH options for connecting to a
 //droplet.
-func (digoMgr *DigitalOceanManager) GetSSHOptions(host *model.Host,
+func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host,
 	distro *model.Distro, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, fmt.Errorf("No key specified for DigitalOcean host")
@@ -280,7 +281,7 @@ func (digoMgr *DigitalOceanManager) GetSSHOptions(host *model.Host,
 
 // TimeTilNextPayment returns the amount of time until the next payment is due
 // for the host
-func (digoMgr *DigitalOceanManager) TimeTilNextPayment(host *model.Host) time.Duration {
+func (digoMgr *DigitalOceanManager) TimeTilNextPayment(host *host.Host) time.Duration {
 
 	now := time.Now()
 

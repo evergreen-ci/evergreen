@@ -4,6 +4,8 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/spawn"
 	"10gen.com/mci/util"
@@ -23,9 +25,9 @@ type spawnRequest struct {
 }
 
 type spawnResponse struct {
-	Hosts    []model.Host `json:"hosts,omitempty"`
-	HostInfo model.Host   `json:"host_info,omitempty"`
-	Distros  []string     `json:"distros,omitempty"`
+	Hosts    []host.Host `json:"hosts,omitempty"`
+	HostInfo host.Host   `json:"host_info,omitempty"`
+	Distros  []string    `json:"distros,omitempty"`
 
 	// empty if the request succeeded
 	ErrorMessage string `json:"error_message,omitempty"`
@@ -118,7 +120,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 	status := vars["status"]
 
 	// mark the host itself as provisioned
-	host, err := model.FindHost(instanceId)
+	host, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -153,7 +155,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		model.LogProvisionFailedEvent(instanceId, string(setupLog))
+		event.LogProvisionFailed(instanceId, string(setupLog))
 	}
 
 	message := fmt.Sprintf(`
@@ -179,7 +181,7 @@ func (as *APIServer) hostInfo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	instanceId := vars["instance_id"]
 
-	host, err := model.FindHost(instanceId)
+	host, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -198,7 +200,7 @@ func (as *APIServer) hostsInfoForUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	user := vars["user"]
 
-	hosts, err := model.FindUnterminatedHostsForUser(user)
+	hosts, err := host.Find(host.ByUserWithUnterminatedStatus(user))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -212,7 +214,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	instanceId := vars["instance_id"]
 	hostAction := r.FormValue("action")
 
-	host, err := model.FindHost(instanceId)
+	host, err := host.FindOne(host.ById(instanceId))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

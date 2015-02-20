@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -20,7 +21,7 @@ func TestCleanupTask(t *testing.T) {
 		// reset the db
 		util.HandleTestingErr(db.ClearCollections(model.TasksCollection),
 			t, "error clearing tasks collection")
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("an error should be thrown if the passed-in projects slice"+
@@ -53,7 +54,7 @@ func TestCleanupTask(t *testing.T) {
 					Identifier: "proj",
 				},
 			}
-			host := &model.Host{
+			host := &host.Host{
 				Id:          "h1",
 				RunningTask: "nott1",
 			}
@@ -71,7 +72,7 @@ func TestCleanupTask(t *testing.T) {
 			// reset the db
 			util.HandleTestingErr(db.ClearCollections(model.TasksCollection),
 				t, "error clearing tasks collection")
-			util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+			util.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
 			util.HandleTestingErr(db.ClearCollections(model.BuildsCollection),
 				t, "error clearing builds collection")
@@ -104,7 +105,7 @@ func TestCleanupTask(t *testing.T) {
 					},
 				}
 
-				host := &model.Host{
+				host := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
 				}
@@ -162,11 +163,11 @@ func TestCleanupTask(t *testing.T) {
 					},
 				}
 
-				host := &model.Host{
+				h := &host.Host{
 					Id:          "h1",
 					RunningTask: "t1",
 				}
-				So(host.Insert(), ShouldBeNil)
+				So(h.Insert(), ShouldBeNil)
 
 				build := &model.Build{
 					Id: "b1",
@@ -189,9 +190,9 @@ func TestCleanupTask(t *testing.T) {
 
 				// refresh the host, make sure its running task field has
 				// been reset
-				host, err := model.FindHost("h1")
+				h, err := host.FindOne(host.ById("h1"))
 				So(err, ShouldBeNil)
-				So(host.RunningTask, ShouldEqual, "")
+				So(h.RunningTask, ShouldEqual, "")
 
 			})
 

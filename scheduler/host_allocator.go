@@ -3,6 +3,7 @@ package scheduler
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 )
 
 // Interface responsible for determining how many new hosts should be spun up.
@@ -27,7 +28,7 @@ type HostAllocator interface {
 
 type HostAllocatorData struct {
 	taskQueueItems       map[string][]model.TaskQueueItem
-	existingDistroHosts  map[string][]model.Host
+	existingDistroHosts  map[string][]host.Host
 	taskRunDistros       map[string][]string
 	distros              map[string]model.Distro
 	projectTaskDurations model.ProjectTaskDurations

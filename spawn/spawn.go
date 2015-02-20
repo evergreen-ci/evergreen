@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/hostinit"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -63,7 +64,7 @@ func (sm Spawn) Validate(so Options) error {
 	}
 
 	// if the user already has too many active spawned hosts, deny the request
-	activeSpawnedHosts, err := model.FindRunningHostsForUser(so.UserName)
+	activeSpawnedHosts, err := host.Find(host.ByUserWithRunningStatus(so.UserName))
 	if err != nil {
 		return fmt.Errorf("Error occurred finding user's current hosts: %v", err)
 	}
@@ -120,7 +121,7 @@ func (sm Spawn) Validate(so Options) error {
 }
 
 // CreateHost spawns a host with the given options.
-func (sm Spawn) CreateHost(so Options) (*model.Host, error) {
+func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 
 	// load in the appropriate distro
 	distro, err := model.LoadOneDistro(sm.mciSettings.ConfigDir, so.Distro)

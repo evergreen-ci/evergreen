@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -23,36 +24,36 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			" should be returned", func() {
 
 			// reset the db
-			util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+			util.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
 
 			// insert hosts with different statuses
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:     "h1",
 				Status: mci.HostRunning,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			host2 := &model.Host{
+			host2 := &host.Host{
 				Id:     "h2",
 				Status: mci.HostTerminated,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			host3 := &model.Host{
+			host3 := &host.Host{
 				Id:     "h3",
 				Status: mci.HostDecommissioned,
 			}
 			util.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-			host4 := &model.Host{
+			host4 := &host.Host{
 				Id:     "h4",
 				Status: mci.HostDecommissioned,
 			}
 			util.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
-			host5 := &model.Host{
+			host5 := &host.Host{
 				Id:     "h5",
 				Status: mci.HostQuarantined,
 			}
@@ -80,7 +81,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	Convey("When flagging idle hosts to be terminated", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts currently running a task should never be"+
@@ -88,7 +89,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 			// insert a host that is currently running a task - but whose
 			// creation time would otherwise indicate it has been idle a while
-			host1 := model.Host{
+			host1 := host.Host{
 				Id:           "h1",
 				Provider:     mock.ProviderName,
 				CreationTime: time.Now().Add(-30 * time.Minute),
@@ -112,7 +113,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			// insert two hosts - one whose last task was more than 15 minutes
 			// ago, one whose last task was less than 15 minutes ago
 
-			host1 := model.Host{
+			host1 := host.Host{
 				Id:                    "h1",
 				Provider:              mock.ProviderName,
 				LastTaskCompleted:     "t1",
@@ -122,7 +123,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			host2 := model.Host{
+			host2 := host.Host{
 				Id:                    "h2",
 				Provider:              mock.ProviderName,
 				LastTaskCompleted:     "t2",
@@ -155,7 +156,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 		Convey("with two separate distros containing hosts", func() {
 
 			// reset the db
-			util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+			util.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
 
 			// mock up the distros
@@ -178,7 +179,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				// insert one host for each distro
 
-				host1 := &model.Host{
+				host1 := &host.Host{
 					Id:        "h1",
 					Distro:    "d1",
 					Status:    mci.HostRunning,
@@ -187,7 +188,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-				host2 := &model.Host{
+				host2 := &host.Host{
 					Id:        "h2",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -209,7 +210,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				// insert one host for the first distro, and three for the
 				// second distro
 
-				host1 := &model.Host{
+				host1 := &host.Host{
 					Id:        "h1",
 					Distro:    "d1",
 					Status:    mci.HostRunning,
@@ -218,7 +219,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-				host2 := &model.Host{
+				host2 := &host.Host{
 					Id:        "h2",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -227,7 +228,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-				host3 := &model.Host{
+				host3 := &host.Host{
 					Id:        "h3",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -236,7 +237,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-				host4 := &model.Host{
+				host4 := &host.Host{
 					Id:        "h4",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -261,7 +262,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				// insert three hosts for each distro
 
-				host1 := &model.Host{
+				host1 := &host.Host{
 					Id:        "h1",
 					Distro:    "d1",
 					Status:    mci.HostRunning,
@@ -270,7 +271,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-				host2 := &model.Host{
+				host2 := &host.Host{
 					Id:        "h2",
 					Distro:    "d1",
 					Status:    mci.HostRunning,
@@ -279,7 +280,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-				host3 := &model.Host{
+				host3 := &host.Host{
 					Id:        "h3",
 					Distro:    "d1",
 					Status:    mci.HostRunning,
@@ -288,7 +289,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-				host4 := &model.Host{
+				host4 := &host.Host{
 					Id:        "h4",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -297,7 +298,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
-				host5 := &model.Host{
+				host5 := &host.Host{
 					Id:        "h5",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -306,7 +307,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
-				host6 := &model.Host{
+				host6 := &host.Host{
 					Id:        "h6",
 					Distro:    "d2",
 					Status:    mci.HostRunning,
@@ -340,7 +341,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				// insert two hosts for each distro, with running tasks
 
-				host1 := &model.Host{
+				host1 := &host.Host{
 					Id:          "h1",
 					Distro:      "d1",
 					Status:      mci.HostRunning,
@@ -350,7 +351,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-				host2 := &model.Host{
+				host2 := &host.Host{
 					Id:          "h2",
 					Distro:      "d1",
 					Status:      mci.HostRunning,
@@ -360,7 +361,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-				host3 := &model.Host{
+				host3 := &host.Host{
 					Id:          "h3",
 					Distro:      "d2",
 					Status:      mci.HostRunning,
@@ -370,7 +371,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				}
 				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
-				host4 := &model.Host{
+				host4 := &host.Host{
 					Id:          "h4",
 					Distro:      "d2",
 					Status:      mci.HostRunning,
@@ -403,13 +404,13 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts that have not hit the provisioning limit should"+
 			" be ignored", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 10),
@@ -424,7 +425,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 		Convey("hosts that are already terminated should be ignored", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 40),
@@ -440,7 +441,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 		Convey("hosts that are already provisioned should be ignored", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 40),
@@ -457,7 +458,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 		Convey("hosts that have hit the provisioning limit should be"+
 			" flagged", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:           "h1",
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 40),
@@ -483,25 +484,25 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("only hosts whose provisioning failed should be"+
 			" picked up", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:     "h1",
 				Status: mci.HostRunning,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			host2 := &model.Host{
+			host2 := &host.Host{
 				Id:     "h2",
 				Status: mci.HostUninitialized,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
-			host3 := &model.Host{
+			host3 := &host.Host{
 				Id:     "h3",
 				Status: mci.HostProvisionFailed,
 			}
@@ -526,13 +527,13 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.HostsCollection),
+		util.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts started by the default user should be filtered"+
 			" out", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:        "h1",
 				Status:    mci.HostRunning,
 				StartedBy: mci.MCIUser,
@@ -548,13 +549,13 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 		Convey("hosts that are terminated or quarantined should be filtered"+
 			" out", func() {
 
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:     "h1",
 				Status: mci.HostQuarantined,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
-			host2 := &model.Host{
+			host2 := &host.Host{
 				Id:     "h2",
 				Status: mci.HostTerminated,
 			}
@@ -570,7 +571,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			" been reached", func() {
 
 			// not expired
-			host1 := &model.Host{
+			host1 := &host.Host{
 				Id:             "h1",
 				Status:         mci.HostRunning,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
@@ -578,7 +579,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// expired
-			host2 := &model.Host{
+			host2 := &host.Host{
 				Id:             "h2",
 				Status:         mci.HostRunning,
 				ExpirationTime: time.Now().Add(-time.Minute * 10),

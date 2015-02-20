@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"bytes"
 	"fmt"
@@ -30,7 +31,7 @@ type HostGateway interface {
 	RunSetup() error
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	RunTaskOnHost(*mci.MCISettings, model.Task, model.Host) (string, error)
+	RunTaskOnHost(*mci.MCISettings, model.Task, host.Host) (string, error)
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -77,7 +78,7 @@ func (self *AgentBasedHostGateway) RunSetup() error {
 // machine.
 // Returns an error if any step along the way fails.
 func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *mci.MCISettings,
-	taskToRun model.Task, host model.Host) (string, error) {
+	taskToRun model.Task, host host.Host) (string, error) {
 
 	// cache mci home
 	mciHome, err := mci.FindMCIHome()
@@ -193,7 +194,7 @@ func (self *AgentBasedHostGateway) buildAgent() error {
 
 // Prepare the remote machine to run a task.
 func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
-	host model.Host, sshOptions []string, mciHome string) (string, error) {
+	host host.Host, sshOptions []string, mciHome string) (string, error) {
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(host.Host)
@@ -315,7 +316,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 // Returns an error if starting the agent remotely fails.
 func (self *AgentBasedHostGateway) startAgentOnRemote(
 	mciSettings *mci.MCISettings, task *model.Task,
-	host *model.Host, sshOptions []string) error {
+	host *host.Host, sshOptions []string) error {
 
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join(mci.RemoteShell, "main")

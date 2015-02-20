@@ -2,12 +2,12 @@ package ui
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/gorilla/mux"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,25 +41,25 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["host_id"]
 
-	host, err := model.FindHost(id)
+	h, err := host.FindOne(host.ById(id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	if host == nil {
+	if h == nil {
 		http.Error(w, "Host not found", http.StatusNotFound)
 		return
 	}
 
-	events, err := model.FindMostRecentHostEvents(id, 50)
+	events, err := event.Find(event.MostRecentHostEvents(id, 50))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	lenEvents := len(events)
-	reversed := make([]model.Event, lenEvents)
+	reversed := make([]event.Event, lenEvents)
 	for idx, e := range events {
 		reversed[lenEvents-idx-1] = e
 	}
@@ -67,11 +67,11 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Flashes     []interface{}
-		Events      []model.Event
-		Host        *model.Host
+		Events      []event.Event
+		Host        *host.Host
 		User        *model.DBUser
 		ProjectData projectContext
-	}{flashes, reversed, host, GetUser(r), projCtx},
+	}{flashes, reversed, h, GetUser(r), projCtx},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
@@ -102,7 +102,7 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["host_id"]
 
-	host, err := model.FindHost(id)
+	host, err := host.FindOne(host.ById(id))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -159,10 +159,7 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// fetch all relevant hosts
-	hosts, err := model.FindAllHosts(bson.M{model.HostIdKey: bson.M{"$in": hostIds}},
-		db.NoProjection, db.NoSort,
-		db.NoSkip, db.NoLimit,
-	)
+	hosts, err := host.Find(host.ByIds(hostIds))
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finding hosts: %v", err))

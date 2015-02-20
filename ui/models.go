@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/plugin"
 	"bytes"
 	"fmt"
@@ -70,7 +71,7 @@ type uiPatch struct {
 }
 
 type uiHost struct {
-	Host        model.Host
+	Host        host.Host
 	RunningTask *model.Task
 }
 
@@ -386,12 +387,12 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 	data := &hostsData{}
 
 	// get all of the hosts
-	var dbHosts []model.Host
+	var dbHosts []host.Host
 	var err error
 	if includeSpawnedHosts {
-		dbHosts, err = model.FindRunningHosts()
+		dbHosts, err = host.Find(host.IsRunning)
 	} else {
-		dbHosts, err = model.FindRunningHostsForUser(mci.MCIUser)
+		dbHosts, err = host.Find(host.ByUserWithRunningStatus(mci.MCIUser))
 	}
 
 	if err != nil {
@@ -422,14 +423,14 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 
 func getHostData(hostId string) (*uiHost, error) {
 	hostAsUI := &uiHost{}
-	host, err := model.FindHost(hostId)
+	dbHost, err := host.FindOne(host.ById(hostId))
 	if err != nil {
 		return nil, err
 	}
-	if host == nil {
+	if dbHost == nil {
 		return nil, fmt.Errorf("Could not find host")
 	}
-	hostAsUI.Host = *host
+	hostAsUI.Host = *dbHost
 	return hostAsUI, nil
 }
 

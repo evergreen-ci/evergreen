@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/mitchellh/goamz/aws"
@@ -77,12 +78,12 @@ func (cloudManager *EC2Manager) Configure(mciSettings *mci.MCISettings) error {
 	return nil
 }
 
-func (cloudManager *EC2Manager) GetSSHOptions(host *model.Host, distro *model.Distro,
+func (cloudManager *EC2Manager) GetSSHOptions(host *host.Host, distro *model.Distro,
 	keyPath string) ([]string, error) {
 	return getEC2KeyOptions(keyPath)
 }
 
-func (cloudManager *EC2Manager) IsSSHReachable(host *model.Host, distro *model.Distro, keyPath string) (bool, error) {
+func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, distro *model.Distro, keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
 		return false, err
@@ -90,7 +91,7 @@ func (cloudManager *EC2Manager) IsSSHReachable(host *model.Host, distro *model.D
 	return hostutil.CheckSSHResponse(host, sshOpts)
 }
 
-func (cloudManager *EC2Manager) GetInstanceStatus(host *model.Host) (cloud.CloudStatus, error) {
+func (cloudManager *EC2Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
@@ -103,7 +104,7 @@ func (cloudManager *EC2Manager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (cloudManager *EC2Manager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*model.Host, error) {
+func (cloudManager *EC2Manager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*host.Host, error) {
 	if distro.Provider != OnDemandProviderName {
 		return nil, fmt.Errorf("Can't use EC2 spawn instance on distro '%v'")
 	}
@@ -130,7 +131,7 @@ func (cloudManager *EC2Manager) SpawnInstance(distro *model.Distro, owner string
 	// to the host we want to create. this way, if we are unable
 	// to start it or record its instance id, we have a way of knowing
 	// something went wrong - and what
-	intentHost := &model.Host{
+	intentHost := &host.Host{
 		Id:               instanceName,
 		User:             distro.User,
 		Distro:           distro.Name,
@@ -194,7 +195,7 @@ func (cloudManager *EC2Manager) SpawnInstance(distro *model.Distro, owner string
 	return newHost, nil
 }
 
-func (cloudManager *EC2Manager) IsUp(host *model.Host) (bool, error) {
+func (cloudManager *EC2Manager) IsUp(host *host.Host) (bool, error) {
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
@@ -206,12 +207,12 @@ func (cloudManager *EC2Manager) IsUp(host *model.Host) (bool, error) {
 	return false, nil
 }
 
-func (cloudManager *EC2Manager) OnUp(host *model.Host) error {
+func (cloudManager *EC2Manager) OnUp(host *host.Host) error {
 	//Not currently needed since we can set the tags immediately
 	return nil
 }
 
-func (cloudManager *EC2Manager) GetDNSName(host *model.Host) (string, error) {
+func (cloudManager *EC2Manager) GetDNSName(host *host.Host) (string, error) {
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
@@ -220,7 +221,7 @@ func (cloudManager *EC2Manager) GetDNSName(host *model.Host) (string, error) {
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2Manager) StopInstance(host *model.Host) error {
+func (cloudManager *EC2Manager) StopInstance(host *host.Host) error {
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	// stop the instance
 	resp, err := ec2Handle.StopInstances(host.Id)
@@ -242,7 +243,7 @@ func (cloudManager *EC2Manager) StopInstance(host *model.Host) error {
 	return nil
 }
 
-func (cloudManager *EC2Manager) TerminateInstance(host *model.Host) error {
+func (cloudManager *EC2Manager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == mci.HostTerminated {
 		errMsg := fmt.Errorf("Can not terminate %v - already marked as "+
@@ -267,12 +268,12 @@ func (cloudManager *EC2Manager) TerminateInstance(host *model.Host) error {
 }
 
 // determine how long until a payment is due for the host
-func (cloudManager *EC2Manager) TimeTilNextPayment(host *model.Host) time.Duration {
+func (cloudManager *EC2Manager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
 func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstances,
-	intentHost *model.Host) (*model.Host, *ec2.RunInstancesResp, error) {
+	intentHost *host.Host) (*host.Host, *ec2.RunInstancesResp, error) {
 	// start the instance
 	resp, err := ec2Handle.RunInstances(options)
 
@@ -295,7 +296,7 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstances,
 	mci.Logger.Logf(slogger.DEBUG, "Key name: %v", string(options.KeyName))
 
 	// find old intent host
-	host, err := model.FindHost(intentHost.Id)
+	host, err := host.FindOne(host.ById(intentHost.Id))
 	if host == nil {
 		return nil, nil, mci.Logger.Errorf(slogger.ERROR, "Can't locate "+
 			"record inserted for intended host “%v”", intentHost.Id)

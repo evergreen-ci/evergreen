@@ -2,7 +2,7 @@ package hostutil
 
 import (
 	"10gen.com/mci/command"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"io/ioutil"
 	"time"
@@ -13,7 +13,7 @@ const HostCheckTimeout = 10 * time.Second
 //CheckSSHResponse runs a test command over SSH to check whether or not the host
 //appears to be up and accepting ssh connections. Returns true/false if the check
 //passes or fails, or an error if the command cannot be attempted.
-func CheckSSHResponse(hostObject *model.Host, sshOptions []string) (bool, error) {
+func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) {
 	hostInfo, err := util.ParseSSHInfo(hostObject.Host)
 	if err != nil {
 		return false, err

@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -66,16 +67,16 @@ func (self *MockCloudManager) StartInstance(distroName string) (bool, error) {
 }
 
 func (self *MockCloudManager) SpawnInstance(distroName string,
-	configDir string) (*model.Host, error) {
-	return &model.Host{Distro: distroName}, nil
+	configDir string) (*host.Host, error) {
+	return &host.Host{Distro: distroName}, nil
 }
 
-func (self *MockCloudManager) GetInstanceStatus(inst *model.Host) (
+func (self *MockCloudManager) GetInstanceStatus(inst *host.Host) (
 	string, error) {
 	return "", fmt.Errorf("GetInstanceStatus not implemented")
 }
 
-func (self *MockCloudManager) GetInstanceDNS(inst *model.Host) (string, error) {
+func (self *MockCloudManager) GetInstanceDNS(inst *host.Host) (string, error) {
 	return "", fmt.Errorf("GetInstanceDNS not implemented")
 }
 
@@ -83,11 +84,11 @@ func (self *MockCloudManager) ReconcileInstanceLists() (bool, error) {
 	return false, fmt.Errorf("ReconcileInstanceLists not implemented")
 }
 
-func (self *MockCloudManager) StopInstance(inst *model.Host) error {
+func (self *MockCloudManager) StopInstance(inst *host.Host) error {
 	return fmt.Errorf("StopInstance not implemented")
 }
 
-func (self *MockCloudManager) TerminateInstance(inst *model.Host) error {
+func (self *MockCloudManager) TerminateInstance(inst *host.Host) error {
 	return fmt.Errorf("TerminateInstance not implemented")
 }
 

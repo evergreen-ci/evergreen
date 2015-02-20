@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apiserver"
 	dbutil "10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
@@ -103,7 +104,7 @@ func TestBasicEndpoints(t *testing.T) {
 				util.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)
 				So(testTask.Status, ShouldEqual, mci.TaskStarted)
 
-				testHost, err := model.FindHostByRunningTask(testTask.Id)
+				testHost, err := host.FindOne(host.ByRunningTaskId(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testHost.Id, ShouldEqual, "testHost")
 				So(testHost.RunningTask, ShouldEqual, testTask.Id)
@@ -494,9 +495,9 @@ func TestTaskEndEndpoint(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(taskUpdate.Status, ShouldEqual, mci.TaskSucceeded)
 
-				host, err := model.FindHost(testTask.HostId)
+				testHost, err := host.FindOne(host.ById(testTask.HostId))
 				So(err, ShouldBeNil)
-				So(host.RunningTask, ShouldEqual, subsequentTaskId)
+				So(testHost.RunningTask, ShouldEqual, subsequentTaskId)
 
 				taskUpdate, err = model.FindTask(subsequentTaskId)
 				So(err, ShouldBeNil)
@@ -548,7 +549,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
-		model.TasksCollection, model.BuildsCollection, model.HostsCollection,
+		model.TasksCollection, model.BuildsCollection, host.Collection,
 		model.DistrosCollection, model.VersionsCollection, model.PatchCollection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 	}
@@ -612,7 +613,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	}
 	util.HandleTestingErr(taskQueue.Save(), t, "failed to insert taskqueue")
 
-	host := &model.Host{
+	host := &host.Host{
 		Id:            "testHost",
 		Host:          "testHost",
 		RunningTask:   "testTaskId",

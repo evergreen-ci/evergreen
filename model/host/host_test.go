@@ -1,4 +1,4 @@
-package model
+package host
 
 import (
 	"10gen.com/mci"
@@ -10,12 +10,8 @@ import (
 	"time"
 )
 
-var (
-	hostTestConfig = mci.TestConfig()
-)
-
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostTestConfig))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
 }
 
 func hostIdInSlice(hosts []Host, id string) bool {
@@ -31,8 +27,8 @@ func TestGenericHostFinding(t *testing.T) {
 
 	Convey("When finding hosts", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error clearing"+
-			" '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+			" '%v' collection", Collection)
 
 		Convey("when finding one host", func() {
 
@@ -48,13 +44,7 @@ func TestGenericHostFinding(t *testing.T) {
 				}
 				So(nonMatchingHost.Insert(), ShouldBeNil)
 
-				found, err := FindOneHost(
-					bson.M{
-						HostIdKey: matchingHost.Id,
-					},
-					db.NoProjection,
-					db.NoSort,
-				)
+				found, err := FindOne(ById(matchingHost.Id))
 				So(err, ShouldBeNil)
 				So(found.Id, ShouldEqual, matchingHost.Id)
 
@@ -84,15 +74,7 @@ func TestGenericHostFinding(t *testing.T) {
 				}
 				So(nonMatchingHost.Insert(), ShouldBeNil)
 
-				found, err := FindAllHosts(
-					bson.M{
-						HostDistroKey: "d1",
-					},
-					db.NoProjection,
-					db.NoSort,
-					db.NoSkip,
-					db.NoLimit,
-				)
+				found, err := Find(db.Query(bson.M{DistroKey: "d1"}))
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 2)
 				So(hostIdInSlice(found, matchingHostOne.Id), ShouldBeTrue)
@@ -130,95 +112,16 @@ func TestGenericHostFinding(t *testing.T) {
 				// find the hosts, removing the host field from the projection,
 				// sorting by tag, skipping one, and limiting to one
 
-				found, err := FindAllHosts(
-					bson.M{
-						HostDistroKey: "d1",
-					},
-					bson.M{
-						HostDNSKey: 0,
-					},
-					[]string{HostTagKey},
-					1,
-					1,
-				)
+				found, err := Find(db.Query(bson.M{DistroKey: "d1"}).
+					Project(bson.M{DNSKey: 0}).
+					Sort([]string{TagKey}).
+					Skip(1).Limit(1))
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 1)
 				So(found[0].Id, ShouldEqual, matchingHostOne.Id)
 				So(found[0].Host, ShouldEqual, "") // filtered out in projection
-
 			})
-
 		})
-
-	})
-
-}
-
-func TestHostFindNextTask(t *testing.T) {
-
-	Convey("With a host", t, func() {
-
-		Convey("when finding the next task to be run on the host", func() {
-
-			util.HandleTestingErr(db.ClearCollections(HostsCollection,
-				TasksCollection, TaskQueuesCollection), t,
-				"Error clearing test collections")
-
-			host := &Host{
-				Id:     "hostId",
-				Distro: "d1",
-			}
-			So(host.Insert(), ShouldBeNil)
-
-			Convey("if there is no task queue for the host's distro, no task"+
-				" should be returned", func() {
-
-				nextTask, err := host.FindNextTask()
-				So(err, ShouldBeNil)
-				So(nextTask, ShouldBeNil)
-
-			})
-
-			Convey("if the task queue is empty, no task should be"+
-				" returned", func() {
-
-				tQueue := &TaskQueue{
-					Distro: host.Distro,
-				}
-				So(tQueue.Save(), ShouldBeNil)
-
-				nextTask, err := host.FindNextTask()
-				So(err, ShouldBeNil)
-				So(nextTask, ShouldBeNil)
-
-			})
-
-			Convey("if the task queue is not empty, the corresponding task"+
-				" object from the database should be returned", func() {
-
-				tQueue := &TaskQueue{
-					Distro: host.Distro,
-					Queue: []TaskQueueItem{
-						TaskQueueItem{
-							Id: "taskOne",
-						},
-					},
-				}
-				So(tQueue.Save(), ShouldBeNil)
-
-				task := &Task{
-					Id: "taskOne",
-				}
-				So(task.Insert(), ShouldBeNil)
-
-				nextTask, err := host.FindNextTask()
-				So(err, ShouldBeNil)
-				So(nextTask.Id, ShouldEqual, task.Id)
-
-			})
-
-		})
-
 	})
 }
 
@@ -226,8 +129,8 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id: "hostOne",
@@ -240,13 +143,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 			So(host.SetStatus(mci.HostRunning), ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostRunning)
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostRunning)
 
@@ -259,13 +156,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 			So(host.SetStatus(mci.HostRunning), ShouldNotBeNil)
 			So(host.Status, ShouldEqual, mci.HostTerminated)
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostTerminated)
 
@@ -279,8 +170,8 @@ func TestSetHostTerminated(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id: "hostOne",
@@ -295,13 +186,7 @@ func TestSetHostTerminated(t *testing.T) {
 			So(host.Status, ShouldEqual, mci.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
@@ -311,104 +196,12 @@ func TestSetHostTerminated(t *testing.T) {
 	})
 }
 
-func TestDecommissionInactiveStaticHosts(t *testing.T) {
-
-	Convey("When decommissioning unused static hosts", t, func() {
-
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error clearing"+
-			" '%v' collection", HostsCollection)
-
-		Convey("if a nil slice is passed in, no host(s) should"+
-			" be decommissioned in the database", func() {
-
-			inactiveOne := &Host{
-				Id:       "inactiveOne",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
-			}
-			So(inactiveOne.Insert(), ShouldBeNil)
-
-			inactiveTwo := &Host{
-				Id:       "inactiveTwo",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
-			}
-			So(inactiveTwo.Insert(), ShouldBeNil)
-
-			So(DecommissionInactiveStaticHosts(nil), ShouldBeNil)
-
-			found, err := FindAllHostsNoFilter()
-			So(err, ShouldBeNil)
-			So(len(found), ShouldEqual, 2)
-			So(found[0].Status, ShouldEqual, mci.HostRunning)
-			So(found[1].Status, ShouldEqual, mci.HostRunning)
-
-		})
-
-		Convey("if a non-nil slice is passed in, any static hosts with ids not in"+
-			" the slice should be removed from the database", func() {
-
-			activeOne := &Host{
-				Id:       "activeStaticOne",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
-			}
-			So(activeOne.Insert(), ShouldBeNil)
-
-			activeTwo := &Host{
-				Id:       "activeStaticTwo",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
-			}
-			So(activeTwo.Insert(), ShouldBeNil)
-
-			inactiveOne := &Host{
-				Id:       "inactiveStaticOne",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
-			}
-			So(inactiveOne.Insert(), ShouldBeNil)
-
-			inactiveTwo := &Host{
-				Id:       "inactiveStaticTwo",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
-			}
-			So(inactiveTwo.Insert(), ShouldBeNil)
-
-			inactiveEC2One := &Host{
-				Id:       "inactiveEC2One",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeEC2,
-			}
-			So(inactiveEC2One.Insert(), ShouldBeNil)
-
-			inactiveUnknownTypeOne := &Host{
-				Id:     "inactiveUnknownTypeOne",
-				Status: mci.HostRunning,
-			}
-			So(inactiveUnknownTypeOne.Insert(), ShouldBeNil)
-
-			activeStaticHosts := []string{"activeStaticOne", "activeStaticTwo"}
-			So(DecommissionInactiveStaticHosts(activeStaticHosts), ShouldBeNil)
-
-			found, err := FindDecommissionedHosts()
-			So(err, ShouldBeNil)
-			So(len(found), ShouldEqual, 2)
-			So(hostIdInSlice(found, inactiveOne.Id), ShouldBeTrue)
-			So(hostIdInSlice(found, inactiveTwo.Id), ShouldBeTrue)
-		})
-
-	})
-
-}
-
 func TestHostSetDNSName(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id: "hostOne",
@@ -421,13 +214,7 @@ func TestHostSetDNSName(t *testing.T) {
 			So(host.SetDNSName("hostname"), ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
@@ -435,13 +222,7 @@ func TestHostSetDNSName(t *testing.T) {
 			So(host.SetDNSName("hostname2"), ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
-			host, err = FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
@@ -454,8 +235,8 @@ func TestMarkAsProvisioned(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id: "hostOne",
@@ -470,13 +251,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, mci.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
@@ -490,8 +265,8 @@ func TestHostSetRunningTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id: "hostOne",
@@ -510,13 +285,7 @@ func TestHostSetRunningTask(t *testing.T) {
 			So(host.TaskDispatchTime.Round(time.Second).Equal(
 				taskDispatchTime.Round(time.Second)), ShouldBeTrue)
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "taskId")
 			So(host.AgentRevision, ShouldEqual, "c")
@@ -532,8 +301,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		initialExpirationTime := time.Now()
 		notifications := make(map[string]bool)
@@ -550,13 +319,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 			" expiration time for both the in-memory and database"+
 			" copies of the host and unset the notifications", func() {
 
-			dbHost, err := FindOneHost(
-				bson.M{
-					HostIdKey: memHost.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			dbHost, err := FindOne(ById(memHost.Id))
+
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
 			So(memHost.ExpirationTime.Round(time.Second).Equal(
@@ -570,13 +334,8 @@ func TestHostSetExpirationTime(t *testing.T) {
 			newExpirationTime := time.Now()
 			So(memHost.SetExpirationTime(newExpirationTime), ShouldBeNil)
 
-			dbHost, err = FindOneHost(
-				bson.M{
-					HostIdKey: memHost.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			dbHost, err = FindOne(ById(memHost.Id))
+
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
 			So(memHost.ExpirationTime.Round(time.Second).Equal(
@@ -593,13 +352,13 @@ func TestFindRunningSpawnedHosts(t *testing.T) {
 	testConfig := mci.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-		" clearing '%v' collection", HostsCollection)
+	util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		" clearing '%v' collection", Collection)
 
 	Convey("With calling FindRunningSpawnedHosts...", t, func() {
 		Convey("if there are no spawned hosts, nothing should be returned",
 			func() {
-				spawnedHosts, err := FindRunningSpawnedHosts()
+				spawnedHosts, err := Find(IsRunningAndSpawned)
 				So(err, ShouldBeNil)
 				// make sure we only returned no document
 				So(len(spawnedHosts), ShouldEqual, 0)
@@ -613,7 +372,7 @@ func TestFindRunningSpawnedHosts(t *testing.T) {
 			host.StartedBy = "user1"
 			util.HandleTestingErr(host.Insert(), t, "error from "+
 				"FindRunningSpawnedHosts")
-			spawnedHosts, err := FindRunningSpawnedHosts()
+			spawnedHosts, err := Find(IsRunningAndSpawned)
 			util.HandleTestingErr(err, t, "error from "+
 				"FindRunningSpawnedHosts: %v", err)
 			// make sure we only returned no document
@@ -626,8 +385,8 @@ func TestSetExpirationNotification(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		notifications := make(map[string]bool)
 		notifications["2h"] = true
@@ -642,13 +401,8 @@ func TestSetExpirationNotification(t *testing.T) {
 			" the expiration notification for both the in-memory and database"+
 			" copies of the host and unset the notifications", func() {
 
-			dbHost, err := FindOneHost(
-				bson.M{
-					HostIdKey: memHost.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			dbHost, err := FindOne(ById(memHost.Id))
+
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
 			So(memHost.Notifications, ShouldResemble, notifications)
@@ -657,13 +411,7 @@ func TestSetExpirationNotification(t *testing.T) {
 			// now update the expiration notification
 			notifications["4h"] = true
 			So(memHost.SetExpirationNotification("4h"), ShouldBeNil)
-			dbHost, err = FindOneHost(
-				bson.M{
-					HostIdKey: memHost.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			dbHost, err = FindOne(ById(memHost.Id))
 			// ensure the db entries are as expected
 			So(err, ShouldBeNil)
 			So(memHost.Notifications, ShouldResemble, notifications)
@@ -676,8 +424,8 @@ func TestHostClearRunningTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id:               "hostOne",
@@ -691,10 +439,10 @@ func TestHostClearRunningTask(t *testing.T) {
 
 		Convey("host statistics should properly count this host as active"+
 			" but not idle", func() {
-			count, err := CountActiveHosts()
+			count, err := Count(IsActive)
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
-			count, err = CountIdleHosts()
+			count, err = Count(IsIdle)
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 0)
 		})
@@ -708,13 +456,7 @@ func TestHostClearRunningTask(t *testing.T) {
 			So(host.TaskDispatchTime.Equal(time.Unix(0, 0)), ShouldBeTrue)
 			So(host.Pid, ShouldEqual, "")
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 
 			So(host.RunningTask, ShouldEqual, "")
@@ -722,12 +464,12 @@ func TestHostClearRunningTask(t *testing.T) {
 			So(host.Pid, ShouldEqual, "")
 
 			Convey("the count of idle hosts should go up", func() {
-				count, err := CountIdleHosts()
+				count, err := Count(IsIdle)
 				So(err, ShouldBeNil)
 				So(count, ShouldEqual, 1)
 
 				Convey("but the active host count should remain the same", func() {
-					count, err = CountActiveHosts()
+					count, err = Count(IsActive)
 					So(err, ShouldBeNil)
 					So(count, ShouldEqual, 1)
 				})
@@ -742,8 +484,8 @@ func TestUpsert(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(HostsCollection), t, "Error"+
-			" clearing '%v' collection", HostsCollection)
+		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
 
 		host := &Host{
 			Id:     "hostOne",
@@ -758,13 +500,7 @@ func TestUpsert(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostRunning)
 
-			host, err := FindOneHost(
-				bson.M{
-					HostIdKey: host.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, mci.HostRunning)
 
@@ -777,24 +513,18 @@ func TestUpsert(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(host.Status, ShouldEqual, mci.HostRunning)
 
-				host, err := FindOneHost(
-					bson.M{
-						HostIdKey: host.Id,
-					},
-					db.NoProjection,
-					db.NoSort,
-				)
+				host, err := FindOne(ById(host.Id))
 				So(err, ShouldBeNil)
 				So(host.Status, ShouldEqual, mci.HostRunning)
 				So(host.Host, ShouldEqual, "host")
 
-				err = UpdateOneHost(
+				err = UpdateOne(
 					bson.M{
-						HostIdKey: host.Id,
+						IdKey: host.Id,
 					},
 					bson.M{
 						"$set": bson.M{
-							HostStatusKey: mci.HostDecommissioned,
+							StatusKey: mci.HostDecommissioned,
 						},
 					},
 				)
@@ -807,13 +537,7 @@ func TestUpsert(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				// host db status should remain unchanged
-				host, err = FindOneHost(
-					bson.M{
-						HostIdKey: host.Id,
-					},
-					db.NoProjection,
-					db.NoSort,
-				)
+				host, err = FindOne(ById(host.Id))
 				So(err, ShouldBeNil)
 				So(host.Status, ShouldEqual, mci.HostDecommissioned)
 				So(host.Host, ShouldEqual, "host2")

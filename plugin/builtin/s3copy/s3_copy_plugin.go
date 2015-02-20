@@ -401,7 +401,7 @@ func (c *S3CopyCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
 		displayName = filepath.Base(request.S3SourcePath)
 	}
 
-	pluginLogger.LogExecution(slogger.INFO, "attachign file with name %v", displayName)
+	pluginLogger.LogExecution(slogger.INFO, "attaching file with name %v", displayName)
 	file := artifact.File{
 		Name: displayName,
 		Link: fileLink,

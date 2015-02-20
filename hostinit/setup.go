@@ -6,6 +6,8 @@ import (
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/command"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/remote"
 	"10gen.com/mci/util"
@@ -32,7 +34,7 @@ type HostInit struct {
 func (init *HostInit) SetupReadyHosts() error {
 
 	// find all hosts in the uninitialized state
-	uninitializedHosts, err := model.FindUninitializedHosts()
+	uninitializedHosts, err := host.Find(host.IsUninitialized)
 	if err != nil {
 		return fmt.Errorf("error fetching uninitialized hosts: %v", err)
 	}
@@ -43,45 +45,45 @@ func (init *HostInit) SetupReadyHosts() error {
 	// used for making sure we don't exit before a setup script is done
 	wg := &sync.WaitGroup{}
 
-	for _, host := range uninitializedHosts {
+	for _, h := range uninitializedHosts {
 
 		// check whether or not the host is ready for its setup script to be run
-		ready, err := init.IsHostReady(&host)
+		ready, err := init.IsHostReady(&h)
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR, "Error checking host %v for readiness: %v",
-				host.Id, err)
+				h.Id, err)
 			continue
 		}
 
 		// if the host isn't ready (for instance, it might not be up yet), skip it
 		if !ready {
-			mci.Logger.Logf(slogger.DEBUG, "Host %v not ready for setup", host.Id)
+			mci.Logger.Logf(slogger.DEBUG, "Host %v not ready for setup", h.Id)
 			continue
 		}
 
 		// build the setup script
-		setup, err := init.buildSetupScript(&host)
+		setup, err := init.buildSetupScript(&h)
 		if err != nil {
-			return fmt.Errorf("error building setup script for host %v: %v", host.Id, err)
+			return fmt.Errorf("error building setup script for host %v: %v", h.Id, err)
 		}
 
-		mci.Logger.Logf(slogger.INFO, "Running setup script for host %v", host.Id)
+		mci.Logger.Logf(slogger.INFO, "Running setup script for host %v", h.Id)
 
 		// kick off the setup, in its own goroutine, so pending setups don't have
 		// to wait for it to finish
 		wg.Add(1)
-		go func(host model.Host, setup string) {
+		go func(h host.Host, setup string) {
 
-			if err := init.ProvisionHost(&host, setup); err != nil {
+			if err := init.ProvisionHost(&h, setup); err != nil {
 				mci.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
-					host.Id, err)
+					h.Id, err)
 
 				// notify the mci team of the failure
 				subject := fmt.Sprintf("%v MCI provisioning failure on %v",
-					notify.ProvisionFailurePreface, host.Distro)
-				hostLink := fmt.Sprintf("%v/host/%v", init.MCISettings.Ui.Url, host.Id)
+					notify.ProvisionFailurePreface, h.Distro)
+				hostLink := fmt.Sprintf("%v/host/%v", init.MCISettings.Ui.Url, h.Id)
 				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
-					host.Distro, host.Id, hostLink)
+					h.Distro, h.Id, hostLink)
 				if err := notify.NotifyAdmins(subject, message, init.MCISettings); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 				}
@@ -89,7 +91,7 @@ func (init *HostInit) SetupReadyHosts() error {
 
 			wg.Done()
 
-		}(host, setup)
+		}(h, setup)
 
 	}
 
@@ -101,7 +103,7 @@ func (init *HostInit) SetupReadyHosts() error {
 
 // IsHostReady returns whether or not the specified host is ready for its setup script
 // to be run.
-func (init *HostInit) IsHostReady(host *model.Host) (bool, error) {
+func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := providers.GetCloudManager(host.Provider, init.MCISettings)
@@ -161,7 +163,7 @@ func (init *HostInit) IsHostReady(host *model.Host) (bool, error) {
 // setupHost runs the specified setup script for an individual host. Returns
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
-func (init *HostInit) setupHost(host *model.Host, setup string) ([]byte, error) {
+func (init *HostInit) setupHost(host *host.Host, setup string) ([]byte, error) {
 
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := providers.GetCloudManager(host.Provider, init.MCISettings)
@@ -253,7 +255,7 @@ func (init *HostInit) setupHost(host *model.Host, setup string) ([]byte, error) 
 }
 
 // Build the setup script that will need to be run on the specified host.
-func (init *HostInit) buildSetupScript(host *model.Host) (string, error) {
+func (init *HostInit) buildSetupScript(host *host.Host) (string, error) {
 
 	// fetch the host's distro
 	distro, err := model.LoadOneDistro(init.MCISettings.ConfigDir, host.Distro)
@@ -276,10 +278,10 @@ func (init *HostInit) buildSetupScript(host *model.Host) (string, error) {
 }
 
 // Provision the host, and update the database accordingly.
-func (init *HostInit) ProvisionHost(host *model.Host, setup string) error {
+func (init *HostInit) ProvisionHost(h *host.Host, setup string) error {
 
 	// run the setup script
-	output, err := init.setupHost(host, setup)
+	output, err := init.setupHost(h, setup)
 
 	// deal with any errors that occured while running the setup
 	if err != nil {
@@ -289,7 +291,7 @@ func (init *HostInit) ProvisionHost(host *model.Host, setup string) error {
 		// another hostinit process beat us there
 		if err == ErrHostAlreadyInitializing {
 			mci.Logger.Logf(slogger.DEBUG,
-				"Attempted to initialize already initializing host %v", host.Id)
+				"Attempted to initialize already initializing host %v", h.Id)
 			return nil
 		}
 
@@ -298,23 +300,23 @@ func (init *HostInit) ProvisionHost(host *model.Host, setup string) error {
 		if output != nil {
 			setupLog = string(output)
 		}
-		model.LogProvisionFailedEvent(host.Id, setupLog)
+		event.LogProvisionFailed(h.Id, setupLog)
 
 		// setup script failed, mark the host's provisioning as failed
-		if err := host.SetUnprovisioned(); err != nil {
-			mci.Logger.Logf(slogger.ERROR, "unprovisioning host %v failed: %v", host.Id, err)
+		if err := h.SetUnprovisioned(); err != nil {
+			mci.Logger.Logf(slogger.ERROR, "unprovisioning host %v failed: %v", h.Id, err)
 		}
 
-		return fmt.Errorf("error initializing host %v: %v", host.Id, err)
+		return fmt.Errorf("error initializing host %v: %v", h.Id, err)
 
 	}
 
 	// the setup was successful. update the host accordingly in the database
-	if err := host.MarkAsProvisioned(); err != nil {
+	if err := h.MarkAsProvisioned(); err != nil {
 		return fmt.Errorf("error marking host %v as provisioned: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Host %v successfully provisioned", host.Id)
+	mci.Logger.Logf(slogger.INFO, "Host %v successfully provisioned", h.Id)
 
 	return nil
 

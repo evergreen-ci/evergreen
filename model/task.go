@@ -4,6 +4,8 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -722,7 +724,7 @@ func UpdateAllTasks(query interface{}, update interface{}) (*mgo.ChangeInfo, err
 // running task field on the host and the host id field on the task, as well
 // as updating the cache for the task in its build document in the db.
 // Returns an error if any of the database updates fail.
-func (self *Task) MarkAsDispatched(host *Host, dispatchTime time.Time) error {
+func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) error {
 	// then, update the task document
 	self.DispatchTime = dispatchTime
 	self.Status = mci.TaskDispatched
@@ -754,7 +756,7 @@ func (self *Task) MarkAsDispatched(host *Host, dispatchTime time.Time) error {
 	}
 
 	// the task was successfully dispatched, log the event
-	LogTaskDispatchedEvent(self.Id, host.Id)
+	event.LogTaskDispatched(self.Id, host.Id)
 
 	// update the cached version of the task in its related build document
 	err = UpdateOneBuild(
@@ -822,7 +824,7 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 	if info.Updated > 0 {
 		for _, task := range tasks {
-			LogTaskScheduledEvent(task.Id, scheduledTime)
+			event.LogTaskScheduled(task.Id, scheduledTime)
 		}
 	}
 	return nil
@@ -875,9 +877,9 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 	}
 
 	if active {
-		LogTaskActivatedEvent(taskId, caller)
+		event.LogTaskActivated(taskId, caller)
 	} else {
-		LogTaskDeactivatedEvent(taskId, caller)
+		event.LogTaskDeactivated(taskId, caller)
 	}
 
 	// update the cached version of the task, in its build document
@@ -922,7 +924,7 @@ func (self *Task) Abort(caller string, aborted bool) error {
 		return err
 	}
 
-	LogTaskAbortRequestEvent(self.Id, caller)
+	event.LogTaskAbortRequest(self.Id, caller)
 
 	self.Aborted = aborted
 	return nil
@@ -1001,9 +1003,9 @@ func (self *Task) TryReset(user, origin string, project *Project,
 
 	if err = self.reset(); err == nil {
 		if origin == mci.UIPackage {
-			LogTaskRestartedEvent(self.Id, user)
+			event.LogTaskRestarted(self.Id, user)
 		} else {
-			LogTaskRestartedEvent(self.Id, origin)
+			event.LogTaskRestarted(self.Id, origin)
 		}
 	}
 	return err
@@ -1079,7 +1081,7 @@ func (self *Task) MarkStart() error {
 		return err
 	}
 
-	LogTaskStartedEvent(self.Id)
+	event.LogTaskStarted(self.Id)
 
 	// ensure the appropriate build is marked as started if necessary
 	if err = TryMarkBuildStarted(self.BuildId, startTime); err != nil {
@@ -1288,7 +1290,7 @@ func (self *Task) markEnd(caller string, finishTime time.Time,
 	if err != nil {
 		return fmt.Errorf("error updating task: %v", err.Error())
 	}
-	LogTaskFinishedEvent(self.Id, taskEndRequest.Status)
+	event.LogTaskFinished(self.Id, taskEndRequest.Status)
 	return nil
 }
 
@@ -1520,7 +1522,7 @@ Create
 // Inserts the task into the tasks collection, and logs an event that the task
 // was created.
 func (self *Task) Insert() error {
-	LogTaskCreatedEvent(self.Id)
+	event.LogTaskCreated(self.Id)
 	return db.Insert(TasksCollection, self)
 }
 

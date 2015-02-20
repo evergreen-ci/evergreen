@@ -62,7 +62,7 @@ func TestGetCloudManager(t *testing.T) {
 func TestIsHostReachable(t *testing.T) {
 	Convey("A reachable static host should return true", t, func() {
 		// try with a reachable static host
-		reachableHost := &model.Host{
+		reachableHost := &host.Host{
 			Host:        "localhost",
 			Provisioned: true,
 			Provider:    mci.HostTypeStatic,
@@ -76,7 +76,7 @@ func TestIsHostReachable(t *testing.T) {
 	})
 	Convey("An unreachable static host should return false", t, func() {
 		// try with an unreachable static host
-		reachableHost := &model.Host{
+		reachableHost := &host.Host{
 			Host:        "fakehost",
 			Provisioned: true,
 			Provider:    mci.HostTypeStatic,

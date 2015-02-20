@@ -3,7 +3,6 @@ package s3Plugin
 import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )

@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"time"
@@ -95,7 +96,7 @@ func cleanUpTask(wrapper doomedTaskWrapper,
 	}
 
 	// get the host for the task
-	host, err := model.FindHost(wrapper.task.HostId)
+	host, err := host.FindOne(host.ById(wrapper.task.HostId))
 	if err != nil {
 		return fmt.Errorf("error finding host %v for task %v: %v",
 			wrapper.task.HostId, wrapper.task.Id, err)
@@ -133,7 +134,7 @@ func cleanUpTask(wrapper doomedTaskWrapper,
 
 // clean up a task whose heartbeat has timed out
 func cleanUpTimedOutHeartbeat(task model.Task, project model.Project,
-	host *model.Host) error {
+	host *host.Host) error {
 
 	// mock up the failure details of the task
 	taskEndRequest := &apimodels.TaskEndRequest{

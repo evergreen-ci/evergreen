@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"os"
@@ -79,8 +80,8 @@ func RefreshStaticHosts(configName string) error {
 
 	activeStaticHosts := make([]string, 0)
 	for _, distro := range distros {
-		for _, host := range distro.Hosts {
-			hostInfo, err := util.ParseSSHInfo(host)
+		for _, hostId := range distro.Hosts {
+			hostInfo, err := util.ParseSSHInfo(hostId)
 			if err != nil {
 				return err
 			}
@@ -88,10 +89,10 @@ func RefreshStaticHosts(configName string) error {
 			if user == "" {
 				user = distro.User
 			}
-			staticHost := Host{
-				Id:           host,
+			staticHost := host.Host{
+				Id:           hostId,
 				User:         user,
-				Host:         host,
+				Host:         hostId,
 				Distro:       distro.Name,
 				CreationTime: time.Now(),
 				Provider:     mci.HostTypeStatic,
@@ -106,10 +107,10 @@ func RefreshStaticHosts(configName string) error {
 			if err != nil {
 				return err
 			}
-			activeStaticHosts = append(activeStaticHosts, host)
+			activeStaticHosts = append(activeStaticHosts, hostId)
 		}
 	}
-	return DecommissionInactiveStaticHosts(activeStaticHosts)
+	return host.DecommissionInactiveStaticHosts(activeStaticHosts)
 }
 
 // Given the name of the directory we are using for configs, return the

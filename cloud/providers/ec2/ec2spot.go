@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/mitchellh/goamz/aws"
@@ -81,16 +82,16 @@ func (cloudManager *EC2SpotManager) Configure(mciSettings *mci.MCISettings) erro
 }
 
 // determine how long until a payment is due for the host
-func (cloudManager *EC2SpotManager) TimeTilNextPayment(host *model.Host) time.Duration {
+func (cloudManager *EC2SpotManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
-func (cloudManager *EC2SpotManager) GetSSHOptions(host *model.Host, distro *model.Distro,
+func (cloudManager *EC2SpotManager) GetSSHOptions(host *host.Host, distro *model.Distro,
 	keyPath string) ([]string, error) {
 	return getEC2KeyOptions(keyPath)
 }
 
-func (cloudManager *EC2SpotManager) IsUp(host *model.Host) (bool, error) {
+func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
 	instanceStatus, err := cloudManager.GetInstanceStatus(host)
 	if err != nil {
 		return false, mci.Logger.Errorf(slogger.ERROR,
@@ -104,7 +105,7 @@ func (cloudManager *EC2SpotManager) IsUp(host *model.Host) (bool, error) {
 	}
 }
 
-func (cloudManager *EC2SpotManager) OnUp(host *model.Host) error {
+func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	tags := makeTags(host)
 	tags["spot"] = "true" // mark this as a spot instance
 	spotReq, err := cloudManager.describeSpotRequest(host.Id)
@@ -118,7 +119,7 @@ func (cloudManager *EC2SpotManager) OnUp(host *model.Host) error {
 	return attachTags(getUSEast(*cloudManager.awsCredentials), tags, spotReq.InstanceId)
 }
 
-func (cloudManager *EC2SpotManager) IsSSHReachable(host *model.Host, distro *model.Distro,
+func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, distro *model.Distro,
 	keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
@@ -137,7 +138,7 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *model.Host, distro *mod
 // For a *fulfilled* spot request (the spot request has an instance ID)
 // the status returned will be the status of the instance that fulfilled it,
 // matching the behavior used in cloud/providers/ec2/ec2.go
-func (cloudManager *EC2SpotManager) GetInstanceStatus(host *model.Host) (cloud.CloudStatus, error) {
+func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
 		return cloud.StatusUnknown, mci.Logger.Errorf(slogger.ERROR,
@@ -178,7 +179,7 @@ func (cloudManager *EC2SpotManager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (cloudManager *EC2SpotManager) GetDNSName(host *model.Host) (string, error) {
+func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
 		return "", mci.Logger.Errorf(slogger.ERROR, "failed to get spot request info for %v: %v", host.Id, err)
@@ -200,7 +201,7 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *model.Host) (string, error)
 
 func (cloudManager *EC2SpotManager) SpawnInstance(distro *model.Distro,
 	owner string,
-	userHost bool) (*model.Host, error) {
+	userHost bool) (*host.Host, error) {
 	if distro.Provider != SpotProviderName {
 		return nil, fmt.Errorf("Can't use EC2SPOT spawn instance on distro '%v'")
 	}
@@ -222,7 +223,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(distro *model.Distro,
 	}
 
 	instanceName := generateName(distro.Name)
-	intentHost := &model.Host{
+	intentHost := &host.Host{
 		Id:               instanceName,
 		User:             distro.User,
 		Distro:           distro.Name,
@@ -284,7 +285,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(distro *model.Distro,
 
 	//find the old intent host and remove it, since we now have the real
 	//host doc successfully stored.
-	oldIntenthost, err := model.FindHost(instanceName)
+	oldIntenthost, err := host.FindOne(host.ById(instanceName))
 	if err != nil {
 		return nil, mci.Logger.Errorf(slogger.ERROR, "Can't locate "+
 			"record inserted for intended host '%v' due to error: %v",
@@ -318,7 +319,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(distro *model.Distro,
 	return intentHost, nil
 }
 
-func (cloudManager *EC2SpotManager) TerminateInstance(host *model.Host) error {
+func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == mci.HostTerminated {
 		errMsg := fmt.Errorf("Can not terminate %v - already marked as "+

@@ -4,7 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
-	//"10gen.com/mci/web"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -218,14 +218,14 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// add other useful statistics to view alongside queue
-	idleHosts, err := model.FindIdleHosts()
+	idleHosts, err := host.Find(host.IsIdle)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding idle hosts: %v", err)
 		mci.Logger.Errorf(slogger.ERROR, msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
-	activeHosts, err := model.FindLiveHosts()
+	activeHosts, err := host.Find(host.IsLive)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding active hosts: %v", err)
 		mci.Logger.Errorf(slogger.ERROR, msg)

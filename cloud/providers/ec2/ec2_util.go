@@ -3,7 +3,7 @@ package ec2
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/mitchellh/goamz/aws"
@@ -125,7 +125,7 @@ func ec2StatusToMCIStatus(ec2Status string) cloud.CloudStatus {
 
 //makeTags populates a map of tags based on a host object, which contain keys
 //for the user, owner, hostname, and if it's a spawnhost or not.
-func makeTags(intentHost *model.Host) map[string]string {
+func makeTags(intentHost *host.Host) map[string]string {
 	// get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -173,7 +173,7 @@ func attachTags(ec2Handle *ec2.EC2,
 // determine how long until a payment is due for the specified host. since ec2
 // bills per full hour the host has been up this number is just how long until,
 // the host has been up the next round number of hours
-func timeTilNextEC2Payment(host *model.Host) time.Duration {
+func timeTilNextEC2Payment(host *host.Host) time.Duration {
 
 	now := time.Now()
 

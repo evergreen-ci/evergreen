@@ -4,7 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
@@ -175,7 +175,7 @@ func TestAgentBasedHostGateway(t *testing.T) {
 				ShouldBeNil)
 
 			// mock up a host for localhost
-			localhost := model.Host{
+			localhost := host.Host{
 				Host: command.TestRemote,
 				User: command.TestRemoteUser,
 			}
