@@ -84,6 +84,21 @@ func FindAllTrackedProjectRefs() ([]ProjectRef, error) {
 	return projectRefs, err
 }
 
+// FindAllProjectRefs returns all project refs in the db
+func FindAllProjectRefs() ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	err := db.FindAll(
+		ProjectRefCollection,
+		bson.M{},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+		&projectRefs,
+	)
+	return projectRefs, err
+}
+
 // UntrackStaleProjectRefs sets all project_refs in the db not in the array
 // of project identifiers to "untracked."
 func UntrackStaleProjectRefs(activeProjects []string) error {

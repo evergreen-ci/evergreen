@@ -266,6 +266,11 @@ func (cloudManager *EC2Manager) TerminateInstance(host *model.Host) error {
 	return host.Terminate()
 }
 
+// determine how long until a payment is due for the host
+func (cloudManager *EC2Manager) TimeTilNextPayment(host *model.Host) time.Duration {
+	return timeTilNextEC2Payment(host)
+}
+
 func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstances,
 	intentHost *model.Host) (*model.Host, *ec2.RunInstancesResp, error) {
 	// start the instance

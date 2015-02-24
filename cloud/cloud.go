@@ -3,6 +3,7 @@ package cloud
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"time"
 )
 
 type CloudStatus int
@@ -91,6 +92,10 @@ type CloudManager interface {
 	// GetSSHOptions generates the command line args to be passed to ssh to
 	// allow connection to the machine
 	GetSSHOptions(host *model.Host, distro *model.Distro, keyName string) ([]string, error)
+
+	// TimeTilNextPayment returns how long there is until the next payment
+	// is due for a particular host
+	TimeTilNextPayment(host *model.Host) time.Duration
 }
 
 //CloudHost is a provider-agnostic host object that delegates methods

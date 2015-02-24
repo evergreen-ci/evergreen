@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/model"
 	"10gen.com/mci/util"
+	"time"
 )
 
 const ProviderName = "mock"
@@ -59,4 +60,8 @@ func (staticMsg *MockCloudManager) OnUp(host *model.Host) error {
 func (staticMgr *MockCloudManager) GetSSHOptions(host *model.Host, distro *model.Distro,
 	keyPath string) ([]string, error) {
 	return []string{}, nil
+}
+
+func (staticMgr *MockCloudManager) TimeTilNextPayment(host *model.Host) time.Duration {
+	return time.Duration(0)
 }

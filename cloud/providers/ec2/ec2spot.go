@@ -80,6 +80,11 @@ func (cloudManager *EC2SpotManager) Configure(mciSettings *mci.MCISettings) erro
 	return nil
 }
 
+// determine how long until a payment is due for the host
+func (cloudManager *EC2SpotManager) TimeTilNextPayment(host *model.Host) time.Duration {
+	return timeTilNextEC2Payment(host)
+}
+
 func (cloudManager *EC2SpotManager) GetSSHOptions(host *model.Host, distro *model.Distro,
 	keyPath string) ([]string, error) {
 	return getEC2KeyOptions(keyPath)

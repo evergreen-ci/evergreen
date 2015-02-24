@@ -8,6 +8,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/ec2"
+	"math"
 	"math/rand"
 	"os"
 	"os/user"
@@ -167,4 +168,25 @@ func attachTags(ec2Handle *ec2.EC2,
 
 	_, err := ec2Handle.CreateTags([]string{instance}, tagSlice)
 	return err
+}
+
+// determine how long until a payment is due for the specified host. since ec2
+// bills per full hour the host has been up this number is just how long until,
+// the host has been up the next round number of hours
+func timeTilNextEC2Payment(host *model.Host) time.Duration {
+
+	now := time.Now()
+
+	// the time since the host was created
+	timeSinceCreation := now.Sub(host.CreationTime)
+
+	// the hours since the host was created, rounded up
+	hoursRoundedUp := time.Duration(math.Ceil(timeSinceCreation.Hours()))
+
+	// the next round number of hours the host will have been up - the time
+	// that the next payment will be due
+	nextPaymentTime := host.CreationTime.Add(hoursRoundedUp)
+
+	return nextPaymentTime.Sub(now)
+
 }

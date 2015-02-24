@@ -62,31 +62,54 @@ type Host struct {
 
 	// stores userdata that was placed on the host at spawn time
 	UserData string `bson:"userdata" json:"userdata,omitempty"`
+
+	// the last time that the host's reachability was checked
+	LastReachabilityCheck time.Time `bson:"last_reachability_check" json:"last_reachability_check"`
 }
 
 var (
-	HostIdKey               = MustHaveBsonTag(Host{}, "Id")
-	HostDNSKey              = MustHaveBsonTag(Host{}, "Host")
-	HostUserKey             = MustHaveBsonTag(Host{}, "User")
-	HostTagKey              = MustHaveBsonTag(Host{}, "Tag")
-	HostDistroKey           = MustHaveBsonTag(Host{}, "Distro")
-	HostProviderKey         = MustHaveBsonTag(Host{}, "Provider")
-	HostProvisionedKey      = MustHaveBsonTag(Host{}, "Provisioned")
-	HostRunningTaskKey      = MustHaveBsonTag(Host{}, "RunningTask")
-	HostPidKey              = MustHaveBsonTag(Host{}, "Pid")
-	HostTaskDispatchTimeKey = MustHaveBsonTag(Host{}, "TaskDispatchTime")
-	HostCreateTimeKey       = MustHaveBsonTag(Host{}, "CreationTime")
-	HostExpirationTimeKey   = MustHaveBsonTag(Host{}, "ExpirationTime")
-	HostTerminationTimeKey  = MustHaveBsonTag(Host{}, "TerminationTime")
-	HostLTCTimeKey          = MustHaveBsonTag(Host{}, "LastTaskCompletedTime")
-	HostLTCKey              = MustHaveBsonTag(Host{}, "LastTaskCompleted")
-	HostStatusKey           = MustHaveBsonTag(Host{}, "Status")
-	HostAgentRevisionKey    = MustHaveBsonTag(Host{}, "AgentRevision")
-	HostStartedByKey        = MustHaveBsonTag(Host{}, "StartedBy")
-	HostInstanceTypeKey     = MustHaveBsonTag(Host{}, "InstanceType")
-	HostNotificationsKey    = MustHaveBsonTag(Host{}, "Notifications")
-	HostUserDataKey         = MustHaveBsonTag(Host{}, "UserData")
+	HostIdKey                    = MustHaveBsonTag(Host{}, "Id")
+	HostDNSKey                   = MustHaveBsonTag(Host{}, "Host")
+	HostUserKey                  = MustHaveBsonTag(Host{}, "User")
+	HostTagKey                   = MustHaveBsonTag(Host{}, "Tag")
+	HostDistroKey                = MustHaveBsonTag(Host{}, "Distro")
+	HostProviderKey              = MustHaveBsonTag(Host{}, "Provider")
+	HostProvisionedKey           = MustHaveBsonTag(Host{}, "Provisioned")
+	HostRunningTaskKey           = MustHaveBsonTag(Host{}, "RunningTask")
+	HostPidKey                   = MustHaveBsonTag(Host{}, "Pid")
+	HostTaskDispatchTimeKey      = MustHaveBsonTag(Host{}, "TaskDispatchTime")
+	HostCreateTimeKey            = MustHaveBsonTag(Host{}, "CreationTime")
+	HostExpirationTimeKey        = MustHaveBsonTag(Host{}, "ExpirationTime")
+	HostTerminationTimeKey       = MustHaveBsonTag(Host{}, "TerminationTime")
+	HostLTCTimeKey               = MustHaveBsonTag(Host{}, "LastTaskCompletedTime")
+	HostLTCKey                   = MustHaveBsonTag(Host{}, "LastTaskCompleted")
+	HostStatusKey                = MustHaveBsonTag(Host{}, "Status")
+	HostAgentRevisionKey         = MustHaveBsonTag(Host{}, "AgentRevision")
+	HostStartedByKey             = MustHaveBsonTag(Host{}, "StartedBy")
+	HostInstanceTypeKey          = MustHaveBsonTag(Host{}, "InstanceType")
+	HostNotificationsKey         = MustHaveBsonTag(Host{}, "Notifications")
+	HostUserDataKey              = MustHaveBsonTag(Host{}, "UserData")
+	HostLastReachabilityCheckKey = MustHaveBsonTag(Host{}, "LastReachabilityCheck")
 )
+
+// how long has this host been idle
+func (self *Host) IdleTime() time.Duration {
+
+	// if the host is currently running a task, it is not idle
+	if self.RunningTask != "" {
+		return time.Duration(0)
+	}
+
+	// if the host has run a task before, then the idle time is just the time
+	// passed since the last task finished
+	if self.LastTaskCompleted != "" {
+		return time.Now().Sub(self.LastTaskCompletedTime)
+	}
+
+	// if the host has not run a task before, the idle time is just
+	// how long is has been since the host was created
+	return time.Now().Sub(self.CreationTime)
+}
 
 /*************************
 Find
@@ -192,6 +215,29 @@ func FindUnterminatedHostsForUser(user string) ([]Host, error) {
 	)
 }
 
+// find all hosts whose last reachability check was before the
+// specified threshold, filtering out user-spawned hosts and hosts currently
+// running tasks
+func FindHostsNotMonitoredSince(threshold time.Time) ([]Host, error) {
+	return FindAllHosts(
+		bson.M{
+			HostRunningTaskKey: "",
+			HostStatusKey: bson.M{
+				"$in": []string{mci.HostRunning, mci.HostUnreachable},
+			},
+			HostStartedByKey: mci.MCIUser,
+			"$or": []bson.M{
+				bson.M{HostLastReachabilityCheckKey: bson.M{"$lte": threshold}},
+				bson.M{HostLastReachabilityCheckKey: bson.M{"$exists": false}},
+			},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+}
+
 func FindAvailableFreeHosts() ([]Host, error) {
 	return FindAllHosts(
 		bson.M{
@@ -212,7 +258,10 @@ func FindFreeHosts() ([]Host, error) {
 			"$or":            NoRunningTask,
 			HostStartedByKey: mci.MCIUser,
 			HostStatusKey: bson.M{
-				"$ne": mci.HostTerminated,
+				"$nin": []string{
+					mci.HostTerminated,
+					mci.HostQuarantined,
+				},
 			},
 		},
 		db.NoProjection,
@@ -312,11 +361,73 @@ func FindRunningSpawnedHosts() ([]Host, error) {
 	)
 }
 
+// find any user-spawned hosts that will expire between the specified times
+func FindHostsExpiringBetween(lowerBound time.Time,
+	upperBound time.Time) ([]Host, error) {
+	return FindAllHosts(
+		bson.M{
+			HostStartedByKey: bson.M{
+				"$ne": mci.MCIUser,
+			},
+			HostStatusKey: bson.M{
+				"$nin": []string{
+					mci.HostTerminated,
+					mci.HostQuarantined,
+				},
+			},
+			HostExpirationTimeKey: bson.M{
+				"$gte": lowerBound,
+				"$lte": upperBound,
+			},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+}
+
+func FindExpiredSpawnedHosts() ([]Host, error) {
+	return FindAllHosts(
+		bson.M{
+			HostStartedByKey: bson.M{
+				"$ne": mci.MCIUser,
+			},
+			HostStatusKey: bson.M{
+				"$nin": []string{
+					mci.HostTerminated,
+					mci.HostQuarantined,
+				},
+			},
+			HostExpirationTimeKey: bson.M{
+				"$lte": time.Now(),
+			},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+}
+
 func FindDecommissionedHosts() ([]Host, error) {
 	return FindAllHosts(
 		bson.M{
 			HostRunningTaskKey: "",
 			HostStatusKey:      mci.HostDecommissioned,
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+}
+
+// find all hosts whose provisioning failed
+func FindProvisioningFailedHosts() ([]Host, error) {
+	return FindAllHosts(
+		bson.M{
+			HostStatusKey: mci.HostProvisionFailed,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -425,6 +536,30 @@ func UpsertOneHost(query interface{}, update interface{}) (*mgo.ChangeInfo,
 		HostsCollection,
 		query,
 		update,
+	)
+}
+
+// set a host as either running or unreachable, depending on the bool passed
+// in. also update the last reachability check for the host
+func (self *Host) UpdateReachability(reachable bool) error {
+	status := mci.HostRunning
+	if !reachable {
+		status = mci.HostUnreachable
+	}
+
+	LogHostStatusChangedEvent(self.Id, self.Status, status)
+	self.Status = status
+
+	return UpdateOneHost(
+		bson.M{
+			HostIdKey: self.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				HostStatusKey:                status,
+				HostLastReachabilityCheckKey: time.Now(),
+			},
+		},
 	)
 }
 

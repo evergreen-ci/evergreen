@@ -171,33 +171,6 @@ tasks:
     - func: "upload coverage html report"
     - func: "upload coverage txt report"
 
-- name: cleanup
-  commands:
-    - func: "fetch source"
-    - func: "apply patches"
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export mci_home=`pwd`
-          cd model
-          go test -v -coverprofile=coverage.out
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv cleanup/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
-
 - name: db
   commands:
     - func: "fetch source"
@@ -266,6 +239,33 @@ tasks:
         script: |
           set -o verbose
           mv model/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: monitor
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd monitor
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv monitor/coverage.out .
     - func: "rewrite coverage report"
     - func: "generate coverage html"
     - func: "generate coverage txt"
@@ -741,10 +741,10 @@ buildvariants:
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
       tasks:
       - name: agent
-      - name: cleanup
       - name: db
       - name: mci
       - name: model
+      - name: monitor
       - name: notify
       - name: patch
       - name: plugin

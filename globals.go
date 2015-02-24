@@ -103,6 +103,7 @@ const (
 	RepotrackerPackage = "MCI_REPOTRACKER"
 	HostPackage        = "MCI_HOST"
 	HostInitPackage    = "MCI_INIT"
+	MonitorPackage     = "MCI_MONITOR"
 	NotifyPackage      = "MCI_NOTIFY"
 	PatchPackage       = "MCI_PATCH"
 	SchedulerPackage   = "MCI_SCHEDULER"

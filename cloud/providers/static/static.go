@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/model"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"time"
 )
 
 const ProviderName = "static"
@@ -85,4 +86,10 @@ func (staticMgr *StaticManager) GetSSHOptions(host *model.Host, distro *model.Di
 		}
 	}
 	return opts, nil
+}
+
+// determine how long until a payment is due for the host. static hosts always
+// return 0 for this number
+func (staticMgr *StaticManager) TimeTilNextPayment(host *model.Host) time.Duration {
+	return time.Duration(0)
 }

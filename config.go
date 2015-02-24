@@ -55,6 +55,10 @@ type CleanupConfig struct {
 	LogFile string
 }
 
+type MonitorConfig struct {
+	LogFile string
+}
+
 type HostInitConfig struct {
 	LogFile string
 }
@@ -119,6 +123,7 @@ type MCISettings struct {
 	Crowd               CrowdConfig
 	RepoTracker         RepoTrackerConfig
 	Cleanup             CleanupConfig
+	Monitor             MonitorConfig
 	Api                 ApiConfig
 	Ui                  UIConfig
 	HostInit            HostInitConfig

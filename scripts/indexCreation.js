@@ -14,6 +14,7 @@ db.builds.ensureIndex({ "branch" : 1, "r" : 1, "order" : 1 })
 db.event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
 
 //======hosts======//
+db.hosts.ensureIndex({ "status": 1 })
 db.hosts.ensureIndex({ "distro_id" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "started_by" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "running_task" : 1, "status" : 1 })
@@ -32,9 +33,6 @@ db.spawn_requests.ensureIndex({ "user" : 1, "status" : 1 })
 //======task_bk======//
 db.task_bk.ensureIndex({ "branch" : 1, "build_variant" : 1, "name" : 1 })
 
-//======task_queues======//
-db.task_queues.ensureIndex({ "distro" : 1 })
-
 //======tasks======//
 db.tasks.ensureIndex({ "build_variant" : 1, "display_name" : 1, "order" : 1 })
 db.tasks.ensureIndex({ "gitspec" : 1, "build_variant" : 1, "display_name" : 1 })
@@ -45,8 +43,11 @@ db.tasks.ensureIndex({ "branch" : 1, "build_variant" : 1, "status" : 1, "finish_
 db.tasks.ensureIndex({ "build_id" : 1 })
 db.tasks.ensureIndex({ "status" : 1, "finish_time" : 1 })
 db.tasks.ensureIndex({ "version" : 1, "display_name" : 1 })
+db.tasks.ensureIndex({ "order" : 1, "display_name" : 1 })
 
 //======versions======//
 db.versions.ensureIndex({ "order" : 1 })
 db.versions.ensureIndex({ "builds" : 1 })
 db.versions.ensureIndex({ "branch" : 1, "r" : 1, "order" : 1 })
+db.versions.ensureIndex({ "branch" : 1, "gitspec" : 1 })
+db.versions.ensureIndex({ "versions.build_variant_status.build_variant" : 1, "versions.build_variant_status.activated" : 1, "r": 1 })

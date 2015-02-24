@@ -321,6 +321,41 @@ func FindTask(id string) (*Task, error) {
 	)
 }
 
+// find any running tasks whose last heartbeat was at least the specified
+// threshold ago
+func FindTasksWithNoHeartbeatSince(threshold time.Time) ([]Task, error) {
+	query := bson.M{
+		TaskStatusKey:        SelectorTaskInProgress,
+		TaskLastHeartbeatKey: bson.M{"$lte": threshold},
+	}
+
+	// DEBUGGING for monitor issues. TODO: Take out once problem is fixed.
+	mci.Logger.Logf(slogger.INFO, "heartbeat query: %#v", query)
+
+	return FindAllTasks(
+		query,
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+}
+
+// find any tasks that are currently in progress and have been running since
+// at least the specified threshold
+func FindTasksRunningSince(threshold time.Time) ([]Task, error) {
+	return FindAllTasks(
+		bson.M{
+			TaskStatusKey:       SelectorTaskInProgress,
+			TaskDispatchTimeKey: bson.M{"$lte": threshold},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+}
+
 func FindInProgressTasks() ([]Task, error) {
 	return FindAllTasks(
 		bson.M{
@@ -1378,6 +1413,20 @@ func (self *Task) SetResults(results []TestResult) error {
 			},
 		},
 	)
+}
+
+func (self *Task) MarkUnscheduled() error {
+	return UpdateOneTask(
+		bson.M{
+			TaskIdKey: self.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				TaskStatusKey: mci.TaskUndispatched,
+			},
+		},
+	)
+
 }
 
 func (self *Task) ClearResults() error {

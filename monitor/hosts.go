@@ -1,0 +1,165 @@
+package monitor
+
+import (
+	"10gen.com/mci"
+	"10gen.com/mci/cloud/providers"
+	"10gen.com/mci/model"
+	"10gen.com/mci/util"
+	"fmt"
+	"github.com/10gen-labs/slogger/v1"
+	"sync"
+	"time"
+)
+
+// responsible for running regular monitoring of hosts
+type HostMonitor struct {
+	// will be used to determine what hosts need to be terminated
+	flaggingFuncs []hostFlaggingFunc
+
+	// will be used to perform regular checks on hosts
+	monitoringFuncs []hostMonitoringFunc
+}
+
+// run through the list of host monitoring functions. returns any errors that
+// occur while running the monitoring functions
+func (self *HostMonitor) RunMonitoringChecks(
+	mciSettings *mci.MCISettings) []error {
+
+	mci.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
+
+	// used to store any errors that occur
+	var errors []error
+
+	for _, f := range self.monitoringFuncs {
+
+		// continue on error to allow the other monitoring functions to run
+		if errs := f(mciSettings); errs != nil {
+			for _, err := range errs {
+				errors = append(errors, err)
+			}
+		}
+
+	}
+
+	mci.Logger.Logf(slogger.INFO, "Finished running host monitoring checks")
+
+	return errors
+
+}
+
+// run through the list of host flagging functions, finding all hosts that
+// need to be terminated and terminating them
+func (self *HostMonitor) CleanupHosts(distros map[string]model.Distro,
+	mciSettings *mci.MCISettings) []error {
+
+	mci.Logger.Logf(slogger.INFO, "Running host cleanup...")
+
+	// used to store any errors that occur
+	var errors []error
+
+	for idx, f := range self.flaggingFuncs {
+		// find the next batch of hosts to terminate
+		hostsToTerminate, err := f(distros, mciSettings)
+
+		// continuing on error so that one wonky flagging function doesn't
+		// stop others from running
+		if err != nil {
+			errors = append(errors, fmt.Errorf("error flagging hosts to"+
+				" be terminated: %v", err))
+			continue
+		}
+
+		mci.Logger.Logf(slogger.INFO, "Check %v: found %v hosts to be"+
+			" terminated", idx, len(hostsToTerminate))
+
+		// terminate all of the dead hosts. continue on error to allow further
+		// termination to work
+		if errs := terminateHosts(hostsToTerminate, mciSettings); errs != nil {
+			for _, err := range errs {
+				errors = append(errors, fmt.Errorf("error terminating host:"+
+					" %v", err))
+			}
+			continue
+		}
+
+	}
+
+	return errors
+
+}
+
+// terminate the passed-in slice of hosts. returns any errors that occur
+// terminating the hosts
+func terminateHosts(hosts []model.Host, mciSettings *mci.MCISettings) []error {
+
+	// used to store any errors that occur
+	var errors []error
+
+	// for terminating the different hosts in parallel
+	waitGroup := &sync.WaitGroup{}
+
+	// to ensure thread-safe appending to the errors
+	errsLock := &sync.Mutex{}
+
+	for _, host := range hosts {
+
+		mci.Logger.Logf(slogger.INFO, "Terminating host %v...", host.Id)
+
+		waitGroup.Add(1)
+
+		// terminate the host in a goroutine. pass the host in as a parameter
+		// so that the variable isn't reused for subsequent iterations
+		go func(host model.Host) {
+
+			defer waitGroup.Done()
+
+			// wrapper function to terminate the host
+			terminateFunc := func() error {
+				return terminateHost(&host, mciSettings)
+			}
+
+			// run the function with a timeout
+			err := util.RunFunctionWithTimeout(terminateFunc, 10*time.Second)
+
+			if err == util.ErrTimedOut {
+				errsLock.Lock()
+				errors = append(errors, fmt.Errorf("timeout terminating"+
+					" host %v", host.Id))
+				errsLock.Unlock()
+			} else if err != nil {
+				errsLock.Lock()
+				errors = append(errors, fmt.Errorf("error terminating host:"+
+					" %v", err))
+				errsLock.Unlock()
+			} else {
+				mci.Logger.Logf(slogger.INFO, "Successfully terminated host"+
+					" %v", host.Id)
+			}
+
+		}(host)
+
+	}
+
+	// make sure all terminations finish
+	waitGroup.Wait()
+
+	return errors
+}
+
+// helper to terminate a single host
+func terminateHost(host *model.Host, mciSettings *mci.MCISettings) error {
+
+	// convert the host to a cloud host
+	cloudHost, err := providers.GetCloudHost(host, mciSettings)
+	if err != nil {
+		return fmt.Errorf("error getting cloud host for %v: %v", host.Id, err)
+	}
+
+	// terminate the instance
+	if err := cloudHost.TerminateInstance(); err != nil {
+		return fmt.Errorf("error terminating host %v: %v", host.Id, err)
+	}
+
+	return nil
+
+}

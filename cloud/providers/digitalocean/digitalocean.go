@@ -9,6 +9,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	digo "github.com/dynport/gocloud/digitalocean"
 	"github.com/mitchellh/mapstructure"
+	"math"
 	"math/rand"
 	"strconv"
 	"time"
@@ -275,4 +276,23 @@ func (digoMgr *DigitalOceanManager) GetSSHOptions(host *model.Host,
 		"-o", "StrictHostKeyChecking=no",
 		"-i", keyPath,
 	}, nil
+}
+
+// TimeTilNextPayment returns the amount of time until the next payment is due
+// for the host
+func (digoMgr *DigitalOceanManager) TimeTilNextPayment(host *model.Host) time.Duration {
+
+	now := time.Now()
+
+	// the time since the host was created
+	timeSinceCreation := now.Sub(host.CreationTime)
+
+	// the hours since the host was created, rounded up
+	hoursRoundedUp := time.Duration(math.Ceil(timeSinceCreation.Hours()))
+
+	// the next round number of hours the host will have been up - the time
+	// that the next payment will be due
+	nextPaymentTime := host.CreationTime.Add(hoursRoundedUp)
+
+	return nextPaymentTime.Sub(now)
 }

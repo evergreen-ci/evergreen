@@ -6,6 +6,7 @@ export mci_home="/data/mci"
 cd $mci_home
 
 ./bin/hostinit -conf /data/home/etc/mci_settings.yml &
+flock --close --nonblock monitor.lock ./bin/monitor -conf /data/home/etc/mci_settings.yml
 flock --close --nonblock cleanup.lock ./bin/cleanup -conf /data/home/etc/mci_settings.yml
 flock --close --nonblock mci_repotracker.lock ./bin/repotracker -conf /data/home/etc/mci_settings.yml
 flock --close --nonblock scheduler.lock ./bin/scheduler -conf /data/home/etc/mci_settings.yml
