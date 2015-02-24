@@ -4,7 +4,6 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
-	"10gen.com/mci/web"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -88,18 +87,17 @@ type versionStatusByBuild map[string]versionStatus
 
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
-func getRecentVersions(r *http.Request) web.HTTPResponse {
-	projectName := mux.Vars(r)["project_name"]
+func (restapi RESTAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
+	projectName := mux.Vars(r)["project_id"]
 
 	versions, err := model.FindMostRecentVersions(projectName,
 		mci.RepotrackerVersionRequester, db.NoSkip, NumRecentVersions)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	// Create a slice of version ids to find all relevant builds
@@ -133,10 +131,9 @@ func getRecentVersions(r *http.Request) web.HTTPResponse {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	result := recentVersionsContent{
@@ -175,15 +172,14 @@ func getRecentVersions(r *http.Request) web.HTTPResponse {
 		versionInfo.Builds[build.BuildVariant] = buildInfo
 	}
 
-	return web.JSONResponse{
-		Data:       result,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, result)
+	return
+
 }
 
 // Returns a JSON response with the marshalled output of the version
 // specified in the request.
-func getVersionInfo(r *http.Request) web.HTTPResponse {
+func (restapi RESTAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 
 	srcVersion, err := model.FindVersion(versionId)
@@ -196,10 +192,9 @@ func getVersionInfo(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	destVersion := &version{}
@@ -208,23 +203,25 @@ func getVersionInfo(r *http.Request) web.HTTPResponse {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding version '%v'", versionId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
+	}
+	for _, buildStatus := range srcVersion.BuildVariants {
+		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
+		mci.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
 	}
 
-	return web.JSONResponse{
-		Data:       destVersion,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, destVersion)
+	return
+
 }
 
 // Returns a JSON response with the marshalled output of the version
 // specified by its revision and project name in the request.
-func getVersionInfoViaRevision(r *http.Request) web.HTTPResponse {
+func (restapi RESTAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	projectName := vars["project_name"]
+	projectName := vars["project_id"]
 	revision := vars["revision"]
 
 	srcVersion, err := model.FindVersionByIdAndRevision(projectName, revision)
@@ -238,10 +235,9 @@ func getVersionInfoViaRevision(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	destVersion := &version{}
@@ -251,21 +247,23 @@ func getVersionInfoViaRevision(r *http.Request) web.HTTPResponse {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'",
 			revision, projectName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
+	}
+	for _, buildStatus := range srcVersion.BuildVariants {
+		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
+		mci.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
 	}
 
-	return web.JSONResponse{
-		Data:       destVersion,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, destVersion)
+	return
+
 }
 
 // Modifies part of the version specified in the request, and returns a
 // JSON response with the marshalled output of its new state.
-func modifyVersionInfo(r *http.Request) web.HTTPResponse {
+func (restapi RESTAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 
 	var input struct {
@@ -283,10 +281,9 @@ func modifyVersionInfo(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	if input.Activated != nil {
@@ -297,20 +294,19 @@ func modifyVersionInfo(r *http.Request) web.HTTPResponse {
 			}
 
 			msg := fmt.Sprintf("Error marking version '%v' as %v", versionId, state)
-			return web.JSONResponse{
-				Data:       responseError{Message: msg},
-				StatusCode: http.StatusInternalServerError,
-			}
+			restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+			return
+
 		}
 	}
 
-	return web.ChainHttpResponse{}
+	restapi.getVersionInfo(w, r)
 }
 
 // Returns a JSON response with the status of the specified version
 // either grouped by the task names or the build variant names depending
 // on the "groupby" query parameter.
-func getVersionStatus(r *http.Request) web.HTTPResponse {
+func (restapi *RESTAPI) getVersionStatus(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 	groupBy := r.FormValue("groupby")
 
@@ -318,15 +314,16 @@ func getVersionStatus(r *http.Request) web.HTTPResponse {
 	case "": // default to group by tasks
 		fallthrough
 	case "tasks":
-		return getVersionStatusByTask(versionId)
+		restapi.getVersionStatusByTask(versionId, w, r)
+		return
 	case "builds":
-		return getVersionStatusByBuild(versionId)
+		restapi.getVersionStatusByBuild(versionId, w, r)
+		return
 	default:
 		msg := fmt.Sprintf("Invalid groupby parameter '%v'", groupBy)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusBadRequest,
-		}
+		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: msg})
+		return
+
 	}
 }
 
@@ -334,7 +331,7 @@ func getVersionStatus(r *http.Request) web.HTTPResponse {
 // grouped on the tasks. The keys of the object are the task names,
 // with each key in the nested object representing a particular build
 // variant.
-func getVersionStatusByTask(versionId string) web.HTTPResponse {
+func (restapi *RESTAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter, r *http.Request) {
 	id := "_id"
 	taskName := "task_name"
 	statuses := "statuses"
@@ -391,10 +388,9 @@ func getVersionStatusByTask(versionId string) web.HTTPResponse {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	result := versionStatusByTaskContent{
@@ -415,17 +411,16 @@ func getVersionStatusByTask(versionId string) web.HTTPResponse {
 		result.Tasks[task.DisplayName] = statuses
 	}
 
-	return web.JSONResponse{
-		Data:       result,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, result)
+	return
+
 }
 
 // Returns a JSON response with the status of the specified version
 // grouped on the build variants. The keys of the object are the build
 // variant name, with each key in the nested object representing a
 // particular task.
-func getVersionStatusByBuild(versionId string) web.HTTPResponse {
+func (restapi RESTAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter, r *http.Request) {
 	// Get all of the builds corresponding to this version
 	builds, err := model.FindAllBuilds(
 		bson.M{
@@ -442,10 +437,9 @@ func getVersionStatusByBuild(versionId string) web.HTTPResponse {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	result := versionStatusByBuildContent{
@@ -466,8 +460,7 @@ func getVersionStatusByBuild(versionId string) web.HTTPResponse {
 		result.Builds[build.BuildVariant] = statuses
 	}
 
-	return web.JSONResponse{
-		Data:       result,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, result)
+	return
+
 }

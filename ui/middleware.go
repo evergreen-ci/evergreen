@@ -132,7 +132,6 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error loading project context: %v", err))
 			return
 		}
-
 		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private && GetUser(r) == nil {
 			uis.RedirectToLogin(w, r)
 			return

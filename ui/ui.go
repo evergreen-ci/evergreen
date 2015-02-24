@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/auth"
 	"10gen.com/mci/plugin"
+	"10gen.com/mci/rest"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -135,6 +136,14 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task_timing", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
 	r.HandleFunc("/task_timing/{project_id}", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
 	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{task_name}", uis.requireUser(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
+
+	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
+	restapi := rest.RESTAPI{uis.Render, uis.MCISettings}
+	restRoutes := rest.GetRestRoutes(restapi)
+
+	for _, restRoute := range restRoutes {
+		restRouter.HandleFunc(restRoute.Path, uis.loadCtx(restRoute.Handler)).Name(restRoute.Name).Methods(restRoute.Method)
+	}
 
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()

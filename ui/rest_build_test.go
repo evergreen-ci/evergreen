@@ -1,18 +1,19 @@
-package rest
+package ui
 
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/rest"
 	"10gen.com/mci/util"
-	"10gen.com/mci/web"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -27,9 +28,22 @@ func init() {
 
 func TestGetBuildInfo(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
+
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular build", t, func() {
 		util.HandleTestingErr(db.Clear(model.BuildsCollection), t,
@@ -37,7 +51,7 @@ func TestGetBuildInfo(t *testing.T) {
 
 		buildId := "my-build"
 		versionId := "my-version"
-		projectName := "my-project"
+		projectName := "mci-test"
 
 		task := model.TaskCache{
 			Id:          "some-task-id",
@@ -94,22 +108,22 @@ func TestGetBuildInfo(t *testing.T) {
 			var createTime time.Time
 			err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 			So(err, ShouldBeNil)
-			So(createTime, ShouldHappenWithin, timePrecision, build.CreateTime)
+			So(createTime, ShouldHappenWithin, rest.TimePrecision, build.CreateTime)
 
 			var startTime time.Time
 			err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 			So(err, ShouldBeNil)
-			So(startTime, ShouldHappenWithin, timePrecision, build.StartTime)
+			So(startTime, ShouldHappenWithin, rest.TimePrecision, build.StartTime)
 
 			var finishTime time.Time
 			err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
-			So(finishTime, ShouldHappenWithin, timePrecision, build.FinishTime)
+			So(finishTime, ShouldHappenWithin, rest.TimePrecision, build.FinishTime)
 
 			var pushTime time.Time
 			err = json.Unmarshal(*rawJsonBody["push_time"], &pushTime)
 			So(err, ShouldBeNil)
-			So(pushTime, ShouldHappenWithin, timePrecision, build.PushTime)
+			So(pushTime, ShouldHappenWithin, rest.TimePrecision, build.PushTime)
 
 			So(jsonBody["version"], ShouldEqual, build.Version)
 			So(jsonBody["project"], ShouldEqual, build.Project)
@@ -122,7 +136,7 @@ func TestGetBuildInfo(t *testing.T) {
 			var activatedTime time.Time
 			err = json.Unmarshal(*rawJsonBody["activated_time"], &activatedTime)
 			So(err, ShouldBeNil)
-			So(activatedTime, ShouldHappenWithin, timePrecision, build.ActivatedTime)
+			So(activatedTime, ShouldHappenWithin, rest.TimePrecision, build.ActivatedTime)
 
 			So(jsonBody["order"], ShouldEqual, build.RevisionOrderNumber)
 
@@ -176,9 +190,22 @@ func TestGetBuildInfo(t *testing.T) {
 
 func TestGetBuildStatus(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
+
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular build", t, func() {
 		util.HandleTestingErr(db.Clear(model.BuildsCollection), t,

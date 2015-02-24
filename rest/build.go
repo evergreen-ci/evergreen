@@ -3,7 +3,6 @@ package rest
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -49,7 +48,7 @@ type buildStatusByTask map[string]buildStatus
 
 // Returns a JSON response with the marshalled output of the build
 // specified in the request.
-func getBuildInfo(r *http.Request) web.HTTPResponse {
+func (restapi *RESTAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 
 	srcBuild, err := model.FindBuild(buildId)
@@ -62,10 +61,9 @@ func getBuildInfo(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	destBuild := &build{}
@@ -74,10 +72,9 @@ func getBuildInfo(r *http.Request) web.HTTPResponse {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding build '%v'", buildId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	destBuild.Tasks = make(buildStatusByTask, len(srcBuild.Tasks))
@@ -90,15 +87,14 @@ func getBuildInfo(r *http.Request) web.HTTPResponse {
 		destBuild.Tasks[task.DisplayName] = status
 	}
 
-	return web.JSONResponse{
-		Data:       destBuild,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, destBuild)
+	return
+
 }
 
 // Returns a JSON response with the status of the specified build.
 // The keys of the object are the task names.
-func getBuildStatus(r *http.Request) web.HTTPResponse {
+func (restapi RESTAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 
 	build, err := model.FindBuild(buildId)
@@ -111,10 +107,9 @@ func getBuildStatus(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	result := buildStatusContent{
@@ -132,8 +127,7 @@ func getBuildStatus(r *http.Request) web.HTTPResponse {
 		result.Tasks[task.DisplayName] = status
 	}
 
-	return web.JSONResponse{
-		Data:       result,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, result)
+	return
+
 }

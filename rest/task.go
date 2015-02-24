@@ -4,7 +4,6 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -84,7 +83,7 @@ type taskStatusByTest map[string]taskTestResult
 
 // Returns a JSON response with the marshalled output of the task
 // specified in the request.
-func getTaskInfo(r *http.Request) web.HTTPResponse {
+func (restapi RESTAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 
 	srcTask, err := model.FindTask(taskId)
@@ -97,10 +96,9 @@ func getTaskInfo(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	destTask := &task{}
@@ -109,10 +107,9 @@ func getTaskInfo(r *http.Request) web.HTTPResponse {
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%v'", taskId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	// Copy over the status details
@@ -132,34 +129,32 @@ func getTaskInfo(r *http.Request) web.HTTPResponse {
 	}
 
 	// Copy over artifacts and binaries
-	files, err := artifact.FindAll(artifact.ByTaskId(taskId))
+	entries, err := artifact.FindAll(artifact.ByTaskId(taskId))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%v'", taskId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
+	}
+	for _, entry := range entries {
+		for _, _file := range entry.Files {
+			file := taskFile{
+				Name: _file.Name,
+				URL:  _file.Link,
+			}
+			destTask.Files = append(destTask.Files, file)
 		}
 	}
 
-	destTask.Files = make([]taskFile, 0, len(files))
-	for _, _file := range files {
-		file := taskFile{
-			Name: _file.Name,
-			URL:  _file.Link,
-		}
-		destTask.Files = append(destTask.Files, file)
-	}
+	restapi.WriteJSON(w, http.StatusOK, destTask)
+	return
 
-	return web.JSONResponse{
-		Data:       destTask,
-		StatusCode: http.StatusOK,
-	}
 }
 
 // Returns a JSON response with the status of the specified task.
 // The keys of the object are the test names.
-func getTaskStatus(r *http.Request) web.HTTPResponse {
+func (restapi RESTAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 
 	task, err := model.FindTask(taskId)
@@ -172,10 +167,9 @@ func getTaskStatus(r *http.Request) web.HTTPResponse {
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
 	result := taskStatusContent{
@@ -200,8 +194,7 @@ func getTaskStatus(r *http.Request) web.HTTPResponse {
 		result.Tests[_testResult.TestFile] = testResult
 	}
 
-	return web.JSONResponse{
-		Data:       result,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, result)
+	return
+
 }

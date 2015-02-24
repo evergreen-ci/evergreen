@@ -3,7 +3,6 @@ package rest
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -16,7 +15,7 @@ const (
 	MaxNumRevisions = 10
 )
 
-func getTaskHistory(r *http.Request, mciSettings *mci.MCISettings) web.HTTPResponse {
+func (restapi RESTAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	taskName := mux.Vars(r)["task_name"]
 	projectName := r.FormValue("project")
 
@@ -30,20 +29,18 @@ func getTaskHistory(r *http.Request, mciSettings *mci.MCISettings) web.HTTPRespo
 			statusCode = http.StatusInternalServerError
 		}
 
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: statusCode,
-		}
+		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+		return
+
 	}
 
-	project, err := model.FindProject("", projectRef.Identifier, mciSettings.ConfigDir)
+	project, err := model.FindProject("", projectRef.Identifier, restapi.MCISettings.ConfigDir)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding project '%v'", projectName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
 	buildVariants := project.GetVariantsWithTask(taskName)
@@ -53,14 +50,12 @@ func getTaskHistory(r *http.Request, mciSettings *mci.MCISettings) web.HTTPRespo
 	if err != nil {
 		msg := fmt.Sprintf("Error finding history for task '%v'", taskName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		return web.JSONResponse{
-			Data:       responseError{Message: msg},
-			StatusCode: http.StatusInternalServerError,
-		}
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+
 	}
 
-	return web.JSONResponse{
-		Data:       chunk,
-		StatusCode: http.StatusOK,
-	}
+	restapi.WriteJSON(w, http.StatusOK, chunk)
+	return
+
 }

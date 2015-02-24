@@ -16,7 +16,7 @@ MCI API v1
 
 #### Retrieve the most recent revisions for a particular project
 
-    GET /rest/v1/projects/{project_name}/versions
+    GET /rest/v1/projects/{project_id}/versions
 
 ##### Request
 
@@ -61,7 +61,7 @@ MCI API v1
 
 #### Retrieve info on a particular version by its revision
 
-    GET /rest/v1/projects/{project_name}/revisions/{revision}
+    GET /rest/v1/projects/{project_id}/revisions/{revision}
 
 _Note that the revision is equivalent to the git hash._
 

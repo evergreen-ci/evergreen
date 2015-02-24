@@ -6,7 +6,7 @@ import (
 
 const (
 	// The resolution of times stored in the database
-	timePrecision = time.Duration(1 * time.Millisecond)
+	TimePrecision = time.Duration(1 * time.Millisecond)
 )
 
 // Format of the JSON response when an error occurs

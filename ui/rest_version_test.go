@@ -1,19 +1,20 @@
-package rest
+package ui
 
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/rest"
 	"10gen.com/mci/util"
-	"10gen.com/mci/web"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -28,25 +29,38 @@ func init() {
 
 func TestGetRecentVersions(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
+
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding recent versions", t, func() {
 		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
 			"Error clearing '%v' collection", model.VersionsCollection)
 
-		projectName := "my-project"
+		projectName := "project_test"
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
 
 		buildIdPreface := "build-id-for-version%v"
 
-		So(NumRecentVersions, ShouldBeGreaterThan, 0)
-		versions := make([]*model.Version, 0, NumRecentVersions)
+		So(rest.NumRecentVersions, ShouldBeGreaterThan, 0)
+		versions := make([]*model.Version, 0, rest.NumRecentVersions)
 
 		// Insert a bunch of versions into the database
-		for i := 0; i < NumRecentVersions; i++ {
+		for i := 0; i < rest.NumRecentVersions; i++ {
 			version := &model.Version{
 				Id:                  fmt.Sprintf("version%v", i),
 				Project:             projectName,
@@ -82,12 +96,12 @@ func TestGetRecentVersions(t *testing.T) {
 			Author:              "some-other-author",
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Message:             "some-other-message",
-			RevisionOrderNumber: NumRecentVersions + 1,
+			RevisionOrderNumber: rest.NumRecentVersions + 1,
 			Requester:           mci.RepotrackerVersionRequester,
 		}
 		So(otherVersion.Insert(), ShouldBeNil)
 
-		builds := make([]*model.Build, 0, NumRecentVersions)
+		builds := make([]*model.Build, 0, rest.NumRecentVersions)
 		task := model.TaskCache{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
@@ -95,7 +109,7 @@ func TestGetRecentVersions(t *testing.T) {
 			TimeTaken:   time.Duration(100 * time.Millisecond),
 		}
 
-		for i := 0; i < NumRecentVersions; i++ {
+		for i := 0; i < rest.NumRecentVersions; i++ {
 			build := &model.Build{
 				Id:           fmt.Sprintf(buildIdPreface, i),
 				Version:      versions[i].Id,
@@ -107,7 +121,7 @@ func TestGetRecentVersions(t *testing.T) {
 			builds = append(builds, build)
 		}
 
-		url, err := router.Get("recent_versions").URL("project_name", projectName)
+		url, err := router.Get("recent_versions").URL("project_id", projectName)
 		So(err, ShouldBeNil)
 
 		request, err := http.NewRequest("GET", url.String(), nil)
@@ -179,7 +193,7 @@ func TestGetRecentVersions(t *testing.T) {
 	Convey("When finding recent versions for a nonexistent project", t, func() {
 		projectName := "not-present"
 
-		url, err := router.Get("recent_versions").URL("project_name", projectName)
+		url, err := router.Get("recent_versions").URL("project_id", projectName)
 		So(err, ShouldBeNil)
 
 		request, err := http.NewRequest("GET", url.String(), nil)
@@ -213,16 +227,29 @@ func TestGetRecentVersions(t *testing.T) {
 
 func TestGetVersionInfo(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
+
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular version", t, func() {
 		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
 			"Error clearing '%v' collection", model.VersionsCollection)
 
 		versionId := "my-version"
-		projectName := "my-project"
+		projectName := "project_test"
 
 		version := &model.Version{
 			Id:                  versionId,
@@ -235,15 +262,13 @@ func TestGetVersionInfo(t *testing.T) {
 			AuthorEmail:         "some-email",
 			Message:             "some-message",
 			Status:              "success",
-			Activated:           true,
 			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []string{"some-build-variant"},
+			BuildVariants:       []model.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
 			RepoKind:            "github",
-			BatchTime:           rand.Int(),
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
@@ -295,11 +320,24 @@ func TestGetVersionInfo(t *testing.T) {
 
 func TestGetVersionInfoViaRevision(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
 
-	projectName := "my-project"
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+
+	projectName := "project_test"
 
 	Convey("When finding info on a particular version by its revision", t, func() {
 		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
@@ -319,15 +357,13 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			AuthorEmail:         "some-email",
 			Message:             "some-message",
 			Status:              "success",
-			Activated:           true,
 			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []string{"some-build-variant"},
+			BuildVariants:       []model.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
 			RepoKind:            "github",
-			BatchTime:           rand.Int(),
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
@@ -336,7 +372,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		So(version.Insert(), ShouldBeNil)
 
 		url, err := router.Get("version_info_via_revision").URL(
-			"project_name", projectName, "revision", revision)
+			"project_id", projectName, "revision", revision)
 		So(err, ShouldBeNil)
 
 		request, err := http.NewRequest("GET", url.String(), nil)
@@ -355,7 +391,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		revision := "not-present"
 
 		url, err := router.Get("version_info_via_revision").URL(
-			"project_name", projectName, "revision", revision)
+			"project_id", projectName, "revision", revision)
 		So(err, ShouldBeNil)
 
 		request, err := http.NewRequest("GET", url.String(), nil)
@@ -381,16 +417,29 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 func TestActivateVersion(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
+
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When marking a particular version as active", t, func() {
 		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
 			"Error clearing '%v' collection", model.VersionsCollection)
 
 		versionId := "my-version"
-		projectName := "my-project"
+		projectName := "project_test"
 
 		build := &model.Build{
 			Id:           "some-build-id",
@@ -409,21 +458,18 @@ func TestActivateVersion(t *testing.T) {
 			AuthorEmail:         "some-email",
 			Message:             "some-message",
 			Status:              "success",
-			Activated:           false,
 			BuildIds:            []string{build.Id},
-			BuildVariants:       []string{build.BuildVariant},
+			BuildVariants:       []model.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
 			Branch:              "some-branch",
 			RepoKind:            "github",
-			BatchTime:           rand.Int(),
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
 			Requester:           mci.RepotrackerVersionRequester,
 		}
-		So(version.Activated, ShouldBeFalse)
 		So(version.Insert(), ShouldBeNil)
 
 		url, err := router.Get("version_info").URL("version_id", versionId)
@@ -446,7 +492,6 @@ func TestActivateVersion(t *testing.T) {
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 
-		version.Activated = true // version should have been activated
 		validateVersionInfo(version, response)
 	})
 
@@ -486,9 +531,22 @@ func TestActivateVersion(t *testing.T) {
 
 func TestGetVersionStatus(t *testing.T) {
 
-	app := web.NewApp()
-	router := &mux.Router{}
-	RegisterRoutes(app, router)
+	uis := UIServer{
+		RootURL:     buildTestConfig.Ui.Url,
+		MCISettings: *buildTestConfig,
+	}
+
+	home, err := mci.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+
+	uis.Render = render.New(render.Options{
+		Directory:    filepath.Join(home, WebRootPath, Templates),
+		DisableCache: true,
+		Funcs:        nil,
+	})
+
+	router, err := uis.NewRouter()
+	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular version", t, func() {
 		util.HandleTestingErr(db.Clear(model.BuildsCollection), t,
@@ -740,17 +798,17 @@ func validateVersionInfo(version *model.Version, response *httptest.ResponseReco
 		var createTime time.Time
 		err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 		So(err, ShouldBeNil)
-		So(createTime, ShouldHappenWithin, timePrecision, version.CreateTime)
+		So(createTime, ShouldHappenWithin, rest.TimePrecision, version.CreateTime)
 
 		var startTime time.Time
 		err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 		So(err, ShouldBeNil)
-		So(startTime, ShouldHappenWithin, timePrecision, version.StartTime)
+		So(startTime, ShouldHappenWithin, rest.TimePrecision, version.StartTime)
 
 		var finishTime time.Time
 		err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 		So(err, ShouldBeNil)
-		So(finishTime, ShouldHappenWithin, timePrecision, version.FinishTime)
+		So(finishTime, ShouldHappenWithin, rest.TimePrecision, version.FinishTime)
 
 		So(jsonBody["project"], ShouldEqual, version.Project)
 		So(jsonBody["revision"], ShouldEqual, version.Revision)
@@ -758,7 +816,6 @@ func validateVersionInfo(version *model.Version, response *httptest.ResponseReco
 		So(jsonBody["author_email"], ShouldEqual, version.AuthorEmail)
 		So(jsonBody["message"], ShouldEqual, version.Message)
 		So(jsonBody["status"], ShouldEqual, version.Status)
-		So(jsonBody["activated"], ShouldEqual, version.Activated)
 
 		var buildIds []string
 		err = json.Unmarshal(*rawJsonBody["builds"], &buildIds)
@@ -768,14 +825,13 @@ func validateVersionInfo(version *model.Version, response *httptest.ResponseReco
 		var buildVariants []string
 		err = json.Unmarshal(*rawJsonBody["build_variants"], &buildVariants)
 		So(err, ShouldBeNil)
-		So(buildVariants, ShouldResemble, version.BuildVariants)
+		So(buildVariants[0], ShouldResemble, version.BuildVariants[0].BuildVariant)
 
 		So(jsonBody["order"], ShouldEqual, version.RevisionOrderNumber)
 		So(jsonBody["owner_name"], ShouldEqual, version.Owner)
 		So(jsonBody["repo_name"], ShouldEqual, version.Repo)
 		So(jsonBody["branch_name"], ShouldEqual, version.Branch)
 		So(jsonBody["repo_kind"], ShouldEqual, version.RepoKind)
-		So(jsonBody["batch_time"], ShouldEqual, version.BatchTime)
 		So(jsonBody["identifier"], ShouldEqual, version.Identifier)
 		So(jsonBody["remote"], ShouldEqual, version.Remote)
 		So(jsonBody["remote_path"], ShouldEqual, version.RemotePath)

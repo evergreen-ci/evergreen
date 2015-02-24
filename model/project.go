@@ -9,6 +9,7 @@ import (
 	"github.com/shelman/angier"
 	"gopkg.in/yaml.v1"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -419,7 +420,11 @@ func NewProjectByName(revision, identifier, configRoot string) (*Project, error)
 	fileName := filepath.Join(configRoot, "project", identifier+".yml")
 	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil, nil
+		} else {
+			return nil, err
+		}
 	}
 	project := &Project{}
 	if err = LoadProjectInto(data, project); err != nil {
