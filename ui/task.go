@@ -174,6 +174,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Author:              projCtx.Version.Author,
 		AuthorEmail:         projCtx.Version.AuthorEmail,
 		VersionId:           projCtx.Version.Id,
+		RepoOwner:           projCtx.ProjectRef.Owner,
+		Repo:                projCtx.ProjectRef.Repo,
 		Archived:            archived,
 	}
 
