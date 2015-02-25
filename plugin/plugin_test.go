@@ -52,19 +52,19 @@ func MockPluginEcho(w http.ResponseWriter, request *http.Request) {
 	http.Error(w, "couldn't get task from context", http.StatusInternalServerError)
 }
 
+func (self *MockPlugin) Configure(conf map[string]interface{}) error {
+	return nil
+}
+
 func (self *MockPlugin) GetAPIHandler() http.Handler {
 	r := mux.NewRouter()
 	r.Path("/blah/{param1}/{param2}").Methods("GET").HandlerFunc(MockPluginEcho)
 	return r
 }
 
-/*
-func (self *MockPlugin) GetRoutes() []plugin.PluginRoute {
-	return []plugin.PluginRoute{
-		{"/blah/{param1}/{param2}", MockPluginEcho, []string{"GET"}},
-	}
+func (self *MockPlugin) GetUIHandler() http.Handler {
+	return nil
 }
-*/
 
 func (self *MockPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	return nil, nil

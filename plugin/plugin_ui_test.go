@@ -23,6 +23,14 @@ func (self *MockUIPlugin) Name() string {
 func (self *MockUIPlugin) GetAPIHandler() http.Handler {
 	return nil
 }
+func (self *MockUIPlugin) GetUIHandler() http.Handler {
+	return nil
+}
+
+func (self *MockUIPlugin) Configure(conf map[string]interface{}) error {
+	return nil
+}
+
 func (self *MockUIPlugin) NewCommand(commandName string) (plugin.Command, error) {
 	return nil, nil
 }
