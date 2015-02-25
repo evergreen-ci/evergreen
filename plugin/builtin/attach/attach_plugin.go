@@ -75,6 +75,9 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					if err != nil {
 						return nil, fmt.Errorf("error finding artifact files for task: %v", err)
 					}
+					if artifactEntry == nil {
+						return nil, nil
+					}
 					return artifactEntry.Files, nil
 				},
 			},
