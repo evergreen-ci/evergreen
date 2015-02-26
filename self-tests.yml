@@ -678,6 +678,33 @@ tasks:
     - func: "upload coverage html report"
     - func: "upload coverage txt report"
 
+- name: ui
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd ui
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv ui/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
 - name: validator
   commands:
     - func: "fetch source"
@@ -724,5 +751,6 @@ buildvariants:
       - name: repotracker
       - name: scheduler
       - name: thirdparty
+      - name: ui
       - name: util
       - name: validator
