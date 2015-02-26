@@ -97,6 +97,7 @@ func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 		return fmt.Errorf("error parsing xunit file: '%v'", err)
 	}
 
+	logIdxToTestIdx := []int{}
 	// go through all the tests
 	for _, suite := range testSuites {
 		for _, tc := range suite.TestCases {
@@ -104,16 +105,20 @@ func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 			test, log := tc.ToModelTestResultAndLog(taskConfig.Task)
 			if log != nil {
 				logs = append(logs, log)
+				logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
 			}
 			tests = append(tests, test)
 		}
 	}
 
-	for _, log := range logs {
-		err := SendJSONLogs(taskConfig, pluginLogger, pluginCom, log)
+	for i, log := range logs {
+		logId, err := SendJSONLogs(taskConfig, pluginLogger, pluginCom, log)
 		if err != nil {
 			pluginLogger.LogTask(slogger.WARN, "Error uploading logs for %v", log.Name)
+			continue
 		}
+		tests[logIdxToTestIdx[i]].LogId = logId
+		tests[logIdxToTestIdx[i]].LineNum = 1
 	}
 
 	return SendJSONResults(taskConfig, pluginLogger, pluginCom, &model.TestResults{tests})

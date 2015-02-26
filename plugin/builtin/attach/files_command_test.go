@@ -32,9 +32,8 @@ func TestAttachFilesApi(t *testing.T) {
 		attachPlugin := &AttachPlugin{}
 		err := registry.Register(attachPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register patch plugin")
-		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
+		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(attachPlugin)
 		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
@@ -42,7 +41,7 @@ func TestAttachFilesApi(t *testing.T) {
 		util.HandleTestingErr(testTask.Insert(), t, "couldn't insert test task")
 		taskConfig.Task = &testTask
 
-		httpCom := testutil.TestAgentCommunicator(testTask.Id, testTask.Secret, url)
+		httpCom := testutil.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
 		pluginCom := &agent.TaskJSONCommunicator{attachPlugin.Name(), httpCom}
 
 		Convey("using a well-formed api call", func() {
@@ -122,10 +121,9 @@ func TestAttachTaskFilesPlugin(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
+		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(attachPlugin)
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", url)
+		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)

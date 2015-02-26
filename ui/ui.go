@@ -79,6 +79,10 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task/dependencies/{task_id}", uis.loadCtx(uis.taskDependencies))
 	r.HandleFunc("/task/dependencies/{task_id}/{execution}", uis.loadCtx(uis.taskDependencies))
 
+	// Test Logs
+	r.HandleFunc("/test_log/{task_id}/{task_execution}/{test_name}", uis.loadCtx(uis.testLog))
+	r.HandleFunc("/test_log/{log_id}", uis.loadCtx(uis.testLog))
+
 	// Build page
 	r.HandleFunc("/build/{build_id}", uis.loadCtx(uis.buildPage)).Methods("GET")
 	r.HandleFunc("/builds/{build_id}", uis.requireUser(uis.loadCtx(uis.modifyBuild))).Methods("PUT")

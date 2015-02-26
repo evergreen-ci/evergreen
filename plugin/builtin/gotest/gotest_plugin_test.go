@@ -32,10 +32,9 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
+		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(testPlugin)
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", url)
+		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
@@ -100,10 +99,9 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
+		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(testPlugin)
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", url)
+		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
@@ -171,10 +169,9 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		err := registry.Register(testPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
+		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(testPlugin)
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", url)
+		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)

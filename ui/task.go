@@ -471,3 +471,56 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action: "+putParams.Action)
 	}
 }
+
+func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
+	logId := mux.Vars(r)["log_id"]
+	var testLog *model.TestLog
+	var err error
+
+	if logId != "" { // direct link to a log document by its ID
+		testLog, err = model.FindOneTestLogById(logId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	} else {
+		taskID := mux.Vars(r)["task_id"]
+		testName := mux.Vars(r)["test_name"]
+		taskExecutionsAsString := mux.Vars(r)["task_execution"]
+		taskExec, err := strconv.Atoi(taskExecutionsAsString)
+		if err != nil {
+			http.Error(w, "task execution num must be an int", http.StatusBadRequest)
+			return
+		}
+
+		testLog, err = model.FindOneTestLog(testName, taskID, taskExec)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if testLog == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	//TODO: give this its own view instead of task_log.html
+	displayLogs := make(chan model.LogMessage) //[]model.LogMessage{}
+	go func() {
+		for _, line := range testLog.Lines {
+			displayLogs <- model.LogMessage{
+				Type:     model.TaskLogPrefix,
+				Severity: model.LogInfoPrefix,
+				Version:  mci.LogmessageCurrentVersion,
+				Message:  line,
+			}
+		}
+		close(displayLogs)
+	}()
+
+	uis.WriteHTML(w, http.StatusOK, struct {
+		Data chan model.LogMessage
+		User *model.DBUser
+	}{displayLogs, GetUser(r)}, "base", "task_log.html")
+}
