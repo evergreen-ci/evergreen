@@ -30,7 +30,7 @@ for instance in all_instances:
     if instance.id in i_to_sir:
         instance.id = i_to_sir[instance.id]
     if instance.id in whitelist:
-        print "instance %s is in whitelist" % (instance.id))
+        print "instance %s is in whitelist" % (instance.id)
     if instance.id not in motuhostsmap:
         print "instance %s is in AWS with status 'AWS:%s' NOT in motu DB, tags are %s" % (instance.id, instance.state, repr(instance.tags))
     if instance.id in motuhostsmap:
