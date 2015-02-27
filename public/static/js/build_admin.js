@@ -6,7 +6,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', func
 
     $scope.adminOptionVals = {};
     $scope.modalOpen = false;
-    $scope.modalTitle = 'Build';
+    $scope.modalTitle = 'Modify Build';
 
     $scope.abort = function() {
         buildRestService.takeActionOnBuild(

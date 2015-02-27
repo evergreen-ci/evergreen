@@ -470,12 +470,13 @@ func UpdateNotificationTimes() (err error) {
 func findProjectBuildVariants(configName string) (map[string][]string, error) {
 	projectNameToBuildVariants := make(map[string][]string)
 
-	allProjects, err := mci.AllProjectNames(configName)
+	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return nil, err
 	}
 
-	for _, projectName := range allProjects {
+	for _, projectRef := range allProjects {
+		projectName := projectRef.Identifier
 		var buildVariants []string
 
 		projectFile, err := model.FindProject("", projectName, configName)

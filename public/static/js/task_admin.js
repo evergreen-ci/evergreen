@@ -1,6 +1,6 @@
 mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', function($scope, taskRestService) {
     $scope.modalOpen = false;
-    $scope.modalTitle = 'Task';
+    $scope.modalTitle = 'Modify Task';
     $scope.adminOptionVals = {};
 
 	$scope.setTask = function(task) {

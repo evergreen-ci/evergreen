@@ -6,13 +6,8 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/repotracker"
 	"10gen.com/mci/util"
-	"10gen.com/mci/validator"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
-	"github.com/shelman/angier"
-	"gopkg.in/yaml.v1"
-	"io/ioutil"
-	"path/filepath"
 	"time"
 )
 
@@ -52,78 +47,21 @@ func main() {
 	}()
 
 	startTime := time.Now()
-	mci.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v” "+
-		"and config dir “%v”", mciSettings.Db, mciSettings.ConfigDir)
+	mci.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", mciSettings.Db)
 
-	allProjects, err := mci.AllProjectNames(mciSettings.ConfigDir)
-	if err != nil {
-		panic(fmt.Sprintf("Error finding all project names: %v", err))
-	}
-
-	configRoot, err := mci.FindMCIConfig(mciSettings.ConfigDir)
 	if err != nil {
 		panic(fmt.Sprintf("Error finding config root: %v", err))
 	}
 
-	for _, filename := range allProjects {
-		data, err := ioutil.ReadFile(filepath.Join(configRoot, "project", filename+".yml"))
-		if err != nil {
-			panic(fmt.Sprintf("Error reading project file “%v”: %v",
-				filename, err))
-		}
-		projectRef := &model.ProjectRef{}
-		if err := yaml.Unmarshal(data, projectRef); err != nil {
-			panic(fmt.Sprintf("Error unmarshalling project file “%v”: %v",
-				filename, err))
-		}
-		project := &model.Project{}
-		if err = angier.TransferByFieldNames(projectRef, project); err != nil {
-			panic(fmt.Sprintf("Error transferring project file “%v”: %v",
-				filename, err))
-		}
+	allProjects, err := model.FindAllTrackedProjectRefs()
+	if err != nil {
+		panic(fmt.Sprintf("Error finding tracked projects %v", err))
+	}
 
-		// validate the project has all necessary fields
-		errs := validator.EnsureHasNecessaryProjectFields(project)
-		if len(errs) != 0 {
-			var message string
-			for _, err := range errs {
-				message += fmt.Sprintf("\n\t=> %v", err)
-			}
-			// TODO: MCI-1893 - send notification to project maintainer instead
-			// of panicking
-			panic(fmt.Sprintf("Project '%v' does not contain one or more "+
-				"necessary fields: %v", filename, message))
-		}
-
-		// validate local configs and panic if there's an error
-		if !project.Remote {
-			project, err = model.FindProject("", filename, mciSettings.ConfigDir)
-			if err != nil {
-				panic(fmt.Sprintf("Error fetching project file “%v”: %v", filename,
-					err))
-			}
-			errs = validator.CheckProjectSyntax(project, mciSettings)
-			if len(errs) != 0 {
-				var message string
-				for _, err := range errs {
-					message += fmt.Sprintf("\n\t=> %v", err)
-				}
-				// TODO: MCI-1893 - send notification to project maintainer
-				// instead of panicking
-				panic(fmt.Sprintf("Project '%v' contains invalid "+
-					"configuration: %v", filename, message))
-			}
-		}
-
-		// upsert the repository ref
-		if err = projectRef.Upsert(); err != nil {
-			panic(fmt.Sprintf("Error upserting '%v' repository ref: %v",
-				projectRef.Identifier, err))
-		}
-
+	for _, projectRef := range allProjects {
 		repotrackerInstance := repotracker.NewRepositoryTracker(
-			mciSettings, projectRef, repotracker.NewGithubRepositoryPoller(
-				projectRef, mciSettings.Credentials[project.RepoKind]),
+			mciSettings, &projectRef, repotracker.NewGithubRepositoryPoller(
+				&projectRef, mciSettings.Credentials[projectRef.RepoKind]),
 			util.SystemClock{},
 		)
 
@@ -137,12 +75,6 @@ func main() {
 		if err != nil {
 			panic(fmt.Sprintf("Error running repotracker: %v", err))
 		}
-	}
-
-	// untrack all project_refs that no longer have project files
-	if err = model.UntrackStaleProjectRefs(allProjects); err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error untracking missing projects: "+
-			"%v", err)
 	}
 
 	runtime := time.Now().Sub(startTime)

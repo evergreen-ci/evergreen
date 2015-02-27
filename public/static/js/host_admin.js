@@ -9,7 +9,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', functi
 
   $scope.validHostStatuses = ["running", "decommissioned", "quarantined"].filter($scope.filterCurrentHostStatus);
   $scope.newStatus = $scope.validHostStatuses[0];
-  $scope.modalTitle = 'Host';
+  $scope.modalTitle = 'Modify Host';
   
   $scope.updateStatus = function() {
     hostRestService.updateStatus(

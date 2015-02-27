@@ -1,7 +1,7 @@
 mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService', function($scope, versionRestService) {
 
     $scope.adminOptionVals = {};
-    $scope.modalTitle = 'Version';
+    $scope.modalTitle = 'Modify Version';
 
 	function setVersionActive(active, abort) {
         versionRestService.takeActionOnVersion(

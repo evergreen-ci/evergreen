@@ -1,0 +1,165 @@
+{{define "scripts"}}
+<script>
+window.allTrackedProjects = {{.AllProjects}}
+</script>
+<script type="text/javascript" src="{{Static "js" "tablesorter.js"}}"></script>
+<script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ StaticsMD5 }}"></script>
+{{if .User }}
+<script type="text/javascript" src="{{Static "js" "hosts_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+{{end}}
+{{define "title"}}
+Projects
+{{end}}
+{{define "content"}}
+<div id="content" class="container-fluid row" ng-controller="ProjectCtrl">
+    <div class="col-lg-3">
+        <h1> Projects</h1>
+        <div class="row">
+        <h3 class="col-lg-12"> Enabled Projects </h3>
+        </div>
+        <div class="row">
+        <ul class="list-unstyled col-lg-offset-1" id="projects-table">
+            <li ng-repeat="project in enabledProjects">
+                <a ng-click="loadProject(project.identifier)" style="cursor:pointer;">[[project.identifier]]</a>
+            </li>
+        </ul>
+        </div>
+        <div class="row">
+            <h3 class="col-lg-12"> Disabled Projects </h3>
+        </div>
+        <div class="row">
+        <ul class="list-unstyled col-lg-offset-1">
+            <li ng-repeat="project in disabledProjects">
+                <a ng-click="loadProject(project.identifier)" style="cursor:pointer;">[[project.identifier]]</a>
+            </li>  
+        </ul>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+            <button class="btn btn-default" ng-click="openAdminModal('newProject')"> New Project </button>
+            <label>[[newProjectMessage]] </label>
+            </div>
+        </div>
+        <admin-modal>
+            <admin-new-project></admin-new-project>
+        </admin-modal>
+      </div>
+      <div class="col-lg-9" ng-show="projectView">
+        <h2> Project Settings</h2>
+        <form name="settingsForm"  ng-submit="saveProject(settingsFormData)">
+        <div class ="row">
+            <div class="col-lg-4">
+                <div class="radio">
+                    <label>
+                    <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> Enabled
+                    </label>
+                </div>
+                <div class="radio">
+                    <label> 
+                        <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> Disabled
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="row ">
+            <div class="col-lg-2 col-header"> 
+                <label> Name: </label> </div>
+            <div class="col-lg-4">[[projectRef.identifier]] </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-2 col-header"> 
+                <label> Display Name: </label>
+            </div>
+            <div class="col-lg-4">
+            <input type="text" ng-model="settingsFormData.display_name">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-2 col-header"> 
+                <label> Config File: </label>
+            </div>
+            <div class="col-lg-6">
+                <input type="text" ng-model="settingsFormData.remote_path">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-2 col-header"> 
+                <label> Batch Time: </label>
+            </div>
+            <div class="col-lg-6">
+            <input type="text" ng-model="settingsFormData.batch_time">
+            </div>
+        </div>
+
+        <div id="github-info">
+        <div class="h3"> Repository Info </div>
+        <div class="row">
+            <div class="col-lg-2 col-header"> 
+                <label> Owner: </label>
+            </div>
+            <div class="col-lg-6">
+                <input type="text" ng-model="settingsFormData.owner_name">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-2 col-header"> 
+                <label> Repo Name: </label>
+            </div>
+            <div class="col-lg-6">
+                <input type="text" ng-model="settingsFormData.repo_name">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-2 col-header"> 
+                <label> Branch Name: </label>
+            </div>
+            <div class="col-lg-6">
+                <input type="text" ng-model="settingsFormData.branch_name">
+            </div>
+        </div>
+
+        <div class="variables">
+            <div class="row">
+                <div class="col-header col-lg-4"> <h3> Project Variables </h3></div>
+            </div>
+            <div id="projectVarsList" class="row" ng-repeat="(name, key) in settingsFormData.project_vars">
+                <div class="col-lg-2"> <label> [[name]] </label> </div>  
+                <div class="col-lg-2"> [[key]] </div>
+                <div class="col-lg-2">
+                    <button class="btn btn-default" id="variable-add" type="button" ng-click="removeProjectVar(name)">
+                        <i class="icon-minus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-2">
+                    <input ng-model="proj_var.name" type="text" placeholder="var">
+                </div>
+                <div class="col-lg-2">
+                    <input ng-model="proj_var.value" type="text" placeholder="value">
+                </div>
+                <div class="col-lg-2">
+                    <button class="plus-button btn btn-default" id="variable-add" type="button" ng-click="addProjectVar()">
+                        <i class="icon-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <br>
+        <div class="row">
+        <div class="col-lg-4"> 
+            <label>[[saveMessage]]</label>
+        </div>
+        <div class="col-lg-2">
+            <input input ng-disabled="!isDirty" type="submit" value="Save Changes">
+        </div>
+        </div>
+        </form>
+      </div>
+</div>
+{{end}}

@@ -143,6 +143,12 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task_timing/{project_id}", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
 	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{task_name}", uis.requireUser(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
 
+	//Project routes
+	r.HandleFunc("/projects", uis.loadCtx(uis.projectsPage)).Methods("GET")
+	r.HandleFunc("/project/{project_id}", uis.requireUser(uis.loadCtx(uis.projectPage))).Methods("GET")
+	r.HandleFunc("/project/{project_id}", uis.requireUser(uis.loadCtx(uis.modifyProject))).Methods("POST")
+	r.HandleFunc("/project/{project_id}", uis.requireUser(uis.loadCtx(uis.addProject))).Methods("PUT")
+
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
 	restRoutes := rest.GetRestRoutes(uis)
 

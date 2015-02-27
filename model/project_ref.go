@@ -136,7 +136,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefTrackedKey:     projectRef.Tracked,
 				ProjectRefRemoteKey:      projectRef.Remote,
 				ProjectRefRemotePathKey:  projectRef.RemotePath,
-				ProjectRefTrackedKey:     true,
+				ProjectRefTrackedKey:     projectRef.Tracked,
 			},
 		},
 	)

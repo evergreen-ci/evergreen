@@ -222,31 +222,3 @@ func TestConfig() *MCISettings {
 	}
 	return settings
 }
-
-// AllProjectNames returns the un-suffixed form of *all* files
-// (projects) in the project directory
-func AllProjectNames(configName string) (projectNames []string, err error) {
-	configRoot, err := FindMCIConfig(configName)
-	if err != nil {
-		return
-	}
-
-	projectDirectory, err := os.Open(filepath.Join(configRoot, "project"))
-	if err != nil {
-		return
-	}
-
-	allFileNames, err := projectDirectory.Readdirnames(-1)
-	if err != nil {
-		return
-	}
-
-	projectNames = make([]string, 0, len(allFileNames))
-	for _, fileName := range allFileNames {
-		if strings.HasSuffix(fileName, ".yml") {
-			projectNames = append(projectNames, strings.TrimSuffix(fileName, ".yml"))
-		}
-	}
-
-	return
-}
