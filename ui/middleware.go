@@ -94,6 +94,10 @@ func (pc projectContext) ToPluginContext(mciSettings mci.MCISettings, user *mode
 	}
 }
 
+func (uis *UIServer) GetMCISettings() mci.MCISettings {
+	return uis.MCISettings
+}
+
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // be redirected to the login page instead.

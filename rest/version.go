@@ -87,7 +87,7 @@ type versionStatusByBuild map[string]versionStatus
 
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
-func (restapi RESTAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	projectName := mux.Vars(r)["project_id"]
 
 	versions, err := model.FindMostRecentVersions(projectName,
@@ -179,7 +179,7 @@ func (restapi RESTAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 
 // Returns a JSON response with the marshalled output of the version
 // specified in the request.
-func (restapi RESTAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 
 	srcVersion, err := model.FindVersion(versionId)
@@ -219,7 +219,7 @@ func (restapi RESTAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 
 // Returns a JSON response with the marshalled output of the version
 // specified by its revision and project name in the request.
-func (restapi RESTAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	projectName := vars["project_id"]
 	revision := vars["revision"]
@@ -263,7 +263,7 @@ func (restapi RESTAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 // Modifies part of the version specified in the request, and returns a
 // JSON response with the marshalled output of its new state.
-func (restapi RESTAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 
 	var input struct {
@@ -306,7 +306,7 @@ func (restapi RESTAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 // Returns a JSON response with the status of the specified version
 // either grouped by the task names or the build variant names depending
 // on the "groupby" query parameter.
-func (restapi *RESTAPI) getVersionStatus(w http.ResponseWriter, r *http.Request) {
+func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 	groupBy := r.FormValue("groupby")
 
@@ -331,7 +331,7 @@ func (restapi *RESTAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 // grouped on the tasks. The keys of the object are the task names,
 // with each key in the nested object representing a particular build
 // variant.
-func (restapi *RESTAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter, r *http.Request) {
+func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter, r *http.Request) {
 	id := "_id"
 	taskName := "task_name"
 	statuses := "statuses"
@@ -420,7 +420,7 @@ func (restapi *RESTAPI) getVersionStatusByTask(versionId string, w http.Response
 // grouped on the build variants. The keys of the object are the build
 // variant name, with each key in the nested object representing a
 // particular task.
-func (restapi RESTAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter, r *http.Request) {
 	// Get all of the builds corresponding to this version
 	builds, err := model.FindAllBuilds(
 		bson.M{

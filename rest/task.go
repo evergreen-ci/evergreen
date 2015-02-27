@@ -83,7 +83,7 @@ type taskStatusByTest map[string]taskTestResult
 
 // Returns a JSON response with the marshalled output of the task
 // specified in the request.
-func (restapi RESTAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 
 	srcTask, err := model.FindTask(taskId)
@@ -154,7 +154,7 @@ func (restapi RESTAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 // Returns a JSON response with the status of the specified task.
 // The keys of the object are the test names.
-func (restapi RESTAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 
 	task, err := model.FindTask(taskId)

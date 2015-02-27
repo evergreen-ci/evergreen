@@ -48,7 +48,7 @@ type buildStatusByTask map[string]buildStatus
 
 // Returns a JSON response with the marshalled output of the build
 // specified in the request.
-func (restapi *RESTAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
+func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 
 	srcBuild, err := model.FindBuild(buildId)
@@ -94,7 +94,7 @@ func (restapi *RESTAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 
 // Returns a JSON response with the status of the specified build.
 // The keys of the object are the task names.
-func (restapi RESTAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 
 	build, err := model.FindBuild(buildId)

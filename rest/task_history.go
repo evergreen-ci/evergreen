@@ -15,7 +15,7 @@ const (
 	MaxNumRevisions = 10
 )
 
-func (restapi RESTAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	taskName := mux.Vars(r)["task_name"]
 	projectName := r.FormValue("project")
 
@@ -34,7 +34,7 @@ func (restapi RESTAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	project, err := model.FindProject("", projectRef.Identifier, restapi.MCISettings.ConfigDir)
+	project, err := model.FindProject("", projectRef.Identifier, restapi.GetMCISettings().ConfigDir)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding project '%v'", projectName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)

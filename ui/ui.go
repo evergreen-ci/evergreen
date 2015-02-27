@@ -138,8 +138,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{task_name}", uis.requireUser(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
 
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
-	restapi := rest.RESTAPI{uis.Render, uis.MCISettings}
-	restRoutes := rest.GetRestRoutes(restapi)
+	restRoutes := rest.GetRestRoutes(uis)
 
 	for _, restRoute := range restRoutes {
 		restRouter.HandleFunc(restRoute.Path, uis.loadCtx(restRoute.Handler)).Name(restRoute.Name).Methods(restRoute.Method)
