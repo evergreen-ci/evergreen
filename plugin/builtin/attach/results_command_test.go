@@ -31,9 +31,10 @@ func TestAttachResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
+		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", url)
+		server.InstallPlugin(attachPlugin)
 		configFile := "testdata/plugin_attach_results.yml"
 		resultsLoc := "testdata/plugin_attach_results.json"
 		taskConfig, err := testutil.CreateTestConfig(configFile, t)

@@ -1,7 +1,7 @@
 package archive_test
 
 import (
-	. "10gen.com/mci/plugin/builtin/archive"
+	. "10gen.com/mci/plugin/builtin/archivePlugin"
 	"10gen.com/mci/plugin/testutil"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"

@@ -50,7 +50,8 @@ func ParseXMLResults(reader io.Reader) (XUnitResults, error) {
 // mci model.TestResult and model.TestLog. Logs are only
 // generated if the test case did not succeed (this is part of
 // the xunit xml file design)
-func (tc TestCase) ToModelTestResultAndLog(task *model.Task) (model.TestResult, *model.TestLog) {
+func (tc TestCase) ToModelTestResultAndLog(
+	task *model.Task) (model.TestResult, *model.TestLog) {
 
 	res := model.TestResult{}
 	var log *model.TestLog

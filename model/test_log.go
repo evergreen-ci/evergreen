@@ -10,7 +10,6 @@ import (
 const TestLogCollection = "test_logs"
 
 type TestLog struct {
-	Id            string   `bson:"_id" json:"_id"`
 	Name          string   `json:"name" bson:"name"`
 	Task          string   `json:"task" bson:"task"`
 	TaskExecution int      `json:"execution" bson:"execution"`
@@ -18,29 +17,11 @@ type TestLog struct {
 }
 
 var (
-	TestLogIdKey            = MustHaveBsonTag(TestLog{}, "Id")
 	TestLogNameKey          = MustHaveBsonTag(TestLog{}, "Name")
 	TestLogTaskKey          = MustHaveBsonTag(TestLog{}, "Task")
 	TestLogTaskExecutionKey = MustHaveBsonTag(TestLog{}, "TaskExecution")
 	TestLogLinesKey         = MustHaveBsonTag(TestLog{}, "Lines")
 )
-
-func FindOneTestLogById(id string) (*TestLog, error) {
-	tl := &TestLog{}
-	err := db.FindOne(
-		TestLogCollection,
-		bson.M{
-			TestLogIdKey: id,
-		},
-		db.NoProjection,
-		db.NoSort,
-		tl,
-	)
-	if err == mgo.ErrNotFound {
-		return nil, nil
-	}
-	return tl, err
-}
 
 // FindOneTestLog returns a TestLog, given the test's name, task id,
 // and execution.
@@ -65,7 +46,6 @@ func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
 
 // Insert inserts the TestLog into the database
 func (self *TestLog) Insert() error {
-	self.Id = bson.NewObjectId().Hex()
 	if err := self.Validate(); err != nil {
 		return fmt.Errorf("cannot insert invalid test log: %v", err)
 	}

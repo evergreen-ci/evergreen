@@ -463,10 +463,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	logReply := struct {
-		Id string `json:"_id"`
-	}{log.Id}
-	as.WriteJSON(w, http.StatusOK, logReply)
+	as.WriteJSON(w, http.StatusOK, "Test log successfully set")
 }
 
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {

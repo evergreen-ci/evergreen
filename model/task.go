@@ -120,9 +120,7 @@ type TestResults struct {
 type TestResult struct {
 	Status    string  `json:"status" bson:"status"`
 	TestFile  string  `json:"test_file" bson:"test_file"`
-	URL       string  `json:"url" bson:"url,omitempty"`
-	LogId     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
-	LineNum   int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
+	URL       string  `json:"url" bson:"url"`
 	ExitCode  int     `json:"exit_code" bson:"exit_code"`
 	StartTime float64 `json:"start" bson:"start"`
 	EndTime   float64 `json:"end" bson:"end"`

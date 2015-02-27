@@ -120,7 +120,7 @@ func (self *RunTestCommand) Execute(pluginLogger plugin.PluginLogger,
 			Lines:         logLines,
 		}
 
-		_, err = pluginCom.TaskPostTestLog(testLog)
+		err = pluginCom.TaskPostTestLog(testLog)
 		if err != nil {
 			pluginLogger.LogTask(slogger.ERROR, "error posting test log: %v", err)
 		}

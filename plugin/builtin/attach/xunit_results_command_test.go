@@ -22,9 +22,10 @@ func TestAttachXUnitResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
+		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", url)
+		server.InstallPlugin(attachPlugin)
 		configFile := "testdata/plugin_attach_xunit.yml"
 		taskConfig, err := testutil.CreateTestConfig(configFile, t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v")
