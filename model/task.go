@@ -329,9 +329,6 @@ func FindTasksWithNoHeartbeatSince(threshold time.Time) ([]Task, error) {
 		TaskLastHeartbeatKey: bson.M{"$lte": threshold},
 	}
 
-	// DEBUGGING for monitor issues. TODO: Take out once problem is fixed.
-	mci.Logger.Logf(slogger.INFO, "heartbeat query: %#v", query)
-
 	return FindAllTasks(
 		query,
 		db.NoProjection,

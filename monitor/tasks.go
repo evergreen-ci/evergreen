@@ -87,13 +87,6 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper,
 func cleanUpTask(wrapper doomedTaskWrapper,
 	projects map[string]model.Project) error {
 
-	// DEBUGGING for monitor issues. TODO: Take out once problem is fixed.
-	if true {
-		mci.Logger.Logf(slogger.INFO, "Would clean up task %v on host %v",
-			wrapper.task.Id, wrapper.task.HostId)
-		return nil
-	}
-
 	// find the appropriate project for the task
 	project, ok := projects[wrapper.task.Project]
 	if !ok {

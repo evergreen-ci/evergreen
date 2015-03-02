@@ -7,7 +7,6 @@ cd $mci_home
 
 ./bin/hostinit -conf /data/home/etc/mci_settings.yml &
 flock --close --nonblock monitor.lock ./bin/monitor -conf /data/home/etc/mci_settings.yml
-flock --close --nonblock cleanup.lock ./bin/cleanup -conf /data/home/etc/mci_settings.yml
 flock --close --nonblock mci_repotracker.lock ./bin/repotracker -conf /data/home/etc/mci_settings.yml
 flock --close --nonblock scheduler.lock ./bin/scheduler -conf /data/home/etc/mci_settings.yml
 flock --close --nonblock task_runner.lock ./bin/taskrunner -conf /data/home/etc/mci_settings.yml

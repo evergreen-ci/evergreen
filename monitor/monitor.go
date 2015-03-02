@@ -17,26 +17,24 @@ var (
 	// the functions the host monitor will run through to find hosts needing
 	// to be terminated
 	defaultHostFlaggingFuncs = []hostFlaggingFunc{
-	/*
 		flagDecommissionedHosts,
 		flagIdleHosts,
 		flagExcessHosts,
 		flagUnprovisionedHosts,
 		flagProvisioningFailedHosts,
 		flagExpiredHosts,
-	*/
 	}
 
 	// the functions the host monitor will run through to do simpler checks
 	defaultHostMonitoringFuncs = []hostMonitoringFunc{
-	//monitorReachability,
+		monitorReachability,
 	}
 
 	// the functions the notifier will use to build notifications that need
 	// to be sent
 	defaultNotificationBuilders = []notificationBuilder{
-	//spawnHostExpirationWarnings,
-	//slowProvisioningWarnings,
+		spawnHostExpirationWarnings,
+		slowProvisioningWarnings,
 	}
 )
 

@@ -40,9 +40,6 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 	// fetch any running tasks whose last heartbeat was too long in the past
 	threshold := time.Now().Add(-HeartbeatTimeoutThreshold)
 
-	// DEBUGGING for monitor issues. TODO: Take out once problem is fixed.
-	mci.Logger.Logf(slogger.INFO, "heartbeat threshold: %v", threshold)
-
 	tasks, err := model.FindTasksWithNoHeartbeatSince(threshold)
 	if err != nil {
 		return nil, fmt.Errorf("error finding tasks with timed-out"+
@@ -52,16 +49,7 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 	// convert to be returned
 	wrappers := make([]doomedTaskWrapper, 0, len(tasks))
 
-	// DEBUGGING for monitor issues. TODO: Take out once problem is fixed.
-	mci.Logger.Logf(slogger.INFO, "%v timed out tasks", len(tasks))
-
 	for _, task := range tasks {
-
-		// DEBUGGING for monitor issues. TODO: Take out once problem is fixed.
-		mci.Logger.Logf(slogger.INFO, "task: %v", task.Id)
-		mci.Logger.Logf(slogger.INFO, "create time: %v", task.CreateTime)
-		mci.Logger.Logf(slogger.INFO, "last heartbeat: %v", task.LastHeartbeat)
-
 		wrappers = append(wrappers, doomedTaskWrapper{task, HeartbeatTimeout})
 	}
 
