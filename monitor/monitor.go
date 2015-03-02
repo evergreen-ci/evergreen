@@ -70,6 +70,12 @@ func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 			continue
 		}
 
+		if project == nil {
+			mci.Logger.Logf(slogger.ERROR, "no project entry found for"+
+				" ref %v", ref.Identifier)
+			continue
+		}
+
 		projects[project.Identifier] = *project
 	}
 
