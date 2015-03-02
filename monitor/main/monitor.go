@@ -36,6 +36,15 @@ func main() {
 		return
 	}
 
+	// defer releasing the global lock
+	defer func() {
+		err := db.ReleaseGlobalLock(MonitorLockTitle)
+		if err != nil {
+			mci.Logger.Errorf(slogger.ERROR, "Error releasing global lock"+
+				" from monitor - this is really bad: %v", err)
+		}
+	}()
+
 	// log the start time
 	startTime := time.Now()
 	mci.Logger.Logf(slogger.INFO, "Starting monitor process at time %v",
