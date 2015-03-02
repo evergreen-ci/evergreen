@@ -234,7 +234,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
             </div>
           </div>
 
-          <patch-diff-panel type="Test" baselink="" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info"></patch-diff-panel>
+          <patch-diff-panel type="Test" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info" baselink=""></patch-diff-panel>
 
           {{range .PluginContent.Panels.Left}}
             {{.}}

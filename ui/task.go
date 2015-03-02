@@ -210,6 +210,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		if taskOnBaseCommit != nil {
 			taskPatch.BaseTaskId = taskOnBaseCommit.Id
 		}
+		taskPatch.StatusDiffs = model.StatusDiffTasks(taskOnBaseCommit, projCtx.Task).Tests
 		task.PatchInfo = taskPatch
 	}
 

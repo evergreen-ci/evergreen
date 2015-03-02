@@ -896,10 +896,12 @@ ul.tooltip-tasks li.tooltip-task {
   width: 26px;
   background-color: #bfbfbe;
 }
-.patch-diff-panel .success {
+.patch-diff-panel .success,
+.patch-diff-panel .pass {
   background-color: #5cb85c !important;
 }
-.patch-diff-panel .failed {
+.patch-diff-panel .failed,
+.patch-diff-panel .fail {
   background-color: #d9534f !important;
 }
 textarea {
