@@ -11,7 +11,7 @@ functions:
      command: shell.exec
      params:
        script: |
-         echo "predefined command!\n"
+         echo "predefined command!"
   "silent shell test" :
      command: shell.exec
      params:

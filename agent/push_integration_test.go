@@ -34,7 +34,7 @@ func TestPushTask(t *testing.T) {
 					testTask, _, err := setupAPITestData(testConfig, mci.PushStage,
 						"linux-64", false, t)
 					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
-					//util.HandleTestingErr(db.ClearCollections(model.ArtifactFilesCollection), t, "can't clear files collection")
+					util.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
 
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 					util.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
