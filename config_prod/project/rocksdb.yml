@@ -1346,7 +1346,7 @@ buildvariants:
   expansions:
     build_rocksdb: true
     compile_flags: --c++11 -j$(grep -c ^processor /proc/cpuinfo) --dbg=off --opt=on --cpppath=$(readlink -f ../rocksdb/include/) --libpath=$(readlink -f ../rocksdb/) --extralib=rocksdb --rocksdb --cc=/opt/mongodbtoolchain/bin/gcc --cxx=/opt/mongodbtoolchain/bin/g++ --variant-dir=release
-    test_flags: --continue-on-failure --storageEngine=rocksExperiment
+    test_flags: --continue-on-failure --storageEngine=RocksDB
   tasks:
   - name: compile
     distros:
