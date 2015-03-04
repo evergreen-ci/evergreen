@@ -1,10 +1,10 @@
 owner: mongodb
 repo: mongo-tools
-branch: master
+branch: v3.0
 repokind: github
 enabled: true
-identifier: mongo-tools
-display_name: Mongo Tools (master)
+identifier: mongo-tools-v3.0
+display_name: Mongo Tools (3.0)
 batchtime: 120
 stepback: true
 remote: true
