@@ -8,4 +8,4 @@ identifier: mongodb-mongo-master
 display_name: MongoDB (master)
 stepback: true
 remote: true
-remote_path: .mci.yml
+remote_path: etc/.evergreen.yml
