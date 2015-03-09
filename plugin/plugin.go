@@ -148,7 +148,7 @@ type PluginCommunicator interface {
 	TaskPostResults(results *model.TestResults) error
 
 	//Make a POST request against the test_log api endpoint
-	TaskPostTestLog(log *model.TestLog) error
+	TaskPostTestLog(log *model.TestLog) (string, error)
 
 	//Make a POST request against the files api endpoint
 	PostTaskFiles(files []*artifact.File) error

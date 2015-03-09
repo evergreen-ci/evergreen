@@ -71,7 +71,7 @@
 
   <body style="padding:0;">
     <pre>
-{{ range $index, $element := .Data }}<i class="icon-link line-link" id='line-link-{{ $index }}'></i> <span class='severity-{{ $element.Severity }} log-line' id='line-{{ $index }}'>{{ DateFormat $element.Timestamp "[2006/01/02 15:04:05.000] " (GetTimezone $.User) }}{{ $element.Message }}</span>
+{{ range $index, $element := .Data }}<i class="icon-link line-link" id='line-link-{{ $index }}'></i> <span class='severity-{{ $element.Severity }} log-line' id='line-{{ $index }}'>{{if not $element.Timestamp.IsZero}}{{ DateFormat $element.Timestamp "[2006/01/02 15:04:05.000] " (GetTimezone $.User) }}{{end}}{{ $element.Message }}</span>
 {{ end }}
     </pre>
 
