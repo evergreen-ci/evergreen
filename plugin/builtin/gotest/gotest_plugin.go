@@ -12,12 +12,13 @@ func init() {
 }
 
 const (
-	GotestPluginName     = "gotest"
-	RunTestCommandName   = "run"
-	ResultsAPIEndpoint   = "gotest_results"
-	TestLogsAPIEndpoint  = "gotest_logs"
-	ResultsPostRetries   = 5
-	ResultsRetrySleepSec = 10 * time.Second
+	GotestPluginName      = "gotest"
+	RunTestCommandName    = "run"
+	ParseFilesCommandName = "parse_files"
+	ResultsAPIEndpoint    = "gotest_results"
+	TestLogsAPIEndpoint   = "gotest_logs"
+	ResultsPostRetries    = 5
+	ResultsRetrySleepSec  = 10 * time.Second
 )
 
 type GotestPlugin struct{}
@@ -30,6 +31,8 @@ func (self *GotestPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	switch cmdName {
 	case RunTestCommandName:
 		return &RunTestCommand{}, nil
+	case ParseFilesCommandName:
+		return &ParseFilesCommand{}, nil
 	default:
 		return nil, fmt.Errorf("No such %v command: %v", GotestPluginName, cmdName)
 	}

@@ -11,7 +11,7 @@ Failures:
   Actual:   '1'
   (Should be equal)
 
---- FAIL: TestFailures (5.02 seconds)
+--- FAIL: TestFailures (5.02s)
 FAIL
 exit status 1
 FAIL	10gen.com/mci/plugin/builtin/gotest	0.008s

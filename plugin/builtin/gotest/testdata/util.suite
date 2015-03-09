@@ -1,0 +1,106 @@
+=== RUN TestWriteToTempFile
+
+  When writing content to a temp file 
+    ensure the exact contents passed are written [32m✔[0m
+
+[31m[0m[33m[0m[32m
+1 assertion thus far[0m
+
+--- PASS: TestWriteToTempFile (0.00s)
+=== RUN TestFileExists
+
+  When testing that a file exists 
+    an existing file should be reported as existing [32m✔[0m[32m✔[0m
+    a nonexistent file should be reported as missing [32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+5 assertions thus far[0m
+
+--- PASS: TestFileExists (0.00s)
+=== RUN TestRunFunctionWithTimeout
+
+  When running a function with a timeout 
+    if the function times out, ErrTimedOut should be returned [32m✔[0m[32m✔[0m
+    if the inner function returns an error, the error should not be swallowed [32m✔[0m
+    if the function does not return an error, nil should be returned [32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+10 assertions thus far[0m
+
+--- PASS: TestRunFunctionWithTimeout (0.50s)
+=== RUN TestNewLineBufferingWriter
+
+  Using a LineBufferingWriter should 
+    flush properly [32m✔[0m[32m✔[0m
+    write to writer if ending with a newline [32m✔[0m[32m✔[0m[32m✔[0m
+    write to writer if there is no newline, but should when there is a newline [32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+    write out if the size of the input + buffer is greater than 4K [32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+27 assertions thus far[0m
+
+--- PASS: TestNewLineBufferingWriter (0.00s)
+=== RUN TestMinInts
+
+  Min should return the minimum of the inputs passed in, or the largest possible int with no inputs [32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+30 assertions thus far[0m
+
+--- PASS: TestMinInts (0.00s)
+=== RUN TestRetriesUsedUp
+
+  When retrying a function that never succeeds 
+    calling it with Retry should return an error [32m✔[0m
+    the 'retried till failure' flag should be true [32m✔[0m
+    Time spent doing Retry() should be total time sleeping [32m✔[0m
+
+[31m[0m[33m[0m[32m
+33 assertions thus far[0m
+
+--- PASS: TestRetriesUsedUp (2.82s)
+=== RUN TestRetryUntilSuccess
+
+  When retrying a function that succeeds after 3 tries 
+    calling it with Retry should not return any error [32m✔[0m
+    the 'retried till failure' flag should be false [32m✔[0m
+    time spent should be retry sleep * attempts needed to pass [32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+37 assertions thus far[0m
+
+--- PASS: TestRetryUntilSuccess (1.25s)
+=== RUN TestNonRetriableFailure
+
+  When retrying a func that returns non-retriable err 
+    calling it with Retry should return an error [32m✔[0m
+    the 'retried till failure' flag should be false [32m✔[0m
+
+[31m[0m[33m[0m[32m
+39 assertions thus far[0m
+
+--- PASS: TestNonRetriableFailure (0.00s)
+=== RUN TestArithmethicRetryUntilSuccess
+
+  With arithmetic backoff when retrying a function that succeeds after 3 tries 
+    calling it with RetryArithmeticBackoff should not return any error [32m✔[0m
+    the 'retried till failure' flag should be false [32m✔[0m
+    time spent should be combined arithmetic retry sleep * attempts needed to pass [32m✔[0m
+
+[31m[0m[33m[0m[32m
+42 assertions thus far[0m
+
+--- PASS: TestArithmethicRetryUntilSuccess (3.04s)
+=== RUN TestGeometricRetryUntilSuccess
+
+  With geometric backoff when retrying a function that succeeds after 3 tries 
+    calling it with RetryGeometricBackoff should not return any error [32m✔[0m
+    the 'retried till failure' flag should be false [32m✔[0m
+    time spent should be geometric retry sleep * attempts needed to pass [32m✔[0m
+
+[31m[0m[33m[0m[32m
+45 assertions thus far[0m
+
+--- PASS: TestGeometricRetryUntilSuccess (2.43s)
+PASS
+ok  	_/Users/sam/tengen/mci/util	10.067s

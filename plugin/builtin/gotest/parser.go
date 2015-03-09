@@ -19,7 +19,7 @@ const (
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value
 	// for number of seconds
-	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+) seconds`
+	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+s)`
 )
 
 var startRegex = regexp.MustCompile(StartRegexString)
@@ -62,6 +62,10 @@ type TestResult struct {
 	StartLine int
 	// Number representing the last line of the test in log output
 	EndLine int
+
+	// Can be set to mark the id of the server-side log that this
+	// results corresponds to
+	LogId string
 }
 
 // VanillaParser parses tests following regular go test output format.
@@ -170,7 +174,7 @@ func endInfoFromLogLine(line string) (string, string, time.Duration, error) {
 	}
 	status := matches[1]
 	name := matches[2]
-	duration, err := time.ParseDuration(matches[3] + "s")
+	duration, err := time.ParseDuration(matches[3])
 	if err != nil {
 		return "", "", 0, fmt.Errorf("error parsing test runtime: %v", err)
 	}

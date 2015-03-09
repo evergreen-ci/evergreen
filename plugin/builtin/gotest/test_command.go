@@ -120,7 +120,7 @@ func (self *RunTestCommand) Execute(pluginLogger plugin.PluginLogger,
 			Lines:         logLines,
 		}
 
-		_, err = pluginCom.TaskPostTestLog(testLog)
+		logId, err := pluginCom.TaskPostTestLog(testLog)
 		if err != nil {
 			pluginLogger.LogTask(slogger.ERROR, "error posting test log: %v", err)
 		}
@@ -135,7 +135,13 @@ func (self *RunTestCommand) Execute(pluginLogger plugin.PluginLogger,
 			continue
 		}
 
-		results = append(results, parser.Results()...)
+		// get the results of this individual test, and set the log id
+		// appropriately
+		testResults := parser.Results()
+		for _, result := range testResults {
+			result.LogId = logId
+			results = append(results, result)
+		}
 	}
 
 	pluginLogger.LogTask(slogger.INFO, "Sending go test results to server")
@@ -246,19 +252,13 @@ func ToModelTestResults(task *model.Task, results []TestResult) model.TestResult
 		case FAIL:
 			status = mci.TestFailedStatus
 		}
-		url := fmt.Sprintf(
-			"/test_log/%v/%v/%v#L%v",
-			task.Id,
-			task.Execution,
-			res.SuiteName,
-			res.StartLine-1, //current view indexes off 0 instead of 1
-		)
 		convertedResult := model.TestResult{
 			TestFile:  res.Name,
 			Status:    status,
 			StartTime: start,
 			EndTime:   end,
-			URL:       url,
+			LineNum:   res.StartLine - 1,
+			LogId:     res.LogId,
 		}
 		modelResults = append(modelResults, convertedResult)
 	}

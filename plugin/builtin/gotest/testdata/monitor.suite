@@ -1,0 +1,186 @@
+=== RUN TestFlaggingDecommissionedHosts
+
+  When flagging decommissioned hosts 
+    only hosts in the database who are marked decommissioned should be returned [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:29] Finding decommissioned hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:37] Found 2 decommissioned hosts
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+4 assertions thus far[0m
+
+--- PASS: TestFlaggingDecommissionedHosts (0.01s)
+=== RUN TestFlaggingIdleHosts
+
+  When flagging idle hosts to be terminated 
+    hosts currently running a task should never be flagged [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:48] Finding idle hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:97] Found 0 idle hosts
+[32m✔[0m[32m✔[0m
+    hosts not currently running a task should be flagged if they have been idle at least 15 minutes and will incur a payment in less than 10 minutes [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:48] Finding idle hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:97] Found 1 idle hosts
+[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+9 assertions thus far[0m
+
+--- PASS: TestFlaggingIdleHosts (0.00s)
+=== RUN TestFlaggingExcessHosts
+
+  When flagging excess hosts to be terminated 
+    with two separate distros containing hosts 
+      if neither distro has excess hosts, no hosts should be flagged to be terminated [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:108] Finding excess hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:165] Found 0 total excess hosts
+[32m✔[0m[32m✔[0m
+      if only one distro has excess hosts, the appropriate number of hosts from that distro should be flagged [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:108] Finding excess hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:158] Flagged 2 excess hosts for distro d2
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:165] Found 2 total excess hosts
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+      if both distros have excess hosts, the appropriate number of hosts from each distro should be flagged [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:108] Finding excess hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:158] Flagged 1 excess hosts for distro d1
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:158] Flagged 2 excess hosts for distro d2
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:165] Found 3 total excess hosts
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+      hosts currently running a task should not be flagged [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:108] Finding excess hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:158] Flagged 0 excess hosts for distro d2
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:165] Found 0 total excess hosts
+[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+21 assertions thus far[0m
+
+--- PASS: TestFlaggingExcessHosts (0.01s)
+=== RUN TestFlaggingUnprovisionedHosts
+
+  When flagging unprovisioned hosts to be terminated 
+    hosts that have not hit the provisioning limit should be ignored [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:176] Finding unprovisioned hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:185] Found 0 unprovisioned hosts
+[32m✔[0m[32m✔[0m
+    hosts that are already terminated should be ignored [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:176] Finding unprovisioned hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:185] Found 0 unprovisioned hosts
+[32m✔[0m[32m✔[0m
+    hosts that are already provisioned should be ignored [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:176] Finding unprovisioned hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:185] Found 0 unprovisioned hosts
+[32m✔[0m[32m✔[0m
+    hosts that have hit the provisioning limit should be flagged [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:176] Finding unprovisioned hosts...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:185] Found 1 unprovisioned hosts
+[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+30 assertions thus far[0m
+
+--- PASS: TestFlaggingUnprovisionedHosts (0.01s)
+=== RUN TestFlaggingProvisioningFailedHosts
+
+  When flagging hosts whose provisioning failed 
+    only hosts whose provisioning failed should be picked up [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:196] Finding hosts whose provisioning failed...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:206] Found 1 hosts whose provisioning failed
+[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+33 assertions thus far[0m
+
+--- PASS: TestFlaggingProvisioningFailedHosts (0.00s)
+=== RUN TestFlaggingExpiredHosts
+
+  When flagging expired hosts to be terminated 
+    hosts started by the default user should be filtered out [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:218] Finding expired hosts
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:226] Found 0 expired hosts
+[32m✔[0m[32m✔[0m
+    hosts that are terminated or quarantined should be filtered out [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:218] Finding expired hosts
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:226] Found 0 expired hosts
+[32m✔[0m[32m✔[0m
+    hosts should be returned if their expiration threshold has been reached [2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:218] Finding expired hosts
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_flagging.go:226] Found 1 expired hosts
+[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+40 assertions thus far[0m
+
+--- PASS: TestFlaggingExpiredHosts (0.01s)
+=== RUN TestMonitorReachability
+
+  When checking the reachability of hosts 
+    hosts that have been checked up on recently should not be checked [2015/03/09 10:54:29] [.info] [mci/monitor/host_monitoring.go:25] Running reachability checks...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_monitoring.go:52] Finished running host reachability checks
+[32m✔[0m[32m✔[0m[32m✔[0m
+    hosts eligible for a check should have their statuses updated appropriately [2015/03/09 10:54:29] [.info] [mci/monitor/host_monitoring.go:25] Running reachability checks...
+[2015/03/09 10:54:29] [.info] [mci/monitor/host_monitoring.go:52] Finished running host reachability checks
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+48 assertions thus far[0m
+
+--- PASS: TestMonitorReachability (0.01s)
+=== RUN TestWarnExpiringSpawnedHosts
+
+  When building warnings for spawned hosts that will be expiring soon 
+    any hosts not expiring within a threshold should not trigger warnings [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:48] Building spawned host expiration warnings...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:113] Built 0 warnings about imminently expiring hosts
+[32m✔[0m[32m✔[0m
+    any thresholds for which warnings have already been sent should be ignored [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:48] Building spawned host expiration warnings...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:113] Built 0 warnings about imminently expiring hosts
+[32m✔[0m[32m✔[0m
+    the most recent threshold crossed should be used to create the warning [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:48] Building spawned host expiration warnings...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:90] Warning needs to be sent for threshold '120' for host h1
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:113] Built 1 warnings about imminently expiring hosts
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+    hosts that are quarantined or have already expired should not merit warnings [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:48] Building spawned host expiration warnings...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:113] Built 0 warnings about imminently expiring hosts
+[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+59 assertions thus far[0m
+
+--- PASS: TestWarnExpiringSpawnedHosts (0.01s)
+=== RUN TestWarnSlowProvisioningHosts
+
+  When building warnings for hosts that are taking a long time to provision 
+    hosts that have not hit the threshold should not trigger a warning [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:145] Building warnings for hosts taking a long time to provision...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:185] Built 0 warnings about hosts taking a long time to provision
+[32m✔[0m[32m✔[0m
+    hosts that have already triggered a notification should not trigger another [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:145] Building warnings for hosts taking a long time to provision...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:185] Built 0 warnings about hosts taking a long time to provision
+[32m✔[0m[32m✔[0m
+    terminated hosts should not trigger a warning [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:145] Building warnings for hosts taking a long time to provision...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:185] Built 0 warnings about hosts taking a long time to provision
+[32m✔[0m[32m✔[0m
+    hosts that are at the threshold and have not previously triggered a warning should trigger one [2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:145] Building warnings for hosts taking a long time to provision...
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:165] Slow-provisioning warning needs to be sent for host h1
+[2015/03/09 10:54:29] [.info] [mci/monitor/notification.go:185] Built 1 warnings about hosts taking a long time to provision
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+70 assertions thus far[0m
+
+--- PASS: TestWarnSlowProvisioningHosts (0.01s)
+=== RUN TestFlaggingTimedOutHeartbeats
+
+  When flagging tasks whose heartbeat has timed out 
+    tasks that are not running should be ignored [2015/03/09 10:54:29] [.info] [mci/monitor/task_flagging.go:38] Finding tasks with timed-out heartbeats...
+[2015/03/09 10:54:29] [.info] [mci/monitor/task_flagging.go:57] Found 0 tasks whose heartbeats timed out
+[32m✔[0m[32m✔[0m
+    tasks whose heartbeat has not timed out should be ignored [2015/03/09 10:54:29] [.info] [mci/monitor/task_flagging.go:38] Finding tasks with timed-out heartbeats...
+[2015/03/09 10:54:29] [.info] [mci/monitor/task_flagging.go:57] Found 0 tasks whose heartbeats timed out
+[32m✔[0m[32m✔[0m
+    tasks whose heartbeat has timed out should be picked up [2015/03/09 10:54:29] [.info] [mci/monitor/task_flagging.go:38] Finding tasks with timed-out heartbeats...
+[2015/03/09 10:54:29] [.info] [mci/monitor/task_flagging.go:57] Found 2 tasks whose heartbeats timed out
+[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+78 assertions thus far[0m
+
+--- PASS: TestFlaggingTimedOutHeartbeats (0.01s)
+=== RUN TestCleanupTask
+
+  When cleaning up a task 
+    an error should be thrown if the passed-in projects slice does not contain the task's project [32m✔[0m[32m✔[0m
+    an error should be thrown if the task's host is marked with the wrong running task id [32m✔[0m[32m✔[0m[32m✔[0m
+    if the task's heartbeat timed out 
+      the task should be reset [32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+      the running task field on the task's host should be reset [32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m[32m✔[0m
+
+[31m[0m[33m[0m[32m
+96 assertions thus far[0m
+
+--- PASS: TestCleanupTask (0.01s)
+PASS
+ok  	_/Users/sam/tengen/mci/monitor	0.082s
