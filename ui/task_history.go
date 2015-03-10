@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -113,6 +114,72 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		}{projCtx, GetUser(r), []interface{}{}, data}, "base",
 			"task_history.html", "base_angular.html", "menu.html")
 	}
+}
+
+func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	variant := mux.Vars(r)["variant"]
+	beforeCommitId := r.FormValue("before")
+	isJson := (r.FormValue("format") == "json")
+
+	var beforeCommit *model.Version
+	var err error
+	beforeCommit = nil
+	if beforeCommitId != "" {
+		beforeCommit, err = model.FindVersion(beforeCommitId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		if beforeCommit == nil {
+			mci.Logger.Logf(slogger.WARN, "'before' was specified but query returned nil")
+		}
+	}
+
+	project, err := model.FindProject("", projCtx.Project.Identifier, uis.MCISettings.ConfigDir)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	bv := project.FindBuildVariant(variant)
+	if bv == nil {
+		http.Error(w, "variant not found", http.StatusNotFound)
+		return
+	}
+
+	iter := model.NewBuildVariantHistoryIterator(variant, bv.Name, projCtx.Project.Identifier)
+	tasks, versions, err := iter.GetItems(beforeCommit, 50)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	var suites []string
+	for _, task := range project.Tasks {
+		suites = append(suites, task.Name)
+	}
+
+	sort.Strings(suites)
+
+	data := struct {
+		Variant   string
+		Tasks     []bson.M
+		TaskNames []string
+		Versions  []model.Version
+		Project   string
+	}{variant, tasks, suites, versions, projCtx.Project.Identifier}
+	if isJson {
+		uis.WriteJSON(w, http.StatusOK, data)
+		return
+	}
+	uis.WriteHTML(w, http.StatusOK, struct {
+		ProjectData projectContext
+		User        *model.DBUser
+		Flashes     []interface{}
+		Data        interface{}
+	}{projCtx, GetUser(r), []interface{}{}, data}, "base",
+		"build_variant_history.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) {

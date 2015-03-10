@@ -110,6 +110,8 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task_history/{project_id}/{task_name}/pickaxe", uis.loadCtx(uis.taskHistoryPickaxe))
 	r.HandleFunc("/task_history/{project_id}/{task_name}/test_names", uis.loadCtx(uis.taskHistoryTestNames))
 	r.HandleFunc("/task_history_json/{task_id}/{window}", uis.loadCtx(uis.taskHistoryJson))
+	// Variant History
+	r.HandleFunc("/build_variant/{project_id}/{variant}", uis.loadCtx(uis.variantHistory))
 
 	// Task queues
 	r.HandleFunc("/task_queue", uis.loadCtx(uis.allTaskQueues))
