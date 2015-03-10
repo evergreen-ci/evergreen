@@ -841,6 +841,16 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 	}
 
 	if active {
+
+		// if the task is being activated, make sure to activate all of the task's
+		// dependencies as well
+		for _, depId := range task.DependsOn {
+			if err = SetTaskActivated(depId, caller, true); err != nil {
+				return fmt.Errorf("error activating dependency for %v with id %v: %v",
+					taskId, depId, err)
+			}
+		}
+
 		if task.DispatchTime != ZeroTime && task.Status == mci.TaskUndispatched {
 			err = task.reset()
 		} else {
@@ -1467,15 +1477,7 @@ func (self *Task) ActivatePreviousTask(caller string) (err error) {
 		return nil
 	}
 
-	// activate the task's dependencies
-	for _, taskId := range tasks[0].DependsOn {
-		// activate the task's dependencies
-		if err = SetTaskActivated(taskId, caller, true); err != nil {
-			return err
-		}
-	}
-
-	// then activate the task itself
+	// activate the task
 	return SetTaskActivated(tasks[0].Id, caller, true)
 }
 

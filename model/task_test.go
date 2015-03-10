@@ -427,14 +427,30 @@ func TestSetTaskActivated(t *testing.T) {
 			Id:            taskId,
 			ScheduledTime: testTime,
 			BuildId:       buildId,
+			DependsOn:     []string{"t2", "t3"},
 		}
 
 		build := &Build{
 			Id: buildId,
 			Tasks: []TaskCache{
 				TaskCache{Id: taskId},
+				TaskCache{Id: "t2"},
+				TaskCache{Id: "t3"},
 			},
 		}
+
+		dep1 := &Task{
+			Id:            "t2",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		dep2 := &Task{
+			Id:            "t3",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		So(dep1.Insert(), ShouldBeNil)
+		So(dep2.Insert(), ShouldBeNil)
 
 		So(task.Insert(), ShouldBeNil)
 		So(build.Insert(), ShouldBeNil)
@@ -445,6 +461,14 @@ func TestSetTaskActivated(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(dbTask.Activated, ShouldBeTrue)
 			So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
+
+			// make sure the dependencies were activated
+			dbDepOne, err := FindTask(dep1.Id)
+			So(err, ShouldBeNil)
+			So(dbDepOne.Activated, ShouldBeTrue)
+			dbDepTwo, err := FindTask(dep2.Id)
+			So(err, ShouldBeNil)
+			So(dbDepTwo.Activated, ShouldBeTrue)
 
 			Convey("and setting active to false will reset the relevant fields", func() {
 				So(SetTaskActivated(taskId, "", false), ShouldBeNil)

@@ -21,13 +21,6 @@ func TestFindProject(t *testing.T) {
 			So(project, ShouldBeNil)
 		})
 
-		Convey("an error should be thrown if there is no corresponding project"+
-			" file", func() {
-			project, err := FindProject("", "invalid", projectTestConf.ConfigDir)
-			So(err, ShouldNotBeNil)
-			So(project, ShouldBeNil)
-		})
-
 		Convey("if the project file exists and is valid, the project spec within"+
 			" it should be unmarshalled and returned", func() {
 			version := &Version{
