@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -20,9 +21,9 @@ type ProjectNotificationTime struct {
 }
 
 var (
-	PntProjectNameKey = MustHaveBsonTag(ProjectNotificationTime{},
+	PntProjectNameKey = bsonutil.MustHaveTag(ProjectNotificationTime{},
 		"ProjectName")
-	PntLastEventTime = MustHaveBsonTag(ProjectNotificationTime{},
+	PntLastEventTime = bsonutil.MustHaveTag(ProjectNotificationTime{},
 		"LastNotificationEventTime")
 )
 

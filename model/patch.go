@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/thirdparty"
 	"10gen.com/mci/util"
 	"fmt"
@@ -73,35 +74,35 @@ type PatchMetadata struct {
 
 var (
 	// BSON fields for the patch struct
-	PatchIdKey            = MustHaveBsonTag(Patch{}, "Id")
-	PatchDescriptionKey   = MustHaveBsonTag(Patch{}, "Description")
-	PatchProjectKey       = MustHaveBsonTag(Patch{}, "Project")
-	PatchGithashKey       = MustHaveBsonTag(Patch{}, "Githash")
-	PatchAuthorKey        = MustHaveBsonTag(Patch{}, "Author")
-	PatchNumberKey        = MustHaveBsonTag(Patch{}, "PatchNumber")
-	PatchVersionKey       = MustHaveBsonTag(Patch{}, "Version")
-	PatchStatusKey        = MustHaveBsonTag(Patch{}, "Status")
-	PatchCreateTimeKey    = MustHaveBsonTag(Patch{}, "CreateTime")
-	PatchStartTimeKey     = MustHaveBsonTag(Patch{}, "StartTime")
-	PatchFinishTimeKey    = MustHaveBsonTag(Patch{}, "FinishTime")
-	PatchBuildVariantsKey = MustHaveBsonTag(Patch{}, "BuildVariants")
-	PatchTasksKey         = MustHaveBsonTag(Patch{}, "Tasks")
-	PatchPatchesKey       = MustHaveBsonTag(Patch{}, "Patches")
-	PatchActivatedKey     = MustHaveBsonTag(Patch{}, "Activated")
+	PatchIdKey            = bsonutil.MustHaveTag(Patch{}, "Id")
+	PatchDescriptionKey   = bsonutil.MustHaveTag(Patch{}, "Description")
+	PatchProjectKey       = bsonutil.MustHaveTag(Patch{}, "Project")
+	PatchGithashKey       = bsonutil.MustHaveTag(Patch{}, "Githash")
+	PatchAuthorKey        = bsonutil.MustHaveTag(Patch{}, "Author")
+	PatchNumberKey        = bsonutil.MustHaveTag(Patch{}, "PatchNumber")
+	PatchVersionKey       = bsonutil.MustHaveTag(Patch{}, "Version")
+	PatchStatusKey        = bsonutil.MustHaveTag(Patch{}, "Status")
+	PatchCreateTimeKey    = bsonutil.MustHaveTag(Patch{}, "CreateTime")
+	PatchStartTimeKey     = bsonutil.MustHaveTag(Patch{}, "StartTime")
+	PatchFinishTimeKey    = bsonutil.MustHaveTag(Patch{}, "FinishTime")
+	PatchBuildVariantsKey = bsonutil.MustHaveTag(Patch{}, "BuildVariants")
+	PatchTasksKey         = bsonutil.MustHaveTag(Patch{}, "Tasks")
+	PatchPatchesKey       = bsonutil.MustHaveTag(Patch{}, "Patches")
+	PatchActivatedKey     = bsonutil.MustHaveTag(Patch{}, "Activated")
 
 	// BSON fields for the module patch struct
-	ModulePatchNameKey    = MustHaveBsonTag(ModulePatch{}, "ModuleName")
-	ModulePatchGithashKey = MustHaveBsonTag(ModulePatch{}, "Githash")
-	ModulePatchSetKey     = MustHaveBsonTag(ModulePatch{}, "PatchSet")
+	ModulePatchNameKey    = bsonutil.MustHaveTag(ModulePatch{}, "ModuleName")
+	ModulePatchGithashKey = bsonutil.MustHaveTag(ModulePatch{}, "Githash")
+	ModulePatchSetKey     = bsonutil.MustHaveTag(ModulePatch{}, "PatchSet")
 
 	// BSON fields for the patch set struct
-	PatchSetPatchKey   = MustHaveBsonTag(PatchSet{}, "Patch")
-	PatchSetSummaryKey = MustHaveBsonTag(PatchSet{}, "Summary")
+	PatchSetPatchKey   = bsonutil.MustHaveTag(PatchSet{}, "Patch")
+	PatchSetSummaryKey = bsonutil.MustHaveTag(PatchSet{}, "Summary")
 
 	// BSON fields for the git patch summary struct
-	GitSummaryNameKey      = MustHaveBsonTag(thirdparty.Summary{}, "Name")
-	GitSummaryAdditionsKey = MustHaveBsonTag(thirdparty.Summary{}, "Additions")
-	GitSummaryDeletionsKey = MustHaveBsonTag(thirdparty.Summary{}, "Deletions")
+	GitSummaryNameKey      = bsonutil.MustHaveTag(thirdparty.Summary{}, "Name")
+	GitSummaryAdditionsKey = bsonutil.MustHaveTag(thirdparty.Summary{}, "Additions")
+	GitSummaryDeletionsKey = bsonutil.MustHaveTag(thirdparty.Summary{}, "Deletions")
 )
 
 /******************************************************

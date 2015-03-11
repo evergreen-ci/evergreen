@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/util"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -46,18 +47,18 @@ type TaskLog struct {
 
 var (
 	// bson fields for the task log struct
-	TaskLogIdKey           = MustHaveBsonTag(TaskLog{}, "Id")
-	TaskLogTaskIdKey       = MustHaveBsonTag(TaskLog{}, "TaskId")
-	TaskLogExecutionKey    = MustHaveBsonTag(TaskLog{}, "Execution")
-	TaskLogTimestampKey    = MustHaveBsonTag(TaskLog{}, "Timestamp")
-	TaskLogMessageCountKey = MustHaveBsonTag(TaskLog{}, "MessageCount")
-	TaskLogMessagesKey     = MustHaveBsonTag(TaskLog{}, "Messages")
+	TaskLogIdKey           = bsonutil.MustHaveTag(TaskLog{}, "Id")
+	TaskLogTaskIdKey       = bsonutil.MustHaveTag(TaskLog{}, "TaskId")
+	TaskLogExecutionKey    = bsonutil.MustHaveTag(TaskLog{}, "Execution")
+	TaskLogTimestampKey    = bsonutil.MustHaveTag(TaskLog{}, "Timestamp")
+	TaskLogMessageCountKey = bsonutil.MustHaveTag(TaskLog{}, "MessageCount")
+	TaskLogMessagesKey     = bsonutil.MustHaveTag(TaskLog{}, "Messages")
 
 	// bson fields for the log message struct
-	LogMessageTypeKey      = MustHaveBsonTag(LogMessage{}, "Type")
-	LogMessageSeverityKey  = MustHaveBsonTag(LogMessage{}, "Severity")
-	LogMessageMessageKey   = MustHaveBsonTag(LogMessage{}, "Message")
-	LogMessageTimestampKey = MustHaveBsonTag(LogMessage{}, "Timestamp")
+	LogMessageTypeKey      = bsonutil.MustHaveTag(LogMessage{}, "Type")
+	LogMessageSeverityKey  = bsonutil.MustHaveTag(LogMessage{}, "Severity")
+	LogMessageMessageKey   = bsonutil.MustHaveTag(LogMessage{}, "Message")
+	LogMessageTimestampKey = bsonutil.MustHaveTag(LogMessage{}, "Timestamp")
 )
 
 // helper for getting the correct db

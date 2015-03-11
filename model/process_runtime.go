@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"github.com/10gen-labs/slogger/v1"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -25,10 +26,10 @@ type ProcessRuntime struct {
 }
 
 var (
-	ProcRuntimeIdKey         = MustHaveBsonTag(ProcessRuntime{}, "Id")
-	ProcRuntimeFinishedAtKey = MustHaveBsonTag(ProcessRuntime{},
+	ProcRuntimeIdKey         = bsonutil.MustHaveTag(ProcessRuntime{}, "Id")
+	ProcRuntimeFinishedAtKey = bsonutil.MustHaveTag(ProcessRuntime{},
 		"FinishedAt")
-	ProcRuntimeRuntimeKey = MustHaveBsonTag(ProcessRuntime{}, "Runtime")
+	ProcRuntimeRuntimeKey = bsonutil.MustHaveTag(ProcessRuntime{}, "Runtime")
 )
 
 /******************************************************

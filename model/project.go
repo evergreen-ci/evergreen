@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -151,23 +152,23 @@ type TaskConfig struct {
 
 var (
 	// bson fields for the project struct
-	ProjectEnabledKey       = MustHaveBsonTag(Project{}, "Enabled")
-	ProjectRemoteKey        = MustHaveBsonTag(Project{}, "Remote")
-	ProjectBatchTimeKey     = MustHaveBsonTag(Project{}, "BatchTime")
-	ProjectOwnerNameKey     = MustHaveBsonTag(Project{}, "Owner")
-	ProjectRepoKey          = MustHaveBsonTag(Project{}, "Repo")
-	ProjectRepoKindKey      = MustHaveBsonTag(Project{}, "RepoKind")
-	ProjectBranchKey        = MustHaveBsonTag(Project{}, "Branch")
-	ProjectIdentifierKey    = MustHaveBsonTag(Project{}, "Identifier")
-	ProjectDisplayNameKey   = MustHaveBsonTag(Project{}, "DisplayName")
-	ProjectPreKey           = MustHaveBsonTag(Project{}, "Pre")
-	ProjectPostKey          = MustHaveBsonTag(Project{}, "Post")
-	ProjectModulesKey       = MustHaveBsonTag(Project{}, "Modules")
-	ProjectBuildVariantsKey = MustHaveBsonTag(Project{}, "BuildVariants")
-	ProjectFunctionsKey     = MustHaveBsonTag(Project{}, "Functions")
-	ProjectStepbackKey      = MustHaveBsonTag(Project{}, "Stepback")
-	ProjectTasksKey         = MustHaveBsonTag(Project{}, "Tasks")
-	ProjectBVMatrixKey      = MustHaveBsonTag(Project{}, "BuildVariantMatrix")
+	ProjectEnabledKey       = bsonutil.MustHaveTag(Project{}, "Enabled")
+	ProjectRemoteKey        = bsonutil.MustHaveTag(Project{}, "Remote")
+	ProjectBatchTimeKey     = bsonutil.MustHaveTag(Project{}, "BatchTime")
+	ProjectOwnerNameKey     = bsonutil.MustHaveTag(Project{}, "Owner")
+	ProjectRepoKey          = bsonutil.MustHaveTag(Project{}, "Repo")
+	ProjectRepoKindKey      = bsonutil.MustHaveTag(Project{}, "RepoKind")
+	ProjectBranchKey        = bsonutil.MustHaveTag(Project{}, "Branch")
+	ProjectIdentifierKey    = bsonutil.MustHaveTag(Project{}, "Identifier")
+	ProjectDisplayNameKey   = bsonutil.MustHaveTag(Project{}, "DisplayName")
+	ProjectPreKey           = bsonutil.MustHaveTag(Project{}, "Pre")
+	ProjectPostKey          = bsonutil.MustHaveTag(Project{}, "Post")
+	ProjectModulesKey       = bsonutil.MustHaveTag(Project{}, "Modules")
+	ProjectBuildVariantsKey = bsonutil.MustHaveTag(Project{}, "BuildVariants")
+	ProjectFunctionsKey     = bsonutil.MustHaveTag(Project{}, "Functions")
+	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
+	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
+	ProjectBVMatrixKey      = bsonutil.MustHaveTag(Project{}, "BuildVariantMatrix")
 )
 
 func NewTaskConfig(distro *Distro, project *Project, task *Task, workDir string) (*TaskConfig, error) {

@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -18,11 +19,11 @@ type TestLog struct {
 }
 
 var (
-	TestLogIdKey            = MustHaveBsonTag(TestLog{}, "Id")
-	TestLogNameKey          = MustHaveBsonTag(TestLog{}, "Name")
-	TestLogTaskKey          = MustHaveBsonTag(TestLog{}, "Task")
-	TestLogTaskExecutionKey = MustHaveBsonTag(TestLog{}, "TaskExecution")
-	TestLogLinesKey         = MustHaveBsonTag(TestLog{}, "Lines")
+	TestLogIdKey            = bsonutil.MustHaveTag(TestLog{}, "Id")
+	TestLogNameKey          = bsonutil.MustHaveTag(TestLog{}, "Name")
+	TestLogTaskKey          = bsonutil.MustHaveTag(TestLog{}, "Task")
+	TestLogTaskExecutionKey = bsonutil.MustHaveTag(TestLog{}, "TaskExecution")
+	TestLogLinesKey         = bsonutil.MustHaveTag(TestLog{}, "Lines")
 )
 
 func FindOneTestLogById(id string) (*TestLog, error) {

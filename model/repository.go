@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -15,11 +16,11 @@ type Repository struct {
 
 var (
 	// bson fields for the Repository struct
-	RepoProjectKey = MustHaveBsonTag(Repository{},
+	RepoProjectKey = bsonutil.MustHaveTag(Repository{},
 		"RepositoryProject")
-	RepoLastRevisionKey = MustHaveBsonTag(Repository{},
+	RepoLastRevisionKey = bsonutil.MustHaveTag(Repository{},
 		"LastRevision")
-	RepositoryOrderNumberKey = MustHaveBsonTag(Repository{},
+	RepositoryOrderNumberKey = bsonutil.MustHaveTag(Repository{},
 		"RevisionOrderNumber")
 )
 

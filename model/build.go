@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -58,32 +59,32 @@ type Build struct {
 
 var (
 	// bson fields for the build struct
-	BuildIdKey                  = MustHaveBsonTag(Build{}, "Id")
-	BuildCreateTimeKey          = MustHaveBsonTag(Build{}, "CreateTime")
-	BuildStartTimeKey           = MustHaveBsonTag(Build{}, "StartTime")
-	BuildFinishTimeKey          = MustHaveBsonTag(Build{}, "FinishTime")
-	BuildPushTimeKey            = MustHaveBsonTag(Build{}, "PushTime")
-	BuildVersionKey             = MustHaveBsonTag(Build{}, "Version")
-	BuildProjectKey             = MustHaveBsonTag(Build{}, "Project")
-	BuildRevisionKey            = MustHaveBsonTag(Build{}, "Revision")
-	BuildBuildVariantKey        = MustHaveBsonTag(Build{}, "BuildVariant")
-	BuildBuildNumberKey         = MustHaveBsonTag(Build{}, "BuildNumber")
-	BuildStatusKey              = MustHaveBsonTag(Build{}, "Status")
-	BuildActivatedKey           = MustHaveBsonTag(Build{}, "Activated")
-	BuildActivatedTimeKey       = MustHaveBsonTag(Build{}, "ActivatedTime")
-	BuildRevisionOrderNumberKey = MustHaveBsonTag(Build{}, "RevisionOrderNumber")
-	BuildTasksKey               = MustHaveBsonTag(Build{}, "Tasks")
-	BuildTimeTakenKey           = MustHaveBsonTag(Build{}, "TimeTaken")
-	BuildDisplayNameKey         = MustHaveBsonTag(Build{}, "DisplayName")
-	BuildRequesterKey           = MustHaveBsonTag(Build{}, "Requester")
+	BuildIdKey                  = bsonutil.MustHaveTag(Build{}, "Id")
+	BuildCreateTimeKey          = bsonutil.MustHaveTag(Build{}, "CreateTime")
+	BuildStartTimeKey           = bsonutil.MustHaveTag(Build{}, "StartTime")
+	BuildFinishTimeKey          = bsonutil.MustHaveTag(Build{}, "FinishTime")
+	BuildPushTimeKey            = bsonutil.MustHaveTag(Build{}, "PushTime")
+	BuildVersionKey             = bsonutil.MustHaveTag(Build{}, "Version")
+	BuildProjectKey             = bsonutil.MustHaveTag(Build{}, "Project")
+	BuildRevisionKey            = bsonutil.MustHaveTag(Build{}, "Revision")
+	BuildBuildVariantKey        = bsonutil.MustHaveTag(Build{}, "BuildVariant")
+	BuildBuildNumberKey         = bsonutil.MustHaveTag(Build{}, "BuildNumber")
+	BuildStatusKey              = bsonutil.MustHaveTag(Build{}, "Status")
+	BuildActivatedKey           = bsonutil.MustHaveTag(Build{}, "Activated")
+	BuildActivatedTimeKey       = bsonutil.MustHaveTag(Build{}, "ActivatedTime")
+	BuildRevisionOrderNumberKey = bsonutil.MustHaveTag(Build{}, "RevisionOrderNumber")
+	BuildTasksKey               = bsonutil.MustHaveTag(Build{}, "Tasks")
+	BuildTimeTakenKey           = bsonutil.MustHaveTag(Build{}, "TimeTaken")
+	BuildDisplayNameKey         = bsonutil.MustHaveTag(Build{}, "DisplayName")
+	BuildRequesterKey           = bsonutil.MustHaveTag(Build{}, "Requester")
 
 	// bson fields for the task caches
-	TaskCacheIdKey          = MustHaveBsonTag(TaskCache{}, "Id")
-	TaskCacheDisplayNameKey = MustHaveBsonTag(TaskCache{}, "DisplayName")
-	TaskCacheStatusKey      = MustHaveBsonTag(TaskCache{}, "Status")
-	TaskCacheStartTimeKey   = MustHaveBsonTag(TaskCache{}, "StartTime")
-	TaskCacheTimeTakenKey   = MustHaveBsonTag(TaskCache{}, "TimeTaken")
-	TaskCacheActivatedKey   = MustHaveBsonTag(TaskCache{}, "Activated")
+	TaskCacheIdKey          = bsonutil.MustHaveTag(TaskCache{}, "Id")
+	TaskCacheDisplayNameKey = bsonutil.MustHaveTag(TaskCache{}, "DisplayName")
+	TaskCacheStatusKey      = bsonutil.MustHaveTag(TaskCache{}, "Status")
+	TaskCacheStartTimeKey   = bsonutil.MustHaveTag(TaskCache{}, "StartTime")
+	TaskCacheTimeTakenKey   = bsonutil.MustHaveTag(TaskCache{}, "TimeTaken")
+	TaskCacheActivatedKey   = bsonutil.MustHaveTag(TaskCache{}, "Activated")
 )
 
 // Creates a new task cache with the specified id, display name, and value for

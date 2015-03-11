@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/auth"
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/thirdparty"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -39,16 +40,16 @@ type UserSettings struct {
 
 var (
 	// bson fields for the user struct
-	UserIdKey           = MustHaveBsonTag(DBUser{}, "Id")
-	UserFirstNameKey    = MustHaveBsonTag(DBUser{}, "FirstName")
-	UserLastNameKey     = MustHaveBsonTag(DBUser{}, "LastName")
-	UserDispNameKey     = MustHaveBsonTag(DBUser{}, "DispName")
-	UserEmailAddressKey = MustHaveBsonTag(DBUser{}, "EmailAddress")
-	UserCreatedAtKey    = MustHaveBsonTag(DBUser{}, "CreatedAt")
-	UserSettingsKey     = MustHaveBsonTag(DBUser{}, "Settings")
+	UserIdKey           = bsonutil.MustHaveTag(DBUser{}, "Id")
+	UserFirstNameKey    = bsonutil.MustHaveTag(DBUser{}, "FirstName")
+	UserLastNameKey     = bsonutil.MustHaveTag(DBUser{}, "LastName")
+	UserDispNameKey     = bsonutil.MustHaveTag(DBUser{}, "DispName")
+	UserEmailAddressKey = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
+	UserCreatedAtKey    = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
+	UserSettingsKey     = bsonutil.MustHaveTag(DBUser{}, "Settings")
 
 	// bson fields for the user settings struct
-	UserSettingsTZKey = MustHaveBsonTag(UserSettings{}, "Timezone")
+	UserSettingsTZKey = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
 )
 
 func (self *DBUser) Username() string {

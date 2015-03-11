@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -26,18 +27,18 @@ type ProjectRef struct {
 
 var (
 	// bson fields for the ProjectRef struct
-	ProjectRefOwnerKey       = MustHaveBsonTag(ProjectRef{}, "Owner")
-	ProjectRefRepoKey        = MustHaveBsonTag(ProjectRef{}, "Repo")
-	ProjectRefBranchKey      = MustHaveBsonTag(ProjectRef{}, "Branch")
-	ProjectRefRepoKindKey    = MustHaveBsonTag(ProjectRef{}, "RepoKind")
-	ProjectRefEnabledKey     = MustHaveBsonTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey     = MustHaveBsonTag(ProjectRef{}, "Private")
-	ProjectRefBatchTimeKey   = MustHaveBsonTag(ProjectRef{}, "BatchTime")
-	ProjectRefIdentifierKey  = MustHaveBsonTag(ProjectRef{}, "Identifier")
-	ProjectRefDisplayNameKey = MustHaveBsonTag(ProjectRef{}, "DisplayName")
-	ProjectRefRemoteKey      = MustHaveBsonTag(ProjectRef{}, "Remote")
-	ProjectRefRemotePathKey  = MustHaveBsonTag(ProjectRef{}, "RemotePath")
-	ProjectRefTrackedKey     = MustHaveBsonTag(ProjectRef{}, "Tracked")
+	ProjectRefOwnerKey       = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
+	ProjectRefRepoKey        = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
+	ProjectRefBranchKey      = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
+	ProjectRefRepoKindKey    = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
+	ProjectRefEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey     = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefBatchTimeKey   = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
+	ProjectRefIdentifierKey  = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefDisplayNameKey = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
+	ProjectRefRemoteKey      = bsonutil.MustHaveTag(ProjectRef{}, "Remote")
+	ProjectRefRemotePathKey  = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
+	ProjectRefTrackedKey     = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
 )
 
 const (

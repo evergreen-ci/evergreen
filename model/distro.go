@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
@@ -49,21 +50,21 @@ type SpawnUserData struct {
 
 var (
 	// bson fields for the distro struct
-	DistroIdKey           = MustHaveBsonTag(Distro{}, "Name")
-	DistroArchKey         = MustHaveBsonTag(Distro{}, "Arch")
-	DistroSpawnAllowedKey = MustHaveBsonTag(Distro{}, "SpawnAllowed")
-	DistroSetupKey        = MustHaveBsonTag(Distro{}, "Setup")
-	DistroSetupMCIOnlyKey = MustHaveBsonTag(Distro{}, "SetupMciOnly")
-	DistroSetupAsSudoKey  = MustHaveBsonTag(Distro{}, "SetupAsSudo")
-	DistroKeyKey          = MustHaveBsonTag(Distro{}, "Key")
-	DistroUserKey         = MustHaveBsonTag(Distro{}, "User")
-	DistroHostsKey        = MustHaveBsonTag(Distro{}, "Hosts")
-	DistroMaxHostsKey     = MustHaveBsonTag(Distro{}, "MaxHosts")
-	DistroExpansionsKey   = MustHaveBsonTag(Distro{}, "Expansions")
+	DistroIdKey           = bsonutil.MustHaveTag(Distro{}, "Name")
+	DistroArchKey         = bsonutil.MustHaveTag(Distro{}, "Arch")
+	DistroSpawnAllowedKey = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
+	DistroSetupKey        = bsonutil.MustHaveTag(Distro{}, "Setup")
+	DistroSetupMCIOnlyKey = bsonutil.MustHaveTag(Distro{}, "SetupMciOnly")
+	DistroSetupAsSudoKey  = bsonutil.MustHaveTag(Distro{}, "SetupAsSudo")
+	DistroKeyKey          = bsonutil.MustHaveTag(Distro{}, "Key")
+	DistroUserKey         = bsonutil.MustHaveTag(Distro{}, "User")
+	DistroHostsKey        = bsonutil.MustHaveTag(Distro{}, "Hosts")
+	DistroMaxHostsKey     = bsonutil.MustHaveTag(Distro{}, "MaxHosts")
+	DistroExpansionsKey   = bsonutil.MustHaveTag(Distro{}, "Expansions")
 
 	// bson fields for the spawn userdata struct
-	SpawnUserDataFileKey     = MustHaveBsonTag(SpawnUserData{}, "File")
-	SpawnUserDataValidateKey = MustHaveBsonTag(SpawnUserData{}, "Validate")
+	SpawnUserDataFileKey     = bsonutil.MustHaveTag(SpawnUserData{}, "File")
+	SpawnUserDataValidateKey = bsonutil.MustHaveTag(SpawnUserData{}, "Validate")
 )
 
 const (

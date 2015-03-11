@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -24,20 +25,20 @@ type NotificationHistory struct {
 
 var (
 	// bson fields for the notification history struct
-	NHIdKey     = MustHaveBsonTag(NotificationHistory{}, "Id")
-	NHPrevIdKey = MustHaveBsonTag(NotificationHistory{},
+	NHIdKey     = bsonutil.MustHaveTag(NotificationHistory{}, "Id")
+	NHPrevIdKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"PrevNotificationId")
-	NHCurrIdKey = MustHaveBsonTag(NotificationHistory{},
+	NHCurrIdKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"CurrNotificationId")
-	NHNameKey = MustHaveBsonTag(NotificationHistory{},
+	NHNameKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"NotificationName")
-	NHTypeKey = MustHaveBsonTag(NotificationHistory{},
+	NHTypeKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"NotificationType")
-	NHTimeKey = MustHaveBsonTag(NotificationHistory{},
+	NHTimeKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"NotificationTime")
-	NHProjectKey = MustHaveBsonTag(NotificationHistory{},
+	NHProjectKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"NotificationProject")
-	NHRequesterKey = MustHaveBsonTag(NotificationHistory{},
+	NHRequesterKey = bsonutil.MustHaveTag(NotificationHistory{},
 		"NotificationRequester")
 )
 

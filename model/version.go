@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"gopkg.in/yaml.v1"
@@ -30,10 +31,10 @@ type BuildStatus struct {
 }
 
 var (
-	BuildStatusVariantKey    = MustHaveBsonTag(BuildStatus{}, "BuildVariant")
-	BuildStatusActivatedKey  = MustHaveBsonTag(BuildStatus{}, "Activated")
-	BuildStatusActivateAtKey = MustHaveBsonTag(BuildStatus{}, "ActivateAt")
-	BuildStatusBuildIdKey    = MustHaveBsonTag(BuildStatus{}, "BuildId")
+	BuildStatusVariantKey    = bsonutil.MustHaveTag(BuildStatus{}, "BuildVariant")
+	BuildStatusActivatedKey  = bsonutil.MustHaveTag(BuildStatus{}, "Activated")
+	BuildStatusActivateAtKey = bsonutil.MustHaveTag(BuildStatus{}, "ActivateAt")
+	BuildStatusBuildIdKey    = bsonutil.MustHaveTag(BuildStatus{}, "BuildId")
 )
 
 type Version struct {
@@ -75,29 +76,29 @@ type Version struct {
 
 var (
 	// bson fields for the version struct
-	VersionIdKey                  = MustHaveBsonTag(Version{}, "Id")
-	VersionCreateTimeKey          = MustHaveBsonTag(Version{}, "CreateTime")
-	VersionStartTimeKey           = MustHaveBsonTag(Version{}, "StartTime")
-	VersionFinishTimeKey          = MustHaveBsonTag(Version{}, "FinishTime")
-	VersionProjectKey             = MustHaveBsonTag(Version{}, "Project")
-	VersionRevisionKey            = MustHaveBsonTag(Version{}, "Revision")
-	VersionAuthorKey              = MustHaveBsonTag(Version{}, "Author")
-	VersionAuthorEmailKey         = MustHaveBsonTag(Version{}, "AuthorEmail")
-	VersionMessageKey             = MustHaveBsonTag(Version{}, "Message")
-	VersionStatusKey              = MustHaveBsonTag(Version{}, "Status")
-	VersionBuildIdsKey            = MustHaveBsonTag(Version{}, "BuildIds")
-	VersionBuildVariantsKey       = MustHaveBsonTag(Version{}, "BuildVariants")
-	VersionRevisionOrderNumberKey = MustHaveBsonTag(Version{}, "RevisionOrderNumber")
-	VersionRequesterKey           = MustHaveBsonTag(Version{}, "Requester")
-	VersionConfigKey              = MustHaveBsonTag(Version{}, "Config")
-	VersionOwnerNameKey           = MustHaveBsonTag(Version{}, "Owner")
-	VersionRepoKey                = MustHaveBsonTag(Version{}, "Repo")
-	VersionProjectNameKey         = MustHaveBsonTag(Version{}, "Branch")
-	VersionRepoKindKey            = MustHaveBsonTag(Version{}, "RepoKind")
-	VersionErrorsKey              = MustHaveBsonTag(Version{}, "Errors")
-	VersionIdentifierKey          = MustHaveBsonTag(Version{}, "Identifier")
-	VersionRemoteKey              = MustHaveBsonTag(Version{}, "Remote")
-	VersionRemoteURLKey           = MustHaveBsonTag(Version{}, "RemotePath")
+	VersionIdKey                  = bsonutil.MustHaveTag(Version{}, "Id")
+	VersionCreateTimeKey          = bsonutil.MustHaveTag(Version{}, "CreateTime")
+	VersionStartTimeKey           = bsonutil.MustHaveTag(Version{}, "StartTime")
+	VersionFinishTimeKey          = bsonutil.MustHaveTag(Version{}, "FinishTime")
+	VersionProjectKey             = bsonutil.MustHaveTag(Version{}, "Project")
+	VersionRevisionKey            = bsonutil.MustHaveTag(Version{}, "Revision")
+	VersionAuthorKey              = bsonutil.MustHaveTag(Version{}, "Author")
+	VersionAuthorEmailKey         = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
+	VersionMessageKey             = bsonutil.MustHaveTag(Version{}, "Message")
+	VersionStatusKey              = bsonutil.MustHaveTag(Version{}, "Status")
+	VersionBuildIdsKey            = bsonutil.MustHaveTag(Version{}, "BuildIds")
+	VersionBuildVariantsKey       = bsonutil.MustHaveTag(Version{}, "BuildVariants")
+	VersionRevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
+	VersionRequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
+	VersionConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
+	VersionOwnerNameKey           = bsonutil.MustHaveTag(Version{}, "Owner")
+	VersionRepoKey                = bsonutil.MustHaveTag(Version{}, "Repo")
+	VersionProjectNameKey         = bsonutil.MustHaveTag(Version{}, "Branch")
+	VersionRepoKindKey            = bsonutil.MustHaveTag(Version{}, "RepoKind")
+	VersionErrorsKey              = bsonutil.MustHaveTag(Version{}, "Errors")
+	VersionIdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")
+	VersionRemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
+	VersionRemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")
 )
 
 func FindOneVersion(query interface{}, projection interface{}) (*Version, error) {

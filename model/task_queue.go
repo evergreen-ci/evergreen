@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -36,25 +37,25 @@ type TaskQueueItem struct {
 
 var (
 	// bson fields for the task queue struct
-	TaskQueueIdKey     = MustHaveBsonTag(TaskQueue{}, "Id")
-	TaskQueueDistroKey = MustHaveBsonTag(TaskQueue{}, "Distro")
-	TaskQueueQueueKey  = MustHaveBsonTag(TaskQueue{}, "Queue")
+	TaskQueueIdKey     = bsonutil.MustHaveTag(TaskQueue{}, "Id")
+	TaskQueueDistroKey = bsonutil.MustHaveTag(TaskQueue{}, "Distro")
+	TaskQueueQueueKey  = bsonutil.MustHaveTag(TaskQueue{}, "Queue")
 
 	// bson fields for the individual task queue items
-	TaskQueueItemIdKey          = MustHaveBsonTag(TaskQueueItem{}, "Id")
-	TaskQueueItemDisplayNameKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemIdKey          = bsonutil.MustHaveTag(TaskQueueItem{}, "Id")
+	TaskQueueItemDisplayNameKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"DisplayName")
-	TaskQueueItemBuildVariantKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemBuildVariantKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"BuildVariant")
-	TaskQueueItemConKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemConKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"RevisionOrderNumber")
-	TaskQueueItemRequesterKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemRequesterKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"Requester")
-	TaskQueueItemRevisionKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemRevisionKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"Revision")
-	TaskQueueItemProjectKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemProjectKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"Project")
-	TaskQueueItemExpDurationKey = MustHaveBsonTag(TaskQueueItem{},
+	TaskQueueItemExpDurationKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"ExpectedDuration")
 )
 

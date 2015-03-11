@@ -2,13 +2,14 @@ package model
 
 import (
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
 
 var (
-	ProjectVarIdKey   = MustHaveBsonTag(ProjectVars{}, "Id")
-	ProjectVarsMapKey = MustHaveBsonTag(ProjectVars{}, "Vars")
+	ProjectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
+	ProjectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
 )
 
 const (

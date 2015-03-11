@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -33,13 +34,13 @@ type PushLog struct {
 
 var (
 	// bson fields for the push log struct
-	PushLogIdKey         = MustHaveBsonTag(PushLog{}, "Id")
-	PushLogLocationKey   = MustHaveBsonTag(PushLog{}, "Location")
-	PushLogTaskIdKey     = MustHaveBsonTag(PushLog{}, "TaskId")
-	PushLogCreateTimeKey = MustHaveBsonTag(PushLog{}, "CreateTime")
-	PushLogRevisionKey   = MustHaveBsonTag(PushLog{}, "Revision")
-	PushLogStatusKey     = MustHaveBsonTag(PushLog{}, "Status")
-	PushLogRonKey        = MustHaveBsonTag(PushLog{}, "RevisionOrderNumber")
+	PushLogIdKey         = bsonutil.MustHaveTag(PushLog{}, "Id")
+	PushLogLocationKey   = bsonutil.MustHaveTag(PushLog{}, "Location")
+	PushLogTaskIdKey     = bsonutil.MustHaveTag(PushLog{}, "TaskId")
+	PushLogCreateTimeKey = bsonutil.MustHaveTag(PushLog{}, "CreateTime")
+	PushLogRevisionKey   = bsonutil.MustHaveTag(PushLog{}, "Revision")
+	PushLogStatusKey     = bsonutil.MustHaveTag(PushLog{}, "Status")
+	PushLogRonKey        = bsonutil.MustHaveTag(PushLog{}, "RevisionOrderNumber")
 )
 
 func NewPushLog(version *Version, task *Task, location string) *PushLog {
