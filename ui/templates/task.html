@@ -221,11 +221,11 @@ MCI - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Task.Disp
           <div class="mci-pod">
             <div ng-repeat="dependency in dependencies">
               <span class="label started" ng-show="dependency.status == 'started'">Started</span>
-              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && dependency.Activated">Scheduled</span>
-              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.Activated && task.dispatch_time == 0">Not Scheduled</span>
-              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.Activated && task.dispatch_time != 0">Aborted</span>
-              <span class="label failed" ng-show="dependency.status == 'failed' && !dependency.StatusDetails.TimedOut">Failed</span>
-              <span class="label failed" ng-show="dependency.status == 'failed' && dependency.StatusDetails.TimedOut">Timed Out</span>
+              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && dependency.activated">Scheduled</span>
+              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.activated && task.dispatch_time == 0">Not Scheduled</span>
+              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.activated && task.dispatch_time != 0">Aborted</span>
+              <span class="label failed" ng-show="dependency.status == 'failed' && !dependency.status_details.timed_out">Failed</span>
+              <span class="label failed" ng-show="dependency.status == 'failed' && dependency.status_details.timed_out">Timed Out</span>
               <span class="label success" ng-show="dependency.status == 'success'">Success</span>
               <span class="label canceled" ng-show="dependency.status == 'canceled'">Canceled</span>
               <span style="margin-left: 20px">
