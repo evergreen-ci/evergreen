@@ -90,6 +90,7 @@ pre:
 
   - command: shell.exec
     params:
+      silent: true
       script: |
         echo "building creds file!"
         cat > creds.yml <<END_OF_CREDS
