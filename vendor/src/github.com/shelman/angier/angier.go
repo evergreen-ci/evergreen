@@ -36,7 +36,7 @@ func TransferByFieldNames(src interface{}, dest interface{}) error {
 
 		// check to see if the dest struct has a field of the same value
 		fieldInDest, exists := destVal.Type().FieldByName(fieldName)
-		if !exists || !fieldInSrc.Type.AssignableTo(fieldInDest.Type) {
+		if !exists || fieldInDest.Type.Kind() != fieldInSrc.Type.Kind() {
 			continue
 		}
 
@@ -103,7 +103,7 @@ func TransferByTags(src interface{}, dest interface{}) error {
 			destFieldVal := destVal.FieldByName(fieldInDest.Name)
 
 			// type doesn't match
-			if !fieldInSrc.Type.AssignableTo(fieldInDest.Type) {
+			if fieldInDest.Type.Kind() != fieldInSrc.Type.Kind() {
 				continue
 			}
 

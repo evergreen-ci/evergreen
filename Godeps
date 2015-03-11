@@ -12,7 +12,7 @@ github.com/gorilla/securecookie                 1b0c7f6e9ab3d7f500fd7d50c7ad835f
 github.com/gorilla/sessions                     28f896870851935df0885fca3410114940d49e1b
 github.com/mitchellh/mapstructure               6fb2c832bcac61d01212ab1d172f7a14a8585b07
 github.com/shelman/angier                       a1c4df10591f06aec7fdfdc5dce276e335816282
-github.com/smartystreets/goconvey               6e8b6a6845c5dc7738d519162c9a9ff5c9cd5f48
+github.com/smartystreets/goconvey               728b3f160cb397ba18120323ed26777ea872304e
 github.com/jacobsa/oglematchers                 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
 gopkg.in/yaml.v1                                b0c168ac0cf9493da1f9bb76c34b26ffef940b4a
 labix.org/v2/mgo                                275

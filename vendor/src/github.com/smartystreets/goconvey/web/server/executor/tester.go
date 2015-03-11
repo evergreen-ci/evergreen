@@ -32,7 +32,7 @@ func (self *ConcurrentTester) executeSynchronously(folders []*contract.Package) 
 			continue
 		}
 		log.Printf("Executing tests: %s\n", folder.Name)
-		folder.Output, folder.Error = self.shell.GoTest(folder.Path, folder.Name)
+		folder.Output, folder.Error = self.shell.GoTest(folder.Path)
 		if folder.Error != nil && folder.Output == "" {
 			panic(folder.Error)
 		}
@@ -40,7 +40,7 @@ func (self *ConcurrentTester) executeSynchronously(folders []*contract.Package) 
 }
 
 func NewConcurrentTester(shell contract.Shell) *ConcurrentTester {
-	self := new(ConcurrentTester)
+	self := &ConcurrentTester{}
 	self.shell = shell
 	self.batchSize = defaultBatchSize
 	return self

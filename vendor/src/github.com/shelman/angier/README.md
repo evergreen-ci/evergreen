@@ -1,6 +1,6 @@
 angier
 ======
 
-Transfer values from one struct to another.
+Transfer struct values from one struct to another.
 
-https://www.youtube.com/watch?v=m3G2csvPoT0
+https://www.youtube.com/watch?v=fIBD7MYJ7fw

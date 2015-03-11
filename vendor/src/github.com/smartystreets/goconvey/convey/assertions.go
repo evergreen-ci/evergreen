@@ -1,6 +1,6 @@
 package convey
 
-import "github.com/smartystreets/goconvey/convey/assertions"
+import "github.com/smartystreets/goconvey/assertions"
 
 var (
 	ShouldEqual          = assertions.ShouldEqual
@@ -28,8 +28,6 @@ var (
 	ShouldNotContain = assertions.ShouldNotContain
 	ShouldBeIn       = assertions.ShouldBeIn
 	ShouldNotBeIn    = assertions.ShouldNotBeIn
-	ShouldBeEmpty    = assertions.ShouldBeEmpty
-	ShouldNotBeEmpty = assertions.ShouldNotBeEmpty
 
 	ShouldStartWith           = assertions.ShouldStartWith
 	ShouldNotStartWith        = assertions.ShouldNotStartWith
@@ -47,8 +45,6 @@ var (
 
 	ShouldHaveSameTypeAs    = assertions.ShouldHaveSameTypeAs
 	ShouldNotHaveSameTypeAs = assertions.ShouldNotHaveSameTypeAs
-	ShouldImplement         = assertions.ShouldImplement
-	ShouldNotImplement      = assertions.ShouldNotImplement
 
 	ShouldHappenBefore         = assertions.ShouldHappenBefore
 	ShouldHappenOnOrBefore     = assertions.ShouldHappenOnOrBefore

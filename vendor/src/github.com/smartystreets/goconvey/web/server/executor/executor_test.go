@@ -10,8 +10,10 @@ import (
 )
 
 func TestExecutor(t *testing.T) {
+	var fixture *ExecutorFixture
+
 	Convey("Subject: Execution of test packages and aggregation of parsed results", t, func() {
-		fixture := newExecutorFixture()
+		fixture = newExecutorFixture()
 
 		Convey("When tests packages are executed", func() {
 			fixture.ExecuteTests()
@@ -26,12 +28,36 @@ func TestExecutor(t *testing.T) {
 			})
 		})
 
-		Convey("When the status is updated", func() {
-			fixture.executor.setStatus(Executing)
+		Convey("When the status is updated, the notification channel should have a true value", func() {
+			fixture.executor.status = Idle
+			updateCount := 6
 
-			Convey("The status flag should be set to true", func() {
-				So(fixture.executor.statusFlag, ShouldBeTrue)
-			})
+			for i := 0; i < updateCount; i++ {
+				fixture.executor.setStatus(statusRotation(i, updateCount))
+
+				select {
+				case val := <-fixture.executor.statusNotif:
+					So(val, ShouldBeTrue)
+				default:
+					So(false, ShouldBeTrue)
+				}
+				/*Convey("The status notification channel should have a true value", func() {
+
+						// TODO: When issue #81 is fixed and Conveys can be nested
+						// inside loops agian, I'd rather put the select {...} stuff
+						// in this convey instead. Also see server_test.go for
+						// a similar issue.
+
+						select {
+						case val := <-fixture.executor.statusNotif:
+							So(val, ShouldBeTrue)
+						default:
+							fixture.executor.statusNotif <- true
+							So(false, ShouldBeTrue)
+						}
+
+				})*/
+			}
 		})
 
 		Convey("During test execution", func() {
@@ -41,6 +67,14 @@ func TestExecutor(t *testing.T) {
 				So(status, ShouldEqual, Executing)
 			})
 		})
+
+		Convey("During test output parsing", func() {
+			status := fixture.CaptureStatusDuringParsingPhase()
+
+			Convey("The status of the executor should be 'parsing'", func() {
+				So(status, ShouldEqual, Parsing)
+			})
+		})
 	})
 }
 
@@ -48,6 +82,8 @@ func statusRotation(i, total int) string {
 	switch i % total {
 	case 0:
 		return Executing
+	case 1:
+		return Parsing
 	default:
 		return Idle
 	}
@@ -73,6 +109,12 @@ func (self *ExecutorFixture) CaptureStatusDuringExecutionPhase() string {
 	return self.delayedExecution(nap)
 }
 
+func (self *ExecutorFixture) CaptureStatusDuringParsingPhase() string {
+	nap, _ := time.ParseDuration("25ms")
+	self.parser.addDelay(nap)
+	return self.delayedExecution(nap)
+}
+
 func (self *ExecutorFixture) delayedExecution(nap time.Duration) string {
 	go self.ExecuteTests()
 	time.Sleep(nap)
@@ -92,10 +134,10 @@ var (
 )
 
 func newExecutorFixture() *ExecutorFixture {
-	self := new(ExecutorFixture)
+	self := &ExecutorFixture{}
 	self.tester = newFakeTester()
 	self.parser = newFakeParser()
-	self.executor = NewExecutor(self.tester, self.parser, make(chan chan string))
+	self.executor = NewExecutor(self.tester, self.parser, make(chan bool, 1))
 	self.folders = []*contract.Package{
 		&contract.Package{Active: true, Path: prefix + packageA, Name: packageA},
 		&contract.Package{Active: true, Path: prefix + packageB, Name: packageB},
@@ -131,7 +173,7 @@ func (self *FakeTester) addDelay(nap time.Duration) {
 }
 
 func newFakeTester() *FakeTester {
-	self := new(FakeTester)
+	self := &FakeTester{}
 	zero, _ := time.ParseDuration("0")
 	self.nap = zero
 	return self
@@ -160,7 +202,7 @@ func (self *FakeParser) addDelay(nap time.Duration) {
 }
 
 func newFakeParser() *FakeParser {
-	self := new(FakeParser)
+	self := &FakeParser{}
 	zero, _ := time.ParseDuration("0")
 	self.nap = zero
 	return self

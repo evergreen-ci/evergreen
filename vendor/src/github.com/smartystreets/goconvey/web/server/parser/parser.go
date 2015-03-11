@@ -22,7 +22,7 @@ func (self *Parser) Parse(packages []*contract.Package) {
 }
 
 func NewParser(helper func(*contract.PackageResult, string)) *Parser {
-	self := new(Parser)
+	self := &Parser{}
 	self.parser = helper
 	return self
 }

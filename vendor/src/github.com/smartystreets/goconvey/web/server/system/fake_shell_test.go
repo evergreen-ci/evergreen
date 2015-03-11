@@ -7,18 +7,19 @@ import (
 )
 
 func TestFakeShell(t *testing.T) {
+	var shell *FakeShell
 	var output string
 	var err error
 
 	Convey("Subject: FakeShell", t, func() {
-		shell := NewFakeShell()
+		shell = NewFakeShell()
 
 		Convey("When executing go test", func() {
-			output, err = shell.GoTest("/hi", "-there")
-			shell.GoTest("/bye", "-bye")
+			output, err = shell.GoTest("/hi")
+			shell.GoTest("/bye")
 
 			Convey("The output should be an echo of the input", func() {
-				So(output, ShouldEqual, "/hi-there")
+				So(output, ShouldEqual, "/hi")
 			})
 
 			Convey("There should be no error", func() {
@@ -26,7 +27,7 @@ func TestFakeShell(t *testing.T) {
 			})
 
 			Convey("The shell should remember the directory of execution", func() {
-				So(shell.Executions(), ShouldResemble, []string{"/hi-there", "/bye-bye"})
+				So(shell.Executions(), ShouldResemble, []string{"/hi", "/bye"})
 			})
 		})
 

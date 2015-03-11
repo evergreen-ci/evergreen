@@ -43,14 +43,6 @@ func TestTransferByFieldNames(t *testing.T) {
 
 	Convey("With two structs of different types", t, func() {
 
-		type t1 struct {
-			Field string
-		}
-
-		type t2 struct {
-			Field string
-		}
-
 		type s1 struct {
 			// two matching fields
 			MatchOne int
@@ -60,12 +52,9 @@ func TestTransferByFieldNames(t *testing.T) {
 			OnlySrcOne int
 			OnlySrcTwo string
 
-			// two fields with the same name but the wrong kind
-			WrongKindOne int
-			WrongKindTwo bool
-
-			// one field with the same name and kind but the wrong type
-			WrongType t1
+			// two fields with the same name but the wrong type
+			WrongTypeOne int
+			WrongTypeTwo bool
 		}
 
 		type s2 struct {
@@ -77,12 +66,9 @@ func TestTransferByFieldNames(t *testing.T) {
 			OnlyDestOne int
 			OnlyDestTwo string
 
-			// two fields with the same name but the wrong kind
-			WrongKindOne bool
-			WrongKindTwo int
-
-			// one field with the same name and kind but the wrong type
-			WrongType t2
+			// two fields with the same name but the wrong type
+			WrongTypeOne bool
+			WrongTypeTwo int
 		}
 
 		Convey("transferring from one to the other should copy only the"+
@@ -94,9 +80,8 @@ func TestTransferByFieldNames(t *testing.T) {
 				MatchTwo:     true,
 				OnlySrcOne:   1,
 				OnlySrcTwo:   "hi",
-				WrongKindOne: 3,
-				WrongKindTwo: true,
-				WrongType:    t1{Field: "yo"},
+				WrongTypeOne: 3,
+				WrongTypeTwo: true,
 			}
 
 			dest := &s2{}

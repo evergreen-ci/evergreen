@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/smartystreets/goconvey/reporting"
 	"github.com/smartystreets/goconvey/web/server/contract"
 )
 
@@ -26,7 +26,7 @@ func parseTestOutput(test *contract.TestResult) *contract.TestResult {
 }
 
 func newTestParser(test *contract.TestResult) *testParser {
-	self := new(testParser)
+	self := &testParser{}
 	self.test = test
 	return self
 }

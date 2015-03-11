@@ -20,22 +20,10 @@ const nonexistentRoot = "I don't exist"
 const unreadableContent = "!!error!!"
 
 func TestHTTPServer(t *testing.T) {
+	var fixture *ServerFixture
+
 	Convey("Subject: HttpServer responds to requests appropriately", t, func() {
-		fixture := newServerFixture()
-
-		Convey("Before any update is recived", func() {
-			Convey("When the update is requested", func() {
-				update, _ := fixture.RequestLatest()
-
-				Convey("No panic should occur", func() {
-					So(func() { fixture.RequestLatest() }, ShouldNotPanic)
-				})
-
-				Convey("The update will be empty", func() {
-					So(update, ShouldResemble, new(contract.CompleteOutput))
-				})
-			})
-		})
+		fixture = newServerFixture()
 
 		Convey("Given an update is received", func() {
 			fixture.ReceiveUpdate(&contract.CompleteOutput{Revision: "asdf"})
@@ -61,6 +49,45 @@ func TestHTTPServer(t *testing.T) {
 			})
 		})
 
+		lpRequests := 6 // Number of long-poll requests and status updates to try
+
+		Convey("Given a long-polling request for a status update, when initially idle", func() {
+			fixture.executor.status = "idle"
+			lpDone := make(chan string)
+
+			go func() {
+				for i := 0; i < lpRequests; i++ {
+					request, _ := http.NewRequest("GET", "http://localhost:8080/status/poll", nil)
+					response := httptest.NewRecorder()
+					fixture.server.LongPollStatus(response, request)
+					_, newStatus := response.Code, strings.TrimSpace(response.Body.String())
+					lpDone <- newStatus
+				}
+			}()
+
+			Convey("When the status is changed by the executor, the response should immediately reflect that", func() {
+				for i := 0; i < lpRequests; i++ {
+					expectedStatus := statusRotation(i, lpRequests)
+					fixture.SetExecutorStatus(expectedStatus)
+
+					select {
+					case actualStatus := <-lpDone:
+						So(actualStatus, ShouldEqual, expectedStatus)
+					case <-time.After(500 * time.Millisecond):
+						So("TIMEOUT", ShouldEqual, expectedStatus)
+					}
+
+					/*Convey("The response should be sent immediately with the correct status", func() {
+						// TODO: When issue #81 is fixed and Conveys can be nested
+						// inside loops again, let's put the select {...} stuff
+						// from the lines just above and put it inside its own convey
+						// to actually make the assertions. Also see executor_test.go
+						// for a similar problem.
+					})*/
+				}
+			})
+		})
+
 		Convey("When the root watch is queried", func() {
 			root, status := fixture.QueryRootWatch(false)
 
@@ -70,6 +97,19 @@ func TestHTTPServer(t *testing.T) {
 
 			Convey("The server returns HTTP 200 - OK", func() {
 				So(status, ShouldEqual, http.StatusOK)
+			})
+		})
+
+		Convey("When the root watch is queried as a new client", func() {
+			fixture.QueryRootWatch(true)
+
+			Convey("The status channel buffer should have a true value", func() {
+				select {
+				case val := <-fixture.server.statusNotif:
+					So(val, ShouldBeTrue)
+				default:
+					So(false, ShouldBeTrue)
+				}
 			})
 		})
 
@@ -154,7 +194,7 @@ func TestHTTPServer(t *testing.T) {
 				})
 
 				Convey("The body should contain a helpful error message", func() {
-					So(body, ShouldEqual, "No 'paths' query string parameter included!")
+					So(body, ShouldEqual, "No 'path' query string parameter included!")
 				})
 
 				Convey("The server should not ignore anything", func() {
@@ -195,7 +235,7 @@ func TestHTTPServer(t *testing.T) {
 				})
 
 				Convey("The body should contain a helpful error message", func() {
-					So(body, ShouldEqual, "No 'paths' query string parameter included!")
+					So(body, ShouldEqual, "No 'path' query string parameter included!")
 				})
 
 				Convey("The server should not ignore anything", func() {
@@ -252,30 +292,6 @@ func TestHTTPServer(t *testing.T) {
 				So(status, ShouldEqual, http.StatusOK)
 			})
 		})
-
-		Convey("When the pause setting is toggled via the server", func() {
-			paused := fixture.TogglePause()
-
-			Convey("The pause channel buffer should have a true value", func() {
-				var value bool
-				select {
-				case value = <-fixture.pauseUpdate:
-				default:
-				}
-				So(value, ShouldBeTrue)
-			})
-
-			Convey("The latest results should show that the server is paused", func() {
-				fixture.ReceiveUpdate(&contract.CompleteOutput{Revision: "asdf"})
-				update, _ := fixture.RequestLatest()
-
-				So(update.Paused, ShouldBeTrue)
-			})
-
-			Convey("The toggle handler should return its new status", func() {
-				So(paused, ShouldEqual, "true")
-			})
-		})
 	})
 }
 
@@ -293,11 +309,9 @@ func statusRotation(i, total int) string {
 /********* Server Fixture *********/
 
 type ServerFixture struct {
-	server       *HTTPServer
-	watcher      *FakeWatcher
-	executor     *FakeExecutor
-	statusUpdate chan bool
-	pauseUpdate  chan bool
+	server   *HTTPServer
+	watcher  *FakeWatcher
+	executor *FakeExecutor
 }
 
 func (self *ServerFixture) ReceiveUpdate(update *contract.CompleteOutput) {
@@ -311,7 +325,7 @@ func (self *ServerFixture) RequestLatest() (*contract.CompleteOutput, *httptest.
 	self.server.Results(response, request)
 
 	decoder := json.NewDecoder(strings.NewReader(response.Body.String()))
-	update := new(contract.CompleteOutput)
+	update := &contract.CompleteOutput{}
 	decoder.Decode(update)
 	return update, response
 }
@@ -362,7 +376,7 @@ func (self *ServerFixture) IgnoreMalformed() (status int, body string) {
 
 func (self *ServerFixture) Ignore(folder string) (status int, body string) {
 	escapedFolder := url.QueryEscape(folder)
-	request, _ := http.NewRequest("POST", "http://localhost:8080/ignore?paths="+escapedFolder, nil)
+	request, _ := http.NewRequest("POST", "http://localhost:8080/ignore?path="+escapedFolder, nil)
 	response := httptest.NewRecorder()
 
 	self.server.Ignore(response, request)
@@ -383,7 +397,7 @@ func (self *ServerFixture) ReinstateMalformed() (status int, body string) {
 
 func (self *ServerFixture) Reinstate(folder string) (status int, body string) {
 	escapedFolder := url.QueryEscape(folder)
-	request, _ := http.NewRequest("POST", "http://localhost:8080/reinstate?paths="+escapedFolder, nil)
+	request, _ := http.NewRequest("POST", "http://localhost:8080/reinstate?path="+escapedFolder, nil)
 	response := httptest.NewRecorder()
 
 	self.server.Reinstate(response, request)
@@ -395,7 +409,7 @@ func (self *ServerFixture) Reinstate(folder string) (status int, body string) {
 func (self *ServerFixture) SetExecutorStatus(status string) {
 	self.executor.status = status
 	select {
-	case self.executor.statusUpdate <- make(chan string):
+	case self.executor.statusNotif <- true:
 	default:
 	}
 }
@@ -420,23 +434,13 @@ func (self *ServerFixture) ManualExecution() int {
 	return response.Code
 }
 
-func (self *ServerFixture) TogglePause() string {
-	request, _ := http.NewRequest("POST", "http://localhost:8080/pause", nil)
-	response := httptest.NewRecorder()
-
-	self.server.TogglePause(response, request)
-
-	return response.Body.String()
-}
-
 func newServerFixture() *ServerFixture {
-	self := new(ServerFixture)
+	self := &ServerFixture{}
 	self.watcher = newFakeWatcher()
 	self.watcher.SetRootWatch(initialRoot)
-	statusUpdate := make(chan chan string)
-	self.executor = newFakeExecutor("", statusUpdate)
-	self.pauseUpdate = make(chan bool, 1)
-	self.server = NewHTTPServer(self.watcher, self.executor, statusUpdate, self.pauseUpdate)
+	statusNotif := make(chan bool, 1)
+	self.executor = newFakeExecutor("", statusNotif)
+	self.server = NewHTTPServer(self.watcher, self.executor, statusNotif)
 	return self
 }
 
@@ -477,37 +481,31 @@ func (self *FakeWatcher) IsWatched(folder string) bool { panic("NOT SUPPORTED") 
 func (self *FakeWatcher) IsIgnored(folder string) bool { panic("NOT SUPPORTED") }
 
 func newFakeWatcher() *FakeWatcher {
-	return new(FakeWatcher)
+	return &FakeWatcher{}
 }
 
 /********* Fake Executor *********/
 
 type FakeExecutor struct {
-	status       string
-	executed     bool
-	statusFlag   bool
-	statusUpdate chan chan string
+	status      string
+	executed    bool
+	statusNotif chan bool
 }
 
 func (self *FakeExecutor) Status() string {
 	return self.status
 }
 
-func (self *FakeExecutor) ClearStatusFlag() bool {
-	hasNewStatus := self.statusFlag
-	self.statusFlag = false
-	return hasNewStatus
-}
-
 func (self *FakeExecutor) ExecuteTests(watched []*contract.Package) *contract.CompleteOutput {
-	output := new(contract.CompleteOutput)
-	output.Revision = watched[0].Path
-	return output
+	return &contract.CompleteOutput{Revision: watched[0].Path}
 }
 
-func newFakeExecutor(status string, statusUpdate chan chan string) *FakeExecutor {
-	self := new(FakeExecutor)
-	self.status = status
-	self.statusUpdate = statusUpdate
-	return self
+func newFakeExecutor(status string, ch chan bool) *FakeExecutor {
+	return &FakeExecutor{
+		status,
+		false,
+		ch,
+	}
 }
+
+var _ = fmt.Sprintf("hi")

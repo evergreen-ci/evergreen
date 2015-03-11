@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/smartystreets/goconvey/convey/reporting"
+	"github.com/smartystreets/goconvey/reporting"
 )
 
 type Package struct {
@@ -17,7 +17,7 @@ type Package struct {
 }
 
 func NewPackage(path string) *Package {
-	self := new(Package)
+	self := &Package{}
 	self.Active = true
 	self.Path = path
 	self.Name = resolvePackageName(path)
@@ -28,7 +28,6 @@ func NewPackage(path string) *Package {
 type CompleteOutput struct {
 	Packages []*PackageResult
 	Revision string
-	Paused   bool
 }
 
 var ( // PackageResult.Outcome values:
@@ -52,7 +51,7 @@ type PackageResult struct {
 }
 
 func NewPackageResult(packageName string) *PackageResult {
-	self := new(PackageResult)
+	self := &PackageResult{}
 	self.PackageName = packageName
 	self.TestResults = []TestResult{}
 	self.Coverage = -1
@@ -74,7 +73,7 @@ type TestResult struct {
 }
 
 func NewTestResult(testName string) *TestResult {
-	self := new(TestResult)
+	self := &TestResult{}
 	self.Stories = []reporting.ScopeResult{}
 	self.RawLines = []string{}
 	self.TestName = testName

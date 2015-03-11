@@ -1,8 +1,5 @@
-GoConvey is awesome Go testing 
+GoConvey is awesome Go testing [![GoDoc](https://godoc.org/github.com/smartystreets/goconvey?status.png)](http://godoc.org/github.com/smartystreets/goconvey)
 ==============================
-
-[![Build Status](https://travis-ci.org/smartystreets/goconvey.png)](https://travis-ci.org/smartystreets/goconvey) [![GoDoc](https://godoc.org/github.com/smartystreets/goconvey?status.png)](http://godoc.org/github.com/smartystreets/goconvey)
-
 
 Welcome to GoConvey, a yummy Go testing tool for gophers. Works with `go test`. Use it in the terminal or browser according your viewing pleasure. **[View full feature tour.](http://goconvey.co)**
 
@@ -15,6 +12,7 @@ Welcome to GoConvey, a yummy Go testing tool for gophers. Works with `go test`. 
 - Readable, colorized console output (understandable by any manager, IT or not)
 - Test code generator
 - Desktop notifications (optional)
+- Auto-test script automatically runs tests in the terminal
 - Immediately open problem lines in [Sublime Text](http://www.sublimetext.com) ([some assembly required](https://github.com/asuth/subl-handler))
 
 **Menu:**
@@ -31,16 +29,10 @@ Welcome to GoConvey, a yummy Go testing tool for gophers. Works with `go test`. 
 Installation
 ------------
 
-#### Go Version 1.2+
-
 	$ go get -t github.com/smartystreets/goconvey
 
 The `-t` flag above ensures that all test dependencies for goconvey are downloaded.
 
-#### Go - Before Version 1.2
-
-    $ go get github.com/smartystreets/goconvey
-    $ go get github.com/jacobsa/oglematchers
 
 
 [Quick start](https://github.com/smartystreets/goconvey/wiki#get-going-in-25-seconds)
@@ -50,10 +42,11 @@ Make a test, for example:
 
 ```go
 func TestSpec(t *testing.T) {
-
+	var x int
+	
 	// Only pass t into top-level Convey calls
 	Convey("Given some integer with a starting value", t, func() {
-		x := 1
+		x = 1
 
 		Convey("When the integer is incremented", func() {
 			x++

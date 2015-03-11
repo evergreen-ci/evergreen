@@ -16,13 +16,11 @@ type (
 		LongPollStatus(writer http.ResponseWriter, request *http.Request)
 		Results(writer http.ResponseWriter, request *http.Request)
 		Execute(writer http.ResponseWriter, request *http.Request)
-		TogglePause(writer http.ResponseWriter, request *http.Request)
 	}
 
 	Executor interface {
 		ExecuteTests([]*Package) *CompleteOutput
 		Status() string
-		ClearStatusFlag() bool
 	}
 
 	Scanner interface {
@@ -36,8 +34,8 @@ type (
 		Deletion(folder string)
 		Creation(folder string)
 
-		Ignore(folders string)
-		Reinstate(folders string)
+		Ignore(folder string)
+		Reinstate(folder string)
 
 		WatchedFolders() []*Package
 		IsWatched(folder string) bool
@@ -51,7 +49,7 @@ type (
 	}
 
 	Shell interface {
-		GoTest(directory, packageName string) (output string, err error)
+		GoTest(directory string) (output string, err error)
 		Getenv(key string) string
 		Setenv(key, value string) error
 	}

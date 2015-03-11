@@ -39,7 +39,8 @@ type goPathFixture struct {
 }
 
 func newGoPathFixture() *goPathFixture {
-	self := new(goPathFixture)
+	self := &goPathFixture{}
+
 	self.shell = system.NewFakeShell()
 	self.shell.Setenv("GOPATH", all)
 	self.gopath = newGoPath(self.shell)
