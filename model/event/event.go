@@ -2,6 +2,7 @@ package event
 
 import (
 	"10gen.com/mci/db/bsonutil"
+	"encoding/json"
 	"fmt"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -39,18 +40,30 @@ type Data interface {
 	IsValid() bool
 }
 
-func (self DataWrapper) GetBSON() (interface{}, error) {
-	return self.Data, nil
+// MarshalJSON returns proper JSON encoding by uncovering the Data interface.
+func (dw DataWrapper) MarshalJSON() ([]byte, error) {
+	switch event := dw.Data.(type) {
+	case *TaskEventData:
+		return json.Marshal(event)
+	case *HostEventData:
+		return json.Marshal(event)
+	default:
+		return nil, fmt.Errorf("cannot marshal data of type %T", dw.Data)
+	}
 }
 
-func (self *DataWrapper) SetBSON(raw bson.Raw) error {
+func (dw DataWrapper) GetBSON() (interface{}, error) {
+	return dw.Data, nil
+}
+
+func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
 	for _, impl := range []interface{}{&TaskEventData{}, &HostEventData{}} {
 		err := raw.Unmarshal(impl)
 		if err != nil {
 			return err
 		}
 		if impl.(Data).IsValid() {
-			self.Data = impl.(Data)
+			dw.Data = impl.(Data)
 			return nil
 		}
 	}

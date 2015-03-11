@@ -2,18 +2,18 @@
   <div class="timestamp">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
   <div class="event_details" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
     <span ng-switch-when="HOST_CREATED">Host created</span>
-    <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.EventData.old_status]]</b> to <b>[[eventLogObj.data.EventData.new_status]]</b> </span>
-    <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.EventData.hostname]]</b></span>
+    <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> </span>
+    <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>
     <span ng-switch-when="HOST_PROVISIONED">Marked as <b>provisioned</b></span>
-    <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.EventData.task_id]]">[[eventLogObj.data.EventData.task_id]]</a></span>
-    <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.EventData.task_id]]">[[eventLogObj.data.EventData.task_id]]</a></span>
-    <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.EventData.task_pid]]</b></span>
+    <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id]]</a></span>
+    <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id]]</a></span>
+    <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.task_pid]]</b></span>
     <span ng-switch-when="HOST_PROVISION_FAILED">
       <div>
         Provisioning failed.</div>
       <div class="toggle" ng-click="showlogs = !showlogs"><i ng-class="showlogs | conditional:'icon-caret-down':'icon-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
       <div ng-show="showlogs">
-        <pre>[[eventLogObj.data.EventData.setup_log]]</pre>
+        <pre>[[eventLogObj.data.setup_log]]</pre>
       </div>
       </div>
     </div>

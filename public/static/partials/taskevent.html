@@ -1,15 +1,15 @@
 <div class="eventlog">
   <div class="timestamp">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
   <div class="event_details" ng-switch="eventLogObj.event_type">
-    <span ng-switch-when="TASK_FINISHED">Completed with status: <b>[[eventLogObj.data.EventData.status]]</b></span>
+    <span ng-switch-when="TASK_FINISHED">Completed with status: <b>[[eventLogObj.data.status]]</b></span>
     <span ng-switch-when="TASK_STARTED">Marked as "started"</span>
-    <span ng-switch-when="TASK_DISPATCHED">Dispatched to host <a href="/host/[[eventLogObj.data.EventData.host_id]]">[[eventLogObj.data.EventData.host_id]]</a></span>
+    <span ng-switch-when="TASK_DISPATCHED">Dispatched to host <a href="/host/[[eventLogObj.data.host_id]]">[[eventLogObj.data.host_id]]</a></span>
     <span ng-switch-when="TASK_CREATED">Task created</span>
-    <span ng-switch-when="TASK_RESTARTED">Restarted by [[eventLogObj.data.EventData.user_id]].</span>
-    <span ng-switch-when="TASK_ACTIVATED">Activated by [[eventLogObj.data.EventData.user_id]].</span>
-    <span ng-switch-when="TASK_DEACTIVATED">Deactivated by user [[eventLogObj.data.EventData.user_id]].</span>
-    <span ng-switch-when="TASK_ABORT_REQUEST">Marked to abort by user [[eventLogObj.data.EventData.user_id]].</span>
-    <span ng-switch-when="TASK_SCHEDULED">Scheduled at [[eventLogObj.data.EventData.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY, h:mm:ss a']]</span>
+    <span ng-switch-when="TASK_RESTARTED">Restarted by [[eventLogObj.data.user_id]].</span>
+    <span ng-switch-when="TASK_ACTIVATED">Activated by [[eventLogObj.data.user_id]].</span>
+    <span ng-switch-when="TASK_DEACTIVATED">Deactivated by user [[eventLogObj.data.user_id]].</span>
+    <span ng-switch-when="TASK_ABORT_REQUEST">Marked to abort by user [[eventLogObj.data.user_id]].</span>
+    <span ng-switch-when="TASK_SCHEDULED">Scheduled at [[eventLogObj.data.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY, h:mm:ss a']]</span>
   </div>
   <div class="clearfix"></div>
 </div>
