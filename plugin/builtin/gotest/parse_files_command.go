@@ -1,7 +1,6 @@
 package gotest
 
 import (
-	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/plugin"
 	"fmt"
@@ -49,6 +48,11 @@ func (pfCmd *ParseFilesCommand) Execute(pluginLogger plugin.PluginLogger,
 		msg := fmt.Sprintf("error expanding params: %v", err)
 		pluginLogger.LogTask(slogger.ERROR, "Error parsing gotest files: %v", msg)
 		return fmt.Errorf(msg)
+	}
+
+	// make sure the file patterns are relative to the task's working directory
+	for idx, file := range pfCmd.Files {
+		pfCmd.Files[idx] = filepath.Join(taskConfig.WorkDir, file)
 	}
 
 	// will be all files containing test results
@@ -111,15 +115,10 @@ func (pfCmd *ParseFilesCommand) AllOutputFiles() ([]string, error) {
 
 	// walk through all specified file patterns
 	for _, pattern := range pfCmd.Files {
-		abs, err := filepath.Abs(pattern)
-		if err != nil {
-			return nil, fmt.Errorf("error getting absolute path: %v", err)
-		}
-		matches, err := filepath.Glob(abs)
+		matches, err := filepath.Glob(pattern)
 		if err != nil {
 			return nil, fmt.Errorf("error expanding file patterns: %v", err)
 		}
-		mci.Logger.Logf(slogger.DEBUG, "matches for %v: %v", abs, matches)
 		outputFiles = append(outputFiles, matches...)
 	}
 
