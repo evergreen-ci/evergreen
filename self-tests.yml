@@ -110,6 +110,9 @@ pre:
         END_OF_CREDS
 
 post:
+  - command: gotest.parse_files
+    params: 
+      files: ["src/**/*.suite"]
   - command: shell.exec
     params:
       script: |
@@ -132,7 +135,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd agent
-          go test -v -mci.all -mci.settingsOverride=../creds.yml -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a agent.suite < test_pipe&
+          go test -v -mci.all -mci.settingsOverride=../creds.yml -coverprofile=coverage.out > test_pipe 
     - command: shell.exec
       params:
         working_dir: src
@@ -159,7 +164,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd archive
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a archive.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe 
     - command: shell.exec
       params:
         working_dir: src
@@ -186,7 +193,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd db
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a db.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe 
     - command: shell.exec
       params:
         working_dir: src
@@ -212,7 +221,9 @@ tasks:
           fi;
           . ./set_gopath.sh
           export mci_home=`pwd`
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a mci.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - func: "rewrite coverage report"
     - func: "generate coverage html"
     - func: "generate coverage txt"
@@ -233,7 +244,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd model
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a model.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -260,7 +273,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd monitor
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a monitor.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -287,7 +302,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd notify
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a notify.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -315,7 +332,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd patch
-          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a patch.suite < test_pipe&
+          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -342,22 +361,42 @@ tasks:
           fi;
           . ./set_gopath.sh
           export mci_home=`pwd`
+
           cd plugin
-          go test -v -coverprofile=coverage.out
-          cd builtin/archivePlugin
-          go test -v -coverprofile=coverage.out
-          cd ../attach
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a plugin.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
+
+          cd builtin/attach
+          mkfifo test_pipe
+          tee -a attach.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
+
           cd ../expansions
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a expansions.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
+
           cd ../git
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a git.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
+
           cd ../gotest
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a gotest.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
+
           cd ../s3Plugin
-          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a s3Plugin.suite < test_pipe&
+          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
+
           cd ../s3copy
-          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a s3copy.suite < test_pipe&
+          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
+
     - command: shell.exec
       params:
         working_dir: src
@@ -373,12 +412,7 @@ tasks:
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
-          cd builtin/archivePlugin
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd ../attach
+          cd builtin/attach
           perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
@@ -428,26 +462,6 @@ tasks:
         permissions: public-read
         content_type: text/html
         display_name: Plugin Coverage Report (HTML)
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/archivePlugin/coverage.txt
-        remote_file: mci/coverage/${task_id}/archive.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Archive Plugin Coverage Report (TXT)
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/archivePlugin/coverage.html
-        remote_file: mci/coverage/${task_id}/archive.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Archive Plugin Coverage Report (HTML)
     - command: s3.put
       params:
         aws_key: ${aws_key}
@@ -584,7 +598,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd repotracker
-          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a repotracker.suite < test_pipe&
+          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -611,7 +627,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd scheduler
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a scheduler.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -639,7 +657,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd thirdparty
-          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a thirdparty.suite < test_pipe&
+          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -666,7 +686,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd util
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -693,7 +715,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd ui
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -720,7 +744,9 @@ tasks:
           . ./set_gopath.sh
           export mci_home=`pwd`
           cd validator
-          go test -v -coverprofile=coverage.out
+          mkfifo test_pipe
+          tee -a validator.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
