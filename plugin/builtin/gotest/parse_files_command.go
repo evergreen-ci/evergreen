@@ -1,6 +1,7 @@
 package gotest
 
 import (
+	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/plugin"
 	"fmt"
@@ -110,10 +111,15 @@ func (pfCmd *ParseFilesCommand) AllOutputFiles() ([]string, error) {
 
 	// walk through all specified file patterns
 	for _, pattern := range pfCmd.Files {
-		matches, err := filepath.Glob(pattern)
+		abs, err := filepath.Abs(pattern)
+		if err != nil {
+			return nil, fmt.Errorf("error getting absolute path: %v", err)
+		}
+		matches, err := filepath.Glob(abs)
 		if err != nil {
 			return nil, fmt.Errorf("error expanding file patterns: %v", err)
 		}
+		mci.Logger.Logf(slogger.DEBUG, "matches for %v: %v", abs, matches)
 		outputFiles = append(outputFiles, matches...)
 	}
 
