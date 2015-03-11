@@ -23,9 +23,9 @@ window.plugins = {{.PluginContent.Data}}
 
 {{define "title"}}
   {{ if .Task.PatchInfo }}
-MCI - Patch {{.Task.PatchInfo.Patch.PatchNumber}} by {{.Task.PatchInfo.Patch.Author}} / {{.Task.BuildVariantDisplay}} / {{.Task.DisplayName}}
+Evergreen - Patch {{.Task.PatchInfo.Patch.PatchNumber}} by {{.Task.PatchInfo.Patch.Author}} / {{.Task.BuildVariantDisplay}} / {{.Task.DisplayName}}
   {{else}}
-MCI - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Task.DisplayName}}
+Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Task.DisplayName}}
   {{end}}
 {{end}}
 

@@ -17,9 +17,9 @@
 
 {{define "title"}}
   {{ if .Version.PatchInfo }}
-MCI - Version Patch {{.Version.PatchInfo.Patch.PatchNumber}} by {{.Version.PatchInfo.Patch.Author}}
+Evergreen - Version Patch {{.Version.PatchInfo.Patch.PatchNumber}} by {{.Version.PatchInfo.Patch.Author}}
   {{else}}
-MCI - Version {{Trunc .Version.Version.Revision 10}}
+Evergreen - Version {{Trunc .Version.Version.Revision 10}}
   {{end}}
 {{end}}
 
