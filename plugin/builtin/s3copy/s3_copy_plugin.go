@@ -393,7 +393,8 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 func (c *S3CopyCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
 	pluginCom plugin.PluginCommunicator, request S3CopyRequest) error {
 
-	fileLink := s3baseURL + filepath.Join(request.S3DestinationBucket, request.S3DestinationPath)
+	remotePath := filepath.ToSlash(request.S3DestinationPath)
+	fileLink := s3baseURL + request.S3DestinationBucket + "/" + remotePath
 
 	displayName := request.S3DisplayName
 

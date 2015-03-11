@@ -234,7 +234,8 @@ func (self *S3PutCommand) Put() error {
 func (self *S3PutCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
 	pluginCom plugin.PluginCommunicator) error {
 
-	fileLink := s3baseURL + filepath.Join(self.Bucket, self.RemoteFile)
+	remoteFile := filepath.ToSlash(self.RemoteFile)
+	fileLink := s3baseURL + self.Bucket + "/" + remoteFile
 
 	displayName := self.DisplayName
 	if displayName == "" {
