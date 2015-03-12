@@ -5,7 +5,7 @@ import (
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/command"
 	"10gen.com/mci/hostinit"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"encoding/base64"
 	"encoding/json"
@@ -54,13 +54,13 @@ func New(ms *mci.MCISettings) Spawn {
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
 func (sm Spawn) Validate(so Options) error {
-	distro, err := model.LoadOneDistro(sm.mciSettings.ConfigDir, so.Distro)
+	dist, err := distro.LoadOne(sm.mciSettings.ConfigDir, so.Distro)
 	if err != nil {
-		return BadOptionsErr{fmt.Sprintf("Invalid distro %v", so.Distro)}
+		return BadOptionsErr{fmt.Sprintf("Invalid dist %v", so.Distro)}
 	}
 
-	if !distro.SpawnAllowed {
-		return BadOptionsErr{fmt.Sprintf("Spawning not allowed for distro %v", so.Distro)}
+	if !dist.SpawnAllowed {
+		return BadOptionsErr{fmt.Sprintf("Spawning not allowed for dist %v", so.Distro)}
 	}
 
 	// if the user already has too many active spawned hosts, deny the request
@@ -96,25 +96,25 @@ func (sm Spawn) Validate(so Options) error {
 		return BadOptionsErr{"key contains invalid base64 string"}
 	}
 
-	if distro.SpawnUserData.File != "" {
+	if dist.SpawnUserData.File != "" {
 		if strings.TrimSpace(so.UserData) == "" {
 			return BadOptionsErr{}
 		}
 
 		var err error
-		switch distro.SpawnUserData.Validate {
-		case model.UserDataFormatFormURLEncoded:
+		switch dist.SpawnUserData.Validate {
+		case distro.UserDataFormatFormURLEncoded:
 			_, err = url.ParseQuery(so.UserData)
-		case model.UserDataFormatJSON:
+		case distro.UserDataFormatJSON:
 			var out map[string]interface{}
 			err = json.Unmarshal([]byte(so.UserData), &out)
-		case model.UserDataFormatYAML:
+		case distro.UserDataFormatYAML:
 			var out map[string]interface{}
 			err = yaml.Unmarshal([]byte(so.UserData), &out)
 		}
 
 		if err != nil {
-			return BadOptionsErr{fmt.Sprintf("invalid %v: %v", distro.SpawnUserData.Validate, err)}
+			return BadOptionsErr{fmt.Sprintf("invalid %v: %v", dist.SpawnUserData.Validate, err)}
 		}
 	}
 	return nil
@@ -124,7 +124,7 @@ func (sm Spawn) Validate(so Options) error {
 func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 
 	// load in the appropriate distro
-	distro, err := model.LoadOneDistro(sm.mciSettings.ConfigDir, so.Distro)
+	distro, err := distro.LoadOne(sm.mciSettings.ConfigDir, so.Distro)
 	if err != nil {
 		return nil, err
 	}

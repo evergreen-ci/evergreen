@@ -3,6 +3,7 @@ package scheduler
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 )
 
@@ -30,6 +31,6 @@ type HostAllocatorData struct {
 	taskQueueItems       map[string][]model.TaskQueueItem
 	existingDistroHosts  map[string][]host.Host
 	taskRunDistros       map[string][]string
-	distros              map[string]model.Distro
+	distros              map[string]distro.Distro
 	projectTaskDurations model.ProjectTaskDurations
 }

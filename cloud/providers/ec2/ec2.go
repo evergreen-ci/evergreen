@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -78,12 +79,12 @@ func (cloudManager *EC2Manager) Configure(mciSettings *mci.MCISettings) error {
 	return nil
 }
 
-func (cloudManager *EC2Manager) GetSSHOptions(host *host.Host, distro *model.Distro,
+func (cloudManager *EC2Manager) GetSSHOptions(host *host.Host, distro *distro.Distro,
 	keyPath string) ([]string, error) {
 	return getEC2KeyOptions(keyPath)
 }
 
-func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, distro *model.Distro, keyPath string) (bool, error) {
+func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, distro *distro.Distro, keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
 		return false, err
@@ -104,7 +105,7 @@ func (cloudManager *EC2Manager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (cloudManager *EC2Manager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*host.Host, error) {
+func (cloudManager *EC2Manager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
 	if distro.Provider != OnDemandProviderName {
 		return nil, fmt.Errorf("Can't use EC2 spawn instance on distro '%v'")
 	}

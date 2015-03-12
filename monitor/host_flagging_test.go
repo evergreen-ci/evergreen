@@ -4,7 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -161,15 +161,15 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 			// mock up the distros
 
-			distro1 := model.Distro{
+			distro1 := distro.Distro{
 				Name:     "d1",
 				MaxHosts: 2,
 			}
-			distro2 := model.Distro{
+			distro2 := distro.Distro{
 				Name:     "d2",
 				MaxHosts: 1,
 			}
-			distros := map[string]model.Distro{
+			distros := map[string]distro.Distro{
 				"d1": distro1,
 				"d2": distro2,
 			}

@@ -3,7 +3,7 @@ package monitor
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -18,12 +18,12 @@ const (
 // function that takes in all distros - specified as a map of
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
-type hostFlaggingFunc func(map[string]model.Distro,
+type hostFlaggingFunc func(map[string]distro.Distro,
 	*mci.MCISettings) ([]host.Host, error)
 
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
-func flagDecommissionedHosts(distros map[string]model.Distro,
+func flagDecommissionedHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
@@ -42,7 +42,7 @@ func flagDecommissionedHosts(distros map[string]model.Distro,
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
-func flagIdleHosts(distros map[string]model.Distro,
+func flagIdleHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
@@ -102,7 +102,7 @@ func flagIdleHosts(distros map[string]model.Distro,
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
-func flagExcessHosts(distros map[string]model.Distro,
+func flagExcessHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
@@ -170,7 +170,7 @@ func flagExcessHosts(distros map[string]model.Distro,
 
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
-func flagUnprovisionedHosts(distros map[string]model.Distro,
+func flagUnprovisionedHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
@@ -190,7 +190,7 @@ func flagUnprovisionedHosts(distros map[string]model.Distro,
 
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
-func flagProvisioningFailedHosts(distros map[string]model.Distro,
+func flagProvisioningFailedHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 
@@ -212,7 +212,7 @@ func flagProvisioningFailedHosts(distros map[string]model.Distro,
 
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
-func flagExpiredHosts(distros map[string]model.Distro,
+func flagExpiredHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) ([]host.Host,
 	error) {
 

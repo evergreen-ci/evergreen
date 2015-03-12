@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
 	"10gen.com/mci/db/bsonutil"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -141,7 +142,7 @@ type ProjectTask struct {
 }
 
 type TaskConfig struct {
-	Distro       *Distro
+	Distro       *distro.Distro
 	Project      *Project
 	Task         *Task
 	BuildVariant *BuildVariant
@@ -171,7 +172,7 @@ var (
 	ProjectBVMatrixKey      = bsonutil.MustHaveTag(Project{}, "BuildVariantMatrix")
 )
 
-func NewTaskConfig(distro *Distro, project *Project, task *Task, workDir string) (*TaskConfig, error) {
+func NewTaskConfig(distro *distro.Distro, project *Project, task *Task, workDir string) (*TaskConfig, error) {
 	buildVariant := project.FindBuildVariant(task.BuildVariant)
 	if buildVariant == nil {
 		return nil, fmt.Errorf("Couldn't find buildvariant: %v", task.BuildVariant)
@@ -186,7 +187,7 @@ func NewTaskConfig(distro *Distro, project *Project, task *Task, workDir string)
 	return &TaskConfig{distro, project, task, buildVariant, expansions, workDir, sourceDir}, nil
 }
 
-func populateExpansions(distro *Distro, project *Project,
+func populateExpansions(distro *distro.Distro, project *Project,
 	buildVariant *BuildVariant, task *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
 	expansions.Update(distro.Expansions)

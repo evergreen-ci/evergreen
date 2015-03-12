@@ -5,7 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/command"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
@@ -174,7 +174,7 @@ func (init *HostInit) setupHost(host *host.Host, setup string) ([]byte, error) {
 	}
 
 	// fetch the host's distro
-	distro, err := model.LoadOneDistro(init.MCISettings.ConfigDir, host.Distro)
+	distro, err := distro.LoadOne(init.MCISettings.ConfigDir, host.Distro)
 	if err != nil {
 		return nil,
 			fmt.Errorf("error getting distro %v for host %v: %v",
@@ -258,7 +258,7 @@ func (init *HostInit) setupHost(host *host.Host, setup string) ([]byte, error) {
 func (init *HostInit) buildSetupScript(host *host.Host) (string, error) {
 
 	// fetch the host's distro
-	distro, err := model.LoadOneDistro(init.MCISettings.ConfigDir, host.Distro)
+	distro, err := distro.LoadOne(init.MCISettings.ConfigDir, host.Distro)
 	if err != nil {
 		return "", fmt.Errorf("error getting distro %v for host %v: %v", host.Distro, host.Id, err)
 	}

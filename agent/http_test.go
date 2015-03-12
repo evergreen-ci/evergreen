@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
@@ -111,7 +112,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 		Convey("Calling GetDistro() should fetch the task's distro successfully",
 			func() {
-				distro := &model.Distro{Name: "mocktaskdistro"}
+				distro := &distro.Distro{Name: "mocktaskdistro"}
 				serveMux.HandleFunc("/task/mocktaskid/distro",
 					func(w http.ResponseWriter, req *http.Request) {
 						util.WriteJSON(&w, distro, http.StatusOK)

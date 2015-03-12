@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
@@ -85,7 +86,7 @@ type DurationBasedHostAllocator struct{}
 
 // helper type to sort distros by the number of static hosts they have
 type sortableDistroByNumStaticHost struct {
-	distros []model.Distro
+	distros []distro.Distro
 }
 
 // Implementation of NewHostsNeeded.  Decides that new hosts are needed for a
@@ -95,7 +96,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	hostAllocatorData HostAllocatorData, mciSettings *mci.MCISettings) (newHostsNeeded map[string]int,
 	err error) {
 
-	queueDistros := make([]model.Distro, 0,
+	queueDistros := make([]distro.Distro, 0,
 		len(hostAllocatorData.taskQueueItems))
 
 	// Sanity check to ensure that we have a distro object for each item in the
@@ -408,7 +409,7 @@ func numNewDistroHosts(maxHosts, numExistingHosts, numFreeHosts, durNewHosts,
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro.
 func (self *DurationBasedHostAllocator) numNewHostsForDistro(
-	hostAllocatorData *HostAllocatorData, distro model.Distro,
+	hostAllocatorData *HostAllocatorData, distro distro.Distro,
 	tasksAccountedFor map[string]bool,
 	distroScheduleData map[string]DistroScheduleData, mciSettings *mci.MCISettings) (numNewHosts int,
 	err error) {
@@ -510,7 +511,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 // sortDistrosByNumStaticHosts returns a sorted slice of distros where the
 // distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []model.Distro) []model.Distro {
+func sortDistrosByNumStaticHosts(distros []distro.Distro) []distro.Distro {
 	sortableDistroObj := &sortableDistroByNumStaticHost{distros}
 	sort.Sort(sortableDistroObj)
 	return sortableDistroObj.distros

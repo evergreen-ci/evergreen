@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apiserver"
 	dbutil "10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/testutils"
@@ -550,7 +551,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
 		model.TasksCollection, model.BuildsCollection, host.Collection,
-		model.DistrosCollection, model.VersionsCollection, model.PatchCollection,
+		distro.Collection, model.VersionsCollection, model.PatchCollection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 	}
 	util.HandleTestingErr(dbutil.ClearCollections(testCollections...), t, clearDataMsg)

@@ -62,7 +62,6 @@ func TestPushTask(t *testing.T) {
 						Convey("s3.put attaches task file properly", func() {
 							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
 							So(err, ShouldBeNil)
-							So(entry.Files, ShouldNotBeEmpty)
 							So(len(entry.Files), ShouldEqual, 2)
 							for _, element := range entry.Files {
 								So(element.Name, ShouldNotEqual, "")
@@ -74,7 +73,7 @@ func TestPushTask(t *testing.T) {
 						Convey("s3.copy attached task file properly", func() {
 							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
 							So(err, ShouldBeNil)
-							So(entry.Files, ShouldNotBeEmpty)
+							So(len(entry.Files), ShouldNotEqual, 0)
 							So(entry.Files[0].Name, ShouldEqual, "push_file")
 							So(entry.Files[1].Name, ShouldEqual, "copy_file")
 							So(entry.Files[0].Link, ShouldEqual, "https://s3.amazonaws.com/build-push-testing/pushtest-stage/unittest-testTaskId-DISTRO_EXP-BUILDVAR_EXP-FILE_EXP.txt")

@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -86,7 +87,7 @@ func (cloudManager *EC2SpotManager) TimeTilNextPayment(host *host.Host) time.Dur
 	return timeTilNextEC2Payment(host)
 }
 
-func (cloudManager *EC2SpotManager) GetSSHOptions(host *host.Host, distro *model.Distro,
+func (cloudManager *EC2SpotManager) GetSSHOptions(host *host.Host, distro *distro.Distro,
 	keyPath string) ([]string, error) {
 	return getEC2KeyOptions(keyPath)
 }
@@ -119,7 +120,7 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	return attachTags(getUSEast(*cloudManager.awsCredentials), tags, spotReq.InstanceId)
 }
 
-func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, distro *model.Distro,
+func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, distro *distro.Distro,
 	keyPath string) (bool, error) {
 	sshOpts, err := cloudManager.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
@@ -199,7 +200,7 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2SpotManager) SpawnInstance(distro *model.Distro,
+func (cloudManager *EC2SpotManager) SpawnInstance(distro *distro.Distro,
 	owner string,
 	userHost bool) (*host.Host, error) {
 	if distro.Provider != SpotProviderName {

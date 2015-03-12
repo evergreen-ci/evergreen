@@ -3,7 +3,7 @@ package monitor
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
@@ -50,7 +50,7 @@ func (self *HostMonitor) RunMonitoringChecks(
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (self *HostMonitor) CleanupHosts(distros map[string]model.Distro,
+func (self *HostMonitor) CleanupHosts(distros map[string]distro.Distro,
 	mciSettings *mci.MCISettings) []error {
 
 	mci.Logger.Logf(slogger.INFO, "Running host cleanup...")

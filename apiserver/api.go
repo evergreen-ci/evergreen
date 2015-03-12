@@ -9,6 +9,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
@@ -577,7 +578,7 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
 	// Get the distro for this task
-	distro, err := model.LoadOneDistro(as.MCISettings.ConfigDir, task.DistroId)
+	distro, err := distro.LoadOne(as.MCISettings.ConfigDir, task.DistroId)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

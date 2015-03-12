@@ -3,7 +3,7 @@ package apiserver
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
@@ -34,7 +34,7 @@ type spawnResponse struct {
 }
 
 func (as *APIServer) listDistros(w http.ResponseWriter, r *http.Request) {
-	distros, err := model.LoadDistros(as.MCISettings.ConfigDir)
+	distros, err := distro.Load(as.MCISettings.ConfigDir)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

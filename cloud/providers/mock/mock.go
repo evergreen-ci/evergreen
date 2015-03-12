@@ -3,7 +3,7 @@ package mock
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"time"
@@ -13,7 +13,7 @@ const ProviderName = "mock"
 
 type MockCloudManager struct{}
 
-func (staticMgr *MockCloudManager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*host.Host, error) {
+func (staticMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
 	return &host.Host{
 		Id:        util.RandomString(),
 		Distro:    distro.Name,
@@ -45,7 +45,7 @@ func (staticMgr *MockCloudManager) Configure(mciSettings *mci.MCISettings) error
 	return nil
 }
 
-func (staticMgr *MockCloudManager) IsSSHReachable(host *host.Host, distro *model.Distro,
+func (staticMgr *MockCloudManager) IsSSHReachable(host *host.Host, distro *distro.Distro,
 	keyPath string) (bool, error) {
 	return true, nil
 }
@@ -58,7 +58,7 @@ func (staticMsg *MockCloudManager) OnUp(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *MockCloudManager) GetSSHOptions(host *host.Host, distro *model.Distro,
+func (staticMgr *MockCloudManager) GetSSHOptions(host *host.Host, distro *distro.Distro,
 	keyPath string) ([]string, error) {
 	return []string{}, nil
 }

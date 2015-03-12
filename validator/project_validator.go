@@ -3,6 +3,7 @@ package validator
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/plugin"
 	_ "10gen.com/mci/plugin/config"
 	"10gen.com/mci/util"
@@ -64,7 +65,7 @@ func (vr ValidationError) Error() string {
 // create a slice of all valid distro names
 func populateDistroNames(mciSettings *mci.MCISettings) *ValidationError {
 	// create a slice of all known distros
-	allDistros, err := model.LoadDistros(mciSettings.ConfigDir)
+	allDistros, err := distro.Load(mciSettings.ConfigDir)
 	if err != nil {
 		return &ValidationError{
 			Message: fmt.Sprintf("error loading distros from file %v: %v",

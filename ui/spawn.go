@@ -54,7 +54,7 @@ func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := model.LoadDistros(uis.MCISettings.ConfigDir)
+	distros, err := distro.Load(uis.MCISettings.ConfigDir)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error loading distros: %v", err))
 		return

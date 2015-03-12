@@ -7,7 +7,7 @@ import (
 	"10gen.com/mci/cloud/providers/ec2"
 	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/cloud/providers/static"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 )
@@ -47,7 +47,7 @@ func GetCloudHost(host *host.Host, mciSettings *mci.MCISettings) (*cloud.CloudHo
 		return nil, err
 	}
 
-	distro, err := model.LoadOneDistro(mciSettings.ConfigDir, host.Distro)
+	distro, err := distro.LoadOne(mciSettings.ConfigDir, host.Distro)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load distro '%v' for host '%v': %v", host.Distro, host.Id, err)
 	}

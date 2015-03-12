@@ -3,7 +3,7 @@ package taskrunner
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -80,7 +80,7 @@ func (self *GoxcAgentCompiler) ExecutableSubPath(distroName string) (
 	string, error) {
 
 	// get the full distro info, so we can figure out the architecture
-	distro, err := model.LoadOneDistro(self.MCISettings.ConfigDir, distroName)
+	distro, err := distro.LoadOne(self.MCISettings.ConfigDir, distroName)
 	if err != nil {
 		return "", fmt.Errorf("error finding distro %v: %v", distroName, err)
 	}

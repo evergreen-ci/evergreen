@@ -4,7 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -15,7 +15,7 @@ const ProviderName = "static"
 
 type StaticManager struct{}
 
-func (staticMgr *StaticManager) SpawnInstance(distro *model.Distro, owner string,
+func (staticMgr *StaticManager) SpawnInstance(distro *distro.Distro, owner string,
 	userHost bool) (*host.Host, error) {
 	return nil, fmt.Errorf("Cannot start new instances with static provider.")
 }
@@ -55,7 +55,7 @@ func (staticMgr *StaticManager) Configure(mciSettings *mci.MCISettings) error {
 	return nil
 }
 
-func (staticMgr *StaticManager) IsSSHReachable(host *host.Host, distro *model.Distro,
+func (staticMgr *StaticManager) IsSSHReachable(host *host.Host, distro *distro.Distro,
 	keyPath string) (bool, error) {
 	sshOpts, err := staticMgr.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
@@ -72,7 +72,7 @@ func (staticMgr *StaticManager) OnUp(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *StaticManager) GetSSHOptions(host *host.Host, distro *model.Distro, keyPath string) ([]string, error) {
+func (staticMgr *StaticManager) GetSSHOptions(host *host.Host, distro *distro.Distro, keyPath string) ([]string, error) {
 
 	//TODO - Note that currently, we're ignoring the keyPath here to be
 	// consistent with how static hosts behaved before cloud manager interfaces. This will

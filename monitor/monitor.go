@@ -3,6 +3,7 @@ package monitor
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 )
@@ -42,7 +43,7 @@ var (
 func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 
 	// load in all of the distros
-	distros, err := model.LoadDistros(mciSettings.ConfigDir)
+	distros, err := distro.Load(mciSettings.ConfigDir)
 	if err != nil {
 		return fmt.Errorf("error loading in distros from config dir %v: %v",
 			mciSettings.ConfigDir, err)

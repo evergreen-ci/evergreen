@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -56,18 +57,18 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 
 		taskDurations := model.ProjectTaskDurations{}
 
-		distroSlice := []model.Distro{
-			model.Distro{
+		distroSlice := []distro.Distro{
+			distro.Distro{
 				Name:     distroIds[0],
 				Provider: "static",
 				MaxHosts: 5,
 			},
-			model.Distro{
+			distro.Distro{
 				Name:     distroIds[1],
 				Provider: "ec2",
 				MaxHosts: 10,
 			},
-			model.Distro{
+			distro.Distro{
 				Name:     distroIds[2],
 				Provider: "ec2",
 				MaxHosts: 12,
@@ -114,7 +115,7 @@ func TestDurationBasedNewHostsNeeded(t *testing.T) {
 						distroIds[1]: hosts[1],
 						distroIds[2]: hosts[2],
 					},
-					distros: map[string]model.Distro{
+					distros: map[string]distro.Distro{
 						distroIds[0]: distroSlice[0],
 						distroIds[1]: distroSlice[1],
 						distroIds[2]: distroSlice[2],
@@ -430,14 +431,14 @@ func TestSortDistrosByNumStaticHosts(t *testing.T) {
 		Convey("distro hosts should be sorted by the number of static hosts",
 			func() {
 				hosts := []string{"0", "1", "2", "3", "4", "5", "6"}
-				distros := []model.Distro{
-					model.Distro{Name: hosts[0], Hosts: hosts[:0]},
-					model.Distro{Name: hosts[2], Hosts: hosts[:2]},
-					model.Distro{Name: hosts[1], Hosts: hosts[:1]},
-					model.Distro{Name: hosts[4], Hosts: hosts[:4]},
-					model.Distro{Name: hosts[6], Hosts: hosts[:6]},
-					model.Distro{Name: hosts[3], Hosts: hosts[:3]},
-					model.Distro{Name: hosts[5], Hosts: hosts[:5]},
+				distros := []distro.Distro{
+					distro.Distro{Name: hosts[0], Hosts: hosts[:0]},
+					distro.Distro{Name: hosts[2], Hosts: hosts[:2]},
+					distro.Distro{Name: hosts[1], Hosts: hosts[:1]},
+					distro.Distro{Name: hosts[4], Hosts: hosts[:4]},
+					distro.Distro{Name: hosts[6], Hosts: hosts[:6]},
+					distro.Distro{Name: hosts[3], Hosts: hosts[:3]},
+					distro.Distro{Name: hosts[5], Hosts: hosts[:5]},
 				}
 
 				newDistros := sortDistrosByNumStaticHosts(distros)
@@ -454,14 +455,14 @@ func TestSortDistrosByNumStaticHosts(t *testing.T) {
 		Convey("distro hosts should be sorted by the number of static hosts",
 			func() {
 				hosts := []string{"0", "1", "2", "3", "4", "5", "6"}
-				distros := []model.Distro{
-					model.Distro{Name: hosts[0], Hosts: hosts[:1]},
-					model.Distro{Name: hosts[2], Hosts: hosts[:2]},
-					model.Distro{Name: hosts[1], Hosts: hosts[:1]},
-					model.Distro{Name: hosts[4], Hosts: hosts[:4]},
-					model.Distro{Name: hosts[6], Hosts: hosts[:6]},
-					model.Distro{Name: hosts[3], Hosts: hosts[:3]},
-					model.Distro{Name: hosts[5], Hosts: hosts[:5]},
+				distros := []distro.Distro{
+					distro.Distro{Name: hosts[0], Hosts: hosts[:1]},
+					distro.Distro{Name: hosts[2], Hosts: hosts[:2]},
+					distro.Distro{Name: hosts[1], Hosts: hosts[:1]},
+					distro.Distro{Name: hosts[4], Hosts: hosts[:4]},
+					distro.Distro{Name: hosts[6], Hosts: hosts[:6]},
+					distro.Distro{Name: hosts[3], Hosts: hosts[:3]},
+					distro.Distro{Name: hosts[5], Hosts: hosts[:5]},
 				}
 
 				newDistros := sortDistrosByNumStaticHosts(distros)
@@ -918,7 +919,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 	var taskIds []string
 	var runningTaskIds []string
 	var hostIds []string
-	var distro model.Distro
+	var dist distro.Distro
 	var testTaskDuration time.Duration
 	var taskDurations model.ProjectTaskDurations
 	var durationBasedHostAllocator *DurationBasedHostAllocator
@@ -930,7 +931,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		runningTaskIds = []string{"t1", "t2", "t3", "t4", "t5"}
 		hostIds = []string{"h1", "h2", "h3", "h4", "h5", "h6", "h7", "h8", "h9"}
-		distro = model.Distro{Provider: "ec2"}
+		dist = distro.Distro{Provider: "ec2"}
 		testTaskDuration = time.Duration(2) * time.Minute
 		taskDurations = model.ProjectTaskDurations{
 			TaskDurationByProject: map[string]*model.BuildVariantTaskDurations{
@@ -955,14 +956,14 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 					host.Host{Id: hostIds[1]},
 					host.Host{Id: hostIds[2]},
 				}
-				distro.MaxHosts = len(hosts) + 5
+				dist.MaxHosts = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
 					existingDistroHosts: map[string][]host.Host{
 						"": hosts,
 					},
-					distros: map[string]model.Distro{
-						"": distro,
+					distros: map[string]distro.Distro{
+						"": dist,
 					},
 				}
 
@@ -970,7 +971,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				distroScheduleData := make(map[string]DistroScheduleData)
 
 				newHosts, err := durationBasedHostAllocator.
-					numNewHostsForDistro(hostAllocatorData, distro,
+					numNewHostsForDistro(hostAllocatorData, dist,
 					tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 				So(err, ShouldBeNil)
 				So(newHosts, ShouldEqual, 0)
@@ -984,12 +985,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[2]},
 				model.TaskQueueItem{Id: taskIds[3]},
 			}
-			distro.MaxHosts = 0
+			dist.MaxHosts = 0
 
 			hostAllocatorData := &HostAllocatorData{
 				existingDistroHosts: map[string][]host.Host{},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 			}
 
@@ -997,14 +998,14 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData := make(map[string]DistroScheduleData)
 
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
 			hosts := []host.Host{
 				host.Host{Id: hostIds[0]},
 			}
-			distro.MaxHosts = len(hosts)
+			dist.MaxHosts = len(hosts)
 
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1013,8 +1014,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 			}
 
@@ -1022,7 +1023,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData = make(map[string]DistroScheduleData)
 
 			newHosts, err = durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1041,7 +1042,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[0]},
 				host.Host{Id: hostIds[1]},
 			}
-			distro.MaxHosts = 1
+			dist.MaxHosts = 1
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1050,8 +1051,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 			}
 
@@ -1059,7 +1060,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData := make(map[string]DistroScheduleData)
 
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1076,7 +1077,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[1]},
 				host.Host{Id: hostIds[2]},
 			}
-			distro.MaxHosts = len(hosts) + 5
+			dist.MaxHosts = len(hosts) + 5
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1085,8 +1086,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 			}
 
@@ -1094,7 +1095,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData := make(map[string]DistroScheduleData)
 
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1114,7 +1115,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[1]},
 			}
 
-			distro.MaxHosts = len(hosts) + 5
+			dist.MaxHosts = len(hosts) + 5
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1123,8 +1124,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1139,7 +1140,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1147,7 +1148,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 		Convey("if the number of tasks to run exceeds the number of free"+
 			" hosts, new hosts are needed up to the maximum allowed for the"+
-			" distro", func() {
+			" dist", func() {
 			expDur := time.Duration(200) * time.Minute
 			// all runnable tasks have an expected duration of expDur (200mins)
 			taskQueueItems := []model.TaskQueueItem{
@@ -1165,7 +1166,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[3]},
 				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
-			distro.MaxHosts = 9
+			dist.MaxHosts = 9
 
 			// In this test:
 			//
@@ -1192,8 +1193,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1208,12 +1209,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// total running duration here is
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
 
-			distro.MaxHosts = 8
+			dist.MaxHosts = 8
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
@@ -1221,8 +1222,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1231,11 +1232,11 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData = make(map[string]DistroScheduleData)
 
 			newHosts, err = durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
-			distro.MaxHosts = 7
+			dist.MaxHosts = 7
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
@@ -1243,8 +1244,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1253,12 +1254,12 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData = make(map[string]DistroScheduleData)
 
 			newHosts, err = durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 2)
 
-			distro.MaxHosts = 6
+			dist.MaxHosts = 6
 
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1267,15 +1268,15 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
 			tasksAccountedFor = make(map[string]bool)
 
 			newHosts, err = durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 1)
@@ -1301,8 +1302,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[4]},
 			}
 
-			distro.MaxHosts = 20
-			distro.Provider = "static"
+			dist.MaxHosts = 20
+			dist.Provider = "static"
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1311,8 +1312,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1321,7 +1322,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			distroScheduleData := make(map[string]DistroScheduleData)
 
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 0)
@@ -1348,7 +1349,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[3]},
 				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
-			distro.MaxHosts = 20
+			dist.MaxHosts = 20
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1357,8 +1358,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1373,7 +1374,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			}
 
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
@@ -1401,7 +1402,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[3]},
 				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
-			distro.MaxHosts = 20
+			dist.MaxHosts = 20
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1410,8 +1411,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1430,7 +1431,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			// max new hosts allowed: 15
 			// 'one-host-per-scheduled-task': 3
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 3)
@@ -1460,7 +1461,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 				host.Host{Id: hostIds[5]},
 			}
-			distro.MaxHosts = 20
+			dist.MaxHosts = 20
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -1469,8 +1470,8 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 				existingDistroHosts: map[string][]host.Host{
 					"": hosts,
 				},
-				distros: map[string]model.Distro{
-					"": distro,
+				distros: map[string]distro.Distro{
+					"": dist,
 				},
 				projectTaskDurations: taskDurations,
 			}
@@ -1489,7 +1490,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			// max new hosts allowed: 15
 			// 'one-host-per-scheduled-task': 3
 			newHosts, err := durationBasedHostAllocator.
-				numNewHostsForDistro(hostAllocatorData, distro,
+				numNewHostsForDistro(hostAllocatorData, dist,
 				tasksAccountedFor, distroScheduleData, hostAllocatorTestConf)
 			So(err, ShouldBeNil)
 			So(newHosts, ShouldEqual, 2)

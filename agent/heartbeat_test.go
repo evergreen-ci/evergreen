@@ -3,6 +3,7 @@ package agent
 import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
@@ -50,8 +51,8 @@ func (self *MockCommunicator) GetPatch() (*model.Patch, error) {
 	return &model.Patch{}, nil
 }
 
-func (self *MockCommunicator) GetDistro() (*model.Distro, error) {
-	return &model.Distro{}, nil
+func (self *MockCommunicator) GetDistro() (*distro.Distro, error) {
+	return &distro.Distro{}, nil
 }
 
 func (self *MockCommunicator) GetProjectConfig() (*model.Project, error) {

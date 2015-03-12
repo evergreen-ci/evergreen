@@ -1,4 +1,4 @@
-package model
+package distro
 
 import (
 	"10gen.com/mci"
@@ -7,25 +7,21 @@ import (
 	"testing"
 )
 
-var (
-	distroTestConfig = mci.TestConfig()
-)
-
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(distroTestConfig))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
 }
+
+const distrosDir = "testdata"
 
 func TestLoadDistrosFromDirectory(t *testing.T) {
 
 	Convey("When loading in distros from a specified directory", t, func() {
 
-		distrosDir := "testdata/distros"
-
 		Convey("all non-template distros in .yml files should be picked"+
 			" up, ignoring template distros and distros in non-yml"+
 			" files", func() {
 
-			distros, err := LoadDistrosFromDirectory(distrosDir)
+			distros, err := LoadFromDirectory(distrosDir)
 			So(err, ShouldBeNil)
 			So(len(distros), ShouldEqual, 3)
 			So(distros["d1"].Name, ShouldEqual, "d1")
@@ -43,12 +39,10 @@ func TestLoadOneDistroFromDirectory(t *testing.T) {
 	Convey("When loading in a single distro from a specified"+
 		" directory", t, func() {
 
-		distrosDir := "testdata/distros"
-
 		Convey("if the distro does not exist, an error should be"+
 			" returned", func() {
 
-			distro, err := LoadOneDistroFromDirectory(distrosDir, "dBad")
+			distro, err := LoadOneFromDirectory(distrosDir, "dBad")
 			So(err, ShouldNotBeNil)
 			So(distro, ShouldBeNil)
 
@@ -57,7 +51,7 @@ func TestLoadOneDistroFromDirectory(t *testing.T) {
 		Convey("if the distro exists in the directory, it should be"+
 			" returned", func() {
 
-			distro, err := LoadOneDistroFromDirectory(distrosDir, "d1")
+			distro, err := LoadOneFromDirectory(distrosDir, "d1")
 			So(err, ShouldBeNil)
 			So(distro, ShouldNotBeNil)
 			So(distro.Name, ShouldEqual, "d1")

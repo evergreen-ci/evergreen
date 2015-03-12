@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/agent"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
@@ -85,7 +86,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	}
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
-	return model.NewTaskConfig(&model.Distro{Name: "linux-64"}, project,
+	return model.NewTaskConfig(&distro.Distro{Name: "linux-64"}, project,
 		testTask, workDir)
 }
 

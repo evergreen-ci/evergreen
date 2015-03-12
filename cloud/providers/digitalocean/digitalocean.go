@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -58,7 +59,7 @@ func (self *DigitalOceanSettings) Validate() error {
 }
 
 //SpawnInstance creates a new droplet for the given distro.
-func (digoMgr *DigitalOceanManager) SpawnInstance(distro *model.Distro, owner string, userHost bool) (*host.Host, error) {
+func (digoMgr *DigitalOceanManager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
 	if distro.Provider != ProviderName {
 		return nil, fmt.Errorf("Can't use DigitalOcean provider on distro '%v'")
 	}
@@ -238,7 +239,7 @@ func (digoMgr *DigitalOceanManager) Configure(mciSettings *mci.MCISettings) erro
 //IsSSHReachable checks if a droplet appears to be reachable via SSH by
 //attempting to contact the host directly.
 func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host,
-	distro *model.Distro, keyPath string) (bool, error) {
+	distro *distro.Distro, keyPath string) (bool, error) {
 	sshOpts, err := digoMgr.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
 		return false, err
@@ -267,7 +268,7 @@ func (digoMgr *DigitalOceanManager) OnUp(host *host.Host) error {
 //GetSSHOptions returns an array of default SSH options for connecting to a
 //droplet.
 func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host,
-	distro *model.Distro, keyPath string) ([]string, error) {
+	distro *distro.Distro, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, fmt.Errorf("No key specified for DigitalOcean host")
 	}

@@ -3,7 +3,7 @@ package scheduler
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
@@ -46,7 +46,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
 func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
-	hostAllocatorData *HostAllocatorData, distro model.Distro, mciSettings *mci.MCISettings) int {
+	hostAllocatorData *HostAllocatorData, distro distro.Distro, mciSettings *mci.MCISettings) int {
 
 	cloudManager, err := providers.GetCloudManager(distro.Provider, mciSettings)
 

@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/cloud/providers/static"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -70,7 +71,7 @@ func TestIsHostReachable(t *testing.T) {
 		cloudManager, err := GetCloudManager(reachableHost.Provider, mci.TestConfig())
 		So(err, ShouldBeNil)
 
-		reachable, err := cloudManager.IsSSHReachable(reachableHost, &model.Distro{}, "")
+		reachable, err := cloudManager.IsSSHReachable(reachableHost, &distro.Distro{}, "")
 		So(reachable, ShouldBeTrue)
 		So(err, ShouldBeNil)
 	})
@@ -84,7 +85,7 @@ func TestIsHostReachable(t *testing.T) {
 		cloudManager, err := GetCloudManager(reachableHost.Provider, mci.TestConfig())
 		So(err, ShouldBeNil)
 
-		reachable, err := cloudManager.IsSSHReachable(reachableHost, &model.Distro{}, "")
+		reachable, err := cloudManager.IsSSHReachable(reachableHost, &distro.Distro{}, "")
 		So(reachable, ShouldBeFalse)
 		So(err, ShouldBeNil)
 	})

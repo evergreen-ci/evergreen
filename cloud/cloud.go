@@ -2,7 +2,7 @@ package cloud
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"time"
 )
@@ -60,7 +60,7 @@ type CloudManager interface {
 
 	// SpawnInstance attempts to create a new host by requesting one from the
 	// provider's API.
-	SpawnInstance(*model.Distro, string, bool) (*host.Host, error)
+	SpawnInstance(*distro.Distro, string, bool) (*host.Host, error)
 
 	// CanSpawn indicates if this provider is capable of creating new instances
 	// with SpawnInstance(). If this provider doesn't support spawning new
@@ -85,14 +85,14 @@ type CloudManager interface {
 
 	//IsSSHReachable returns true if the host can successfully
 	//accept and run an ssh command.
-	IsSSHReachable(host *host.Host, distro *model.Distro, keyPath string) (bool, error)
+	IsSSHReachable(host *host.Host, distro *distro.Distro, keyPath string) (bool, error)
 
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(*host.Host) (string, error)
 
 	// GetSSHOptions generates the command line args to be passed to ssh to
 	// allow connection to the machine
-	GetSSHOptions(host *host.Host, distro *model.Distro, keyName string) ([]string, error)
+	GetSSHOptions(host *host.Host, distro *distro.Distro, keyName string) ([]string, error)
 
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
@@ -104,7 +104,7 @@ type CloudManager interface {
 //underlying provider's implementation.
 type CloudHost struct {
 	Host     *host.Host
-	Distro   *model.Distro
+	Distro   *distro.Distro
 	KeyPath  string
 	CloudMgr CloudManager
 }

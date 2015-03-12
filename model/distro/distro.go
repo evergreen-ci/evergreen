@@ -1,15 +1,12 @@
-package model
+package distro
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type Distro struct {
@@ -48,71 +45,9 @@ type SpawnUserData struct {
 	Validate ValidateFormat `bson:"validate"`
 }
 
-var (
-	// bson fields for the distro struct
-	DistroIdKey           = bsonutil.MustHaveTag(Distro{}, "Name")
-	DistroArchKey         = bsonutil.MustHaveTag(Distro{}, "Arch")
-	DistroSpawnAllowedKey = bsonutil.MustHaveTag(Distro{}, "SpawnAllowed")
-	DistroSetupKey        = bsonutil.MustHaveTag(Distro{}, "Setup")
-	DistroSetupMCIOnlyKey = bsonutil.MustHaveTag(Distro{}, "SetupMciOnly")
-	DistroSetupAsSudoKey  = bsonutil.MustHaveTag(Distro{}, "SetupAsSudo")
-	DistroKeyKey          = bsonutil.MustHaveTag(Distro{}, "Key")
-	DistroUserKey         = bsonutil.MustHaveTag(Distro{}, "User")
-	DistroHostsKey        = bsonutil.MustHaveTag(Distro{}, "Hosts")
-	DistroMaxHostsKey     = bsonutil.MustHaveTag(Distro{}, "MaxHosts")
-	DistroExpansionsKey   = bsonutil.MustHaveTag(Distro{}, "Expansions")
-
-	// bson fields for the spawn userdata struct
-	SpawnUserDataFileKey     = bsonutil.MustHaveTag(SpawnUserData{}, "File")
-	SpawnUserDataValidateKey = bsonutil.MustHaveTag(SpawnUserData{}, "Validate")
-)
-
 const (
-	DistrosCollection = "distros"
+	Collection = "distros"
 )
-
-// Make sure the static hosts stored in the database are correct.
-func RefreshStaticHosts(configName string) error {
-
-	distros, err := LoadDistros(configName)
-	if err != nil {
-		return err
-	}
-
-	activeStaticHosts := make([]string, 0)
-	for _, distro := range distros {
-		for _, hostId := range distro.Hosts {
-			hostInfo, err := util.ParseSSHInfo(hostId)
-			if err != nil {
-				return err
-			}
-			user := hostInfo.User
-			if user == "" {
-				user = distro.User
-			}
-			staticHost := host.Host{
-				Id:           hostId,
-				User:         user,
-				Host:         hostId,
-				Distro:       distro.Name,
-				CreationTime: time.Now(),
-				Provider:     mci.HostTypeStatic,
-				StartedBy:    mci.MCIUser,
-				InstanceType: "",
-				Status:       mci.HostRunning,
-				Provisioned:  true,
-			}
-
-			// upsert the host
-			_, err = staticHost.Upsert()
-			if err != nil {
-				return err
-			}
-			activeStaticHosts = append(activeStaticHosts, hostId)
-		}
-	}
-	return host.DecommissionInactiveStaticHosts(activeStaticHosts)
-}
 
 // Given the name of the directory we are using for configs, return the
 // location of the directory when the distro specs live.
@@ -127,7 +62,7 @@ func locateDistrosDirectory(configDir string) (string, error) {
 // Load a single distro from the specified config directory.  Locates the
 // directory on the filesystem where the distro specs live, based on the name
 // of the config directory, and finds the specified distro within it.
-func LoadOneDistro(configDir, distroName string) (*Distro, error) {
+func LoadOne(configDir, distroName string) (*Distro, error) {
 
 	// find the directory where the distro specs live
 	distrosDir, err := locateDistrosDirectory(configDir)
@@ -136,14 +71,14 @@ func LoadOneDistro(configDir, distroName string) (*Distro, error) {
 	}
 
 	// load the distro
-	return LoadOneDistroFromDirectory(distrosDir, distroName)
+	return LoadOneFromDirectory(distrosDir, distroName)
 }
 
 // Load in an individual distro from the specified directory. Walks over all
 // of the .yml files in the directory until it finds the distro in one of them.
 // Returns an error if there is an error reading any of the files, or if the
 // distro does not exist.
-func LoadOneDistroFromDirectory(directory, distroName string) (*Distro, error) {
+func LoadOneFromDirectory(directory, distroName string) (*Distro, error) {
 
 	// to be returned
 	var distro *Distro
@@ -168,7 +103,7 @@ func LoadOneDistroFromDirectory(directory, distroName string) (*Distro, error) {
 			if strings.HasSuffix(path, ".yml") {
 
 				// get the distros
-				fileDistros, err := LoadDistrosFromFile(path)
+				fileDistros, err := LoadFromFile(path)
 				if err != nil {
 					return err
 				}
@@ -200,7 +135,7 @@ func LoadOneDistroFromDirectory(directory, distroName string) (*Distro, error) {
 // Load all distros from the specified config directory.  Locates the directory
 // on the filesystem where the distros live, based on the name of the config
 // directory, and loads all distros from it.
-func LoadDistros(configDir string) (map[string]Distro, error) {
+func Load(configDir string) (map[string]Distro, error) {
 
 	// find the directory where the distro specs live
 	distrosDir, err := locateDistrosDirectory(configDir)
@@ -209,12 +144,12 @@ func LoadDistros(configDir string) (map[string]Distro, error) {
 	}
 
 	// load all the distros from that directory
-	return LoadDistrosFromDirectory(distrosDir)
+	return LoadFromDirectory(distrosDir)
 }
 
 // Walk all of the .yml files in the specified directory, and load in all
 // of the distros specified in them.
-func LoadDistrosFromDirectory(directory string) (map[string]Distro, error) {
+func LoadFromDirectory(directory string) (map[string]Distro, error) {
 	distros := map[string]Distro{}
 
 	// walk all of the files in the directory, unmarshalling the distros from
@@ -226,7 +161,7 @@ func LoadDistrosFromDirectory(directory string) (map[string]Distro, error) {
 			if strings.HasSuffix(path, ".yml") {
 
 				// get the distros
-				fileDistros, err := LoadDistrosFromFile(path)
+				fileDistros, err := LoadFromFile(path)
 				if err != nil {
 					return err
 				}
@@ -253,7 +188,7 @@ func LoadDistrosFromDirectory(directory string) (map[string]Distro, error) {
 // Load in all of the distros from the specified file. Returns a map of
 // name -> distro as specified in the file, as well as an error if any
 // occurs
-func LoadDistrosFromFile(file string) (map[string]Distro, error) {
+func LoadFromFile(file string) (map[string]Distro, error) {
 
 	// read in the file into a map of distros
 	distros := map[string]Distro{}

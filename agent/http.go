@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/util"
 	"bytes"
 	"crypto/tls"
@@ -342,8 +343,8 @@ func (h *HTTPAgentCommunicator) GetTask() (*model.Task, error) {
 	return task, nil
 }
 
-func (h *HTTPAgentCommunicator) GetDistro() (*model.Distro, error) {
-	distro := &model.Distro{}
+func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
+	distro := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.tryGet("distro")

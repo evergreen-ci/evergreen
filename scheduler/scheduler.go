@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -57,7 +58,7 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	// load in all of the distros
-	distros, err := model.LoadDistros(self.MCISettings.ConfigDir)
+	distros, err := distro.Load(self.MCISettings.ConfigDir)
 	if err != nil {
 		return fmt.Errorf("Error finding distros: %v", err)
 	}
@@ -122,7 +123,7 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	// split distros by name
-	distrosByName := make(map[string]model.Distro)
+	distrosByName := make(map[string]distro.Distro)
 	for _, distro := range distros {
 		distrosByName[distro.Name] = distro
 	}
@@ -294,7 +295,7 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 		hostsSpawnedPerDistro[distroName] = make([]host.Host, 0,
 			numHostsToSpawn)
 		for i := 0; i < numHostsToSpawn; i++ {
-			distro, err := model.LoadOneDistro(self.ConfigDir, distroName)
+			distro, err := distro.LoadOne(self.ConfigDir, distroName)
 			if err != nil || distro == nil {
 				mci.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroName, err)
 			}
