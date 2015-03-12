@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -19,7 +20,7 @@ const (
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value
 	// for number of seconds
-	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+s)`
+	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+[ ]*s)`
 )
 
 var startRegex = regexp.MustCompile(StartRegexString)
@@ -174,7 +175,7 @@ func endInfoFromLogLine(line string) (string, string, time.Duration, error) {
 	}
 	status := matches[1]
 	name := matches[2]
-	duration, err := time.ParseDuration(matches[3])
+	duration, err := time.ParseDuration(strings.Replace(matches[3], " ", "", -1))
 	if err != nil {
 		return "", "", 0, fmt.Errorf("error parsing test runtime: %v", err)
 	}

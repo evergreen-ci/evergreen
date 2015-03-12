@@ -27,7 +27,7 @@
 [31m[0m[33m[0m[32m
 10 assertions thus far[0m
 
---- PASS: TestRunFunctionWithTimeout (0.50s)
+--- PASS: TestRunFunctionWithTimeout (0.50 seconds)
 === RUN TestNewLineBufferingWriter
 
   Using a LineBufferingWriter should 
@@ -39,7 +39,7 @@
 [31m[0m[33m[0m[32m
 27 assertions thus far[0m
 
---- PASS: TestNewLineBufferingWriter (0.00s)
+--- PASS: TestNewLineBufferingWriter (0.00 seconds)
 === RUN TestMinInts
 
   Min should return the minimum of the inputs passed in, or the largest possible int with no inputs [32m✔[0m[32m✔[0m[32m✔[0m
