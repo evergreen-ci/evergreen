@@ -98,6 +98,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			versionIds = append(versionIds, patch.Version)
 		}
 		baseVersionId := model.FindBaseVersionIdForRevision(patch.Project, patch.Githash)
+		patch.Patches = nil
 		uiPatches = append(uiPatches, uiPatch{Patch: patch, BaseVersionId: baseVersionId})
 	}
 	versions, err := model.FindAllVersions(bson.M{"_id": bson.M{"$in": versionIds}}, bson.M{}, []string{}, 0, 0)
