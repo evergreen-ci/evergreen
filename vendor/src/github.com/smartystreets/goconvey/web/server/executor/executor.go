@@ -10,18 +10,24 @@ import (
 const (
 	Idle      = "idle"
 	Executing = "executing"
-	Parsing   = "parsing"
 )
 
 type Executor struct {
-	tester      Tester
-	parser      Parser
-	status      string
-	statusNotif chan bool
+	tester     Tester
+	parser     Parser
+	status     string
+	statusChan chan chan string
+	statusFlag bool
 }
 
 func (self *Executor) Status() string {
 	return self.status
+}
+
+func (self *Executor) ClearStatusFlag() bool {
+	hasNewStatus := self.statusFlag
+	self.statusFlag = false
+	return hasNewStatus
 }
 
 func (self *Executor) ExecuteTests(folders []*contract.Package) *contract.CompleteOutput {
@@ -37,7 +43,6 @@ func (self *Executor) execute(folders []*contract.Package) {
 }
 
 func (self *Executor) parse(folders []*contract.Package) *contract.CompleteOutput {
-	self.setStatus(Parsing)
 	result := &contract.CompleteOutput{Revision: now().String()}
 	self.parser.Parse(folders)
 	for _, folder := range folders {
@@ -48,21 +53,29 @@ func (self *Executor) parse(folders []*contract.Package) *contract.CompleteOutpu
 
 func (self *Executor) setStatus(status string) {
 	self.status = status
+	self.statusFlag = true
 
-	select {
-	case self.statusNotif <- true:
-	default:
+Loop:
+	for {
+		select {
+		case c := <-self.statusChan:
+			self.statusFlag = false
+			c <- status
+		default:
+			break Loop
+		}
 	}
 
 	log.Printf("Executor status: '%s'\n", self.status)
 }
 
-func NewExecutor(tester Tester, parser Parser, ch chan bool) *Executor {
+func NewExecutor(tester Tester, parser Parser, ch chan chan string) *Executor {
 	return &Executor{
-		tester,
-		parser,
-		Idle,
-		ch,
+		tester:     tester,
+		parser:     parser,
+		status:     Idle,
+		statusChan: ch,
+		statusFlag: false,
 	}
 }
 

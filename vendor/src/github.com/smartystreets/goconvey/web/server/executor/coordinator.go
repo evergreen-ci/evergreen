@@ -1,8 +1,8 @@
 package executor
 
 import (
-	"fmt"
 	"log"
+	"strings"
 	"sync"
 
 	"github.com/smartystreets/goconvey/web/server/contract"
@@ -31,12 +31,13 @@ func (self *concurrentCoordinator) enlistWorkers() {
 }
 func (self *concurrentCoordinator) worker(id int) {
 	for folder := range self.queue {
+		packageName := strings.Replace(folder.Name, "\\", "/", -1)
 		if !folder.Active {
-			log.Printf("Skipping concurrent execution: %s\n", folder.Name)
+			log.Printf("Skipping concurrent execution: %s\n", packageName)
 			continue
 		}
-		log.Printf("Executing concurrent tests: %s\n", folder.Name)
-		folder.Output, folder.Error = self.shell.GoTest(folder.Path)
+		log.Printf("Executing concurrent tests: %s\n", packageName)
+		folder.Output, folder.Error = self.shell.GoTest(folder.Path, packageName)
 	}
 	self.waiter.Done()
 }
@@ -54,15 +55,18 @@ func (self *concurrentCoordinator) awaitCompletion() {
 
 func (self *concurrentCoordinator) checkForErrors() {
 	for _, folder := range self.folders {
-		if folder.Error != nil && folder.Output == "" {
-			fmt.Println(folder.Path, folder.Error)
+		if hasUnexpectedError(folder) {
+			log.Println("Unexpected error at", folder.Path)
 			panic(folder.Error)
 		}
 	}
 }
+func hasUnexpectedError(folder *contract.Package) bool {
+	return folder.Error != nil && folder.Output == ""
+}
 
 func newCuncurrentCoordinator(folders []*contract.Package, batchSize int, shell contract.Shell) *concurrentCoordinator {
-	self := &concurrentCoordinator{}
+	self := new(concurrentCoordinator)
 	self.queue = make(chan *contract.Package)
 	self.folders = folders
 	self.batchSize = batchSize

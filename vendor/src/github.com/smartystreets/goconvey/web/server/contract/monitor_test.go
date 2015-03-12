@@ -8,10 +8,8 @@ import (
 )
 
 func TestMonitor(t *testing.T) {
-	var fixture *MonitorFixture
-
 	Convey("Subject: Monitor", t, func() {
-		fixture = newMonitorFixture()
+		fixture := newMonitorFixture()
 
 		Convey("When the file system has changed", func() {
 			fixture.scanner.Modify("/root")
@@ -20,7 +18,51 @@ func TestMonitor(t *testing.T) {
 				fixture.Scan()
 
 				Convey("The watched packages should be executed and the results should be passed to the server", func() {
-					So(fixture.server.latest, ShouldResemble, &CompleteOutput{Packages: []*PackageResult{NewPackageResult("1"), NewPackageResult("2")}})
+					So(fixture.server.latest, ShouldResemble, &CompleteOutput{
+						Packages: []*PackageResult{
+							NewPackageResult("1"),
+							NewPackageResult("2"),
+						},
+					})
+				})
+			})
+
+			Convey("But the server is paused", func() {
+				select {
+				case fixture.pauseUpdate <- true:
+				default:
+				}
+
+				Convey("As a result of scanning", func() {
+					fixture.Scan()
+
+					Convey("The process should take a nap", func() {
+						So(fixture.nap, ShouldBeTrue)
+					})
+
+					Convey("The server should not receive any update", func() {
+						So(fixture.server.latest, ShouldBeNil)
+					})
+
+					Convey("And when the server is unpaused", func() {
+						select {
+						case fixture.pauseUpdate <- true:
+						default:
+						}
+
+						Convey("As a result of scanning again", func() {
+							fixture.Scan()
+
+							Convey("The watched packages should be executed and the results should be passed to the server", func() {
+								So(fixture.server.latest, ShouldResemble, &CompleteOutput{
+									Packages: []*PackageResult{
+										NewPackageResult("1"),
+										NewPackageResult("2"),
+									},
+								})
+							})
+						})
+					})
 				})
 			})
 		})
@@ -46,16 +88,21 @@ func TestMonitor(t *testing.T) {
 /******** MonitorFixture ********/
 
 type MonitorFixture struct {
-	monitor  *Monitor
-	server   *FakeServer
-	watcher  *FakeWatcher
-	scanner  *FakeScanner
-	executor *FakeExecutor
-	nap      bool
+	monitor     *Monitor
+	server      *FakeServer
+	watcher     *FakeWatcher
+	scanner     *FakeScanner
+	executor    *FakeExecutor
+	pauseUpdate chan bool
+	nap         bool
 }
 
 func (self *MonitorFixture) Scan() {
 	self.monitor.Scan()
+}
+
+func (self *MonitorFixture) TogglePause() {
+
 }
 
 func (self *MonitorFixture) sleep() {
@@ -63,12 +110,13 @@ func (self *MonitorFixture) sleep() {
 }
 
 func newMonitorFixture() *MonitorFixture {
-	self := &MonitorFixture{}
+	self := new(MonitorFixture)
 	self.server = newFakeServer()
 	self.watcher = newFakeWatcher()
 	self.scanner = newFakeScanner()
 	self.executor = newFakeExecutor()
-	self.monitor = NewMonitor(self.scanner, self.watcher, self.executor, self.server, self.sleep)
+	self.pauseUpdate = make(chan bool, 1)
+	self.monitor = NewMonitor(self.scanner, self.watcher, self.executor, self.server, self.pauseUpdate, self.sleep)
 	return self
 }
 
@@ -88,10 +136,10 @@ func (self *FakeServer) Status(http.ResponseWriter, *http.Request)         { pan
 func (self *FakeServer) LongPollStatus(http.ResponseWriter, *http.Request) { panic("NOT SUPPORTED") }
 func (self *FakeServer) Results(http.ResponseWriter, *http.Request)        { panic("NOT SUPPORTED") }
 func (self *FakeServer) Execute(http.ResponseWriter, *http.Request)        { panic("NOT SUPPORTED") }
+func (self *FakeServer) TogglePause(http.ResponseWriter, *http.Request)    { panic("NOT SUPPORTED") }
 
 func newFakeServer() *FakeServer {
-	self := &FakeServer{}
-	return self
+	return new(FakeServer)
 }
 
 /******** FakeWatcher ********/
@@ -118,8 +166,7 @@ func (self *FakeWatcher) IsWatched(folder string) bool { panic("NOT SUPPORTED") 
 func (self *FakeWatcher) IsIgnored(folder string) bool { panic("NOT SUPPORTED") }
 
 func newFakeWatcher() *FakeWatcher {
-	self := &FakeWatcher{}
-	return self
+	return new(FakeWatcher)
 }
 
 /******** FakeScanner ********/
@@ -141,8 +188,7 @@ func (self *FakeScanner) Scan() (changed bool) {
 }
 
 func newFakeScanner() *FakeScanner {
-	self := &FakeScanner{}
-	return self
+	return new(FakeScanner)
 }
 
 /******** FakeExecutor ********/
@@ -150,16 +196,16 @@ func newFakeScanner() *FakeScanner {
 type FakeExecutor struct{}
 
 func (self *FakeExecutor) ExecuteTests(packages []*Package) *CompleteOutput {
-	complete := &CompleteOutput{}
+	complete := new(CompleteOutput)
 	complete.Packages = []*PackageResult{}
 	for _, p := range packages {
 		complete.Packages = append(complete.Packages, p.Result)
 	}
 	return complete
 }
-func (self *FakeExecutor) Status() string { panic("NOT SUPPORTED") }
+func (self *FakeExecutor) Status() string        { panic("NOT SUPPORTED") }
+func (self *FakeExecutor) ClearStatusFlag() bool { panic("NOT SUPPORTED") }
 
 func newFakeExecutor() *FakeExecutor {
-	self := &FakeExecutor{}
-	return self
+	return new(FakeExecutor)
 }

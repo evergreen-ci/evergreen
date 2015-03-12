@@ -11,10 +11,8 @@ import (
 )
 
 func TestConcurrentTester(t *testing.T) {
-	var fixture *TesterFixture
-
 	Convey("Subject: Controlled execution of test packages", t, func() {
-		fixture = NewTesterFixture()
+		fixture := NewTesterFixture()
 
 		Convey("Whenever tests for each package are executed", func() {
 			fixture.InBatchesOf(1).RunTests()
@@ -90,7 +88,7 @@ type TesterFixture struct {
 }
 
 func NewTesterFixture() *TesterFixture {
-	self := &TesterFixture{}
+	self := new(TesterFixture)
 	self.shell = NewTimedShell()
 	self.tester = NewConcurrentTester(self.shell)
 	self.packages = []*contract.Package{
@@ -214,7 +212,8 @@ func (self *TimedShell) MaxConcurrentCommands() int {
 }
 
 func concurrentWith(current, comparison *ShellCommand) bool {
-	return comparison.Started.After(current.Started) && comparison.Started.Before(current.Ended)
+	return ((comparison.Started == current.Started || comparison.Started.After(current.Started)) &&
+		(comparison.Started.Before(current.Ended)))
 }
 
 func (self *TimedShell) setTripWire(message string) {
@@ -225,7 +224,7 @@ func (self *TimedShell) setExitWithError() {
 	self.err = errors.New("Simulate test failure")
 }
 
-func (self *TimedShell) GoTest(directory string) (output string, err error) {
+func (self *TimedShell) GoTest(directory, packageName string) (output string, err error) {
 	if self.panicMessage != "" {
 		return "", errors.New(self.panicMessage)
 	}
@@ -247,7 +246,7 @@ func (self *TimedShell) Getenv(key string) string       { panic("NOT SUPPORTED")
 func (self *TimedShell) Setenv(key, value string) error { panic("NOT SUPPORTED") }
 
 func NewTimedShell() *TimedShell {
-	self := &TimedShell{}
+	self := new(TimedShell)
 	self.executions = []*ShellCommand{}
 	return self
 }

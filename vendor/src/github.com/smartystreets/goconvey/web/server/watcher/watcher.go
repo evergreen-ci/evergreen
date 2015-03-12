@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/smartystreets/goconvey/web/server/contract"
@@ -54,31 +55,45 @@ func (self *Watcher) Creation(folder string) {
 	self.watched[folder] = contract.NewPackage(folder)
 }
 
-func (self *Watcher) Ignore(packageName string) {
-	for key, value := range self.watched {
-		if strings.HasSuffix(key, packageName) {
-			value.Active = false
+func (self *Watcher) Ignore(packageNames string) {
+	paths := strings.Split(packageNames, ";")
+	for _, path := range paths {
+		for key, value := range self.watched {
+			if strings.HasSuffix(key, path) {
+				value.Active = false
+			}
 		}
 	}
 }
-func (self *Watcher) Reinstate(packageName string) {
-	for key, value := range self.watched {
-		if strings.HasSuffix(key, packageName) {
-			value.Active = true
+
+func (self *Watcher) Reinstate(packageNames string) {
+	paths := strings.Split(packageNames, ";")
+	for _, path := range paths {
+		for key, value := range self.watched {
+			if strings.HasSuffix(key, path) {
+				value.Active = true
+			}
 		}
 	}
 }
 func (self *Watcher) WatchedFolders() []*contract.Package {
-	i, watched := 0, make([]*contract.Package, len(self.watched))
 	log.Println("Number of watched folders:", len(self.watched))
+
+	paths := []string{}
 	for _, item := range self.watched {
+		paths = append(paths, item.Path)
+	}
+	sort.Strings(paths)
+
+	watched := make([]*contract.Package, len(self.watched))
+	for i, path := range paths {
+		item := self.watched[path]
 		watched[i] = &contract.Package{
 			Active: item.Active,
 			Path:   item.Path,
 			Name:   item.Name,
 			Result: contract.NewPackageResult(item.Name),
 		}
-		i++
 	}
 	return watched
 }
@@ -98,7 +113,7 @@ func (self *Watcher) IsIgnored(folder string) bool {
 }
 
 func NewWatcher(files contract.FileSystem, shell contract.Shell) *Watcher {
-	self := &Watcher{}
+	self := new(Watcher)
 	self.files = files
 	self.shell = shell
 	self.watched = map[string]*contract.Package{}

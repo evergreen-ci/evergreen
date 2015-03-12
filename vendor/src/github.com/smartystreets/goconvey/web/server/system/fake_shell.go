@@ -5,9 +5,9 @@ type FakeShell struct {
 	executions  []string
 }
 
-func (self *FakeShell) GoTest(directory string) (output string, err error) {
-	self.executions = append(self.executions, directory)
-	output = directory
+func (self *FakeShell) GoTest(directory, packageName string) (output string, err error) {
+	self.executions = append(self.executions, directory+packageName)
+	output = directory + packageName
 	return
 }
 
@@ -25,7 +25,7 @@ func (self *FakeShell) Setenv(key, value string) error {
 }
 
 func NewFakeShell() *FakeShell {
-	self := &FakeShell{}
+	self := new(FakeShell)
 	self.environment = map[string]string{}
 	self.executions = []string{}
 	return self

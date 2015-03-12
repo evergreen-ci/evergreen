@@ -19,7 +19,7 @@ func (self *FileSystem) Walk(root string, step filepath.WalkFunc) {
 		return step(path, info, err)
 	})
 
-	if err != nil {
+	if err != nil && err != filepath.SkipDir {
 		log.Println("Error while walking file system:", err)
 		panic(err)
 	}
@@ -40,5 +40,5 @@ func (self *FileSystem) Exists(directory string) bool {
 }
 
 func NewFileSystem() *FileSystem {
-	return &FileSystem{}
+	return new(FileSystem)
 }
