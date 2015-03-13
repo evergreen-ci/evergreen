@@ -716,7 +716,7 @@ tasks:
           export mci_home=`pwd`
           cd ui
           mkfifo test_pipe
-          tee < test_pipe&
+          tee -a ui.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
