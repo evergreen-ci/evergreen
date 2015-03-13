@@ -233,14 +233,14 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               </span>
             </div>
           </div>
-
-          <patch-diff-panel type="Test" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info" baselink=""></patch-diff-panel>
-
-          {{range .PluginContent.Panels.Left}}
-            {{.}}
-          {{end}}
         </div>
       </div>
+
+      <patch-diff-panel type="Test" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info" baselink=""></patch-diff-panel>
+
+      {{range .PluginContent.Panels.Left}}
+      {{.}}
+      {{end}}
     </div>
     <div class="col-lg-5">
       <h3 class="section-heading"><i class="icon-beaker"></i> Tests</h3>
