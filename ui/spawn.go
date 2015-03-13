@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/spawn"
 	"10gen.com/mci/util"
