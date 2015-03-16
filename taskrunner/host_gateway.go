@@ -323,7 +323,7 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
-		"%v -motu_url %v -task_id %v -task_secret %v -config_dir %v -https_cert %v",
+		`%v -motu_url "%v" -task_id "%v" -task_secret "%v" -config_dir "%v" -https_cert "%v"`,
 		pathToExecutable, mciSettings.Motu, task.Id, task.Secret,
 		mciSettings.ConfigDir, mciSettings.Expansions["api_httpscert_path"],
 	)
