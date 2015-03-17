@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"encoding/json"
 	"fmt"
@@ -240,7 +241,7 @@ type taskHistoryPageData struct {
 	Tasks       []bson.M
 	Variants    []string
 	FailedTests map[string][]model.TestResult
-	Versions    []model.Version
+	Versions    []version.Version
 
 	// Flags that indicate whether the beginning/end of history has been reached
 	ExhaustedBefore bool
@@ -427,6 +428,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 	authUser := GetUser(r)
 	authName := authUser.DisplayName()
+	_ = authName
 
 	// determine what action needs to be taken
 	switch putParams.Action {
@@ -447,6 +449,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Task is now aborting."))
 		uis.WriteJSON(w, http.StatusOK, "Task successfully restarted")
+		return
 	case "set_active":
 		active := putParams.Active
 		if err := model.SetTaskActivated(projCtx.Task.Id, authName, active); err != nil {

@@ -20,8 +20,7 @@ func cachePreviousTasks(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 
 		// only relevant for repotracker tasks
 		if task.Requester == mci.RepotrackerVersionRequester {
-			prevTask, err = model.PreviousCompletedTask(&task,
-				task.RemoteArgs.Options["branch"], []string{})
+			prevTask, err = model.PreviousCompletedTask(&task, task.Project, []string{})
 			if err != nil {
 				return fmt.Errorf("cachePreviousTasks: %v", err)
 			}

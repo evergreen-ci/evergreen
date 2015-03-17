@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
@@ -29,7 +30,7 @@ func TestTaskHistory(t *testing.T) {
 
 		Convey("when finding task history items", func() {
 
-			util.HandleTestingErr(db.ClearCollections(VersionsCollection, TasksCollection),
+			util.HandleTestingErr(db.ClearCollections(version.Collection, TasksCollection),
 				t, "Error clearing test collections")
 
 			for i := 10; i < 20; i++ {
@@ -39,7 +40,7 @@ func TestTaskHistory(t *testing.T) {
 				}
 
 				vid := fmt.Sprintf("v%v", i)
-				ver := &Version{
+				ver := &version.Version{
 					Id:                  vid,
 					RevisionOrderNumber: i,
 					Revision:            vid,
@@ -86,7 +87,7 @@ func TestTaskHistory(t *testing.T) {
 			Convey("tasks from a different project should be filtered"+
 				" out", func() {
 
-				vBefore, err := FindVersion("v15")
+				vBefore, err := version.FindOne(version.ById("v15"))
 				So(err, ShouldBeNil)
 
 				taskHistoryChunk, err := taskHistoryIterator.GetChunk(vBefore, 5, 0, false)

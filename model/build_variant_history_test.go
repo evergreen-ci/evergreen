@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
@@ -18,21 +19,21 @@ func dropTestDB(t *testing.T) {
 }
 
 func createVersion(order int, project string, buildVariants []string) error {
-	version := &Version{}
+	v := &version.Version{}
 	testActivationTime := time.Now().Add(time.Duration(4) * time.Hour)
 
 	for _, variant := range buildVariants {
-		version.BuildVariants = append(version.BuildVariants, BuildStatus{
+		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
 			BuildVariant: variant,
 			Activated:    false,
 			ActivateAt:   testActivationTime,
 		})
 	}
-	version.RevisionOrderNumber = order
-	version.Project = project
-	version.Id = fmt.Sprintf("version_%v_%v", order, project)
-	version.Requester = mci.RepotrackerVersionRequester
-	return version.Insert()
+	v.RevisionOrderNumber = order
+	v.Project = project
+	v.Id = fmt.Sprintf("version_%v_%v", order, project)
+	v.Requester = mci.RepotrackerVersionRequester
+	return v.Insert()
 }
 
 func createTask(id string, order int, project string, buildVariant string, gitspec string) error {

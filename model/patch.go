@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/thirdparty"
 	"10gen.com/mci/util"
 	"fmt"
@@ -302,7 +303,7 @@ func (self *Patch) ComputePatchNumber() (int, error) {
 
 // Given a patch version and a list of task names, creates a new task with
 // the given name for each variant, if applicable.
-func (self *Patch) AddNewTasks(mciSettings *mci.MCISettings, patchVersion *Version,
+func (self *Patch) AddNewTasks(mciSettings *mci.MCISettings, patchVersion *version.Version,
 	taskNames []string) error {
 	project, err := FindProject("", self.Project, mciSettings.ConfigDir)
 	if err != nil {
@@ -360,7 +361,7 @@ func (self *Patch) AddNewTasks(mciSettings *mci.MCISettings, patchVersion *Versi
 		}
 
 		for _, build := range builds {
-			_, err = AddTasksToBuild(&build, project, patchVersion, newTasks, mciSettings)
+			_, err = AddTasksToBuild(&build, project, patchVersion, newTasks)
 			if err != nil {
 				return err
 			}
@@ -373,7 +374,7 @@ func (self *Patch) AddNewTasks(mciSettings *mci.MCISettings, patchVersion *Versi
 // Given the patch version and a list of build variants, creates new builds
 // with the patch's tasks.
 func (self *Patch) AddNewBuilds(mciSettings *mci.MCISettings,
-	patchVersion *Version, buildVariants []string) (*Version, error) {
+	patchVersion *version.Version, buildVariants []string) (*version.Version, error) {
 	project, err := FindProject("", self.Project, mciSettings.ConfigDir)
 	if err != nil {
 		return nil, err
@@ -413,19 +414,19 @@ func (self *Patch) AddNewBuilds(mciSettings *mci.MCISettings,
 	self.BuildVariants = append(self.BuildVariants, newVariants...)
 
 	newBuildIds := make([]string, 0)
-	newBuildStatuses := make([]BuildStatus, 0)
+	newBuildStatuses := make([]version.BuildStatus, 0)
 	for _, buildVariant := range newVariants {
 		mci.Logger.Logf(slogger.INFO,
 			"Creating build for version %v, buildVariant %v, activated = %v",
 			patchVersion.Id, buildVariant, self.Activated)
-		buildId, err := CreateBuildFromVersion(project, patchVersion, buildVariant, self.Activated, self.Tasks, mciSettings)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, buildVariant, self.Activated, self.Tasks)
 		if err != nil {
 			return nil, err
 		}
 		newBuildIds = append(newBuildIds, buildId)
 
 		newBuildStatuses = append(newBuildStatuses,
-			BuildStatus{
+			version.BuildStatus{
 				BuildVariant: buildVariant,
 				BuildId:      buildId,
 				Activated:    self.Activated,
@@ -434,14 +435,12 @@ func (self *Patch) AddNewBuilds(mciSettings *mci.MCISettings,
 		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 	}
 
-	err = UpdateOneVersion(
-		bson.M{
-			VersionIdKey: patchVersion.Id,
-		},
+	err = version.UpdateOne(
+		bson.M{version.IdKey: patchVersion.Id},
 		bson.M{
 			"$push": bson.M{
-				VersionBuildIdsKey:      bson.M{"$each": newBuildIds},
-				VersionBuildVariantsKey: bson.M{"$each": newBuildStatuses},
+				version.BuildIdsKey:      bson.M{"$each": newBuildIds},
+				version.BuildVariantsKey: bson.M{"$each": newBuildStatuses},
 			},
 		},
 	)
@@ -557,7 +556,7 @@ func (patch *Patch) PatchConfig(remoteConfigPath, projectConfig string) (
 // Creates builds based on the version.
 func (patch *Patch) Finalize(gitCommit *thirdparty.CommitEvent,
 	mciSettings *mci.MCISettings, project *Project) (
-	patchVersion *Version, err error) {
+	patchVersion *version.Version, err error) {
 	// marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
@@ -565,7 +564,7 @@ func (patch *Patch) Finalize(gitCommit *thirdparty.CommitEvent,
 			"repository revision “%v”: %v", patch.Githash, err)
 	}
 
-	patchVersion = &Version{
+	patchVersion = &version.Version{
 		// TODO version IDs for versions created from patches?
 		Id:            fmt.Sprintf("%v_%v", patch.Id.Hex(), 0),
 		CreateTime:    time.Now(),
@@ -575,7 +574,7 @@ func (patch *Patch) Finalize(gitCommit *thirdparty.CommitEvent,
 		AuthorEmail:   gitCommit.Commit.Committer.Email,
 		Message:       gitCommit.Commit.Message,
 		BuildIds:      []string{},
-		BuildVariants: []BuildStatus{},
+		BuildVariants: []version.BuildStatus{},
 		Config:        string(projectYamlBytes),
 		Status:        mci.PatchCreated,
 		Requester:     mci.PatchVersionRequester,
@@ -594,13 +593,12 @@ func (patch *Patch) Finalize(gitCommit *thirdparty.CommitEvent,
 
 	for _, buildvariant := range buildVariants {
 		//TODO get the correct commit data
-		buildId, err := CreateBuildFromVersion(project, patchVersion,
-			buildvariant, true, patch.Tasks, mciSettings)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, buildvariant, true, patch.Tasks)
 		if err != nil {
 			return nil, err
 		}
 		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
-		patchVersion.BuildVariants = append(patchVersion.BuildVariants, BuildStatus{
+		patchVersion.BuildVariants = append(patchVersion.BuildVariants, version.BuildStatus{
 			BuildVariant: buildvariant,
 			Activated:    true,
 			BuildId:      buildId,
@@ -632,14 +630,10 @@ func (patch *Patch) Finalize(gitCommit *thirdparty.CommitEvent,
 
 func (self *Patch) Cancel() error {
 	if self.Version != "" {
-		if err := SetPatchVersionActivated(self.Version, false); err != nil {
+		if err := SetVersionActivation(self.Version, false); err != nil {
 			return err
 		}
-		version, err := FindVersion(self.Version)
-		if err != nil {
-			return err
-		}
-		return version.SetAllTasksAborted(true)
+		return AbortVersion(self.Version)
 	} else {
 		return RemovePatches(
 			bson.M{

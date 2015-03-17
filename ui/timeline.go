@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
@@ -97,11 +98,19 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		if patch.Version != "" {
 			versionIds = append(versionIds, patch.Version)
 		}
-		baseVersionId := model.FindBaseVersionIdForRevision(patch.Project, patch.Githash)
+		baseVersion, err := version.FindOne(version.ByProjectIdAndRevision(patch.Project, patch.Githash))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		var baseVersionId string
+		if baseVersion != nil {
+			baseVersionId = baseVersion.Id
+		}
 		patch.Patches = nil
 		uiPatches = append(uiPatches, uiPatch{Patch: patch, BaseVersionId: baseVersionId})
 	}
-	versions, err := model.FindAllVersions(bson.M{"_id": bson.M{"$in": versionIds}}, bson.M{model.VersionConfigKey: 0}, []string{}, 0, 0)
+	versions, err := version.Find(version.ByIds(versionIds).WithoutFields(version.ConfigKey))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching versions for patches: %v", err))
 		return
@@ -134,7 +143,7 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 
 	// If no version was specified in the URL, grab the latest version on the project
 	if projCtx.Version == nil {
-		versions, err := model.FindMostRecentVersions(projCtx.Project.Identifier, "gitter_request", 0, 1)
+		versions, err := version.Find(version.ByMostRecentForRequester(projCtx.Project.Identifier, mci.RepotrackerVersionRequester).Limit(1))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error finding version: %v", err), http.StatusInternalServerError)
 			return
@@ -144,24 +153,23 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var recentVersions []model.Version
-	var gitspecMap map[string]model.Version
+	var recentVersions []version.Version
+	var gitspecMap map[string]version.Version
 	var builds []model.Build
 	var buildmasterData []bson.M
 	var err error
 
 	if projCtx.Version != nil {
-		recentVersions, err = model.FindAllVersions(
-			bson.M{
-				"r":      "gitter_request",
-				"branch": projCtx.Version.Project,
-			},
-			bson.M{"_id": 1, "gitspec": 1, "order": 1, "message": 1}, []string{"-order"}, 0, 50)
+		recentVersions, err = version.Find(
+			version.ByProjectId(projCtx.Version.Project).
+				WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey).
+				Sort([]string{"-" + version.RevisionOrderNumberKey}).
+				Limit(50))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error fetching versions: %v", err), http.StatusInternalServerError)
 			return
 		}
-		gitspecMap = make(map[string]model.Version)
+		gitspecMap = make(map[string]version.Version)
 		for _, ver := range recentVersions {
 			gitspecMap[ver.Revision] = ver
 		}
@@ -181,15 +189,15 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		recentVersions = make([]model.Version, 0)
-		gitspecMap = make(map[string]model.Version)
+		recentVersions = make([]version.Version, 0)
+		gitspecMap = make(map[string]version.Version)
 		builds = make([]model.Build, 0)
 		buildmasterData = make([]bson.M, 0)
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData       projectContext
-		VersionsByGitspec map[string]model.Version
+		VersionsByGitspec map[string]version.Version
 		Builds            []model.Build
 		VersionHistory    []bson.M
 		User              *model.DBUser

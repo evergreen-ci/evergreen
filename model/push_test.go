@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -28,12 +29,12 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is no conflicting push, then nothing should be"+
 			" returned", func() {
 
-			versionOne := &Version{
+			versionOne := &version.Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
 
-			pushLog, err := versionOne.FindPushLogAfter(fileLoc)
+			pushLog, err := FindPushLogAfter(fileLoc, versionOne.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldBeNil)
 
@@ -42,7 +43,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is a push at the same location for an older commit,"+
 			" nothing should be returned", func() {
 
-			versionOne := &Version{
+			versionOne := &version.Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -54,12 +55,12 @@ func TestFindPushLogAfter(t *testing.T) {
 			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
-			versionTwo := &Version{
+			versionTwo := &version.Version{
 				Id:                  "versionIdTwo",
 				RevisionOrderNumber: 600,
 			}
 
-			pushLog, err := versionTwo.FindPushLogAfter(fileLoc)
+			pushLog, err := FindPushLogAfter(fileLoc, versionTwo.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldBeNil)
 
@@ -68,7 +69,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is a push at the same location for the same commit,"+
 			" it should be returned", func() {
 
-			versionOne := &Version{
+			versionOne := &version.Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -80,7 +81,7 @@ func TestFindPushLogAfter(t *testing.T) {
 			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
-			pushLog, err := versionOne.FindPushLogAfter(fileLoc)
+			pushLog, err := FindPushLogAfter(fileLoc, versionOne.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldNotBeNil)
 
@@ -89,7 +90,7 @@ func TestFindPushLogAfter(t *testing.T) {
 		Convey("if there is a push at the same location for a newer commit,"+
 			" it should be returned", func() {
 
-			versionOne := &Version{
+			versionOne := &version.Version{
 				Id:                  "versionIdOne",
 				RevisionOrderNumber: 500,
 			}
@@ -101,12 +102,12 @@ func TestFindPushLogAfter(t *testing.T) {
 			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
-			versionTwo := &Version{
+			versionTwo := &version.Version{
 				Id:                  "versionIdTwo",
 				RevisionOrderNumber: 400,
 			}
 
-			pushLog, err := versionTwo.FindPushLogAfter(fileLoc)
+			pushLog, err := FindPushLogAfter(fileLoc, versionTwo.RevisionOrderNumber)
 			So(err, ShouldBeNil)
 			So(pushLog, ShouldNotBeNil)
 

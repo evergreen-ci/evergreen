@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
@@ -551,7 +552,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
 		model.TasksCollection, model.BuildsCollection, host.Collection,
-		distro.Collection, model.VersionsCollection, model.PatchCollection,
+		distro.Collection, version.Collection, model.PatchCollection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 	}
 	util.HandleTestingErr(dbutil.ClearCollections(testCollections...), t, clearDataMsg)
@@ -638,13 +639,13 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	util.HandleTestingErr(err, t, "failed to marshall project config")
 
 	// insert the version document
-	version := &model.Version{
+	v := &version.Version{
 		Id:       "testVersionId",
 		BuildIds: []string{taskOne.BuildId},
 		Config:   string(projectYamlBytes),
 	}
 
-	util.HandleTestingErr(version.Insert(), t, "failed to insert version")
+	util.HandleTestingErr(v.Insert(), t, "failed to insert version")
 	if patch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
 		util.HandleTestingErr(err, t, "failed to read test patch file")
@@ -653,7 +654,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 
 		patch := &model.Patch{
 			Status:  mci.PatchCreated,
-			Version: version.Id,
+			Version: v.Id,
 			Patches: []model.ModulePatch{
 				model.ModulePatch{
 					ModuleName: "",

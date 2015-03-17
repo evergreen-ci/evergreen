@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"fmt"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -259,33 +259,21 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 // Helper function to fetch a group of versions and their associated builds.
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
-func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int,
-	numVersions int) ([]model.Version, map[string][]model.Build, error) {
+func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersions int) ([]version.Version, map[string][]model.Build, error) {
 
 	// fetch the versions from the db
-	versionsFromDB, err := model.FindAllVersions(
-		bson.M{
-			model.VersionRequesterKey: mci.RepotrackerVersionRequester,
-			model.VersionProjectKey:   project.Name(),
-		},
-		bson.M{
-			model.VersionRevisionKey:            1,
-			model.VersionErrorsKey:              1,
-			model.VersionMessageKey:             1,
-			model.VersionAuthorKey:              1,
-			model.VersionRevisionOrderNumberKey: 1,
-			model.VersionCreateTimeKey:          1,
-		},
-		[]string{
-			fmt.Sprintf("-%v", model.VersionRevisionOrderNumberKey),
-		},
-		skip,
-		numVersions,
-	)
+	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
+		WithFields(
+		version.RevisionKey,
+		version.ErrorsKey,
+		version.MessageKey,
+		version.AuthorKey,
+		version.RevisionOrderNumberKey,
+		version.CreateTimeKey,
+	).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("error fetching versions from database: %v",
-			err)
+		return nil, nil, fmt.Errorf("error fetching versions from database: %v", err)
 	}
 
 	// create a slice of the version ids (used to fetch the builds)
@@ -450,12 +438,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// compute the total number of versions that exist
-	finalData.TotalVersions, err = model.TotalVersions(
-		bson.M{
-			model.VersionRequesterKey: mci.RepotrackerVersionRequester,
-			model.VersionProjectKey:   projCtx.Project.Name(),
-		},
-	)
+	finalData.TotalVersions, err = version.Count(version.ByProjectId(projCtx.Project.Identifier))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

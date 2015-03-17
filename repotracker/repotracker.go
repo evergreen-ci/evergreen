@@ -3,12 +3,14 @@ package repotracker
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/util"
 	"10gen.com/mci/validator"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"gopkg.in/yaml.v1"
+	"time"
 )
 
 // RepoTracker is used to manage polling repository changes and storing such
@@ -18,7 +20,6 @@ type RepoTracker struct {
 	*mci.MCISettings
 	*model.ProjectRef
 	RepoPoller
-	util.Clock
 }
 
 // The RepoPoller interface specifies behavior required of all repository poller
@@ -27,6 +28,7 @@ type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
 	// the given revision
 	GetRemoteConfig(revision string) (*model.Project, error)
+
 	// Fetches all changes since the 'revision' specified - with the most recent
 	// revision appearing as the first element in the slice.
 	//
@@ -34,13 +36,11 @@ type RepoPoller interface {
 	// allow to search through - in order to find 'revision' - before we give
 	// up. A value <= 0 implies we allow to search through till we hit the first
 	// revision for the project.
-	GetRevisionsSince(revision string, maxRevisionsToSearch int) (
-		[]model.Revision, error)
+	GetRevisionsSince(sinceRevision string, maxRevisions int) ([]model.Revision, error)
 	// Fetches the most recent 'numNewRepoRevisionsToFetch' revisions for a
 	// project - with the most recent revision appearing as the first element in
 	// the slice.
-	GetRecentRevisions(numNewRepoRevisionsToFetch int) ([]model.Revision,
-		error)
+	GetRecentRevisions(numNewRepoRevisionsToFetch int) ([]model.Revision, error)
 }
 
 type projectConfigError struct {
@@ -77,17 +77,6 @@ func NewProjectRef(owner, repo, branch, repoKind, remotePath string,
 	}
 }
 
-// NewRepositoryTracker constructs a new instance of a RepoTracker struct
-func NewRepositoryTracker(mciSettings *mci.MCISettings,
-	projectRef *model.ProjectRef, repositoryPoller RepoPoller, clock util.Clock) *RepoTracker {
-	return &RepoTracker{
-		mciSettings,
-		projectRef,
-		repositoryPoller,
-		clock,
-	}
-}
-
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
@@ -98,8 +87,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	projectIdentifier := projectRef.String()
 
 	if !projectRef.Enabled {
-		mci.Logger.Logf(slogger.INFO, "Skipping disabled project “%v”",
-			projectRef)
+		mci.Logger.Logf(slogger.INFO, "Skipping disabled project “%v”", projectRef)
 		return nil
 	}
 
@@ -122,8 +110,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 		mci.Logger.Logf(slogger.INFO, "No last recorded repository revision "+
 			"for “%v”. Proceeding to fetch most recent %v revisions",
 			projectRef, numNewRepoRevisionsToFetch)
-		revisions, err = repoTracker.GetRecentRevisions(
-			numNewRepoRevisionsToFetch)
+		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
 	} else {
 		mci.Logger.Logf(slogger.INFO, "Last recorded repository revision for "+
 			"“%v” is “%v”", projectRef, lastRevision)
@@ -138,20 +125,20 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 		return nil
 	}
 
-	var lastVersion *model.Version
+	var lastVersion *version.Version
 
 	if len(revisions) > 0 {
 		// TODO: this is inefficient as we re-parse the project config each time.
 		// In the future it would be nice to hash the project config and see if it
 		// has changed before re-parsing it from scratch
-		lastVersion, err = repoTracker.StoreRepositoryRevisions(revisions)
+		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR, "error storing revisions for "+
 				"repository %v: %v", projectRef, err)
 			return err
 		}
 	} else {
-		lastVersion, err = model.FindMostRecentVersion(projectIdentifier)
+		lastVersion, err = version.FindOne(version.ByMostRecentForRequester(projectIdentifier, mci.RepotrackerVersionRequester))
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR, "error getting most recent version for "+
 				"repository %v: %v", projectRef, err)
@@ -164,7 +151,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 		return nil
 	}
 
-	err = repoTracker.activateVersionVariantsIfNeeded(lastVersion)
+	err = repoTracker.activateElapsedBuilds(lastVersion)
 
 	if err != nil {
 		mci.Logger.Logf(slogger.ERROR, "error activating variants: %v", err)
@@ -175,58 +162,45 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 }
 
 // Activates any builds if their BatchTimes have elapsed.
-func (repoTracker *RepoTracker) activateVersionVariantsIfNeeded(version *model.Version) (err error) {
-	projectIdentifier := repoTracker.ProjectRef.String()
+func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err error) {
+	projectId := repoTracker.ProjectRef.Identifier
 	hasActivated := false
-	now := repoTracker.Clock.Now()
-	for i, status := range version.BuildVariants {
+	now := time.Now()
+	for i, status := range v.BuildVariants {
 		// last comparison is to check that ActivateAt is actually set
 		if !status.Activated && now.After(status.ActivateAt) && !status.ActivateAt.IsZero() {
 			mci.Logger.Logf(slogger.INFO, "activating variant %v for project %v, revision %v",
-				status.BuildVariant, projectIdentifier, version.Revision)
+				status.BuildVariant, projectId, v.Revision)
 
 			// Go copies the slice value, we want to modify the actual value
 			status.Activated = true
 			status.ActivateAt = now
-			version.BuildVariants[i] = status
+			v.BuildVariants[i] = status
 
 			build, err := model.FindBuild(status.BuildId)
 			if err != nil {
 				mci.Logger.Logf(slogger.ERROR, "error retrieving build for project %v, variant %v, build %v: %v",
-					projectIdentifier, status.BuildVariant, status.BuildId, err)
+					projectId, status.BuildVariant, status.BuildId, err)
 				continue
 			}
 			mci.Logger.Logf(slogger.INFO, "activating build %v for project %v, variant %v",
-				status.BuildId, projectIdentifier, status.BuildVariant)
+				status.BuildId, projectId, status.BuildVariant)
 			// Don't need to set the version in here since we do it ourselves in a single update
-			err = build.SetActivated(true, false)
-			if err != nil {
+			if err = model.SetBuildActivation(build.Id, true); err != nil {
 				mci.Logger.Logf(slogger.ERROR, "error activating build %v for project %v, variant %v: %v",
-					projectIdentifier, build, status.BuildVariant, build, err)
+					projectId, build, status.BuildVariant, build, err)
 				continue
 			}
 			hasActivated = true
 		}
 	}
 
-	// If any variants were activated, update the stored version so that we don't attempt to activate them
-	// again
+	// If any variants were activated, update the stored version so that we don't
+	// attempt to activate them again
 	if hasActivated {
-		return version.UpdateBuildVariants()
+		return v.UpdateBuildVariants()
 	}
 	return nil
-}
-
-// createStubVersion is used to create a place holder version when there's a
-// problem fetching/validating a project's configuration data
-func (repoTracker *RepoTracker) createStubVersion(projectRef *model.ProjectRef,
-	revision *model.Revision, errMessages []string) (*model.Version, error) {
-	// create a stub version
-	mci.Logger.Logf(slogger.INFO, "Creating stub version for project "+
-		"“%v” at revision “%v”", projectRef.Identifier,
-		revision.Revision)
-	return model.CreateStubVersionFromRevision(projectRef,
-		revision, repoTracker.MCISettings, errMessages)
 }
 
 // sendFailureNotification sends a notification to the MCI Team when the
@@ -249,79 +223,111 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 	}
 }
 
+// Verifies that the given revision order number is higher than the latest number stored for the project.
+func sanityCheckOrderNum(revOrderNum int, projectId string) error {
+	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, mci.RepotrackerVersionRequester))
+	if err != nil {
+		return fmt.Errorf("Error getting latest version: %v", err.Error())
+	}
+
+	// When there are no versions in the db yet, sanity check is moot
+	if latest != nil {
+		if revOrderNum <= latest.RevisionOrderNumber {
+			return fmt.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+				revOrderNum, latest.RevisionOrderNumber)
+		}
+	}
+	return nil
+}
+
 // Constructs all versions stored from recent repository revisions
 // The additional complexity is due to support for project modifications on patch builds.
 // We need to parse the remote config as it existed when each revision was created.
 // The return value is the most recent version created as a result of storing the revisions.
 // This function is idempotent with regard to storing the same version multiple times.
-func (repoTracker *RepoTracker) StoreRepositoryRevisions(revisions []model.Revision) (
-	newestVersion *model.Version, err error) {
-	projectRef := repoTracker.ProjectRef
-	projectIdentifier := projectRef.String()
+func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newestVersion *version.Version, err error) {
+	defer func() {
+		if newestVersion != nil {
+			// Fetch the updated version doc, so that we include buildvariants in the result
+			newestVersion, err = version.FindOne(version.ById(newestVersion.Id))
+		}
+	}()
+	ref := repoTracker.ProjectRef
 
 	for i := len(revisions) - 1; i >= 0; i-- {
-
 		revision := revisions[i].Revision
-		mci.Logger.Logf(slogger.INFO, "Now processing “%v” revision “%v”",
-			projectIdentifier, revision)
+		mci.Logger.Logf(slogger.INFO, "Processing revision %v in project %v", revision, ref.Identifier)
 
-		// We check if the version exists here so we can avoid fetching the github config
-		// unnecessarily
-		existingVersion, err := model.FindVersionByProjectAndRevision(projectRef, &revisions[i])
+		// We check if the version exists here so we can avoid fetching the github config unnecessarily
+		existingVersion, err := version.FindOne(version.ByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR,
-				"Unable to check existence of version for project %v, revision %v",
-				projectIdentifier, revision)
+				"Error looking up version at %v for project %v: %v", ref.Identifier, revision, err)
 		}
 		if existingVersion != nil {
 			mci.Logger.Logf(slogger.INFO,
 				"Skipping creation of version for project %v, revision %v since"+
-					" we already have a record for it", projectIdentifier, revision)
+					" we already have a record for it", ref.Identifier, revision)
 			// We bind newestVersion here since we still need to return the most recent
 			// version, even if it already exists
 			newestVersion = existingVersion
 			continue
 		}
 
+		// Create the stub of the version (not stored in DB yet)
+		v, err := NewVersionFromRevision(ref, revisions[i])
+		if err != nil {
+			mci.Logger.Logf(slogger.ERROR, "Error creating version for project %v: %v", ref.Identifier, err)
+		}
+		err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier)
+		if err != nil { // something seriously wrong (bad data in db?) so fail now
+			panic(err)
+		}
+
 		project, err := repoTracker.GetProjectConfig(revision)
 		if err != nil {
 			projectError, isProjectError := err.(projectConfigError)
 			if isProjectError {
-				newestVersion, err = repoTracker.createStubVersion(projectRef,
-					&revisions[i], projectError.errors)
+				// Store just the stub version with the project errors
+				v.Errors = projectError.errors
+				if err := v.Insert(); err != nil {
+					mci.Logger.Logf(slogger.ERROR,
+						"Failed storing stub version for project %v: %v", ref.Identifier, err)
+					return nil, err
+				}
+				newestVersion = v
 				continue
 			} else {
-				// Infrastructure error, don't create stub
+				// Fatal error - don't store the stub
 				mci.Logger.Logf(slogger.INFO,
-					"Unable to get project config for project %v for revision %v: %v",
-					projectIdentifier, revision, err)
+					"Failed to get config for project %v at revision %v: %v", ref.Identifier, revision, err)
 				return nil, err
 			}
 		}
+
+		// We have a config, so turn it into a usable yaml string to store with the version doc
+		projectYamlBytes, err := yaml.Marshal(project)
+		if err != nil {
+			return nil, fmt.Errorf("Error marshalling config: %v", err)
+		}
+		v.Config = string(projectYamlBytes)
+
 		// We rebind newestVersion each iteration, so the last binding will be the newest version
-		newestVersion, err = repoTracker.storeRevision(&revisions[i], project)
+		err = createVersionItems(v, ref, project)
+		if err != nil {
+			mci.Logger.Logf(slogger.ERROR, "Error creating version items for %v in project %v: %v",
+				v.Id, ref.Identifier, err)
+			return nil, err
+		}
+
+		newestVersion = v
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR, "Unable to store revision %v for project %v: %v:",
-				revision, projectIdentifier, err)
+				revision, ref.Identifier, err)
 			return nil, err
 		}
 	}
-	return newestVersion, err
-}
-
-// Creates a Version for a single revision and project configuration
-func (repoTracker *RepoTracker) storeRevision(revision *model.Revision, project *model.Project) (
-	*model.Version, error) {
-	projectIdentifier := repoTracker.ProjectRef.String()
-	mci.Logger.Logf(slogger.INFO, "Creating version for project "+
-		"“%v” at revision “%v”", projectIdentifier, revision)
-	version, err := model.CreateVersionFromRevision(repoTracker.ProjectRef, project,
-		revision, repoTracker.MCISettings)
-	if err != nil {
-		return nil, fmt.Errorf("error creating version for "+
-			"project “%v” at revision “%v”: %v", projectIdentifier, revision, err)
-	}
-	return version, nil
+	return
 }
 
 // GetProjectConfig fetches the project configuration for a given repository
@@ -395,5 +401,94 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 		return nil, projectConfigError{projectParseErrors}
 	}
 	return project, nil
+}
 
+// NewVersionFromRevision populates a new Version with metadata from a model.Revision.
+// Does not populate its config or store anything in the database.
+func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version.Version, error) {
+	number, err := model.GetNewRevisionOrderNumber(ref.Identifier)
+	if err != nil {
+		return nil, err
+	}
+	v := &version.Version{
+		Author:              rev.Author,
+		AuthorEmail:         rev.AuthorEmail,
+		Branch:              ref.Branch,
+		CreateTime:          rev.CreateTime,
+		Id:                  model.CleanName(fmt.Sprintf("%v_%v", ref.String(), rev.Revision)),
+		Identifier:          ref.Identifier,
+		Message:             rev.RevisionMessage,
+		Owner:               ref.Owner,
+		Project:             ref.Identifier,
+		Remote:              ref.Remote,
+		RemotePath:          ref.RemotePath,
+		Repo:                ref.Repo,
+		RepoKind:            ref.RepoKind,
+		Requester:           mci.RepotrackerVersionRequester,
+		Revision:            rev.Revision,
+		Status:              mci.VersionCreated,
+		RevisionOrderNumber: number,
+	}
+	return v, nil
+}
+
+// createVersionItems populates and stores all the tasks and builds for a version according to
+// the given project config.
+func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
+	for _, buildvariant := range project.BuildVariants {
+		if buildvariant.Disabled {
+			continue
+		}
+		buildId, err := model.CreateBuildFromVersion(project, v, buildvariant.Name, false, nil)
+		if err != nil {
+			return err
+		}
+
+		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
+		if err != nil {
+			mci.Logger.Logf(slogger.ERROR, "Error getting activation time for bv %v", buildvariant.Name)
+			return err
+		}
+		var lastActivation *time.Time
+		if lastActivated != nil {
+			for _, buildStatus := range lastActivated.BuildVariants {
+				if buildStatus.BuildVariant == buildvariant.Name && buildStatus.Activated {
+					lastActivation = &buildStatus.ActivateAt
+					break
+				}
+			}
+		}
+
+		var activateAt time.Time
+		var activated bool
+		if lastActivation == nil {
+			// if we don't have a last activation time then activate now.
+			activateAt = time.Now()
+			activated = true
+		} else {
+			activateAt = lastActivation.Add(time.Minute * time.Duration(project.GetBatchTime(&buildvariant)))
+			mci.Logger.Logf(slogger.INFO, "Going to activate bv %v for project %v, version %v at %v",
+				buildvariant.Name, ref.Identifier, v.Id, activateAt)
+		}
+
+		v.BuildIds = append(v.BuildIds, buildId)
+		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
+			BuildVariant: buildvariant.Name,
+			Activated:    activated,
+			ActivateAt:   activateAt,
+			BuildId:      buildId,
+		})
+	}
+
+	if err := v.Insert(); err != nil {
+		mci.Logger.Errorf(slogger.ERROR, "Error inserting version %v: %v", v.Id, err)
+		for _, buildStatus := range v.BuildVariants {
+			if buildErr := model.DeleteBuild(buildStatus.BuildId); buildErr != nil {
+				mci.Logger.Errorf(slogger.ERROR, "Error deleting build %v: %v",
+					buildStatus.BuildId, buildErr)
+			}
+		}
+		return err
+	}
+	return nil
 }

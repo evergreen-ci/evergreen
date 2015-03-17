@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/model/distro"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"bytes"
 	"crypto/tls"
@@ -400,15 +401,15 @@ func (h *HTTPAgentCommunicator) GetProjectConfig() (*model.Project, error) {
 			if resp == nil {
 				return util.RetriableError{fmt.Errorf("empty response")}
 			} else {
-				version := &model.Version{}
-				err = util.ReadJSONInto(resp.Body, version)
+				v := &version.Version{}
+				err = util.ReadJSONInto(resp.Body, v)
 				if err != nil {
 					h.Logger.Errorf(slogger.ERROR,
 						"unable to read project version response: %v\n", err)
 					return util.RetriableError{fmt.Errorf("unable to read "+
 						"project version response: %v\n", err)}
 				}
-				err = model.LoadProjectInto([]byte(version.Config), projectConfig)
+				err = model.LoadProjectInto([]byte(v.Config), projectConfig)
 				if err != nil {
 					h.Logger.Errorf(slogger.ERROR,
 						"unable to unmarshal project config: %v\n", err)

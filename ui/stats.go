@@ -43,7 +43,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 		allProjects = append(allProjects, uip)
 	}
 
-	newProject := UIProject{projCtx.Project.Name(), []UIBuildVariant{}}
+	newProject := UIProject{projCtx.Project.Identifier, []UIBuildVariant{}}
 
 	data := struct {
 		ProjectData projectContext

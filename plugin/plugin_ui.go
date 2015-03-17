@@ -3,6 +3,7 @@ package plugin
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/gorilla/context"
 	"html/template"
@@ -92,7 +93,7 @@ type UIContext struct {
 	User        *model.DBUser
 	Task        *model.Task
 	Build       *model.Build
-	Version     *model.Version
+	Version     *version.Version
 	Patch       *model.Patch
 	Project     *model.Project
 	ProjectRef  *model.ProjectRef

@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -15,7 +16,7 @@ type buildVariantHistoryIterator struct {
 // Interface around getting task and version history for a given build variant
 // in a given project.
 type BuildVariantHistoryIterator interface {
-	GetItems(beforeCommit *Version, numCommits int) ([]bson.M, []Version, error)
+	GetItems(beforeCommit *version.Version, numCommits int) ([]bson.M, []version.Version, error)
 }
 
 // Since version currently uses build variant display name and task uses build variant
@@ -26,57 +27,53 @@ func NewBuildVariantHistoryIterator(buildVariantInTask string, buildVariantInVer
 }
 
 // Returns versions and tasks grouped by gitspec, newest first (sorted by order number desc)
-func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevisions int) ([]bson.M, []Version, error) {
-	session, db, err := db.GetGlobalSessionFactory().GetSession()
+func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version, numRevisions int) ([]bson.M, []version.Version, error) {
+	session, dbobj, err := db.GetGlobalSessionFactory().GetSession()
 	defer session.Close()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var versionFilter bson.M
+	var versionQuery db.Q
 	if beforeCommit != nil {
-		versionFilter = bson.M{
-			VersionRequesterKey:           mci.RepotrackerVersionRequester,
-			VersionRevisionOrderNumberKey: bson.M{"$lt": beforeCommit.RevisionOrderNumber},
-			VersionProjectKey:             self.ProjectName,
-			VersionBuildVariantsKey: bson.M{
+		versionQuery = db.Query(bson.M{
+			version.RequesterKey:           mci.RepotrackerVersionRequester,
+			version.RevisionOrderNumberKey: bson.M{"$lt": beforeCommit.RevisionOrderNumber},
+			version.ProjectKey:             self.ProjectName,
+			version.BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
-					BuildStatusVariantKey: self.BuildVariantInVersion,
+					version.BuildStatusVariantKey: self.BuildVariantInVersion,
 				},
 			},
-		}
+		})
 	} else {
-		versionFilter = bson.M{
-			VersionRequesterKey: mci.RepotrackerVersionRequester,
-			VersionProjectKey:   self.ProjectName,
-			VersionBuildVariantsKey: bson.M{
+		versionQuery = db.Query(bson.M{
+			version.RequesterKey: mci.RepotrackerVersionRequester,
+			version.ProjectKey:   self.ProjectName,
+			version.BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
-					BuildStatusVariantKey: self.BuildVariantInVersion,
+					version.BuildStatusVariantKey: self.BuildVariantInVersion,
 				},
 			},
-		}
+		})
 	}
+	versionQuery = versionQuery.WithFields(
+		version.IdKey,
+		version.RevisionOrderNumberKey,
+		version.RevisionKey,
+		version.MessageKey,
+		version.CreateTimeKey,
+	).Sort([]string{"-" + version.RevisionOrderNumberKey}).Limit(numRevisions)
 
 	//Get the next numCommits
-	versions, err := FindAllVersions(
-		versionFilter,
-		bson.M{
-			VersionIdKey:                  1,
-			VersionRevisionOrderNumberKey: 1,
-			VersionRevisionKey:            1,
-			VersionMessageKey:             1,
-			VersionCreateTimeKey:          1,
-		},
-		[]string{"-" + VersionRevisionOrderNumberKey},
-		0,
-		numRevisions)
+	versions, err := version.Find(versionQuery)
 
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if len(versions) == 0 {
-		return nil, []Version{}, nil
+		return nil, []version.Version{}, nil
 	}
 
 	//versionEndBoundary is the *earliest* version which should be included in results
@@ -99,7 +96,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *Version, numRevi
 		}
 	}
 
-	pipeline := db.C(TasksCollection).Pipe(
+	pipeline := dbobj.C(TasksCollection).Pipe(
 		[]bson.M{
 			{"$match": matchFilter},
 			bson.M{"$sort": bson.D{{TaskRevisionOrderNumberKey, 1}}},

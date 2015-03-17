@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
@@ -726,9 +727,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
-			So(build.Restart(true), ShouldBeNil)
-			So(build.Status, ShouldEqual, mci.BuildCreated)
-			So(build.Activated, ShouldEqual, true)
+			So(RestartBuild(build.Id, true), ShouldBeNil)
 			build, err := FindBuild(build.Id)
 			So(err, ShouldBeNil)
 			So(build.Status, ShouldEqual, mci.BuildCreated)
@@ -762,9 +761,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
-			So(build.Restart(false), ShouldBeNil)
-			So(build.Status, ShouldEqual, mci.BuildCreated)
-			So(build.Activated, ShouldEqual, true)
+			So(RestartBuild(build.Id, false), ShouldBeNil)
 			build, err := FindBuild(build.Id)
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
@@ -789,20 +786,20 @@ func TestBuildRestart(t *testing.T) {
 func TestBuildMarkAborted(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.ClearCollections(BuildsCollection, TasksCollection, VersionsCollection), t,
+		util.HandleTestingErr(db.ClearCollections(BuildsCollection, TasksCollection, version.Collection), t,
 			"Error clearing test collection")
 
-		version := &Version{
+		v := &version.Version{
 			Id: "v",
-			BuildVariants: []BuildStatus{
-				BuildStatus{
+			BuildVariants: []version.BuildStatus{
+				{
 					BuildVariant: "bv",
 					Activated:    true,
 				},
 			},
 		}
 
-		So(version.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
 
 		build := &Build{
 			Id:           "build",
@@ -816,7 +813,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 			Convey("it should be deactivated", func() {
 
-				So(build.MarkAborted(true), ShouldBeNil)
+				So(AbortBuild(build.Id), ShouldBeNil)
 				build, err := FindOneBuild(
 					bson.M{
 						BuildIdKey: build.Id,
@@ -826,7 +823,6 @@ func TestBuildMarkAborted(t *testing.T) {
 				)
 				So(err, ShouldBeNil)
 				So(build.Activated, ShouldBeFalse)
-
 			})
 
 			Convey("all abortable tasks for it should be aborted", func() {
@@ -866,7 +862,7 @@ func TestBuildMarkAborted(t *testing.T) {
 				// aborting the build should mark only the two abortable tasks
 				// with the correct build id as aborted
 
-				So(build.MarkAborted(true), ShouldBeNil)
+				So(AbortBuild(build.Id), ShouldBeNil)
 
 				abortedTasks, err := FindAllTasks(
 					bson.M{
@@ -937,12 +933,8 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(matching.Insert(), ShouldBeNil)
 
-				So(build.SetActivated(false, false), ShouldBeNil)
-
-				// the build should have been updated both in memory and in the
-				// db
-
-				So(build.Activated, ShouldBeFalse)
+				So(SetBuildActivation(build.Id, false), ShouldBeNil)
+				// the build should have been updated in the db
 				build, err := FindOneBuild(
 					bson.M{
 						BuildIdKey: build.Id,
@@ -998,16 +990,15 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(build.Insert(), ShouldBeNil)
 
-				So(build.SetActivated(false, false), ShouldBeNil)
+				t1 := &Task{Id: "tc1", BuildId: build.Id, Status: mci.TaskUndispatched, Activated: true}
+				t2 := &Task{Id: "tc2", BuildId: build.Id, Status: mci.TaskDispatched, Activated: true}
+				t3 := &Task{Id: "tc3", BuildId: build.Id, Status: mci.TaskUndispatched, Activated: true}
+				So(t1.Insert(), ShouldBeNil)
+				So(t2.Insert(), ShouldBeNil)
+				So(t3.Insert(), ShouldBeNil)
 
-				// make sure only the undispatched task caches were updated
-
-				So(build.Tasks[0].Activated, ShouldBeFalse)
-				So(build.Tasks[1].Activated, ShouldBeTrue)
-				So(build.Tasks[2].Activated, ShouldBeFalse)
-
+				So(SetBuildActivation(build.Id, false), ShouldBeNil)
 				// refresh from the database and check again
-
 				build, err := FindOneBuild(
 					bson.M{
 						BuildIdKey: build.Id,
@@ -1183,14 +1174,14 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		}
 
 		// the mock version we'll be using
-		version := &Version{
+		v := &version.Version{
 			Id:                  "versionId",
 			CreateTime:          time.Now(),
 			Revision:            "foobar",
 			RevisionOrderNumber: 500,
 			Requester:           mci.RepotrackerVersionRequester,
-			BuildVariants: []BuildStatus{
-				BuildStatus{
+			BuildVariants: []version.BuildStatus{
+				{
 					BuildVariant: buildVar.Name,
 					Activated:    false,
 				},
@@ -1200,8 +1191,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if a non-existent build variant is passed in, an error should"+
 			" be returned", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version, "blecch",
-				false, []string{}, buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, "blecch", false, []string{})
 			So(err, ShouldNotBeNil)
 			So(buildId, ShouldEqual, "")
 
@@ -1210,8 +1200,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if no task names are passed in to be used, all of the default"+
 			" tasks for the build variant should be created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version,
-				buildVar.Name, false, nil, buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, false, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1231,9 +1220,8 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("if a non-empty list of task names is passed in, only the"+
 			" specified tasks should be created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version,
-				buildVar.Name, false, []string{"taskA", "taskB"},
-				buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, false,
+				[]string{"taskA", "taskB"})
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1253,8 +1241,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("the build should contain task caches that correspond exactly"+
 			" to the tasks created", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version,
-				buildVar.Name, false, nil, buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, false, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1294,8 +1281,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("all of the tasks created should have the dependencies"+
 			" specified in the project", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version,
-				buildVar.Name, false, nil, buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, false, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1323,8 +1309,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		Convey("all of the build's essential fields should be set"+
 			" correctly", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version,
-				buildVar.Name, false, nil, buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, false, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1335,26 +1320,25 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// verify all the fields are set appropriately
 			So(len(build.Tasks), ShouldEqual, 4)
 			So(build.CreateTime.Truncate(time.Second), ShouldResemble,
-				version.CreateTime.Truncate(time.Second))
+				v.CreateTime.Truncate(time.Second))
 			So(build.PushTime.Truncate(time.Second), ShouldResemble,
-				version.CreateTime.Truncate(time.Second))
-			So(build.Activated, ShouldEqual, version.BuildVariants[0].Activated)
-			So(build.Project, ShouldEqual, project.Name())
-			So(build.Revision, ShouldEqual, version.Revision)
+				v.CreateTime.Truncate(time.Second))
+			So(build.Activated, ShouldEqual, v.BuildVariants[0].Activated)
+			So(build.Project, ShouldEqual, project.Identifier)
+			So(build.Revision, ShouldEqual, v.Revision)
 			So(build.Status, ShouldEqual, mci.BuildCreated)
 			So(build.BuildVariant, ShouldEqual, buildVar.Name)
-			So(build.Version, ShouldEqual, version.Id)
+			So(build.Version, ShouldEqual, v.Id)
 			So(build.DisplayName, ShouldEqual, buildVar.DisplayName)
-			So(build.RevisionOrderNumber, ShouldEqual, version.RevisionOrderNumber)
-			So(build.Requester, ShouldEqual, version.Requester)
+			So(build.RevisionOrderNumber, ShouldEqual, v.RevisionOrderNumber)
+			So(build.Requester, ShouldEqual, v.Requester)
 
 		})
 
 		Convey("all of the tasks' essential fields should be set"+
 			" correctly", func() {
 
-			buildId, err := CreateBuildFromVersion(project, version,
-				buildVar.Name, false, nil, buildTestConfig)
+			buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, false, nil)
 			So(err, ShouldBeNil)
 			So(buildId, ShouldNotEqual, "")
 
@@ -1387,9 +1371,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[0].Activated, ShouldEqual, build.Activated)
 			So(tasks[0].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[0].Requester, ShouldEqual, build.Requester)
-			So(tasks[0].Version, ShouldEqual, version.Id)
-			So(tasks[0].Revision, ShouldEqual, version.Revision)
-			So(tasks[0].Project, ShouldEqual, project.Name())
+			So(tasks[0].Version, ShouldEqual, v.Id)
+			So(tasks[0].Revision, ShouldEqual, v.Revision)
+			So(tasks[0].Project, ShouldEqual, project.Identifier)
 
 			So(tasks[1].Id, ShouldNotEqual, "")
 			So(tasks[1].Secret, ShouldNotEqual, "")
@@ -1405,9 +1389,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[1].Activated, ShouldEqual, build.Activated)
 			So(tasks[1].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[1].Requester, ShouldEqual, build.Requester)
-			So(tasks[1].Version, ShouldEqual, version.Id)
-			So(tasks[1].Revision, ShouldEqual, version.Revision)
-			So(tasks[1].Project, ShouldEqual, project.Name())
+			So(tasks[1].Version, ShouldEqual, v.Id)
+			So(tasks[1].Revision, ShouldEqual, v.Revision)
+			So(tasks[1].Project, ShouldEqual, project.Identifier)
 
 			So(tasks[2].Id, ShouldNotEqual, "")
 			So(tasks[2].Secret, ShouldNotEqual, "")
@@ -1423,9 +1407,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[2].Activated, ShouldEqual, build.Activated)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[2].Requester, ShouldEqual, build.Requester)
-			So(tasks[2].Version, ShouldEqual, version.Id)
-			So(tasks[2].Revision, ShouldEqual, version.Revision)
-			So(tasks[2].Project, ShouldEqual, project.Name())
+			So(tasks[2].Version, ShouldEqual, v.Id)
+			So(tasks[2].Revision, ShouldEqual, v.Revision)
+			So(tasks[2].Project, ShouldEqual, project.Identifier)
 
 			So(tasks[3].Id, ShouldNotEqual, "")
 			So(tasks[3].Secret, ShouldNotEqual, "")
@@ -1441,16 +1425,15 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[3].Activated, ShouldEqual, build.Activated)
 			So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 			So(tasks[3].Requester, ShouldEqual, build.Requester)
-			So(tasks[3].Version, ShouldEqual, version.Id)
-			So(tasks[3].Revision, ShouldEqual, version.Revision)
-			So(tasks[3].Project, ShouldEqual, project.Name())
+			So(tasks[3].Version, ShouldEqual, v.Id)
+			So(tasks[3].Revision, ShouldEqual, v.Revision)
+			So(tasks[3].Project, ShouldEqual, project.Identifier)
 		})
 
 		Convey("if the activated flag is set, the build and all its tasks should be activated",
 			func() {
 
-				buildId, err := CreateBuildFromVersion(project, version,
-					buildVar.Name, true, nil, buildTestConfig)
+				buildId, err := CreateBuildFromVersion(project, v, buildVar.Name, true, nil)
 				So(err, ShouldBeNil)
 				So(buildId, ShouldNotEqual, "")
 
@@ -1484,9 +1467,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[0].Activated, ShouldEqual, build.Activated)
 				So(tasks[0].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[0].Requester, ShouldEqual, build.Requester)
-				So(tasks[0].Version, ShouldEqual, version.Id)
-				So(tasks[0].Revision, ShouldEqual, version.Revision)
-				So(tasks[0].Project, ShouldEqual, project.Name())
+				So(tasks[0].Version, ShouldEqual, v.Id)
+				So(tasks[0].Revision, ShouldEqual, v.Revision)
+				So(tasks[0].Project, ShouldEqual, project.Identifier)
 
 				So(tasks[1].Id, ShouldNotEqual, "")
 				So(tasks[1].Secret, ShouldNotEqual, "")
@@ -1502,9 +1485,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[1].Activated, ShouldEqual, build.Activated)
 				So(tasks[1].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[1].Requester, ShouldEqual, build.Requester)
-				So(tasks[1].Version, ShouldEqual, version.Id)
-				So(tasks[1].Revision, ShouldEqual, version.Revision)
-				So(tasks[1].Project, ShouldEqual, project.Name())
+				So(tasks[1].Version, ShouldEqual, v.Id)
+				So(tasks[1].Revision, ShouldEqual, v.Revision)
+				So(tasks[1].Project, ShouldEqual, project.Identifier)
 
 				So(tasks[2].Id, ShouldNotEqual, "")
 				So(tasks[2].Secret, ShouldNotEqual, "")
@@ -1520,9 +1503,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[2].Activated, ShouldEqual, build.Activated)
 				So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[2].Requester, ShouldEqual, build.Requester)
-				So(tasks[2].Version, ShouldEqual, version.Id)
-				So(tasks[2].Revision, ShouldEqual, version.Revision)
-				So(tasks[2].Project, ShouldEqual, project.Name())
+				So(tasks[2].Version, ShouldEqual, v.Id)
+				So(tasks[2].Revision, ShouldEqual, v.Revision)
+				So(tasks[2].Project, ShouldEqual, project.Identifier)
 
 				So(tasks[3].Id, ShouldNotEqual, "")
 				So(tasks[3].Secret, ShouldNotEqual, "")
@@ -1538,9 +1521,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(tasks[3].Activated, ShouldEqual, build.Activated)
 				So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[3].Requester, ShouldEqual, build.Requester)
-				So(tasks[3].Version, ShouldEqual, version.Id)
-				So(tasks[3].Revision, ShouldEqual, version.Revision)
-				So(tasks[3].Project, ShouldEqual, project.Name())
+				So(tasks[3].Version, ShouldEqual, v.Id)
+				So(tasks[3].Revision, ShouldEqual, v.Revision)
+				So(tasks[3].Project, ShouldEqual, project.Identifier)
 			})
 
 	})

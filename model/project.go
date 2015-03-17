@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/command"
 	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/model/distro"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -178,7 +179,7 @@ func NewTaskConfig(distro *distro.Distro, project *Project, task *Task, workDir 
 		return nil, fmt.Errorf("Couldn't find buildvariant: %v", task.BuildVariant)
 	}
 	expansions := populateExpansions(distro, project, buildVariant, task)
-	workDirPart := project.Name()
+	workDirPart := project.Identifier
 	workDirPart = strings.Replace(workDirPart, ":", "", -1)
 	workDirPart = strings.Replace(workDirPart, "//", "/", -1)
 	sourceDir := filepath.Join(workDir, workDirPart)
@@ -195,11 +196,6 @@ func populateExpansions(distro *distro.Distro, project *Project,
 	if buildVariant != nil {
 		expansions.Update(buildVariant.Expansions)
 	}
-
-	buildNum := task.RemoteArgs.Options["build_num"]
-	expansions.Put("builder_num", buildNum)
-	expansions.Put("builder", fmt.Sprintf("mci_0.9_%s", task.BuildVariant))
-	expansions.Put("builder_phase", fmt.Sprintf("%v_%v", task.DisplayName, task.Execution))
 
 	// this is done this way since we don't have a good way of having the agent
 	// interact with buildlogger. Once we have it rewritten, this should be
@@ -395,17 +391,16 @@ func FindProject(revision, identifier, configName string) (*Project, error) {
 // getVersionProjectConfig attempts to retrieve the most recent valid version of
 // a project from the database. If none is found, it falls back to using the
 // most recent version of the project's configuration it finds
-func getVersionProjectConfig(identifier string) (*Version, error) {
-	versions, err := LastKnownGoodConfig(identifier)
+func getVersionProjectConfig(identifier string) (*version.Version, error) {
+	lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
 	if err != nil {
-		return nil, fmt.Errorf("Error finding recent "+
-			"valid version for %v: %v", identifier, err)
+		return nil, fmt.Errorf("Error finding recent valid version for %v: %v", identifier, err)
 	}
-	if len(versions) == 0 {
+	if lastGood == nil {
 		return nil, mci.Logger.Errorf(slogger.WARN, "No recent valid version "+
 			"found for %v; falling back to any recent version", identifier)
 	}
-	return &versions[0], nil
+	return lastGood, nil
 }
 
 func NewProjectByName(revision, identifier, configRoot string) (*Project, error) {
@@ -452,10 +447,9 @@ func NewProjectByName(revision, identifier, configRoot string) (*Project, error)
 	if revision != "" {
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
-		version, err := FindVersionByIdAndRevision(identifier, revision)
+		version, err := version.FindOne(version.ByProjectIdAndRevision(identifier, revision))
 		if err != nil {
-			return nil, fmt.Errorf("error fetching version document for "+
-				"project %v at revision %v: %v", identifier, revision, err)
+			return nil, fmt.Errorf("error fetching version for project %v revision %v: %v", identifier, revision, err)
 		}
 		if version == nil {
 			// fall back to the skeletal project
@@ -464,8 +458,7 @@ func NewProjectByName(revision, identifier, configRoot string) (*Project, error)
 
 		project = &Project{}
 		if err = LoadProjectInto([]byte(version.Config), project); err != nil {
-			return nil, fmt.Errorf("Error loading project from "+
-				"version: %v", err)
+			return nil, fmt.Errorf("Error loading project from version: %v", err)
 		}
 	}
 	return project, nil
@@ -531,8 +524,4 @@ func (project *Project) Location() (string, error) {
 		return "", mci.Logger.Errorf(slogger.ERROR, "Unknown value of RepoKind"+
 			" (“%v”)", project.RepoKind)
 	}
-}
-
-func (b *Project) Name() string {
-	return b.Identifier
 }

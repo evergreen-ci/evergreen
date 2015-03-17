@@ -54,25 +54,16 @@ func TestSetupFuncs(t *testing.T) {
 			tasks[0].Requester = mci.RepotrackerVersionRequester
 			tasks[0].DisplayName = displayNames[0]
 			tasks[0].BuildVariant = buildVariant
-			tasks[0].RemoteArgs = model.RemoteArgs{
-				Options: map[string]string{"branch": project},
-			}
 
 			tasks[1].RevisionOrderNumber = 200
 			tasks[1].Requester = mci.RepotrackerVersionRequester
 			tasks[1].DisplayName = displayNames[1]
 			tasks[1].BuildVariant = buildVariant
-			tasks[1].RemoteArgs = model.RemoteArgs{
-				Options: map[string]string{"branch": project},
-			}
 
 			tasks[2].RevisionOrderNumber = 300
 			tasks[2].Requester = mci.RepotrackerVersionRequester
 			tasks[2].DisplayName = displayNames[2]
 			tasks[2].BuildVariant = buildVariant
-			tasks[2].RemoteArgs = model.RemoteArgs{
-				Options: map[string]string{"branch": project},
-			}
 
 			// the previous tasks
 

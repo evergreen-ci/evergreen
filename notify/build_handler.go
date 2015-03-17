@@ -3,6 +3,7 @@ package notify
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -109,17 +110,17 @@ func (self *BuildNotificationHandler) constructChangeInfo(allBuilds []model.Buil
 
 	for _, build := range allBuilds {
 		// add blamelist information for each build
-		version, err := model.FindVersion(build.Version)
+		v, err := version.FindOne(version.ById(build.Version))
 		if err != nil {
 			return changeInfoSlice, err
 		}
 
-		if version == nil {
+		if v == nil {
 			err = fmt.Errorf("No version found for build %v with version id %v",
 				build.Id, build.Version)
 			return changeInfoSlice, err
 		}
-		changeInfo := constructChangeInfo(version, key)
+		changeInfo := constructChangeInfo(v, key)
 		changeInfo.Pushtime = build.PushTime.Format(time.RFC850)
 		changeInfoSlice = append(changeInfoSlice, *changeInfo)
 	}

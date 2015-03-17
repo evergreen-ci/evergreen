@@ -2,6 +2,7 @@ package model
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -23,7 +24,7 @@ func TestFindProject(t *testing.T) {
 
 		Convey("if the project file exists and is valid, the project spec within"+
 			" it should be unmarshalled and returned", func() {
-			version := &Version{
+			v := &version.Version{
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
@@ -31,10 +32,8 @@ func TestFindProject(t *testing.T) {
 				Requester:  mci.RepotrackerVersionRequester,
 				Config:     "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
 			}
-			util.HandleTestingErr(version.Insert(), t, "failed to insert "+
-				"test version: %v")
-			project, err := FindProject("", "project_test",
-				projectTestConf.ConfigDir)
+			util.HandleTestingErr(v.Insert(), t, "failed to insert test version: %v")
+			project, err := FindProject("", "project_test", projectTestConf.ConfigDir)
 			So(err, ShouldBeNil)
 
 			// check enough fields to make sure it was unmarshalled correctly

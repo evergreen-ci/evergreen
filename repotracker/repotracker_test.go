@@ -4,12 +4,14 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
 	"errors"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
+	"os"
 	"testing"
 	"time"
 )
@@ -39,10 +41,11 @@ func TestFetchRevisions(t *testing.T) {
 
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t,
 		func() {
-			repoTracker := NewRepositoryTracker(
-				testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
-					testConfig.Credentials["github"]), util.SystemClock{},
-			)
+			repoTracker := RepoTracker{
+				testConfig,
+				projectRef,
+				NewGithubRepositoryPoller(projectRef, testConfig.Credentials["github"]),
+			}
 
 			Convey("Fetching commits from the repository should not return "+
 				"any errors", func() {
@@ -53,7 +56,7 @@ func TestFetchRevisions(t *testing.T) {
 				"limit of 4 commits where only 3 exist", func() {
 				util.HandleTestingErr(repoTracker.FetchRevisions(4), t,
 					"Error running repository process %v")
-				numVersions, err := model.TotalVersions(bson.M{})
+				numVersions, err := version.TotalVersions(bson.M{})
 				util.HandleTestingErr(err, t, "Error finding all versions")
 				So(numVersions, ShouldEqual, 3)
 			})
@@ -62,7 +65,7 @@ func TestFetchRevisions(t *testing.T) {
 				"limit of 2 commits where 3 exist", func() {
 				util.HandleTestingErr(repoTracker.FetchRevisions(2), t,
 					"Error running repository process %v")
-				numVersions, err := model.TotalVersions(bson.M{})
+				numVersions, err := version.TotalVersions(bson.M{})
 				util.HandleTestingErr(err, t, "Error finding all versions")
 				So(numVersions, ShouldEqual, 2)
 			})
@@ -76,10 +79,8 @@ func TestFetchRevisions(t *testing.T) {
 func TestStoreRepositoryRevisions(t *testing.T) {
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestStoreRepositoryRevisions")
 	Convey("When storing revisions gotten from a repository...", t, func() {
-		repoTracker := NewRepositoryTracker(
-			testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
-				testConfig.Credentials["github"]), util.SystemClock{},
-		)
+		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
+			testConfig.Credentials["github"])}
 
 		Convey("On storing a single repo revision, we expect a version to be created"+
 			" in the database for this project, which should be retrieved when we search"+
@@ -88,10 +89,10 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			revisionOne := *createTestRevision("firstRevision", createTime)
 			revisions := []model.Revision{revisionOne}
 
-			resultVersion, err := repoTracker.StoreRepositoryRevisions(revisions)
+			resultVersion, err := repoTracker.StoreRevisions(revisions)
 			util.HandleTestingErr(err, t, "Error storing repository revisions %v")
 
-			newestVersion, err := model.FindMostRecentVersion(projectRef.String())
+			newestVersion, err := version.FindOne(version.ByMostRecentForRequester(projectRef.String(), mci.RepotrackerVersionRequester))
 			util.HandleTestingErr(err, t, "Error retreiving newest version %v")
 
 			So(resultVersion, ShouldResemble, newestVersion)
@@ -107,14 +108,12 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			revisions := []model.Revision{revisionOne, revisionTwo}
 
-			_, err := repoTracker.StoreRepositoryRevisions(revisions)
+			_, err := repoTracker.StoreRevisions(revisions)
 			util.HandleTestingErr(err, t, "Error storing repository revisions %v")
 
-			versionOne, err :=
-				model.FindVersionByIdAndRevision(projectRef.String(), revisionOne.Revision)
+			versionOne, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionOne.Revision))
 			util.HandleTestingErr(err, t, "Error retrieving first stored version %v")
-			versionTwo, err :=
-				model.FindVersionByIdAndRevision(projectRef.String(), revisionTwo.Revision)
+			versionTwo, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revisionTwo.Revision))
 			util.HandleTestingErr(err, t, "Error retreiving second stored version %v")
 
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
@@ -133,27 +132,26 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 			poller := NewMockRepoPoller(project, revisions)
 
-			repoTracker := NewRepositoryTracker(
-				&mci.MCISettings{},
+			repoTracker := RepoTracker{
+				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
 					Remote:     true,
 				},
 				poller,
-				util.SystemClock{},
-			)
+			}
 
 			Convey("We should not fetch configs for versions we already have stored.",
 				func() {
 					So(poller.ConfigGets, ShouldBeZeroValue)
 					// Store revisions the first time
-					_, err := repoTracker.StoreRepositoryRevisions(revisions)
+					_, err := repoTracker.StoreRevisions(revisions)
 					So(err, ShouldBeNil)
 					// We should have fetched the config once for each revision
 					So(poller.ConfigGets, ShouldEqual, len(revisions))
 
 					// Store them again
-					_, err = repoTracker.StoreRepositoryRevisions(revisions)
+					_, err = repoTracker.StoreRevisions(revisions)
 					So(err, ShouldBeNil)
 					// We shouldn't have fetched the config any additional times
 					// since we have already stored these versions
@@ -165,7 +163,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 				func() {
 					errStrs := []string{"Someone dun' goof'd"}
 					poller.setNextError(projectConfigError{errStrs})
-					stubVersion, err := repoTracker.StoreRepositoryRevisions(revisions)
+					stubVersion, err := repoTracker.StoreRevisions(revisions)
 					// We want this error to get swallowed so a config error
 					// doesn't stop additional versions from getting created
 					So(err, ShouldBeNil)
@@ -177,7 +175,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 				func() {
 					unexpectedError := errors.New("Something terrible has happened!!")
 					poller.setNextError(unexpectedError)
-					v, err := repoTracker.StoreRepositoryRevisions(revisions)
+					v, err := repoTracker.StoreRevisions(revisions)
 					So(v, ShouldBeNil)
 					So(err, ShouldEqual, unexpectedError)
 				},
@@ -190,15 +188,16 @@ func TestBatchTimes(t *testing.T) {
 		t, func() {
 			now := time.Now()
 			// We create a version with an activation time of now so that all the bvs have a last activation time
-			previouslyActivatedVersion := model.Version{
+			previouslyActivatedVersion := version.Version{
+				Id:      "previously activated",
 				Project: "testproject",
-				BuildVariants: []model.BuildStatus{
-					model.BuildStatus{
+				BuildVariants: []version.BuildStatus{
+					{
 						BuildVariant: "bv1",
 						Activated:    true,
 						ActivateAt:   now,
 					},
-					model.BuildStatus{
+					{
 						BuildVariant: "bv2",
 						Activated:    true,
 						ActivateAt:   now,
@@ -217,22 +216,21 @@ func TestBatchTimes(t *testing.T) {
 					*createTestRevision("foo", time.Now()),
 				}
 
-				repoTracker := NewRepositoryTracker(
-					&mci.MCISettings{},
+				repoTracker := RepoTracker{
+					testConfig,
 					&model.ProjectRef{
 						Identifier: "testproject",
 						Remote:     true,
 					},
 					NewMockRepoPoller(project, revisions),
-					util.SystemClock{},
-				)
-				version, err := repoTracker.storeRevision(&revisions[0], project)
+				}
+				v, err := repoTracker.StoreRevisions(revisions)
+				So(v, ShouldNotBeNil)
 				So(err, ShouldBeNil)
-				err = repoTracker.activateVersionVariantsIfNeeded(version)
-				So(err, ShouldBeNil)
-				So(len(version.BuildVariants), ShouldEqual, 2)
-				So(version.BuildVariants[0].Activated, ShouldBeFalse)
-				So(version.BuildVariants[1].Activated, ShouldBeFalse)
+				So(len(v.BuildVariants), ShouldEqual, 2)
+				So(v.BuildVariants[0].Activated, ShouldBeFalse)
+				So(v.BuildVariants[1].Activated, ShouldBeFalse)
+				os.Exit(1)
 			})
 
 			Convey("If the project's batch time has elasped, and no buildvariants "+
@@ -241,18 +239,15 @@ func TestBatchTimes(t *testing.T) {
 				revisions := []model.Revision{
 					*createTestRevision("bar", time.Now()),
 				}
-				repoTracker := NewRepositoryTracker(
-					&mci.MCISettings{},
+				repoTracker := RepoTracker{
+					testConfig,
 					&model.ProjectRef{
 						Identifier: "testproject",
 						Remote:     true,
 					},
 					NewMockRepoPoller(project, revisions),
-					mockClock{time.Now().Add(time.Duration(4 * time.Hour))},
-				)
-				version, err := repoTracker.storeRevision(&revisions[0], project)
-				So(err, ShouldBeNil)
-				repoTracker.activateVersionVariantsIfNeeded(version)
+				}
+				version, err := repoTracker.StoreRevisions(revisions)
 				So(err, ShouldBeNil)
 				bv1, found := findStatus(version, "bv1")
 				So(found, ShouldBeTrue)
@@ -275,18 +270,15 @@ func TestBatchTimes(t *testing.T) {
 					*createTestRevision("baz", time.Now()),
 				}
 
-				repoTracker := NewRepositoryTracker(
-					&mci.MCISettings{},
+				repoTracker := RepoTracker{
+					testConfig,
 					&model.ProjectRef{
 						Identifier: "testproject",
 						Remote:     true,
 					},
 					NewMockRepoPoller(project, revisions),
-					mockClock{time.Now().Add(time.Duration(1) * time.Hour)}, // set time to 60 mins from now
-				)
-				version, err := repoTracker.storeRevision(&revisions[0], project)
-				So(err, ShouldBeNil)
-				err = repoTracker.activateVersionVariantsIfNeeded(version)
+				}
+				version, err := repoTracker.StoreRevisions(revisions)
 				So(err, ShouldBeNil)
 				bv1, found := findStatus(version, "bv1")
 				So(found, ShouldBeTrue)
@@ -296,7 +288,7 @@ func TestBatchTimes(t *testing.T) {
 				So(bv2.Activated, ShouldBeFalse)
 			})
 
-			Convey("If the project's batch time not elasped, but one variant "+
+			Convey("If the project's batch time not elapsed, but one variant "+
 				"has overridden their batch times to be shorter"+
 				", that variant should be activated", func() {
 				ten := 10
@@ -307,18 +299,15 @@ func TestBatchTimes(t *testing.T) {
 					*createTestRevision("garply", time.Now()),
 				}
 
-				repoTracker := NewRepositoryTracker(
-					&mci.MCISettings{},
+				repoTracker := RepoTracker{
+					testConfig,
 					&model.ProjectRef{
 						Identifier: "testproject",
 						Remote:     true,
 					},
 					NewMockRepoPoller(project, revisions),
-					mockClock{time.Now().Add(time.Duration(20) * time.Minute)}, // set time to 20 mins from now
-				)
-				version, err := repoTracker.storeRevision(&revisions[0], project)
-				So(err, ShouldBeNil)
-				err = repoTracker.activateVersionVariantsIfNeeded(version)
+				}
+				version, err := repoTracker.StoreRevisions(revisions)
 				So(err, ShouldBeNil)
 				bv1, found := findStatus(version, "bv1")
 				So(found, ShouldBeTrue)
@@ -335,8 +324,8 @@ func TestBatchTimes(t *testing.T) {
 		})
 }
 
-func findStatus(version *model.Version, buildVariant string) (*model.BuildStatus, bool) {
-	for _, status := range version.BuildVariants {
+func findStatus(v *version.Version, buildVariant string) (*version.BuildStatus, bool) {
+	for _, status := range v.BuildVariants {
 		if status.BuildVariant == buildVariant {
 			return &status, true
 		}
@@ -376,7 +365,7 @@ func createTestProject(projectBatchTime int, override1, override2 *int) *model.P
 				Tasks: []model.BuildVariantTask{
 					model.BuildVariantTask{
 						Name:    "Unabhaengigkeitserklaerungen",
-						Distros: []string{"ubuntu"},
+						Distros: []string{"test-distro-one"},
 					},
 				},
 			},
@@ -387,7 +376,7 @@ func createTestProject(projectBatchTime int, override1, override2 *int) *model.P
 				Tasks: []model.BuildVariantTask{
 					model.BuildVariantTask{
 						Name:    "Unabhaengigkeitserklaerungen",
-						Distros: []string{"ubuntu"},
+						Distros: []string{"test-distro-one"},
 					},
 				},
 			},

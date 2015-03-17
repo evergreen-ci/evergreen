@@ -135,13 +135,6 @@ func SetupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 	}
 
 	testConfig := mci.TestConfig()
-	task.RemoteArgs = model.RemoteArgs{
-		Params: []string{"compile", "smokeCppUnitTests", "", "mciuploads/unittest/mongodb-blah.tgz"},
-		Options: map[string]string{
-			"aws_id":     testConfig.Providers.AWS.Id,
-			"aws_secret": testConfig.Providers.AWS.Secret,
-		},
-	}
 
 	util.HandleTestingErr(task.Insert(), t, "failed to insert task")
 

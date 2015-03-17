@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -31,7 +32,7 @@ type versionStatusByBuildContent struct {
 	Builds map[string]versionStatusByBuild `json:"builds"`
 }
 
-type version struct {
+type restVersion struct {
 	Id                  string    `json:"id"`
 	CreateTime          time.Time `json:"create_time"`
 	StartTime           time.Time `json:"start_time"`
@@ -88,16 +89,14 @@ type versionStatusByBuild map[string]versionStatus
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
-	projectName := mux.Vars(r)["project_id"]
+	projectId := mux.Vars(r)["project_id"]
 
-	versions, err := model.FindMostRecentVersions(projectName,
-		mci.RepotrackerVersionRequester, db.NoSkip, NumRecentVersions)
+	versions, err := version.Find(version.ByMostRecentForRequester(projectId, mci.RepotrackerVersionRequester).Limit(10))
 	if err != nil {
-		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectName)
+		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
-
 	}
 
 	// Create a slice of version ids to find all relevant builds
@@ -129,7 +128,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 		db.NoLimit,
 	)
 	if err != nil {
-		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectName)
+		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
@@ -137,7 +136,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	}
 
 	result := recentVersionsContent{
-		Project:  projectName,
+		Project:  projectId,
 		Versions: make([]versionLessInfo, 0, len(versions)),
 	}
 
@@ -182,7 +181,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	versionId := mux.Vars(r)["version_id"]
 
-	srcVersion, err := model.FindVersion(versionId)
+	srcVersion, err := version.FindOne(version.ById(versionId))
 	if err != nil || srcVersion == nil {
 		msg := fmt.Sprintf("Error finding version '%v'", versionId)
 		statusCode := http.StatusNotFound
@@ -197,7 +196,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	destVersion := &version{}
+	destVersion := &restVersion{}
 	// Copy the contents from the database into our local version type
 	err = angier.TransferByFieldNames(srcVersion, destVersion)
 	if err != nil {
@@ -221,13 +220,12 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	projectName := vars["project_id"]
+	projectId := vars["project_id"]
 	revision := vars["revision"]
 
-	srcVersion, err := model.FindVersionByIdAndRevision(projectName, revision)
+	srcVersion, err := version.FindOne(version.ByProjectIdAndRevision(projectId, revision))
 	if err != nil || srcVersion == nil {
-		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'",
-			revision, projectName)
+		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		statusCode := http.StatusNotFound
 
 		if err != nil {
@@ -240,12 +238,11 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 	}
 
-	destVersion := &version{}
+	destVersion := &restVersion{}
 	// Copy the contents from the database into our local version type
 	err = angier.TransferByFieldNames(srcVersion, destVersion)
 	if err != nil {
-		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'",
-			revision, projectName)
+		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
@@ -271,8 +268,8 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 	}
 	json.NewDecoder(r.Body).Decode(&input)
 
-	version, err := model.FindVersion(versionId)
-	if err != nil || version == nil {
+	v, err := version.FindOne(version.ById(versionId))
+	if err != nil || v == nil {
 		msg := fmt.Sprintf("Error finding version '%v'", versionId)
 		statusCode := http.StatusNotFound
 
@@ -287,7 +284,7 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 	}
 
 	if input.Activated != nil {
-		if err = version.SetActivated(*input.Activated); err != nil {
+		if err = model.SetVersionActivation(v.Id, *input.Activated); err != nil {
 			state := "inactive"
 			if *input.Activated {
 				state = "active"
@@ -296,7 +293,6 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 			msg := fmt.Sprintf("Error marking version '%v' as %v", versionId, state)
 			restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 			return
-
 		}
 	}
 

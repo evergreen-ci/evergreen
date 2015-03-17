@@ -3,6 +3,7 @@ package patch
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/thirdparty"
 	"10gen.com/mci/validator"
 	"encoding/base64"
@@ -16,7 +17,7 @@ type PatchAPIResponse struct {
 	Patch   *model.Patch `json:"patch"`
 }
 
-func Finalize(p *model.Patch, mciSettings *mci.MCISettings) (*model.Version, error) {
+func Finalize(p *model.Patch, mciSettings *mci.MCISettings) (*version.Version, error) {
 	if p.Version != "" {
 		return nil, fmt.Errorf("Patch %v already finalized", p.Version)
 	}

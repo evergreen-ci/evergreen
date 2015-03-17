@@ -113,7 +113,7 @@ func TestGenericHostFinding(t *testing.T) {
 				// sorting by tag, skipping one, and limiting to one
 
 				found, err := Find(db.Query(bson.M{DistroKey: "d1"}).
-					Project(bson.M{DNSKey: 0}).
+					WithoutFields(DNSKey).
 					Sort([]string{TagKey}).
 					Skip(1).Limit(1))
 				So(err, ShouldBeNil)

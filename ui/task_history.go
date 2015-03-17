@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -47,7 +48,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	taskName := mux.Vars(r)["task_name"]
 
 	var chunk model.TaskHistoryChunk
-	var version *model.Version
+	var v *version.Version
 	var before bool
 	var err error
 
@@ -60,30 +61,27 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	buildVariants := projCtx.Project.GetVariantsWithTask(taskName)
 
 	if revision := r.FormValue("revision"); revision != "" {
-		version, err = model.FindVersionByIdAndRevision(projCtx.Project.Name(), revision)
+		v, err = version.FindOne(version.ByProjectIdAndRevision(projCtx.Project.Identifier, revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 	}
 
-	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants, projCtx.Project.Name())
+	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants, projCtx.Project.Identifier)
 
 	if r.FormValue("format") == "" {
-		if version != nil {
-			chunk, err = taskHistoryIterator.GetChunk(version, InitRevisionsBefore, InitRevisionsAfter, true)
+		if v != nil {
+			chunk, err = taskHistoryIterator.GetChunk(v, InitRevisionsBefore, InitRevisionsAfter, true)
 		} else {
 			// Load the most recent MaxNumRevisions if a particular
 			// version was unspecified
-			chunk, err = taskHistoryIterator.GetChunk(version,
-				MaxNumRevisions, NoRevisions, false)
+			chunk, err = taskHistoryIterator.GetChunk(v, MaxNumRevisions, NoRevisions, false)
 		}
 	} else if before {
-		chunk, err = taskHistoryIterator.GetChunk(version,
-			MaxNumRevisions, NoRevisions, false)
+		chunk, err = taskHistoryIterator.GetChunk(v, MaxNumRevisions, NoRevisions, false)
 	} else {
-		chunk, err = taskHistoryIterator.GetChunk(version,
-			NoRevisions, MaxNumRevisions, false)
+		chunk, err = taskHistoryIterator.GetChunk(v, NoRevisions, MaxNumRevisions, false)
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -122,11 +120,11 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	beforeCommitId := r.FormValue("before")
 	isJson := (r.FormValue("format") == "json")
 
-	var beforeCommit *model.Version
+	var beforeCommit *version.Version
 	var err error
 	beforeCommit = nil
 	if beforeCommitId != "" {
-		beforeCommit, err = model.FindVersion(beforeCommitId)
+		beforeCommit, err = version.FindOne(version.ById(beforeCommitId))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -166,7 +164,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		Variant   string
 		Tasks     []bson.M
 		TaskNames []string
-		Versions  []model.Version
+		Versions  []version.Version
 		Project   string
 	}{variant, tasks, suites, versions, projCtx.Project.Identifier}
 	if isJson {
@@ -229,7 +227,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 			"$gte": lowOrder,
 			"$lte": highOrder,
 		},
-		"branch": projCtx.Project.Name(),
+		"branch": projCtx.Project.Identifier,
 	}
 
 	// If there are build variants, use them instead
@@ -309,7 +307,7 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	buildVariants := projCtx.Project.GetVariantsWithTask(taskName)
 
 	taskHistoryIterator := model.NewTaskHistoryIterator(taskName, buildVariants,
-		projCtx.Project.Name())
+		projCtx.Project.Identifier)
 
 	results, err := taskHistoryIterator.GetDistinctTestNames(NumTestsToSearchForTestNames)
 
@@ -396,7 +394,7 @@ func getGroupsSurrounding(anchorTask *model.Task,
 	// first, get the sibling group for the version containing the
 	// anchor task itself
 
-	anchorVersion, err := model.FindVersion(anchorTask.Version)
+	anchorVersion, err := version.FindOne(version.ById(anchorTask.Version))
 	if err != nil {
 		return nil, fmt.Errorf("error finding version %v: %v",
 			anchorTask.Version, err)
@@ -409,7 +407,7 @@ func getGroupsSurrounding(anchorTask *model.Task,
 	// len(anchorSiblingGroupSlice) should always be 1, since it's only
 	// getting a group for the single relevant revision.
 	anchorSiblingGroupSlice, err := getSiblingTaskGroups(anchorTask.DisplayName,
-		false, []model.Version{*anchorVersion})
+		false, []version.Version{*anchorVersion})
 
 	if err != nil {
 		return nil, fmt.Errorf("error getting sibling tasks: %v", err)
@@ -479,9 +477,7 @@ func getGroupsAfter(anchorTask *model.Task,
 // Helper to make the appropriate query to the versions collection for what
 // we will need.  "before" indicates whether to fetch versions before or
 // after the passed-in task.
-func makeVersionsQuery(anchorTask *model.Task, versionsToFetch int,
-	before bool) ([]model.Version, error) {
-
+func makeVersionsQuery(anchorTask *model.Task, versionsToFetch int, before bool) ([]version.Version, error) {
 	// decide how the versions we want relative to the task's revision order
 	// number
 	ronQuery := bson.M{"$gt": anchorTask.RevisionOrderNumber}
@@ -490,27 +486,22 @@ func makeVersionsQuery(anchorTask *model.Task, versionsToFetch int,
 	}
 
 	// switch how to sort the versions
-	sortVersions := []string{model.VersionRevisionOrderNumberKey}
+	sortVersions := []string{version.RevisionOrderNumberKey}
 	if before {
-		sortVersions = []string{"-" + model.VersionRevisionOrderNumberKey}
+		sortVersions = []string{"-" + version.RevisionOrderNumberKey}
 	}
 
 	// fetch the versions
-	return model.FindAllVersions(
-		bson.M{
-			model.VersionProjectKey:             anchorTask.Project,
-			model.VersionRevisionOrderNumberKey: ronQuery,
-		},
-		bson.M{
-			model.VersionRevisionOrderNumberKey: 1,
-			model.VersionRevisionKey:            1,
-			model.VersionMessageKey:             1,
-			model.VersionCreateTimeKey:          1,
-		},
-		sortVersions,
-		db.NoSkip,
-		versionsToFetch,
-	)
+	return version.Find(
+		db.Query(bson.M{
+			version.ProjectKey:             anchorTask.Project,
+			version.RevisionOrderNumberKey: ronQuery,
+		}).WithFields(
+			version.RevisionOrderNumberKey,
+			version.RevisionKey,
+			version.MessageKey,
+			version.CreateTimeKey,
+		).Sort(sortVersions).Limit(versionsToFetch))
 
 }
 
@@ -541,7 +532,7 @@ func mergeGroups(groups ...[]siblingTaskGroup) []siblingTaskGroup {
 // unless reverseOrder is true, in which case they will be sorted
 // descending.
 func getSiblingTaskGroups(displayName string, reverseOrder bool,
-	versions []model.Version) ([]siblingTaskGroup, error) {
+	versions []version.Version) ([]siblingTaskGroup, error) {
 
 	orderNumbers := make([]int, 0, len(versions))
 	for _, v := range versions {
@@ -577,20 +568,19 @@ func getSiblingTaskGroups(displayName string, reverseOrder bool,
 
 // Given versions and the appropriate tasks within them, sorted by build
 // variant, create sibling groups for the tasks.
-func createSiblingTaskGroups(tasks []model.Task,
-	versions []model.Version) []siblingTaskGroup {
+func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []siblingTaskGroup {
 
 	// version id -> group
 	groupsByVersion := map[string]siblingTaskGroup{}
 
 	// create a group for each version
-	for _, version := range versions {
+	for _, v := range versions {
 		group := siblingTaskGroup{
-			Revision: version.Revision,
-			Message:  version.Message,
-			PushTime: version.CreateTime,
+			Revision: v.Revision,
+			Message:  v.Message,
+			PushTime: v.CreateTime,
 		}
-		groupsByVersion[version.Id] = group
+		groupsByVersion[v.Id] = group
 	}
 
 	// go through the tasks, adding blurbs for them to the appropriate versions

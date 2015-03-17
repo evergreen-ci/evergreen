@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
@@ -81,14 +82,14 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 		Convey("Calls to GetProjectConfig() should return the right config",
 			func() {
-				version := &model.Version{
+				v := &version.Version{
 					Config: "enabled: true\nbatchtime: 120",
 				}
 				// Mock project handler to answer the agent's request for a
 				// project's config
 				serveMux.HandleFunc("/task/mocktaskid/version",
 					func(w http.ResponseWriter, req *http.Request) {
-						util.WriteJSON(&w, version, http.StatusOK)
+						util.WriteJSON(&w, v, http.StatusOK)
 					})
 				projectConfig, err := agentCommunicator.GetProjectConfig()
 				So(err, ShouldBeNil)

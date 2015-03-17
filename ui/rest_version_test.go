@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/rest"
 	"10gen.com/mci/util"
 	"bytes"
@@ -47,8 +48,8 @@ func TestGetRecentVersions(t *testing.T) {
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding recent versions", t, func() {
-		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
-			"Error clearing '%v' collection", model.VersionsCollection)
+		util.HandleTestingErr(db.Clear(version.Collection), t,
+			"Error clearing '%v' collection", version.Collection)
 
 		projectName := "project_test"
 		otherProjectName := "my-other-project"
@@ -57,11 +58,11 @@ func TestGetRecentVersions(t *testing.T) {
 		buildIdPreface := "build-id-for-version%v"
 
 		So(rest.NumRecentVersions, ShouldBeGreaterThan, 0)
-		versions := make([]*model.Version, 0, rest.NumRecentVersions)
+		versions := make([]*version.Version, 0, rest.NumRecentVersions)
 
 		// Insert a bunch of versions into the database
 		for i := 0; i < rest.NumRecentVersions; i++ {
-			version := &model.Version{
+			v := &version.Version{
 				Id:                  fmt.Sprintf("version%v", i),
 				Project:             projectName,
 				Author:              fmt.Sprintf("author%v", i),
@@ -70,14 +71,14 @@ func TestGetRecentVersions(t *testing.T) {
 				RevisionOrderNumber: i + 1,
 				Requester:           mci.RepotrackerVersionRequester,
 			}
-			So(version.Insert(), ShouldBeNil)
-			versions = append(versions, version)
+			So(v.Insert(), ShouldBeNil)
+			versions = append(versions, v)
 		}
 
 		// Construct a version that should not be present in the response
 		// since the length of the build ids slice is different than that
 		// of the build variants slice
-		earlyVersion := &model.Version{
+		earlyVersion := &version.Version{
 			Id:                  "some-id",
 			Project:             projectName,
 			Author:              "some-author",
@@ -90,7 +91,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		// Construct a version that should not be present in the response
 		// since it belongs to a different project
-		otherVersion := &model.Version{
+		otherVersion := &version.Version{
 			Id:                  "some-other-id",
 			Project:             otherProjectName,
 			Author:              "some-other-author",
@@ -150,13 +151,13 @@ func TestGetRecentVersions(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(jsonVersions), ShouldEqual, len(versions))
 
-			for i, version := range versions {
+			for i, v := range versions {
 				jsonVersion := jsonVersions[len(jsonVersions)-i-1] // reverse order
 
-				So(jsonVersion["version_id"], ShouldEqual, version.Id)
-				So(jsonVersion["author"], ShouldEqual, version.Author)
-				So(jsonVersion["revision"], ShouldEqual, version.Revision)
-				So(jsonVersion["message"], ShouldEqual, version.Message)
+				So(jsonVersion["version_id"], ShouldEqual, v.Id)
+				So(jsonVersion["author"], ShouldEqual, v.Author)
+				So(jsonVersion["revision"], ShouldEqual, v.Revision)
+				So(jsonVersion["message"], ShouldEqual, v.Message)
 
 				_jsonBuilds, ok := jsonVersion["builds"]
 				So(ok, ShouldBeTrue)
@@ -245,13 +246,13 @@ func TestGetVersionInfo(t *testing.T) {
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular version", t, func() {
-		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
-			"Error clearing '%v' collection", model.VersionsCollection)
+		util.HandleTestingErr(db.Clear(version.Collection), t,
+			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
 		projectName := "project_test"
 
-		version := &model.Version{
+		v := &version.Version{
 			Id:                  versionId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
@@ -263,7 +264,7 @@ func TestGetVersionInfo(t *testing.T) {
 			Message:             "some-message",
 			Status:              "success",
 			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []model.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -274,7 +275,7 @@ func TestGetVersionInfo(t *testing.T) {
 			RemotePath:          "",
 			Requester:           mci.RepotrackerVersionRequester,
 		}
-		So(version.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
 
 		url, err := router.Get("version_info").URL("version_id", versionId)
 		So(err, ShouldBeNil)
@@ -288,7 +289,7 @@ func TestGetVersionInfo(t *testing.T) {
 		router.ServeHTTP(response, request)
 
 		So(response.Code, ShouldEqual, http.StatusOK)
-		validateVersionInfo(version, response)
+		validateVersionInfo(v, response)
 	})
 
 	Convey("When finding info on a nonexistent version", t, func() {
@@ -340,13 +341,13 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	projectName := "project_test"
 
 	Convey("When finding info on a particular version by its revision", t, func() {
-		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
-			"Error clearing '%v' collection", model.VersionsCollection)
+		util.HandleTestingErr(db.Clear(version.Collection), t,
+			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
 		revision := fmt.Sprintf("%x", rand.Int())
 
-		version := &model.Version{
+		v := &version.Version{
 			Id:                  versionId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
@@ -358,7 +359,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			Message:             "some-message",
 			Status:              "success",
 			BuildIds:            []string{"some-build-id"},
-			BuildVariants:       []model.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -369,7 +370,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			RemotePath:          "",
 			Requester:           mci.RepotrackerVersionRequester,
 		}
-		So(version.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
 
 		url, err := router.Get("version_info_via_revision").URL(
 			"project_id", projectName, "revision", revision)
@@ -384,7 +385,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		router.ServeHTTP(response, request)
 
 		So(response.Code, ShouldEqual, http.StatusOK)
-		validateVersionInfo(version, response)
+		validateVersionInfo(v, response)
 	})
 
 	Convey("When finding info on a nonexistent version by its revision", t, func() {
@@ -435,8 +436,8 @@ func TestActivateVersion(t *testing.T) {
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When marking a particular version as active", t, func() {
-		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
-			"Error clearing '%v' collection", model.VersionsCollection)
+		util.HandleTestingErr(db.Clear(version.Collection), t,
+			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
 		projectName := "project_test"
@@ -447,7 +448,7 @@ func TestActivateVersion(t *testing.T) {
 		}
 		So(build.Insert(), ShouldBeNil)
 
-		version := &model.Version{
+		v := &version.Version{
 			Id:                  versionId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
@@ -459,7 +460,7 @@ func TestActivateVersion(t *testing.T) {
 			Message:             "some-message",
 			Status:              "success",
 			BuildIds:            []string{build.Id},
-			BuildVariants:       []model.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
+			BuildVariants:       []version.BuildStatus{{"some-build-variant", true, time.Now().Add(-20 * time.Minute), "some-build-id"}},
 			RevisionOrderNumber: rand.Int(),
 			Owner:               "some-owner",
 			Repo:                "some-repo",
@@ -470,7 +471,7 @@ func TestActivateVersion(t *testing.T) {
 			RemotePath:          "",
 			Requester:           mci.RepotrackerVersionRequester,
 		}
-		So(version.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
 
 		url, err := router.Get("version_info").URL("version_id", versionId)
 		So(err, ShouldBeNil)
@@ -492,7 +493,7 @@ func TestActivateVersion(t *testing.T) {
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 
-		validateVersionInfo(version, response)
+		validateVersionInfo(v, response)
 	})
 
 	Convey("When marking a nonexistent version as active", t, func() {
@@ -783,7 +784,7 @@ func TestGetVersionStatus(t *testing.T) {
 	})
 }
 
-func validateVersionInfo(version *model.Version, response *httptest.ResponseRecorder) {
+func validateVersionInfo(v *version.Version, response *httptest.ResponseRecorder) {
 	Convey("response should match contents of database", func() {
 		var jsonBody map[string]interface{}
 		err := json.Unmarshal(response.Body.Bytes(), &jsonBody)
@@ -793,48 +794,48 @@ func validateVersionInfo(version *model.Version, response *httptest.ResponseReco
 		err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
 		So(err, ShouldBeNil)
 
-		So(jsonBody["id"], ShouldEqual, version.Id)
+		So(jsonBody["id"], ShouldEqual, v.Id)
 
 		var createTime time.Time
 		err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 		So(err, ShouldBeNil)
-		So(createTime, ShouldHappenWithin, rest.TimePrecision, version.CreateTime)
+		So(createTime, ShouldHappenWithin, rest.TimePrecision, v.CreateTime)
 
 		var startTime time.Time
 		err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 		So(err, ShouldBeNil)
-		So(startTime, ShouldHappenWithin, rest.TimePrecision, version.StartTime)
+		So(startTime, ShouldHappenWithin, rest.TimePrecision, v.StartTime)
 
 		var finishTime time.Time
 		err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 		So(err, ShouldBeNil)
-		So(finishTime, ShouldHappenWithin, rest.TimePrecision, version.FinishTime)
+		So(finishTime, ShouldHappenWithin, rest.TimePrecision, v.FinishTime)
 
-		So(jsonBody["project"], ShouldEqual, version.Project)
-		So(jsonBody["revision"], ShouldEqual, version.Revision)
-		So(jsonBody["author"], ShouldEqual, version.Author)
-		So(jsonBody["author_email"], ShouldEqual, version.AuthorEmail)
-		So(jsonBody["message"], ShouldEqual, version.Message)
-		So(jsonBody["status"], ShouldEqual, version.Status)
+		So(jsonBody["project"], ShouldEqual, v.Project)
+		So(jsonBody["revision"], ShouldEqual, v.Revision)
+		So(jsonBody["author"], ShouldEqual, v.Author)
+		So(jsonBody["author_email"], ShouldEqual, v.AuthorEmail)
+		So(jsonBody["message"], ShouldEqual, v.Message)
+		So(jsonBody["status"], ShouldEqual, v.Status)
 
 		var buildIds []string
 		err = json.Unmarshal(*rawJsonBody["builds"], &buildIds)
 		So(err, ShouldBeNil)
-		So(buildIds, ShouldResemble, version.BuildIds)
+		So(buildIds, ShouldResemble, v.BuildIds)
 
 		var buildVariants []string
 		err = json.Unmarshal(*rawJsonBody["build_variants"], &buildVariants)
 		So(err, ShouldBeNil)
-		So(buildVariants[0], ShouldResemble, version.BuildVariants[0].BuildVariant)
+		So(buildVariants[0], ShouldResemble, v.BuildVariants[0].BuildVariant)
 
-		So(jsonBody["order"], ShouldEqual, version.RevisionOrderNumber)
-		So(jsonBody["owner_name"], ShouldEqual, version.Owner)
-		So(jsonBody["repo_name"], ShouldEqual, version.Repo)
-		So(jsonBody["branch_name"], ShouldEqual, version.Branch)
-		So(jsonBody["repo_kind"], ShouldEqual, version.RepoKind)
-		So(jsonBody["identifier"], ShouldEqual, version.Identifier)
-		So(jsonBody["remote"], ShouldEqual, version.Remote)
-		So(jsonBody["remote_path"], ShouldEqual, version.RemotePath)
-		So(jsonBody["requester"], ShouldEqual, version.Requester)
+		So(jsonBody["order"], ShouldEqual, v.RevisionOrderNumber)
+		So(jsonBody["owner_name"], ShouldEqual, v.Owner)
+		So(jsonBody["repo_name"], ShouldEqual, v.Repo)
+		So(jsonBody["branch_name"], ShouldEqual, v.Branch)
+		So(jsonBody["repo_kind"], ShouldEqual, v.RepoKind)
+		So(jsonBody["identifier"], ShouldEqual, v.Identifier)
+		So(jsonBody["remote"], ShouldEqual, v.Remote)
+		So(jsonBody["remote_path"], ShouldEqual, v.RemotePath)
+		So(jsonBody["requester"], ShouldEqual, v.Requester)
 	})
 }

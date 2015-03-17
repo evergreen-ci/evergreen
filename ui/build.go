@@ -3,6 +3,7 @@ package ui
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"encoding/json"
 	"fmt"
@@ -122,21 +123,20 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "abort":
-		err := projCtx.Build.MarkAborted(true)
-		if err != nil {
+		if err := model.AbortBuild(projCtx.Build.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("All tasks in this build are now aborting."))
+		model.RefreshTasksCache(projCtx.Build.Id)
 		uis.WriteJSON(w, http.StatusOK, "Successfully marked tasks as aborted")
+		return
 	case "set_priority":
 		priority, err := strconv.Atoi(putParams.Priority)
 		if err != nil {
-			http.Error(w, "Bad priority value must be int", http.StatusBadRequest)
+			http.Error(w, "Bad priority value; must be int", http.StatusBadRequest)
 			return
 		}
-		err = projCtx.Build.SetPriority(priority)
+		err = model.SetBuildPriority(projCtx.Build.Id, priority)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error setting priority on build %v", projCtx.Build.Id),
 				http.StatusInternalServerError)
@@ -144,8 +144,10 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Priority for build set to %v.", priority)))
 		uis.WriteJSON(w, http.StatusOK, "Successfully set priority")
+		return
 	case "set_active":
-		err := projCtx.Build.SetActivated(putParams.Active, true)
+		err := model.SetBuildActivation(projCtx.Build.Id, putParams.Active)
+		//TODO update version builds cache?
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", projCtx.Build.Id, putParams.Active),
 				http.StatusInternalServerError)
@@ -157,9 +159,9 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Build unscheduled."))
 		}
 		uis.WriteJSON(w, http.StatusOK, fmt.Sprintf("Successfully marked build as active=%v", putParams.Active))
+		return
 	case "restart":
-		err := projCtx.Build.Restart(putParams.Abort)
-		if err != nil {
+		if err := model.RestartBuild(projCtx.Build.Id, putParams.Abort); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
@@ -168,6 +170,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action")
+		return
 	}
 }
 
@@ -237,7 +240,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 
 	history.Builds = make([]*uiBuild, len(builds))
 	for i := 0; i < len(builds); i++ {
-		version, err := model.FindVersion(builds[i].Version)
+		v, err := version.FindOne(version.ById(builds[i].Version))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error getting version for build %v: %v", builds[i].Id, err), http.StatusInternalServerError)
 			return
@@ -246,15 +249,15 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			Build:       builds[i],
 			CurrentTime: time.Now().UnixNano(),
 			Elapsed:     time.Now().Sub(builds[i].StartTime),
-			RepoOwner:   version.Owner,
-			Repo:        version.Repo,
-			Version:     *version,
+			RepoOwner:   v.Owner,
+			Repo:        v.Repo,
+			Version:     *v,
 		}
 	}
 
 	lastSuccess, err := getBuildVariantHistoryLastSuccess(buildId)
 	if err == nil && lastSuccess != nil {
-		version, err := model.FindVersion(lastSuccess.Version)
+		v, err := version.FindOne(version.ById(lastSuccess.Version))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error getting last successful build version: %v", err), http.StatusInternalServerError)
 			return
@@ -263,9 +266,9 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			Build:       *lastSuccess,
 			CurrentTime: time.Now().UnixNano(),
 			Elapsed:     time.Now().Sub(lastSuccess.StartTime),
-			RepoOwner:   version.Owner,
-			Repo:        version.Repo,
-			Version:     *version,
+			RepoOwner:   v.Owner,
+			Repo:        v.Repo,
+			Version:     *v,
 		}
 	}
 

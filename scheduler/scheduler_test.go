@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -112,13 +113,13 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 
 		Convey("if there is a version with the given id, no error should "+
 			"be returned and the map should be updated", func() {
-			version := &model.Version{
+			v := &version.Version{
 				Id:     "versionStr",
 				Config: "\nbuildvariants:\n  - name: ubuntu\n    display_name: ubuntu\n    run_on:\n    - ubuntu1404-test\n    expansions: \n      mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz\n    tasks:\n    - name: agent\n    - name: plugin\n    - name: mci\n    - name: model\n    - name: scheduler\n    - name: notify\n    - name: cleanup\n    - name: thirdparty\n    - name: util\n    - name: db\n    - name: repotracker\n",
 			}
 
 			// insert the test version
-			So(version.Insert(), ShouldBeNil)
+			So(v.Insert(), ShouldBeNil)
 			key := versionBuildVariant{"versionStr", "ubuntu"}
 			err := schedulerInstance.updateVersionBuildVarMap("versionStr", versionBuildVarMap)
 			So(err, ShouldBeNil)
@@ -133,7 +134,7 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(model.VersionsCollection)
+			db.Clear(version.Collection)
 		})
 
 	})

@@ -88,7 +88,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	switch jsonMap.Action {
 	case "set_active":
 		if jsonMap.Abort {
-			if err = projCtx.Version.SetAllTasksAborted(true); err != nil {
+			if err = model.AbortVersion(projCtx.Version.Id); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			} else {
@@ -96,7 +96,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 				PushFlash(uis.CookieStore, r, w, msg)
 			}
 		}
-		if err = projCtx.Version.SetActivated(jsonMap.Active); err != nil {
+		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		} else {
@@ -113,13 +113,11 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, projCtx.Version)
 		return
 	case "set_priority":
-		err = projCtx.Version.SetPriority(jsonMap.Priority)
-		if err != nil {
+		if err = model.SetVersionPriority(projCtx.Version.Id, jsonMap.Priority); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		msg := NewSuccessFlash(fmt.Sprintf("Priority for all tasks in this version set to %v.", jsonMap.Priority))
-
 		PushFlash(uis.CookieStore, r, w, msg)
 		uis.WriteJSON(w, http.StatusOK, projCtx.Version)
 		return

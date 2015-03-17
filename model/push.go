@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
+	"10gen.com/mci/model/version"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -43,14 +44,14 @@ var (
 	PushLogRonKey        = bsonutil.MustHaveTag(PushLog{}, "RevisionOrderNumber")
 )
 
-func NewPushLog(version *Version, task *Task, location string) *PushLog {
+func NewPushLog(v *version.Version, task *Task, location string) *PushLog {
 	return &PushLog{
 		Id:                  bson.NewObjectId(),
 		Location:            location,
 		TaskId:              task.Id,
 		CreateTime:          time.Now(),
-		Revision:            version.Revision,
-		RevisionOrderNumber: version.RevisionOrderNumber,
+		Revision:            v.Revision,
+		RevisionOrderNumber: v.RevisionOrderNumber,
 		Status:              mci.PushLogPushing,
 	}
 }
@@ -91,7 +92,7 @@ func FindOnePushLog(query interface{}, projection interface{},
 
 // FindNewerPushLog returns a PushLog item if there is a file pushed from
 // this version or a newer one, or one already in progress.
-func (self *Version) FindPushLogAfter(fileLoc string) (*PushLog, error) {
+func FindPushLogAfter(fileLoc string, revisionOrderNumber int) (*PushLog, error) {
 	query := bson.M{
 		PushLogStatusKey: bson.M{
 			"$in": []string{
@@ -100,7 +101,7 @@ func (self *Version) FindPushLogAfter(fileLoc string) (*PushLog, error) {
 		},
 		PushLogLocationKey: fileLoc,
 		PushLogRonKey: bson.M{
-			"$gte": self.RevisionOrderNumber,
+			"$gte": revisionOrderNumber,
 		},
 	}
 	existingPushLog, err := FindOnePushLog(

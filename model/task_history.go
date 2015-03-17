@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -18,7 +19,7 @@ type taskHistoryIterator struct {
 
 type TaskHistoryChunk struct {
 	Tasks       []bson.M
-	Versions    []Version
+	Versions    []version.Version
 	FailedTests map[string][]TestResult
 	Exhausted   ExhaustedIterator
 }
@@ -43,7 +44,7 @@ type aggregatedTaskHistory struct {
 }
 
 type TaskHistoryIterator interface {
-	GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
+	GetChunk(version *version.Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error)
 	GetDistinctTestNames(numCommits int) ([]string, error)
 }
 
@@ -51,10 +52,10 @@ func NewTaskHistoryIterator(name string, buildVariants []string, projectName str
 	return TaskHistoryIterator(&taskHistoryIterator{TaskName: name, BuildVariants: buildVariants, ProjectName: projectName})
 }
 
-func (iter *taskHistoryIterator) findAllVersions(version *Version, numRevisions int, before, include bool) ([]Version, bool, error) {
-	versionFilter := bson.M{
-		VersionRequesterKey: mci.RepotrackerVersionRequester,
-		VersionProjectKey:   iter.ProjectName,
+func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevisions int, before, include bool) ([]version.Version, bool, error) {
+	versionQuery := bson.M{
+		version.RequesterKey: mci.RepotrackerVersionRequester,
+		version.ProjectKey:   iter.ProjectName,
 	}
 
 	// If including the specified version in the result, then should
@@ -65,9 +66,9 @@ func (iter *taskHistoryIterator) findAllVersions(version *Version, numRevisions 
 
 	// Determine the comparator to use based on whether the revisions
 	// come before/after the specified version
-	compare, order := "$gt", VersionRevisionOrderNumberKey
+	compare, order := "$gt", version.RevisionOrderNumberKey
 	if before {
-		compare, order = "$lt", fmt.Sprintf("-%v", VersionRevisionOrderNumberKey)
+		compare, order = "$lt", fmt.Sprintf("-%v", version.RevisionOrderNumberKey)
 		if include {
 			compare = "$lte"
 		}
@@ -75,24 +76,20 @@ func (iter *taskHistoryIterator) findAllVersions(version *Version, numRevisions 
 		compare = "$gte"
 	}
 
-	if version != nil {
-		versionFilter[VersionRevisionOrderNumberKey] = bson.M{compare: version.RevisionOrderNumber}
+	if v != nil {
+		versionQuery[version.RevisionOrderNumberKey] = bson.M{compare: v.RevisionOrderNumber}
 	}
 
 	// Get the next numRevisions, plus an additional one to check if have
 	// reached the beginning/end of history
-	versions, err := FindAllVersions(
-		versionFilter,
-		bson.M{
-			VersionIdKey:                  1,
-			VersionRevisionOrderNumberKey: 1,
-			VersionRevisionKey:            1,
-			VersionMessageKey:             1,
-			VersionCreateTimeKey:          1,
-		},
-		[]string{order},
-		db.NoSkip,
-		numRevisions+1)
+	versions, err := version.Find(
+		db.Query(versionQuery).WithFields(
+			version.IdKey,
+			version.RevisionOrderNumberKey,
+			version.RevisionKey,
+			version.MessageKey,
+			version.CreateTimeKey,
+		).Sort([]string{order}).Limit(numRevisions + 1))
 
 	// Check if there were fewer results returned by the query than what
 	// the limit was set as
@@ -104,7 +101,7 @@ func (iter *taskHistoryIterator) findAllVersions(version *Version, numRevisions 
 	}
 
 	// The iterator can only be exhausted if an actual version was specified
-	exhausted = exhausted || (version == nil && numRevisions == 0)
+	exhausted = exhausted || (v == nil && numRevisions == 0)
 
 	if !before {
 		// Reverse the order so that the most recent version is first
@@ -117,23 +114,23 @@ func (iter *taskHistoryIterator) findAllVersions(version *Version, numRevisions 
 
 // Returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
-func (iter *taskHistoryIterator) GetChunk(version *Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
+func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
 	session, database, err := db.GetGlobalSessionFactory().GetSession()
 	defer session.Close()
 
 	chunk := TaskHistoryChunk{
 		Tasks:       []bson.M{},
-		Versions:    []Version{},
+		Versions:    []version.Version{},
 		FailedTests: map[string][]TestResult{},
 	}
 
-	versionsBefore, exhausted, err := iter.findAllVersions(version, numBefore, true, include)
+	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
 		return chunk, err
 	}
 	chunk.Exhausted.Before = exhausted
 
-	versionsAfter, exhausted, err := iter.findAllVersions(version, numAfter, false, false)
+	versionsAfter, exhausted, err := iter.findAllVersions(v, numAfter, false, false)
 	if err != nil {
 		return chunk, err
 	}

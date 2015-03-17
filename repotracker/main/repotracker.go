@@ -5,9 +5,9 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/repotracker"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"os"
 	"time"
 )
 
@@ -29,59 +29,52 @@ func main() {
 		panic(fmt.Sprintf("Error initializing global lock: %v", err))
 	}
 
-	lockAcquired, err := db.WaitTillAcquireGlobalLock(mci.RepotrackerPackage,
-		db.LockTimeout)
+	lockAcquired, err := db.WaitTillAcquireGlobalLock(mci.RepotrackerPackage, db.LockTimeout)
 	if err != nil {
 		panic(fmt.Sprintf("Error acquiring global lock: %v", err))
 	}
 	if !lockAcquired {
-		panic(fmt.Sprintf("Cannot proceed with repository tracker because " +
-			"the global lock could not be taken"))
+		panic("Repotracker couldn't get global lock")
 	}
 
 	defer func() {
 		if err := db.ReleaseGlobalLock(mci.RepotrackerPackage); err != nil {
-			panic(fmt.Sprintf("Error releasing global lock from tracker - "+
-				"this is really bad: %v", err))
+			panic(fmt.Sprintf("Failed to release global lock from repotracker: %v", err))
 		}
 	}()
 
 	startTime := time.Now()
 	mci.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", mciSettings.Db)
 
-	if err != nil {
-		panic(fmt.Sprintf("Error finding config root: %v", err))
-	}
-
 	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
-		panic(fmt.Sprintf("Error finding tracked projects %v", err))
+		fmt.Fprintf(os.Stderr, "Error finding tracked projects %v\n", err)
+		os.Exit(1)
 	}
 
 	for _, projectRef := range allProjects {
-		repotrackerInstance := repotracker.NewRepositoryTracker(
-			mciSettings, &projectRef, repotracker.NewGithubRepositoryPoller(
-				&projectRef, mciSettings.Credentials[projectRef.RepoKind]),
-			util.SystemClock{},
-		)
+		tracker := &repotracker.RepoTracker{
+			mciSettings,
+			&projectRef,
+			repotracker.NewGithubRepositoryPoller(&projectRef, mciSettings.Credentials["github"]),
+		}
 
-		numNewRepoRevisionsToFetch :=
-			mciSettings.RepoTracker.NumNewRepoRevisionsToFetch
+		numNewRepoRevisionsToFetch := mciSettings.RepoTracker.NumNewRepoRevisionsToFetch
 		if numNewRepoRevisionsToFetch <= 0 {
 			numNewRepoRevisionsToFetch = DefaultNumNewRepoRevisionsToFetch
 		}
 
-		err = repotrackerInstance.FetchRevisions(numNewRepoRevisionsToFetch)
+		err = tracker.FetchRevisions(numNewRepoRevisionsToFetch)
 		if err != nil {
-			panic(fmt.Sprintf("Error running repotracker: %v", err))
+			mci.Logger.Errorf(slogger.ERROR, "Error fetching revisions: %v", err)
+			continue
 		}
 	}
 
 	runtime := time.Now().Sub(startTime)
 	err = model.SetProcessRuntimeCompleted(mci.RepotrackerPackage, runtime)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error updating process status: %v",
-			err)
+		mci.Logger.Errorf(slogger.ERROR, "Error updating process status: %v", err)
 	}
 	mci.Logger.Logf(slogger.INFO, "Repository tracker took %v to run", runtime)
 }

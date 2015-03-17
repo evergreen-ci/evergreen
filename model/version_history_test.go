@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -64,11 +65,11 @@ func insertBuild(id string, project string, buildVariant string, status string,
 }
 
 func insertVersion(id string, order int, project string) {
-	version := &Version{
+	v := &version.Version{
 		Id:                  id,
 		RevisionOrderNumber: order,
 		Project:             project,
 		Requester:           mci.RepotrackerVersionRequester,
 	}
-	So(version.Insert(), ShouldBeNil)
+	So(v.Insert(), ShouldBeNil)
 }

@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/version"
 	"fmt"
 	"labix.org/v2/mgo/bson"
 )
@@ -15,36 +16,26 @@ const (
 
 // Given a project name and a list of build variants, return the latest version
 // on which all the given build variants succeeded. Gives up after 100 versions.
-func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames []string) (*Version, error) {
+func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames []string) (*version.Version, error) {
 	if len(buildVariantNames) == 0 {
 		return nil, fmt.Errorf("No build variants specified!")
 	}
 
 	// Get latest commit order number for this project
-	latestVersions, err := FindAllVersions(
-		bson.M{
-			VersionRequesterKey: mci.RepotrackerVersionRequester,
-			VersionProjectKey:   project.Identifier,
-		},
-		bson.M{
-			VersionIdKey:                  0,
-			VersionRevisionOrderNumberKey: 1,
-		},
-		[]string{"-order"},
-		0,
-		1)
+	latestVersion, err := version.FindOne(db.Query(
+		version.ByMostRecentForRequester(project.Identifier, mci.RepotrackerVersionRequester).
+			WithFields(version.RevisionOrderNumberKey)))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting latest version: %v", err)
 	}
-	if len(latestVersions) == 0 {
+	if latestVersion == nil {
 		return nil, nil
 	}
 
-	mostRecentRevisionOrderNumber := latestVersions[0].RevisionOrderNumber
+	mostRecentRevisionOrderNumber := latestVersion.RevisionOrderNumber
 
 	// Earliest commit order number to consider
-	leastRecentRevisionOrderNumber := mostRecentRevisionOrderNumber -
-		StaleVersionCutoff
+	leastRecentRevisionOrderNumber := mostRecentRevisionOrderNumber - StaleVersionCutoff
 	if leastRecentRevisionOrderNumber < 0 {
 		leastRecentRevisionOrderNumber = 0
 	}
@@ -96,19 +87,18 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 	}
 
 	// Get the version corresponding to the resulting commit order number
-	version, err := FindOneVersion(
-		bson.M{
-			VersionRequesterKey:           mci.RepotrackerVersionRequester,
-			VersionProjectKey:             project.Identifier,
-			VersionRevisionOrderNumberKey: result[0]["_id"],
-		},
-		db.NoProjection)
+	v, err := version.FindOne(
+		db.Query(bson.M{
+			version.RequesterKey:           mci.RepotrackerVersionRequester,
+			version.ProjectKey:             project.Identifier,
+			version.RevisionOrderNumberKey: result[0]["_id"],
+		}))
 	if err != nil {
 		return nil, err
 	}
-	if version == nil {
+	if v == nil {
 		return nil, fmt.Errorf("Couldn't find version with id `%v` after "+
 			"successful aggregation.", result[0]["_id"])
 	}
-	return version, nil
+	return v, nil
 }

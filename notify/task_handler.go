@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -91,9 +92,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	taskNotification := TaskNotificationForTemplate{}
 	taskNotification.Notification = notification
 
-	build := current.RemoteArgs.Options["build"]
-
-	displayName := getDisplayName(build)
+	displayName := getDisplayName(current.BuildId)
 
 	// add the task end status details
 	taskNotification.Details = current.StatusDetails
@@ -144,15 +143,15 @@ func (self *TaskNotificationHandler) constructChangeInfo(allTasks []model.Task,
 
 	for _, task := range allTasks {
 		// add blamelist information for each task
-		version, err := model.FindVersion(task.Version)
+		v, err := version.FindOne(version.ById(task.Version))
 		if err != nil {
 			return changeInfoSlice, err
 		}
-		if version == nil {
-			return changeInfoSlice, fmt.Errorf("No version found for task %v "+
-				"with version id %v", task.Id, task.Version)
+		if v == nil {
+			return changeInfoSlice, fmt.Errorf("No version found for task %v with version id %v",
+				task.Id, task.Version)
 		}
-		changeInfo := constructChangeInfo(version, key)
+		changeInfo := constructChangeInfo(v, key)
 		changeInfo.Pushtime = task.PushTime.Format(time.RFC850)
 		changeInfoSlice = append(changeInfoSlice, *changeInfo)
 	}

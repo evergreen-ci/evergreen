@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/thirdparty"
 	"10gen.com/mci/util"
@@ -37,7 +38,7 @@ func TestFinalize(t *testing.T) {
 		util.HandleTestingErr(db.ClearCollections(
 			model.ProjectRefCollection,
 			model.PatchCollection,
-			model.VersionsCollection,
+			version.Collection,
 			model.BuildsCollection,
 			model.TasksCollection),
 			t, "Error clearing test collection")

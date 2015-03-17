@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/thirdparty"
 	"10gen.com/mci/util"
@@ -302,17 +303,17 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get the version for this task, so we can check if it has
 	// any already-done pushes
-	version, err := model.FindVersion(task.Version)
+	v, err := version.FindOne(version.ById(task.Version))
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "error querying task %v with version "+
-			"id %v: %v", task.Id, task.Version, err)
+		mci.Logger.Logf(slogger.ERROR, "error querying task %v with version id %v: %v",
+			task.Id, task.Version, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Check for an already-pushed file with this same file path,
 	// but from a conflicting or newer commit sequence num
-	if version == nil {
+	if v == nil {
 		mci.Logger.Logf(slogger.ERROR, "no version found for build %v", task.BuildId)
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
@@ -321,7 +322,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	copyFromLocation := strings.Join([]string{s3CopyReq.S3SourceBucket, s3CopyReq.S3SourcePath}, "/")
 	copyToLocation := strings.Join([]string{s3CopyReq.S3DestinationBucket, s3CopyReq.S3DestinationPath}, "/")
 
-	newestPushLog, err := version.FindPushLogAfter(copyToLocation)
+	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
 		mci.Logger.Logf(slogger.ERROR, "error querying for push log at %v: %v", copyToLocation, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -336,7 +337,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// It's now safe to put the file in its permanent location.
-	newPushLog := model.NewPushLog(version, task, copyToLocation)
+	newPushLog := model.NewPushLog(v, task, copyToLocation)
 	err = newPushLog.Insert()
 	if err != nil {
 		mci.Logger.Logf(slogger.ERROR, "failed to create new push log: %v %v", newPushLog, err)

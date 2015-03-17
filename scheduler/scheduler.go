@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"math"
@@ -184,7 +185,7 @@ func (self *Scheduler) Schedule() error {
 // buildvariants associated with "versionStr"
 func (self *Scheduler) updateVersionBuildVarMap(versionStr string,
 	versionBuildVarMap map[versionBuildVariant]model.BuildVariant) (err error) {
-	version, err := model.FindVersion(versionStr)
+	version, err := version.FindOne(version.ById(versionStr))
 	if err != nil {
 		return
 	}

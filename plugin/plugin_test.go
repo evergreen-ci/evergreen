@@ -8,6 +8,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/plugin/builtin/expansions"
 	"10gen.com/mci/plugin/builtin/shell"
@@ -317,7 +318,7 @@ func setupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 	util.HandleTestingErr(
 		db.ClearCollections(
 			model.TasksCollection, model.BuildsCollection, host.Collection,
-			model.VersionsCollection, model.PatchCollection),
+			version.Collection, model.PatchCollection),
 		t, clearDataMsg)
 
 	testHost := &host.Host{
@@ -345,22 +346,13 @@ func setupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 		task.Requester = mci.PatchVersionRequester
 	}
 
-	testConfig := mci.TestConfig()
-	task.RemoteArgs = model.RemoteArgs{
-		Params: []string{"compile", "smokeCppUnitTests", "", "mciuploads/unittest/mongodb-blah.tgz"},
-		Options: map[string]string{
-			"aws_id":     testConfig.Providers.AWS.Id,
-			"aws_secret": testConfig.Providers.AWS.Secret,
-		},
-	}
-
 	util.HandleTestingErr(task.Insert(), t, "failed to insert task")
 
-	version := &model.Version{
+	v := &version.Version{
 		Id:       "testVersionId",
 		BuildIds: []string{task.BuildId},
 	}
-	util.HandleTestingErr(version.Insert(), t, "failed to insert version %v")
+	util.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
 	if patch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
 		util.HandleTestingErr(err, t, "failed to read test patch file %v")
@@ -369,7 +361,7 @@ func setupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 
 		patch := &model.Patch{
 			Status:  mci.PatchCreated,
-			Version: version.Id,
+			Version: v.Id,
 			Patches: []model.ModulePatch{
 				model.ModulePatch{
 					ModuleName: "",

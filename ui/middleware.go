@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/auth"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -28,7 +29,7 @@ type (
 		// The build associated with the request, if applicable.
 		Build *model.Build
 		// The version associated with the request, if applicable.
-		Version *model.Version
+		Version *version.Version
 		// The patch associated with the request, if applicable.
 		Patch *model.Patch
 		// The project which the task/build/version in this request is a part of, if applicable.
@@ -185,7 +186,7 @@ func (pc *projectContext) populateTaskBuildVersion(taskId, buildId, versionId st
 		}
 	}
 	if len(versionId) > 0 {
-		pc.Version, err = model.FindVersion(versionId)
+		pc.Version, err = version.FindOne(version.ById(versionId))
 		if err != nil {
 			return "", err
 		}
@@ -234,7 +235,7 @@ func (pc *projectContext) populatePatch(patchId string) error {
 	// If there's a finalized patch loaded into context but not a version, load the version
 	// associated with the patch as the context's version.
 	if pc.Version == nil && pc.Patch != nil && pc.Patch.Version != "" {
-		pc.Version, err = model.FindVersion(pc.Patch.Version)
+		pc.Version, err = version.FindOne(version.ById(pc.Patch.Version))
 		if err != nil {
 			return err
 		}

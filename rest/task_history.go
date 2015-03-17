@@ -44,7 +44,7 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	buildVariants := project.GetVariantsWithTask(taskName)
-	iter := model.NewTaskHistoryIterator(taskName, buildVariants, project.Name())
+	iter := model.NewTaskHistoryIterator(taskName, buildVariants, project.Identifier)
 
 	chunk, err := iter.GetChunk(nil, MaxNumRevisions, NoRevisions, false)
 	if err != nil {

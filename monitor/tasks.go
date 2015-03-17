@@ -33,8 +33,7 @@ func (self *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error
 		// continue on error so that one wonky flagging function doesn't
 		// stop others from working
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error finding tasks to be"+
-				" cleaned up: %v", err))
+			errors = append(errors, fmt.Errorf("error finding tasks to be cleaned up: %v", err))
 			continue
 		}
 
@@ -42,8 +41,7 @@ func (self *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error
 		// to progress
 		if errs := cleanUpTasks(tasksToCleanUp, projects); errs != nil {
 			for _, err := range errs {
-				errors = append(errors, fmt.Errorf("error cleaning up"+
-					" tasks: %v", err))
+				errors = append(errors, fmt.Errorf("error cleaning up tasks: %v", err))
 			}
 		}
 
@@ -72,11 +70,9 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper,
 		// clean up the task. continue on error to let others be cleaned up
 		err := cleanUpTask(wrapper, projects)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error cleaning up task %v: %v",
-				wrapper.task.Id, err))
+			errors = append(errors, fmt.Errorf("error cleaning up task %v: %v", wrapper.task.Id, err))
 		} else {
-			mci.Logger.Logf(slogger.INFO, "Successfully cleaned up task %v",
-				wrapper.task.Id)
+			mci.Logger.Logf(slogger.INFO, "Successfully cleaned up task %v", wrapper.task.Id)
 		}
 
 	}
@@ -120,8 +116,7 @@ func cleanUpTask(wrapper doomedTaskWrapper,
 	case HeartbeatTimeout:
 		err = cleanUpTimedOutHeartbeat(wrapper.task, project, host)
 	default:
-		return fmt.Errorf("unknown reason for cleaning up task: %v",
-			wrapper.reason)
+		return fmt.Errorf("unknown reason for cleaning up task: %v", wrapper.reason)
 	}
 
 	if err != nil {
@@ -133,9 +128,7 @@ func cleanUpTask(wrapper doomedTaskWrapper,
 }
 
 // clean up a task whose heartbeat has timed out
-func cleanUpTimedOutHeartbeat(task model.Task, project model.Project,
-	host *host.Host) error {
-
+func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host.Host) error {
 	// mock up the failure details of the task
 	taskEndRequest := &apimodels.TaskEndRequest{
 		Status:        mci.TaskFailed,

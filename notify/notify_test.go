@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
@@ -101,9 +102,7 @@ func TestNotify(t *testing.T) {
 			timeNow := time.Now()
 			// insert the test documents
 			insertBuildDocs(timeNow)
-			version := &model.Version{
-				Id: "version",
-			}
+			version := &version.Version{Id: "version"}
 			So(version.Insert(), ShouldBeNil)
 			Convey("BuildFailureHandler should return 1 email per failed build", func() {
 				handler := BuildFailureHandler{}
@@ -170,10 +169,8 @@ func TestNotify(t *testing.T) {
 			timeNow := time.Now()
 			// insert the test documents
 			insertTaskDocs(timeNow)
-			version := &model.Version{
-				Id: "version",
-			}
-			So(version.Insert(), ShouldBeNil)
+			v := &version.Version{Id: "version"}
+			So(v.Insert(), ShouldBeNil)
 
 			Convey("TaskFailureHandler should return 1 email per task failure", func() {
 				handler := TaskFailureHandler{}
@@ -242,10 +239,8 @@ func TestNotify(t *testing.T) {
 		timeNow := time.Now()
 		// insert the test documents
 		insertTaskDocs(timeNow)
-		version := &model.Version{
-			Id: "version",
-		}
-		So(version.Insert(), ShouldBeNil)
+		v := &version.Version{Id: "version"}
+		So(v.Insert(), ShouldBeNil)
 
 		Convey("Should be able to read and validate test config file", func() {
 			mciNotification, err := ParseNotifications(TestConfig.ConfigDir)
@@ -552,15 +547,8 @@ func insertBuild(id, project, display_name, buildVariant, status string, createT
 func insertTask(id, project, display_name, buildVariant, status string, createTime,
 	finishTime, pushTime time.Time, timeTaken time.Duration, activated bool,
 	requester string, order int) {
-	options := make(map[string]string)
-	options["project"] = project
-	options["build"] = buildVariant
-	options["build_num"] = id
-	ra := model.RemoteArgs{}
-	ra.Options = options
 	task := &model.Task{
 		Id:                  id,
-		RemoteArgs:          ra,
 		Project:             project,
 		DisplayName:         display_name,
 		Status:              status,
@@ -579,7 +567,7 @@ func insertTask(id, project, display_name, buildVariant, status string, createTi
 }
 
 func insertVersions() {
-	version := &model.Version{
+	v := &version.Version{
 		Id:       "version1",
 		Project:  "",
 		BuildIds: []string{"build1"},
@@ -587,9 +575,9 @@ func insertVersions() {
 		Message:  "Fixed all the bugs",
 	}
 
-	So(version.Insert(), ShouldBeNil)
+	So(v.Insert(), ShouldBeNil)
 
-	version2 := &model.Version{
+	version2 := &version.Version{
 		Id:      "version2",
 		Project: "",
 		BuildIds: []string{"build2", "build3", "build4", "build5", "build6",
@@ -607,7 +595,7 @@ func cleanupdb() {
 		model.NotifyTimesCollection,
 		model.NotifyHistoryCollection,
 		model.BuildsCollection,
-		model.VersionsCollection)
+		version.Collection)
 	So(err, ShouldBeNil)
 }
 

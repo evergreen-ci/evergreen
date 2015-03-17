@@ -3,6 +3,7 @@ package notify
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"10gen.com/mci/web"
 	"fmt"
@@ -496,26 +497,26 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 
 // construct the change information
 // struct from a given version struct
-func constructChangeInfo(version *model.Version, notification *NotificationKey) (changeInfo *ChangeInfo) {
+func constructChangeInfo(v *version.Version, notification *NotificationKey) (changeInfo *ChangeInfo) {
 	changeInfo = &ChangeInfo{}
 	switch notification.NotificationRequester {
 	case mci.RepotrackerVersionRequester:
-		changeInfo.Project = version.Project
-		changeInfo.Author = version.Author
-		changeInfo.Message = version.Message
-		changeInfo.Revision = version.Revision
-		changeInfo.Email = version.AuthorEmail
+		changeInfo.Project = v.Project
+		changeInfo.Author = v.Author
+		changeInfo.Message = v.Message
+		changeInfo.Revision = v.Revision
+		changeInfo.Email = v.AuthorEmail
 
 	case mci.PatchVersionRequester:
 		// get the author and description from the patch request
-		patch, err := model.FindPatchByVersion(version.Id)
+		patch, err := model.FindPatchByVersion(v.Id)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error finding patch for version %v: %v", version.Id, err)
+			mci.Logger.Errorf(slogger.ERROR, "Error finding patch for version %v: %v", v.Id, err)
 			return
 		}
 
 		if patch == nil {
-			mci.Logger.Errorf(slogger.ERROR, "%v notification was unable to locate patch with version: %v", notification, version.Id)
+			mci.Logger.Errorf(slogger.ERROR, "%v notification was unable to locate patch with version: %v", notification, v.Id)
 			return
 		}
 		// get the display name and email for this user

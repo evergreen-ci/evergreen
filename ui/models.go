@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"bytes"
 	"fmt"
@@ -52,7 +53,7 @@ type taskHistoryData struct {
 }
 
 type uiVersion struct {
-	Version     model.Version
+	Version     version.Version
 	Builds      []uiBuild
 	PatchInfo   *uiPatch `json:",omitempty"`
 	ActiveTasks int
@@ -77,7 +78,7 @@ type uiHost struct {
 
 type uiBuild struct {
 	Build       model.Build
-	Version     model.Version
+	Version     version.Version
 	PatchInfo   *uiPatch `json:",omitempty"`
 	Tasks       []uiTask
 	Elapsed     time.Duration
@@ -146,7 +147,7 @@ func sortUiTasks(tasks []uiTask) []uiTask {
 	return suts.tasks
 }
 
-func PopulateUIVersion(version *model.Version) (*uiVersion, error) {
+func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 	buildIds := version.BuildIds
 	dbBuilds, err := model.FindAllBuilds(bson.M{"_id": bson.M{"$in": buildIds}}, bson.M{},
 		db.NoSort, db.NoSkip, db.NoLimit)
@@ -185,22 +186,15 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 	data := &timelineData{}
 
 	// get the total number of versions in the database (used for pagination)
-	totalVersions, err := model.TotalVersions(bson.M{"branch": projectName})
+	totalVersions, err := version.Count(version.ByProjectId(projectName))
 	if err != nil {
 		return nil, err
 	}
 	data.TotalVersions = totalVersions
 
 	// get the most recent versions, to display in their entirety on the page
-	versionsFromDB, err := model.FindAllVersions(
-		bson.M{
-			model.VersionRequesterKey: requester,
-			model.VersionProjectKey:   projectName,
-		},
-		bson.M{model.VersionConfigKey: 0},
-		[]string{"-" + model.VersionRevisionOrderNumberKey},
-		versionsToSkip,
-		versionsPerPage,
+	versionsFromDB, err := version.Find(
+		version.ByMostRecentForRequester(projectName, requester).WithoutFields(version.ConfigKey).Skip(versionsToSkip).Limit(versionsPerPage),
 	)
 	if err != nil {
 		return nil, err
@@ -312,32 +306,30 @@ func getBuildVariantHistoryLastSuccess(buildId string) (*model.Build, error) {
 	return build.GetPriorBuildWithStatuses([]string{mci.BuildSucceeded})
 }
 
-func getVersionHistory(versionId string, N int) ([]model.Version, error) {
-	version, err := model.FindVersion(versionId)
+func getVersionHistory(versionId string, N int) ([]version.Version, error) {
+	v, err := version.FindOne(version.ById(versionId))
 	if err != nil {
 		return nil, err
-	} else if version == nil {
+	} else if v == nil {
 		return nil, fmt.Errorf("Version '%v' not found", versionId)
 	}
 
 	// Versions in the same push event, assuming that no two push events happen at the exact same time
 	// Never want more than 2N+1 versions, so make sure we add a limit
-	siblingVersions, err := model.FindAllVersions(
-		bson.M{
-			"order":  version.RevisionOrderNumber,
-			"r":      mci.RepotrackerVersionRequester,
-			"branch": version.Project,
-		},
-		bson.M{model.VersionConfigKey: 0},
-		[]string{"order"}, 0, 2*N+1)
 
+	siblingVersions, err := version.Find(db.Query(
+		bson.M{
+			"order":  v.RevisionOrderNumber,
+			"r":      mci.RepotrackerVersionRequester,
+			"branch": v.Project,
+		}).WithoutFields(version.ConfigKey).Sort([]string{"order"}).Limit(2*N + 1))
 	if err != nil {
 		return nil, err
 	}
 
 	versionIndex := -1
 	for i := 0; i < len(siblingVersions); i++ {
-		if siblingVersions[i].Id == version.Id {
+		if siblingVersions[i].Id == v.Id {
 			versionIndex = i
 		}
 	}
@@ -348,13 +340,12 @@ func getVersionHistory(versionId string, N int) ([]model.Version, error) {
 	if versionIndex < N {
 		// There are less than N later versions from the same push event
 		// N subsequent versions plus the specified one
-		subsequentVersions, err := model.FindAllVersions(
-			bson.M{
-				"order":  bson.M{"$gt": version.RevisionOrderNumber},
+		subsequentVersions, err := version.Find(
+			db.Query(bson.M{
+				"order":  bson.M{"$gt": v.RevisionOrderNumber},
 				"r":      mci.RepotrackerVersionRequester,
-				"branch": version.Project,
-			},
-			bson.M{model.VersionConfigKey: 0}, []string{"order"}, 0, N-versionIndex)
+				"branch": v.Project,
+			}).WithoutFields(version.ConfigKey).Sort([]string{"order"}).Limit(N - versionIndex))
 		if err != nil {
 			return nil, err
 		}
@@ -368,13 +359,11 @@ func getVersionHistory(versionId string, N int) ([]model.Version, error) {
 	}
 
 	if numSiblings-versionIndex < N {
-		previousVersions, err := model.FindAllVersions(
-			bson.M{
-				"order":  bson.M{"$lt": version.RevisionOrderNumber},
-				"r":      mci.RepotrackerVersionRequester,
-				"branch": version.Project,
-			},
-			bson.M{model.VersionConfigKey: 0}, []string{"-order"}, 0, N)
+		previousVersions, err := version.Find(db.Query(bson.M{
+			"order":  bson.M{"$lt": v.RevisionOrderNumber},
+			"r":      mci.RepotrackerVersionRequester,
+			"branch": v.Project,
+		}).WithoutFields(version.ConfigKey).Sort([]string{"-order"}).Limit(N))
 		if err != nil {
 			return nil, err
 		}

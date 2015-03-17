@@ -2,6 +2,8 @@ package model
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/model/version"
+
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
@@ -21,26 +23,6 @@ const (
 )
 
 var ZeroTime time.Time = time.Unix(0, 0)
-
-type RemoteArgs struct {
-	Params  []string          `bson:"params" json:"params"`
-	Options map[string]string `bson:"options" json:"options"`
-}
-
-func (self *RemoteArgs) ToArray() []string {
-	var arr []string
-
-	for k, v := range self.Options {
-		arr = append(arr, "-"+k)
-		arr = append(arr, v)
-	}
-
-	for _, p := range self.Params {
-		arr = append(arr, p)
-	}
-
-	return arr
-}
 
 type Task struct {
 	Id     string `bson:"_id" json:"id"`
@@ -75,7 +57,6 @@ type Task struct {
 	DistroId     string   `bson:"distro" json:"distro"`
 	BuildVariant string   `bson:"build_variant" json:"build_variant"`
 	DependsOn    []string `bson:"depends_on" json:"depends_on"`
-	RemoteArgs   `bson:"remote_args" json:"remote_args"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -150,7 +131,6 @@ var (
 	TaskDistroIdKey            = bsonutil.MustHaveTag(Task{}, "DistroId")
 	TaskBuildVariantKey        = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	TaskDependsOnKey           = bsonutil.MustHaveTag(Task{}, "DependsOn")
-	TaskRemoteArgsKey          = bsonutil.MustHaveTag(Task{}, "RemoteArgs")
 	TaskDisplayNameKey         = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	TaskHostIdKey              = bsonutil.MustHaveTag(Task{}, "HostId")
 	TaskExecutionKey           = bsonutil.MustHaveTag(Task{}, "Execution")
@@ -167,10 +147,6 @@ var (
 	TaskTestResultsKey         = bsonutil.MustHaveTag(Task{}, "TestResults")
 	TaskPriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	TaskMinQueuePosKey         = bsonutil.MustHaveTag(Task{}, "MinQueuePos")
-
-	// bson fields for the remote args struct
-	RemoteArgsParamsKey  = bsonutil.MustHaveTag(RemoteArgs{}, "Params")
-	RemoteArgsOptionsKey = bsonutil.MustHaveTag(RemoteArgs{}, "Options")
 
 	// bson fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -615,13 +591,12 @@ func RecentlyFinishedTasks(finishTime time.Time, project string,
 
 func (task *Task) FetchPatch() (*Patch, error) {
 	// first get the version associated with this task
-	version, err := FindVersion(task.Version)
+	version, err := version.FindOne(version.ById(task.Version))
 	if err != nil {
 		return nil, err
 	}
 	if version == nil {
-		return nil, fmt.Errorf("could not find version %v for task %v",
-			task.Version, task.Id)
+		return nil, fmt.Errorf("could not find version %v for task %v", task.Version, task.Id)
 	}
 
 	// find the patch associated with this version
@@ -834,7 +809,6 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 }
 
 func SetTaskActivated(taskId string, caller string, active bool) error {
-
 	task, err := FindTask(taskId)
 	if err != nil {
 		return err
@@ -1102,7 +1076,7 @@ func (self *Task) MarkStart() error {
 	}
 
 	// ensure the appropriate version is marked as started if necessary
-	if err = TryMarkVersionStarted(self.Version, startTime); err != nil {
+	if err = MarkVersionStarted(self.Version, startTime); err != nil {
 		return err
 	}
 
@@ -1225,7 +1199,7 @@ func (self *Task) UpdateBuildStatus() error {
 					//This build does have a "push" task, but it hasn't finished yet
 					//So do nothing, since we don't know the status yet.
 				}
-				if err = build.TryMarkVersionFinished(finishTime); err != nil {
+				if err = MarkVersionCompleted(build.Version, finishTime); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 					return err
 				}
@@ -1240,7 +1214,7 @@ func (self *Task) UpdateBuildStatus() error {
 						return err
 					}
 				}
-				if err = build.TryMarkVersionFinished(finishTime); err != nil {
+				if err = MarkVersionCompleted(build.Version, finishTime); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 					return err
 				}
@@ -1257,7 +1231,7 @@ func (self *Task) UpdateBuildStatus() error {
 					return err
 				}
 			}
-			if err = build.TryMarkVersionFinished(finishTime); err != nil {
+			if err = MarkVersionCompleted(build.Version, finishTime); err != nil {
 				mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 				return err
 			}
@@ -1274,6 +1248,30 @@ func (self *Task) UpdateBuildStatus() error {
 	}
 
 	return nil
+}
+
+// Returns true if the task should stepback upon failure, and false
+// otherwise. Note that the setting is obtained from the top-level
+// project, if not explicitly set on the task itself.
+func (self *Task) getStepback(project *Project) bool {
+	projectTask := project.FindProjectTask(self.DisplayName)
+
+	// Check if the task overrides the stepback policy specified by the project
+	if projectTask != nil && projectTask.Stepback != nil {
+		return *projectTask.Stepback
+	}
+
+	// Check if the build variant overrides the stepback policy specified by the project
+	for _, buildVariant := range project.BuildVariants {
+		if self.BuildVariant == buildVariant.Name {
+			if buildVariant.Stepback != nil {
+				return *buildVariant.Stepback
+			}
+			break
+		}
+	}
+
+	return project.Stepback
 }
 
 func (self *Task) markEnd(caller string, finishTime time.Time,
@@ -1305,30 +1303,6 @@ func (self *Task) markEnd(caller string, finishTime time.Time,
 	}
 	event.LogTaskFinished(self.Id, taskEndRequest.Status)
 	return nil
-}
-
-// Returns true if the task should stepback upon failure, and false
-// otherwise. Note that the setting is obtained from the top-level
-// project, if not explicitly set on the task itself.
-func (self *Task) getStepback(project *Project) bool {
-	projectTask := project.FindProjectTask(self.DisplayName)
-
-	// Check if the task overrides the stepback policy specified by the project
-	if projectTask != nil && projectTask.Stepback != nil {
-		return *projectTask.Stepback
-	}
-
-	// Check if the build variant overrides the stepback policy specified by the project
-	for _, buildVariant := range project.BuildVariants {
-		if self.BuildVariant == buildVariant.Name {
-			if buildVariant.Stepback != nil {
-				return *buildVariant.Stepback
-			}
-			break
-		}
-	}
-
-	return project.Stepback
 }
 
 func (self *Task) MarkEnd(caller string, finishTime time.Time,
@@ -1370,13 +1344,13 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 		return nil
 	}
 
+	// Do stepback
 	if taskEndRequest.Status == mci.TaskFailed {
 		if shouldStepBack := self.getStepback(project); shouldStepBack {
 			//See if there is a prior success for this particular task.
 			//If there isn't, we should not activate the previous task because
 			//it could trigger stepping backwards ad infinitum.
-			_, err := PreviousCompletedTask(self, self.RemoteArgs.Options["branch"],
-				[]string{mci.TaskSucceeded})
+			_, err := PreviousCompletedTask(self, self.Project, []string{mci.TaskSucceeded})
 			if err != nil {
 				if err == mgo.ErrNotFound {
 					shouldStepBack = false
@@ -1406,6 +1380,8 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 				err.Error())
 		}
 	}
+
+	// update the build
 
 	if err := self.UpdateBuildStatus(); err != nil {
 		return fmt.Errorf("Error updating build status (2): %v", err.Error())
@@ -1650,8 +1626,7 @@ func AverageTaskTimeDifference(field1 string, field2 string,
 // ExpectedTaskDuration takes a given project and buildvariant and computes
 // the average duration - grouped by task display name - for tasks that have
 // completed within a given threshold as determined by the window
-func ExpectedTaskDuration(project,
-	buildvariant string, window time.Duration) (map[string]time.Duration, error) {
+func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (map[string]time.Duration, error) {
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{

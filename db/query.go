@@ -23,6 +23,24 @@ func (q Q) Project(projection interface{}) Q {
 	return q
 }
 
+func (q Q) WithFields(fields ...string) Q {
+	projection := map[string]int{}
+	for _, f := range fields {
+		projection[f] = 1
+	}
+	q.projection = projection
+	return q
+}
+
+func (q Q) WithoutFields(fields ...string) Q {
+	projection := map[string]int{}
+	for _, f := range fields {
+		projection[f] = 0
+	}
+	q.projection = projection
+	return q
+}
+
 func (q Q) Sort(sort []string) Q {
 	q.sort = sort
 	return q

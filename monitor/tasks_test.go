@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -78,7 +79,7 @@ func TestCleanupTask(t *testing.T) {
 				t, "error clearing builds collection")
 			util.HandleTestingErr(db.ClearCollections(model.OldTasksCollection),
 				t, "error clearing old tasks collection")
-			util.HandleTestingErr(db.ClearCollections(model.VersionsCollection),
+			util.HandleTestingErr(db.ClearCollections(version.Collection),
 				t, "error clearing versions collection")
 
 			Convey("the task should be reset", func() {
@@ -122,10 +123,10 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(build.Insert(), ShouldBeNil)
 
-				version := &model.Version{
+				v := &version.Version{
 					Id: "v1",
 				}
-				So(version.Insert(), ShouldBeNil)
+				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
 				So(cleanUpTask(wrapper, projects), ShouldBeNil)
@@ -180,10 +181,8 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(build.Insert(), ShouldBeNil)
 
-				version := &model.Version{
-					Id: "v1",
-				}
-				So(version.Insert(), ShouldBeNil)
+				v := &version.Version{Id: "v1"}
+				So(v.Insert(), ShouldBeNil)
 
 				// cleaning up the task should work
 				So(cleanUpTask(wrapper, projects), ShouldBeNil)

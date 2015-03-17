@@ -12,6 +12,7 @@ import (
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/plugin"
 	_ "10gen.com/mci/plugin/config"
@@ -188,18 +189,18 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
 	// Get the version for this task, so we can get its config data
-	version, err := model.FindVersion(task.Version)
+	v, err := version.FindOne(version.ById(task.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	if version == nil {
+	if v == nil {
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, version)
+	as.WriteJSON(w, http.StatusOK, v)
 }
 
 func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
