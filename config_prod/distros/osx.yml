@@ -21,6 +21,9 @@ osx-108:
   name: osx-108
   template: false
   hosts: 
+    - mci-osx108-11.build.10gen.cc
+    - mci-osx108-10.build.10gen.cc
+    - mci-osx108-9.build.10gen.cc
     - mci-osx108-8.build.10gen.cc
     - mci-osx108-7.build.10gen.cc
     - mci-osx108-6.build.10gen.cc
