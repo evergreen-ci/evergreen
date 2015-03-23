@@ -4,7 +4,7 @@ windows64-tmpl: &windows64-tmpl
   spawn_allowed: true
   provider: ec2
   settings:
-    ami: ami-02aad16a
+    ami: ami-0ceac364
     instancetype: m1.medium
     securitygroups: mci
     keyname: mci
@@ -36,7 +36,7 @@ windows-64-compile:
   template: false
   instancetype: c3.2xlarge
   settings:
-    ami: ami-02aad16a
+    ami: ami-0ceac364
     instancetype: c3.2xlarge
     securitygroups: mci
     keyname: mci
@@ -93,7 +93,7 @@ windows-64-test:
   name: windows-64-test
   template: false
   settings:
-    ami: ami-02aad16a
+    ami: ami-0ceac364
     instancetype: m3.large
     securitygroups: mci
     keyname: mci
@@ -144,7 +144,7 @@ windows64-vs2013-tmpl: &windows64-vs2013-tmpl
   template: true
   arch: windows_amd64
   spawn_allowed: true
-  ami: ami-f45e3c9c
+  ami: ami-78eac310
   mountinfo: ~
   user: Administrator
   keyname: mci
@@ -153,7 +153,7 @@ windows64-vs2013-tmpl: &windows64-vs2013-tmpl
   setup_as_sudo: false
   provider: ec2
   settings:
-    ami: ami-f45e3c9c
+    ami: ami-78eac310
     instancetype: c3.2xlarge
     securitygroups: mci
     keyname: mci
@@ -181,7 +181,7 @@ windows-64-vs2013-compile:
   provider: ec2-spot
   settings:
     bid_price: 0.752
-    ami: ami-f45e3c9c
+    ami: ami-78eac310
     instancetype: c3.2xlarge
     securitygroups: mci
     keyname: mci
@@ -249,7 +249,7 @@ windows-64-vs2013-test:
   instancetype: m3.large
   provider: ec2
   settings:
-    ami: ami-f45e3c9c
+    ami: ami-78eac310
     bid_price: 0.266
     instancetype: m3.large
     securitygroups: mci
