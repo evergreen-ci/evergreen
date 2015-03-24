@@ -294,7 +294,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	mci.Logger.Logf(slogger.INFO, "project ID is %v", projectId)
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
-		proj.Project, err = model.FindProject(revision, projectId, uis.MCISettings.ConfigDir)
+		proj.Project, err = model.FindProject("", projectId, uis.MCISettings.ConfigDir)
 		if err != nil {
 			return *proj, err
 		}
