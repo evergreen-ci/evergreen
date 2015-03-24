@@ -337,7 +337,8 @@ func getVersionHistory(versionId string, N int) ([]model.Version, error) {
 			"r":      mci.RepotrackerVersionRequester,
 			"branch": version.Project,
 		},
-		bson.M{}, []string{"order"}, 0, 2*N+1)
+		bson.M{model.VersionConfigKey: 0},
+		[]string{"order"}, 0, 2*N+1)
 
 	if err != nil {
 		return nil, err
@@ -362,7 +363,7 @@ func getVersionHistory(versionId string, N int) ([]model.Version, error) {
 				"r":      mci.RepotrackerVersionRequester,
 				"branch": version.Project,
 			},
-			bson.M{}, []string{"order"}, 0, N-versionIndex)
+			bson.M{model.VersionConfigKey: 0}, []string{"order"}, 0, N-versionIndex)
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +383,7 @@ func getVersionHistory(versionId string, N int) ([]model.Version, error) {
 				"r":      mci.RepotrackerVersionRequester,
 				"branch": version.Project,
 			},
-			bson.M{}, []string{"-order"}, 0, N)
+			bson.M{model.VersionConfigKey: 0}, []string{"-order"}, 0, N)
 		if err != nil {
 			return nil, err
 		}
