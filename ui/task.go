@@ -103,6 +103,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if projCtx.ProjectRef == nil {
+		mci.Logger.Logf(slogger.ERROR, "Project ref is nil")
+		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("version not found"))
+		return
+	}
+
 	executionStr := mux.Vars(r)["execution"]
 	archived := false
 	if executionStr != "" {
