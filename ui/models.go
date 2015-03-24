@@ -228,15 +228,6 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 		for buildIdx, buildId := range buildIds {
 			build := buildsMap[buildId]
 			buildAsUI := uiBuild{Build: build}
-
-			//Use the build's task cache, instead of querying for each individual task.
-			uiTasks := make([]uiTask, len(build.Tasks))
-			for taskIdx, task := range build.Tasks {
-				uiTasks[taskIdx] = uiTask{Task: model.Task{Id: task.Id, Status: task.Status, DisplayName: task.DisplayName}}
-			}
-			uiTasks = sortUiTasks(uiTasks)
-
-			buildAsUI.Tasks = uiTasks
 			uiBuilds[buildIdx] = buildAsUI
 		}
 		versionAsUI.Builds = uiBuilds

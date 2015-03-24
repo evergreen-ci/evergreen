@@ -38,11 +38,11 @@ mciModule.factory('$timeline', function($http) {
         _.each(data.Versions, function(version) {
           _.each(version.Builds, function(build) {
             build.taskResults = [];
-            _.each(build.Tasks, function(task) {
+            _.each(build.Build.tasks, function(task) {
               build.taskResults.push({
-                link: '/task/' + task.Task.id,
-                tooltip: task.Task.display_name,
-                'class': task.Task.status
+                link: '/task/' + task.id,
+                tooltip: task.display_name,
+                'class': task.status
               });
             });
           });
