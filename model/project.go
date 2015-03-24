@@ -450,7 +450,6 @@ func NewProjectByName(revision, identifier, configRoot string) (*Project, error)
 		}
 	}
 	if revision != "" {
-		project = &Project{}
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
 		version, err := FindVersionByIdAndRevision(identifier, revision)
@@ -459,10 +458,11 @@ func NewProjectByName(revision, identifier, configRoot string) (*Project, error)
 				"project %v at revision %v: %v", identifier, revision, err)
 		}
 		if version == nil {
-			return nil, fmt.Errorf("version for revision %v of project %v "+
-				"does not exist in the db. Perhaps history was rewritten?",
-				revision, identifier)
+			// fall back to the skeletal project
+			return project, nil
 		}
+
+		project = &Project{}
 		if err = LoadProjectInto([]byte(version.Config), project); err != nil {
 			return nil, fmt.Errorf("Error loading project from "+
 				"version: %v", err)
