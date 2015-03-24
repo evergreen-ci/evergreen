@@ -253,7 +253,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
-	revision := ""
+	//revision := ""
 
 	projectId, err := proj.populateTaskBuildVersion(taskId, buildId, versionId)
 	if err != nil {
@@ -285,10 +285,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	// Still no project ID found anywhere, just use the default one according to config.
 	if len(projectId) == 0 {
 		projectId = uis.MCISettings.Ui.DefaultProject
-	}
-
-	if proj.Version != nil {
-		revision = proj.Version.Revision
 	}
 
 	mci.Logger.Logf(slogger.INFO, "project ID is %v", projectId)
