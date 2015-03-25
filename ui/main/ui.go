@@ -65,7 +65,7 @@ func main() {
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, ui.WebRootPath, ui.Templates),
-		DisableCache: true,
+		DisableCache: !mciSettings.Ui.CacheTemplates,
 		Funcs:        funcs,
 	})
 	uis.InitPlugins()
