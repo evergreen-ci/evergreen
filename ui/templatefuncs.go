@@ -16,9 +16,10 @@ import (
 )
 
 type FuncOptions struct {
-	WebHome string
-	IsProd  bool
-	Router  *mux.Router
+	WebHome  string
+	HelpHome string
+	IsProd   bool
+	Router   *mux.Router
 }
 
 type MutableVar struct {
@@ -117,6 +118,11 @@ func MakeTemplateFuncs(fo FuncOptions) (template.FuncMap, error) {
 			}
 
 			return route.URL(strPairs...)
+		},
+
+		"HelpUrl": func() string {
+			// TODO have this default to the github wiki once that exists
+			return fo.HelpHome
 		},
 	}
 

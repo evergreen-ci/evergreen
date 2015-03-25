@@ -37,7 +37,11 @@
                 <span ng-repeat-end></span>
             </ul>
         </li>
-
+        <li>
+          {{if HelpUrl}}
+            <a id="help-btn" href='{{HelpUrl}}'><i class="icon-question-sign"></i></a>
+          {{end}}
+        </li>
         {{if .User }}
           <li class="dropdown">
             <a  style="cursor: pointer"
@@ -57,7 +61,7 @@
           </li>
         {{else}}
           <li ng-controller="LoginModalCtrl">
-            <a ng-click="openLoginModal()">Log in</a>
+            <a href="javascript:;" ng-click="openLoginModal()">Log in</a>
           </li>
         {{end}}
       </ul>

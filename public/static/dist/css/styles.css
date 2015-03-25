@@ -432,6 +432,9 @@ ul.inline li {
 .form-inline.force-inline .has-feedback .form-control-feedback {
   top: 0;
 }
+#help-btn {
+  font-size: 20px;
+}
 .remove-version {
   margin: 10px;
 }

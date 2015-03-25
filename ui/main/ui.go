@@ -56,7 +56,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	funcs, err := ui.MakeTemplateFuncs(ui.FuncOptions{filepath.Join(home, "public"), true, router})
+	funcs, err := ui.MakeTemplateFuncs(ui.FuncOptions{
+		filepath.Join(home, "public"), mciSettings.Ui.HelpUrl, true, router})
 	if err != nil {
 		fmt.Println("Failed to create template function map:", err)
 		os.Exit(1)

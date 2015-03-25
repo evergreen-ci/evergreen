@@ -37,6 +37,7 @@ type ApiConfig struct {
 
 type UIConfig struct {
 	Url            string
+	HelpUrl        string
 	HttpListenAddr string
 	// Secret to encrypt session storage
 	Secret  string
