@@ -153,7 +153,7 @@ func LastKnownGoodConfig(identifier string) ([]Version, error) {
 		db.NoProjection,
 		[]string{"-" + VersionRevisionOrderNumberKey},
 		db.NoSkip,
-		db.NoLimit,
+		1,
 	)
 }
 
