@@ -899,7 +899,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	host.HandleFunc("/ready/{status}", as.hostReady).Methods("POST")
 
 	// Spawnhost routes - creating new hosts, listing existing hosts, listing distros
-	spawns := r.PathPrefix("/spawns/").Subrouter()
+	spawns := apiRootOld.PathPrefix("/spawns/").Subrouter()
 	spawns.HandleFunc("/", requireUser(as.requestHost)).Methods("PUT")
 	spawns.HandleFunc("/{user}/", requireUser(as.hostsInfoForUser)).Methods("GET")
 	spawns.HandleFunc("/distros/list/", requireUser(as.listDistros)).Methods("GET")
