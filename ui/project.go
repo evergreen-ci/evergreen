@@ -33,7 +33,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 
-	projCtx := MustHaveProjectContext(r)
+	_ = MustHaveProjectContext(r)
 	_ = MustHaveUser(r)
 
 	vars := mux.Vars(r)
@@ -52,11 +52,9 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		ProjectData projectContext
-		User        *model.DBUser
 		ProjectRef  *model.ProjectRef
 		ProjectVars *model.ProjectVars
-	}{projCtx, GetUser(r), projRef, projVars}
+	}{projRef, projVars}
 
 	// the project context has all projects so make the ui list using all projects
 	uis.WriteJSON(w, http.StatusOK, data)
