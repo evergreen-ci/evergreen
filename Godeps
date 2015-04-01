@@ -14,7 +14,7 @@ github.com/mitchellh/mapstructure               6fb2c832bcac61d01212ab1d172f7a14
 github.com/shelman/angier                       9ac2ede2d6cfe6bfcb8483960c124bdf7a96de5b
 github.com/smartystreets/goconvey               6e8b6a6845c5dc7738d519162c9a9ff5c9cd5f48
 github.com/jacobsa/oglematchers                 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
-gopkg.in/yaml.v1                                b0c168ac0cf9493da1f9bb76c34b26ffef940b4a
+gopkg.in/yaml.v2                                49c95bdc21843256fb6c4e0d370a05f24a0bf213
 labix.org/v2/mgo                                275
 github.com/laher/goxc                           6629689d44fd183f8d29a3f2d1cd4e6174294299
 github.com/dynport/gocloud/                     86eb7951c13ee7437f5952d63537533068f9f15c

@@ -9,7 +9,7 @@ import (
 	"10gen.com/mci/validator"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	"time"
 )
 

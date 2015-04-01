@@ -9,7 +9,7 @@ import (
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -17,29 +17,29 @@ import (
 	"time"
 )
 
-type MockPluginLogger struct{}
+type MockLogger struct{}
 
-func (self *MockPluginLogger) LogLocal(level slogger.Level, messageFmt string,
+func (self *MockLogger) LogLocal(level slogger.Level, messageFmt string,
 	args ...interface{}) {
 }
 
-func (self *MockPluginLogger) LogExecution(level slogger.Level, messageFmt string,
+func (self *MockLogger) LogExecution(level slogger.Level, messageFmt string,
 	args ...interface{}) {
 }
 
-func (self *MockPluginLogger) LogTask(level slogger.Level, messageFmt string,
+func (self *MockLogger) LogTask(level slogger.Level, messageFmt string,
 	args ...interface{}) {
 }
 
-func (self *MockPluginLogger) LogSystem(level slogger.Level, messageFmt string,
+func (self *MockLogger) LogSystem(level slogger.Level, messageFmt string,
 	args ...interface{}) {
 }
 
-func (self *MockPluginLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
+func (self *MockLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 	return ioutil.Discard
 }
 
-func (self *MockPluginLogger) Flush() {
+func (self *MockLogger) Flush() {
 	return
 }
 

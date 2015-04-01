@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/shelman/angier"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -99,26 +99,57 @@ type BuildVariantMatrix struct {
 	Template         BuildVariant      `yaml:"template" bson:"template"`
 }
 
+type YAMLCommandSet struct {
+	SingleCommand *PluginCommandConf
+	MultiCommand  []PluginCommandConf
+}
+
+func (c *YAMLCommandSet) List() []PluginCommandConf {
+	if len(c.MultiCommand) > 0 {
+		return c.MultiCommand
+	}
+	if c.SingleCommand != nil && (c.SingleCommand.Command != "" || c.SingleCommand.Function != "") {
+		return []PluginCommandConf{*c.SingleCommand}
+	}
+	return []PluginCommandConf{}
+}
+
+func (c *YAMLCommandSet) MarshalYAML() (interface{}, error) {
+	if c == nil {
+		return nil, nil
+	}
+	return c.List(), nil
+}
+
+func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	err1 := unmarshal(&(c.MultiCommand))
+	err2 := unmarshal(&(c.SingleCommand))
+	if err1 == nil || err2 == nil {
+		return nil
+	}
+	return err1
+}
+
 type Project struct {
-	Enabled            bool                         `yaml:"enabled" bson:"enabled"`
-	Remote             bool                         `yaml:"remote" bson:"remote"`
-	Stepback           bool                         `yaml:"stepback" bson:"stepback"`
-	BatchTime          int                          `yaml:"batchtime" bson:"batch_time"`
-	Owner              string                       `yaml:"owner" bson:"owner_name"`
-	Repo               string                       `yaml:"repo" bson:"repo_name"`
-	RemotePath         string                       `yaml:"remote_path" bson:"remote_path"`
-	RepoKind           string                       `yaml:"repokind" bson:"repo_kind"`
-	Branch             string                       `yaml:"branch" bson:"branch_name"`
-	Identifier         string                       `yaml:"identifier" bson:"identifier"`
-	DisplayName        string                       `yaml:"display_name" bson:"display_name"`
-	Pre                []PluginCommandConf          `yaml:"pre" bson:"pre"`
-	Post               []PluginCommandConf          `yaml:"post" bson:"post"`
-	Timeout            []PluginCommandConf          `yaml:"timeout" bson:"timeout"`
-	Modules            []Module                     `yaml:"modules" bson:"modules"`
-	BuildVariants      []BuildVariant               `yaml:"buildvariants" bson:"build_variants"`
-	Functions          map[string]PluginCommandConf `yaml:"functions" bson:"functions"`
-	Tasks              []ProjectTask                `yaml:"tasks" bson:"tasks"`
-	BuildVariantMatrix BuildVariantMatrix           `yaml:"build_variant_matrix" bson:"build_variant_matrix"`
+	Enabled            bool                       `yaml:"enabled" bson:"enabled"`
+	Remote             bool                       `yaml:"remote" bson:"remote"`
+	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
+	BatchTime          int                        `yaml:"batchtime" bson:"batch_time"`
+	Owner              string                     `yaml:"owner" bson:"owner_name"`
+	Repo               string                     `yaml:"repo" bson:"repo_name"`
+	RemotePath         string                     `yaml:"remote_path" bson:"remote_path"`
+	RepoKind           string                     `yaml:"repokind" bson:"repo_kind"`
+	Branch             string                     `yaml:"branch" bson:"branch_name"`
+	Identifier         string                     `yaml:"identifier" bson:"identifier"`
+	DisplayName        string                     `yaml:"display_name" bson:"display_name"`
+	Pre                *YAMLCommandSet            `yaml:"pre" bson:"pre"`
+	Post               *YAMLCommandSet            `yaml:"post" bson:"post"`
+	Timeout            *YAMLCommandSet            `yaml:"timeout" bson:"timeout"`
+	Modules            []Module                   `yaml:"modules" bson:"modules"`
+	BuildVariants      []BuildVariant             `yaml:"buildvariants" bson:"build_variants"`
+	Functions          map[string]*YAMLCommandSet `yaml:"functions" bson:"functions"`
+	Tasks              []ProjectTask              `yaml:"tasks" bson:"tasks"`
+	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix" bson:"build_variant_matrix"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private" bson:"private"`

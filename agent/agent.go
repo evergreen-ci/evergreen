@@ -43,8 +43,7 @@ const DefaultCmdTimeout = 2 * time.Hour
 //between an agent and the remote server.
 type TaskCommunicator interface {
 	Start(pid string) error
-	End(status string, details *apimodels.TaskEndDetails) (
-		*apimodels.TaskEndResponse, error)
+	End(status string, details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error)
 	GetTask() (*model.Task, error)
 	GetDistro() (*distro.Distro, error)
 	GetProjectConfig() (*model.Project, error)
@@ -113,14 +112,14 @@ type AgentSignalHandler struct {
 	AgentLogger *AgentLogger
 
 	//Channel to close to abort any in-progress commands
-	KillChannel    chan bool
-	WorkDir        string
-	PostRun        *AgentCommand
-	Post           []model.PluginCommandConf
-	Timeout        []model.PluginCommandConf
-	execTracker    ExecTracker
-	PluginRegistry plugin.PluginRegistry
-	TaskConfig     *model.TaskConfig
+	KillChannel chan bool
+	WorkDir     string
+	PostRun     *AgentCommand
+	Post        *model.YAMLCommandSet
+	Timeout     *model.YAMLCommandSet
+	execTracker ExecTracker
+	Registry    plugin.Registry
+	TaskConfig  *model.TaskConfig
 }
 
 type ExecTracker interface {
@@ -181,8 +180,8 @@ func (self *AgentSignalHandler) HandleSignals(taskCom TaskCommunicator,
 		}
 		if self.Timeout != nil {
 			self.AgentLogger.LogTask(slogger.INFO, "Executing task-timeout commands...")
-			err := RunAllCommands(self.Timeout,
-				self.PluginRegistry,
+			err := RunAllCommands(self.Timeout.List(),
+				self.Registry,
 				taskCom,
 				self.execTracker,
 				self.AgentLogger,
@@ -205,8 +204,8 @@ func (self *AgentSignalHandler) HandleSignals(taskCom TaskCommunicator,
 
 	if self.Post != nil {
 		self.AgentLogger.LogTask(slogger.INFO, "Executing post-task commands...")
-		err := RunAllCommands(self.Post,
-			self.PluginRegistry,
+		err := RunAllCommands(self.Post.List(),
+			self.Registry,
 			taskCom,
 			self.execTracker,
 			self.AgentLogger,
@@ -332,7 +331,7 @@ func PrepareTask(agent *Agent, configRoot, workDir string) (*model.TaskConfig,
 	return taskConfig, nil
 }
 
-func registerAll(pluginRegistry plugin.PluginRegistry,
+func registerAll(pluginRegistry plugin.Registry,
 	plugins []plugin.Plugin, agentLogger *AgentLogger) error {
 	for _, pl := range plugins {
 		if err := pluginRegistry.Register(pl); err != nil {
@@ -345,7 +344,7 @@ func registerAll(pluginRegistry plugin.PluginRegistry,
 
 func RunAllCommands(
 	commands []model.PluginCommandConf,
-	pluginRegistry plugin.PluginRegistry,
+	pluginRegistry plugin.Registry,
 	taskCom TaskCommunicator,
 	execTracker ExecTracker,
 	agentLogger *AgentLogger,
@@ -354,94 +353,93 @@ func RunAllCommands(
 	stopChan chan bool) error {
 
 	for index, commandInfo := range commands {
-		pluginCmd, pluginImpl, err := pluginRegistry.GetCommand(commandInfo,
-			taskConfig.Project.Functions)
+		execCmds, err := pluginRegistry.GetCommands(commandInfo, taskConfig.Project.Functions)
 		if err != nil {
-			agentLogger.LogTask(slogger.ERROR, "Don't know how to run "+
-				"plugin action %s: %v", commandInfo.Command, err)
+			agentLogger.LogTask(slogger.ERROR, "Don't know how to run plugin action %s: %v", commandInfo.Command, err)
 			if breakOnError {
 				return err
 			}
 			continue
 		}
 
-		fullCommandName := pluginImpl.Name() + "." + pluginCmd.Name()
+		for _, cmd := range execCmds {
+			fullCommandName := cmd.Plugin() + "." + cmd.Name()
 
-		// TODO: add validation for this once new config's in place/use
-		if !commandInfo.RunOnVariant(taskConfig.BuildVariant.Name) {
-			agentLogger.LogTask(slogger.INFO, "Skipping command %v on variant %v (step %v of %v)",
-				fullCommandName, taskConfig.BuildVariant.Name, index+1, len(commands))
-			continue
-		}
+			// TODO: add validation for this once new config's in place/use
+			if !commandInfo.RunOnVariant(taskConfig.BuildVariant.Name) {
+				agentLogger.LogTask(slogger.INFO, "Skipping command %v on variant %v (step %v of %v)",
+					fullCommandName, taskConfig.BuildVariant.Name, index+1, len(commands))
+				continue
+			}
 
-		agentLogger.LogTask(slogger.INFO, "Running command %v (step %v of %v)",
-			fullCommandName, index+1, len(commands))
-		pluginCom := &TaskJSONCommunicator{pluginImpl.Name(), taskCom}
+			agentLogger.LogTask(slogger.INFO, "Running command %v (step %v of %v)",
+				fullCommandName, index+1, len(commands))
+			pluginCom := &TaskJSONCommunicator{cmd.Plugin(), taskCom}
 
-		var timeoutPeriod = DefaultCmdTimeout
-		if commandInfo.TimeoutSecs > 0 {
-			timeoutPeriod = time.Duration(commandInfo.TimeoutSecs) * time.Second
-		}
+			var timeoutPeriod = DefaultCmdTimeout
+			if commandInfo.TimeoutSecs > 0 {
+				timeoutPeriod = time.Duration(commandInfo.TimeoutSecs) * time.Second
+			}
 
-		execTracker.CheckIn(fullCommandName, timeoutPeriod)
+			execTracker.CheckIn(fullCommandName, timeoutPeriod)
 
-		cmdStartTime := time.Now()
-		agentLogger.LogExecution(slogger.INFO, "Starting %v...", fullCommandName)
+			cmdStartTime := time.Now()
+			agentLogger.LogExecution(slogger.INFO, "Starting %v...", fullCommandName)
 
-		// create a new command logger to wrap the agent logger
-		commandLogger := &AgentCommandLogger{
-			commandName: fullCommandName,
-			agentLogger: agentLogger,
-		}
+			// create a new command logger to wrap the agent logger
+			commandLogger := &AgentCommandLogger{
+				commandName: fullCommandName,
+				agentLogger: agentLogger,
+			}
 
-		if len(commandInfo.Vars) > 0 {
-			keysToMerge := make([]string, 0, len(commandInfo.Vars))
-			valsToMerge := make([]string, 0, len(commandInfo.Vars))
-			for key, val := range commandInfo.Vars {
-				keysToMerge = append(keysToMerge, key)
-				newVal, err := taskConfig.Expansions.ExpandString(val)
-				if err != nil {
-					return fmt.Errorf("Can't expand '%v': %v", val, err)
+			if len(commandInfo.Vars) > 0 {
+				keysToMerge := make([]string, 0, len(commandInfo.Vars))
+				valsToMerge := make([]string, 0, len(commandInfo.Vars))
+				for key, val := range commandInfo.Vars {
+					keysToMerge = append(keysToMerge, key)
+					newVal, err := taskConfig.Expansions.ExpandString(val)
+					if err != nil {
+						return fmt.Errorf("Can't expand '%v': %v", val, err)
+					}
+					valsToMerge = append(valsToMerge, newVal)
 				}
-				valsToMerge = append(valsToMerge, newVal)
+				//Now take keys/vals specified in vars and merge into expansions
+				for i, key := range keysToMerge {
+					taskConfig.Expansions.Put(key, valsToMerge[i])
+				}
 			}
-			//Now take keys/vals specified in vars and merge into expansions
-			for i, key := range keysToMerge {
-				taskConfig.Expansions.Put(key, valsToMerge[i])
-			}
-		}
 
-		// run the command
-		err = pluginCmd.Execute(commandLogger, pluginCom, taskConfig, stopChan)
+			// run the command
+			err = cmd.Execute(commandLogger, pluginCom, taskConfig, stopChan)
 
-		cmdEndTime := time.Now()
-		agentLogger.LogExecution(slogger.INFO, "Finished %v in %v",
-			fullCommandName, (cmdEndTime.Sub(cmdStartTime)).String())
-		if err != nil {
-			agentLogger.LogTask(slogger.ERROR, "Command failed: %v", err)
-			if breakOnError {
-				return err
+			cmdEndTime := time.Now()
+			agentLogger.LogExecution(slogger.INFO, "Finished %v in %v",
+				fullCommandName, (cmdEndTime.Sub(cmdStartTime)).String())
+			if err != nil {
+				agentLogger.LogTask(slogger.ERROR, "Command failed: %v", err)
+				if breakOnError {
+					return err
+				}
+				continue
 			}
-			continue
 		}
 	}
 	return nil
 }
 
-func RunTask(agent *Agent, configRoot string, workDir string) (
-	*apimodels.TaskEndResponse, error) {
+func RunTask(agent *Agent, configRoot string, workDir string) (*apimodels.TaskEndResponse, error) {
 	agent.agentLogger.LogLocal(slogger.INFO, "Local logger initialized.")
 	cmdKiller := make(chan bool)
 
-	pluginRegistry := plugin.NewSimplePluginRegistry()
+	pluginRegistry := plugin.NewSimpleRegistry()
 	signalHandler := &AgentSignalHandler{
-		AgentLogger:    agent.agentLogger,
-		KillChannel:    cmdKiller,
-		PostRun:        nil,
-		execTracker:    agent,
-		WorkDir:        workDir,
-		TaskConfig:     nil,
-		PluginRegistry: pluginRegistry,
+		AgentLogger: agent.agentLogger,
+		KillChannel: cmdKiller,
+		PostRun:     nil,
+		execTracker: agent,
+		WorkDir:     workDir,
+		TaskConfig:  nil,
+		Registry:    pluginRegistry,
 	}
 
 	completed := agent.StartBackgroundActions(signalHandler)
@@ -509,22 +507,20 @@ func RunTask(agent *Agent, configRoot string, workDir string) (
 	agent.taskConfig.Expansions.Update(*resultVars)
 
 	agent.agentLogger.LogExecution(slogger.INFO, "Running pre-task commands")
-	err = RunAllCommands(taskConfig.Project.Pre, pluginRegistry,
+	err = RunAllCommands(taskConfig.Project.Pre.List(), pluginRegistry,
 		agent.TaskCommunicator, agent, agent.agentLogger, taskConfig, false, nil)
 	if err != nil {
-		agent.agentLogger.LogExecution(slogger.ERROR, "Running pre-task "+
-			"script failed: %v", err)
+		agent.agentLogger.LogExecution(slogger.ERROR, "Running pre-task script failed: %v", err)
 	}
 	return RunPluginCommands(agent, pluginRegistry, taskConfig, cmdKiller, completed)
 }
 
-func RunPluginCommands(agent *Agent, pluginRegistry plugin.PluginRegistry,
+func RunPluginCommands(agent *Agent, pluginRegistry plugin.Registry,
 	conf *model.TaskConfig, cmdKiller chan bool, completed chan FinalTaskFunc) (
 	*apimodels.TaskEndResponse, error) {
 	projectTask := conf.Project.FindProjectTask(conf.Task.DisplayName)
 	if projectTask == nil {
-		agent.agentLogger.LogExecution(slogger.ERROR, "Can't find task "+
-			"for: %v", conf.Task.DisplayName)
+		agent.agentLogger.LogExecution(slogger.ERROR, "Can't find task: %v", conf.Task.DisplayName)
 		return agent.finishAndAwaitCleanup(CompletedFailure, completed)
 	}
 

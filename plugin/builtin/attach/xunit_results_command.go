@@ -23,6 +23,10 @@ func (self *AttachXUnitResultsCommand) Name() string {
 	return AttachXunitResultsCmd
 }
 
+func (self *AttachXUnitResultsCommand) Plugin() string {
+	return AttachPluginName
+}
+
 // ParseParams reads and validates the command parameters. This is required
 // to satisfy the 'Command' interface
 func (self *AttachXUnitResultsCommand) ParseParams(
@@ -56,7 +60,7 @@ func (self *AttachXUnitResultsCommand) expandParams(
 
 // Execute carries out the AttachResultsCommand command - this is required
 // to satisfy the 'Command' interface
-func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	taskConfig *model.TaskConfig,
 	stop chan bool) error {
@@ -81,7 +85,7 @@ func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.PluginLogger,
 }
 
 func (self *AttachXUnitResultsCommand) parseAndUploadResults(
-	taskConfig *model.TaskConfig, pluginLogger plugin.PluginLogger,
+	taskConfig *model.TaskConfig, pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator) error {
 	tests := []model.TestResult{}
 	logs := []*model.TestLog{}

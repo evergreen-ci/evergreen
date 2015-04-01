@@ -63,6 +63,10 @@ func (self *S3PutCommand) Name() string {
 	return S3PutCmd
 }
 
+func (self *S3PutCommand) Plugin() string {
+	return S3PluginName
+}
+
 // S3PutCommand-specific implementation of ParseParams.
 func (self *S3PutCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, self); err != nil {
@@ -126,7 +130,7 @@ func (self *S3PutCommand) shouldRunForVariant(buildVariantName string) bool {
 
 // Implementation of Execute.  Expands the parameters, and then puts the
 // resource to s3.
-func (self *S3PutCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *S3PutCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig,
 	stop chan bool) error {
 
@@ -172,7 +176,7 @@ func (self *S3PutCommand) Execute(pluginLogger plugin.PluginLogger,
 }
 
 // Wrapper around the Put() function to retry it
-func (self *S3PutCommand) PutWithRetry(pluginLogger plugin.PluginLogger,
+func (self *S3PutCommand) PutWithRetry(pluginLogger plugin.Logger,
 	pluginComm plugin.PluginCommunicator) error {
 	retriablePut := util.RetriableFunc(
 		func() error {
@@ -231,7 +235,7 @@ func (self *S3PutCommand) Put() error {
 
 // AttachTaskFiles is responsible for sending the
 // specified file to the API Server
-func (self *S3PutCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
+func (self *S3PutCommand) AttachTaskFiles(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator) error {
 
 	remoteFile := filepath.ToSlash(self.RemoteFile)

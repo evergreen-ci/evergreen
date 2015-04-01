@@ -137,6 +137,10 @@ func (scc *S3CopyCommand) Name() string {
 	return s3CopyCmd
 }
 
+func (scc *S3CopyCommand) Plugin() string {
+	return s3CopyPluginName
+}
+
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an S3CopyPlugin command; this is required
 // to satisfy the 'Command' interface
@@ -201,7 +205,7 @@ func (scc *S3CopyCommand) validateS3CopyParams() (err error) {
 
 // Execute carries out the S3CopyCommand command - this is required
 // to satisfy the 'Command' interface
-func (scc *S3CopyCommand) Execute(pluginLogger plugin.PluginLogger,
+func (scc *S3CopyCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	taskConfig *model.TaskConfig,
 	stop chan bool) error {
@@ -235,7 +239,7 @@ func (scc *S3CopyCommand) Execute(pluginLogger plugin.PluginLogger,
 // function - it makes an API calls to copy a given staged file to it's final
 // production destination
 func (scc *S3CopyCommand) S3Copy(taskConfig *model.TaskConfig,
-	pluginLogger plugin.PluginLogger, pluginCom plugin.PluginCommunicator) error {
+	pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicator) error {
 	for _, s3CopyFile := range scc.S3CopyFiles {
 		if len(s3CopyFile.BuildVariants) > 0 && !util.SliceContains(
 			s3CopyFile.BuildVariants, taskConfig.BuildVariant.Name) {
@@ -391,7 +395,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 // AttachTaskFiles is responsible for sending the
 // specified file to the API Server
-func (c *S3CopyCommand) AttachTaskFiles(pluginLogger plugin.PluginLogger,
+func (c *S3CopyCommand) AttachTaskFiles(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, request S3CopyRequest) error {
 
 	remotePath := filepath.ToSlash(request.S3DestinationPath)

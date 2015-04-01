@@ -18,7 +18,7 @@ import (
 func TestPatchPluginAPI(t *testing.T) {
 	testConfig := mci.TestConfig()
 	Convey("With a running api server and installed plugin", t, func() {
-		registry := plugin.NewSimplePluginRegistry()
+		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register patch plugin")
@@ -92,7 +92,7 @@ func TestPatchPlugin(t *testing.T) {
 	testConfig := mci.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	Convey("With patch plugin installed into plugin registry", t, func() {
-		registry := plugin.NewSimplePluginRegistry()
+		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
@@ -119,8 +119,7 @@ func TestPatchPlugin(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(plugin, ShouldNotBeNil)
 					So(pluginCmd, ShouldNotBeNil)
@@ -141,8 +140,7 @@ func TestPatchPlugin(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(plugin, ShouldNotBeNil)
 					So(pluginCmd, ShouldNotBeNil)

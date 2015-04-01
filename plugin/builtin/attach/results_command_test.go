@@ -26,7 +26,7 @@ func resetTasks(t *testing.T) {
 func TestAttachResults(t *testing.T) {
 	resetTasks(t)
 	Convey("With attachResults plugin installed into plugin registry", t, func() {
-		registry := plugin.NewSimplePluginRegistry()
+		registry := plugin.NewSimpleRegistry()
 		attachPlugin := &AttachPlugin{}
 		err := registry.Register(attachPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin: %v")
@@ -46,8 +46,7 @@ func TestAttachResults(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(plugin, ShouldNotBeNil)
 					So(pluginCmd, ShouldNotBeNil)

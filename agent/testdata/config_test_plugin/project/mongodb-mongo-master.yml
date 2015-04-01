@@ -7,6 +7,19 @@ batch_time: 180
 stepback: true
 
 functions:
+  "list of commands func":
+     - command: shell.exec
+       params:
+         script: |
+           echo "step 1 of multi-command func"
+     - command: shell.exec
+       params:
+         script: |
+           echo "step 2 of multi-command func"
+     - command: shell.exec
+       params:
+         script: |
+           echo "step 3 of multi-command func"
   "predefined command test" :
      command: shell.exec
      params:
@@ -62,6 +75,7 @@ tasks:
         arg2: "BAR"
         arg3: "Expanded: ${expandme}"
         arg4: "Default: ${empty|default_value}"
+    - func: "list of commands func"
     - command: git.get_project
       params:
         directory: src

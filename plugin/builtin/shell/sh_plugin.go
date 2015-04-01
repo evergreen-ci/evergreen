@@ -88,6 +88,10 @@ func (self *ShellExecCommand) Name() string {
 	return ShellExecCmd
 }
 
+func (self *ShellExecCommand) Plugin() string {
+	return ShellPluginName
+}
+
 // ParseParams reads in the command's parameters.
 func (self *ShellExecCommand) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, self)
@@ -98,7 +102,7 @@ func (self *ShellExecCommand) ParseParams(params map[string]interface{}) error {
 }
 
 // Execute starts the shell with its given parameters.
-func (self *ShellExecCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {

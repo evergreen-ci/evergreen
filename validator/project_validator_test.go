@@ -102,33 +102,20 @@ func TestVerifyTaskDependencies(t *testing.T) {
 
 func TestCheckDependencyGraph(t *testing.T) {
 	Convey("When checking a project's dependency graph", t, func() {
-		Convey("if there is a cycle in the dependency graph, an error should"+
-			" be returned", func() {
+		Convey("cycles in the dependency graph should cause error to be returned", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
 					model.ProjectTask{
-						Name: "compile",
-						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "testOne",
-							},
-						},
+						Name:      "compile",
+						DependsOn: []model.TaskDependency{{Name: "testOne"}},
 					},
 					model.ProjectTask{
-						Name: "testOne",
-						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "compile",
-							},
-						},
+						Name:      "testOne",
+						DependsOn: []model.TaskDependency{{Name: "compile"}},
 					},
 					model.ProjectTask{
-						Name: "testTwo",
-						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "compile",
-							},
-						},
+						Name:      "testTwo",
+						DependsOn: []model.TaskDependency{{Name: "compile"}},
 					},
 				},
 			}
@@ -145,12 +132,8 @@ func TestCheckDependencyGraph(t *testing.T) {
 						DependsOn: []model.TaskDependency{},
 					},
 					model.ProjectTask{
-						Name: "testOne",
-						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "testOne",
-							},
-						},
+						Name:      "testOne",
+						DependsOn: []model.TaskDependency{{Name: "testOne"}},
 					},
 				},
 			}
@@ -167,30 +150,18 @@ func TestCheckDependencyGraph(t *testing.T) {
 						DependsOn: []model.TaskDependency{},
 					},
 					model.ProjectTask{
-						Name: "testOne",
-						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "compile",
-							},
-						},
+						Name:      "testOne",
+						DependsOn: []model.TaskDependency{{Name: "compile"}},
 					},
 					model.ProjectTask{
-						Name: "testTwo",
-						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "compile",
-							},
-						},
+						Name:      "testTwo",
+						DependsOn: []model.TaskDependency{{Name: "compile"}},
 					},
 					model.ProjectTask{
 						Name: "push",
 						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "testOne",
-							},
-							model.TaskDependency{
-								Name: "testTwo",
-							},
+							{Name: "testOne"},
+							{Name: "testTwo"},
 						},
 					},
 				},
@@ -202,16 +173,11 @@ func TestCheckDependencyGraph(t *testing.T) {
 
 func TestValidateBVNames(t *testing.T) {
 	Convey("When validating a project's build variants' names", t, func() {
-		Convey("if any buildvariant has a duplicate entry, an error should be "+
-			"returned", func() {
+		Convey("if any variant has a duplicate entry, an error should be returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
-						Name: "linux",
-					},
-					model.BuildVariant{
-						Name: "linux",
-					},
+					{Name: "linux"},
+					{Name: "linux"},
 				},
 			}
 			So(validateBVNames(project), ShouldNotResemble, []ValidationError{})
@@ -222,18 +188,10 @@ func TestValidateBVNames(t *testing.T) {
 			"should be returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
-						Name: "linux",
-					},
-					model.BuildVariant{
-						Name: "linux",
-					},
-					model.BuildVariant{
-						Name: "windows",
-					},
-					model.BuildVariant{
-						Name: "windows",
-					},
+					{Name: "linux"},
+					{Name: "linux"},
+					{Name: "windows"},
+					{Name: "windows"},
 				},
 			}
 			So(validateBVNames(project), ShouldNotResemble, []ValidationError{})
@@ -244,12 +202,8 @@ func TestValidateBVNames(t *testing.T) {
 			" returned", func() {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
-					model.BuildVariant{
-						Name: "linux",
-					},
-					model.BuildVariant{
-						Name: "windows",
-					},
+					{Name: "linux"},
+					{Name: "windows"},
 				},
 			}
 			So(validateBVNames(project), ShouldResemble, []ValidationError{})
@@ -266,12 +220,8 @@ func TestValidateBVTaskNames(t *testing.T) {
 					model.BuildVariant{
 						Name: "linux",
 						Tasks: []model.BuildVariantTask{
-							model.BuildVariantTask{
-								Name: "compile",
-							},
-							model.BuildVariantTask{
-								Name: "compile",
-							},
+							{Name: "compile"},
+							{Name: "compile"},
 						},
 					},
 				},
@@ -287,18 +237,10 @@ func TestValidateBVTaskNames(t *testing.T) {
 					model.BuildVariant{
 						Name: "linux",
 						Tasks: []model.BuildVariantTask{
-							model.BuildVariantTask{
-								Name: "compile",
-							},
-							model.BuildVariantTask{
-								Name: "compile",
-							},
-							model.BuildVariantTask{
-								Name: "test",
-							},
-							model.BuildVariantTask{
-								Name: "test",
-							},
+							{Name: "compile"},
+							{Name: "compile"},
+							{Name: "test"},
+							{Name: "test"},
 						},
 					},
 				},
@@ -314,12 +256,8 @@ func TestValidateBVTaskNames(t *testing.T) {
 					model.BuildVariant{
 						Name: "linux",
 						Tasks: []model.BuildVariantTask{
-							model.BuildVariantTask{
-								Name: "compile",
-							},
-							model.BuildVariantTask{
-								Name: "test",
-							},
+							{Name: "compile"},
+							{Name: "test"},
 						},
 					},
 				},
@@ -339,12 +277,8 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 						model.ProjectTask{
 							Name: "compile",
 							DependsOn: []model.TaskDependency{
-								model.TaskDependency{
-									Name: "*",
-								},
-								model.TaskDependency{
-									Name: "testOne",
-								},
+								{Name: "*"},
+								{Name: "testOne"},
 							},
 						},
 					},
@@ -360,9 +294,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					model.ProjectTask{
 						Name: "compile",
 						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "*",
-							},
+							{Name: "*"},
 						},
 					},
 				},
@@ -376,9 +308,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					model.ProjectTask{
 						Name: "compile",
 						DependsOn: []model.TaskDependency{
-							model.TaskDependency{
-								Name: "hello",
-							},
+							{Name: "hello"},
 						},
 					},
 				},
@@ -393,12 +323,8 @@ func TestValidateProjectTaskNames(t *testing.T) {
 		Convey("ensure any duplicate task names throw an error", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
-					model.ProjectTask{
-						Name: "compile",
-					},
-					model.ProjectTask{
-						Name: "compile",
-					},
+					{Name: "compile"},
+					{Name: "compile"},
 				},
 			}
 			So(validateProjectTaskNames(project), ShouldNotResemble, []ValidationError{})
@@ -407,9 +333,7 @@ func TestValidateProjectTaskNames(t *testing.T) {
 		Convey("ensure unique task names do not throw an error", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
-					model.ProjectTask{
-						Name: "compile",
-					},
+					{Name: "compile"},
 				},
 			}
 			So(validateProjectTaskNames(project), ShouldResemble, []ValidationError{})
@@ -423,9 +347,7 @@ func TestCheckTaskCommands(t *testing.T) {
 			"an error", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
-					model.ProjectTask{
-						Name: "compile",
-					},
+					{Name: "compile"},
 				},
 			}
 			So(checkTaskCommands(project), ShouldNotResemble, []ValidationError{})
@@ -438,7 +360,7 @@ func TestCheckTaskCommands(t *testing.T) {
 						model.ProjectTask{
 							Name: "compile",
 							Commands: []model.PluginCommandConf{
-								model.PluginCommandConf{
+								{
 									Command: "gotest.run",
 									Params: map[string]interface{}{
 										"working_dir": "key",
@@ -473,9 +395,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					model.BuildVariant{
 						Name: "linux",
 						Tasks: []model.BuildVariantTask{
-							model.BuildVariantTask{
-								Name: "test",
-							},
+							{Name: "test"},
 						},
 					},
 				},
@@ -489,17 +409,13 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			"buildvariant does exist", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
-					model.ProjectTask{
-						Name: "compile",
-					},
+					{Name: "compile"},
 				},
 				BuildVariants: []model.BuildVariant{
 					model.BuildVariant{
 						Name: "linux",
 						Tasks: []model.BuildVariantTask{
-							model.BuildVariantTask{
-								Name: "compile",
-							},
+							{Name: "compile"},
 						},
 					},
 				},
@@ -513,10 +429,8 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
 					model.BuildVariant{
-						Name: "enterprise",
-						RunOn: []string{
-							"hello",
-						},
+						Name:  "enterprise",
+						RunOn: []string{"hello"},
 					},
 				},
 			}
@@ -532,10 +446,8 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			project := &model.Project{
 				BuildVariants: []model.BuildVariant{
 					model.BuildVariant{
-						Name: "enterprise",
-						RunOn: []string{
-							"rhel55",
-						},
+						Name:  "enterprise",
+						RunOn: []string{"rhel55"},
 					},
 				},
 			}
@@ -546,8 +458,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 
 func TestValidatePluginCommands(t *testing.T) {
 	Convey("When validating a project", t, func() {
-		Convey("an error should be thrown if a referenced plugin for a "+
-			"task does not exist", func() {
+		Convey("an error should be thrown if a referenced plugin for a task does not exist", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
 					model.ProjectTask{
@@ -565,31 +476,33 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("an error should be thrown if a referenced function plugin "+
-			"command is invalid", func() {
+		Convey("an error should be thrown if a referenced function command is invalid", func() {
 			project := &model.Project{
-				Functions: map[string]model.PluginCommandConf{
-					"funcOne": model.PluginCommandConf{
-						Command: "gotest.run",
-						Params:  map[string]interface{}{},
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Command: "gotest.run",
+							Params:  map[string]interface{}{},
+						},
 					},
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("an error should be thrown if a function plugin command is "+
-			"invalid", func() {
+		Convey("an error should be thrown if a function plugin command is invalid", func() {
 			project := &model.Project{
-				Functions: map[string]model.PluginCommandConf{
-					"funcOne": model.PluginCommandConf{
-						Command: "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Command: "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
 								},
 							},
 						},
@@ -598,18 +511,19 @@ func TestValidatePluginCommands(t *testing.T) {
 			}
 			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
-		Convey("no error should be thrown if a function plugin command "+
-			"is valid", func() {
+		Convey("no error should be thrown if a function plugin command is valid", func() {
 			project := &model.Project{
-				Functions: map[string]model.PluginCommandConf{
-					"funcOne": model.PluginCommandConf{
-						Command: "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Command: "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
 								},
 							},
 						},
@@ -621,16 +535,18 @@ func TestValidatePluginCommands(t *testing.T) {
 		Convey("an error should be thrown if a function 'a' references "+
 			"another function 'b' that does not exists", func() {
 			project := &model.Project{
-				Functions: map[string]model.PluginCommandConf{
-					"funcOne": model.PluginCommandConf{
-						Function: "anything",
-						Command:  "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Function: "anything",
+							Command:  "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
 								},
 							},
 						},
@@ -643,16 +559,18 @@ func TestValidatePluginCommands(t *testing.T) {
 		Convey("an error should be thrown if a function 'a' references "+
 			"another function 'b' even if 'b' exists", func() {
 			project := &model.Project{
-				Functions: map[string]model.PluginCommandConf{
-					"funcOne": model.PluginCommandConf{
-						Function: "funcOne",
-						Command:  "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
+				Functions: map[string]*model.YAMLCommandSet{
+					"funcOne": &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Function: "funcOne",
+							Command:  "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
 								},
 							},
 						},
@@ -662,67 +580,34 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("an error should be thrown if a referenced pre plugin command "+
-			"is invalid", func() {
+		Convey("an error should be thrown if a referenced pre plugin command is invalid", func() {
 			project := &model.Project{
-				Pre: []model.PluginCommandConf{
-					model.PluginCommandConf{
-						Command: "gotest.run",
-						Params:  map[string]interface{}{},
-					},
-				},
-			}
-			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
-			So(len(validatePluginCommands(project)), ShouldEqual, 1)
-		})
-		Convey("no error should be thrown if a referenced pre plugin command "+
-			"is valid", func() {
-			project := &model.Project{
-				Pre: []model.PluginCommandConf{
-					model.PluginCommandConf{
-						Function: "",
-						Command:  "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
-								},
-							},
+				Pre: &model.YAMLCommandSet{
+					MultiCommand: []model.PluginCommandConf{
+						{
+							Command: "gotest.run",
+							Params:  map[string]interface{}{},
 						},
 					},
 				},
 			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
-		})
-		Convey("an error should be thrown if a referenced post plugin command "+
-			"is invalid", func() {
-			project := &model.Project{
-				Post: []model.PluginCommandConf{
-					model.PluginCommandConf{
-						Function: "",
-						Command:  "gotest.run",
-						Params:   map[string]interface{}{},
-					},
-				},
-			}
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("no error should be thrown if a referenced post plugin command "+
-			"is valid", func() {
+		Convey("no error should be thrown if a referenced pre plugin command is valid", func() {
 			project := &model.Project{
-				Post: []model.PluginCommandConf{
-					model.PluginCommandConf{
-						Function: "",
-						Command:  "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
+				Pre: &model.YAMLCommandSet{
+					MultiCommand: []model.PluginCommandConf{
+						{
+							Function: "",
+							Command:  "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
 								},
 							},
 						},
@@ -731,33 +616,35 @@ func TestValidatePluginCommands(t *testing.T) {
 			}
 			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
-		Convey("an error should be thrown if a referenced timeout plugin "+
-			"command is invalid", func() {
+		Convey("an error should be thrown if a referenced post plugin command is invalid", func() {
 			project := &model.Project{
-				Timeout: []model.PluginCommandConf{
-					model.PluginCommandConf{
-						Function: "",
-						Command:  "gotest.run",
-						Params:   map[string]interface{}{},
+				Post: &model.YAMLCommandSet{
+					MultiCommand: []model.PluginCommandConf{
+						{
+							Function: "",
+							Command:  "gotest.run",
+							Params:   map[string]interface{}{},
+						},
 					},
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("no error should be thrown if a referenced timeout plugin "+
-			"command is valid", func() {
+		Convey("no error should be thrown if a referenced post plugin command is valid", func() {
 			project := &model.Project{
-				Timeout: []model.PluginCommandConf{
-					model.PluginCommandConf{
-						Function: "",
-						Command:  "gotest.run",
-						Params: map[string]interface{}{
-							"working_dir": "key",
-							"tests": []interface{}{
-								map[string]interface{}{
-									"dir":  "key",
-									"args": "sec",
+				Post: &model.YAMLCommandSet{
+					MultiCommand: []model.PluginCommandConf{
+						{
+							Function: "",
+							Command:  "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
 								},
 							},
 						},
@@ -766,8 +653,45 @@ func TestValidatePluginCommands(t *testing.T) {
 			}
 			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
-		Convey("no error should be thrown if a referenced plugin for a "+
-			"task does exist", func() {
+		Convey("an error should be thrown if a referenced timeout plugin command is invalid", func() {
+			project := &model.Project{
+				Timeout: &model.YAMLCommandSet{
+					MultiCommand: []model.PluginCommandConf{
+						{
+							Function: "",
+							Command:  "gotest.run",
+							Params:   map[string]interface{}{},
+						},
+					},
+				},
+			}
+			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
+			So(len(validatePluginCommands(project)), ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if a referenced timeout plugin command is valid", func() {
+			project := &model.Project{
+				Timeout: &model.YAMLCommandSet{
+					MultiCommand: []model.PluginCommandConf{
+						{
+							Function: "",
+							Command:  "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
+		})
+		Convey("no error should be thrown if a referenced plugin for a task does exist", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
 					model.ProjectTask{
@@ -788,8 +712,7 @@ func TestValidatePluginCommands(t *testing.T) {
 			}
 			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
-		Convey("no error should be thrown if a referenced plugin that "+
-			"exists contains some unneeded parameters", func() {
+		Convey("no error should be thrown if a referenced plugin that exists contains unneeded parameters", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
 					model.ProjectTask{
@@ -811,8 +734,7 @@ func TestValidatePluginCommands(t *testing.T) {
 			}
 			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
-		Convey("an error should be thrown if a referenced plugin that "+
-			"exists contains necessary but invalid parameters", func() {
+		Convey("an error should be thrown if a referenced plugin contains invalid parameters", func() {
 			params := map[string]interface{}{
 				"aws_key":    "key",
 				"aws_secret": "sec",
@@ -920,15 +842,12 @@ func TestValidatePluginCommands(t *testing.T) {
 
 func TestCheckProjectSyntax(t *testing.T) {
 	Convey("When validating a project's syntax", t, func() {
-		Convey("if the project passes all of the validation funcs, no errors"+
-			" should be returned", func() {
-			project, err := model.FindProject("", "project_test",
-				projectValidatorConf.ConfigDir)
+		Convey("if project passes all validation funcs, no error should be returned", func() {
+			project, err := model.FindProject("", "project_test", projectValidatorConf.ConfigDir)
 			So(err, ShouldBeNil)
 			// TODO: fix this after MCI-1926 is completed so we can write a
 			// config we want to test against
-			So(CheckProjectSyntax(project, mci.TestConfig()),
-				ShouldResemble, []ValidationError{})
+			So(CheckProjectSyntax(project, mci.TestConfig()), ShouldResemble, []ValidationError{})
 		})
 	})
 }

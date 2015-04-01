@@ -53,6 +53,10 @@ func (self *S3GetCommand) Name() string {
 	return S3GetCmd
 }
 
+func (self *S3GetCommand) Plugin() string {
+	return S3PluginName
+}
+
 // S3GetCommand-specific implementation of ParseParams.
 func (self *S3GetCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, self); err != nil {
@@ -116,7 +120,7 @@ func (self *S3GetCommand) expandParams(conf *model.TaskConfig) error {
 
 // Implementation of Execute.  Expands the parameters, and then fetches the
 // resource from s3.
-func (self *S3GetCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *S3GetCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig,
 	stop chan bool) error {
 
@@ -163,7 +167,7 @@ func (self *S3GetCommand) Execute(pluginLogger plugin.PluginLogger,
 }
 
 // Wrapper around the Get() function to retry it
-func (self *S3GetCommand) GetWithRetry(pluginLogger plugin.PluginLogger) error {
+func (self *S3GetCommand) GetWithRetry(pluginLogger plugin.Logger) error {
 	retriableGet := util.RetriableFunc(
 		func() error {
 			pluginLogger.LogTask(slogger.INFO, "Fetching %v from"+

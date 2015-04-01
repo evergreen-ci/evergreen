@@ -32,6 +32,10 @@ func (self *TarGzPackCommand) Name() string {
 	return TarGzPackCmdName
 }
 
+func (self *TarGzPackCommand) Plugin() string {
+	return ArchivePluginName
+}
+
 // ParseParams reads in the given parameters for the command.
 func (self *TarGzPackCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, self); err != nil {
@@ -60,7 +64,7 @@ func (self *TarGzPackCommand) validateParams() error {
 }
 
 // Execute builds the archive.
-func (self *TarGzPackCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *TarGzPackCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
@@ -100,7 +104,7 @@ type tarContentsFile struct {
 
 // since archive.BuildArchive takes in a slogger.Logger
 type agentAppender struct {
-	pluginLogger plugin.PluginLogger
+	pluginLogger plugin.Logger
 }
 
 // satisfy the slogger.Appender interface
@@ -110,7 +114,7 @@ func (self *agentAppender) Append(log *slogger.Log) error {
 }
 
 // Build the archive.
-func (self *TarGzPackCommand) BuildArchive(workDir string, pluginLogger plugin.PluginLogger) error {
+func (self *TarGzPackCommand) BuildArchive(workDir string, pluginLogger plugin.Logger) error {
 	// create a logger to pass into the BuildArchive command
 	appender := &agentAppender{
 		pluginLogger: pluginLogger,

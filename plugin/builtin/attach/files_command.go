@@ -27,6 +27,10 @@ func (self *AttachTaskFilesCommand) Name() string {
 	return AttachTaskFilesCmd
 }
 
+func (self *AttachTaskFilesCommand) Plugin() string {
+	return AttachPluginName
+}
+
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an AttachPlugin command; this is required
 // to satisfy the 'Command' interface
@@ -45,7 +49,7 @@ func (self *AttachTaskFilesCommand) expandAttachTaskFilesCommand(
 
 // Execute carries out the AttachResultsCommand command - this is required
 // to satisfy the 'Command' interface
-func (self *AttachTaskFilesCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *AttachTaskFilesCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	taskConfig *model.TaskConfig,
 	stop chan bool) error {
@@ -63,7 +67,7 @@ func (self *AttachTaskFilesCommand) Execute(pluginLogger plugin.PluginLogger,
 // SendJSONResults is responsible for sending the
 // specified file to the API Server
 func (self *AttachTaskFilesCommand) SendTaskFiles(taskConfig *model.TaskConfig,
-	pluginLogger plugin.PluginLogger, pluginCom plugin.PluginCommunicator) error {
+	pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicator) error {
 
 	// log each file attachment
 	for name, link := range self.Files {

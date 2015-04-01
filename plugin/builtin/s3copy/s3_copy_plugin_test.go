@@ -24,8 +24,8 @@ func TestS3CopyPluginExecution(t *testing.T) {
 
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
 
-	Convey("With a SimplePluginRegistry and test project file", t, func() {
-		registry := plugin.NewSimplePluginRegistry()
+	Convey("With a SimpleRegistry and test project file", t, func() {
+		registry := plugin.NewSimpleRegistry()
 		s3CopyPlugin := &S3CopyPlugin{}
 		util.HandleTestingErr(registry.Register(s3CopyPlugin), t, "failed to register s3Copy plugin")
 		util.HandleTestingErr(registry.Register(s3Plugin.S3Plugin{}), t, "failed to register S3 plugin")
@@ -58,8 +58,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin "+
 						"command: %v")
 					So(pluginCmd, ShouldNotBeNil)

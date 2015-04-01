@@ -90,6 +90,10 @@ func (self *UpdateCommand) Name() string {
 	return UpdateVarsCmdName
 }
 
+func (self *UpdateCommand) Plugin() string {
+	return ExpansionsPluginName
+}
+
 // ParseParams validates the input to the UpdateCommand, returning and error
 // if something is incorrect. Fulfills Command interface.
 func (self *UpdateCommand) ParseParams(params map[string]interface{}) error {
@@ -132,7 +136,7 @@ func (self *UpdateCommand) ExecuteUpdates(conf *model.TaskConfig) error {
 }
 
 // Execute updates the expansions. Fulfills Command interface.
-func (self *UpdateCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *UpdateCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {

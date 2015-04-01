@@ -444,23 +444,17 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 }
 
 // Helper for validating a set of plugin commands given a project/registry
-func validateCommands(section string, project *model.Project,
-	registry plugin.PluginRegistry,
+func validateCommands(section string, project *model.Project, registry plugin.Registry,
 	commands []model.PluginCommandConf) []ValidationError {
 	errs := []ValidationError{}
 	for _, cmd := range commands {
-		_, _, err := registry.GetCommand(cmd, project.Functions)
+		_, err := registry.GetCommands(cmd, project.Functions)
 		if err != nil {
 			command := fmt.Sprintf("'%v' command", cmd.Command)
 			if cmd.Function != "" {
 				command = fmt.Sprintf("'%v' function", cmd.Function)
 			}
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("%v section in %v: %v",
-						section, command, err),
-				},
-			)
+			errs = append(errs, ValidationError{Message: fmt.Sprintf("%v section in %v: %v", section, command, err)})
 		}
 	}
 	return errs
@@ -470,15 +464,14 @@ func validateCommands(section string, project *model.Project,
 // are specified in a valid format
 func validatePluginCommands(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
-	pluginRegistry := plugin.NewSimplePluginRegistry()
+	pluginRegistry := plugin.NewSimpleRegistry()
 
 	// register the published plugins
 	for _, pl := range plugin.Published {
 		if err := pluginRegistry.Register(pl); err != nil {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("failed to register plugin %v: %v",
-						pl.Name(), err),
+					Message: fmt.Sprintf("failed to register plugin %v: %v", pl.Name(), err),
 				},
 			)
 		}
@@ -486,8 +479,7 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 
 	// validate each function definition
 	for funcName, commands := range project.Functions {
-		valErrs := validateCommands("functions", project, pluginRegistry,
-			[]model.PluginCommandConf{commands})
+		valErrs := validateCommands("functions", project, pluginRegistry, commands.List())
 		for _, err := range valErrs {
 			errs = append(errs,
 				ValidationError{
@@ -498,22 +490,24 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 		}
 	}
 
-	// validate project pre section
-	errs = append(errs, validateCommands("pre", project,
-		pluginRegistry, project.Pre)...)
+	if project.Pre != nil {
+		// validate project pre section
+		errs = append(errs, validateCommands("pre", project, pluginRegistry, project.Pre.List())...)
+	}
 
-	// validate project post section
-	errs = append(errs, validateCommands("post", project,
-		pluginRegistry, project.Post)...)
+	if project.Post != nil {
+		// validate project post section
+		errs = append(errs, validateCommands("post", project, pluginRegistry, project.Post.List())...)
+	}
 
-	// validate project timeout section
-	errs = append(errs, validateCommands("timeout", project,
-		pluginRegistry, project.Timeout)...)
+	if project.Timeout != nil {
+		// validate project timeout section
+		errs = append(errs, validateCommands("timeout", project, pluginRegistry, project.Timeout.List())...)
+	}
 
 	// validate project tasks section
 	for _, task := range project.Tasks {
-		errs = append(errs, validateCommands("tasks", project, pluginRegistry,
-			task.Commands)...)
+		errs = append(errs, validateCommands("tasks", project, pluginRegistry, task.Commands)...)
 	}
 	return errs
 }

@@ -106,7 +106,7 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.BuildArchive("", &testutil.MockPluginLogger{}), ShouldBeNil)
+				So(cmd.BuildArchive("", &testutil.MockLogger{}), ShouldBeNil)
 
 				exists, err := util.FileExists(target)
 				So(err, ShouldBeNil)

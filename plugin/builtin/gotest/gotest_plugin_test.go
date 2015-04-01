@@ -27,7 +27,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 
-		registry := plugin.NewSimplePluginRegistry()
+		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
@@ -54,8 +54,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(plugin, ShouldNotBeNil)
 					So(pluginCmd, ShouldNotBeNil)
@@ -94,7 +93,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 
-		registry := plugin.NewSimplePluginRegistry()
+		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
@@ -121,8 +120,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(plugin, ShouldNotBeNil)
 					So(pluginCmd, ShouldNotBeNil)
@@ -164,7 +162,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 	Convey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 
-		registry := plugin.NewSimplePluginRegistry()
+		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
@@ -191,8 +189,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(plugin, ShouldNotBeNil)
 					So(pluginCmd, ShouldNotBeNil)

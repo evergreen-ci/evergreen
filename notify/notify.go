@@ -8,7 +8,7 @@ import (
 	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/mail"
 	"path"

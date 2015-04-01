@@ -23,6 +23,10 @@ func (self *AttachResultsCommand) Name() string {
 	return AttachResultsCmd
 }
 
+func (self *AttachResultsCommand) Plugin() string {
+	return AttachPluginName
+}
+
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an AttachPlugin command; this is required
 // to satisfy the 'Command' interface
@@ -56,7 +60,7 @@ func (self *AttachResultsCommand) expandAttachResultsParams(
 
 // Execute carries out the AttachResultsCommand command - this is required
 // to satisfy the 'Command' interface
-func (self *AttachResultsCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	taskConfig *model.TaskConfig,
 	stop chan bool) error {
@@ -98,7 +102,7 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.PluginLogger,
 // SendJSONResults is responsible for sending the
 // specified file to the API Server
 func SendJSONResults(taskConfig *model.TaskConfig,
-	pluginLogger plugin.PluginLogger, pluginCom plugin.PluginCommunicator,
+	pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicator,
 	results *model.TestResults) error {
 
 	pluginLogger.LogExecution(slogger.INFO, "Attaching test results")

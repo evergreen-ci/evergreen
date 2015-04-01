@@ -8,14 +8,26 @@ identifier: sample
 
 functions:
   "fetch source" :
-    command: git.get_project
+    - command: git.get_project
+      params:
+        directory: src
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          echo "this is a 2nd command in the function!"
+          ls
+  "debug":
+    command: shell.exec
     params:
-      directory: src
+      script: |
+        echo "i am a debug function."
   "run a task that fails" :
     command: shell.exec
     params:
       working_dir: src
       script: |
+        echo "this is a function with only a single command to run!"
         ./run.py results fail
 
   "run a task that passes" :
@@ -33,11 +45,11 @@ functions:
         echo "I was called with ${foobar}"
 
 pre:
-  - command: shell.exec
-    params:
-      script: |
-        rm -rf src || true
-        echo "pre-task run."
+  command: shell.exec
+  params:
+    script: |
+      rm -rf src || true
+      echo "pre-task run. JUST ONE COMMAND"
 
 post:
   - command: shell.exec

@@ -34,6 +34,10 @@ func (self *FetchVarsCommand) Name() string {
 	return FetchVarsCmdname
 }
 
+func (self *FetchVarsCommand) Plugin() string {
+	return ExpansionsPluginName
+}
+
 // ParseParams reads in the command's config. Fulfills the Command interface.
 func (self *FetchVarsCommand) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, self)
@@ -79,7 +83,7 @@ func FetchVarsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Execute fetches the expansions from the API server
-func (self *FetchVarsCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *FetchVarsCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {

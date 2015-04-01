@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"path/filepath"
@@ -274,6 +274,11 @@ func TestTaskSuccess(t *testing.T) {
 							So(scanLogsForTask(testTask.Id, "arg2 is BAR"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "arg3 is Expanded: qux"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "arg4 is Default: default_value"), ShouldBeTrue)
+
+							//Check that multi-command functions are working correctly
+							So(scanLogsForTask(testTask.Id, "step 1 of multi-command func"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "step 2 of multi-command func"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "step 3 of multi-command func"), ShouldBeTrue)
 
 							//Check that logging output is only flushing on a newline
 							So(scanLogsForTask(testTask.Id, "this should be on the same line...as this."), ShouldBeTrue)

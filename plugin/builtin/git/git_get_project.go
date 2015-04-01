@@ -24,6 +24,10 @@ func (self *GitGetProjectCommand) Name() string {
 	return GetProjectCmdName
 }
 
+func (self *GitGetProjectCommand) Plugin() string {
+	return GitPluginName
+}
+
 // ParseParams parses the command's configuration.
 // Fulfills the Command interface.
 func (self *GitGetProjectCommand) ParseParams(params map[string]interface{}) error {
@@ -40,7 +44,7 @@ func (self *GitGetProjectCommand) ParseParams(params map[string]interface{}) err
 }
 
 // Execute gets the source code required by the project
-func (self *GitGetProjectCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {

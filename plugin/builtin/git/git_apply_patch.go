@@ -31,6 +31,10 @@ func (self *GitApplyPatchCommand) Name() string {
 	return ApplyPatchCmdName
 }
 
+func (self *GitApplyPatchCommand) Plugin() string {
+	return GitPluginName
+}
+
 // ParseParams reads the command's configuration and returns any errors that occur.
 func (self *GitApplyPatchCommand) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, self)
@@ -46,7 +50,7 @@ func (self *GitApplyPatchCommand) ParseParams(params map[string]interface{}) err
 }
 
 // Execute pulls the task's patch and then applies it
-func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 
 	//Apply patches only if necessary
@@ -71,7 +75,7 @@ func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.PluginLogger,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure.
 func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
-	pluginCom plugin.PluginCommunicator, pluginLogger plugin.PluginLogger) (*model.Patch, error) {
+	pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*model.Patch, error) {
 	patch := &model.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -145,7 +149,7 @@ func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (self *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
-	patch *model.Patch, pluginLogger plugin.PluginLogger) error {
+	patch *model.Patch, pluginLogger plugin.Logger) error {
 
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range patch.Patches {

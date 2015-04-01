@@ -19,7 +19,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/yaml.v1"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -93,6 +93,10 @@ func (self *MockCommand) Name() string {
 	return "mock"
 }
 
+func (self *MockCommand) Plugin() string {
+	return "mock"
+}
+
 func (self *MockCommand) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, self)
 	if err != nil {
@@ -107,7 +111,7 @@ func (self *MockCommand) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (self *MockCommand) Execute(logger plugin.PluginLogger,
+func (self *MockCommand) Execute(logger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 	resp, err := pluginCom.TaskGetJSON(fmt.Sprintf("blah/%s/%d", self.Param1, self.Param2))
 	if resp != nil {
@@ -135,10 +139,10 @@ func (self *MockCommand) Execute(logger plugin.PluginLogger,
 	return nil
 }
 
-func TestPluginRegistry(t *testing.T) {
-	Convey("With a SimplePluginRegistry", t, func() {
+func TestRegistry(t *testing.T) {
+	Convey("With a SimpleRegistry", t, func() {
 		Convey("Registering a plugin twice should return err", func() {
-			registry := plugin.NewSimplePluginRegistry()
+			registry := plugin.NewSimpleRegistry()
 			err := registry.Register(&MockPlugin{})
 			util.HandleTestingErr(err, t, "Couldn't register plugin")
 			err = registry.Register(&shell.ShellPlugin{})
@@ -147,7 +151,7 @@ func TestPluginRegistry(t *testing.T) {
 			util.HandleTestingErr(err, t, "Couldn't register plugin")
 		})
 		Convey("with a project file containing references to a valid plugin", func() {
-			registry := plugin.NewSimplePluginRegistry()
+			registry := plugin.NewSimpleRegistry()
 			registry.Register(&MockPlugin{})
 			registry.Register(&shell.ShellPlugin{})
 			registry.Register(&expansions.ExpansionsPlugin{})
@@ -158,10 +162,9 @@ func TestPluginRegistry(t *testing.T) {
 			Convey("all commands in project file should load parse successfully", func() {
 				for _, task := range project.Tasks {
 					for _, command := range task.Commands {
-						pluginCmd, _, err := registry.GetCommand(command,
-							project.Functions)
-						util.HandleTestingErr(err, t, "Got error getting plugin command: %v")
-						So(pluginCmd, ShouldNotBeNil)
+						pluginCmds, err := registry.GetCommands(command, project.Functions)
+						util.HandleTestingErr(err, t, "Got error getting plugin commands: %v")
+						So(pluginCmds, ShouldNotBeNil)
 						So(err, ShouldBeNil)
 					}
 				}
@@ -171,9 +174,9 @@ func TestPluginRegistry(t *testing.T) {
 }
 
 func TestPluginFunctions(t *testing.T) {
-	Convey("With a SimplePluginRegistry", t, func() {
+	Convey("With a SimpleRegistry", t, func() {
 		Convey("with a project file containing functions", func() {
-			registry := plugin.NewSimplePluginRegistry()
+			registry := plugin.NewSimpleRegistry()
 			err := registry.Register(&shell.ShellPlugin{})
 			util.HandleTestingErr(err, t, "Couldn't register plugin")
 			err = registry.Register(&expansions.ExpansionsPlugin{})
@@ -188,8 +191,7 @@ func TestPluginFunctions(t *testing.T) {
 			Convey("all commands in project file should parse successfully", func() {
 				for _, task := range taskConfig.Project.Tasks {
 					for _, command := range task.Commands {
-						pluginCmd, _, err := registry.GetCommand(command,
-							taskConfig.Project.Functions)
+						pluginCmd, err := registry.GetCommands(command, taskConfig.Project.Functions)
 						util.HandleTestingErr(err, t, "Got error getting plugin command: %v")
 						So(pluginCmd, ShouldNotBeNil)
 						So(err, ShouldBeNil)
@@ -207,13 +209,14 @@ func TestPluginFunctions(t *testing.T) {
 				for _, task := range taskConfig.Project.Tasks {
 					So(len(task.Commands), ShouldNotEqual, 0)
 					for _, command := range task.Commands {
-						pluginCmd, plugin, err := registry.GetCommand(command,
-							taskConfig.Project.Functions)
+						pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 						util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
-						So(pluginCmd, ShouldNotBeNil)
+						So(pluginCmds, ShouldNotBeNil)
 						So(err, ShouldBeNil)
-						pluginCom := &agent.TaskJSONCommunicator{plugin.Name(), httpCom}
-						err = pluginCmd.Execute(logger, pluginCom, taskConfig, make(chan bool))
+						So(len(pluginCmds), ShouldEqual, 1)
+						cmd := pluginCmds[0]
+						pluginCom := &agent.TaskJSONCommunicator{cmd.Plugin(), httpCom}
+						err = cmd.Execute(logger, pluginCom, taskConfig, make(chan bool))
 						So(err, ShouldBeNil)
 					}
 				}
@@ -223,8 +226,8 @@ func TestPluginFunctions(t *testing.T) {
 }
 
 func TestPluginExecution(t *testing.T) {
-	Convey("With a SimplePluginRegistry and test project file", t, func() {
-		registry := plugin.NewSimplePluginRegistry()
+	Convey("With a SimpleRegistry and test project file", t, func() {
+		registry := plugin.NewSimpleRegistry()
 
 		plugins := []plugin.Plugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}, &shell.ShellPlugin{}}
 		for _, p := range plugins {
@@ -248,14 +251,15 @@ func TestPluginExecution(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommand(command,
-						taskConfig.Project.Functions)
+					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
-					So(pluginCmd, ShouldNotBeNil)
+					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{plugin.Name(), httpCom}
-					err = pluginCmd.Execute(logger, pluginCom, taskConfig, make(chan bool))
-					So(err, ShouldBeNil)
+					for _, c := range pluginCmds {
+						pluginCom := &agent.TaskJSONCommunicator{c.Plugin(), httpCom}
+						err = c.Execute(logger, pluginCom, taskConfig, make(chan bool))
+						So(err, ShouldBeNil)
+					}
 				}
 			}
 		})

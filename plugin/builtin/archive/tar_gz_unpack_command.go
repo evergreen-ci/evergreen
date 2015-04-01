@@ -22,6 +22,10 @@ func (self *TarGzUnpackCommand) Name() string {
 	return TarGzUnpackCmdName
 }
 
+func (self *TarGzUnpackCommand) Plugin() string {
+	return ArchivePluginName
+}
+
 // Implementation of ParseParams.
 func (self *TarGzUnpackCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, self); err != nil {
@@ -47,7 +51,7 @@ func (self *TarGzUnpackCommand) validateParams() error {
 }
 
 // Implementation of Execute, to unpack the archive.
-func (self *TarGzUnpackCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *TarGzUnpackCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {

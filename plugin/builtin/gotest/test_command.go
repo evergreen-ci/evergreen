@@ -31,6 +31,10 @@ func (self *RunTestCommand) Name() string {
 	return RunTestCommandName
 }
 
+func (self *RunTestCommand) Plugin() string {
+	return GotestPluginName
+}
+
 func (self *RunTestCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, self); err != nil {
 		return fmt.Errorf("error decoding '%v' params: %v", self.Name(), err)
@@ -50,7 +54,7 @@ func getSuiteNameFromDir(testNumber int, dir string) string {
 	return fmt.Sprintf("%v_%v", testNumber, base)
 }
 
-func (self *RunTestCommand) Execute(pluginLogger plugin.PluginLogger,
+func (self *RunTestCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, taskConfig *model.TaskConfig,
 	stop chan bool) error {
 
@@ -159,7 +163,7 @@ func (self *RunTestCommand) Execute(pluginLogger plugin.PluginLogger,
 }
 
 func RunAndParseTests(conf TestConfig, parser Parser,
-	pluginLogger plugin.PluginLogger, stop <-chan bool) (bool, error) {
+	pluginLogger plugin.Logger, stop <-chan bool) (bool, error) {
 
 	originalDir, err := os.Getwd()
 	if err != nil {

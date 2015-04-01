@@ -24,6 +24,10 @@ func (pfCmd *ParseFilesCommand) Name() string {
 	return ParseFilesCommandName
 }
 
+func (pfCmd *ParseFilesCommand) Plugin() string {
+	return GotestPluginName
+}
+
 // ParseParams reads the specified map of parameters into the ParseFilesCommand struct, and
 // validates that at least one file pattern is specified.
 func (pfCmd *ParseFilesCommand) ParseParams(params map[string]interface{}) error {
@@ -40,7 +44,7 @@ func (pfCmd *ParseFilesCommand) ParseParams(params map[string]interface{}) error
 
 // Execute parses the specified output files and sends the test results found in them
 // back to the server.
-func (pfCmd *ParseFilesCommand) Execute(pluginLogger plugin.PluginLogger,
+func (pfCmd *ParseFilesCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, taskConfig *model.TaskConfig,
 	stop chan bool) error {
 
@@ -139,7 +143,7 @@ func (pfCmd *ParseFilesCommand) AllOutputFiles() ([]string, error) {
 // ParseTestOutputFiles parses all of the files that are passed in, and returns the
 // test logs and test results found within.
 func ParseTestOutputFiles(outputFiles []string, stop chan bool,
-	pluginLogger plugin.PluginLogger, taskConfig *model.TaskConfig) ([]model.TestLog,
+	pluginLogger plugin.Logger, taskConfig *model.TaskConfig) ([]model.TestLog,
 	[][]TestResult, error) {
 
 	var results [][]TestResult
