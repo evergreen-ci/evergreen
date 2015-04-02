@@ -14,6 +14,8 @@ type projectSettings struct {
 }
 
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
+
+	_ = MustHaveUser(r)
 	projCtx := MustHaveProjectContext(r)
 	allProjects, err := model.FindAllProjectRefs()
 

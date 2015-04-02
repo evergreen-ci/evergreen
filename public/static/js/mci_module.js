@@ -9,6 +9,7 @@ var mciModule = angular.module('MCI', [
   'directives.spawn',
   'directives.events',
   'directives.svg',
+  'directives.confirm',
   'mciServices.rest',
   'mciServices.locationHash',
   'md5',

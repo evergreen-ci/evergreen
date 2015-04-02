@@ -4,147 +4,155 @@ window.allTrackedProjects = {{.AllProjects}}
 </script>
 <script type="text/javascript" src="{{Static "js" "tablesorter.js"}}"></script>
 <script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ StaticsMD5 }}"></script>
-{{if .User }}
-<script type="text/javascript" src="{{Static "js" "hosts_admin.js"}}?hash={{ StaticsMD5 }}"></script>
-{{end}}
 {{end}}
 {{define "title"}}
-Projects
+Evergreen Projects
 {{end}}
 {{define "content"}}
 <div id="content" class="container-fluid row" ng-controller="ProjectCtrl">
-    <div class="col-lg-3">
+    <div class="col-lg-2 col-lg-offset-1">
         <h1> Projects</h1>
         <div class="row">
-        <h3 class="col-lg-12"> Enabled Projects </h3>
+            <div class="col-lg-12">
+            <button class="btn btn-primary" ng-click="openAdminModal('newProject')"> New Project </button>
+            <label>[[newProjectMessage]] </label>
+            </div>
+        </div>
+        <div class="row">
+        <h3 class="col-lg-12" ng-show="showProject(enabledProjects)" > Enabled </h3>
         </div>
         <div class="row">
         <ul class="list-unstyled col-lg-offset-1" id="projects-table">
-            <li ng-repeat="project in enabledProjects">
-                <a ng-click="loadProject(project.identifier)" style="cursor:pointer;">[[project.identifier]]</a>
+            <li ng-repeat="project in enabledProjects | orderBy:'identifier'" style="padding:3px">
+                <a ng-click="loadProject(project.identifier)"  ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px;">
+                    [[project.identifier]]
+                </a>
             </li>
         </ul>
         </div>
         <div class="row">
-            <h3 class="col-lg-12"> Disabled Projects </h3>
+            <h3 class="col-lg-12" ng-show="showProject(disabledProjects)"> Disabled </h3>
         </div>
         <div class="row">
         <ul class="list-unstyled col-lg-offset-1">
-            <li ng-repeat="project in disabledProjects">
-                <a ng-click="loadProject(project.identifier)" style="cursor:pointer;">[[project.identifier]]</a>
+            <li ng-repeat="project in disabledProjects | orderBy : 'identifier'">
+                <a ng-click="loadProject(project.identifier)" ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;">
+                    [[project.identifier]]
+                </a>
             </li>  
         </ul>
-        </div>
-        <div class="row">
-            <div class="col-lg-12">
-            <button class="btn btn-default" ng-click="openAdminModal('newProject')"> New Project </button>
-            <label>[[newProjectMessage]] </label>
-            </div>
         </div>
         <admin-modal>
             <admin-new-project></admin-new-project>
         </admin-modal>
       </div>
-      <div class="col-lg-9" ng-show="projectView">
-        <h2> Project Settings</h2>
-        <form name="settingsForm"  ng-submit="saveProject(settingsFormData)">
-        <div class ="row">
-            <div class="col-lg-4">
+      <div class="col-lg-8" ng-show="projectView">
+      <div class="form-horizontal">
+        <h2> Settings for [[displayName]]</h2>
+        <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
+        <div class ="form-group">
+            <div class="col-lg-8">
                 <div class="radio">
-                    <label>
-                    <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> Enabled
-                    </label>
+                    <label class="control-label">
+                    <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> <strong> Enabled </strong>
+                    </label> <br>
+                    <label class="muted col-lg-offset-1"> Track incoming commits to the repo and create/schedule its tasks.</label>
                 </div>
                 <div class="radio">
-                    <label> 
-                        <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> Disabled
-                    </label>
+                    <label class="control-label"> 
+                        <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong> 
+                    </label> <br>
+                    <label class="muted col-lg-offset-1">Don't track any new commits until re-enabled.</label>
                 </div>
             </div>
         </div>
 
-        <div class="row ">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Name: </label> </div>
-            <div class="col-lg-4">[[projectRef.identifier]] </div>
+                <label class="control-label"> Project Name: </label> 
+            </div>
+            <div class="col-lg-4 form-control-static">[[projectRef.identifier]] </div>
         </div>
 
-        <div class="row">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Display Name: </label>
+                <label class="control-label"> Display Name: </label>
             </div>
             <div class="col-lg-4">
-            <input type="text" ng-model="settingsFormData.display_name">
+                <input class="form-control" type="text" ng-model="settingsFormData.display_name">
             </div>
         </div>
 
-        <div class="row">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Config File: </label>
+                <label class="control-label"> Config File: </label>
             </div>
-            <div class="col-lg-6">
-                <input type="text" ng-model="settingsFormData.remote_path">
+            <div class="col-lg-4">
+                <input class="form-control" type="text" ng-model="settingsFormData.remote_path">
             </div>
         </div>
 
-        <div class="row">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Batch Time: </label>
+                <label class="control-label"> Batch Time: </label>
             </div>
-            <div class="col-lg-6">
-            <input type="text" ng-model="settingsFormData.batch_time">
+            <div class="col-lg-4">
+            <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
             </div>
         </div>
 
         <div id="github-info">
         <div class="h3"> Repository Info </div>
-        <div class="row">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Owner: </label>
+                <label class="control-label"> Owner: </label>
             </div>
-            <div class="col-lg-6">
-                <input type="text" ng-model="settingsFormData.owner_name">
+            <div class="col-lg-4">
+                <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
             </div>
         </div>
-        <div class="row">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Repo Name: </label>
+                <label class="control-label"> Repo Name: </label>
             </div>
-            <div class="col-lg-6">
-                <input type="text" ng-model="settingsFormData.repo_name">
+            <div class="col-lg-4">
+                <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
             </div>
         </div>
-        <div class="row">
+        <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label> Branch Name: </label>
+                <label class="control-label"> Branch Name: </label>
             </div>
-            <div class="col-lg-6">
-                <input type="text" ng-model="settingsFormData.branch_name">
+            <div class="col-lg-4">
+                <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name">
             </div>
+        </div>
         </div>
 
         <div class="variables">
-            <div class="row">
-                <div class="col-header col-lg-4"> <h3> Project Variables </h3></div>
+            <div class="form-group">
+                <div class="col-header col-lg-4 form-control-static"> <h3> Project Variables </h3></div>
             </div>
-            <div id="projectVarsList" class="row" ng-repeat="(name, key) in settingsFormData.project_vars">
-                <div class="col-lg-2"> <label> [[name]] </label> </div>  
-                <div class="col-lg-2"> [[key]] </div>
+            <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
+                <div class="col-lg-2"> <label class="control-label"> [[name]] </label> </div>  
+                <div class="col-lg-4" > 
+                    <textarea class="form-control" style="font-family:monospace;" readonly> [[key]] </textarea> 
+                </div>
                 <div class="col-lg-2">
-                    <button class="btn btn-default" id="variable-add" type="button" ng-click="removeProjectVar(name)">
-                        <i class="icon-minus"></i>
+                    <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
+                        <i class="icon-trash"></i>
                     </button>
                 </div>
             </div>
-            <div class="row">
+            <div class="form-group">
                 <div class="col-lg-2">
-                    <input ng-model="proj_var.name" type="text" placeholder="var">
+                    <input ng-model="proj_var.name" class="form-control" type="text" placeholder="variable name">
+                </div>
+                <div class="col-lg-4">
+                    <textarea ng-model="proj_var.value" class="form-control" placeholder="variable" style="font-family:monospace;"></textarea>
                 </div>
                 <div class="col-lg-2">
-                    <input ng-model="proj_var.value" type="text" placeholder="value">
-                </div>
-                <div class="col-lg-2">
-                    <button class="plus-button btn btn-default" id="variable-add" type="button" ng-click="addProjectVar()">
+                    <button class="plus-button btn btn-primary " id="variable-add" type="button" ng-click="addProjectVar()">
                         <i class="icon-plus"></i>
                     </button>
                 </div>
@@ -152,13 +160,17 @@ Projects
         </div>
         <br>
         <div class="row">
-        <div class="col-lg-4"> 
+        <div class="col-lg-2"> 
             <label>[[saveMessage]]</label>
         </div>
-        <div class="col-lg-2">
-            <input input ng-disabled="!isDirty" type="submit" value="Save Changes">
+        <div class="col-lg-4">
+            <input class="btn btn-primary" input ng-disabled="!isDirty" type="submit" value="Save Changes">
         </div>
         </div>
+        <confirm-on-exit confirm-on-exit="isDirty"
+            confirm-message-window="All your changes will be lost." 
+            confirm-message-route="All your changes will be lost. Are you sure you want to exit?">
+        </confirm-on-exit>
         </form>
       </div>
 </div>

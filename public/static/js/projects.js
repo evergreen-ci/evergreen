@@ -11,8 +11,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
   };
 
   $scope.refreshTrackedProjects($window.allTrackedProjects);
-  $scope.projectVars = $window.projectVars;
-  $scope.projectRef = $window.projectRef;
+  $scope.projectVars = {};
+  $scope.projectRef = {};
+  $scope.displayName = "";
 
   $scope.projectView = false;
 
@@ -27,6 +28,10 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
   $scope.isDirty = false;
 
+  $scope.showProject = function(project) {
+    return !(project.length == 0);
+  }
+
   $scope.findProject = function(identifier){
     return _.find($scope.trackedProjects, function(project){
       return project.identifier == identifier;
@@ -37,8 +42,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
     var modal = $('#admin-modal').modal('show');
     $scope.newProjectMessage = "";
     if (opt === 'newProject') {
+      $('#project-name').focus();
       modal.on('shown.bs.modal', function() {
-          $('#project-name').focus();
           $scope.modalOpen = true;
       });
 
@@ -96,12 +101,22 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,
         };
+
+        $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
+
       })
       .error(function(data, status) {
         alert("Error loading project");
         console.log(status);
       });
   };
+
+  $scope.shouldHighlight = function(project) {
+    if ($scope.projectRef) {
+      return project.identifier == $scope.projectRef.identifier;
+    }
+    return false;
+  }
  
   $scope.saveProject = function() {
     $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).
@@ -126,14 +141,16 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
   $scope.removeProjectVar = function(name) {
     delete $scope.settingsFormData.project_vars[name];
+    $scope.isDirty = true;
   };
 
   $scope.$watch("settingsForm.$dirty", function(dirty) {
     if (dirty){
-      $scope.saveMessage = "Click button to save settings.";
+      $scope.saveMessage = "You have unsaved changes.";
       $scope.isDirty = true;
     } 
   });
+
 });
 
 mciModule.directive('adminNewProject', function() {

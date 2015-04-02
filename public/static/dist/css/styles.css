@@ -1672,4 +1672,8 @@ pre {
     padding: 8px 10px 0 10px;
   }
 }
+.current-project {
+  font-weight: bold;
+  background-color: aliceblue;
+}
 /*# sourceMappingURL=/static/dist/less.map */
