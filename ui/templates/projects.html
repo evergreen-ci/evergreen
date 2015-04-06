@@ -35,8 +35,8 @@ Evergreen Projects
         </div>
         <div class="row">
         <ul class="list-unstyled col-lg-offset-1">
-            <li ng-repeat="project in disabledProjects | orderBy : 'identifier'">
-                <a ng-click="loadProject(project.identifier)" ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;">
+            <li ng-repeat="project in disabledProjects | orderBy : 'identifier'" style="padding:3px">
+                <a ng-click="loadProject(project.identifier)" ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px">
                     [[project.identifier]]
                 </a>
             </li>  
