@@ -140,7 +140,7 @@ Evergreen - Configure Patch
               {{if .ModuleName}}
               Changes on {{.ModuleName}} module:
               {{else}}
-              Changes on {{$head.ProjectData.Project.Name}} project:
+              Changes on {{$head.ProjectData.Project.DisplayName}} project:
               {{end}}
               <span class="pull-right">
 				  <a href="/diff/patch/{{$head.ProjectData.Patch.Id.Hex}}">
