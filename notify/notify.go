@@ -552,7 +552,7 @@ func encodeRFC2047(String string) string {
 // task given the build variant name
 func getDisplayName(buildVariant string) (displayName string) {
 	build, err := model.FindDisplayName(buildVariant)
-	if err != nil {
+	if err != nil || build == nil {
 		mci.Logger.Errorf(slogger.ERROR, "Error fetching buildvariant name: %v", err)
 		displayName = buildVariant
 	} else {
