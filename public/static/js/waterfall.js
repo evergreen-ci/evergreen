@@ -214,7 +214,18 @@ mciModule
         scope.failed = 0;
         scope.succeeded = 0;
         if (scope.build.tasks) { 
-
+          scope.build.tasks.sort(function(a,b){
+            if(a.display_name=="compile"){
+              return -1
+            }else if(a.display_name=="push"){
+              return 1
+            }else if(b.display_name=="compile"){
+              return 1
+            }else if(b.display_name=="push"){
+              return -1
+            }
+            return a.display_name.localeCompare(b.display_name)
+          })
           // compute the number of failed and succeeded tasks
           for (var i = 0; i < scope.build.tasks.length; i++) {
             switch (scope.build.tasks[i].status) {
