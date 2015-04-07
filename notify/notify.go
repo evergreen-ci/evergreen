@@ -3,6 +3,7 @@ package notify
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"10gen.com/mci/web"
@@ -509,7 +510,7 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 
 	case mci.PatchVersionRequester:
 		// get the author and description from the patch request
-		patch, err := model.FindPatchByVersion(v.Id)
+		patch, err := patch.FindOne(patch.ByVersion(v.Id))
 		if err != nil {
 			mci.Logger.Errorf(slogger.ERROR, "Error finding patch for version %v: %v", v.Id, err)
 			return

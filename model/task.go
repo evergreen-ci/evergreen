@@ -2,13 +2,12 @@ package model
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model/version"
-
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -589,18 +588,9 @@ func RecentlyFinishedTasks(finishTime time.Time, project string,
 
 }
 
-func (task *Task) FetchPatch() (*Patch, error) {
-	// first get the version associated with this task
-	version, err := version.FindOne(version.ById(task.Version))
-	if err != nil {
-		return nil, err
-	}
-	if version == nil {
-		return nil, fmt.Errorf("could not find version %v for task %v", task.Version, task.Id)
-	}
-
+func (task *Task) FetchPatch() (*patch.Patch, error) {
 	// find the patch associated with this version
-	return FindPatchByVersion(version.Id)
+	return patch.FindOne(patch.ByVersion(task.Version))
 }
 
 // SetExpectedDuration updates the expected duration field for the task
@@ -1082,7 +1072,7 @@ func (self *Task) MarkStart() error {
 
 	// if it's a patch, mark the patch as started if necessary
 	if self.Requester == mci.PatchVersionRequester {
-		if err = TryMarkPatchStarted(self.Version, startTime); err != nil {
+		if err = patch.TryMarkStarted(self.Version, startTime); err != nil {
 			return err
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/util"
 	"fmt"
@@ -75,8 +76,8 @@ func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure.
 func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
-	pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*model.Patch, error) {
-	patch := &model.Patch{}
+	pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*patch.Patch, error) {
+	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := pluginCom.TaskGetJSON(GitPatchPath)
@@ -149,7 +150,7 @@ func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (self *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
-	patch *model.Patch, pluginLogger plugin.Logger) error {
+	patch *patch.Patch, pluginLogger plugin.Logger) error {
 
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range patch.Patches {

@@ -85,3 +85,8 @@ func FindAllQ(collection string, q Q, out interface{}) error {
 func CountQ(collection string, q Q) (int, error) {
 	return Count(collection, q.filter)
 }
+
+//RemoveAllQ removes all docs that satisfy the query
+func RemoveAllQ(collection string, q Q) error {
+	return Remove(collection, q.filter)
+}

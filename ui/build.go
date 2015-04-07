@@ -50,17 +50,6 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	buildAsUI.Tasks = sortUiTasks(uiTasks)
 
 	if projCtx.Build.Requester == mci.PatchVersionRequester {
-		//get patch associated with this build/version, if it exists
-		patch, err := model.FindPatchByVersion(projCtx.Version.Id)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if patch == nil {
-			http.Error(w, fmt.Sprintf("No patch for version %v", projCtx.Version.Id), http.StatusNotFound)
-			return
-		}
-
 		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -76,8 +65,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		if buildOnBaseCommit != nil {
 			baseId = buildOnBaseCommit.Id
 		}
-
-		buildAsUI.PatchInfo = &uiPatch{Patch: *patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
+		buildAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch, BaseBuildId: baseId, StatusDiffs: diffs.Tasks}
 	}
 
 	// set data for plugin data function injection
@@ -245,6 +233,10 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("error getting version for build %v: %v", builds[i].Id, err), http.StatusInternalServerError)
 			return
 		}
+		if v == nil {
+			http.Error(w, fmt.Sprintf("no version found for build %v", builds[i].Id), http.StatusNotFound)
+			return
+		}
 		history.Builds[i] = &uiBuild{
 			Build:       builds[i],
 			CurrentTime: time.Now().UnixNano(),
@@ -259,7 +251,13 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 	if err == nil && lastSuccess != nil {
 		v, err := version.FindOne(version.ById(lastSuccess.Version))
 		if err != nil {
-			http.Error(w, fmt.Sprintf("error getting last successful build version: %v", err), http.StatusInternalServerError)
+			http.Error(
+				w, fmt.Sprintf("error getting last successful build version: %v", err),
+				http.StatusInternalServerError)
+			return
+		}
+		if v == nil {
+			http.Error(w, fmt.Sprintf("no version '%v' found", lastSuccess.Version), http.StatusNotFound)
 			return
 		}
 		history.LastSuccess = &uiBuild{

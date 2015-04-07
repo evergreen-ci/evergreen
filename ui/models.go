@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"bytes"
@@ -62,7 +63,7 @@ type uiVersion struct {
 }
 
 type uiPatch struct {
-	Patch       model.Patch
+	Patch       patch.Patch
 	StatusDiffs interface{}
 
 	// for linking to other pages

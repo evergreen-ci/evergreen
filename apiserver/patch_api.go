@@ -3,8 +3,9 @@ package apiserver
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
-	"10gen.com/mci/patch"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/thirdparty"
+	"10gen.com/mci/validator"
 	"fmt"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
@@ -13,25 +14,128 @@ import (
 	"time"
 )
 
+//PatchAPIResponse is returned by all patch-related API calls
+type PatchAPIResponse struct {
+	Message string       `json:"message"`
+	Action  string       `json:"action"`
+	Patch   *patch.Patch `json:"patch"`
+}
+
+// PatchAPIRequest in the input struct with which we process patch requests
+type PatchAPIRequest struct {
+	ProjectFileName string
+	ModuleName      string
+	Githash         string
+	PatchContent    string
+	BuildVariants   []string
+}
+
+// PatchMetadata stores relevant patch information that is not
+// strictly part of the patch data.
+type PatchMetadata struct {
+	Githash       string
+	Project       *model.Project
+	Module        *model.Module
+	BuildVariants []string
+	Summaries     []thirdparty.Summary
+}
+
+// Validate checks an API request to see if it is safe and sane.
+// Returns the relevant patch metadata and any errors that occur.
+func (pr *PatchAPIRequest) Validate(
+	configName string, oauthToken string) (*PatchMetadata, error) {
+
+	var repoOwner, repo string
+	var module *model.Module
+
+	// validate the project file
+	project, err := model.FindProject("", pr.ProjectFileName, configName)
+	if err != nil {
+		return nil, fmt.Errorf("Could not find project file %v: %v",
+			pr.ProjectFileName, err)
+	}
+	if project == nil {
+		return nil, fmt.Errorf("No such project file named %v", pr.ProjectFileName)
+	}
+	repoOwner = project.Owner
+	repo = project.Repo
+
+	if pr.ModuleName != "" {
+		// is there a module? validate it.
+		module, err = project.GetModuleByName(pr.ModuleName)
+		if err != nil {
+			return nil, fmt.Errorf("could not find module %v: %v", pr.ModuleName, err)
+		}
+		if module == nil {
+			return nil, fmt.Errorf("no module named %v", pr.ModuleName)
+		}
+		repoOwner, repo = module.GetRepoOwnerAndName()
+	}
+
+	if len(pr.Githash) != 40 {
+		return nil, fmt.Errorf("invalid githash")
+	}
+	gitCommit, err := thirdparty.GetCommitEvent(oauthToken, repoOwner, repo,
+		pr.Githash)
+	if err != nil {
+		return nil, fmt.Errorf("could not find base revision %v for project %v: %v",
+			pr.Githash, project.Identifier, err)
+	}
+	if gitCommit == nil {
+		return nil, fmt.Errorf("commit hash %v doesn't seem to exist", pr.Githash)
+	}
+
+	gitOutput, err := thirdparty.GitApplyNumstat(pr.PatchContent)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't validate patch: %v", err)
+	}
+	if gitOutput == nil {
+		return nil, fmt.Errorf("couldn't validate patch: git apply --numstat returned empty")
+	}
+
+	summaries, err := thirdparty.ParseGitSummary(gitOutput)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't validate patch: %v", err)
+	}
+
+	if len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "" {
+		return nil, fmt.Errorf("no buildvariants specified")
+	}
+
+	// verify that this build variant exists
+	for _, buildVariant := range pr.BuildVariants {
+		if buildVariant == "all" {
+			continue
+		}
+		bv := project.FindBuildVariant(buildVariant)
+		if bv == nil {
+			return nil, fmt.Errorf("No such buildvariant: %v", buildVariant)
+		}
+	}
+	return &PatchMetadata{pr.Githash, project, module, pr.BuildVariants, summaries}, nil
+}
+
 // Get the patch with the specified request it
-func getPatchFromRequest(r *http.Request) (*model.Patch, error) {
+func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	// get id and secret from the request.
 	vars := mux.Vars(r)
-	patchId := vars["patchId"]
-	if len(patchId) == 0 {
+	patchIdStr := vars["patchId"]
+	if len(patchIdStr) == 0 {
 		return nil, fmt.Errorf("no patch id supplied")
+	}
+	if !patch.IsValidId(patchIdStr) {
+		return nil, fmt.Errorf("patch id '%v' is not valid object id", patchIdStr)
 	}
 
 	// find the patch
-	existingPatch, err := model.FindExistingPatch(patchId)
-
-	if existingPatch == nil {
-		return nil, fmt.Errorf("no existing request with id: %v", patchId)
-	}
-
+	existingPatch, err := patch.FindOne(patch.ById(patch.NewId(patchIdStr)))
 	if err != nil {
 		return nil, err
 	}
+	if existingPatch == nil {
+		return nil, fmt.Errorf("no existing request with id: %v", patchIdStr)
+	}
+
 	return existingPatch, nil
 }
 
@@ -43,7 +147,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer releaseGlobalLock(PatchLockTitle)
 
-	apiRequest := model.PatchAPIRequest{
+	apiRequest := PatchAPIRequest{
 		ProjectFileName: r.FormValue("project"),
 		ModuleName:      r.FormValue("module"),
 		Githash:         r.FormValue("githash"),
@@ -66,9 +170,9 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchMetadata, message, err := apiRequest.Validate(as.MCISettings.ConfigDir, as.MCISettings.Credentials[project.RepoKind])
+	patchMetadata, err := apiRequest.Validate(as.MCISettings.ConfigDir, as.MCISettings.Credentials[project.RepoKind])
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v - %v", message, err))
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
 		return
 	}
 
@@ -78,7 +182,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if apiRequest.ModuleName != "" {
-		as.WriteJSON(w, http.StatusBadRequest, "module not allowed when creating new patches (must be added in a subsequent request)")
+		as.WriteJSON(w, http.StatusBadRequest,
+			"module not allowed when creating new patches (must be added in a subsequent request)")
 		return
 	}
 
@@ -96,14 +201,15 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Check if the user already has some patch on this same commit+project
-	_, err = model.FindPatchByUserProjectGitspec(user.Id, apiRequest.ProjectFileName, apiRequest.Githash)
+	_, err = patch.FindOne(
+		patch.ByUserProjectAndGitspec(user.Id, apiRequest.ProjectFileName, apiRequest.Githash))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	createTime := time.Now()
-	patchDoc := &model.Patch{
+	patchDoc := &patch.Patch{
 		Id:            bson.NewObjectId(),
 		Description:   description,
 		Author:        user.Id,
@@ -113,11 +219,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Status:        mci.PatchCreated,
 		BuildVariants: apiRequest.BuildVariants,
 		Tasks:         nil, // nil : ALL tasks. non-nil: compile + any tasks included in list.
-		Patches: []model.ModulePatch{
-			model.ModulePatch{
+		Patches: []patch.ModulePatch{
+			patch.ModulePatch{
 				ModuleName: "",
 				Githash:    apiRequest.Githash,
-				PatchSet: model.PatchSet{
+				PatchSet: patch.PatchSet{
 					Patch:   apiRequest.PatchContent,
 					Summary: patchMetadata.Summaries, // thirdparty.GetPatchSummary(apiRequest.PatchContent),
 				},
@@ -139,13 +245,13 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.ToLower(r.FormValue("finalize")) == "true" {
-		if _, err = patch.Finalize(patchDoc, &as.MCISettings); err != nil {
+		if _, err = validator.ValidateAndFinalize(patchDoc, &as.MCISettings); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 	}
 
-	as.WriteJSON(w, http.StatusCreated, patch.PatchAPIResponse{Patch: patchDoc})
+	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
 }
 
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
@@ -210,10 +316,10 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	defer releaseGlobalLock(PatchLockTitle)
 
 	//Things look ok - go ahead and add/update the module patch
-	modulePatch := model.ModulePatch{
+	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
 		Githash:    githash,
-		PatchSet: model.PatchSet{
+		PatchSet: patch.PatchSet{
 			Patch:   patchContent,
 			Summary: summaries, // thirdparty.GetPatchSummary(apiRequest.PatchContent),
 		},
@@ -230,7 +336,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	patches, err := model.FindPatchesByUser(user.Id, []string{}, 0, 0)
+	patches, err := patch.Find(patch.ByUser(user.Id))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			fmt.Errorf("error finding patches for user %v: %v", user.Id, err))
@@ -267,14 +373,14 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		_, err = patch.Finalize(p, &as.MCISettings)
+		_, err = validator.ValidateAndFinalize(p, &as.MCISettings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		as.WriteJSON(w, http.StatusOK, "patch finalized")
 	case "cancel":
-		err = p.Cancel()
+		err = model.CancelPatch(p)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -291,7 +397,7 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, patch.PatchAPIResponse{Patch: p})
+	as.WriteJSON(w, http.StatusOK, PatchAPIResponse{Patch: p})
 }
 
 func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
@@ -325,5 +431,5 @@ func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	as.WriteJSON(w, http.StatusOK, patch.PatchAPIResponse{Message: "module removed from patch."})
+	as.WriteJSON(w, http.StatusOK, PatchAPIResponse{Message: "module removed from patch."})
 }

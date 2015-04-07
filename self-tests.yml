@@ -247,6 +247,22 @@ tasks:
           mkfifo test_pipe
           tee -a model.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
+          if [ $? -ne 0 ]; then
+            echo "models suite failed, will exit with error on finish"
+            export exitcode=1
+          fi
+          #TODO coverage reports for other model packages
+          for i in patch host event artifact; do 
+            echo "running $i suite"
+            mkfifo $i.pipe
+            tee -a $i.suite < $i.pipe& 
+            go test -v ./$i > $i.pipe
+            if [ $? -ne 0 ]; then
+                echo "$i suite failed, will exit with error on finish"
+                export exitcode=1
+            fi
+          done
+          exit $exitcode
     - command: shell.exec
       params:
         working_dir: src
@@ -311,36 +327,6 @@ tasks:
         script: |
           set -o verbose
           mv notify/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
-
-- name: patch
-  commands:
-    - func: "fetch source"
-    - func: "apply patches"
-    - func: "setup creds"
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export mci_home=`pwd`
-          cd patch
-          mkfifo test_pipe
-          tee -a patch.suite < test_pipe&
-          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv patch/coverage.out .
     - func: "rewrite coverage report"
     - func: "generate coverage html"
     - func: "generate coverage txt"
@@ -734,6 +720,7 @@ tasks:
   commands:
     - func: "fetch source"
     - func: "apply patches"
+    - func: "setup creds"
     - command: shell.exec
       params:
         working_dir: src
@@ -746,7 +733,7 @@ tasks:
           cd validator
           mkfifo test_pipe
           tee -a validator.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v -coverprofile=coverage.out -mci.all -mci.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -773,7 +760,6 @@ buildvariants:
       - name: model
       - name: monitor
       - name: notify
-      - name: patch
       - name: plugin
       - name: repotracker
       - name: scheduler

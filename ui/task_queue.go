@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/patch"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -104,7 +105,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// cached map of version id to relevant patch
-	cachedPatches := map[string]*model.Patch{}
+	cachedPatches := map[string]*patch.Patch{}
 
 	// convert the task queues to the ui versions
 	uiTaskQueues := []uiTaskQueue{}
@@ -179,19 +180,14 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		for idx, queueItemAsUI := range asUI.Queue {
 			if queueItemAsUI.Requester == mci.PatchVersionRequester {
 				// fetch the patch, if necessary
-				var patch *model.Patch
+				var p *patch.Patch
 				var ok bool
-				if patch, ok = cachedPatches[queueItemAsUI.Version]; ok {
-					queueItemAsUI.User = patch.Author
+				if p, ok = cachedPatches[queueItemAsUI.Version]; ok {
+					queueItemAsUI.User = p.Author
 					asUI.Queue[idx] = queueItemAsUI
 				} else {
-					patch, err = model.FindOnePatch(
-						bson.M{
-							model.PatchVersionKey: queueItemAsUI.Version,
-						},
-						bson.M{
-							model.PatchAuthorKey: 1,
-						},
+					p, err = patch.FindOne(
+						patch.ByVersion(queueItemAsUI.Version).WithFields(patch.AuthorKey),
 					)
 					if err != nil {
 						msg := fmt.Sprintf("Error finding patch: %v", err)
@@ -199,15 +195,15 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 						http.Error(w, msg, http.StatusInternalServerError)
 						return
 					}
-					if patch == nil {
+					if p == nil {
 						msg := fmt.Sprintf("Couldn't find patch for version %v", queueItemAsUI.Version)
 						mci.Logger.Errorf(slogger.ERROR, msg)
 						http.Error(w, msg, http.StatusInternalServerError)
 						return
 					}
-					cachedPatches[queueItemAsUI.Version] = patch
+					cachedPatches[queueItemAsUI.Version] = p
 				}
-				queueItemAsUI.User = patch.Author
+				queueItemAsUI.User = p.Author
 				asUI.Queue[idx] = queueItemAsUI
 
 			}

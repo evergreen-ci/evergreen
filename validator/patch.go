@@ -1,23 +1,17 @@
-package patch
+package validator
 
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/validator"
 	"encoding/base64"
 	"fmt"
 	"github.com/shelman/angier"
 )
 
-type PatchAPIResponse struct {
-	Message string       `json:"message"`
-	Action  string       `json:"action"`
-	Patch   *model.Patch `json:"patch"`
-}
-
-func Finalize(p *model.Patch, mciSettings *mci.MCISettings) (*version.Version, error) {
+func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version.Version, error) {
 	if p.Version != "" {
 		return nil, fmt.Errorf("Patch %v already finalized", p.Version)
 	}
@@ -67,7 +61,7 @@ func Finalize(p *model.Patch, mciSettings *mci.MCISettings) (*version.Version, e
 			return nil, fmt.Errorf("Could not decode github file at %v: %v",
 				projectFileURL, err)
 		}
-		project, err = p.PatchConfig(project.RemotePath, string(projectFileBytes))
+		project, err = model.MakePatchedConfig(p, project.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, fmt.Errorf("Could not patch remote configuration "+
 				"file: %v", err)
@@ -77,7 +71,7 @@ func Finalize(p *model.Patch, mciSettings *mci.MCISettings) (*version.Version, e
 		if err = angier.TransferByFieldNames(ref, project); err != nil {
 			return nil, fmt.Errorf("Could not merge ref into project: %v", err)
 		}
-		errs := validator.CheckProjectSyntax(project, mciSettings)
+		errs := CheckProjectSyntax(project, mciSettings)
 		if len(errs) != 0 {
 			var message string
 			for _, err := range errs {
@@ -86,9 +80,5 @@ func Finalize(p *model.Patch, mciSettings *mci.MCISettings) (*version.Version, e
 			return nil, fmt.Errorf(message)
 		}
 	}
-	return p.Finalize(
-		gitCommit,
-		mciSettings,
-		project,
-	)
+	return model.FinalizePatch(p, gitCommit, mciSettings, project)
 }

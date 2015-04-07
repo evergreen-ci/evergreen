@@ -16,6 +16,7 @@ import (
 )
 
 func TestPatchTask(t *testing.T) {
+	setupTlsConfigs(t)
 	testConfig := mci.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 

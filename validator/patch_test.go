@@ -1,9 +1,10 @@
-package patch
+package validator
 
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/thirdparty"
@@ -33,11 +34,11 @@ func init() {
 func TestFinalize(t *testing.T) {
 	testutils.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalize")
 
-	Convey("With calling Finalize with a config and remote configuration "+
+	Convey("With calling ValidateAndFinalize with a config and remote configuration "+
 		"path", t, func() {
 		util.HandleTestingErr(db.ClearCollections(
 			model.ProjectRefCollection,
-			model.PatchCollection,
+			patch.Collection,
 			version.Collection,
 			model.BuildsCollection,
 			model.TasksCollection),
@@ -56,15 +57,15 @@ func TestFinalize(t *testing.T) {
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
 			// this patch adds a new task to the existing build
-			configPatch := &model.Patch{
+			configPatch := &patch.Patch{
 				Id:            "52549c143122",
 				Project:       patchedProject,
 				BuildVariants: []string{"all"},
 				Githash:       patchedRevision,
-				Patches: []model.ModulePatch{
-					model.ModulePatch{
+				Patches: []patch.ModulePatch{
+					patch.ModulePatch{
 						Githash: "revision",
-						PatchSet: model.PatchSet{
+						PatchSet: patch.PatchSet{
 							Patch: fmt.Sprintf(string(fileBytes), configFilePath,
 								configFilePath, configFilePath, configFilePath),
 							Summary: []thirdparty.Summary{
@@ -85,7 +86,7 @@ func TestFinalize(t *testing.T) {
 			}
 			err = configPatch.Insert()
 			util.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
-			version, err := Finalize(configPatch, patchTestConfig)
+			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created
@@ -123,15 +124,15 @@ func TestFinalize(t *testing.T) {
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
 			// this patch adds a new task to the existing build
-			configPatch := &model.Patch{
+			configPatch := &patch.Patch{
 				Id:            "52549c143122",
 				Project:       patchedProject,
 				BuildVariants: []string{"all"},
 				Githash:       patchedRevision,
-				Patches: []model.ModulePatch{
-					model.ModulePatch{
+				Patches: []patch.ModulePatch{
+					patch.ModulePatch{
 						Githash: "revision",
-						PatchSet: model.PatchSet{
+						PatchSet: patch.PatchSet{
 							Patch: fmt.Sprintf(string(fileBytes), patchedConfigFile,
 								patchedConfigFile, patchedConfigFile, patchedConfigFile),
 							Summary: []thirdparty.Summary{
@@ -152,7 +153,7 @@ func TestFinalize(t *testing.T) {
 			}
 			err = configPatch.Insert()
 			util.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
-			version, err := Finalize(configPatch, patchTestConfig)
+			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created
@@ -187,15 +188,15 @@ func TestFinalize(t *testing.T) {
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
 			// this patch adds a new task to the existing build
-			configPatch := &model.Patch{
+			configPatch := &patch.Patch{
 				Id:            "52549c143122",
 				Project:       unpatchedProject,
 				BuildVariants: []string{"all"},
 				Githash:       unpatchedRevision,
-				Patches: []model.ModulePatch{
-					model.ModulePatch{
+				Patches: []patch.ModulePatch{
+					patch.ModulePatch{
 						Githash: "revision",
-						PatchSet: model.PatchSet{
+						PatchSet: patch.PatchSet{
 							Patch: fmt.Sprintf(string(fileBytes), configFilePath,
 								configFilePath, configFilePath, configFilePath),
 							Summary: []thirdparty.Summary{
@@ -216,7 +217,7 @@ func TestFinalize(t *testing.T) {
 			}
 			err = configPatch.Insert()
 			util.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
-			version, err := Finalize(configPatch, patchTestConfig)
+			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created

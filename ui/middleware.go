@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/auth"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"fmt"
@@ -31,7 +32,7 @@ type (
 		// The version associated with the request, if applicable.
 		Version *version.Version
 		// The patch associated with the request, if applicable.
-		Patch *model.Patch
+		Patch *patch.Patch
 		// The project which the task/build/version in this request is a part of, if applicable.
 		Project    *model.Project
 		ProjectRef *model.ProjectRef
@@ -223,10 +224,15 @@ func (pc *projectContext) populateProjectRefs(includePrivate bool) error {
 // into context, if available.
 func (pc *projectContext) populatePatch(patchId string) error {
 	var err error
-	if len(patchId) > 0 { // The patch is explicitly identified in the URL, so fetch it
-		pc.Patch, err = model.FindExistingPatch(patchId)
-	} else if pc.Version != nil { // patch isn't in URL but the version in context has one, get it
-		pc.Patch, err = model.FindPatchByVersion(pc.Version.Id)
+	if len(patchId) > 0 {
+		// The patch is explicitly identified in the URL, so fetch it
+		if !patch.IsValidId(patchId) {
+			return fmt.Errorf("patch id '%v' is not an object id", patchId)
+		}
+		pc.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
+	} else if pc.Version != nil {
+		// patch isn't in URL but the version in context has one, get it
+		pc.Patch, err = patch.FindOne(patch.ByVersion(pc.Version.Id).Project(patch.ExcludePatchDiff))
 	}
 	if err != nil {
 		return err
@@ -254,7 +260,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
-	//revision := ""
 
 	projectId, err := proj.populateTaskBuildVersion(taskId, buildId, versionId)
 	if err != nil {

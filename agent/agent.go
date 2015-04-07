@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/plugin"
 	_ "10gen.com/mci/plugin/config"
 	"10gen.com/mci/util"
@@ -47,7 +48,7 @@ type TaskCommunicator interface {
 	GetTask() (*model.Task, error)
 	GetDistro() (*distro.Distro, error)
 	GetProjectConfig() (*model.Project, error)
-	GetPatch() (*model.Patch, error)
+	GetPatch() (*patch.Patch, error)
 	Log([]model.LogMessage) error
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)

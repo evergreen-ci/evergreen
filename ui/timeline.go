@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -72,25 +73,25 @@ func (uis *UIServer) userPatchTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-	var err error
-	pageStr := r.FormValue("page")
-	pageNum, err := strconv.Atoi(pageStr)
+	pageNum, err := strconv.Atoi(r.FormValue("page"))
 	if err != nil {
 		pageNum = 0
 	}
+	skip := pageNum * DefaultLimit
 
 	user := mux.Vars(r)["user_id"]
-	var patches []model.Patch
+	var patches []patch.Patch
 	if len(user) > 0 {
-		patches, err = model.FindPatchesByUser(
-			user,
-			[]string{fmt.Sprintf("-%v", model.PatchCreateTimeKey)},
-			pageNum*DefaultLimit,
-			DefaultLimit)
+		patches, err = patch.Find(patch.ByUser(user).
+			Project(patch.ExcludePatchDiff).
+			Sort([]string{"-" + patch.CreateTimeKey}).
+			Skip(skip).Limit(DefaultLimit))
 	} else {
-		patches, err = model.FindAllPatchesByProject(projCtx.Project.Identifier, []string{"-create_time"}, pageNum*DefaultLimit, DefaultLimit)
+		patches, err = patch.Find(patch.ByProject(projCtx.Project.Identifier).
+			Sort([]string{"-" + patch.CreateTimeKey}).
+			Project(patch.ExcludePatchDiff).
+			Skip(skip).Limit(DefaultLimit))
 	}
-
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching patches for %v: %v", projCtx.Project.Identifier, err))
 		return

@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/testutils"
@@ -552,12 +553,12 @@ func printLogsForTask(taskId string) {
 }
 
 func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
-	variant string, patch bool, t *testing.T) (*model.Task, *model.Build, error) {
+	variant string, isPatch bool, t *testing.T) (*model.Task, *model.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
 		model.TasksCollection, model.BuildsCollection, host.Collection,
-		distro.Collection, version.Collection, model.PatchCollection,
+		distro.Collection, version.Collection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 	}
 	util.HandleTestingErr(dbutil.ClearCollections(testCollections...), t, clearDataMsg)
@@ -601,7 +602,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 		Requester:    mci.RepotrackerVersionRequester,
 	}
 
-	if patch {
+	if isPatch {
 		taskOne.Requester = mci.PatchVersionRequester
 	}
 
@@ -651,25 +652,25 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	}
 
 	util.HandleTestingErr(v.Insert(), t, "failed to insert version")
-	if patch {
+	if isPatch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
 		util.HandleTestingErr(err, t, "failed to read test patch file")
 		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
 		util.HandleTestingErr(err, t, "failed to read test module patch file")
 
-		patch := &model.Patch{
+		patch := &patch.Patch{
 			Status:  mci.PatchCreated,
 			Version: v.Id,
-			Patches: []model.ModulePatch{
-				model.ModulePatch{
+			Patches: []patch.ModulePatch{
+				{
 					ModuleName: "",
 					Githash:    "d0c52298b222f4973c48e9834a57966c448547de",
-					PatchSet:   model.PatchSet{Patch: string(mainPatchContent)},
+					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
 				},
-				model.ModulePatch{
+				{
 					ModuleName: "enterprise",
 					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",
-					PatchSet:   model.PatchSet{Patch: string(modulePatchContent)},
+					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
 				},
 			},
 		}

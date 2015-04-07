@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"fmt"
@@ -384,16 +385,7 @@ func (build *Build) TryMarkPatchFinished(finishTime time.Time) error {
 		return nil
 	}
 
-	filter := bson.M{
-		PatchVersionKey: v.Id,
-	}
-	update := bson.M{
-		"$set": bson.M{
-			PatchFinishTimeKey: finishTime,
-			PatchStatusKey:     status,
-		},
-	}
-	return UpdateOnePatch(filter, update)
+	return patch.TryMarkFinished(v.Id, finishTime, status)
 }
 
 // TryMarkBuildStarted attempts to mark a build as started if it

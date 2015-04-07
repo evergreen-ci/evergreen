@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
+	"10gen.com/mci/model/patch"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
@@ -47,8 +48,8 @@ func (self *MockCommunicator) GetTask() (*model.Task, error) {
 	return &model.Task{}, nil
 }
 
-func (self *MockCommunicator) GetPatch() (*model.Patch, error) {
-	return &model.Patch{}, nil
+func (self *MockCommunicator) GetPatch() (*patch.Patch, error) {
+	return &patch.Patch{}, nil
 }
 
 func (self *MockCommunicator) GetDistro() (*distro.Distro, error) {

@@ -100,12 +100,12 @@ func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) 
 	return httpCom
 }
 
-func SetupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.Task, *model.Build, error) {
+func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *model.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	util.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, model.BuildsCollection,
 			host.Collection, model.VersionsCollection,
-			model.PatchCollection),
+			patch.Collection),
 		t, "Failed to clear test data collection")
 
 	testHost := &host.Host{
@@ -130,7 +130,7 @@ func SetupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 		Requester:    mci.RepotrackerVersionRequester,
 	}
 
-	if patch {
+	if isPatch {
 		task.Requester = mci.PatchVersionRequester
 	}
 
@@ -140,25 +140,25 @@ func SetupAPITestData(taskDisplayName string, patch bool, t *testing.T) (*model.
 
 	version := &model.Version{Id: "testVersionId", BuildIds: []string{task.BuildId}}
 	util.HandleTestingErr(version.Insert(), t, "failed to insert version %v")
-	if patch {
+	if isPatch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
 		util.HandleTestingErr(err, t, "failed to read test patch file %v")
 		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
 		util.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
-		patch := &model.Patch{
+		patch := &patch.Patch{
 			Status:  mci.PatchCreated,
 			Version: version.Id,
-			Patches: []model.ModulePatch{
-				model.ModulePatch{
+			Patches: []patch.ModulePatch{
+				{
 					ModuleName: "",
 					Githash:    "d0c52298b222f4973c48e9834a57966c448547de",
-					PatchSet:   model.PatchSet{Patch: string(mainPatchContent)},
+					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
 				},
-				model.ModulePatch{
+				{
 					ModuleName: "enterprise",
 					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",
-					PatchSet:   model.PatchSet{Patch: string(modulePatchContent)},
+					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
 				},
 			},
 		}

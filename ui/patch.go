@@ -2,8 +2,9 @@ package ui
 
 import (
 	"10gen.com/mci/model"
-	"10gen.com/mci/patch"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/util"
+	"10gen.com/mci/validator"
 	"fmt"
 	"net/http"
 )
@@ -78,7 +79,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 		// First add new tasks to existing builds, if necessary
 		if len(patchUpdateReq.Tasks) > 0 {
-			err = projCtx.Patch.AddNewTasks(&uis.MCISettings, projCtx.Version, patchUpdateReq.Tasks)
+			err = model.AddNewTasksForPatch(projCtx.Patch, &uis.MCISettings, projCtx.Version, patchUpdateReq.Tasks)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					fmt.Errorf("Error creating new tasks: `%v` for version `%v`", err, projCtx.Version.Id))
@@ -87,7 +88,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(patchUpdateReq.Variants) > 0 {
-			_, err := projCtx.Patch.AddNewBuilds(&uis.MCISettings, projCtx.Version, patchUpdateReq.Variants)
+			_, err := model.AddNewBuildsForPatch(projCtx.Patch, &uis.MCISettings, projCtx.Version, patchUpdateReq.Variants)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					fmt.Errorf("Error creating new builds: `%v` for version `%v`", err, projCtx.Version.Id))
@@ -112,7 +113,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				fmt.Errorf("Error setting description: %v", err))
 			return
 		}
-		ver, err := patch.Finalize(projCtx.Patch, &uis.MCISettings)
+		ver, err := validator.ValidateAndFinalize(projCtx.Patch, &uis.MCISettings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finalizing patch: %v", err))
 			return
@@ -131,7 +132,16 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, projCtx.Patch, "base", "diff.html")
+	// We have to reload the patch outside of the project context,
+	// since the raw diff is excluded by default. This redundancy is
+	// worth the time savings this behavior offers other pages.
+	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error loading patch: %v", err.Error),
+			http.StatusInternalServerError)
+		return
+	}
+	uis.WriteHTML(w, http.StatusOK, fullPatch, "base", "diff.html")
 }
 
 func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
@@ -140,10 +150,16 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
+	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error loading patch: %v", err.Error),
+			http.StatusInternalServerError)
+		return
+	}
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Data        model.Patch
+		Data        patch.Patch
 		FileName    string
 		PatchNumber string
-	}{*projCtx.Patch, r.FormValue("file_name"), r.FormValue("patch_number")},
+	}{*fullPatch, r.FormValue("file_name"), r.FormValue("patch_number")},
 		"base", "file_diff.html")
 }

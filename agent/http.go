@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
 	"10gen.com/mci/model/distro"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"bytes"
@@ -270,8 +271,8 @@ func (h *HTTPAgentCommunicator) Log(messages []model.LogMessage) error {
 }
 
 //TODO log errors in this function
-func (h *HTTPAgentCommunicator) GetPatch() (*model.Patch, error) {
-	patch := &model.Patch{}
+func (h *HTTPAgentCommunicator) GetPatch() (*patch.Patch, error) {
+	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.tryGet("patch")
