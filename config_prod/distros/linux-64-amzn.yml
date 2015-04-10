@@ -2,11 +2,11 @@ linux-64-amzn-tmpl: &linux-64-amzn-tmpl
   template: true
   arch: linux_amd64
   provider: ec2
-  ami: ami-c8f1c7a0
+  ami: ami-24a49b4c
   user: ec2-user
   key: mci
   settings:
-    ami: ami-c8f1c7a0
+    ami: ami-24a49b4c
     instancetype: m3.2xlarge
     securitygroups: mci
     keyname: mci
@@ -42,7 +42,7 @@ linux-64-amzn-build:
   maxhosts: 5
   provider: ec2
   settings:
-    ami: ami-c8f1c7a0
+    ami: ami-24a49b4c
     bid_price: 0.56
     instancetype: m3.2xlarge
     securitygroups: mci
@@ -75,7 +75,7 @@ linux-64-amzn-test: &linux-64-amzn-test
   maxhosts: 20
   provider: ec2-spot
   settings:
-    ami: ami-c8f1c7a0
+    ami: ami-24a49b4c
     instancetype: m3.xlarge
     bid_price: 0.14
     securitygroups: mci

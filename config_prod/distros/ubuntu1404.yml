@@ -8,7 +8,7 @@ ubuntu1404-tmpl: &ubuntu1404-tmpl
   provider: ec2
   maxhosts: 5
   settings:
-    ami: ami-1292b37a
+    ami: ami-74a39c1c
     instancetype: m1.medium
     securitygroups: mci
     keyname: mci
@@ -37,7 +37,7 @@ ubuntu1404-build:
   maxhosts: 25
   provider: ec2-spot
   settings:
-    ami: ami-1292b37a
+    ami: ami-74a39c1c
     instancetype: m3.2xlarge
     bid_price: 0.56
     securitygroups: mci
@@ -73,7 +73,7 @@ ubuntu1404-test: &ubuntu1404-test
   maxhosts: 40
   provider: ec2-spot
   settings:
-    ami: ami-1292b37a
+    ami: ami-74a39c1c
     bid_price: 0.14
     instancetype: m3.xlarge
     securitygroups: mci

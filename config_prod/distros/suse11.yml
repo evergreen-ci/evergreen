@@ -1,7 +1,7 @@
 suse11-tmpl: &suse11-tmpl
   template: true
   arch: linux_amd64
-  ami: ami-06951a6e
+  ami:  ami-e0a49b88
   user: root
   keyname: mci
   key: mci
@@ -36,7 +36,7 @@ suse11-build:
   ]
   provider: ec2-spot
   settings:
-    ami: ami-a20f7eca
+    ami:  ami-e0a49b88
     instancetype: c3.2xlarge
     bid_price: 0.66
     securitygroups: mci
@@ -76,7 +76,7 @@ suse11-test:
   ]
   provider: ec2
   settings:
-    ami: ami-a20f7eca
+    ami:  ami-e0a49b88
     instancetype: m3.large
     bid_price: 0.24
     securitygroups: mci
