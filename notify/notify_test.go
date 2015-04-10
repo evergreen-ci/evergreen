@@ -180,9 +180,9 @@ func TestNotify(t *testing.T) {
 				// check that we only returned 2 failed notifications
 				So(len(emails), ShouldEqual, 2)
 				So(emails[0].GetSubject(), ShouldEqual,
-					"[MCI-FAILURE ] possible MCI failure in displayName (failed on displayName)")
+					"[MCI-FAILURE ] possible MCI failure in displayName (failed on build1)")
 				So(emails[1].GetSubject(), ShouldEqual,
-					"[MCI-FAILURE ] possible MCI failure in displayName (failed on displayName)")
+					"[MCI-FAILURE ] possible MCI failure in displayName (failed on build1)")
 			})
 
 			Convey("TaskSuccessHandler should return 1 email per task success", func() {
@@ -193,9 +193,9 @@ func TestNotify(t *testing.T) {
 				// check that we only returned 2 success notifications
 				So(len(emails), ShouldEqual, 2)
 				So(emails[0].GetSubject(), ShouldEqual,
-					"[MCI-SUCCESS ] possible MCI failure in displayName (succeeded on displayName)")
+					"[MCI-SUCCESS ] possible MCI failure in displayName (succeeded on build1)")
 				So(emails[1].GetSubject(), ShouldEqual,
-					"[MCI-SUCCESS ] possible MCI failure in displayName (succeeded on displayName)")
+					"[MCI-SUCCESS ] possible MCI failure in displayName (succeeded on build1)")
 			})
 
 			Convey("TaskCompletionHandler should return 1 email per completed task", func() {
@@ -206,17 +206,17 @@ func TestNotify(t *testing.T) {
 				// check that we only returned 6 completion notifications
 				So(len(emails), ShouldEqual, 6)
 				So(emails[0].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on displayName)")
+					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[1].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on displayName)")
+					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[2].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on displayName)")
+					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[3].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on displayName)")
+					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[4].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on displayName)")
+					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[5].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on displayName)")
+					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 			})
 
 			Convey("TaskSuccessToFailureHandler should return 1 email per "+
@@ -229,7 +229,7 @@ func TestNotify(t *testing.T) {
 				So(len(emails), ShouldEqual, 1)
 				So(emails[0].GetSubject(), ShouldEqual,
 					"[MCI-FAILURE ] possible MCI failure in displayName (transitioned to "+
-						"failure on displayName)")
+						"failure on build1)")
 			})
 		})
 	})
@@ -241,14 +241,6 @@ func TestNotify(t *testing.T) {
 		insertTaskDocs(timeNow)
 		v := &version.Version{Id: "version"}
 		So(v.Insert(), ShouldBeNil)
-
-		Convey("Should be able to read and validate test config file", func() {
-			mciNotification, err := ParseNotifications(TestConfig.ConfigDir)
-			So(err, ShouldBeNil)
-
-			err = ValidateNotifications(TestConfig.ConfigDir, mciNotification)
-			So(err, ShouldBeNil)
-		})
 
 		Convey("Should run the correct notification handlers for given "+
 			"notification keys", func() {
@@ -280,14 +272,14 @@ func TestNotify(t *testing.T) {
 
 			So(len(emails[notificationKeyFailure]), ShouldEqual, 2)
 			So(emails[notificationKeyFailure][0].GetSubject(), ShouldEqual,
-				"[MCI-FAILURE ] possible MCI failure in displayName (failed on displayName)")
+				"[MCI-FAILURE ] possible MCI failure in displayName (failed on build1)")
 			So(emails[notificationKeyFailure][1].GetSubject(), ShouldEqual,
-				"[MCI-FAILURE ] possible MCI failure in displayName (failed on displayName)")
+				"[MCI-FAILURE ] possible MCI failure in displayName (failed on build1)")
 
 			So(len(emails[notificationKeyToFailure]), ShouldEqual, 1)
 			So(emails[notificationKeyToFailure][0].GetSubject(), ShouldEqual,
 				"[MCI-FAILURE ] possible MCI failure in displayName (transitioned to "+
-					"failure on displayName)")
+					"failure on build1)")
 		})
 
 		Convey("SendNotifications should send emails correctly", func() {
