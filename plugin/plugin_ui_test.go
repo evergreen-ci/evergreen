@@ -46,9 +46,8 @@ func TestStaticWebRootHelper(t *testing.T) {
 		So(path, ShouldNotBeBlank)
 
 		Convey("this source folder should be present in the returned path", func() {
-			So(path, ShouldContainSubstring, "mci/plugin/static")
+			So(path, ShouldContainSubstring, "plugin/static")
 		})
-
 	})
 }
 
