@@ -506,11 +506,13 @@ func RunTask(agent *Agent, configRoot string, workDir string) (*apimodels.TaskEn
 
 	agent.taskConfig.Expansions.Update(*resultVars)
 
-	agent.agentLogger.LogExecution(slogger.INFO, "Running pre-task commands")
-	err = RunAllCommands(taskConfig.Project.Pre.List(), pluginRegistry,
-		agent.TaskCommunicator, agent, agent.agentLogger, taskConfig, false, nil)
-	if err != nil {
-		agent.agentLogger.LogExecution(slogger.ERROR, "Running pre-task script failed: %v", err)
+	if taskConfig.Project.Pre != nil {
+		agent.agentLogger.LogExecution(slogger.INFO, "Running pre-task commands")
+		err = RunAllCommands(taskConfig.Project.Pre.List(), pluginRegistry,
+			agent.TaskCommunicator, agent, agent.agentLogger, taskConfig, false, nil)
+		if err != nil {
+			agent.agentLogger.LogExecution(slogger.ERROR, "Running pre-task script failed: %v", err)
+		}
 	}
 	return RunPluginCommands(agent, pluginRegistry, taskConfig, cmdKiller, completed)
 }
