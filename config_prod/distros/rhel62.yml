@@ -3,7 +3,7 @@ rhel62-tmpl: &rhel62-tmpl
   arch: linux_amd64
   provider: ec2-spot
   settings:
-    ami: ami-b6a59ade
+    ami: ami-386af150
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci
@@ -12,7 +12,7 @@ rhel62-tmpl: &rhel62-tmpl
         {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m3.xlarge, this is a 40GB SSD.
         {devicename: "/dev/xvdc", virtualname: "ephemeral1"}, #on m3.xlarge, this is a 40GB SSD.
     ]
-  ami: ami-b6a59ade
+  ami: ami-10139d78
   user: root
   key: mci
   securitygroups: mci
@@ -40,7 +40,7 @@ rhel62-build:
   maxhosts: 5
   provider: ec2
   settings:
-    ami: ami-b6a59ade
+    ami: ami-386af150
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci
@@ -80,7 +80,7 @@ rhel62-test:
   maxhosts: 10
   provider: ec2
   settings:
-    ami: ami-b6a59ade
+    ami: ami-386af150
     instancetype: m3.large
     securitygroups: mci
     keyname: mci

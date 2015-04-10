@@ -4,7 +4,7 @@ rhel70:
   provider: ec2
   spawn_allowed: true
   settings:
-    ami: ami-2ca49b44
+    ami: ami-2a6af142
     bid_price: 0.40
     instancetype: m3.xlarge
     securitygroups: mci
