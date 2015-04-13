@@ -81,7 +81,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 		patches, err = model.FindPatchesByUser(
 			user,
 			[]string{fmt.Sprintf("-%v", model.PatchCreateTimeKey)},
-			skip,
+			skip*pageNum,
 			DefaultLimit)
 	} else {
 		patches, err = model.FindAllPatchesByProject(projCtx.Project.Identifier, []string{"-create_time"}, skip, DefaultLimit)
