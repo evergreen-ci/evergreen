@@ -2,7 +2,7 @@ solaris:
   name: solaris
   arch: solaris_amd64
   spawn_allowed: true
-  ami: ami-0c9ea964
+  ami: ami-d45b63bc
   instancetype: m3.xlarge
   mountinfo: [
     {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m3.xlarge, this is a 40GB SSD.
@@ -16,7 +16,7 @@ solaris:
   provider: ec2
   settings:
     bid_price: 0.28
-    ami: ami-0c9ea964
+    ami: ami-d45b63bc
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci

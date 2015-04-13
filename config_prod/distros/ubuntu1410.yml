@@ -8,7 +8,7 @@ ubuntu1410-tmpl: &ubuntu1410-tmpl
   provider: ec2
   maxhosts: 5
   settings:
-    ami: ami-f4f4929c
+    ami: ami-f05a6298
     instancetype: m1.medium
     securitygroups: mci
     keyname: mci
@@ -37,7 +37,7 @@ ubuntu1410-build:
   maxhosts: 5
   provider: ec2-spot
   settings:
-    ami: ami-f4f4929c
+    ami: ami-f05a6298
     instancetype: m3.2xlarge
     bid_price: 0.56
     securitygroups: mci
@@ -76,7 +76,7 @@ ubuntu1410-test: &ubuntu1410-test
   maxhosts: 10
   provider: ec2-spot
   settings:
-    ami: ami-f4f4929c
+    ami: ami-f05a6298
     bid_price: 0.14
     instancetype: m3.xlarge
     securitygroups: mci

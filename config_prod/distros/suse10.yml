@@ -1,7 +1,7 @@
 suse10-tmpl: &suse10-tmpl
   template: true
   arch: linux_amd64
-  ami: ami-8ef974e6
+  ami: ami-f05c6498
   user: root
   keyname: mci
   key: mci
@@ -9,7 +9,7 @@ suse10-tmpl: &suse10-tmpl
   setup_as_sudo: true
   provider: ec2
   settings:
-    ami: ami-8ef974e6
+    ami: ami-f05c6498
     securitygroups: mci
     keyname: mci
     mountinfo: [
@@ -43,7 +43,7 @@ suse10-build:
   ]
   provider: ec2-spot
   settings:
-    ami: ami-8ef974e6
+    ami: ami-f05c6498
     instancetype: c3.2xlarge
     bid_price: 0.66
     securitygroups: mci
@@ -87,7 +87,7 @@ suse10-test:
   ]
   provider: ec2
   settings:
-    ami: ami-8ef974e6
+    ami: ami-f05c6498
     instancetype: m3.large
     bid_price: 0.24
     securitygroups: mci

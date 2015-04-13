@@ -3,7 +3,7 @@ rhel55-tmpl: &rhel55-tmpl
   arch: linux_amd64
   provider: ec2-spot
   settings:
-    ami: ami-1edaa276
+    ami: ami-1a5b6372
     instancetype: m3.2xlarge
     securitygroups: mci
     keyname: mci
@@ -32,7 +32,7 @@ rhel55:
   spawn_allowed: true
   provider: ec2-spot
   settings:
-    ami: ami-1edaa276
+    ami: ami-1a5b6372
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci
@@ -102,7 +102,7 @@ rhel55-test:
   ]
   provider: ec2
   settings:
-    ami: ami-1edaa276
+    ami: ami-1a5b6372
     instancetype: m3.large
     securitygroups: mci
     keyname: mci

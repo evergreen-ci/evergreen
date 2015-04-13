@@ -1,7 +1,7 @@
 ubuntu1204-tmpl: &ubuntu1204-tmpl
   template: true
   arch: linux_amd64
-  ami: ami-0c951a64
+  ami: ami-005a6268
   user: ubuntu
   keyname: mci
   key: mci
@@ -10,7 +10,7 @@ ubuntu1204-tmpl: &ubuntu1204-tmpl
   setup_as_sudo: true
   provider: ec2
   settings:
-    ami: ami-346af15c
+    ami: ami-005a6268
     instancetype: m1.medium
     securitygroups: mci
     keyname: mci
@@ -43,7 +43,7 @@ ubuntu1204-build:
   ]
   provider: ec2
   settings:
-    ami: ami-346af15c
+    ami: ami-005a6268
     bid_price: 0.56
     instancetype: m3.2xlarge
     securitygroups: mci
@@ -83,7 +83,7 @@ ubuntu1204-test:
   ]
   provider: ec2
   settings:
-    ami: ami-346af15c
+    ami: ami-005a6268
     bid_price: 0.14
     instancetype: m3.large
     securitygroups: mci

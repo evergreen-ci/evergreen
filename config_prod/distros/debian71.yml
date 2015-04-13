@@ -3,7 +3,7 @@ debian71-tmpl: &debian71-tmpl
   arch: linux_amd64
   provider: ec2
   settings:
-    ami: ami-ca6ef5a2
+    ami: ami-ea5a6282
     instancetype: m3.2xlarge
     securitygroups: mci
     keyname: mci
@@ -38,7 +38,7 @@ debian71-build:
   maxhosts: 10
   provider: ec2
   settings:
-    ami: ami-ca6ef5a2
+    ami: ami-ea5a6282
     bid_price: 0.56
     instancetype: m3.2xlarge
     securitygroups: mci
@@ -75,7 +75,7 @@ debian71-test:
   maxhosts: 10
   provider: ec2
   settings:
-    ami: ami-ca6ef5a2
+    ami: ami-ea5a6282
     instancetype: m3.large
     bid_price: 0.14
     securitygroups: mci

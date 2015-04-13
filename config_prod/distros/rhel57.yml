@@ -3,7 +3,7 @@ rhel57-tmpl: &rhel57-tmpl
   arch: linux_amd64
   provider: ec2
   settings:
-    ami: ami-929718fa
+    ami: ami-0c5b6364
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci
@@ -37,7 +37,7 @@ rhel57-build:
   hosts: []
   maxhosts: 5
   settings:
-    ami: ami-929718fa
+    ami: ami-0c5b6364
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci

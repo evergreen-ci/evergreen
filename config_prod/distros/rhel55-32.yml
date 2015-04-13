@@ -5,7 +5,7 @@ rhel55-32: &rhel55-32
   spawn_allowed: false
   settings:
     bid_price: 0.01
-    ami: ami-424bc92a
+    ami: ami-5c5b6334
     instancetype: m1.medium
     securitygroups: mci
     keyname: mci

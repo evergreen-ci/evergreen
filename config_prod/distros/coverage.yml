@@ -3,7 +3,7 @@ linux-64-coverage:
   arch: linux_amd64
   provider: ec2
   settings:
-    ami: ami-ac4ac8c4
+    ami: ami-2e5a6246
     instancetype: m3.xlarge
     securitygroups: mci
     keyname: mci

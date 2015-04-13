@@ -4,7 +4,7 @@ fedora8:
   provider: ec2
   spawn_allowed: true
   settings:
-    ami: ami-b4d459dc
+    ami: ami-1e5b6376
     instancetype: m3.large
     bid_price: 0.14
     securitygroups: mci
