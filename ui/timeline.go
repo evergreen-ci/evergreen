@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
 	"net/http"
+	"strconv"
 )
 
 func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
@@ -71,20 +72,23 @@ func (uis *UIServer) userPatchTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
-	skip, pageNum := getSkipAndLimit(r, DefaultSkip, DefaultLimit)
+	var err error
+	pageStr := r.FormValue("page")
+	pageNum, err := strconv.Atoi(pageStr)
+	if err != nil {
+		pageNum = 0
+	}
 
 	user := mux.Vars(r)["user_id"]
 	var patches []model.Patch
-	var err error
 	if len(user) > 0 {
 		patches, err = model.FindPatchesByUser(
 			user,
 			[]string{fmt.Sprintf("-%v", model.PatchCreateTimeKey)},
-			skip*pageNum,
+			pageNum*DefaultLimit,
 			DefaultLimit)
 	} else {
-		patches, err = model.FindAllPatchesByProject(projCtx.Project.Identifier, []string{"-create_time"}, skip, DefaultLimit)
+		patches, err = model.FindAllPatchesByProject(projCtx.Project.Identifier, []string{"-create_time"}, pageNum*DefaultLimit, DefaultLimit)
 	}
 
 	if err != nil {
