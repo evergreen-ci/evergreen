@@ -192,10 +192,11 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 	}
 	data.TotalVersions = totalVersions
 
+	q := version.ByMostRecentForRequester(projectName, requester).WithoutFields(version.ConfigKey).
+		Skip(versionsToSkip * versionsPerPage).Limit(versionsPerPage)
+
 	// get the most recent versions, to display in their entirety on the page
-	versionsFromDB, err := version.Find(
-		version.ByMostRecentForRequester(projectName, requester).WithoutFields(version.ConfigKey).Skip(versionsToSkip).Limit(versionsPerPage),
-	)
+	versionsFromDB, err := version.Find(q)
 	if err != nil {
 		return nil, err
 	}
