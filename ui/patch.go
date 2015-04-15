@@ -57,13 +57,21 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// grab patch again, as the diff  was excluded
+	var err error
+	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	patchUpdateReq := struct {
 		Variants    []string `json:"variants"`
 		Tasks       []string `json:"tasks"`
 		Description string   `json:"description"`
 	}{}
 
-	err := util.ReadJSONInto(r.Body, &patchUpdateReq)
+	err = util.ReadJSONInto(r.Body, &patchUpdateReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
