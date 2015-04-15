@@ -54,7 +54,7 @@ func IsValidId(id string) bool {
 
 // NewId constructs a valid patch Id from the given hex string.
 func NewId(id string) bson.ObjectId {
-	return bson.ObjectId(id)
+	return bson.ObjectIdHex(id)
 }
 
 // Queries
