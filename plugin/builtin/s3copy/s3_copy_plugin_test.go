@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/apiserver"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/plugin/builtin/s3Plugin"
 	. "10gen.com/mci/plugin/builtin/s3copy"
@@ -28,20 +29,20 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 		s3CopyPlugin := &S3CopyPlugin{}
 		util.HandleTestingErr(registry.Register(s3CopyPlugin), t, "failed to register s3Copy plugin")
-		util.HandleTestingErr(registry.Register(s3Plugin.S3Plugin{}), t, "failed to register S3 plugin")
+		util.HandleTestingErr(registry.Register(&s3Plugin.S3Plugin{}), t, "failed to register S3 plugin")
 		util.HandleTestingErr(
-			db.ClearCollections(model.PushlogCollection, model.VersionsCollection), t,
+			db.ClearCollections(model.PushlogCollection, version.Collection), t,
 			"error clearing test collections")
-		version := &model.Version{
+		version := &version.Version{
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		url, server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, false)
+		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 
-		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", url)
+		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
-		server.InstallPlugin(s3CopyPlugin)
+		//server.InstallPlugin(s3CopyPlugin)
 
 		taskConfig, err := testutil.CreateTestConfig("testdata/plugin_s3_copy.yml", t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
@@ -58,14 +59,14 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin "+
 						"command: %v")
-					So(pluginCmd, ShouldNotBeNil)
+					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{plugin.Name(),
+					pluginCom := &agent.TaskJSONCommunicator{s3CopyPlugin.Name(),
 						httpCom}
-					err = pluginCmd.Execute(logger, pluginCom, taskConfig,
+					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig,
 						make(chan bool))
 					So(err, ShouldBeNil)
 				}

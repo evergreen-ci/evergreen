@@ -7,6 +7,8 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
 	"gopkg.in/yaml.v2"
@@ -104,8 +106,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 	//ignore errs here because the ns might just not exist.
 	util.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, model.BuildsCollection,
-			host.Collection, model.VersionsCollection,
-			patch.Collection),
+			host.Collection, version.Collection, patch.Collection),
 		t, "Failed to clear test data collection")
 
 	testHost := &host.Host{
@@ -134,11 +135,9 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		task.Requester = mci.PatchVersionRequester
 	}
 
-	testConfig := mci.TestConfig()
-
 	util.HandleTestingErr(task.Insert(), t, "failed to insert task")
 
-	version := &model.Version{Id: "testVersionId", BuildIds: []string{task.BuildId}}
+	version := &version.Version{Id: "testVersionId", BuildIds: []string{task.BuildId}}
 	util.HandleTestingErr(version.Insert(), t, "failed to insert version %v")
 	if isPatch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")

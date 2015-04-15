@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/apiserver"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	. "10gen.com/mci/plugin/builtin/git"
 	"10gen.com/mci/plugin/testutil"
@@ -22,9 +23,8 @@ func TestPatchPluginAPI(t *testing.T) {
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register patch plugin")
-		url, server, err := apiserver.CreateTestServer(testConfig, nil, false)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.Published, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(gitPlugin)
 		taskConfig, _ := testutil.CreateTestConfig("testdata/plugin_patch.yml", t)
 		testCommand := GitApplyPatchCommand{"dir"}
 		_, _, err = testutil.SetupAPITestData("testTask", true, t)
@@ -36,52 +36,40 @@ func TestPatchPluginAPI(t *testing.T) {
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
 		Convey("calls to existing tasks with patches should succeed", func() {
-			httpCom := testutil.TestAgentCommunicator(testTask.Id, testTask.Secret, url)
+			httpCom := testutil.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
 			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
 			So(err, ShouldBeNil)
 			So(patch, ShouldNotBeNil)
-			util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
+			util.HandleTestingErr(db.Clear(version.Collection), t,
 				"unable to clear versions collection")
 		})
 		Convey("calls to non-existing tasks should fail", func() {
-			version := model.Version{Id: ""}
-			util.HandleTestingErr(version.Insert(), t, "Couldn't insert dummy version")
-			httpCom := testutil.TestAgentCommunicator("BAD_TASK_ID", "", url)
+			v := version.Version{Id: ""}
+			util.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
+			httpCom := testutil.TestAgentCommunicator("BAD_TASK_ID", "", server.URL)
 			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
 			So(err.Error(), ShouldContainSubstring, "not found")
 			So(err, ShouldNotBeNil)
 			So(patch, ShouldBeNil)
-			util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
-				"unable to clear versions collection")
-		})
-		Convey("calls to existing tasks without versions should fail", func() {
-			orphanTask := model.Task{Id: "orphanTask"}
-			util.HandleTestingErr(orphanTask.Insert(), t, "Couldn't insert orphan task")
-			httpCom := testutil.TestAgentCommunicator(orphanTask.Id, "", url)
-			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
-			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "could not find version")
-			So(patch, ShouldBeNil)
-			util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
+			util.HandleTestingErr(db.Clear(version.Collection), t,
 				"unable to clear versions collection")
 		})
 		Convey("calls to existing tasks without patches should fail", func() {
 			noPatchTask := model.Task{Id: "noPatchTask", BuildId: "a"}
 			util.HandleTestingErr(noPatchTask.Insert(), t, "Couldn't insert patch task")
-			noPatchVersion := model.Version{Id: "noPatchVersion", BuildIds: []string{"a"}}
+			noPatchVersion := version.Version{Id: "noPatchVersion", BuildIds: []string{"a"}}
 			util.HandleTestingErr(noPatchVersion.Insert(), t, "Couldn't insert patch version")
-			version := model.Version{Id: ""}
-			util.HandleTestingErr(version.Insert(), t, "Couldn't insert dummy version")
-			httpCom := testutil.TestAgentCommunicator(noPatchTask.Id, "", url)
+			v := version.Version{Id: ""}
+			util.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
+			httpCom := testutil.TestAgentCommunicator(noPatchTask.Id, "", server.URL)
 			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "no patch found for task")
 			So(patch, ShouldBeNil)
-			util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
+			util.HandleTestingErr(db.Clear(version.Collection), t,
 				"unable to clear versions collection")
 		})
 
@@ -96,16 +84,15 @@ func TestPatchPlugin(t *testing.T) {
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
-		util.HandleTestingErr(db.Clear(model.VersionsCollection), t,
+		util.HandleTestingErr(db.Clear(version.Collection), t,
 			"unable to clear versions collection")
-		version := &model.Version{
+		version := &version.Version{
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		url, server, err := apiserver.CreateTestServer(testConfig, nil, false)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.Published, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		server.InstallPlugin(gitPlugin)
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", url)
+		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
@@ -119,13 +106,12 @@ func TestPatchPlugin(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
-					So(plugin, ShouldNotBeNil)
-					So(pluginCmd, ShouldNotBeNil)
+					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{plugin.Name(), httpCom}
-					err = pluginCmd.Execute(logger, pluginCom, taskConfig, make(chan bool))
+					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
 				}
 			}
@@ -140,13 +126,12 @@ func TestPatchPlugin(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
-					So(plugin, ShouldNotBeNil)
-					So(pluginCmd, ShouldNotBeNil)
+					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{plugin.Name(), httpCom}
-					err = pluginCmd.Execute(logger, pluginCom, taskConfig, make(chan bool))
+					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldNotBeNil)
 				}
 			}

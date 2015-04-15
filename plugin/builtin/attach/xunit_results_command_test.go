@@ -36,13 +36,12 @@ func TestAttachXUnitResults(t *testing.T) {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
-					pluginCmd, plugin, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
-					So(plugin, ShouldNotBeNil)
-					So(pluginCmd, ShouldNotBeNil)
+					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{plugin.Name(), httpCom}
-					err = pluginCmd.Execute(logger, pluginCom, taskConfig, make(chan bool))
+					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
 					task, err := model.FindTask(httpCom.TaskId)
 					util.HandleTestingErr(err, t, "Couldn't find task")

@@ -1,9 +1,9 @@
 tasks:
-    - name: aggregation
-      commands:
-        - command: attach.xunit_results
-          params:
-            file_location: "xunit/testdata/junit_${file_num}.xml" #junit_3.xml
+- name: aggregation
+  commands:
+  - command: attach.xunit_results
+    params:
+      file_location: "xunit/testdata/junit_${file_num}.xml" #junit_3.xml
 
 buildvariants:
 - name: linux-64
@@ -11,4 +11,4 @@ buildvariants:
   expansions:
     file_num: "3"
   tasks:
-  - aggregation
+  - name: "aggregation"

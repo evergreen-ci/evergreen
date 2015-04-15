@@ -13,5 +13,5 @@ buildvariants:
   expansions:
     blah: "blah"
   tasks:
-  - aggregation
+  - name: aggregation
   push: true
