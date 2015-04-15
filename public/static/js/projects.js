@@ -106,7 +106,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
       })
       .error(function(data, status) {
-        alert("Error loading project");
         console.log(status);
       });
   };

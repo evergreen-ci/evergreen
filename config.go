@@ -117,6 +117,7 @@ type MCISettings struct {
 	ConfigDir           string
 	Motu                string
 	AgentExecutablesDir string
+	SuperUsers          []string
 	Jira                JiraConfig
 	Providers           CloudProviders
 	Keys                map[string]string

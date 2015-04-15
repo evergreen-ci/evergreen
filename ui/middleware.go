@@ -113,6 +113,23 @@ func (uis *UIServer) requireUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if len(uis.MCISettings.SuperUsers) == 0 {
+			next(w, r)
+			return
+		}
+		user := GetUser(r)
+		for _, id := range uis.MCISettings.SuperUsers {
+			if id == user.Id {
+				next(w, r)
+				return
+			}
+		}
+		http.Error(w, "Unauthorized user", http.StatusUnauthorized)
+	}
+}
+
 // Forces a redirect to the login page. The redirect param is set on the query
 // so that the user will be returned to the original page after they login
 func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {

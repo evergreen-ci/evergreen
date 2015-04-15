@@ -145,9 +145,9 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 
 	//Project routes
 	r.HandleFunc("/projects", uis.requireUser(uis.loadCtx(uis.projectsPage))).Methods("GET")
-	r.HandleFunc("/project/{project_id}", uis.requireUser(uis.loadCtx(uis.projectPage))).Methods("GET")
-	r.HandleFunc("/project/{project_id}", uis.requireUser(uis.loadCtx(uis.modifyProject))).Methods("POST")
-	r.HandleFunc("/project/{project_id}", uis.requireUser(uis.loadCtx(uis.addProject))).Methods("PUT")
+	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.projectPage)))).Methods("GET")
+	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.modifyProject)))).Methods("POST")
+	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.addProject)))).Methods("PUT")
 
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
 	restRoutes := rest.GetRestRoutes(uis)
