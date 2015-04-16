@@ -634,9 +634,8 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 
 			// the running task duration should be a total of the remaining
 			// duration of running tasks - 3 in this case
-			// due to scheduling variables, we allow a 5 second tolerance
-			So(runningTasksDuration, ShouldAlmostEqual, remainingDurationOne*3,
-				5)
+			// due to scheduling variables, we allow a 10 second tolerance
+			So(runningTasksDuration, ShouldAlmostEqual, remainingDurationOne*3, 10)
 		})
 
 		Convey("the total duration of running tasks with different start "+
