@@ -17,12 +17,12 @@ var (
 	}
 
 	// the threshold for what is considered "slow provisioning"
-	SlowProvisioningThreshold = 20 * time.Minute
+	slowProvisioningThreshold = 20 * time.Minute
 )
 
 const (
 	// the key for a host's notifications about slow provisioning
-	SlowProvisioningWarning = "late-provision-warning"
+	slowProvisioningWarning = "late-provision-warning"
 )
 
 // a function that outputs any necessary notifications
@@ -33,10 +33,12 @@ type notification struct {
 	recipient string
 	subject   string
 	message   string
+	threshold string
+	host      host.Host
 
 	// to fire after the notification is sent - usually intended to set db
 	// fields indicating that the notification has been sent
-	callback func() error
+	callback func(host.Host, string) error
 }
 
 // spawnHostExpirationWarnings is a notificationBuilder to build any necessary
@@ -71,36 +73,38 @@ func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
 	// the eventual list of warning notifications to be sent
 	warnings := []notification{}
 
-	for _, host := range hosts {
+	for _, h := range hosts {
 
 		// figure out the most recent expiration notification threshold the host
 		// has crossed
-		threshold := lastWarningThresholdCrossed(&host)
+		threshold := lastWarningThresholdCrossed(&h)
 
 		// for keying into the host's notifications map
 		thresholdKey := strconv.Itoa(int(threshold.Minutes()))
 
 		// if a notification has already been sent for the threshold for this
 		// host, skip it
-		if host.Notifications[thresholdKey] {
+		if h.Notifications[thresholdKey] {
 			continue
 		}
 
 		mci.Logger.Logf(slogger.INFO, "Warning needs to be sent for threshold"+
-			" '%v' for host %v", thresholdKey, host.Id)
+			" '%v' for host %v", thresholdKey, h.Id)
 
 		// we need to send a notification for the threshold for this host
 		hostNotification := notification{
-			recipient: host.StartedBy,
-			subject:   fmt.Sprintf("%v host termination reminder", host.Distro),
+			recipient: h.StartedBy,
+			subject:   fmt.Sprintf("%v host termination reminder", h.Distro),
 			message: fmt.Sprintf("Your %v host with id %v will be terminated"+
 				" at %v, in %v minutes. Visit %v to extend its lifetime.",
-				host.Distro, host.Id,
-				host.ExpirationTime.Format(time.RFC850),
-				host.ExpirationTime.Sub(time.Now()),
+				h.Distro, h.Id,
+				h.ExpirationTime.Format(time.RFC850),
+				h.ExpirationTime.Sub(time.Now()),
 				mciSettings.Ui.Url+"/ui/spawn"),
-			callback: func() error {
-				return host.SetExpirationNotification(thresholdKey)
+			threshold: thresholdKey,
+			host:      h,
+			callback: func(h host.Host, thresholdKey string) error {
+				return h.SetExpirationNotification(thresholdKey)
 			},
 		}
 
@@ -145,7 +149,7 @@ func slowProvisioningWarnings(mciSettings *mci.MCISettings) ([]notification,
 		" time to provision...")
 
 	// fetch all hosts that are taking too long to provision
-	threshold := time.Now().Add(-SlowProvisioningThreshold)
+	threshold := time.Now().Add(-slowProvisioningThreshold)
 	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))
 	if err != nil {
 		return nil, fmt.Errorf("error finding unprovisioned hosts: %v", err)
@@ -154,25 +158,27 @@ func slowProvisioningWarnings(mciSettings *mci.MCISettings) ([]notification,
 	// the list of warning notifications that will be returned
 	warnings := []notification{}
 
-	for _, host := range hosts {
+	for _, h := range hosts {
 
 		// if a warning has been sent for the host, skip it
-		if host.Notifications[SlowProvisioningWarning] {
+		if h.Notifications[slowProvisioningWarning] {
 			continue
 		}
 
 		mci.Logger.Logf(slogger.INFO, "Slow-provisioning warning needs to"+
-			" be sent for host %v", host.Id)
+			" be sent for host %v", h.Id)
 
 		// build the notification
 		hostNotification := notification{
 			recipient: mciSettings.Notify.SMTP.AdminEmail[0],
 			subject: fmt.Sprintf("Host %v taking a long time to provision",
-				host.Id),
+				h.Id),
 			message: fmt.Sprintf("See %v/ui/host/%v",
-				mciSettings.Ui.Url, host.Id),
-			callback: func() error {
-				return host.SetExpirationNotification(SlowProvisioningWarning)
+				mciSettings.Ui.Url, h.Id),
+			threshold: slowProvisioningWarning,
+			host:      h,
+			callback: func(h host.Host, s string) error {
+				return h.SetExpirationNotification(s)
 			},
 		}
 

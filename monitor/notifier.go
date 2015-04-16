@@ -86,7 +86,7 @@ func sendNotifications(notifications []notification,
 
 		// run the notification's callback, since it has been successfully sent
 		if n.callback != nil {
-			if err := n.callback(); err != nil {
+			if err := n.callback(n.host, n.threshold); err != nil {
 				errors = append(errors, fmt.Errorf("error running notification"+
 					" callback: %v", err))
 			}
