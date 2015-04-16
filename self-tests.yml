@@ -80,7 +80,7 @@ pre:
         rm -rf mongodb
         mkdir mongodb
         cd mongodb
-        wget -q ${mongo_url} -O mongodb.tgz
+        curl ${mongo_url} -o mongodb.tgz
         tar xvf mongodb.tgz --strip-components=1
         rm -rf db_files
         rm -rf db_logs
@@ -748,11 +748,31 @@ tasks:
 
 buildvariants:
     - name: ubuntu
-      display_name: ubuntu
+      display_name: Ubuntu
       run_on:
       - ubuntu1404-test
       expansions:
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
+      tasks:
+      - name: agent
+      - name: db
+      - name: mci
+      - name: model
+      - name: monitor
+      - name: notify
+      - name: plugin
+      - name: repotracker
+      - name: scheduler
+      - name: thirdparty
+      - name: ui
+      - name: util
+      - name: validator
+    - name: osx
+      display_name: OSX
+      run_on:
+      - osx-108
+      expansions:
+        mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
       tasks:
       - name: agent
       - name: db
