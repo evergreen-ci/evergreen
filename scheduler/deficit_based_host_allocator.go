@@ -24,19 +24,19 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 	newHostsNeeded := make(map[string]int)
 
 	// now, for each distro, see if we need to spin up any new hosts
-	for distroName, _ := range hostAllocatorData.taskQueueItems {
-		distro, ok := hostAllocatorData.distros[distroName]
+	for distroId, _ := range hostAllocatorData.taskQueueItems {
+		distro, ok := hostAllocatorData.distros[distroId]
 		if !ok {
 			return nil, fmt.Errorf("No distro info available for distro %v",
-				distroName)
+				distroId)
 		}
-		if distro.Name != distroName {
+		if distro.Id != distroId {
 			return nil, fmt.Errorf("Bad mapping between task queue distro "+
-				"name and host allocator distro data: %v != %v", distro.Name,
-				distroName)
+				"name and host allocator distro data: %v != %v", distro.Id,
+				distroId)
 		}
 
-		newHostsNeeded[distroName] = self.numNewHostsForDistro(
+		newHostsNeeded[distroId] = self.numNewHostsForDistro(
 			&hostAllocatorData, distro, mciSettings)
 	}
 
@@ -52,7 +52,7 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 
 	if err != nil {
 		mci.Logger.Logf(slogger.ERROR, "Couldn't get cloud manager for distro %v with provider %v: %v",
-			distro.Name, distro.Provider, err)
+			distro.Id, distro.Provider, err)
 		return 0
 	}
 
@@ -66,9 +66,9 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 		return 0
 	}
 
-	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Name]
+	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Id]
 	runnableDistroTasks := hostAllocatorData.
-		taskQueueItems[distro.Name]
+		taskQueueItems[distro.Id]
 
 	freeHosts := make([]host.Host, 0, len(existingDistroHosts))
 	for _, existingDistroHost := range existingDistroHosts {
@@ -81,7 +81,7 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 		// the deficit of available hosts vs. tasks to be run
 		len(runnableDistroTasks)-len(freeHosts),
 		// the maximum number of new hosts we're allowed to spin up
-		distro.MaxHosts-len(existingDistroHosts),
+		distro.PoolSize-len(existingDistroHosts),
 	)
 
 	// cap to zero as lower bound

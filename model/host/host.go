@@ -3,6 +3,7 @@ package host
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -12,12 +13,12 @@ import (
 )
 
 type Host struct {
-	Id       string `bson:"_id" json:"id"`
-	Host     string `bson:"host_id" json:"host"`
-	User     string `bson:"user" json:"user"`
-	Tag      string `bson:"tag" json:"tag"`
-	Distro   string `bson:"distro_id" json:"distro"`
-	Provider string `bson:"host_type" json:"host_type"`
+	Id       string        `bson:"_id" json:"id"`
+	Host     string        `bson:"host_id" json:"host"`
+	User     string        `bson:"user" json:"user"`
+	Tag      string        `bson:"tag" json:"tag"`
+	Distro   distro.Distro `bson:"distro" json:"distro"`
+	Provider string        `bson:"host_type" json:"host_type"`
 
 	// true if the host has been set up properly
 	Provisioned bool `bson:"provisioned" json:"provisioned"`

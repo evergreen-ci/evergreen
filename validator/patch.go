@@ -71,7 +71,7 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version
 		if err = angier.TransferByFieldNames(ref, project); err != nil {
 			return nil, fmt.Errorf("Could not merge ref into project: %v", err)
 		}
-		errs := CheckProjectSyntax(project, mciSettings)
+		errs := CheckProjectSyntax(project)
 		if len(errs) != 0 {
 			var message string
 			for _, err := range errs {

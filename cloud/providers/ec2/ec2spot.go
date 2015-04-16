@@ -31,13 +31,12 @@ type EC2SpotManager struct {
 }
 
 type EC2SpotSettings struct {
-	// ec2 information
-	AMI            string      `mapstructure:"ami"`
-	InstanceType   string      `mapstructure:"instancetype"`
-	SecurityGroups string      `mapstructure:"securitygroups"`
-	KeyName        string      `mapstructure:"keyname"`
-	MountInfo      []MountInfo `mapstructure:"mountinfo" yaml:"mountinfo"`
-	BidPrice       float64     `mapstructure:"bid_price"`
+	AMI           string       `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
+	InstanceType  string       `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
+	SecurityGroup string       `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
+	KeyName       string       `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
+	MountPoints   []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+	BidPrice      float64      `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
 }
 
 func (self *EC2SpotSettings) Validate() error {
@@ -53,7 +52,7 @@ func (self *EC2SpotSettings) Validate() error {
 		return fmt.Errorf("Instance size must not be blank")
 	}
 
-	if self.SecurityGroups == "" {
+	if self.SecurityGroup == "" {
 		return fmt.Errorf("Security group must not be blank")
 	}
 
@@ -61,7 +60,7 @@ func (self *EC2SpotSettings) Validate() error {
 		return fmt.Errorf("Key name must not be blank")
 	}
 
-	_, err := makeBlockDeviceMappings(self.MountInfo)
+	_, err := makeBlockDeviceMappings(self.MountPoints)
 	if err != nil {
 		return err
 	}
@@ -82,14 +81,17 @@ func (cloudManager *EC2SpotManager) Configure(mciSettings *mci.MCISettings) erro
 	return nil
 }
 
+func (_ *EC2SpotManager) GetSettings() cloud.ProviderSettings {
+	return &EC2SpotSettings{}
+}
+
 // determine how long until a payment is due for the host
 func (cloudManager *EC2SpotManager) TimeTilNextPayment(host *host.Host) time.Duration {
 	return timeTilNextEC2Payment(host)
 }
 
-func (cloudManager *EC2SpotManager) GetSSHOptions(host *host.Host, distro *distro.Distro,
-	keyPath string) ([]string, error) {
-	return getEC2KeyOptions(keyPath)
+func (cloudManager *EC2SpotManager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
+	return getEC2KeyOptions(h, keyPath)
 }
 
 func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
@@ -120,9 +122,8 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	return attachTags(getUSEast(*cloudManager.awsCredentials), tags, spotReq.InstanceId)
 }
 
-func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, distro *distro.Distro,
-	keyPath string) (bool, error) {
-	sshOpts, err := cloudManager.GetSSHOptions(host, distro, keyPath)
+func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+	sshOpts, err := cloudManager.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, err
 	}
@@ -200,34 +201,32 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2SpotManager) SpawnInstance(distro *distro.Distro,
-	owner string,
-	userHost bool) (*host.Host, error) {
-	if distro.Provider != SpotProviderName {
-		return nil, fmt.Errorf("Can't use EC2SPOT spawn instance on distro '%v'")
+func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+	if d.Provider != SpotProviderName {
+		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, d.Id, d.Provider)
 	}
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2SpotSettings{}
-	if err := mapstructure.Decode(distro.ProviderConfig, ec2Settings); err != nil {
-		return nil, fmt.Errorf("Error decoding params for distro %v: %v", distro.Name, err)
+	if err := mapstructure.Decode(d.ProviderSettings, ec2Settings); err != nil {
+		return nil, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
 	}
 
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid EC2 spot settings in distro %v: %v", distro.Name, err)
+		return nil, fmt.Errorf("Invalid EC2 spot settings in distro %v: %v", d.Id, err)
 	}
 
-	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountInfo)
+	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
 		return nil, err
 	}
 
-	instanceName := generateName(distro.Name)
+	instanceName := generateName(d.Id)
 	intentHost := &host.Host{
 		Id:               instanceName,
-		User:             distro.User,
-		Distro:           distro.Name,
+		User:             d.User,
+		Distro:           *d,
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
 		Status:           mci.HostUninitialized,
@@ -249,7 +248,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(distro *distro.Distro,
 
 	mci.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host “%v” "+
 		"for distro “%v” to signal cloud instance spawn intent", instanceName,
-		distro.Name)
+		d.Id)
 
 	spotRequest := &ec2.RequestSpotInstances{
 		SpotPrice:      fmt.Sprintf("%v", ec2Settings.BidPrice),
@@ -257,7 +256,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(distro *distro.Distro,
 		ImageId:        ec2Settings.AMI,
 		KeyName:        ec2Settings.KeyName,
 		InstanceType:   ec2Settings.InstanceType,
-		SecurityGroups: ec2.SecurityGroupNames(ec2Settings.SecurityGroups),
+		SecurityGroups: ec2.SecurityGroupNames(ec2Settings.SecurityGroup),
 		BlockDevices:   blockDevices,
 	}
 
@@ -268,7 +267,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(distro *distro.Distro,
 			mci.Logger.Logf(slogger.ERROR, "Failed to remove intent host %v: %v", intentHost.Id, err)
 		}
 		return nil, mci.Logger.Errorf(slogger.ERROR, "Failed starting spot instance "+
-			" for distro '%v' on intent host %v: %v", distro.Name, intentHost.Id, err)
+			" for distro '%v' on intent host %v: %v", d.Id, intentHost.Id, err)
 	}
 
 	spotReqRes := spotResp.SpotRequestResults[0]
@@ -359,7 +358,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			spotDetails.InstanceId, host.Id)
 		resp, err := ec2Handle.TerminateInstances([]string{spotDetails.InstanceId})
 		if err != nil {
-			return mci.Logger.Errorf(slogger.INFO, "Failed to terminate host %v: %v", host.Id)
+			return mci.Logger.Errorf(slogger.INFO, "Failed to terminate host %v: %v", host.Id, err)
 		}
 
 		for _, stateChange := range resp.StateChanges {

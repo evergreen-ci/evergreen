@@ -35,22 +35,22 @@ type versionBuildVariant struct {
 // the per-distro queues.  Then determines the number of new hosts to spin up
 // for each distro, and spins them up.
 func (self *Scheduler) Schedule() error {
-
 	// make sure the correct static hosts are in the database
 	mci.Logger.Logf(slogger.INFO, "Updating static hosts...")
-	err := model.RefreshStaticHosts(self.ConfigDir)
+	err := model.UpdateStaticHosts(self.MCISettings)
 	if err != nil {
 		return fmt.Errorf("error updating static hosts: %v", err)
 	}
 
 	// find all tasks ready to be run
 	mci.Logger.Logf(slogger.INFO, "Finding runnable tasks...")
+
 	runnableTasks, err := self.FindRunnableTasks()
 	if err != nil {
 		return fmt.Errorf("Error finding runnable tasks: %v", err)
 	}
-	mci.Logger.Logf(slogger.INFO, "There are %v tasks ready to be run",
-		len(runnableTasks))
+
+	mci.Logger.Logf(slogger.INFO, "There are %v tasks ready to be run", len(runnableTasks))
 
 	// split the tasks by distro
 	tasksByDistro, taskRunDistros, err := self.splitTasksByDistro(runnableTasks)
@@ -59,7 +59,7 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	// load in all of the distros
-	distros, err := distro.Load(self.MCISettings.ConfigDir)
+	distros, err := distro.Find(distro.All)
 	if err != nil {
 		return fmt.Errorf("Error finding distros: %v", err)
 	}
@@ -75,10 +75,10 @@ func (self *Scheduler) Schedule() error {
 
 	// prioritize the tasks, one distro at a time
 	taskQueueItems := make(map[string][]model.TaskQueueItem)
-	for _, distro := range distros {
-		runnableTasksForDistro := tasksByDistro[distro.Name]
+	for _, d := range distros {
+		runnableTasksForDistro := tasksByDistro[d.Id]
 		mci.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
-			len(runnableTasksForDistro), distro.Name)
+			len(runnableTasksForDistro), d.Id)
 
 		prioritizedTasks, err := self.PrioritizeTasks(self.MCISettings,
 			runnableTasksForDistro)
@@ -101,8 +101,8 @@ func (self *Scheduler) Schedule() error {
 
 		// persist the queue of tasks
 		mci.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...",
-			distro.Name)
-		queuedTasks, err := self.PersistTaskQueue(distro.Name, prioritizedTasks,
+			d.Id)
+		queuedTasks, err := self.PersistTaskQueue(d.Id, prioritizedTasks,
 			taskExpectedDuration)
 		if err != nil {
 			return fmt.Errorf("Error saving task queue: %v", err)
@@ -115,7 +115,7 @@ func (self *Scheduler) Schedule() error {
 				"tasks: %v", err)
 		}
 
-		taskQueueItems[distro.Name] = queuedTasks
+		taskQueueItems[d.Id] = queuedTasks
 	}
 
 	err = model.UpdateMinQueuePos(taskIdToMinQueuePos)
@@ -125,8 +125,8 @@ func (self *Scheduler) Schedule() error {
 
 	// split distros by name
 	distrosByName := make(map[string]distro.Distro)
-	for _, distro := range distros {
-		distrosByName[distro.Name] = distro
+	for _, d := range distros {
+		distrosByName[d.Id] = d
 	}
 
 	// fetch all hosts, split by distro
@@ -138,7 +138,7 @@ func (self *Scheduler) Schedule() error {
 	// figure out all hosts we have up - per distro
 	hostsByDistro := make(map[string][]host.Host)
 	for _, liveHost := range allHosts {
-		hostsByDistro[liveHost.Distro] = append(hostsByDistro[liveHost.Distro],
+		hostsByDistro[liveHost.Distro.Id] = append(hostsByDistro[liveHost.Distro.Id],
 			liveHost)
 	}
 
@@ -263,8 +263,8 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []model.Task) (
 		if len(taskSpec.Distros) != 0 {
 			distrosToUse = taskSpec.Distros
 		}
-		for _, distro := range distrosToUse {
-			tasksByDistro[distro] = append(tasksByDistro[distro], task)
+		for _, d := range distrosToUse {
+			tasksByDistro[d] = append(tasksByDistro[d], task)
 		}
 
 		// for tasks that can run on multiple distros, keep track of which
@@ -287,52 +287,51 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 	// loop over the distros, spawning up the appropriate number of hosts
 	// for each distro
 	hostsSpawnedPerDistro := make(map[string][]host.Host)
-	for distroName, numHostsToSpawn := range newHostsNeeded {
+	for distroId, numHostsToSpawn := range newHostsNeeded {
 
 		if numHostsToSpawn == 0 {
 			continue
 		}
 
-		hostsSpawnedPerDistro[distroName] = make([]host.Host, 0,
-			numHostsToSpawn)
+		hostsSpawnedPerDistro[distroId] = make([]host.Host, 0, numHostsToSpawn)
 		for i := 0; i < numHostsToSpawn; i++ {
-			distro, err := distro.LoadOne(self.ConfigDir, distroName)
-			if err != nil || distro == nil {
-				mci.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroName, err)
-			}
-
-			allDistroHosts, err := host.Find(host.ByDistroId(distroName))
+			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "Error getting hosts for distro %v: %v", distroName, err)
+				mci.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroId, err)
+			}
+
+			allDistroHosts, err := host.Find(host.ByDistroId(distroId))
+			if err != nil {
+				mci.Logger.Logf(slogger.ERROR, "Error getting hosts for distro %v: %v", distroId, err)
 				continue
 			}
 
-			if len(allDistroHosts) >= distro.MaxHosts {
+			if len(allDistroHosts) >= d.PoolSize {
 				mci.Logger.Logf(slogger.ERROR, "Already at max (%v) hosts for distro '%v'",
-					distro.Name,
-					distro.MaxHosts)
+					d.Id,
+					d.PoolSize)
 				continue
 			}
 
-			cloudManager, err := providers.GetCloudManager(distro.Provider, self.MCISettings)
+			cloudManager, err := providers.GetCloudManager(d.Provider, self.MCISettings)
 			if err != nil {
 				mci.Logger.Errorf(slogger.ERROR, "Error getting cloud manager for distro: %v", err)
 				continue
 			}
 
-			newHost, err := cloudManager.SpawnInstance(distro, mci.MCIUser, false)
+			newHost, err := cloudManager.SpawnInstance(d, mci.MCIUser, false)
 			if err != nil {
 				mci.Logger.Errorf(slogger.ERROR, "Error spawning instance: %v,",
 					err)
 				continue
 			}
-			hostsSpawnedPerDistro[distroName] =
-				append(hostsSpawnedPerDistro[distroName], *newHost)
+			hostsSpawnedPerDistro[distroId] =
+				append(hostsSpawnedPerDistro[distroId], *newHost)
 
 		}
 		// if none were spawned successfully
-		if len(hostsSpawnedPerDistro[distroName]) == 0 {
-			delete(hostsSpawnedPerDistro, distroName)
+		if len(hostsSpawnedPerDistro[distroId]) == 0 {
+			delete(hostsSpawnedPerDistro, distroId)
 		}
 	}
 	return hostsSpawnedPerDistro, nil

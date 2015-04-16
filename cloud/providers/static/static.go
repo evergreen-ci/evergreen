@@ -3,6 +3,7 @@ package static
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
+	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
@@ -15,9 +16,35 @@ const ProviderName = "static"
 
 type StaticManager struct{}
 
+type Settings struct {
+	Hosts []Host `mapstructure:"hosts" json:"hosts" bson:"hosts"`
+}
+
+type Host struct {
+	Name string `mapstructure:"name" json:"name" bson:"name"`
+}
+
+var (
+	// bson fields for the Settings struct
+	HostsKey = bsonutil.MustHaveTag(Settings{}, "Hosts")
+
+	// bson fields for the Host struct
+	NameKey = bsonutil.MustHaveTag(Host{}, "Name")
+)
+
+// Validate checks that the settings from the configuration are valid.
+func (s *Settings) Validate() error {
+	for _, h := range s.Hosts {
+		if h.Name == "" {
+			return fmt.Errorf("host 'name' field can not be blank")
+		}
+	}
+	return nil
+}
+
 func (staticMgr *StaticManager) SpawnInstance(distro *distro.Distro, owner string,
 	userHost bool) (*host.Host, error) {
-	return nil, fmt.Errorf("Cannot start new instances with static provider.")
+	return nil, fmt.Errorf("cannot start new instances with static provider")
 }
 
 // get the status of an instance
@@ -50,14 +77,17 @@ func (staticMgr *StaticManager) TerminateInstance(host *host.Host) error {
 	return nil
 }
 
+func (_ *StaticManager) GetSettings() cloud.ProviderSettings {
+	return &Settings{}
+}
+
 func (staticMgr *StaticManager) Configure(mciSettings *mci.MCISettings) error {
 	//no-op. maybe will need to load something from mciSettings in the future.
 	return nil
 }
 
-func (staticMgr *StaticManager) IsSSHReachable(host *host.Host, distro *distro.Distro,
-	keyPath string) (bool, error) {
-	sshOpts, err := staticMgr.GetSSHOptions(host, distro, keyPath)
+func (staticMgr *StaticManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+	sshOpts, err := staticMgr.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, err
 	}
@@ -72,19 +102,12 @@ func (staticMgr *StaticManager) OnUp(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *StaticManager) GetSSHOptions(host *host.Host, distro *distro.Distro, keyPath string) ([]string, error) {
-
-	//TODO - Note that currently, we're ignoring the keyPath here to be
-	// consistent with how static hosts behaved before cloud manager interfaces. This will
-	// probably need to change.
-	opts := []string{
-		"-o", "ConnectTimeout=10",
-		"-o", "StrictHostKeyChecking=no",
+func (staticMgr *StaticManager) GetSSHOptions(h *host.Host, keyPath string) (opts []string, err error) {
+	if keyPath != "" {
+		opts = append(opts, "-i", keyPath)
 	}
-	if distro.SSHOptions != nil && len(distro.SSHOptions) > 0 {
-		for _, opt := range distro.SSHOptions {
-			opts = append(opts, "-o", opt)
-		}
+	for _, opt := range h.Distro.SSHOptions {
+		opts = append(opts, "-o", opt)
 	}
 	return opts, nil
 }

@@ -346,7 +346,7 @@ func (h *HTTPAgentCommunicator) GetTask() (*model.Task, error) {
 }
 
 func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
-	distro := &distro.Distro{}
+	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.tryGet("distro")
@@ -364,7 +364,7 @@ func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
 			if resp == nil {
 				return util.RetriableError{fmt.Errorf("empty response")}
 			} else {
-				err = util.ReadJSONInto(resp.Body, distro)
+				err = util.ReadJSONInto(resp.Body, d)
 				if err != nil {
 					h.Logger.Errorf(slogger.ERROR,
 						"unable to read distro response: %v\n", err)
@@ -380,7 +380,7 @@ func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
 		return nil, fmt.Errorf("getting distro failed after %v tries: %v",
 			h.MaxAttempts, err)
 	}
-	return distro, nil
+	return d, nil
 }
 
 func (h *HTTPAgentCommunicator) GetProjectConfig() (*model.Project, error) {

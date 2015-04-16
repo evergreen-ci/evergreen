@@ -1,5 +1,9 @@
 {{ define "menu"}}
 
+<script type="text/javascript">
+  var user = {{$.User}}
+</script>
+
 <div id="nav" class="navbar navbar-inverse navbar-fixed-top">
   <div class="container-fluid">
     <div class="navbar-header">
@@ -18,10 +22,11 @@
       <ul class="nav navbar-nav">
         <li><a ng-href="/waterfall/[[project]]">Waterfall</a></li>
         <li><a ng-href="/timeline/[[project]]">Timeline</a></li>
-        <li><a ng-href="/buildmaster/[[project]]">Grid</a> </li>
-        <li><a ng-href="/patches/project/[[project]]">Patches</a> </li>
-        <li><a ng-href="/hosts">Hosts</a> </li>
-        <li><a ng-href="/task_timing/[[project]]">Stats</a> </li>
+        <li><a ng-href="/buildmaster/[[project]]">Grid</a></li>
+        <li><a ng-href="/patches/project/[[project]]">Patches</a></li>
+        {{if .User}} {{if IsSuperUser .User.Id}}<li><a ng-href="/distros">Distros</a></li>{{end}} {{end}}
+        <li><a ng-href="/hosts">Hosts</a></li>
+        <li><a ng-href="/task_timing/[[project]]">Stats</a></li>
       </ul>
 
       <ul class="nav navbar-nav navbar-right">

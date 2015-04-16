@@ -35,8 +35,12 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 	return ""
 }
 
-func MakeTemplateFuncs(fo FuncOptions) (template.FuncMap, error) {
+func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (template.FuncMap, error) {
 	r := template.FuncMap{
+		"IsSuperUser": func(userName string) bool {
+			return len(superUsers) == 0 || util.SliceContains(superUsers, userName)
+		},
+
 		"Gravatar": func(email string) string {
 			h := md5.New()
 			io.WriteString(h, email)
@@ -66,6 +70,7 @@ func MakeTemplateFuncs(fo FuncOptions) (template.FuncMap, error) {
 			uninterpolateRight := strings.Replace(uninterpolateLeft, "]]", "&#93;&#93;", -1)
 			return uninterpolateRight, nil
 		},
+
 		"Static": func(filetype, filename string) string {
 			return fmt.Sprintf("/static/%s/%s", filetype, filename)
 		},
@@ -94,6 +99,7 @@ func MakeTemplateFuncs(fo FuncOptions) (template.FuncMap, error) {
 		"MutableVar": func() interface{} {
 			return &MutableVar{""}
 		},
+
 		"Trunc": func(s string, n int) string {
 			if n > len(s) {
 				return s
@@ -130,6 +136,7 @@ func MakeTemplateFuncs(fo FuncOptions) (template.FuncMap, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	r["StaticsMD5"] = func() string {
 		return staticsMD5
 	}
