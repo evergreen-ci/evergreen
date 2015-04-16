@@ -74,7 +74,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			So(len(warnings), ShouldEqual, 1)
 
 			// execute the callback, make sure the correct threshold is set
-			So(warnings[0].callback(), ShouldBeNil)
+			So(warnings[0].callback(warnings[0].host, warnings[0].threshold), ShouldBeNil)
 			host1, err = host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
 			So(host1.Notifications["120"], ShouldBeTrue)
@@ -156,7 +156,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				StartedBy:    mci.MCIUser,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 				Notifications: map[string]bool{
-					SlowProvisioningWarning: true,
+					slowProvisioningWarning: true,
 				},
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -198,10 +198,10 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 			So(len(warnings), ShouldEqual, 1)
 
 			// make sure running the callback sets the notification key
-			So(warnings[0].callback(), ShouldBeNil)
+			So(warnings[0].callback(warnings[0].host, warnings[0].threshold), ShouldBeNil)
 			host1, err = host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
-			So(host1.Notifications[SlowProvisioningWarning], ShouldBeTrue)
+			So(host1.Notifications[slowProvisioningWarning], ShouldBeTrue)
 
 		})
 
