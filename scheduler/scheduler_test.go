@@ -2,8 +2,10 @@ package scheduler
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/version"
 	"fmt"
@@ -55,21 +57,20 @@ func (self *MockTaskDurationEstimator) GetExpectedDurations(
 
 type MockHostAllocator struct{}
 
-func (self *MockHostAllocator) NewHostsNeeded(
-	hostAllocatorData HostAllocatorData, mciSettings *mci.MCISettings) (
+func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *mci.MCISettings) (
 	map[string]int, error) {
 	return nil, fmt.Errorf("NewHostsNeeded not implemented")
 }
 
 type MockCloudManager struct{}
 
-func (self *MockCloudManager) StartInstance(distroName string) (bool, error) {
+func (self *MockCloudManager) StartInstance(distroId string) (bool, error) {
 	return false, fmt.Errorf("StartInstance not implemented")
 }
 
-func (self *MockCloudManager) SpawnInstance(distroName string,
+func (self *MockCloudManager) SpawnInstance(distroId string,
 	configDir string) (*host.Host, error) {
-	return &host.Host{Distro: distroName}, nil
+	return &host.Host{Distro: distro.Distro{Id: distroId}}, nil
 }
 
 func (self *MockCloudManager) GetInstanceStatus(inst *host.Host) (
@@ -181,18 +182,27 @@ func TestSpawnHosts(t *testing.T) {
 				distroIds[2]: 1,
 			}
 
+			for _, id := range distroIds {
+				d := distro.Distro{Id: id, PoolSize: 1, Provider: mock.ProviderName}
+				So(d.Insert(), ShouldBeNil)
+			}
+
 			newHostsSpawned, err := schedulerInstance.spawnHosts(newHostsNeeded)
 			So(err, ShouldBeNil)
 			distroZeroHosts := newHostsSpawned[distroIds[0]]
 			distroOneHosts := newHostsSpawned[distroIds[1]]
 			distroTwoHosts := newHostsSpawned[distroIds[2]]
 			So(len(distroZeroHosts), ShouldEqual, 3)
-			So(distroZeroHosts[0].Distro, ShouldEqual, distroIds[0])
-			So(distroZeroHosts[1].Distro, ShouldEqual, distroIds[0])
-			So(distroZeroHosts[2].Distro, ShouldEqual, distroIds[0])
+			So(distroZeroHosts[0].Distro.Id, ShouldEqual, distroIds[0])
+			So(distroZeroHosts[1].Distro.Id, ShouldEqual, distroIds[0])
+			So(distroZeroHosts[2].Distro.Id, ShouldEqual, distroIds[0])
 			So(len(distroOneHosts), ShouldEqual, 0)
 			So(len(distroTwoHosts), ShouldEqual, 1)
-			So(distroTwoHosts[0].Distro, ShouldEqual, distroIds[2])
+			So(distroTwoHosts[0].Distro.Id, ShouldEqual, distroIds[2])
+		})
+
+		Reset(func() {
+			db.Clear(distro.Collection)
 		})
 
 	})

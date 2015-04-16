@@ -10,7 +10,7 @@ const (
 	FlashSeveritySuccess = "success"
 	FlashSeverityInfo    = "info"
 	FlashSeverityWarning = "warning"
-	FlashSeverityError   = "error"
+	FlashSeverityError   = "danger"
 )
 
 const FlashSession = "mci-session"

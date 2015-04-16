@@ -4,6 +4,8 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
+	"10gen.com/mci/model/distro"
+	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -162,10 +164,12 @@ var IsDecommissioned = db.Query(
 	},
 )
 
-// ByDistroId produces a query that returns all hosts of the given distro.
+// ByDistroId produces a query that returns all working hosts (not terminated and
+// not quarantined) of the given distro.
 func ByDistroId(distroId string) db.Q {
+	dId := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
 	return db.Query(bson.M{
-		DistroKey:    distroId,
+		dId:          distroId,
 		StartedByKey: mci.MCIUser,
 		StatusKey:    bson.M{"$in": mci.UphostStatus},
 	})

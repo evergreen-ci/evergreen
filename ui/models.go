@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
@@ -394,6 +395,8 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 	// convert the hosts to the ui models
 	uiHosts := make([]uiHost, len(dbHosts))
 	for idx, dbHost := range dbHosts {
+		// we only need the distro id for the hosts page
+		dbHost.Distro = distro.Distro{Id: dbHost.Distro.Id}
 		host := uiHost{
 			Host:        dbHost,
 			RunningTask: nil,

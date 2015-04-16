@@ -118,7 +118,7 @@ func FindAll(collection string, query interface{},
 	return q.Skip(skip).Limit(limit).All(out)
 }
 
-// Update one matching doc in the collection
+// Update one matching doc in the collection.
 func Update(collection string, query interface{},
 	update interface{}) error {
 
@@ -131,6 +131,20 @@ func Update(collection string, query interface{},
 	defer session.Close()
 
 	return db.C(collection).Update(query, update)
+}
+
+// Update one _id matching doc in the collection.
+func UpdateId(collection string, id, update interface{}) error {
+
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+			err)
+		return err
+	}
+	defer session.Close()
+
+	return db.C(collection).UpdateId(id, update)
 }
 
 // Update all matching docs in the collection.

@@ -113,16 +113,16 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 		Convey("Calling GetDistro() should fetch the task's distro successfully",
 			func() {
-				distro := &distro.Distro{Name: "mocktaskdistro"}
+				d := &distro.Distro{Id: "mocktaskdistro"}
 				serveMux.HandleFunc("/task/mocktaskid/distro",
 					func(w http.ResponseWriter, req *http.Request) {
-						util.WriteJSON(&w, distro, http.StatusOK)
+						util.WriteJSON(&w, d, http.StatusOK)
 					})
 
-				distro, err := agentCommunicator.GetDistro()
+				d, err := agentCommunicator.GetDistro()
 				So(err, ShouldBeNil)
-				So(distro, ShouldNotBeNil)
-				So(distro.Name, ShouldEqual, "mocktaskdistro")
+				So(d, ShouldNotBeNil)
+				So(d.Id, ShouldEqual, "mocktaskdistro")
 			})
 
 		Convey("Failed calls to start() or end() should retry till success", func() {

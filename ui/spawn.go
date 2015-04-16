@@ -56,7 +56,7 @@ func (uis *UIServer) getUserPublicKeys(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request) {
 	// load in the distros
-	distros, err := distro.Load(uis.MCISettings.ConfigDir)
+	distros, err := distro.Find(distro.All)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error loading distros: %v", err))
 		return
@@ -64,12 +64,12 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 
 	distroList := []map[string]interface{}{}
 
-	for _, distro := range distros {
-		if distro.SpawnAllowed {
+	for _, d := range distros {
+		if d.SpawnAllowed {
 			distroList = append(distroList, map[string]interface{}{
-				"name":             distro.Name,
-				"userDataFile":     distro.SpawnUserData.File,
-				"userDataValidate": distro.SpawnUserData.Validate})
+				"name":             d.Id,
+				"userDataFile":     d.UserData.File,
+				"userDataValidate": d.UserData.Validate})
 		}
 	}
 	uis.WriteJSON(w, http.StatusOK, distroList)

@@ -32,12 +32,11 @@ const (
 )
 
 type EC2ProviderSettings struct {
-	// ec2 information
-	AMI            string      `mapstructure:"ami"`
-	InstanceType   string      `mapstructure:"instancetype"`
-	SecurityGroups string      `mapstructure:"securitygroups"`
-	KeyName        string      `mapstructure:"keyname"`
-	MountInfo      []MountInfo `mapstructure:"mountinfo" yaml:"mountinfo"`
+	AMI           string       `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
+	InstanceType  string       `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
+	SecurityGroup string       `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
+	KeyName       string       `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
+	MountPoints   []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
 }
 
 func (self *EC2ProviderSettings) Validate() error {
@@ -49,7 +48,7 @@ func (self *EC2ProviderSettings) Validate() error {
 		return fmt.Errorf("Instance size must not be blank")
 	}
 
-	if self.SecurityGroups == "" {
+	if self.SecurityGroup == "" {
 		return fmt.Errorf("Security group must not be blank")
 	}
 
@@ -57,7 +56,7 @@ func (self *EC2ProviderSettings) Validate() error {
 		return fmt.Errorf("Key name must not be blank")
 	}
 
-	_, err := makeBlockDeviceMappings(self.MountInfo)
+	_, err := makeBlockDeviceMappings(self.MountPoints)
 	if err != nil {
 		return err
 	}
@@ -79,13 +78,12 @@ func (cloudManager *EC2Manager) Configure(mciSettings *mci.MCISettings) error {
 	return nil
 }
 
-func (cloudManager *EC2Manager) GetSSHOptions(host *host.Host, distro *distro.Distro,
-	keyPath string) ([]string, error) {
-	return getEC2KeyOptions(keyPath)
+func (cloudManager *EC2Manager) GetSSHOptions(h *host.Host, keyPath string) ([]string, error) {
+	return getEC2KeyOptions(h, keyPath)
 }
 
-func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, distro *distro.Distro, keyPath string) (bool, error) {
-	sshOpts, err := cloudManager.GetSSHOptions(host, distro, keyPath)
+func (cloudManager *EC2Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+	sshOpts, err := cloudManager.GetSSHOptions(host, keyPath)
 	if err != nil {
 		return false, err
 	}
@@ -105,28 +103,32 @@ func (cloudManager *EC2Manager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (cloudManager *EC2Manager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
-	if distro.Provider != OnDemandProviderName {
-		return nil, fmt.Errorf("Can't use EC2 spawn instance on distro '%v'")
+func (_ *EC2Manager) GetSettings() cloud.ProviderSettings {
+	return &EC2ProviderSettings{}
+}
+
+func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+	if d.Provider != OnDemandProviderName {
+		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, d.Id, d.Provider)
 	}
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2ProviderSettings{}
-	if err := mapstructure.Decode(distro.ProviderConfig, ec2Settings); err != nil {
-		return nil, fmt.Errorf("Error decoding params for distro %v: %v", distro.Name, err)
+	if err := mapstructure.Decode(d.ProviderSettings, ec2Settings); err != nil {
+		return nil, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
 	}
 
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid EC2 settings in distro %v: %v", distro.Name, err)
+		return nil, fmt.Errorf("Invalid EC2 settings in distro %#v: %v and %#v", d, err, ec2Settings)
 	}
 
-	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountInfo)
+	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
 		return nil, err
 	}
 
-	instanceName := generateName(distro.Name)
+	instanceName := generateName(d.Id)
 
 	// proactively write all possible information pertaining
 	// to the host we want to create. this way, if we are unable
@@ -134,8 +136,8 @@ func (cloudManager *EC2Manager) SpawnInstance(distro *distro.Distro, owner strin
 	// something went wrong - and what
 	intentHost := &host.Host{
 		Id:               instanceName,
-		User:             distro.User,
-		Distro:           distro.Name,
+		User:             d.User,
+		Distro:           *d,
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
 		Status:           mci.HostUninitialized,
@@ -155,7 +157,7 @@ func (cloudManager *EC2Manager) SpawnInstance(distro *distro.Distro, owner strin
 
 	mci.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host “%v” "+
 		"for distro “%v” to signal cloud instance spawn intent", instanceName,
-		distro.Name)
+		d.Id)
 
 	options := ec2.RunInstances{
 		MinCount:       1,
@@ -163,7 +165,7 @@ func (cloudManager *EC2Manager) SpawnInstance(distro *distro.Distro, owner strin
 		ImageId:        ec2Settings.AMI,
 		KeyName:        ec2Settings.KeyName,
 		InstanceType:   ec2Settings.InstanceType,
-		SecurityGroups: ec2.SecurityGroupNames(ec2Settings.SecurityGroups),
+		SecurityGroups: ec2.SecurityGroupNames(ec2Settings.SecurityGroup),
 		BlockDevices:   blockDevices,
 	}
 
@@ -175,7 +177,7 @@ func (cloudManager *EC2Manager) SpawnInstance(distro *distro.Distro, owner strin
 	if err != nil {
 		return nil, mci.Logger.Errorf(slogger.ERROR, "Could not start new "+
 			"instance for distro “%v”. Accompanying host record is “%v”: %v",
-			distro.Name, intentHost.Id, err)
+			d.Id, intentHost.Id, err)
 	}
 
 	instance := resp.Instances[0]

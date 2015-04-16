@@ -24,7 +24,7 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
             .error(callbacks.error || function() {});
     };
 
-    ['get', 'post', 'put', 'delete'].forEach(function(method) {
+    ['delete', 'get', 'post', 'put'].forEach(function(method) {
         service[method+'Resource'] = function(resource, idents, config, callbacks) {
             httpCall(method, resource, idents, config, callbacks);
         };
@@ -198,7 +198,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
 
     service.spawnHost = function(spawnInfo, data, callbacks) {
         var config = { data: data };
-        config.data['distro'] = spawnInfo.distroName;
+        config.data['distro'] = spawnInfo.distroId;
         config.data['save_key'] = spawnInfo.saveKey;
         config.data['key_name'] = spawnInfo.spawnKey.name;
         config.data['public_key'] = spawnInfo.spawnKey.key;
@@ -241,4 +241,28 @@ mciServices.rest.factory('mciTaskStatisticsRestService', ['mciBaseRestService', 
   };
 
   return service;
+}]);
+
+
+
+mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function(baseSvc) {
+    var resource = 'distros';
+
+    var service = {};
+
+    service.addDistro = function(data, callbacks) {
+        var config = { data: data };
+        baseSvc.putResource(resource, [], config, callbacks);
+    }
+
+    service.modifyDistro = function(distroId, data, callbacks) {
+        var config = { data: data };
+        baseSvc.postResource(resource, [distroId], config, callbacks);
+    }
+
+    service.removeDistro = function(distroId, callbacks) {
+        baseSvc.deleteResource(resource, [distroId], {}, callbacks);
+    }
+
+    return service;
 }]);

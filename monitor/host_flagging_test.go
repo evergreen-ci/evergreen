@@ -63,9 +63,12 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			decommissioned, err := flagDecommissionedHosts(nil, testConfig)
 			So(err, ShouldBeNil)
 			So(len(decommissioned), ShouldEqual, 2)
-			So(util.SliceContains(decommissioned, *host3), ShouldBeTrue)
-			So(util.SliceContains(decommissioned, *host4), ShouldBeTrue)
-
+			var ids []string
+			for _, h := range decommissioned {
+				ids = append(ids, h.Id)
+			}
+			So(util.SliceContains(ids, host3.Id), ShouldBeTrue)
+			So(util.SliceContains(ids, host4.Id), ShouldBeTrue)
 		})
 
 	})
@@ -162,17 +165,14 @@ func TestFlaggingExcessHosts(t *testing.T) {
 			// mock up the distros
 
 			distro1 := distro.Distro{
-				Name:     "d1",
-				MaxHosts: 2,
+				Id:       "d1",
+				PoolSize: 2,
 			}
 			distro2 := distro.Distro{
-				Name:     "d2",
-				MaxHosts: 1,
+				Id:       "d2",
+				PoolSize: 1,
 			}
-			distros := map[string]distro.Distro{
-				"d1": distro1,
-				"d2": distro2,
-			}
+			distros := []distro.Distro{distro1, distro2}
 
 			Convey("if neither distro has excess hosts, no hosts should be"+
 				" flagged to be terminated", func() {
@@ -181,7 +181,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host1 := &host.Host{
 					Id:        "h1",
-					Distro:    "d1",
+					Distro:    distro.Distro{Id: "d1"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -190,7 +190,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host2 := &host.Host{
 					Id:        "h2",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -212,7 +212,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host1 := &host.Host{
 					Id:        "h1",
-					Distro:    "d1",
+					Distro:    distro.Distro{Id: "d1"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -221,7 +221,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host2 := &host.Host{
 					Id:        "h2",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -230,7 +230,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host3 := &host.Host{
 					Id:        "h3",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -239,7 +239,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host4 := &host.Host{
 					Id:        "h4",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -252,7 +252,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(excess), ShouldEqual, 2)
 				for _, host := range excess {
-					So(host.Distro, ShouldEqual, "d2")
+					So(host.Distro.Id, ShouldEqual, "d2")
 				}
 
 			})
@@ -264,7 +264,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host1 := &host.Host{
 					Id:        "h1",
-					Distro:    "d1",
+					Distro:    distro.Distro{Id: "d1"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -273,7 +273,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host2 := &host.Host{
 					Id:        "h2",
-					Distro:    "d1",
+					Distro:    distro.Distro{Id: "d1"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -282,7 +282,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host3 := &host.Host{
 					Id:        "h3",
-					Distro:    "d1",
+					Distro:    distro.Distro{Id: "d1"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -291,7 +291,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host4 := &host.Host{
 					Id:        "h4",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -300,7 +300,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host5 := &host.Host{
 					Id:        "h5",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -309,7 +309,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host6 := &host.Host{
 					Id:        "h6",
-					Distro:    "d2",
+					Distro:    distro.Distro{Id: "d2"},
 					Status:    mci.HostRunning,
 					StartedBy: mci.MCIUser,
 					Provider:  mock.ProviderName,
@@ -324,10 +324,10 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				excessFirst := 0
 				excessSecond := 0
 				for _, host := range excess {
-					if host.Distro == "d1" {
+					if host.Distro.Id == "d1" {
 						excessFirst++
 					}
-					if host.Distro == "d2" {
+					if host.Distro.Id == "d2" {
 						excessSecond++
 					}
 				}
@@ -343,7 +343,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host1 := &host.Host{
 					Id:          "h1",
-					Distro:      "d1",
+					Distro:      distro.Distro{Id: "d1"},
 					Status:      mci.HostRunning,
 					StartedBy:   mci.MCIUser,
 					RunningTask: "t1",
@@ -353,7 +353,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host2 := &host.Host{
 					Id:          "h2",
-					Distro:      "d1",
+					Distro:      distro.Distro{Id: "d1"},
 					Status:      mci.HostRunning,
 					StartedBy:   mci.MCIUser,
 					RunningTask: "t2",
@@ -363,7 +363,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host3 := &host.Host{
 					Id:          "h3",
-					Distro:      "d2",
+					Distro:      distro.Distro{Id: "d2"},
 					Status:      mci.HostRunning,
 					StartedBy:   mci.MCIUser,
 					RunningTask: "t3",
@@ -373,7 +373,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 				host4 := &host.Host{
 					Id:          "h4",
-					Distro:      "d2",
+					Distro:      distro.Distro{Id: "d2"},
 					Status:      mci.HostRunning,
 					StartedBy:   mci.MCIUser,
 					RunningTask: "t4",

@@ -3,7 +3,9 @@ package host
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/util"
+	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -53,28 +55,29 @@ func TestGenericHostFinding(t *testing.T) {
 		})
 
 		Convey("when finding multiple hosts", func() {
+			dId := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
 
 			Convey("the hosts matching the query should be returned", func() {
 
 				matchingHostOne := &Host{
 					Id:     "matches",
-					Distro: "d1",
+					Distro: distro.Distro{Id: "d1"},
 				}
 				So(matchingHostOne.Insert(), ShouldBeNil)
 
 				matchingHostTwo := &Host{
 					Id:     "matchesAlso",
-					Distro: "d1",
+					Distro: distro.Distro{Id: "d1"},
 				}
 				So(matchingHostTwo.Insert(), ShouldBeNil)
 
 				nonMatchingHost := &Host{
 					Id:     "nonMatches",
-					Distro: "d2",
+					Distro: distro.Distro{Id: "d2"},
 				}
 				So(nonMatchingHost.Insert(), ShouldBeNil)
 
-				found, err := Find(db.Query(bson.M{DistroKey: "d1"}))
+				found, err := Find(db.Query(bson.M{dId: "d1"}))
 				So(err, ShouldBeNil)
 				So(len(found), ShouldEqual, 2)
 				So(hostIdInSlice(found, matchingHostOne.Id), ShouldBeTrue)
@@ -88,7 +91,7 @@ func TestGenericHostFinding(t *testing.T) {
 				matchingHostOne := &Host{
 					Id:     "matches",
 					Host:   "hostOne",
-					Distro: "d1",
+					Distro: distro.Distro{Id: "d1"},
 					Tag:    "2",
 				}
 				So(matchingHostOne.Insert(), ShouldBeNil)
@@ -96,7 +99,7 @@ func TestGenericHostFinding(t *testing.T) {
 				matchingHostTwo := &Host{
 					Id:     "matchesAlso",
 					Host:   "hostTwo",
-					Distro: "d1",
+					Distro: distro.Distro{Id: "d1"},
 					Tag:    "1",
 				}
 				So(matchingHostTwo.Insert(), ShouldBeNil)
@@ -104,7 +107,7 @@ func TestGenericHostFinding(t *testing.T) {
 				matchingHostThree := &Host{
 					Id:     "stillMatches",
 					Host:   "hostThree",
-					Distro: "d1",
+					Distro: distro.Distro{Id: "d1"},
 					Tag:    "3",
 				}
 				So(matchingHostThree.Insert(), ShouldBeNil)
@@ -112,7 +115,7 @@ func TestGenericHostFinding(t *testing.T) {
 				// find the hosts, removing the host field from the projection,
 				// sorting by tag, skipping one, and limiting to one
 
-				found, err := Find(db.Query(bson.M{DistroKey: "d1"}).
+				found, err := Find(db.Query(bson.M{dId: "d1"}).
 					WithoutFields(DNSKey).
 					Sort([]string{TagKey}).
 					Skip(1).Limit(1))
@@ -491,7 +494,7 @@ func TestUpsert(t *testing.T) {
 			Id:     "hostOne",
 			Host:   "host",
 			User:   "user",
-			Distro: "distro",
+			Distro: distro.Distro{Id: "distro"},
 			Status: mci.HostRunning,
 		}
 

@@ -2,9 +2,12 @@ package model
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/cloud/providers/static"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
+	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"time"
 )
 
@@ -14,7 +17,7 @@ import (
 
 // NextTaskForHost the next task that should be run on the host.
 func NextTaskForHost(h *host.Host) (*Task, error) {
-	taskQueue, err := FindTaskQueueForDistro(h.Distro)
+	taskQueue, err := FindTaskQueueForDistro(h.Distro.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -32,34 +35,36 @@ func NextTaskForHost(h *host.Host) (*Task, error) {
 	return fullTask, nil
 }
 
-// Make sure the static hosts stored in the database are correct.
-func RefreshStaticHosts(configName string) error {
-
-	distros, err := distro.Load(configName)
+func UpdateStaticHosts(e *mci.MCISettings) error {
+	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
 	if err != nil {
 		return err
 	}
-
 	activeStaticHosts := make([]string, 0)
-	for _, distro := range distros {
-		for _, hostId := range distro.Hosts {
-			hostInfo, err := util.ParseSSHInfo(hostId)
+	settings := &static.Settings{}
+
+	for _, d := range distros {
+		err = mapstructure.Decode(d.ProviderSettings, settings)
+		if err != nil {
+			return fmt.Errorf("invalid static settings for '%v'", d.Id)
+		}
+		for _, h := range settings.Hosts {
+			hostInfo, err := util.ParseSSHInfo(h.Name)
 			if err != nil {
 				return err
 			}
 			user := hostInfo.User
 			if user == "" {
-				user = distro.User
+				user = d.User
 			}
 			staticHost := host.Host{
-				Id:           hostId,
+				Id:           h.Name,
 				User:         user,
-				Host:         hostId,
-				Distro:       distro.Name,
+				Host:         h.Name,
+				Distro:       d,
 				CreationTime: time.Now(),
 				Provider:     mci.HostTypeStatic,
 				StartedBy:    mci.MCIUser,
-				InstanceType: "",
 				Status:       mci.HostRunning,
 				Provisioned:  true,
 			}
@@ -69,7 +74,7 @@ func RefreshStaticHosts(configName string) error {
 			if err != nil {
 				return err
 			}
-			activeStaticHosts = append(activeStaticHosts, hostId)
+			activeStaticHosts = append(activeStaticHosts, h.Name)
 		}
 	}
 	return host.DecommissionInactiveStaticHosts(activeStaticHosts)
