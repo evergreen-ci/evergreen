@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/spawn"
 	"10gen.com/mci/util"
@@ -30,7 +31,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Flashes     []interface{}
 	}{projCtx, GetUser(r), flashes}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
@@ -75,7 +76,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 }
 
 func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
+	authedUser := MustHaveUser(r)
 
 	putParams := struct {
 		Distro    string `json:"distro"`
@@ -92,7 +93,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	opts := spawn.Options{
 		Distro:    putParams.Distro,
-		UserName:  user.Username(),
+		UserName:  authedUser.Username(),
 		PublicKey: putParams.PublicKey,
 		UserData:  putParams.UserData,
 	}
@@ -110,12 +111,12 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	// save the supplied public key if needed
 	if putParams.SaveKey {
-		dbuser, err := model.FindOneDBUser(user.Username())
+		dbuser, err := user.FindOne(user.ById(authedUser.Username()))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching user: %v", err))
 			return
 		}
-		err = dbuser.AddPublicKey(putParams.KeyName, putParams.PublicKey)
+		err = model.AddUserPublicKey(dbuser.Id, putParams.KeyName, putParams.PublicKey)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error saving public key: %v", err))
 			return
@@ -128,7 +129,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		host, err := spawner.CreateHost(opts)
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
-			mailErr := notify.TrySendNotificationToUser(user.Email(), fmt.Sprintf("Spawning failed"),
+			mailErr := notify.TrySendNotificationToUser(authedUser.Email(), fmt.Sprintf("Spawning failed"),
 				err.Error(), notify.ConstructMailer(uis.MCISettings.Notify))
 			if mailErr != nil {
 				mci.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)

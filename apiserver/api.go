@@ -12,6 +12,7 @@ import (
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/plugin"
@@ -82,6 +83,11 @@ func New(mciSettings *mci.MCISettings, plugins []plugin.Plugin) (*APIServer, err
 // for that token if one is found.
 func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+		err := r.ParseForm()
+		if err != nil {
+			http.Error(w, "can't parse form?", http.StatusBadRequest)
+			return
+		}
 		// Note: at this point the "token" is actually a json object in string form,
 		// containing both the username and token.
 		token := r.FormValue("id_token")
@@ -90,35 +96,51 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 			return
 		}
 		authData := struct {
-			Name  string `json:"auth_user"`
-			Token string `json:"auth_token"`
+			Name   string `json:"auth_user"`
+			Token  string `json:"auth_token"`
+			APIKey string `json:"api_key"`
 		}{}
 		if err := util.ReadJSONInto(ioutil.NopCloser(strings.NewReader(token)), &authData); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if len(authData.Token) == 0 {
+		if len(authData.Token) == 0 && len(authData.APIKey) == 0 {
 			next(w, r)
 			return
 		}
-		user, err := um.GetUserByToken(authData.Token)
-		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
-		} else {
-			// Get the user's full details from the DB or create them if they don't exists
-			dbUser, err := model.GetOrCreateUser(user.Username(), user.DisplayName(), user.Email())
+		if len(authData.Token) > 0 { // legacy auth - token lookup
+			authedUser, err := um.GetUserByToken(authData.Token)
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "Error looking up user %v: %v", user.Username(), err)
+				mci.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 			} else {
+				// Get the user's full details from the DB or create them if they don't exists
+				dbUser, err := model.GetOrCreateUser(authedUser.Username(),
+					authedUser.DisplayName(), authedUser.Email())
+				if err != nil {
+					mci.Logger.Logf(slogger.ERROR, "Error looking up user %v: %v", authedUser.Username(), err)
+				} else {
+					context.Set(r, apiUserKey, dbUser)
+				}
+			}
+		} else if len(authData.APIKey) > 0 {
+			dbUser, err := user.FindOne(user.ById(authData.Name))
+			fmt.Println("checking for key", dbUser.APIKey, authData.APIKey)
+			if dbUser != nil && err == nil {
+				if dbUser.APIKey != authData.APIKey {
+					http.Error(w, "Unauthorized - invalid API key", http.StatusUnauthorized)
+					return
+				}
 				context.Set(r, apiUserKey, dbUser)
+			} else {
+				mci.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 			}
 		}
 		next(w, r)
 	}
 }
 
-func MustHaveUser(r *http.Request) *model.DBUser {
+func MustHaveUser(r *http.Request) *user.DBUser {
 	u := GetUser(r)
 	if u == nil {
 		panic("no user attached to request")
@@ -248,9 +270,11 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("ENDING TASK")
 	finishTime := time.Now()
 	taskEndResponse := &apimodels.TaskEndResponse{}
 	if !getGlobalLock(APIServerLockTitle) {
+		fmt.Println("coudln't get global lock!!!!!!!")
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
@@ -276,6 +300,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	project, err := model.FindProject("", task.Project, as.MCISettings.ConfigDir)
 	if err != nil {
+		fmt.Println("couldn't find projecT!!!!!!!!!!!!!")
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -284,6 +309,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	err = task.MarkEnd(APIServerLockTitle, finishTime, taskEndRequest, project)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", task.Id, err)
+		fmt.Println("ERROR CALLING MARKEND")
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -291,8 +317,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// if task was aborted, reset to inactive
 	if taskEndRequest.Status == mci.TaskUndispatched {
 		if err = model.SetTaskActivated(task.Id, "", false); err != nil {
-			message := fmt.Sprintf("Error deactivating task after abort: %v",
-				err)
+			fmt.Println("ERRORDEATASAFA")
+			message := fmt.Sprintf("Error deactivating task after abort: %v", err)
 			mci.Logger.Logf(slogger.ERROR, message)
 			taskEndResponse.Message = message
 			as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
@@ -644,9 +670,9 @@ func attachUser(userM auth.UserManager, r *http.Request) web.HTTPResponse {
 }
 */
 
-func GetUser(r *http.Request) *model.DBUser {
+func GetUser(r *http.Request) *user.DBUser {
 	if rv := context.Get(r, apiUserKey); rv != nil {
-		return rv.(*model.DBUser)
+		return rv.(*user.DBUser)
 	}
 	return nil
 }
@@ -784,7 +810,7 @@ func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if projectRef == nil {
-		http.NotFound(w, r)
+		http.Error(w, fmt.Sprintf("no project found named '%v'", id), http.StatusNotFound)
 		return
 	}
 	as.WriteJSON(w, http.StatusOK, projectRef)

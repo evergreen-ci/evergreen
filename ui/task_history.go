@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"encoding/json"
 	"fmt"
@@ -106,7 +107,7 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 	default:
 		uis.WriteHTML(w, http.StatusOK, struct {
 			ProjectData projectContext
-			User        *model.DBUser
+			User        *user.DBUser
 			Flashes     []interface{}
 			Data        taskHistoryPageData
 		}{projCtx, GetUser(r), []interface{}{}, data}, "base",
@@ -173,7 +174,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Flashes     []interface{}
 		Data        interface{}
 	}{projCtx, GetUser(r), []interface{}{}, data}, "base",

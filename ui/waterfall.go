@@ -3,6 +3,7 @@ package ui
 import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"fmt"
 	"labix.org/v2/mgo/bson"
@@ -456,7 +457,7 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Data        waterfallData
 	}{projCtx, GetUser(r), finalData}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }

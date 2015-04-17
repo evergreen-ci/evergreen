@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"encoding/json"
@@ -228,7 +229,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData   projectContext
-		User          *model.DBUser
+		User          *user.DBUser
 		Flashes       []interface{}
 		Task          uiTaskData
 		PluginContent pluginData
@@ -389,7 +390,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	err = uis.StreamHTML(w, http.StatusOK,
 		struct {
 			Data chan model.LogMessage
-			User *model.DBUser
+			User *user.DBUser
 		}{channel, GetUser(r)}, "base", templateToUse)
 	if err != nil {
 		mci.Logger.Logf(slogger.ERROR, err.Error())
@@ -533,6 +534,6 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Data chan model.LogMessage
-		User *model.DBUser
+		User *user.DBUser
 	}{displayLogs, GetUser(r)}, "base", "task_log.html")
 }

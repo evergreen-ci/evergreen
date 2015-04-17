@@ -3,9 +3,9 @@ package ui
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/util"
 	"fmt"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 )
 
@@ -64,46 +64,48 @@ func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, loginURL, http.StatusFound)
 }
 
-func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
-	user := GetUser(r)
-	if user == nil {
-		panic("User required")
+func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
+	currentUser := MustHaveUser(r)
+	newKey := util.RandomString()
+	if err := model.SetUserAPIKey(currentUser.Id, newKey); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("failed saving key: %v", err))
+		return
 	}
+	uis.WriteJSON(w, http.StatusOK, struct {
+		Key string `json:"key"`
+	}{newKey})
+}
 
+func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
+	currentUser := MustHaveUser(r)
 	projCtx := MustHaveProjectContext(r)
 
-	settingsData := user.Settings
+	settingsData := currentUser.Settings
 	flashes := PopFlashes(uis.CookieStore, r, w)
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		Data        model.UserSettings
-		User        *model.DBUser
+		Data        user.UserSettings
+		User        *user.DBUser
 		Flashes     []interface{}
-	}{projCtx, settingsData, user, flashes}, "base",
+	}{projCtx, settingsData, currentUser, flashes}, "base",
 		"settings.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) {
-	user := GetUser(r)
-	if user == nil {
-		panic("user is required")
-	}
-
-	userSettings := model.UserSettings{}
+	currentUser := MustHaveUser(r)
+	userSettings := user.UserSettings{}
 
 	if err := util.ReadJSONInto(r.Body, &userSettings); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 
-	update := bson.M{"$set": bson.M{"settings": userSettings}}
-
-	if err := model.UpdateOneUser(user.Username(), update); err != nil {
+	if err := model.SaveUserSettings(currentUser.Username(), userSettings); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error saving user settings: %v", err))
 		return
 	}
 
-	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("New user settings were saved successfully."))
+	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Settings were saved."))
 	uis.WriteJSON(w, http.StatusOK, "Updated user settings successfully")
 }

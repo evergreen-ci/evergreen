@@ -3,6 +3,7 @@ package ui
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"encoding/json"
@@ -74,7 +75,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData   projectContext
-		User          *model.DBUser
+		User          *user.DBUser
 		Flashes       []interface{}
 		Build         *uiBuild
 		PluginContent pluginData

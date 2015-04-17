@@ -2,9 +2,9 @@ package ui
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -69,7 +69,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		Flashes     []interface{}
 		Events      []event.Event
 		Host        *host.Host
-		User        *model.DBUser
+		User        *user.DBUser
 		ProjectData projectContext
 	}{flashes, reversed, h, GetUser(r), projCtx},
 		"base", "host.html", "base_angular.html", "menu.html")
@@ -90,7 +90,7 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 		Flashes             []interface{}
 		Hosts               *hostsData
 		IncludeSpawnedHosts bool
-		User                *model.DBUser
+		User                *user.DBUser
 		ProjectData         projectContext
 	}{flashes, hosts, includeSpawnedHosts, GetUser(r), projCtx},
 		"base", "hosts.html", "base_angular.html", "menu.html")

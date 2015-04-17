@@ -3,6 +3,7 @@ package ui
 import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/util"
 	"fmt"
@@ -57,7 +58,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData   projectContext
-		User          *model.DBUser
+		User          *user.DBUser
 		Flashes       []interface{}
 		Version       *uiVersion
 		PluginContent pluginData

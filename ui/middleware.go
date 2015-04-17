@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/auth"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/plugin"
 	"fmt"
@@ -51,9 +52,9 @@ const (
 
 // GetUser returns a user if one is attached to the request. Returns nil if the user is not logged
 // in, assuming that the middleware to lookup user information is enabled on the request handler.
-func GetUser(r *http.Request) *model.DBUser {
+func GetUser(r *http.Request) *user.DBUser {
 	if rv := context.Get(r, myUserKey); rv != nil {
-		return rv.(*model.DBUser)
+		return rv.(*user.DBUser)
 	}
 	return nil
 }
@@ -75,7 +76,7 @@ func MustHaveProjectContext(r *http.Request) projectContext {
 	return pc
 }
 
-func MustHaveUser(r *http.Request) *model.DBUser {
+func MustHaveUser(r *http.Request) *user.DBUser {
 	u := GetUser(r)
 	if u == nil {
 		panic("no user attached to request")
@@ -83,7 +84,7 @@ func MustHaveUser(r *http.Request) *model.DBUser {
 	return u
 }
 
-func (pc projectContext) ToPluginContext(mciSettings mci.MCISettings, user *model.DBUser) plugin.UIContext {
+func (pc projectContext) ToPluginContext(mciSettings mci.MCISettings, user *user.DBUser) plugin.UIContext {
 	return plugin.UIContext{
 		MCISettings: mciSettings,
 		User:        user,

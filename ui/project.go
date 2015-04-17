@@ -2,6 +2,7 @@ package ui
 
 import (
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -26,7 +27,7 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		AllProjects []model.ProjectRef
 	}{projCtx, GetUser(r), allProjects}
 

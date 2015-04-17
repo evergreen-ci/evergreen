@@ -43,6 +43,26 @@ mciModule.controller('SettingsCtrl', function($scope, $http, $window) {
 
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
+  $scope.userApiKey = $window.userApiKey;
+
+
+  $scope.selectKey = function() {
+     $('#apikey').focus().select();
+  }
+
+  $scope.newKey = function(){
+    if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
+      return
+
+    $http.post('/settings/newkey').
+      success(function(data, status) {
+        $scope.userApiKey = data.key
+        $scope.selectKey()
+      }).
+      error(function(data, status, errorThrown) {
+        console.log(data,status);
+      });
+  }
 
   $scope.updateUserSettings = function(new_tz) {
     data = {timezone: new_tz};

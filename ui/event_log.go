@@ -2,8 +2,8 @@ package ui
 
 import (
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
 	"10gen.com/mci/model/event"
+	"10gen.com/mci/model/user"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -35,7 +35,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Data        []event.Event
 	}{projCtx, GetUser(r), loggedEvents}, "base", "event_log.html", "base_angular.html")
 }

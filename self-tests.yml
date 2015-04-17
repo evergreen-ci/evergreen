@@ -120,6 +120,34 @@ post:
 
 tasks:
 
+- name: client
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - func: "setup creds"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          mkdir bin
+          export GOBIN=`pwd`/bin
+          go install cli/main/cli.go
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/bin/cli
+        remote_file: mci/cli/${task_id}/evergreen
+        bucket: mciuploads
+        permissions: public-read
+        content_type: application/octet-stream
+        display_name: Evergreen CLI client
+
 - name: agent
   commands:
     - func: "fetch source"
@@ -754,6 +782,7 @@ buildvariants:
       expansions:
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
       tasks:
+      - name: client
       - name: agent
       - name: db
       - name: mci
@@ -774,6 +803,7 @@ buildvariants:
       expansions:
         mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
       tasks:
+      - name: client
       - name: agent
       - name: db
       - name: mci

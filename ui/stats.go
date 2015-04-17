@@ -2,6 +2,7 @@ package ui
 
 import (
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -47,7 +48,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 
 	data := struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Project     UIProject
 		AllProjects []UIProject
 	}{projCtx, GetUser(r), newProject, allProjects}

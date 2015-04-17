@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"10gen.com/mci/web"
@@ -521,7 +522,7 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 			return
 		}
 		// get the display name and email for this user
-		dbUser, err := model.FindOneDBUser(patch.Author)
+		dbUser, err := user.FindOne(user.ById(patch.Author))
 		if err != nil {
 			mci.Logger.Errorf(slogger.ERROR, "Error finding user %v: %v",
 				patch.Author, err)
@@ -745,7 +746,7 @@ func TrySendNotification(recipients []string, subject, body string, mailer Maile
 
 // Helper function to send notification to a given user
 func TrySendNotificationToUser(userId string, subject, body string, mailer Mailer) (err error) {
-	dbUser, err := model.FindOneDBUser(userId)
+	dbUser, err := user.FindOne(user.ById(userId))
 	if err != nil {
 		return fmt.Errorf("Error finding user %v: %v", userId, err)
 	} else if dbUser == nil {

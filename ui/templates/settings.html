@@ -2,24 +2,46 @@
 <script type="text/javascript" src="{{Static "js" "settings.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
     var user_tz = {{.Data.Timezone}};
+	var userApiKey = {{.User.APIKey}}
 </script>
 {{end}}
 
 {{define "title"}}
-Evergreen - User Settings
+Settings for {{.User.Id}}
 {{end}}
 
 
 {{define "content"}}
-<div id="content" class="container">
+<div id="content" class="container" ng-controller="SettingsCtrl">
   {{template "flash" . }}
-  <h1>User Settings</h1>
-  <div ng-controller="SettingsCtrl">
-    <form novalidate class="css-form">
-      Timezone: <select ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select>
-      <br />
-      <button ng-click="updateUserSettings(new_tz)">Submit</button>
-    </form>
+  <div class="row">
+    <div class="col-lg-4">
+      <h3>Local Settings</h3>
+      <form novalidate class="css-form">
+        <div>
+          <label>Timezone <select ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select></label>
+        </div>
+        <br />
+        <div style="text-align:center">
+          <button ng-click="updateUserSettings(new_tz)" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+      <br/><hr/>
+    </div>
+  </div>
+  <div class="row" ng-controller="SettingsCtrl">
+    <div class="col-lg-8">
+      <h3>Authentication</h3>
+      <div ng-click="selectKey()">
+        <div class="pull-left" ng-click="selectKey()"> 
+          <label>API Key</label>
+          <div class="muted small">Click to highlight.</div> 
+        </div>
+        <div class="pull-left" ng-click="selectKey()"> 
+          <input id="apikey" type="text" ng-value="userApiKey" style="font-family:monospace; margin-left:15px; font-size:1.4em;" readonly/></label>
+      </div>
+      <div class="pull-left">&nbsp;&nbsp;&nbsp;<button ng-click="newKey()" class="btn btn-primary">New Key</button> </div>
+    </div>
   </div>
 </div>
 {{end}}

@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/user"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -249,7 +250,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Flashes     []interface{}
 		Data        uiResourceInfo
 	}{projCtx, GetUser(r), []interface{}{}, uiResourceInfo{uiTaskQueues, hostStats}},

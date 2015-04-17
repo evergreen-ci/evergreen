@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/gorilla/mux"
@@ -30,7 +31,7 @@ func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 	}{projCtx, GetUser(r)}, "base", "timeline.html", "base_angular.html", "menu.html")
 }
 
@@ -52,7 +53,7 @@ func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, 
 	projCtx := MustHaveProjectContext(r)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Author      string
 	}{projCtx, GetUser(r), author}, "base", "patches.html", "base_angular.html", "menu.html")
 }
@@ -66,7 +67,7 @@ func (uis *UIServer) userPatchTimeline(w http.ResponseWriter, r *http.Request) {
 	}
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Author      string
 	}{projCtx, GetUser(r), author}, "base", "patches.html", "base_angular.html", "menu.html")
 }
@@ -205,6 +206,6 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 		VersionsByGitspec map[string]version.Version
 		Builds            []model.Build
 		VersionHistory    []bson.M
-		User              *model.DBUser
+		User              *user.DBUser
 	}{projCtx, gitspecMap, builds, buildmasterData, GetUser(r)}, "base", "buildmaster.html", "base_angular.html", "menu.html")
 }

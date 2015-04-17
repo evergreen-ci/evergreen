@@ -47,31 +47,6 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 	return ""
 }
 
-func getUserTimezone(user auth.MCIUser) string {
-	// Attempts to find the current user's preferred timezone, returns default if not found.
-	defaultTZ := "America/New_York"
-	if user == nil {
-		// No user is currently logged in.
-		return defaultTZ
-	}
-
-	dbuser, err := model.FindOneDBUser(user.Username())
-	if err != nil {
-		mci.Logger.Errorf(slogger.WARN, "Error finding MCI user %v in database: %v", user.Username(), err)
-		return defaultTZ
-	}
-	if dbuser == nil {
-		mci.Logger.Errorf(slogger.WARN, "Could not find MCI user %v in database", user.Username())
-	}
-
-	settingsData := dbuser.Settings
-	if settingsData.Timezone == "" {
-		return defaultTZ
-	}
-
-	return settingsData.Timezone
-}
-
 func convertToTimezone(when time.Time, timezone string, layout string) string {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
@@ -269,23 +244,8 @@ func MakeCommonFunctionMap(mciSettings *mci.MCISettings) (template.FuncMap,
 	//Truncate a string to the desired length.
 	funcs["Trunc"] = util.Truncate
 
-	funcs["GetTimezone"] = func(user auth.MCIUser) string {
-		return getUserTimezone(user)
-	}
-
 	funcs["IsProd"] = func() bool {
 		return mciSettings.IsProd
-	}
-
-	funcs["DateFormat"] = func(when time.Time, layout string, user auth.MCIUser) string {
-		user_tz := getUserTimezone(user)
-		return convertToTimezone(when, user_tz, layout)
-	}
-
-	funcs["TimeSince"] = func(when time.Time) string {
-		timesince := time.Since(when)
-		timeChunks := humanTimeDiff(int(timesince.Seconds()))
-		return strings.Join(timeChunks, "")
 	}
 
 	/* Generate a URL to github for the given repo, project, and gitspec. */

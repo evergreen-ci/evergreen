@@ -3,6 +3,7 @@ package ui
 import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/util"
 	"10gen.com/mci/validator"
 	"fmt"
@@ -41,7 +42,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
-		User        *model.DBUser
+		User        *user.DBUser
 		Version     *uiVersion
 		Variants    map[string]model.BuildVariant
 		Tasks       []interface{}

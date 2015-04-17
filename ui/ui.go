@@ -137,6 +137,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// User settings
 	r.HandleFunc("/settings", uis.requireUser(uis.loadCtx(uis.userSettingsPage))).Methods("GET")
 	r.HandleFunc("/settings", uis.requireUser(uis.loadCtx(uis.userSettingsModify))).Methods("PUT")
+	r.HandleFunc("/settings/newkey", uis.requireUser(uis.loadCtx(uis.newAPIKey))).Methods("POST")
 
 	// Task stats
 	r.HandleFunc("/task_timing", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")

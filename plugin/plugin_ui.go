@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/patch"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/gorilla/context"
@@ -91,7 +92,7 @@ type UIPanel struct {
 
 type UIContext struct {
 	MCISettings mci.MCISettings
-	User        *model.DBUser
+	User        *user.DBUser
 	Task        *model.Task
 	Build       *model.Build
 	Version     *version.Version

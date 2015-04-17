@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/user"
 	"10gen.com/mci/util"
 	"crypto/md5"
 	"encoding/json"
@@ -84,7 +84,7 @@ func MakeTemplateFuncs(fo FuncOptions) (template.FuncMap, error) {
 			return fo.IsProd
 		},
 
-		"GetTimezone": func(u *model.DBUser) string {
+		"GetTimezone": func(u *user.DBUser) string {
 			if u != nil && u.Settings.Timezone != "" {
 				return u.Settings.Timezone
 			}
