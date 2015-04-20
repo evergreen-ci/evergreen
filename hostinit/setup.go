@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"labix.org/v2/mgo"
+	"strings"
 	"sync"
 	"time"
 )
@@ -104,10 +105,10 @@ func (init *HostInit) SetupReadyHosts() error {
 func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := providers.GetCloudManager(host.Provider, init.MCISettings)
+	cloudMgr, err := providers.GetCloudManager(host.Distro.Provider, init.MCISettings)
 	if err != nil {
 		return false,
-			fmt.Errorf("failed to get cloud manager for provider %v: %v", host.Provider, err)
+			fmt.Errorf("failed to get cloud manager for provider %v: %v", host.Distro.Provider, err)
 	}
 
 	// ask for the instance's status
@@ -248,7 +249,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 func (init *HostInit) buildSetupScript(h *host.Host) (string, error) {
 	// replace expansions in the script
 	exp := command.NewExpansions(init.MCISettings.Expansions)
-	setupScript, err := exp.ExpandString(h.Distro.Setup)
+	setupScript, err := exp.ExpandString(strings.Join([]string{h.Distro.Setup}, "\n"))
 	if err != nil {
 		return "", fmt.Errorf("expansions error: %v", err)
 	}
