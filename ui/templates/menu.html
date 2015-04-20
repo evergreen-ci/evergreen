@@ -24,7 +24,6 @@
         <li><a ng-href="/timeline/[[project]]">Timeline</a></li>
         <li><a ng-href="/buildmaster/[[project]]">Grid</a></li>
         <li><a ng-href="/patches/project/[[project]]">Patches</a></li>
-        {{if .User}} {{if IsSuperUser .User.Id}}<li><a ng-href="/distros">Distros</a></li>{{end}} {{end}}
         <li><a ng-href="/hosts">Hosts</a></li>
         <li><a ng-href="/task_timing/[[project]]">Stats</a></li>
       </ul>
