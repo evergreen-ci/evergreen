@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"labix.org/v2/mgo"
-	"strings"
 	"sync"
 	"time"
 )
@@ -60,18 +59,12 @@ func (init *HostInit) SetupReadyHosts() error {
 			continue
 		}
 
-		// build the setup script
-		setup, err := init.buildSetupScript(&h)
-		if err != nil {
-			return fmt.Errorf("error building setup script for host %v: %v", h.Id, err)
-		}
-
 		mci.Logger.Logf(slogger.INFO, "Running setup script for host %v", h.Id)
 
 		// kick off the setup, in its own goroutine, so pending setups don't have
 		// to wait for it to finish
 		wg.Add(1)
-		go func(h host.Host, setup string) {
+		go func(h host.Host) {
 
 			if err := init.ProvisionHost(&h); err != nil {
 				mci.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
@@ -90,7 +83,7 @@ func (init *HostInit) SetupReadyHosts() error {
 
 			wg.Done()
 
-		}(h, setup)
+		}(h)
 
 	}
 
@@ -226,8 +219,14 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	}
 	defer file.Close()
 
+	// build the setup script
+	setup, err := init.buildSetupScript(targetHost)
+	if err != nil {
+		return nil, fmt.Errorf("error building setup script for host %v: %v", targetHost.Id, err)
+	}
+
 	// write the setup script to the file
-	if _, err := file.Write([]byte(targetHost.Distro.Setup)); err != nil {
+	if _, err := file.Write([]byte(setup)); err != nil {
 		return nil, fmt.Errorf("error writing remote setup script: %v", err)
 	}
 
@@ -249,11 +248,10 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 func (init *HostInit) buildSetupScript(h *host.Host) (string, error) {
 	// replace expansions in the script
 	exp := command.NewExpansions(init.MCISettings.Expansions)
-	setupScript, err := exp.ExpandString(strings.Join([]string{h.Distro.Setup}, "\n"))
+	setupScript, err := exp.ExpandString(h.Distro.Setup)
 	if err != nil {
 		return "", fmt.Errorf("expansions error: %v", err)
 	}
-
 	return setupScript, err
 }
 
