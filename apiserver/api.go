@@ -9,6 +9,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/artifact"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/user"
@@ -604,15 +605,12 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
 	// Get the distro for this task
-	h, err := host.FindOne(host.ByRunningTaskId(task.Id))
+	distro, err := distro.LoadOne(as.MCISettings.ConfigDir, task.DistroId)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
-	// agent can't properly unmarshal provider settings map
-	h.Distro.ProviderSettings = nil
-	as.WriteJSON(w, http.StatusOK, h.Distro)
+	as.WriteJSON(w, http.StatusOK, distro)
 }
 
 func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
@@ -828,8 +826,8 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		as.WriteJSON(w, http.StatusBadRequest, []validator.ValidationError{validationErr})
 		return
 	}
-	syntaxErrs := validator.CheckProjectSyntax(project)
-	semanticErrs := validator.CheckProjectSemantics(project)
+	syntaxErrs := validator.CheckProjectSyntax(project, &as.MCISettings)
+	semanticErrs := validator.CheckProjectSemantics(project, &as.MCISettings)
 	if len(syntaxErrs)+len(semanticErrs) != 0 {
 		as.WriteJSON(w, http.StatusBadRequest, append(syntaxErrs, semanticErrs...))
 		return

@@ -22,7 +22,7 @@ type AgentCompiler interface {
 	// Given a distro, return the correct subpath to appropriate executable
 	// within the directory where the compiler cross-compiles all of the
 	// executables
-	ExecutableSubPath(distroId string) (string, error)
+	ExecutableSubPath(distroName string) (string, error)
 }
 
 // Implementation of an AgentCompiler, using goxc as the cross-compiler
@@ -76,18 +76,19 @@ func (self *GoxcAgentCompiler) Compile(sourceDir string, destDir string) error {
 	return nil
 }
 
-func (self *GoxcAgentCompiler) ExecutableSubPath(id string) (string, error) {
+func (self *GoxcAgentCompiler) ExecutableSubPath(distroName string) (
+	string, error) {
 
 	// get the full distro info, so we can figure out the architecture
-	d, err := distro.FindOne(distro.ById(id))
+	distro, err := distro.LoadOne(self.MCISettings.ConfigDir, distroName)
 	if err != nil {
-		return "", fmt.Errorf("error finding distro %v: %v", id, err)
+		return "", fmt.Errorf("error finding distro %v: %v", distroName, err)
 	}
 
 	mainName := "main"
-	if strings.HasPrefix(d.Arch, "windows") {
+	if strings.HasPrefix(distro.Arch, "windows") {
 		mainName = "main.exe"
 	}
 
-	return filepath.Join("snapshot", d.Arch, mainName), nil
+	return filepath.Join("snapshot", distro.Arch, mainName), nil
 }

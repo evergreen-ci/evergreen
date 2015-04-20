@@ -11,7 +11,6 @@ mciModule.controller('SpawnedHostsCtrl', function($scope, $window, $timeout, mci
     $scope.userData = {};
     $scope.spawnInfo = {};
     $scope.extensionLength = {};
-    $scope.curHostData;
     $scope.hostExtensionLengths = {};
 
     // max of 7 days time to expiration
@@ -211,7 +210,7 @@ mciModule.controller('SpawnedHostsCtrl', function($scope, $window, $timeout, mci
         });
         $scope.selectedDistro = $scope.spawnableDistros[0].distro;
         $scope.spawnInfo = {
-          'distroId': $scope.selectedDistro.name,
+          'distroName': $scope.selectedDistro.name,
           'spawnKey': $scope.newKey,
         };
       };
@@ -250,7 +249,7 @@ mciModule.controller('SpawnedHostsCtrl', function($scope, $window, $timeout, mci
     // set the spawn request distro based on user selection
     $scope.setSpawnableDistro = function(spawnableDistro) {
       $scope.selectedDistro = spawnableDistro
-      $scope.spawnInfo.distroId = spawnableDistro.name;
+      $scope.spawnInfo.distroName = spawnableDistro.name;
     };
 
     // toggle spawn key based on user selection
@@ -295,7 +294,7 @@ mciModule.controller('SpawnedHostsCtrl', function($scope, $window, $timeout, mci
       if ($scope.lastSelected) {
         $scope.lastSelected.selected = '';
       }
-      host.selected = 'active-host';
+      host.selected = 'highlight-bg';
       host.password = '';
       host.cPassword = '';
       $scope.lastSelected = host;
@@ -303,7 +302,7 @@ mciModule.controller('SpawnedHostsCtrl', function($scope, $window, $timeout, mci
       $scope.curHostData.isTerminated = $scope.curHostData.isTerminated;
       // check if this is a windows host
       $scope.curHostData.isWinHost = false;
-      if (host.distro.arch.indexOf('win') != -1) {
+      if (host.distro.indexOf('win') != -1) {
         $scope.curHostData.isWinHost = true;
       }
       $scope.updateExtensionOptions($scope.curHostData);

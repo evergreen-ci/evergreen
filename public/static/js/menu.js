@@ -1,3 +1,5 @@
-function MenuController($scope, $window) {
-  projects = $window.projects;
+function MenuController($scope, $window){
+  projects = $window.projects
+
+
 }

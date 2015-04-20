@@ -56,11 +56,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	webHome := filepath.Join(home, "public")
-
-	functionOptions := ui.FuncOptions{webHome, mciSettings.Ui.HelpUrl, true, router}
-
-	functions, err := ui.MakeTemplateFuncs(functionOptions, mciSettings.SuperUsers)
+	funcs, err := ui.MakeTemplateFuncs(ui.FuncOptions{
+		filepath.Join(home, "public"), mciSettings.Ui.HelpUrl, true, router})
 	if err != nil {
 		fmt.Println("Failed to create template function map:", err)
 		os.Exit(1)
@@ -69,12 +66,14 @@ func main() {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, ui.WebRootPath, ui.Templates),
 		DisableCache: !mciSettings.Ui.CacheTemplates,
-		Funcs:        functions,
+		Funcs:        funcs,
 	})
 	uis.InitPlugins()
 
+	staticHome := filepath.Join(home, "public")
+
 	n := negroni.New()
-	n.Use(negroni.NewStatic(http.Dir(webHome)))
+	n.Use(negroni.NewStatic(http.Dir(staticHome)))
 	n.Use(ui.NewLogger())
 	n.Use(negroni.HandlerFunc(ui.UserMiddleware(crowdManager)))
 	n.UseHandler(router)

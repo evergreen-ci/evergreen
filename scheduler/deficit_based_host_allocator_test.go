@@ -41,7 +41,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 					host.Host{Id: hostIds[1]},
 					host.Host{Id: hostIds[2]},
 				}
-				dist.PoolSize = len(hosts) + 5
+				dist.MaxHosts = len(hosts) + 5
 
 				hostAllocatorData := &HostAllocatorData{
 					existingDistroHosts: map[string][]host.Host{
@@ -64,7 +64,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[2]},
 				model.TaskQueueItem{Id: taskIds[3]},
 			}
-			dist.PoolSize = 0
+			dist.MaxHosts = 0
 
 			hostAllocatorData := &HostAllocatorData{
 				existingDistroHosts: map[string][]host.Host{},
@@ -78,7 +78,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			hosts := []host.Host{
 				host.Host{Id: hostIds[0]},
 			}
-			dist.PoolSize = len(hosts)
+			dist.MaxHosts = len(hosts)
 
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -109,7 +109,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[0]},
 				host.Host{Id: hostIds[1]},
 			}
-			dist.PoolSize = 1
+			dist.MaxHosts = 1
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -139,7 +139,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[2]},
 				host.Host{Id: hostIds[3]},
 			}
-			dist.PoolSize = len(hosts) + 5
+			dist.MaxHosts = len(hosts) + 5
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -170,7 +170,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
 				host.Host{Id: hostIds[3]},
 			}
-			dist.PoolSize = len(hosts) + 5
+			dist.MaxHosts = len(hosts) + 5
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -205,7 +205,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				host.Host{Id: hostIds[3]},
 				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
-			dist.PoolSize = 9
+			dist.MaxHosts = 9
 
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
@@ -222,7 +222,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 3)
 
-			dist.PoolSize = 8
+			dist.MaxHosts = 8
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
@@ -236,7 +236,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 3)
-			dist.PoolSize = 7
+			dist.MaxHosts = 7
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
@@ -250,7 +250,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			}
 			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 2)
-			dist.PoolSize = 6
+			dist.MaxHosts = 6
 			hostAllocatorData = &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{
 					"": taskQueueItems,
@@ -276,7 +276,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 				model.TaskQueueItem{Id: taskIds[1]},
 				model.TaskQueueItem{Id: taskIds[2]},
 			}
-			dist.PoolSize = 20
+			dist.MaxHosts = 20
 			dist.Provider = "static"
 			hostAllocatorData := &HostAllocatorData{
 				taskQueueItems: map[string][]model.TaskQueueItem{

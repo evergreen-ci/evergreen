@@ -15,7 +15,6 @@ func Find(query db.Q) ([]Event, error) {
 
 // === Queries ===
 
-// Host Events
 func HostEventsForId(id string) db.Q {
 	return db.Query(bson.D{
 		{DataKey + "." + ResourceTypeKey, ResourceTypeHost},
@@ -31,7 +30,6 @@ func HostEventsInOrder(id string) db.Q {
 	return HostEventsForId(id).Sort([]string{TimestampKey})
 }
 
-// Task Events
 func TaskEventsForId(id string) db.Q {
 	return db.Query(bson.D{
 		{DataKey + "." + ResourceTypeKey, ResourceTypeTask},
@@ -45,20 +43,4 @@ func MostRecentTaskEvents(id string, n int) db.Q {
 
 func TaskEventsInOrder(id string) db.Q {
 	return TaskEventsForId(id).Sort([]string{TimestampKey})
-}
-
-// Distro Events
-func DistroEventsForId(id string) db.Q {
-	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, ResourceTypeDistro},
-		{ResourceIdKey, id},
-	})
-}
-
-func MostRecentDistroEvents(id string, n int) db.Q {
-	return DistroEventsForId(id).Sort([]string{"-" + TimestampKey}).Limit(n)
-}
-
-func DistroEventsInOrder(id string) db.Q {
-	return DistroEventsForId(id).Sort([]string{TimestampKey})
 }

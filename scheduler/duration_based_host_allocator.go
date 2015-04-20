@@ -3,14 +3,12 @@ package scheduler
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/cloud/providers/static"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
-	"github.com/mitchellh/mapstructure"
 	"math"
 	"sort"
 	"time"
@@ -39,7 +37,7 @@ type DistroScheduleData struct {
 	nominalNumNewHosts int
 
 	// indicates the maximum number of hosts allowed for this distro
-	poolSize int
+	maxHosts int
 
 	// indicates the number of tasks in this distro's queue
 	taskQueueLength int
@@ -78,7 +76,7 @@ type ScheduledDistroTasksData struct {
 	taskRunDistros map[string][]string
 
 	// the name of the distro whose task queue items data this represents
-	currentDistroId string
+	currentDistroName string
 }
 
 // Implementation, that computes the total time to completion of tasks
@@ -88,8 +86,7 @@ type DurationBasedHostAllocator struct{}
 
 // helper type to sort distros by the number of static hosts they have
 type sortableDistroByNumStaticHost struct {
-	distros  []distro.Distro
-	settings *mci.MCISettings
+	distros []distro.Distro
 }
 
 // Implementation of NewHostsNeeded.  Decides that new hosts are needed for a
@@ -104,16 +101,16 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 
 	// Sanity check to ensure that we have a distro object for each item in the
 	// task queue. Also pulls the distros we need for sorting
-	for distroId, _ := range hostAllocatorData.taskQueueItems {
-		distro, ok := hostAllocatorData.distros[distroId]
+	for distroName, _ := range hostAllocatorData.taskQueueItems {
+		distro, ok := hostAllocatorData.distros[distroName]
 		if !ok {
 			return nil, fmt.Errorf("No distro info available for distro %v",
-				distroId)
+				distroName)
 		}
-		if distro.Id != distroId {
+		if distro.Name != distroName {
 			return nil, fmt.Errorf("Bad mapping between task queue distro "+
-				"name and host allocator distro data: %v != %v", distro.Id,
-				distroId)
+				"name and host allocator distro data: %v != %v", distro.Name,
+				distroName)
 		}
 		queueDistros = append(queueDistros, distro)
 	}
@@ -123,7 +120,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	// hosts and other without, we want to spin up new machines for the latter
 	// only if the former is unable to satisfy the turnaround requirement - as
 	// determined by MaxDurationPerDistroHost
-	distros := sortDistrosByNumStaticHosts(queueDistros, mciSettings)
+	distros := sortDistrosByNumStaticHosts(queueDistros)
 
 	// for all distros, this maintains a mapping of distro name -> the number
 	// of new hosts needed for that distro
@@ -139,9 +136,9 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	distroScheduleData := make(map[string]DistroScheduleData)
 
 	// now, for each distro, see if we need to spin up any new hosts
-	for _, d := range distros {
-		newHostsNeeded[d.Id], err = self.
-			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
+	for _, distro := range distros {
+		newHostsNeeded[distro.Name], err = self.
+			numNewHostsForDistro(&hostAllocatorData, distro, tasksAccountedFor,
 			distroScheduleData, mciSettings)
 		if err != nil {
 			mci.Logger.Logf(slogger.ERROR, "Error getting num hosts for distro: %v", err)
@@ -162,7 +159,7 @@ func computeScheduledTasksDuration(
 	taskQueueItems := scheduledDistroTasksData.taskQueueItems
 	taskRunDistros := scheduledDistroTasksData.taskRunDistros
 	tasksAccountedFor := scheduledDistroTasksData.tasksAccountedFor
-	currentDistroId := scheduledDistroTasksData.currentDistroId
+	currentDistroName := scheduledDistroTasksData.currentDistroName
 	sharedTasksDuration = make(map[string]float64)
 
 	// compute the total expected duration for tasks in this queue
@@ -175,10 +172,10 @@ func computeScheduledTasksDuration(
 		// if the task can be run on multiple distros - including this one - add
 		// it to the total duration of 'shared tasks' for the distro and all
 		// other distros it can be run on
-		distroIds, ok := taskRunDistros[taskQueueItem.Id]
-		if ok && util.SliceContains(distroIds, currentDistroId) {
-			for _, distroId := range distroIds {
-				sharedTasksDuration[distroId] +=
+		distroNames, ok := taskRunDistros[taskQueueItem.Id]
+		if ok && util.SliceContains(distroNames, currentDistroName) {
+			for _, distroName := range distroNames {
+				sharedTasksDuration[distroName] +=
 					taskQueueItem.ExpectedDuration.Seconds()
 			}
 		}
@@ -334,7 +331,7 @@ func orderedScheduleNumNewHosts(
 	}
 
 	// if the current distro can not spin up any more hosts, return 0
-	if distroData.poolSize <= distroData.numExistingHosts {
+	if distroData.maxHosts <= distroData.numExistingHosts {
 		return 0
 	}
 
@@ -379,21 +376,21 @@ func orderedScheduleNumNewHosts(
 		scheduledTasksDuration, distroData.runningTasksDuration,
 		float64(distroData.numExistingHosts), maxDurationPerHost)
 
-	return numNewDistroHosts(distroData.poolSize, distroData.numExistingHosts,
+	return numNewDistroHosts(distroData.maxHosts, distroData.numExistingHosts,
 		distroData.numFreeHosts, durationBasedNumNewHosts,
 		distroData.taskQueueLength)
 }
 
 // numNewDistroHosts computes the number of new hosts needed as allowed by
-// poolSize. if the duration based estimate (durNewHosts) is too large, e.g.
+// maxHosts. if the duration based estimate (durNewHosts) is too large, e.g.
 // when there's a small number of very long running tasks, utilize the deficit
 // of available hosts vs. tasks to be run
-func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
+func numNewDistroHosts(maxHosts, numExistingHosts, numFreeHosts, durNewHosts,
 	taskQueueLength int) (numNewHosts int) {
 
 	numNewHosts = util.Min(
 		// the maximum number of new hosts we're allowed to spin up
-		poolSize-numExistingHosts,
+		maxHosts-numExistingHosts,
 
 		// the duration based estimate for the number of new hosts needed
 		durNewHosts,
@@ -418,8 +415,8 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	err error) {
 
 	projectTaskDurations := hostAllocatorData.projectTaskDurations
-	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Id]
-	taskQueueItems := hostAllocatorData.taskQueueItems[distro.Id]
+	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Name]
+	taskQueueItems := hostAllocatorData.taskQueueItems[distro.Name]
 	taskRunDistros := hostAllocatorData.taskRunDistros
 
 	// determine how many free hosts we have
@@ -444,7 +441,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		taskQueueItems:    taskQueueItems,
 		tasksAccountedFor: tasksAccountedFor,
 		taskRunDistros:    taskRunDistros,
-		currentDistroId:   distro.Id,
+		currentDistroName: distro.Name,
 	}
 
 	// determine the total expected running time of all scheduled
@@ -460,14 +457,14 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 	// revise the new host estimate based on the cap of the number of new hosts
 	// and the number of free hosts
-	numNewHosts = numNewDistroHosts(distro.PoolSize, len(existingDistroHosts),
+	numNewHosts = numNewDistroHosts(distro.MaxHosts, len(existingDistroHosts),
 		numFreeHosts, durationBasedNumNewHosts, len(taskQueueItems))
 
 	// create an entry for this distro in the scheduling map
-	distroScheduleData[distro.Id] = DistroScheduleData{
+	distroScheduleData[distro.Name] = DistroScheduleData{
 		nominalNumNewHosts:   numNewHosts,
 		numFreeHosts:         numFreeHosts,
-		poolSize:             distro.PoolSize,
+		maxHosts:             distro.MaxHosts,
 		taskQueueLength:      len(taskQueueItems),
 		sharedTasksDuration:  sharedTasksDuration,
 		runningTasksDuration: runningTasksDuration,
@@ -478,7 +475,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	cloudManager, err := providers.GetCloudManager(distro.Provider, mciSettings)
 	if err != nil {
 		return 0, mci.Logger.Errorf(slogger.ERROR, "Couldn't get cloud manager for %v (%v): %v",
-			distro.Provider, distro.Id, err)
+			distro.Provider, distro.Name, err)
 	}
 
 	can, err := cloudManager.CanSpawn()
@@ -491,17 +488,17 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	}
 
 	// revise the nominal number of new hosts if needed
-	numNewHosts = orderedScheduleNumNewHosts(distroScheduleData, distro.Id,
+	numNewHosts = orderedScheduleNumNewHosts(distroScheduleData, distro.Name,
 		MaxDurationPerDistroHost, SharedTasksAllocationProportion)
 
 	mci.Logger.Logf(slogger.INFO, "Spawning %v additional hosts for %v - "+
-		"currently at %v existing hosts (%v free)", numNewHosts, distro.Id,
+		"currently at %v existing hosts (%v free)", numNewHosts, distro.Name,
 		len(existingDistroHosts), numFreeHosts)
 
 	mci.Logger.Logf(slogger.INFO, "Total estimated time to process all '%v' "+
 		"scheduled tasks is %v; %v running tasks at %v, %v pending tasks at "+
 		"%v (shared tasks duration map: %v)",
-		distro.Id,
+		distro.Name,
 		time.Duration(scheduledTasksDuration+runningTasksDuration)*time.Second,
 		len(existingDistroHosts)-numFreeHosts,
 		time.Duration(runningTasksDuration)*time.Second,
@@ -514,48 +511,22 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 // sortDistrosByNumStaticHosts returns a sorted slice of distros where the
 // distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []distro.Distro, settings *mci.MCISettings) []distro.Distro {
-	sortableDistroObj := &sortableDistroByNumStaticHost{distros, settings}
+func sortDistrosByNumStaticHosts(distros []distro.Distro) []distro.Distro {
+	sortableDistroObj := &sortableDistroByNumStaticHost{distros}
 	sort.Sort(sortableDistroObj)
 	return sortableDistroObj.distros
 }
 
 // helpers for sorting the distros by the number of their static hosts
-func (sd *sortableDistroByNumStaticHost) Len() int {
-	return len(sd.distros)
+func (srtDistro *sortableDistroByNumStaticHost) Len() int {
+	return len(srtDistro.distros)
 }
 
-func (sd *sortableDistroByNumStaticHost) Less(i, j int) bool {
-	if sd.distros[i].Provider != mci.HostTypeStatic &&
-		sd.distros[j].Provider != mci.HostTypeStatic {
-		return false
-	}
-	if sd.distros[i].Provider == mci.HostTypeStatic &&
-		sd.distros[j].Provider != mci.HostTypeStatic {
-		return true
-	}
-	if sd.distros[i].Provider != mci.HostTypeStatic &&
-		sd.distros[j].Provider == mci.HostTypeStatic {
-		return false
-	}
-
-	h1 := &static.Settings{}
-	h2 := &static.Settings{}
-
-	err := mapstructure.Decode(sd.distros[i].ProviderSettings, h1)
-	if err != nil {
-		return false
-	}
-
-	err = mapstructure.Decode(sd.distros[j].ProviderSettings, h2)
-	if err != nil {
-		return false
-	}
-
-	return len(h1.Hosts) > len(h2.Hosts)
+func (srtDistro *sortableDistroByNumStaticHost) Less(i, j int) bool {
+	return len(srtDistro.distros[i].Hosts) > len(srtDistro.distros[j].Hosts)
 }
 
-func (sd *sortableDistroByNumStaticHost) Swap(i, j int) {
-	sd.distros[i], sd.distros[j] =
-		sd.distros[j], sd.distros[i]
+func (srtDistro *sortableDistroByNumStaticHost) Swap(i, j int) {
+	srtDistro.distros[i], srtDistro.distros[j] =
+		srtDistro.distros[j], srtDistro.distros[i]
 }

@@ -622,11 +622,8 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 	util.HandleTestingErr(taskQueue.Save(), t, "failed to insert taskqueue")
 
 	host := &host.Host{
-		Id:   "testHost",
-		Host: "testHost",
-		Distro: distro.Distro{
-			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
-		},
+		Id:            "testHost",
+		Host:          "testHost",
 		RunningTask:   "testTaskId",
 		StartedBy:     mci.MCIUser,
 		AgentRevision: agentRevision,

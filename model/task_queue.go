@@ -90,12 +90,12 @@ func UpdateTaskQueue(distro string, taskQueue []TaskQueueItem) error {
 	return err
 }
 
-func FindTaskQueueForDistro(distroId string) (*TaskQueue, error) {
+func FindTaskQueueForDistro(distro string) (*TaskQueue, error) {
 	taskQueue := &TaskQueue{}
 	err := db.FindOne(
 		TaskQueuesCollection,
 		bson.M{
-			TaskQueueDistroKey: distroId,
+			TaskQueueDistroKey: distro,
 		},
 		db.NoProjection,
 		db.NoSort,

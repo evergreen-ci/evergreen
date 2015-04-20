@@ -1,0 +1,341 @@
+windows64-tmpl: &windows64-tmpl
+  template: true
+  arch: windows_amd64
+  spawn_allowed: true
+  provider: ec2
+  settings:
+    ami: ami-0ceac364
+    instancetype: m1.medium
+    securitygroups: mci
+    keyname: mci
+  mountinfo: ~
+  user: Administrator
+  keyname: mci
+  key: mci
+  securitygroups: mci
+  setup_as_sudo: false
+  expansions: 
+    scons: scons.bat
+    decompress: /cygdrive/c/Progra~2/7-Zip/7z.exe x
+    ps: wmic process list /format:CSV
+    kill_pid: taskkill /t /f /pid %v
+    killall_mci: taskkill /IM mongod.exe /IM mongos.exe /IM mongo.exe /IM bsondump.exe /IM mongoimport.exe /IM mongoexport.exe /IM mongodump.exe /IM mongorestore.exe /IM mongostat.exe /IM mongofiles.exe /IM mongooplog.exe /IM mongotop.exe /IM mongobridge.exe /IM mongod-2.6.exe /IM mongos-2.6.exe /IM mongo-2.6.exe /IM bsondump-2.6.exe /IM mongoimport-2.6.exe /IM mongoexport-2.6.exe /IM mongodump-2.6.exe /IM mongorestore-2.6.exe /IM mongostat-2.6.exe /IM mongofiles-2.6.exe /IM mongooplog-2.6.exe /IM mongotop-2.6.exe /IM mongobridge-2.6.exe /IM mongod-2.4.exe /IM mongos-2.4.exe /IM mongo-2.4.exe /IM bsondump-2.4.exe /IM mongoimport-2.4.exe /IM mongoexport-2.4.exe /IM mongodump-2.4.exe /IM mongorestore-2.4.exe /IM mongostat-2.4.exe /IM mongofiles-2.4.exe /IM mongooplog-2.4.exe /IM mongotop-2.4.exe /IM mongobridge-2.4.exe /IM test.exe /IM buildlogger.py /IM smoke.py /IM python.exe /IM cl.exe /IM lock_mgr_test.exe /IM background_job_test.exe /IM repl_coordinator_impl_heartbeat_test.exe /f
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /home/Administrator/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /home/Administrator/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /home/Administrator/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    echo "${api_httpscert}" | tee -a ${api_httpscert_path}
+    chmod 600 /home/Administrator/.ssh/*
+    chown -R Administrator /data
+
+windows-64-compile:
+  <<: *windows64-tmpl
+  name: windows-64-compile
+  template: false
+  instancetype: c3.2xlarge
+  settings:
+    ami: ami-0ceac364
+    instancetype: c3.2xlarge
+    securitygroups: mci
+    keyname: mci
+  hosts: []
+  maxhosts: 20
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    curl --remote-name http://boxes.10gen.com/build/mingw-w64.zip
+    unzip mingw-w64.zip
+    mv mingw-w64 /cygdrive/c/mingw-w64
+    # Make sure everything that should be executable is executable
+    chmod -R 755 /cygdrive/c/mingw-w64/*
+
+    i=0
+    DRIVE_POLL_DELAY=1
+    DRIVE_RETRY_MAX=240
+    while true; do
+        sleep "$DRIVE_POLL_DELAY"
+        echo "looking for ephemeral"
+        if [ -d "/cygdrive/y" ]; then
+            echo "found ephemeral drive: mounting"
+            echo "removing /data"
+            rm -rf /data
+            rm -rf /cygdrive/d/data
+            echo "making data dirs"
+            mkdir -p /cygdrive/y/data/db
+            echo "making junction"
+            cmd.exe /c mklink /J d:\\data Y:\\data
+            echo "making symbolic link"
+            ln -s /cygdrive/d/data /data
+            echo "chowning"
+            chown -R Administrator /data
+            echo "done"
+            break
+        fi
+        let "i=i+1"
+        if [ "$i" -eq "$DRIVE_RETRY_MAX" ]; then
+            echo "TIMED OUT trying to mount ephemeral drive."
+            exit 1
+            break
+        fi
+    done
+
+    cd /cygdrive/c
+    rm -rf ./go
+    curl -O https://s3.amazonaws.com/boxes.10gen.com/build/go1.3.1-windows.tgz
+    tar xvf go1.3.1-windows.tgz
+
+windows-64-test:
+  <<: *windows64-tmpl
+  name: windows-64-test
+  template: false
+  settings:
+    ami: ami-0ceac364
+    instancetype: m3.large
+    securitygroups: mci
+    keyname: mci
+  instancetype: m3.large
+  hosts: []
+  maxhosts: 40
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+    mkdir -p /cygdrive/d/data/db
+    ln -s /cygdrive/d/data /data
+
+    i=0
+    DRIVE_POLL_DELAY=1
+    DRIVE_RETRY_MAX=240
+    while true; do
+        sleep "$DRIVE_POLL_DELAY"
+        echo "looking for ephemeral"
+        if [ -d "/cygdrive/z" ]; then
+            echo "found ephemeral drive: mounting"
+            echo "removing /data"
+            rm -rf /data
+            rm -rf /cygdrive/d/data
+            echo "making data dirs"
+            mkdir -p /cygdrive/z/data/db
+            echo "making junction"
+            cmd.exe /c mklink /J d:\\data Z:\\data
+            echo "making symbolic link"
+            ln -s /cygdrive/d/data /data
+            echo "chowning"
+            chown -R Administrator /data
+            echo "done"
+            break
+        fi
+        let "i=i+1"
+        if [ "$i" -eq "$DRIVE_RETRY_MAX" ]; then
+            echo "TIMED OUT trying to mount ephemeral drive."
+            exit 1
+            break
+        fi
+    done
+
+# Visual Studio 2013 / OpenStack AMIs
+# These will replace the above after 2.6.4 is released
+
+windows64-vs2013-tmpl: &windows64-vs2013-tmpl
+  template: true
+  arch: windows_amd64
+  spawn_allowed: true
+  ami: ami-0c417364
+  mountinfo: ~
+  user: Administrator
+  keyname: mci
+  key: mci
+  securitygroups: mci
+  setup_as_sudo: false
+  provider: ec2
+  settings:
+    ami: ami-0c417364
+    instancetype: c3.2xlarge
+    securitygroups: mci
+    keyname: mci
+  expansions:
+    scons: scons.bat
+    decompress: /cygdrive/c/Progra~2/7-Zip/7z.exe x
+    ps: wmic process list /format:CSV
+    kill_pid: taskkill /t /f /pid %v
+    killall_mci: taskkill /IM mongod.exe /IM mongos.exe /IM mongo.exe /IM bsondump.exe /IM mongoimport.exe /IM mongoexport.exe /IM mongodump.exe /IM mongorestore.exe /IM mongostat.exe /IM mongofiles.exe /IM mongooplog.exe /IM mongotop.exe /IM mongobridge.exe /IM mongod-2.6.exe /IM mongos-2.6.exe /IM mongo-2.6.exe /IM bsondump-2.6.exe /IM mongoimport-2.6.exe /IM mongoexport-2.6.exe /IM mongodump-2.6.exe /IM mongorestore-2.6.exe /IM mongostat-2.6.exe /IM mongofiles-2.6.exe /IM mongooplog-2.6.exe /IM mongotop-2.6.exe /IM mongobridge-2.6.exe /IM mongod-2.4.exe /IM mongos-2.4.exe /IM mongo-2.4.exe /IM bsondump-2.4.exe /IM mongoimport-2.4.exe /IM mongoexport-2.4.exe /IM mongodump-2.4.exe /IM mongorestore-2.4.exe /IM mongostat-2.4.exe /IM mongofiles-2.4.exe /IM mongooplog-2.4.exe /IM mongotop-2.4.exe /IM mongobridge-2.4.exe /IM test.exe /IM buildlogger.py /IM smoke.py /IM python.exe /IM cl.exe /IM lock_mgr_test.exe /IM background_job_test.exe /IM repl_coordinator_impl_heartbeat_test.exe /f
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /home/Administrator/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /home/Administrator/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /home/Administrator/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    echo "${api_httpscert}" | tee -a ${api_httpscert_path}
+    chmod 600 /home/Administrator/.ssh/*
+    chown -R Administrator /data
+
+windows-64-vs2013-compile:
+  <<: *windows64-vs2013-tmpl
+  name: windows-64-vs2013-compile
+  template: false
+  instancetype: c3.2xlarge
+  provider: ec2-spot
+  settings:
+    bid_price: 0.752
+    ami: ami-0c417364
+    instancetype: c3.2xlarge
+    securitygroups: mci
+    keyname: mci
+  hosts: []
+  maxhosts: 20
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    if [ "$CLOUD_PROVIDER" == "EC2" ]; then
+        i=0
+        DRIVE_POLL_DELAY=1
+        DRIVE_RETRY_MAX=240
+        while true; do
+            sleep "$DRIVE_POLL_DELAY"
+            echo "looking for ephemeral"
+            if [ -d "/cygdrive/z" ]; then
+                echo "found ephemeral drive: mounting"
+                echo "removing /data"
+                rm -rf /data
+                rm -rf /cygdrive/c/data
+                echo "making data dirs"
+                mkdir -p /cygdrive/z/data/db
+                echo "making junction"
+                cmd.exe /c mklink /J c:\\data Z:\\data
+                echo "making symbolic link"
+                ln -s /cygdrive/c/data /data
+                echo "chowning"
+                chown -R Administrator /data
+                echo "done"
+                break
+            fi
+            let "i=i+1"
+            if [ "$i" -eq "$DRIVE_RETRY_MAX" ]; then
+                echo "TIMED OUT trying to mount ephemeral drive."
+                exit 1
+                break
+            fi
+        done
+    elif [ "$CLOUD_PROVIDER" == "OPENSTACK" ]; then
+        echo "removing /data"
+        rm -rf /data
+        rm -rf /cygdrive/c/data
+        echo "making data dirs"
+        mkdir -p /cygdrive/d/data/db
+        echo "making junction"
+        cmd.exe /c mklink /J c:\\data d:\\data
+        echo "making symlink"
+        ln -s /cygdrive/c/data /data
+        echo "chowning"
+        chown -R Administrator /data
+        echo "done setting up disks"
+    fi
+
+    cd /cygdrive/c
+    rm -rf ./go
+    curl -O https://s3.amazonaws.com/boxes.10gen.com/build/go1.3.1-windows.tgz
+    tar xvf go1.3.1-windows.tgz
+
+windows-64-vs2013-test:
+  <<: *windows64-vs2013-tmpl
+  name: windows-64-vs2013-test
+  template: false
+  instancetype: m3.large
+  provider: ec2
+  settings:
+    ami: ami-0c417364
+    bid_price: 0.266
+    instancetype: m3.large
+    securitygroups: mci
+    keyname: mci
+  ssh_opts:
+    - UserKnownHostsFile=/dev/null
+    - ProxyCommand=ssh -i /data/home/etc/mci.pem -q -p 2200 mci@204.91.28.100 nc %h %p
+    - IdentityFile=/data/home/etc/mci.pem
+  hosts: 
+    - Administrator@172.16.22.4
+    - Administrator@172.16.22.5
+    - Administrator@172.16.22.6
+    - Administrator@172.16.22.7
+    - Administrator@172.16.22.8
+    - Administrator@172.16.22.9
+    - Administrator@172.16.22.10
+    - Administrator@172.16.22.11
+    - Administrator@172.16.22.12
+    - Administrator@172.16.22.13
+    - Administrator@172.16.22.14
+    - Administrator@172.16.22.15
+    - Administrator@172.16.22.16
+    - Administrator@172.16.22.17
+    - Administrator@172.16.22.18
+    - Administrator@172.16.22.19
+    - Administrator@172.16.22.20
+    - Administrator@172.16.22.21
+    - Administrator@172.16.22.22
+    - Administrator@172.16.22.23
+    - Administrator@172.16.22.24
+    - Administrator@172.16.22.25
+    - Administrator@172.16.22.26
+    - Administrator@172.16.22.27
+    - Administrator@172.16.22.28
+    - Administrator@172.16.22.29
+    - Administrator@172.16.22.30
+    - Administrator@172.16.22.31
+    - Administrator@172.16.22.32
+    - Administrator@172.16.22.33
+  maxhosts: 40
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    if [ "$CLOUD_PROVIDER" == "EC2" ]; then
+        i=0
+        DRIVE_POLL_DELAY=1
+        DRIVE_RETRY_MAX=240
+        while true; do
+            sleep "$DRIVE_POLL_DELAY"
+            echo "looking for ephemeral"
+            if [ -d "/cygdrive/z" ]; then
+                echo "found ephemeral drive: mounting"
+                echo "removing /data"
+                rm -rf /data
+                rm -rf /cygdrive/c/data
+                echo "making data dirs"
+                mkdir -p /cygdrive/z/data/db
+                echo "making junction"
+                cmd.exe /c mklink /J c:\\data Z:\\data
+                echo "making symbolic link"
+                ln -s /cygdrive/c/data /data
+                echo "chowning"
+                chown -R Administrator /data
+                echo "done"
+                break
+            fi
+            let "i=i+1"
+            if [ "$i" -eq "$DRIVE_RETRY_MAX" ]; then
+                echo "TIMED OUT trying to mount ephemeral drive."
+                exit 1
+                break
+            fi
+        done
+    elif [ "$CLOUD_PROVIDER" == "OPENSTACK" ]; then
+        echo "removing /data"
+        rm -rf /data
+        rm -rf /cygdrive/c/data
+        echo "making data dirs"
+        mkdir -p /cygdrive/d/data/db
+        echo "making junction"
+        cmd.exe /c mklink /J c:\\data d:\\data
+        echo "making symlink"
+        ln -s /cygdrive/c/data /data
+        echo "chowning"
+        chown -R Administrator /data
+        echo "done setting up disks"
+    fi

@@ -31,7 +31,7 @@ func (self *MockHostFinder) FindAvailableHosts() ([]host.Host, error) {
 
 type MockTaskQueueFinder struct{}
 
-func (self *MockTaskQueueFinder) FindTaskQueue(distroId string) (*model.TaskQueue, error) {
+func (self *MockTaskQueueFinder) FindTaskQueue(distroName string) (*model.TaskQueue, error) {
 	return nil, fmt.Errorf("FindTaskQueue not implemented")
 }
 

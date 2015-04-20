@@ -9,11 +9,11 @@
  *
  */
 
-mciModule.controller('ProjectController', function($scope, $window) {
+function ProjectController($scope, $location, $window) {
   $scope.project = $window.project
   $scope.allProjects = $window.allProjects
   $scope.projectName = $window.projectName
   $scope.groupedProjects = _.groupBy($scope.allProjects, function(p){
     return [p.owner_name, p.repo_name].join('/')
   })
-});
+}

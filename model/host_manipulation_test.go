@@ -2,7 +2,6 @@ package model
 
 import (
 	"10gen.com/mci/db"
-	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -21,7 +20,7 @@ func TestHostFindNextTask(t *testing.T) {
 
 			h := &host.Host{
 				Id:     "hostId",
-				Distro: distro.Distro{},
+				Distro: "d1",
 			}
 			So(h.Insert(), ShouldBeNil)
 
@@ -38,7 +37,7 @@ func TestHostFindNextTask(t *testing.T) {
 				" returned", func() {
 
 				tQueue := &TaskQueue{
-					Distro: h.Distro.Id,
+					Distro: h.Distro,
 				}
 				So(tQueue.Save(), ShouldBeNil)
 
@@ -52,7 +51,7 @@ func TestHostFindNextTask(t *testing.T) {
 				" object from the database should be returned", func() {
 
 				tQueue := &TaskQueue{
-					Distro: h.Distro.Id,
+					Distro: h.Distro,
 					Queue: []TaskQueueItem{
 						TaskQueueItem{
 							Id: "taskOne",

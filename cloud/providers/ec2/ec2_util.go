@@ -3,7 +3,6 @@ package ec2
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
-	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -22,53 +21,32 @@ const (
 	NameTimeFormat       = "20060102150405"
 )
 
-type MountPoint struct {
-	VirtualName string `mapstructure:"virtual_name" json:"virtual_name,omitempty" bson:"virtual_name,omitempty"`
-	DeviceName  string `mapstructure:"device_name" json:"device_name,omitempty" bson:"device_name,omitempty"`
-	Size        int    `mapstructure:"size" json:"size,omitempty" bson:"size,omitempty"`
+type MountInfo struct {
+	VirtualName string `mapstructure:"virtualname" bson:"virtualname,omitempty"`
+	DeviceName  string `mapstructure:"devicename" bson:"devicename"`
+	Size        int    `mapstructure:"size" bson:"size,omitempty"`
 }
 
-var (
-	// bson fields for the EC2ProviderSettings struct
-	AMIKey           = bsonutil.MustHaveTag(EC2ProviderSettings{}, "AMI")
-	InstanceTypeKey  = bsonutil.MustHaveTag(EC2ProviderSettings{}, "InstanceType")
-	SecurityGroupKey = bsonutil.MustHaveTag(EC2ProviderSettings{}, "SecurityGroup")
-	KeyNameKey       = bsonutil.MustHaveTag(EC2ProviderSettings{}, "KeyName")
-	MountPointsKey   = bsonutil.MustHaveTag(EC2ProviderSettings{}, "MountPoints")
-)
-
-var (
-	// bson fields for the EC2SpotSettings struct
-	BidPriceKey = bsonutil.MustHaveTag(EC2SpotSettings{}, "BidPrice")
-)
-
-var (
-	// bson fields for the MountPoint struct
-	VirtualNameKey = bsonutil.MustHaveTag(MountPoint{}, "VirtualName")
-	DeviceNameKey  = bsonutil.MustHaveTag(MountPoint{}, "DeviceName")
-	SizeKey        = bsonutil.MustHaveTag(MountPoint{}, "Size")
-)
-
 //Utility func to create a create a temporary instance name for a host
-func generateName(distroId string) string {
-	return "mci_" + distroId + "_" + time.Now().Format(NameTimeFormat) +
+func generateName(distroName string) string {
+	return "mci_" + distroName + "_" + time.Now().Format(NameTimeFormat) +
 		fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
-//makeBlockDeviceMapping takes the mount_points settings defined in the distro,
+//makeBlockDeviceMapping takes the mountinfo settings defined in the distro,
 //and converts them to ec2.BlockDeviceMapping structs which are usable by goamz.
 //It returns a non-nil error if any of the fields appear invalid.
-func makeBlockDeviceMappings(mounts []MountPoint) ([]ec2.BlockDeviceMapping, error) {
+func makeBlockDeviceMappings(mounts []MountInfo) ([]ec2.BlockDeviceMapping, error) {
 	mappings := []ec2.BlockDeviceMapping{}
 	for _, mount := range mounts {
 		if mount.DeviceName == "" {
-			return nil, fmt.Errorf("missing 'device_name': %#v", mount)
+			return nil, fmt.Errorf("Missing devicename")
 		}
 		if mount.VirtualName == "" {
 			if mount.Size <= 0 {
-				return nil, fmt.Errorf("invalid 'size': %#v", mount)
+				return nil, fmt.Errorf("Missing 'size' for EBS mount info in distro")
 			}
-			// EBS Storage - device name but no virtual name
+			//EBS Storage - device name but no virtual name
 			mappings = append(mappings, ec2.BlockDeviceMapping{
 				DeviceName:          mount.DeviceName,
 				VolumeSize:          int64(mount.Size),
@@ -90,15 +68,16 @@ func getUSEast(creds aws.Auth) *ec2.EC2 {
 	return ec2.New(creds, aws.USEast)
 }
 
-func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
+func getEC2KeyOptions(keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, fmt.Errorf("No key specified for EC2 host")
 	}
-	opts := []string{"-i", keyPath}
-	for _, opt := range h.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-	return opts, nil
+	return []string{
+		"-o", "ConnectTimeout=10",
+		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=no",
+		"-i", keyPath,
+	}, nil
 }
 
 //getInstanceInfo returns the full ec2 instance info for the given instance ID.
@@ -164,7 +143,7 @@ func makeTags(intentHost *host.Host) map[string]string {
 
 	tags := map[string]string{
 		"Name":       intentHost.Id,
-		"distro":     intentHost.Distro.Id,
+		"distro":     intentHost.Distro,
 		"hostname":   hostname,
 		"username":   username,
 		"owner":      intentHost.StartedBy,

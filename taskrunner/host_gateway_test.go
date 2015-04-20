@@ -27,7 +27,7 @@ func (self *FailingAgentCompiler) Compile(sourceDir string,
 	return fmt.Errorf("compile failed")
 }
 
-func (self *FailingAgentCompiler) ExecutableSubPath(distroId string) (
+func (self *FailingAgentCompiler) ExecutableSubPath(distroName string) (
 	string, error) {
 	return "", fmt.Errorf("ExecutableSubPath not implemented")
 }
@@ -39,7 +39,7 @@ func (self *SucceedingAgentCompiler) Compile(sourceDir string,
 	return nil
 }
 
-func (self *SucceedingAgentCompiler) ExecutableSubPath(distroId string) (
+func (self *SucceedingAgentCompiler) ExecutableSubPath(distroName string) (
 	string, error) {
 	return "main", nil
 }

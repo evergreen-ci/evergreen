@@ -698,7 +698,7 @@ func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) erro
 	self.Status = mci.TaskDispatched
 	self.HostId = host.Id
 	self.LastHeartbeat = dispatchTime
-	self.DistroId = host.Distro.Id
+	self.DistroId = host.Distro
 	err := UpdateOneTask(
 		bson.M{
 			TaskIdKey: self.Id,
@@ -709,7 +709,7 @@ func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) erro
 				TaskStatusKey:        mci.TaskDispatched,
 				TaskHostIdKey:        host.Id,
 				TaskLastHeartbeatKey: dispatchTime,
-				TaskDistroIdKey:      host.Distro.Id,
+				TaskDistroIdKey:      host.Distro,
 			},
 			"$unset": bson.M{
 				TaskAbortedKey:       "",

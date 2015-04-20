@@ -18,11 +18,14 @@ const (
 // function that takes in all distros - specified as a map of
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
-type hostFlaggingFunc func([]distro.Distro, *mci.MCISettings) ([]host.Host, error)
+type hostFlaggingFunc func(map[string]distro.Distro,
+	*mci.MCISettings) ([]host.Host, error)
 
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
-func flagDecommissionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagDecommissionedHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) ([]host.Host,
+	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding decommissioned hosts...")
 
@@ -39,7 +42,9 @@ func flagDecommissionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
-func flagIdleHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagIdleHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) ([]host.Host,
+	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding idle hosts...")
 
@@ -60,7 +65,8 @@ func flagIdleHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
 		idleTime := host.IdleTime()
 
 		// get a cloud manager for the host
-		cloudManager, err := providers.GetCloudManager(host.Provider, s)
+		cloudManager, err := providers.GetCloudManager(host.Provider,
+			mciSettings)
 		if err != nil {
 			return nil, fmt.Errorf("error getting cloud manager for host %v:"+
 				" %v", host.Id, err)
@@ -68,7 +74,7 @@ func flagIdleHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
 
 		// if the host is not dynamically spun up (and can thus be terminated),
 		// skip it
-		canTerminate, err := hostCanBeTerminated(host, s)
+		canTerminate, err := hostCanBeTerminated(host, mciSettings)
 		if err != nil {
 			return nil, fmt.Errorf("error checking if host %v can be"+
 				" terminated: %v", host.Id, err)
@@ -96,7 +102,9 @@ func flagIdleHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
-func flagExcessHosts(distros []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagExcessHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) ([]host.Host,
+	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding excess hosts...")
 
@@ -104,17 +112,18 @@ func flagExcessHosts(distros []distro.Distro, s *mci.MCISettings) ([]host.Host, 
 	excessHosts := []host.Host{}
 
 	// figure out the excess hosts for each distro
-	for _, d := range distros {
+	for distroName, distroInfo := range distros {
 
 		// fetch any hosts for the distro that count towards max hosts
-		allHostsForDistro, err := host.Find(host.ByDistroId(d.Id))
+		allHostsForDistro, err := host.Find(host.ByDistroId(distroName))
 		if err != nil {
-			return nil, fmt.Errorf("error fetching hosts for distro %v: %v", d.Id, err)
+			return nil, fmt.Errorf("error fetching hosts for distro %v: %v",
+				distroName, err)
 		}
 
 		// if there are more than the specified max hosts, then terminate
 		// some, if they are not running tasks
-		numExcessHosts := len(allHostsForDistro) - d.PoolSize
+		numExcessHosts := len(allHostsForDistro) - distroInfo.MaxHosts
 		if numExcessHosts > 0 {
 
 			// track how many hosts for the distro are terminated
@@ -124,7 +133,7 @@ func flagExcessHosts(distros []distro.Distro, s *mci.MCISettings) ([]host.Host, 
 
 				// if the host is not dynamically spun up (and can
 				// thus be terminated), skip it
-				canTerminate, err := hostCanBeTerminated(host, s)
+				canTerminate, err := hostCanBeTerminated(host, mciSettings)
 				if err != nil {
 					return nil, fmt.Errorf("error checking if host %v can be"+
 						" terminated: %v", host.Id, err)
@@ -147,20 +156,23 @@ func flagExcessHosts(distros []distro.Distro, s *mci.MCISettings) ([]host.Host, 
 			}
 
 			mci.Logger.Logf(slogger.INFO, "Flagged %v excess hosts for distro"+
-				" %v", counter, d.Id)
+				" %v", counter, distroName)
 
 		}
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v total excess hosts", len(excessHosts))
+	mci.Logger.Logf(slogger.INFO, "Found %v total excess hosts",
+		len(excessHosts))
 
 	return excessHosts, nil
 }
 
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
-func flagUnprovisionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagUnprovisionedHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) ([]host.Host,
+	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding unprovisioned hosts...")
 
@@ -178,7 +190,9 @@ func flagUnprovisionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host,
 
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
-func flagProvisioningFailedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagProvisioningFailedHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) ([]host.Host,
+	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding hosts whose provisioning failed...")
 
@@ -198,7 +212,9 @@ func flagProvisioningFailedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.
 
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
-func flagExpiredHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagExpiredHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) ([]host.Host,
+	error) {
 
 	mci.Logger.Logf(slogger.INFO, "Finding expired hosts")
 
@@ -215,13 +231,15 @@ func flagExpiredHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error
 }
 
 // helper to check if a host can be terminated
-func hostCanBeTerminated(h host.Host, s *mci.MCISettings) (bool, error) {
+func hostCanBeTerminated(host host.Host, mciSettings *mci.MCISettings) (bool,
+	error) {
 
 	// get a cloud manager for the host
-	cloudManager, err := providers.GetCloudManager(h.Provider, s)
+	cloudManager, err := providers.GetCloudManager(host.Provider,
+		mciSettings)
 	if err != nil {
 		return false, fmt.Errorf("error getting cloud manager for host %v:"+
-			" %v", h.Id, err)
+			" %v", host.Id, err)
 	}
 
 	// if the host is not part of a spawnable distro, then it was not
@@ -229,7 +247,7 @@ func hostCanBeTerminated(h host.Host, s *mci.MCISettings) (bool, error) {
 	canSpawn, err := cloudManager.CanSpawn()
 	if err != nil {
 		return false, fmt.Errorf("error checking if cloud manager for host %v"+
-			" supports spawning: %v", h.Id, err)
+			" supports spawning: %v", host.Id, err)
 	}
 
 	return canSpawn, nil

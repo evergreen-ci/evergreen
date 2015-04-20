@@ -115,6 +115,7 @@ const (
 
 const AuthTokenCookie = "mci-token"
 const TaskSecretHeader = "Task-Secret"
+const DistrosFile = "distros.yml"
 
 var (
 	UphostStatus = []string{

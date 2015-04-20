@@ -1,0 +1,56 @@
+rhel70:
+  name: rhel70
+  arch: linux_amd64
+  provider: ec2
+  spawn_allowed: true
+  settings:
+    ami: ami-1c5b6374
+    bid_price: 0.40
+    instancetype: m3.xlarge
+    securitygroups: mci
+    keyname: mci
+    mountinfo: [
+        {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m3.xlarge, this is a 40GB SSD.
+        {devicename: "/dev/xvdc", virtualname: "ephemeral1"}, #on m3.xlarge, this is a 40GB SSD.
+    ]
+  user: root
+  key: mci
+  securitygroups: mci
+  setup: |
+    #!/bin/bash
+    set -o errexit
+
+    umount /dev/xvdb || true
+    umount /dev/xvdc || true
+
+    yes | /sbin/mdadm --create /dev/md0 --level=0 -c256 --raid-devices=2 /dev/xvdb /dev/xvdc
+    /sbin/blockdev --setra 32 /dev/md0
+    /sbin/mkfs.xfs -f /dev/md0
+    mkdir -p /data
+    echo "/dev/md0 /data auto noatime 0 0" | tee -a /etc/fstab
+    mount /data
+    echo "done mounting /data."
+
+    chown -R root:root /data
+
+    curl -L https://storage.googleapis.com/golang/go1.3.1.linux-amd64.tar.gz | tar zxvf - -C /opt
+    echo "export GOROOT=/opt/go" >> ~/.bashrc
+    echo "export GOROOT=/opt/go" >> ~/.bash_profile
+    echo 'export PATH=/opt/go/bin:$PATH' >> ~/.bashrc
+    echo 'export PATH=/opt/go/bin:$PATH' >> ~/.bash_profile
+
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /root/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /root/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /root/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    chmod 600 /root/.ssh/*
+    chown -R root:root /data
+    chown -R root:root /root/.ssh
+  hosts: []
+  maxhosts: 15
+  expansions: 
+    decompress: tar zxvf
+    ps: ps aux
+    kill_pid: kill -- -$(ps opgid= %v)

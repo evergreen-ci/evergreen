@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/cloud"
 	"10gen.com/mci/cloud/providers"
 	"10gen.com/mci/command"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/notify"
@@ -14,6 +15,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"labix.org/v2/mgo"
+	"strings"
 	"sync"
 	"time"
 )
@@ -28,7 +30,7 @@ type HostInit struct {
 	MCISettings *mci.MCISettings
 }
 
-// SetupReadyHosts runs the distro setup script of all hosts that are up and reachable.
+// SetupReadyHosts runs the setup script on all hosts that are up and reachable.
 func (init *HostInit) SetupReadyHosts() error {
 
 	// find all hosts in the uninitialized state
@@ -72,7 +74,7 @@ func (init *HostInit) SetupReadyHosts() error {
 		wg.Add(1)
 		go func(h host.Host, setup string) {
 
-			if err := init.ProvisionHost(&h); err != nil {
+			if err := init.ProvisionHost(&h, setup); err != nil {
 				mci.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
 					h.Id, err)
 
@@ -161,18 +163,26 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 // setupHost runs the specified setup script for an individual host. Returns
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
-func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
+func (init *HostInit) setupHost(host *host.Host, setup string) ([]byte, error) {
 
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := providers.GetCloudManager(targetHost.Provider, init.MCISettings)
+	cloudMgr, err := providers.GetCloudManager(host.Provider, init.MCISettings)
 	if err != nil {
 		return nil,
 			fmt.Errorf("failed to get cloud manager for host %v with provider %v: %v",
-				targetHost.Id, targetHost.Provider, err)
+				host.Id, host.Provider, err)
+	}
+
+	// fetch the host's distro
+	distro, err := distro.LoadOne(init.MCISettings.ConfigDir, host.Distro)
+	if err != nil {
+		return nil,
+			fmt.Errorf("error getting distro %v for host %v: %v",
+				host.Distro, host.Id, err)
 	}
 
 	// mark the host as initializing
-	if err := targetHost.SetInitializing(); err != nil {
+	if err := host.SetInitializing(); err != nil {
 		if err == mgo.ErrNotFound {
 			return nil, ErrHostAlreadyInitializing
 		} else {
@@ -181,27 +191,27 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	}
 
 	// run the function scheduled for when the host is up
-	err = cloudMgr.OnUp(targetHost)
+	err = cloudMgr.OnUp(host)
 	if err != nil {
 		// if this fails it is probably due to an API hiccup, so we keep going.
-		mci.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", targetHost.Id, err)
+		mci.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", host.Id, err)
 	}
 
-	// get the local path to the SSH keyfile, if not specified
-	keyfile := init.MCISettings.Keys[targetHost.Distro.SSHKey]
+	// get the local path to the keyfile, if not specified
+	keyfile := init.MCISettings.Keys[distro.Key]
 
 	// run the remote setup script as sudo, if appropriate
 	sudoStr := ""
-	if targetHost.Distro.SetupAsSudo {
+	if distro.SetupAsSudo {
 		sudoStr = "sudo "
 	}
 
 	// parse the hostname into the user, host and port
-	hostInfo, err := util.ParseSSHInfo(targetHost.Host)
+	hostInfo, err := util.ParseSSHInfo(host.Host)
 	if err != nil {
 		return nil, err
 	}
-	user := targetHost.Distro.User
+	user := distro.User
 	if hostInfo.User != "" {
 		user = hostInfo.User
 	}
@@ -226,7 +236,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	defer file.Close()
 
 	// write the setup script to the file
-	if _, err := file.Write([]byte(targetHost.Distro.Setup)); err != nil {
+	if _, err := file.Write([]byte(setup)); err != nil {
 		return nil, fmt.Errorf("error writing remote setup script: %v", err)
 	}
 
@@ -245,22 +255,33 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 }
 
 // Build the setup script that will need to be run on the specified host.
-func (init *HostInit) buildSetupScript(h *host.Host) (string, error) {
+func (init *HostInit) buildSetupScript(host *host.Host) (string, error) {
+
+	// fetch the host's distro
+	distro, err := distro.LoadOne(init.MCISettings.ConfigDir, host.Distro)
+	if err != nil {
+		return "", fmt.Errorf("error getting distro %v for host %v: %v", host.Distro, host.Id, err)
+	}
+
+	// include MCI-only setup in production
+	setupScript := strings.Join([]string{distro.Setup, distro.SetupMciOnly}, "\n")
+
 	// replace expansions in the script
 	exp := command.NewExpansions(init.MCISettings.Expansions)
-	setupScript, err := exp.ExpandString(h.Distro.Setup)
+	setupScript, err = exp.ExpandString(setupScript)
 	if err != nil {
 		return "", fmt.Errorf("expansions error: %v", err)
 	}
 
 	return setupScript, err
+
 }
 
 // Provision the host, and update the database accordingly.
-func (init *HostInit) ProvisionHost(h *host.Host) error {
+func (init *HostInit) ProvisionHost(h *host.Host, setup string) error {
 
 	// run the setup script
-	output, err := init.setupHost(h)
+	output, err := init.setupHost(h, setup)
 
 	// deal with any errors that occured while running the setup
 	if err != nil {

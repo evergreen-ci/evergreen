@@ -4,7 +4,6 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/testutils"
@@ -47,16 +46,6 @@ func TestFinalize(t *testing.T) {
 
 		Convey("a patched config should drive version creation", func() {
 			configFilePath := "testing/mci.yml"
-			// insert distros to be used
-			distros := []distro.Distro{
-				distro.Distro{Id: "d1"},
-				distro.Distro{Id: "d2"},
-			}
-
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
-
 			projectRef := &model.ProjectRef{
 				Identifier: patchedProject,
 				Remote:     true,
@@ -67,7 +56,6 @@ func TestFinalize(t *testing.T) {
 				"%v", err)
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
-
 			// this patch adds a new task to the existing build
 			configPatch := &patch.Patch{
 				Id:            "52549c143122",
@@ -135,17 +123,6 @@ func TestFinalize(t *testing.T) {
 			patchedConfigFile := "fakeInPatchSoNotPatched"
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
-
-			// insert distros to be used
-			distros := []distro.Distro{
-				distro.Distro{Id: "d1"},
-				distro.Distro{Id: "d2"},
-			}
-
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
-
 			// this patch adds a new task to the existing build
 			configPatch := &patch.Patch{
 				Id:            "52549c143122",
@@ -179,7 +156,6 @@ func TestFinalize(t *testing.T) {
 			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
-
 			// ensure the relevant builds/tasks were created
 			builds, err := model.FindAllBuilds(bson.M{},
 				db.NoProjection,
@@ -211,7 +187,6 @@ func TestFinalize(t *testing.T) {
 				"%v", err)
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
-
 			// this patch adds a new task to the existing build
 			configPatch := &patch.Patch{
 				Id:            "52549c143122",
@@ -263,10 +238,6 @@ func TestFinalize(t *testing.T) {
 			)
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 1)
-		})
-
-		Reset(func() {
-			db.Clear(distro.Collection)
 		})
 	})
 }

@@ -57,7 +57,7 @@ func (dw DataWrapper) GetBSON() (interface{}, error) {
 }
 
 func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
-	for _, impl := range []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}} {
+	for _, impl := range []interface{}{&TaskEventData{}, &HostEventData{}} {
 		err := raw.Unmarshal(impl)
 		if err != nil {
 			return err

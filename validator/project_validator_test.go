@@ -4,7 +4,6 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
 	_ "10gen.com/mci/plugin/config"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -440,7 +439,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 			So(len(ensureReferentialIntegrity(project)), ShouldEqual, 1)
 		})
 
-		distroIds = []string{"rhel55"}
+		distroNames = []string{"rhel55"}
 
 		Convey("no error should be thrown if a referenced distro for a "+
 			"buildvariant does exist", func() {
@@ -843,28 +842,12 @@ func TestValidatePluginCommands(t *testing.T) {
 
 func TestCheckProjectSyntax(t *testing.T) {
 	Convey("When validating a project's syntax", t, func() {
-
-		Convey("if the project passes all of the validation funcs, no errors"+
-			" should be returned", func() {
-			distros := []distro.Distro{
-				distro.Distro{Id: "test-distro-one"},
-				distro.Distro{Id: "test-distro-two"},
-			}
-
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
-
-			project, err := model.FindProject("", "project_test",
-				projectValidatorConf.ConfigDir)
+		Convey("if project passes all validation funcs, no error should be returned", func() {
+			project, err := model.FindProject("", "project_test", projectValidatorConf.ConfigDir)
 			So(err, ShouldBeNil)
 			// TODO: fix this after MCI-1926 is completed so we can write a
 			// config we want to test against
-			So(CheckProjectSyntax(project), ShouldResemble, []ValidationError{})
-		})
-
-		Reset(func() {
-			db.Clear(distro.Collection)
+			So(CheckProjectSyntax(project, mci.TestConfig()), ShouldResemble, []ValidationError{})
 		})
 	})
 }
@@ -873,22 +856,11 @@ func TestCheckProjectSemantics(t *testing.T) {
 	Convey("When validating a project's semantics", t, func() {
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
-			distros := []distro.Distro{
-				distro.Distro{Id: "test-distro-one"},
-				distro.Distro{Id: "test-distro-two"},
-			}
-
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
-
-			project, err := model.FindProject("", "project_test", projectValidatorConf.ConfigDir)
+			project, err := model.FindProject("", "project_test",
+				projectValidatorConf.ConfigDir)
 			So(err, ShouldBeNil)
-			So(CheckProjectSemantics(project), ShouldResemble, []ValidationError{})
-		})
-
-		Reset(func() {
-			db.Clear(distro.Collection)
+			So(CheckProjectSemantics(project, mci.TestConfig()),
+				ShouldResemble, []ValidationError{})
 		})
 	})
 }
@@ -901,7 +873,8 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 				project := &model.Project{
 					Enabled: true,
 				}
-				So(len(EnsureHasNecessaryProjectFields(project)), ShouldEqual, 5)
+				So(len(EnsureHasNecessaryProjectFields(project)), ShouldEqual,
+					5)
 			})
 			Convey("projects validate all necessary fields exist", func() {
 				Convey("an error should be thrown if the identifier field is "+

@@ -1,0 +1,53 @@
+linux-64-coverage:
+  name: linux-64-coverage
+  arch: linux_amd64
+  provider: ec2
+  settings:
+    ami: ami-2e5a6246
+    instancetype: m3.xlarge
+    securitygroups: mci
+    keyname: mci
+    mountinfo: [
+        {devicename: "/dev/xvdb", size: 300},
+    ]
+  spawn_allowed: true
+  user: fedora
+  key: mci
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    /sbin/mkfs.xfs /dev/xvdb
+    echo "/dev/xvdb /data auto noatime 0 0" | tee -a /etc/fstab
+    mkdir -p /data
+    mount /data
+
+    # prep for diskfulltest.js
+    #
+    mkdir -p /data/images
+    dd bs=512 count=83968 if=/dev/zero of=/data/images/diskfulltest.img
+    /sbin/mkfs.ext2 -m 0 -F /data/images/diskfulltest.img
+    mkdir -p /data/db/diskfulltest
+    sudo mount -o loop /data/images/diskfulltest.img /data/db/diskfulltest
+    chmod 700 /data/db/diskfulltest/
+    chown fedora /data/db/diskfulltest
+
+    chown -R fedora:fedora /data
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /home/fedora/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /home/fedora/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /home/fedora/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    echo "${api_httpscert}" | tee -a ${api_httpscert_path}
+    chmod 600 /home/fedora/.ssh/*
+    chown -R fedora:fedora /data
+    chown -R fedora:fedora /home/fedora/.ssh
+  hosts: []
+  setup_as_sudo: true
+  maxhosts: 30
+  expansions: 
+    decompress: tar zxvf
+    ps: ps aux
+    kill_pid: kill -- -$(ps opgid= %v)

@@ -723,8 +723,8 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 
 /* --------------------- HELPER METHODS FOR CREATE BUILD --------------------- */
 
-func TestTaskId(build *Build, test TestSuite, distroId string) string {
-	return CleanName(fmt.Sprintf("%v_%v_%v", build.Id, test.Name, distroId))
+func TestTaskId(build *Build, test TestSuite, distroName string) string {
+	return CleanName(fmt.Sprintf("%v_%v_%v", build.Id, test.Name, distroName))
 }
 
 func CleanName(name string) string {

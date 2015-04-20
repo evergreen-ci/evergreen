@@ -66,20 +66,15 @@ func (self *TaskRunner) RunTasks() error {
 	waitGroup := &sync.WaitGroup{}
 
 	// assign the free hosts for each distro to the tasks they need to run
-	for distroId, freeHostsForDistro := range hostsByDistro {
+	for distroName, freeHostsForDistro := range hostsByDistro {
 		mci.Logger.Logf(slogger.INFO, "Kicking off tasks on distro %v...",
-			distroId)
+			distroName)
 
 		// load in the queue of tasks for the distro
-		taskQueue, err := self.FindTaskQueue(distroId)
+		taskQueue, err := self.FindTaskQueue(distroName)
 		if err != nil {
 			return fmt.Errorf("error finding task queue for distro %v: %v",
-				distroId, err)
-		}
-
-		if taskQueue == nil {
-			mci.Logger.Logf(slogger.ERROR, "nil task queue found for distro '%v'", distroId)
-			continue
+				distroName, err)
 		}
 
 		// while there are both free hosts and pending tasks left, pin
@@ -202,7 +197,7 @@ func shouldSkipTask(task *model.Task) bool {
 func (self *TaskRunner) splitHostsByDistro(hostsToSplit []host.Host) map[string][]host.Host {
 	hostsByDistro := make(map[string][]host.Host)
 	for _, host := range hostsToSplit {
-		hostsByDistro[host.Distro.Id] = append(hostsByDistro[host.Distro.Id], host)
+		hostsByDistro[host.Distro] = append(hostsByDistro[host.Distro], host)
 	}
 	return hostsByDistro
 }

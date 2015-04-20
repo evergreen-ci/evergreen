@@ -258,7 +258,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 
 	// third, copy over the correct agent binary to the remote machine
 	var scpAgentCmdStderr bytes.Buffer
-	executableSubPath, err := self.Compiler.ExecutableSubPath(host.Distro.Id)
+	executableSubPath, err := self.Compiler.ExecutableSubPath(host.Distro)
 	if err != nil {
 		return "", fmt.Errorf("error computing subpath to executable: %v", err)
 	}

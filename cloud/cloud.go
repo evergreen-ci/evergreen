@@ -51,16 +51,9 @@ func (stat CloudStatus) String() string {
 	}
 }
 
-// ProviderSettings exposes provider-specific configuration settings for a CloudManager.
-type ProviderSettings interface {
-	Validate() error
-}
-
 //CloudManager is an interface which handles creating new hosts or modifying
 //them via some third-party API.
 type CloudManager interface {
-	// Returns a pointer to the manager's configuration settings struct
-	GetSettings() ProviderSettings
 
 	//Load credentials or other settings from the config file
 	Configure(*mci.MCISettings) error
@@ -92,14 +85,14 @@ type CloudManager interface {
 
 	//IsSSHReachable returns true if the host can successfully
 	//accept and run an ssh command.
-	IsSSHReachable(host *host.Host, keyPath string) (bool, error)
+	IsSSHReachable(host *host.Host, distro *distro.Distro, keyPath string) (bool, error)
 
 	// GetDNSName returns the DNS name of a host.
 	GetDNSName(*host.Host) (string, error)
 
 	// GetSSHOptions generates the command line args to be passed to ssh to
 	// allow connection to the machine
-	GetSSHOptions(host *host.Host, keyName string) ([]string, error)
+	GetSSHOptions(host *host.Host, distro *distro.Distro, keyName string) ([]string, error)
 
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
@@ -111,12 +104,14 @@ type CloudManager interface {
 //underlying provider's implementation.
 type CloudHost struct {
 	Host     *host.Host
+	Distro   *distro.Distro
 	KeyPath  string
 	CloudMgr CloudManager
 }
 
 func (cloudHost *CloudHost) IsSSHReachable() (bool, error) {
-	return cloudHost.CloudMgr.IsSSHReachable(cloudHost.Host, cloudHost.KeyPath)
+	return cloudHost.CloudMgr.IsSSHReachable(cloudHost.Host, cloudHost.Distro,
+		cloudHost.KeyPath)
 }
 
 func (cloudHost *CloudHost) IsUp() (bool, error) {
@@ -136,5 +131,5 @@ func (cloudHost *CloudHost) GetDNSName() (string, error) {
 }
 
 func (cloudHost *CloudHost) GetSSHOptions() ([]string, error) {
-	return cloudHost.CloudMgr.GetSSHOptions(cloudHost.Host, cloudHost.KeyPath)
+	return cloudHost.CloudMgr.GetSSHOptions(cloudHost.Host, cloudHost.Distro, cloudHost.KeyPath)
 }

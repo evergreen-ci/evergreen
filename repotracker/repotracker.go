@@ -385,7 +385,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 	}
 
 	// check if project config is valid
-	errs := validator.CheckProjectSyntax(project)
+	errs := validator.CheckProjectSyntax(project, repoTracker.MCISettings)
 	if len(errs) != 0 {
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user

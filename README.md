@@ -32,6 +32,8 @@ the binaries.
 
 ## Running MCI Processes
 A single configuration (settings) file drives most of how MCI works. Each MCI process must be supplied this settings file to run properly. For development, tweak the sample configuration file [here](https://github.com/10gen/mci/blob/master/config_test/mci_settings.yml).
+*_within the settings file, ensure that {{configdir}}/distros.yml has MaxHosts for each distro set low, e.g. to 1_
+_for testing try setting this to 1 for all but one distro_.
 
 ## How it Works
  * Both the API and UI server processes are started using the commands above (a mongod must be already running on the port specified in the configuration file).

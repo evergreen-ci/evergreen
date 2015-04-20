@@ -222,9 +222,7 @@ func NewTaskConfig(distro *distro.Distro, project *Project, task *Task, workDir 
 func populateExpansions(distro *distro.Distro, project *Project,
 	buildVariant *BuildVariant, task *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
-	for _, e := range distro.Expansions {
-		expansions.Put(e.Key, e.Value)
-	}
+	expansions.Update(distro.Expansions)
 
 	if buildVariant != nil {
 		expansions.Update(buildVariant.Expansions)

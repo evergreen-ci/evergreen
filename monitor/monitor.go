@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/db"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"fmt"
@@ -44,9 +43,10 @@ var (
 func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 
 	// load in all of the distros
-	distros, err := distro.Find(db.Q{})
+	distros, err := distro.Load(mciSettings.ConfigDir)
 	if err != nil {
-		return fmt.Errorf("error finding distros: %v", err)
+		return fmt.Errorf("error loading in distros from config dir %v: %v",
+			mciSettings.ConfigDir, err)
 	}
 
 	// fetch the project refs, which we will use to get all of the projects

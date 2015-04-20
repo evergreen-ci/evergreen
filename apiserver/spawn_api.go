@@ -34,15 +34,19 @@ type spawnResponse struct {
 }
 
 func (as *APIServer) listDistros(w http.ResponseWriter, r *http.Request) {
-	distros, err := distro.Find(distro.BySpawnAllowed())
+	distros, err := distro.Load(as.MCISettings.ConfigDir)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+
 	distroList := []string{}
-	for _, d := range distros {
-		distroList = append(distroList, d.Id)
+	for distroName, distro := range distros {
+		if distro.SpawnAllowed {
+			distroList = append(distroList, distroName)
+		}
 	}
+
 	as.WriteJSON(w, http.StatusOK, spawnResponse{Distros: distroList})
 }
 

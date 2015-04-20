@@ -312,7 +312,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	}
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
-	return model.NewTaskConfig(&distro.Distro{Id: "linux-64"}, project,
+	return model.NewTaskConfig(&distro.Distro{Name: "linux-64"}, project,
 		testTask, workDir)
 }
 

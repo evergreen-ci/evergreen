@@ -43,7 +43,7 @@ Evergreen - Host {{.Host.Id}}
   <div><b class="h4">DNS Name:</b> [[host.host]]</div>
   <div><b class="h4">Status:</b> [[host.status]]</div>
   <div><b class="h4">Started by:</b> <span>[[host.started_by]]</div></span>
-  <div><b class="h4">Distro:</b> [[host.distro._id]]</div>
+  <div><b class="h4">Distro:</b> [[host.distro]]</div>
   <div><b class="h4">Uptime:</b> [[host.uptime]]</div>
   <div><b class="h4">Cloud Provider:</b> [[host.host_type]]</div>
   <div ng-show="host.termination_time > 0"><b>Terminated at:</b> [[host.termination_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</div>

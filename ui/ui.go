@@ -101,14 +101,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/host/{host_id}", uis.loadCtx(uis.hostPage)).Methods("GET")
 	r.HandleFunc("/host/{host_id}", uis.requireUser(uis.loadCtx(uis.modifyHost))).Methods("PUT")
 
-	// Distros
-	r.HandleFunc("/distros", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.distrosPage)))).Methods("GET")
-
-	r.HandleFunc("/distros", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.addDistro)))).Methods("PUT")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.getDistro)))).Methods("GET")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.modifyDistro)))).Methods("POST")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.removeDistro)))).Methods("DELETE")
-
 	// Event Logs
 	r.HandleFunc("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}", uis.loadCtx(uis.fullEventLogs))
 
@@ -118,7 +110,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task_history/{project_id}/{task_name}/pickaxe", uis.loadCtx(uis.taskHistoryPickaxe))
 	r.HandleFunc("/task_history/{project_id}/{task_name}/test_names", uis.loadCtx(uis.taskHistoryTestNames))
 	r.HandleFunc("/task_history_json/{task_id}/{window}", uis.loadCtx(uis.taskHistoryJson))
-
 	// Variant History
 	r.HandleFunc("/build_variant/{project_id}/{variant}", uis.loadCtx(uis.variantHistory))
 

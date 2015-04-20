@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"10gen.com/mci"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/plugin"
@@ -32,7 +33,7 @@ type ValidationError struct {
 
 // mapping of all valid distros
 var (
-	distroIds []string
+	distroNames []string
 )
 
 // Functions used to validate the syntax of a project configuration file. Any
@@ -62,28 +63,28 @@ func (vr ValidationError) Error() string {
 }
 
 // create a slice of all valid distro names
-func populateDistroIds() *ValidationError {
+func populateDistroNames(mciSettings *mci.MCISettings) *ValidationError {
 	// create a slice of all known distros
-	distros, err := distro.Find(distro.All)
+	allDistros, err := distro.Load(mciSettings.ConfigDir)
 	if err != nil {
 		return &ValidationError{
-			Message: fmt.Sprintf("error finding distros: %v", err),
-			Level:   Error,
+			Message: fmt.Sprintf("error loading distros from file %v: %v",
+				mciSettings.ConfigDir, err),
+			Level: Error,
 		}
 	}
-	distroIds = []string{}
-	for _, d := range distros {
-		if !util.SliceContains(distroIds, d.Id) {
-			distroIds = append(distroIds, d.Id)
-		}
+	distroNames = []string{}
+	for distroName, _ := range allDistros {
+		distroNames = append(distroNames, distroName)
 	}
 	return nil
 }
 
 // verify that the project configuration semantics is valid
-func CheckProjectSemantics(project *model.Project) []ValidationError {
+func CheckProjectSemantics(project *model.Project,
+	mciSettings *mci.MCISettings) []ValidationError {
 
-	if err := populateDistroIds(); err != nil {
+	if err := populateDistroNames(mciSettings); err != nil {
 		return []ValidationError{*err}
 	}
 
@@ -96,9 +97,10 @@ func CheckProjectSemantics(project *model.Project) []ValidationError {
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectSyntax(project *model.Project) []ValidationError {
+func CheckProjectSyntax(project *model.Project,
+	mciSettings *mci.MCISettings) []ValidationError {
 
-	if err := populateDistroIds(); err != nil {
+	if err := populateDistroNames(mciSettings); err != nil {
 		return []ValidationError{*err}
 	}
 
@@ -232,7 +234,7 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 						"must either specify run_on field or have every task "+
 						"specify a distro.\nValid distros include: \n\t- %v",
 						buildVariant.Name, project.Identifier, strings.Join(
-							distroIds, "\n\t- ")),
+							distroNames, "\n\t- ")),
 				},
 			)
 		}
@@ -349,8 +351,8 @@ func ensureReferentialIntegrity(project *model.Project) []ValidationError {
 				}
 			}
 			buildVariantTasks[task.Name] = true
-			for _, distroId := range task.Distros {
-				if !util.SliceContains(distroIds, distroId) {
+			for _, distroName := range task.Distros {
+				if !util.SliceContains(distroNames, distroName) {
 					errs = append(errs,
 						ValidationError{
 							Message: fmt.Sprintf("task '%v' in buildvariant "+
@@ -358,21 +360,21 @@ func ensureReferentialIntegrity(project *model.Project) []ValidationError {
 								"non-existent distro '%v'.\nValid distros "+
 								"include: \n\t- %v", task.Name,
 								buildVariant.Name, project.Identifier,
-								distroId, strings.Join(distroIds, "\n\t- ")),
+								distroName, strings.Join(distroNames, "\n\t- ")),
 						},
 					)
 				}
 			}
 		}
-		for _, distroId := range buildVariant.RunOn {
-			if !util.SliceContains(distroIds, distroId) {
+		for _, distroName := range buildVariant.RunOn {
+			if !util.SliceContains(distroNames, distroName) {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("buildvariant '%v' in project "+
 							"'%v' references a non-existent distro '%v'.\n"+
 							"Valid distros include: \n\t- %v",
-							buildVariant.Name, project.Identifier, distroId,
-							strings.Join(distroIds, "\n\t- ")),
+							buildVariant.Name, project.Identifier, distroName,
+							strings.Join(distroNames, "\n\t- ")),
 					},
 				)
 			}

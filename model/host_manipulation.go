@@ -2,12 +2,9 @@ package model
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers/static"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
-	"fmt"
-	"github.com/mitchellh/mapstructure"
 	"time"
 )
 
@@ -17,7 +14,7 @@ import (
 
 // NextTaskForHost the next task that should be run on the host.
 func NextTaskForHost(h *host.Host) (*Task, error) {
-	taskQueue, err := FindTaskQueueForDistro(h.Distro.Id)
+	taskQueue, err := FindTaskQueueForDistro(h.Distro)
 	if err != nil {
 		return nil, err
 	}
@@ -35,36 +32,34 @@ func NextTaskForHost(h *host.Host) (*Task, error) {
 	return fullTask, nil
 }
 
-func UpdateStaticHosts(e *mci.MCISettings) error {
-	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
+// Make sure the static hosts stored in the database are correct.
+func RefreshStaticHosts(configName string) error {
+
+	distros, err := distro.Load(configName)
 	if err != nil {
 		return err
 	}
-	activeStaticHosts := make([]string, 0)
-	settings := &static.Settings{}
 
-	for _, d := range distros {
-		err = mapstructure.Decode(d.ProviderSettings, settings)
-		if err != nil {
-			return fmt.Errorf("invalid static settings for '%v'", d.Id)
-		}
-		for _, h := range settings.Hosts {
-			hostInfo, err := util.ParseSSHInfo(h.Name)
+	activeStaticHosts := make([]string, 0)
+	for _, distro := range distros {
+		for _, hostId := range distro.Hosts {
+			hostInfo, err := util.ParseSSHInfo(hostId)
 			if err != nil {
 				return err
 			}
 			user := hostInfo.User
 			if user == "" {
-				user = d.User
+				user = distro.User
 			}
 			staticHost := host.Host{
-				Id:           h.Name,
+				Id:           hostId,
 				User:         user,
-				Host:         h.Name,
-				Distro:       d,
+				Host:         hostId,
+				Distro:       distro.Name,
 				CreationTime: time.Now(),
 				Provider:     mci.HostTypeStatic,
 				StartedBy:    mci.MCIUser,
+				InstanceType: "",
 				Status:       mci.HostRunning,
 				Provisioned:  true,
 			}
@@ -74,7 +69,7 @@ func UpdateStaticHosts(e *mci.MCISettings) error {
 			if err != nil {
 				return err
 			}
-			activeStaticHosts = append(activeStaticHosts, h.Name)
+			activeStaticHosts = append(activeStaticHosts, hostId)
 		}
 	}
 	return host.DecommissionInactiveStaticHosts(activeStaticHosts)

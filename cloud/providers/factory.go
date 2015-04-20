@@ -7,6 +7,7 @@ import (
 	"10gen.com/mci/cloud/providers/ec2"
 	"10gen.com/mci/cloud/providers/mock"
 	"10gen.com/mci/cloud/providers/static"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"fmt"
 )
@@ -28,7 +29,7 @@ func GetCloudManager(providerName string, mciSettings *mci.MCISettings) (cloud.C
 	case ec2.SpotProviderName:
 		provider = &ec2.EC2SpotManager{}
 	default:
-		return nil, fmt.Errorf("No known provider for '%v'", providerName)
+		return nil, fmt.Errorf("No known provider for: %v", providerName)
 	}
 
 	if err := provider.Configure(mciSettings); err != nil {
@@ -46,9 +47,17 @@ func GetCloudHost(host *host.Host, mciSettings *mci.MCISettings) (*cloud.CloudHo
 		return nil, err
 	}
 
-	keyPath := ""
-	if host.Distro.SSHKey != "" {
-		keyPath = mciSettings.Keys[host.Distro.SSHKey]
+	distro, err := distro.LoadOne(mciSettings.ConfigDir, host.Distro)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to load distro '%v' for host '%v': %v", host.Distro, host.Id, err)
 	}
-	return &cloud.CloudHost{host, keyPath, mgr}, nil
+	if distro == nil {
+		return nil, fmt.Errorf("Distro '%v' not found for host '%v'", host.Distro, host.Id)
+	}
+
+	keyPath := ""
+	if distro.Key != "" {
+		keyPath = mciSettings.Keys[distro.Key]
+	}
+	return &cloud.CloudHost{host, distro, keyPath, mgr}, nil
 }

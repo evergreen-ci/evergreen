@@ -3,7 +3,6 @@ package digitalocean
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/cloud"
-	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/hostutil"
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
@@ -31,23 +30,15 @@ type DigitalOceanManager struct {
 	account *digo.Account
 }
 
-type Settings struct {
-	ImageId  int `mapstructure:"image_id" json:"image_id" bson:"image_id"`
-	SizeId   int `mapstructure:"size_id" json:"size_id" bson:"size_id"`
-	RegionId int `mapstructure:"region_id" json:"region_id" bson:"region_id"`
-	SSHKeyId int `mapstructure:"ssh_key_id" json:"ssh_key_id" bson:"ssh_key_id"`
+type DigitalOceanSettings struct {
+	ImageId  int `mapstructure:"image_id"`
+	SizeId   int `mapstructure:"size_id"`
+	RegionId int `mapstructure:"region_id"`
+	SSHKeyId int `mapstructure:"ssh_key_id"`
 }
 
-var (
-	// bson fields for the Settings struct
-	ImageIdKey  = bsonutil.MustHaveTag(Settings{}, "ImageId")
-	SizeIdKey   = bsonutil.MustHaveTag(Settings{}, "SizeId")
-	RegionIdKey = bsonutil.MustHaveTag(Settings{}, "RegionId")
-	SSHKeyIdKey = bsonutil.MustHaveTag(Settings{}, "SSHKeyId")
-)
-
 //Validate checks that the settings from the config file are sane.
-func (self *Settings) Validate() error {
+func (self *DigitalOceanSettings) Validate() error {
 	if self.ImageId == 0 {
 		return fmt.Errorf("ImageId must not be blank")
 	}
@@ -67,31 +58,27 @@ func (self *Settings) Validate() error {
 	return nil
 }
 
-func (_ *DigitalOceanManager) GetSettings() cloud.ProviderSettings {
-	return &Settings{}
-}
-
 //SpawnInstance creates a new droplet for the given distro.
-func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
-	if d.Provider != ProviderName {
-		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, d.Id, d.Provider)
+func (digoMgr *DigitalOceanManager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+	if distro.Provider != ProviderName {
+		return nil, fmt.Errorf("Can't use DigitalOcean provider on distro '%v'")
 	}
 
-	digoSettings := &Settings{}
-	if err := mapstructure.Decode(d.ProviderSettings, digoSettings); err != nil {
-		return nil, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
+	digoSettings := &DigitalOceanSettings{}
+	if err := mapstructure.Decode(distro.ProviderConfig, digoSettings); err != nil {
+		return nil, fmt.Errorf("Error decoding params for distro %v: %v", distro.Name, err)
 	}
 
 	if err := digoSettings.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid DigitalOcean settings in distro %v: %v", d.Id, err)
+		return nil, fmt.Errorf("Invalid DigitalOcean settings in distro %v: %v", distro.Name, err)
 	}
 
 	instanceName := "droplet-" +
 		fmt.Sprintf("%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 	intentHost := &host.Host{
 		Id:               instanceName,
-		User:             d.User,
-		Distro:           *d,
+		User:             distro.User,
+		Distro:           distro.Name,
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
 		Status:           mci.HostUninitialized,
@@ -116,7 +103,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 
 	mci.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host '%v' "+
 		"for distro '%v' to signal cloud instance spawn intent", instanceName,
-		d.Id)
+		distro.Name)
 
 	newDroplet, err := digoMgr.account.CreateDroplet(dropletReq)
 	if err != nil {
@@ -251,8 +238,9 @@ func (digoMgr *DigitalOceanManager) Configure(mciSettings *mci.MCISettings) erro
 
 //IsSSHReachable checks if a droplet appears to be reachable via SSH by
 //attempting to contact the host directly.
-func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
-	sshOpts, err := digoMgr.GetSSHOptions(host, keyPath)
+func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host,
+	distro *distro.Distro, keyPath string) (bool, error) {
+	sshOpts, err := digoMgr.GetSSHOptions(host, distro, keyPath)
 	if err != nil {
 		return false, err
 	}
@@ -279,15 +267,17 @@ func (digoMgr *DigitalOceanManager) OnUp(host *host.Host) error {
 
 //GetSSHOptions returns an array of default SSH options for connecting to a
 //droplet.
-func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
+func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host,
+	distro *distro.Distro, keyPath string) ([]string, error) {
 	if keyPath == "" {
 		return []string{}, fmt.Errorf("No key specified for DigitalOcean host")
 	}
-	opts := []string{"-i", keyPath}
-	for _, opt := range host.Distro.SSHOptions {
-		opts = append(opts, "-o", opt)
-	}
-	return opts, nil
+	return []string{
+		"-o", "ConnectTimeout=10",
+		"-o", "BatchMode=yes",
+		"-o", "StrictHostKeyChecking=no",
+		"-i", keyPath,
+	}, nil
 }
 
 // TimeTilNextPayment returns the amount of time until the next payment is due

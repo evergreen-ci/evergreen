@@ -23,7 +23,8 @@ type HostMonitor struct {
 
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
-func (self *HostMonitor) RunMonitoringChecks(mciSettings *mci.MCISettings) []error {
+func (self *HostMonitor) RunMonitoringChecks(
+	mciSettings *mci.MCISettings) []error {
 
 	mci.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
 
@@ -49,7 +50,8 @@ func (self *HostMonitor) RunMonitoringChecks(mciSettings *mci.MCISettings) []err
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *mci.MCISettings) []error {
+func (self *HostMonitor) CleanupHosts(distros map[string]distro.Distro,
+	mciSettings *mci.MCISettings) []error {
 
 	mci.Logger.Logf(slogger.INFO, "Running host cleanup...")
 
@@ -58,7 +60,7 @@ func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *mci.MCI
 
 	for idx, f := range self.flaggingFuncs {
 		// find the next batch of hosts to terminate
-		hostsToTerminate, err := f(distros, settings)
+		hostsToTerminate, err := f(distros, mciSettings)
 
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
@@ -73,7 +75,7 @@ func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *mci.MCI
 
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
-		if errs := terminateHosts(hostsToTerminate, settings); errs != nil {
+		if errs := terminateHosts(hostsToTerminate, mciSettings); errs != nil {
 			for _, err := range errs {
 				errors = append(errors, fmt.Errorf("error terminating host:"+
 					" %v", err))

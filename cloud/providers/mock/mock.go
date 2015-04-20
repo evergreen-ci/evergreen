@@ -16,7 +16,7 @@ type MockCloudManager struct{}
 func (staticMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
 	return &host.Host{
 		Id:        util.RandomString(),
-		Distro:    *distro,
+		Distro:    distro.Name,
 		StartedBy: owner,
 	}, nil
 }
@@ -29,14 +29,6 @@ func (staticMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (cloud.Clo
 // get instance DNS
 func (staticMgr *MockCloudManager) GetDNSName(host *host.Host) (string, error) {
 	return host.Host, nil
-}
-
-func (_ *MockCloudManager) GetSettings() cloud.ProviderSettings {
-	return &MockCloudManager{}
-}
-
-func (_ *MockCloudManager) Validate() error {
-	return nil
 }
 
 func (staticMgr *MockCloudManager) CanSpawn() (bool, error) {
@@ -53,7 +45,8 @@ func (staticMgr *MockCloudManager) Configure(mciSettings *mci.MCISettings) error
 	return nil
 }
 
-func (staticMgr *MockCloudManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
+func (staticMgr *MockCloudManager) IsSSHReachable(host *host.Host, distro *distro.Distro,
+	keyPath string) (bool, error) {
 	return true, nil
 }
 
@@ -65,7 +58,8 @@ func (staticMsg *MockCloudManager) OnUp(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *MockCloudManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
+func (staticMgr *MockCloudManager) GetSSHOptions(host *host.Host, distro *distro.Distro,
+	keyPath string) ([]string, error) {
 	return []string{}, nil
 }
 
