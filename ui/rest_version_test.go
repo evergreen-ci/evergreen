@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/rest"
+	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
 	"bytes"
 	"encoding/json"
@@ -47,11 +48,20 @@ func TestGetRecentVersions(t *testing.T) {
 	router, err := uis.NewRouter()
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
+	err = testutils.CreateTestLocalConfig(buildTestConfig, "mci-test")
+	util.HandleTestingErr(err, t, "Error loading local config mci-test")
+
+	err = testutils.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+	util.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
+
 	Convey("When finding recent versions", t, func() {
-		util.HandleTestingErr(db.Clear(version.Collection), t,
+		util.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
 			"Error clearing '%v' collection", version.Collection)
 
 		projectName := "project_test"
+
+		err = testutils.CreateTestLocalConfig(buildTestConfig, projectName)
+		So(err, ShouldBeNil)
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
 
@@ -245,12 +255,21 @@ func TestGetVersionInfo(t *testing.T) {
 	router, err := uis.NewRouter()
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
+	err = testutils.CreateTestLocalConfig(buildTestConfig, "mci-test")
+	util.HandleTestingErr(err, t, "Error loading local config mci-test")
+
+	err = testutils.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+	util.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
+
 	Convey("When finding info on a particular version", t, func() {
 		util.HandleTestingErr(db.Clear(version.Collection), t,
 			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
 		projectName := "project_test"
+
+		err = testutils.CreateTestLocalConfig(buildTestConfig, projectName)
+		So(err, ShouldBeNil)
 
 		v := &version.Version{
 			Id:                  versionId,

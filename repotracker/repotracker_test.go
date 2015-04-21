@@ -38,48 +38,50 @@ func init() {
 func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")
+	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
+		err := testutils.CreateTestLocalConfig(testConfig, "mci-test")
+		So(err, ShouldBeNil)
+		repoTracker := RepoTracker{
+			testConfig,
+			projectRef,
+			NewGithubRepositoryPoller(projectRef, testConfig.Credentials["github"]),
+		}
 
-	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t,
-		func() {
-			repoTracker := RepoTracker{
-				testConfig,
-				projectRef,
-				NewGithubRepositoryPoller(projectRef, testConfig.Credentials["github"]),
-			}
-
-			Convey("Fetching commits from the repository should not return "+
-				"any errors", func() {
-				So(repoTracker.FetchRevisions(10), ShouldBeNil)
-			})
-
-			Convey("Only get 3 revisions from the given repository if given a "+
-				"limit of 4 commits where only 3 exist", func() {
-				util.HandleTestingErr(repoTracker.FetchRevisions(4), t,
-					"Error running repository process %v")
-				numVersions, err := version.TotalVersions(bson.M{})
-				util.HandleTestingErr(err, t, "Error finding all versions")
-				So(numVersions, ShouldEqual, 3)
-			})
-
-			Convey("Only get 2 revisions from the given repository if given a "+
-				"limit of 2 commits where 3 exist", func() {
-				util.HandleTestingErr(repoTracker.FetchRevisions(2), t,
-					"Error running repository process %v")
-				numVersions, err := version.TotalVersions(bson.M{})
-				util.HandleTestingErr(err, t, "Error finding all versions")
-				So(numVersions, ShouldEqual, 2)
-			})
-
-			Reset(func() {
-				dropTestDB(t)
-			})
+		Convey("Fetching commits from the repository should not return "+
+			"any errors", func() {
+			So(repoTracker.FetchRevisions(10), ShouldBeNil)
 		})
+
+		Convey("Only get 3 revisions from the given repository if given a "+
+			"limit of 4 commits where only 3 exist", func() {
+			util.HandleTestingErr(repoTracker.FetchRevisions(4), t,
+				"Error running repository process %v")
+			numVersions, err := version.TotalVersions(bson.M{})
+			util.HandleTestingErr(err, t, "Error finding all versions")
+			So(numVersions, ShouldEqual, 3)
+		})
+
+		Convey("Only get 2 revisions from the given repository if given a "+
+			"limit of 2 commits where 3 exist", func() {
+			util.HandleTestingErr(repoTracker.FetchRevisions(2), t,
+				"Error running repository process %v")
+			numVersions, err := version.TotalVersions(bson.M{})
+			util.HandleTestingErr(err, t, "Error finding all versions")
+			So(numVersions, ShouldEqual, 2)
+		})
+
+		Reset(func() {
+			dropTestDB(t)
+		})
+	})
 }
 
 func TestStoreRepositoryRevisions(t *testing.T) {
 	dropTestDB(t)
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestStoreRepositoryRevisions")
 	Convey("When storing revisions gotten from a repository...", t, func() {
+		err := testutils.CreateTestLocalConfig(testConfig, "mci-test")
+		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
 			testConfig.Credentials["github"])}
 
@@ -146,7 +148,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			testConfig,
 			&model.ProjectRef{
 				Identifier: "testproject",
-				Remote:     true,
 			},
 			poller,
 		}
@@ -246,7 +247,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					Remote:     true,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -269,7 +269,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					Remote:     true,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -302,7 +301,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					Remote:     true,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -333,7 +331,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					Remote:     true,
 				},
 				NewMockRepoPoller(project, revisions),
 			}

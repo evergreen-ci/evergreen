@@ -58,8 +58,7 @@ func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 	// turn the project refs into a map of the project id -> project
 	projects := map[string]model.Project{}
 	for _, ref := range projectRefs {
-		project, err := model.FindProject("", ref.Identifier,
-			mciSettings.ConfigDir)
+		project, err := model.FindProject("", &ref)
 
 		// continue on error to stop the whole monitoring process from
 		// being held up

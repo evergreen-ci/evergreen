@@ -2,8 +2,12 @@ package testutils
 
 import (
 	"10gen.com/mci"
+	"10gen.com/mci/model"
 	"flag"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"path/filepath"
 	"testing"
 )
 
@@ -41,4 +45,44 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *mci.MCISettings,
 
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.Crowd = integrationSettings.Crowd
+}
+
+// Creates a project ref local config that can be used for testing, with the string identifier given
+// and the local config from a path
+func CreateTestLocalConfig(testSettings *mci.MCISettings, projectName string) error {
+
+	config, err := mci.FindMCIConfig(testSettings.ConfigDir)
+	if err != nil {
+		return err
+	}
+	projectRef, err := model.FindOneProjectRef(projectName)
+	if err != nil {
+		return err
+	}
+
+	if projectRef == nil {
+		projectRef = &model.ProjectRef{}
+	}
+
+	projectPath := filepath.Join(config, "project", fmt.Sprintf("%v.yml", projectName))
+	data, err := ioutil.ReadFile(projectPath)
+	if err != nil {
+		return err
+	}
+
+	project := &model.Project{}
+	err = yaml.Unmarshal(data, project)
+	if err != nil {
+		return err
+	}
+
+	projectRef = &model.ProjectRef{
+		Identifier:  projectName,
+		Owner:       project.Owner,
+		Repo:        project.Repo,
+		Branch:      project.Branch,
+		Enabled:     project.Enabled,
+		LocalConfig: string(data)}
+
+	return projectRef.Upsert()
 }

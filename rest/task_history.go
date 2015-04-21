@@ -34,7 +34,7 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	project, err := model.FindProject("", projectRef.Identifier, restapi.GetMCISettings().ConfigDir)
+	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding project '%v'", projectName)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)

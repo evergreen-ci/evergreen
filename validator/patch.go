@@ -15,15 +15,19 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version
 	if p.Version != "" {
 		return nil, fmt.Errorf("Patch %v already finalized", p.Version)
 	}
-
-	project, err := model.FindProject("", p.Project, mciSettings.ConfigDir)
+	var project *model.Project
+	projectRef, err := model.FindOneProjectRef(p.Project)
+	if err != nil {
+		return nil, err
+	}
+	project, err = model.FindProject("", projectRef)
 	if err != nil {
 		return nil, err
 	}
 
 	gitCommit, err := thirdparty.GetCommitEvent(
-		mciSettings.Credentials[project.RepoKind],
-		project.Owner, project.Repo, p.Githash,
+		mciSettings.Credentials["github"],
+		projectRef.Owner, projectRef.Repo, p.Githash,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't fetch commit information: %v", err)
@@ -32,14 +36,8 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version
 		return nil, fmt.Errorf("Couldn't fetch commit information: git commit" +
 			" doesn't exist?")
 	}
-	// get the current project ref
-	ref, err := model.FindOneProjectRef(project.Identifier)
-	if err != nil || ref == nil {
-		return nil, fmt.Errorf("Couldn't find project ref for %v: %v",
-			project.Identifier, err)
-	}
 	// apply remote configuration patch if needed
-	if project.Remote && p.ConfigChanged(project.RemotePath) {
+	if projectRef.LocalConfig == "" && p.ConfigChanged(projectRef.RemotePath) {
 		// TODO: MCI-1938
 		// get the remote file at the requested revision
 		projectFileURL := thirdparty.GetGithubFileURL(
@@ -49,7 +47,7 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version
 			p.Githash,
 		)
 		githubFile, err := thirdparty.GetGithubFile(
-			mciSettings.Credentials[project.RepoKind],
+			mciSettings.Credentials["github"],
 			projectFileURL,
 		)
 		if err != nil {
@@ -61,15 +59,15 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version
 			return nil, fmt.Errorf("Could not decode github file at %v: %v",
 				projectFileURL, err)
 		}
-		project, err = model.MakePatchedConfig(p, project.RemotePath, string(projectFileBytes))
+		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, fmt.Errorf("Could not patch remote configuration "+
 				"file: %v", err)
 		}
 		// overwrite project fields with the project ref to disallow tracking a
 		// different project or doing other crazy things via config patches
-		if err = angier.TransferByFieldNames(ref, project); err != nil {
-			return nil, fmt.Errorf("Could not merge ref into project: %v", err)
+		if err = angier.TransferByFieldNames(projectRef, project); err != nil {
+			return nil, fmt.Errorf("Could not merge project Ref ref into project: %v", err)
 		}
 		errs := CheckProjectSyntax(project)
 		if len(errs) != 0 {

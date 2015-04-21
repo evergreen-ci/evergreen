@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/model"
 	"10gen.com/mci/model/distro"
 	_ "10gen.com/mci/plugin/config"
+	"10gen.com/mci/testutils"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -843,7 +844,6 @@ func TestValidatePluginCommands(t *testing.T) {
 
 func TestCheckProjectSyntax(t *testing.T) {
 	Convey("When validating a project's syntax", t, func() {
-
 		Convey("if the project passes all of the validation funcs, no errors"+
 			" should be returned", func() {
 			distros := []distro.Distro{
@@ -851,15 +851,21 @@ func TestCheckProjectSyntax(t *testing.T) {
 				distro.Distro{Id: "test-distro-two"},
 			}
 
+			err := testutils.CreateTestLocalConfig(projectValidatorConf, "project_test")
+			So(err, ShouldBeNil)
+
+			projectRef, err := model.FindOneProjectRef("project_test")
+			So(err, ShouldBeNil)
+
 			for _, d := range distros {
 				So(d.Insert(), ShouldBeNil)
 			}
 
-			project, err := model.FindProject("", "project_test",
-				projectValidatorConf.ConfigDir)
+			project, err := model.FindProject("", projectRef)
 			So(err, ShouldBeNil)
 			// TODO: fix this after MCI-1926 is completed so we can write a
 			// config we want to test against
+
 			So(CheckProjectSyntax(project), ShouldResemble, []ValidationError{})
 		})
 
@@ -882,7 +888,12 @@ func TestCheckProjectSemantics(t *testing.T) {
 				So(d.Insert(), ShouldBeNil)
 			}
 
-			project, err := model.FindProject("", "project_test", projectValidatorConf.ConfigDir)
+			projectRef := &model.ProjectRef{
+				Identifier:  "project_test",
+				LocalConfig: "test: testing",
+			}
+
+			project, err := model.FindProject("", projectRef)
 			So(err, ShouldBeNil)
 			So(CheckProjectSemantics(project), ShouldResemble, []ValidationError{})
 		})
@@ -1006,24 +1017,6 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 						DisplayName: "test",
 						RepoKind:    "github",
 						BatchTime:   -10,
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the remote_path field is "+
-					"not set for a remotely tracked project", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "github",
-						Remote:      true,
-						BatchTime:   10,
 					}
 					So(EnsureHasNecessaryProjectFields(project),
 						ShouldNotResemble, []ValidationError{})

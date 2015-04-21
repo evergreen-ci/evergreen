@@ -480,13 +480,11 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 	}
 
 	for _, projectRef := range allProjects {
-		projectName := projectRef.Identifier
 		var buildVariants []string
-
 		var proj *model.Project
 		var err error
-		if !projectRef.Remote {
-			proj, err = model.FindProject("", projectName, configName)
+		if projectRef.LocalConfig != "" {
+			proj, err = model.FindProject("", &projectRef)
 			if err != nil {
 				return nil, fmt.Errorf("unable to find project file: %v", err)
 			}
@@ -510,7 +508,7 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 			buildVariants = append(buildVariants, buildVariant.Name)
 		}
 
-		projectNameToBuildVariants[projectName] = buildVariants
+		projectNameToBuildVariants[projectRef.Identifier] = buildVariants
 	}
 
 	return projectNameToBuildVariants, nil

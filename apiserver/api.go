@@ -293,8 +293,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
 	}
-
-	project, err := model.FindProject("", task.Project, as.MCISettings.ConfigDir)
+	projectRef, err := model.FindOneProjectRef(task.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
+	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

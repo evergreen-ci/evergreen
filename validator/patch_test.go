@@ -26,11 +26,25 @@ var (
 	patchedRevision   = "582257a4ca3a9c890959b04d4dd2de5e4d34e9e7"
 	unpatchedRevision = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
 	patchFile         = "testdata/patch.diff"
+	patchOwner        = "deafgoat"
+	patchRepo         = "config"
+	patchBranch       = "master"
 )
 
 func init() {
 	db.SetGlobalSessionProvider(
 		db.SessionFactoryFromConfig(patchTestConfig))
+}
+
+func TestProjectRef(t *testing.T) {
+	Convey("When inserting a project ref", t, func() {
+		err := testutils.CreateTestLocalConfig(patchTestConfig, "mci-test")
+		So(err, ShouldBeNil)
+
+		projectRef, err := model.FindOneProjectRef("mci-test")
+		So(err, ShouldBeNil)
+		So(projectRef.Identifier, ShouldEqual, "mci-test")
+	})
 }
 
 func TestFinalize(t *testing.T) {
@@ -60,8 +74,10 @@ func TestFinalize(t *testing.T) {
 
 			projectRef := &model.ProjectRef{
 				Identifier: patchedProject,
-				Remote:     true,
 				RemotePath: configFilePath,
+				Owner:      patchOwner,
+				Repo:       patchRepo,
+				Branch:     patchBranch,
 			}
 			err := projectRef.Insert()
 			util.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
@@ -122,8 +138,10 @@ func TestFinalize(t *testing.T) {
 			configFilePath := "testing/mci.yml"
 			projectRef := &model.ProjectRef{
 				Identifier: patchedProject,
-				Remote:     true,
 				RemotePath: configFilePath,
+				Owner:      patchOwner,
+				Repo:       patchRepo,
+				Branch:     patchBranch,
 			}
 			err := projectRef.Insert()
 			util.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
@@ -176,66 +194,6 @@ func TestFinalize(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 
-			// ensure the relevant builds/tasks were created
-			builds, err := build.Find(build.All)
-			So(err, ShouldBeNil)
-			So(len(builds), ShouldEqual, 1)
-			So(len(builds[0].Tasks), ShouldEqual, 1)
-			tasks, err := model.FindAllTasks(bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
-			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 1)
-		})
-
-		Convey("local config patches shouldn't drive version creation", func() {
-			projectRef := &model.ProjectRef{
-				Identifier: unpatchedProject,
-				Remote:     true,
-				RemotePath: configFilePath,
-			}
-			err := projectRef.Insert()
-			util.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
-				"%v", err)
-			fileBytes, err := ioutil.ReadFile(patchFile)
-			So(err, ShouldBeNil)
-
-			// this patch adds a new task to the existing build
-			configPatch := &patch.Patch{
-				Id:            "52549c143122",
-				Project:       unpatchedProject,
-				BuildVariants: []string{"all"},
-				Githash:       unpatchedRevision,
-				Patches: []patch.ModulePatch{
-					patch.ModulePatch{
-						Githash: "revision",
-						PatchSet: patch.PatchSet{
-							Patch: fmt.Sprintf(string(fileBytes), configFilePath,
-								configFilePath, configFilePath, configFilePath),
-							Summary: []thirdparty.Summary{
-								thirdparty.Summary{
-									Name:      configFilePath,
-									Additions: 4,
-									Deletions: 80,
-								},
-								thirdparty.Summary{
-									Name:      "random.txt",
-									Additions: 6,
-									Deletions: 0,
-								},
-							},
-						},
-					},
-				},
-			}
-			err = configPatch.Insert()
-			util.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
-			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
-			So(err, ShouldBeNil)
-			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created
 			builds, err := build.Find(build.All)
 			So(err, ShouldBeNil)

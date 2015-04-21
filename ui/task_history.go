@@ -134,8 +134,12 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 			mci.Logger.Logf(slogger.WARN, "'before' was specified but query returned nil")
 		}
 	}
-
-	project, err := model.FindProject("", projCtx.Project.Identifier, uis.MCISettings.ConfigDir)
+	projectRef, err := model.FindOneProjectRef(projCtx.Project.Identifier)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

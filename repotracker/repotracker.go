@@ -61,32 +61,6 @@ func (p projectConfigError) Error() string {
 	return "Invalid project configuration"
 }
 
-// NewProjectRef constructs a ProjectRef struct that is used by all
-// RepoPoller implementations
-func NewProjectRef(owner, repo, branch, repoKind, remotePath string,
-	repoEnabled, repoPrivate, isRemote bool, batchTime int,
-	identifier string, displayName string, tracked bool) *model.ProjectRef {
-
-	// default to id if display_name not set
-	if displayName == "" {
-		displayName = identifier
-	}
-	return &model.ProjectRef{
-		Owner:       owner,
-		Repo:        repo,
-		Branch:      branch,
-		RepoKind:    repoKind,
-		Enabled:     repoEnabled,
-		Private:     repoPrivate,
-		Remote:      isRemote,
-		RemotePath:  remotePath,
-		BatchTime:   batchTime,
-		Identifier:  identifier,
-		DisplayName: displayName,
-		Tracked:     tracked,
-	}
-}
-
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
@@ -300,7 +274,6 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		if err != nil { // something seriously wrong (bad data in db?) so fail now
 			panic(err)
 		}
-
 		project, err := repoTracker.GetProjectConfig(revision)
 		if err != nil {
 			projectError, isProjectError := err.(projectConfigError)
@@ -354,10 +327,9 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 	project *model.Project, err error) {
 	projectRef := repoTracker.ProjectRef
-	mciSettings := repoTracker.MCISettings
-	if !projectRef.Remote {
-		// return the local config
-		return model.FindProject("", projectRef.String(), mciSettings.ConfigDir)
+	if projectRef.LocalConfig != "" {
+		// return the Local config from the project Ref.
+		return model.FindProject("", projectRef)
 	}
 	project, err = repoTracker.GetRemoteConfig(revision)
 	if err != nil {
@@ -437,7 +409,6 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 		Message:             rev.RevisionMessage,
 		Owner:               ref.Owner,
 		Project:             ref.Identifier,
-		Remote:              ref.Remote,
 		RemotePath:          ref.RemotePath,
 		Repo:                ref.Repo,
 		RepoKind:            ref.RepoKind,

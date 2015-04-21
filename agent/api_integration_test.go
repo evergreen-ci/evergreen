@@ -87,6 +87,10 @@ func (self *NoopSignalHandler) HandleSignals(taskCom TaskCommunicator,
 
 func TestBasicEndpoints(t *testing.T) {
 	setupTlsConfigs(t)
+
+	err := testutils.CreateTestLocalConfig(testConfig, "mongodb-mongo-master")
+	util.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
+
 	for tlsString, tlsConfig := range tlsConfigs {
 
 		testTask, _, err := setupAPITestData(testConfig, mci.CompileStage,
@@ -169,7 +173,6 @@ func TestBasicEndpoints(t *testing.T) {
 
 func TestHeartbeatSignals(t *testing.T) {
 	setupTlsConfigs(t)
-
 	for tlsString, tlsConfig := range tlsConfigs {
 
 		testTask, _, err := setupAPITestData(testConfig, mci.CompileStage, "linux-64", false, t)
@@ -226,6 +229,8 @@ func TestSecrets(t *testing.T) {
 func TestTaskSuccess(t *testing.T) {
 	setupTlsConfigs(t)
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestTaskSuccess")
+	err := testutils.CreateTestLocalConfig(testConfig, "mongodb-mongo-master")
+	util.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
@@ -341,7 +346,11 @@ func TestTaskSuccess(t *testing.T) {
 
 func TestTaskFailures(t *testing.T) {
 	setupTlsConfigs(t)
+
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestTaskFailures")
+
+	err := testutils.CreateTestLocalConfig(testConfig, "mongodb-mongo-master")
+	util.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
@@ -389,6 +398,7 @@ func TestTaskFailures(t *testing.T) {
 
 func TestTaskAbortion(t *testing.T) {
 	setupTlsConfigs(t)
+
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestTaskAbortion")
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {

@@ -18,9 +18,19 @@ var (
 	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
 	secondRemoteConfigRef = "9b6c7d7f479da84b767995076b13c31796a5e2bf"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
-	projectRef            = NewProjectRef("deafgoat", "mci-test",
-		"master", "github", "mci", true, false, false, 60, "mci-test",
-		"MCI Test", true)
+	projectRef            = &model.ProjectRef{
+		Identifier:  "mci-test",
+		DisplayName: "MCI Test",
+		Owner:       "deafgoat",
+		Repo:        "mci-test",
+		Branch:      "master",
+		RepoKind:    "github",
+		RemotePath:  "mci",
+		Enabled:     true,
+		Private:     false,
+		BatchTime:   60,
+		Tracked:     true,
+	}
 )
 
 func init() {
@@ -86,9 +96,20 @@ func TestGetRemoteConfig(t *testing.T) {
 
 	Convey("When fetching a specific github revision configuration...",
 		t, func() {
-			self.ProjectRef = NewProjectRef("deafgoat", "config",
-				"master", "github", "random.txt", true, false, true, 60,
-				"repotracer", "repotracker", true)
+
+			self.ProjectRef = &model.ProjectRef{
+				Identifier:  "mci-test",
+				DisplayName: "MCI Test",
+				Owner:       "deafgoat",
+				Repo:        "config",
+				Branch:      "master",
+				RepoKind:    "github",
+				RemotePath:  "random.txt",
+				Enabled:     true,
+				Private:     false,
+				BatchTime:   60,
+				Tracked:     true,
+			}
 			self.OauthToken = testConfig.Credentials[self.ProjectRef.RepoKind]
 
 			Convey("The config file at the requested revision should be "+

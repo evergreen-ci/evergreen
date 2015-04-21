@@ -320,24 +320,26 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
 	if len(projectId) > 0 {
-		proj.Project, err = model.FindProject("", projectId, uis.MCISettings.ConfigDir)
+		// Also lookup the ProjectRef itself and add it to context.
+		proj.ProjectRef, err = model.FindOneProjectRef(projectId)
 		if err != nil {
 			return *proj, err
 		}
-
-		if proj.Project != nil {
-			// A project was found, update the project cookie for subsequent request.
-			http.SetCookie(rw, &http.Cookie{
-				Name:    ProjectCookieName,
-				Value:   projectId,
-				Path:    "",
-				Expires: time.Now().Add(7 * 24 * time.Hour),
-			})
-
-			// Also lookup the ProjectRef itself and add it to context.
-			proj.ProjectRef, err = model.FindOneProjectRef(proj.Project.Identifier)
+		if proj.ProjectRef != nil {
+			proj.Project, err = model.FindProject("", proj.ProjectRef)
 			if err != nil {
 				return *proj, err
+			}
+
+			if proj.Project != nil {
+				// A project was found, update the project cookie for subsequent request.
+				http.SetCookie(rw, &http.Cookie{
+					Name:    ProjectCookieName,
+					Value:   projectId,
+					Path:    "",
+					Expires: time.Now().Add(7 * 24 * time.Hour),
+				})
+
 			}
 		}
 	}

@@ -42,14 +42,20 @@ type PatchMetadata struct {
 
 // Validate checks an API request to see if it is safe and sane.
 // Returns the relevant patch metadata and any errors that occur.
-func (pr *PatchAPIRequest) Validate(
-	configName string, oauthToken string) (*PatchMetadata, error) {
+func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
 
 	var repoOwner, repo string
 	var module *model.Module
+	projectRef, err := model.FindOneProjectRef(pr.ProjectFileName)
+	if err != nil {
+		return nil, fmt.Errorf("Could not find project ref %v : %v", pr.ProjectFileName, err)
+	}
+
+	repoOwner = projectRef.Owner
+	repo = projectRef.Repo
 
 	// validate the project file
-	project, err := model.FindProject("", pr.ProjectFileName, configName)
+	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		return nil, fmt.Errorf("Could not find project file %v: %v",
 			pr.ProjectFileName, err)
@@ -57,8 +63,6 @@ func (pr *PatchAPIRequest) Validate(
 	if project == nil {
 		return nil, fmt.Errorf("No such project file named %v", pr.ProjectFileName)
 	}
-	repoOwner = project.Owner
-	repo = project.Repo
 
 	if pr.ModuleName != "" {
 		// is there a module? validate it.
@@ -157,7 +161,14 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 
 	description := r.FormValue("desc")
 	projId := r.FormValue("project")
-	project, err := model.FindProject("", projId, as.MCISettings.ConfigDir)
+	projectRef, err := model.FindOneProjectRef(projId)
+	if err != nil {
+		message := fmt.Errorf("Error locating project ref '%v': %v",
+			projId, err)
+		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		return
+	}
+	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		message := fmt.Errorf("Error locating project '%v' from '%v': %v",
 			projId, as.MCISettings.ConfigDir, err)
@@ -170,7 +181,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchMetadata, err := apiRequest.Validate(as.MCISettings.ConfigDir, as.MCISettings.Credentials[project.RepoKind])
+	patchMetadata, err := apiRequest.Validate(as.MCISettings.Credentials[project.RepoKind])
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
 		return
@@ -265,7 +276,12 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	patchContent := r.FormValue("patch")
 	githash := r.FormValue("githash")
 
-	project, err := model.FindProject("", p.Project, as.MCISettings.ConfigDir)
+	projectRef, err := model.FindOneProjectRef(p.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting project ref with id %v: %v", p.Project, err))
+		return
+	}
+	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting patch: %v", err))
 		return

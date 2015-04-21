@@ -4,7 +4,7 @@ repokind: github
 branch: branch_test
 enabled: false
 stepback: true
-identifier: fakeidentifier
+identifier: project_test
 
 ## tasks
 tasks:

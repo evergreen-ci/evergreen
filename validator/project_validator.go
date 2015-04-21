@@ -300,16 +300,6 @@ func EnsureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 			},
 		)
 	}
-	if project.Remote {
-		if project.RemotePath == "" {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("remotely tracked project '%v' "+
-						"must have a 'remote_path' set", project.Identifier),
-				},
-			)
-		}
-	}
 	return errs
 }
 

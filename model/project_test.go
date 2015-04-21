@@ -16,8 +16,17 @@ func TestFindProject(t *testing.T) {
 
 	Convey("When finding a project", t, func() {
 
-		Convey("an error should be thrown if the project name is blank", func() {
-			project, err := FindProject("", "", projectTestConf.ConfigDir)
+		Convey("an error should be thrown if the project ref is nil", func() {
+			project, err := FindProject("", nil)
+			So(err, ShouldNotBeNil)
+			So(project, ShouldBeNil)
+		})
+
+		Convey("an error should be thrown if the project ref's identifier is nil", func() {
+			projRef := &ProjectRef{
+				Identifier: "",
+			}
+			project, err := FindProject("", projRef)
 			So(err, ShouldNotBeNil)
 			So(project, ShouldBeNil)
 		})
@@ -32,14 +41,20 @@ func TestFindProject(t *testing.T) {
 				Requester:  mci.RepotrackerVersionRequester,
 				Config:     "owner: fakeowner\nrepo: fakerepo\nbranch: fakebranch",
 			}
+			p := &ProjectRef{
+				Identifier: "project_test",
+				Owner:      "fakeowner",
+				Repo:       "fakerepo",
+				Branch:     "fakebranch",
+			}
 			util.HandleTestingErr(v.Insert(), t, "failed to insert test version: %v")
-			project, err := FindProject("", "project_test", projectTestConf.ConfigDir)
+			project, err := FindProject("", p)
 			So(err, ShouldBeNil)
 
 			// check enough fields to make sure it was unmarshalled correctly
 			So(project.Owner, ShouldEqual, "fakeowner")
 			So(project.Repo, ShouldEqual, "fakerepo")
-			So(project.Branch, ShouldEqual, "branch_test")
+			So(project.Branch, ShouldEqual, "fakebranch")
 
 		})
 

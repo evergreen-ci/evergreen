@@ -1,18 +1,14 @@
 package model
 
 import (
-	"10gen.com/mci"
 	"10gen.com/mci/command"
 	"10gen.com/mci/db/bsonutil"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
 	"github.com/shelman/angier"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -132,7 +128,6 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 
 type Project struct {
 	Enabled            bool                       `yaml:"enabled" bson:"enabled"`
-	Remote             bool                       `yaml:"remote" bson:"remote"`
 	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
 	BatchTime          int                        `yaml:"batchtime" bson:"batch_time"`
 	Owner              string                     `yaml:"owner" bson:"owner_name"`
@@ -186,7 +181,6 @@ type TaskConfig struct {
 var (
 	// bson fields for the project struct
 	ProjectEnabledKey       = bsonutil.MustHaveTag(Project{}, "Enabled")
-	ProjectRemoteKey        = bsonutil.MustHaveTag(Project{}, "Remote")
 	ProjectBatchTimeKey     = bsonutil.MustHaveTag(Project{}, "BatchTime")
 	ProjectOwnerNameKey     = bsonutil.MustHaveTag(Project{}, "Owner")
 	ProjectRepoKey          = bsonutil.MustHaveTag(Project{}, "Repo")
@@ -408,81 +402,50 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 	}
 }
 
-func FindProject(revision, identifier, configName string) (*Project, error) {
-	if identifier == "" {
-		return nil, fmt.Errorf("empty project name")
+func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
+
+	if projectRef == nil {
+		return nil, fmt.Errorf("invalid projectRef")
+	}
+	if projectRef.Identifier == "" {
+		return nil, fmt.Errorf("Invalid project with blank identifier")
 	}
 
-	configRoot, err := mci.FindMCIConfig(configName)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewProjectByName(revision, identifier, configRoot)
-}
-
-// getVersionProjectConfig attempts to retrieve the most recent valid version of
-// a project from the database. If none is found, it falls back to using the
-// most recent version of the project's configuration it finds
-func getVersionProjectConfig(identifier string) (*version.Version, error) {
-	lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
-	if err != nil {
-		return nil, fmt.Errorf("Error finding recent valid version for %v: %v", identifier, err)
-	}
-	if lastGood == nil {
-		return nil, mci.Logger.Errorf(slogger.WARN, "No recent valid version "+
-			"found for %v; falling back to any recent version", identifier)
-	}
-	return lastGood, nil
-}
-
-func NewProjectByName(revision, identifier, configRoot string) (*Project, error) {
-	if identifier == "" {
-		return nil, fmt.Errorf("empty project identifier")
-	}
-
-	// we want to eventually move from reading anything directly from
-	// configuration files on disk. everything from here to when
-	// we check for revision == "" should go away once we move completely
-	// to getting this data from the database. leaving it in now for those
-	// projects that don't have any revision in the database - so we get some
-	// skeletal data to use
-	fileName := filepath.Join(configRoot, "project", identifier+".yml")
-	data, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		} else {
-			return nil, err
-		}
-	}
 	project := &Project{}
-	if err = LoadProjectInto(data, project); err != nil {
-		return nil, err
-	}
-
-	// for remotely tracked projects that don't require a specific version of
-	// the configuration, get the most recent valid configuration from the db
-	if project.Remote && revision == "" {
-		version, err := getVersionProjectConfig(identifier)
-		// for new repositories, we don't want to error out when we don't have
-		// any versions stored in the database so we default to the skeletal
-		// information we already have from the project file on disk
-		if err == nil {
-			project = &Project{}
-			err = LoadProjectInto([]byte(version.Config), project)
+	// when the revision is empty we find the last known good configuration from the versions
+	// If the last known good configuration does not exist,
+	// load the configuration from the local config in the project ref.
+	if revision == "" {
+		lastGoodVersion, err := version.FindOne(version.ByLastKnownGoodConfig(projectRef.Identifier))
+		if err != nil {
+			return nil, fmt.Errorf("Error finding recent valid version for %v: %v", projectRef.Identifier, err)
+		}
+		if lastGoodVersion != nil {
+			// for new repositories, we don't want to error out when we don't have
+			// any versions stored in the database so we default to the skeletal
+			// information we already have from the project file on disk
+			err = LoadProjectInto([]byte(lastGoodVersion.Config), project)
 			if err != nil {
 				return nil, fmt.Errorf("Error loading project from "+
-					"version: %v", err)
+					"last good version for project, %v: %v", lastGoodVersion.Project, err)
+			}
+		} else {
+			// Check to see if there is a local configuration in the project ref
+			if projectRef.LocalConfig != "" {
+				err = LoadProjectInto([]byte(projectRef.LocalConfig), project)
+				if err != nil {
+					return nil, fmt.Errorf("Error loading local config for project ref, %v : %v", projectRef.Identifier, err)
+				}
 			}
 		}
 	}
+
 	if revision != "" {
 		// we immediately return an error if the repotracker version isn't found
 		// for the given project at the given revision
-		version, err := version.FindOne(version.ByProjectIdAndRevision(identifier, revision))
+		version, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revision))
 		if err != nil {
-			return nil, fmt.Errorf("error fetching version for project %v revision %v: %v", identifier, revision, err)
+			return nil, fmt.Errorf("error fetching version for project %v revision %v: %v", projectRef.Identifier, revision, err)
 		}
 		if version == nil {
 			// fall back to the skeletal project
@@ -494,6 +457,17 @@ func NewProjectByName(revision, identifier, configRoot string) (*Project, error)
 			return nil, fmt.Errorf("Error loading project from version: %v", err)
 		}
 	}
+
+	project.Identifier = projectRef.Identifier
+	project.Owner = projectRef.Owner
+	project.Repo = projectRef.Repo
+	project.Branch = projectRef.Branch
+	project.RepoKind = projectRef.RepoKind
+	project.Enabled = projectRef.Enabled
+	project.Private = projectRef.Private
+	project.BatchTime = projectRef.BatchTime
+	project.RemotePath = projectRef.RemotePath
+	project.DisplayName = projectRef.DisplayName
 	return project, nil
 }
 

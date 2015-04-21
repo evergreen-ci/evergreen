@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model/build"
 	"10gen.com/mci/rest"
+	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
 	"encoding/json"
 	"fmt"
@@ -52,6 +53,14 @@ func TestGetBuildInfo(t *testing.T) {
 		buildId := "my-build"
 		versionId := "my-version"
 		projectName := "mci-test"
+
+		err := testutils.CreateTestLocalConfig(buildTestConfig, "mci-test")
+		So(err, ShouldBeNil)
+
+		err = testutils.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+		So(err, ShouldBeNil)
+
+		err = testutils.CreateTestLocalConfig(buildTestConfig, "project_test")
 
 		task := build.TaskCache{
 			Id:          "some-task-id",

@@ -88,7 +88,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 		// First add new tasks to existing builds, if necessary
 		if len(patchUpdateReq.Tasks) > 0 {
-			err = model.AddNewTasksForPatch(projCtx.Patch, &uis.MCISettings, projCtx.Version, patchUpdateReq.Tasks)
+			err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, patchUpdateReq.Tasks)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					fmt.Errorf("Error creating new tasks: `%v` for version `%v`", err, projCtx.Version.Id))
@@ -97,7 +97,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(patchUpdateReq.Variants) > 0 {
-			_, err := model.AddNewBuildsForPatch(projCtx.Patch, &uis.MCISettings, projCtx.Version, patchUpdateReq.Variants)
+			_, err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, patchUpdateReq.Variants)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					fmt.Errorf("Error creating new builds: `%v` for version `%v`", err, projCtx.Version.Id))

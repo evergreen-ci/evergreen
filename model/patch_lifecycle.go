@@ -21,9 +21,13 @@ import (
 
 // Given a patch version and a list of task names, creates a new task with
 // the given name for each variant, if applicable.
-func AddNewTasksForPatch(p *patch.Patch, mciSettings *mci.MCISettings, patchVersion *version.Version,
+func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version,
 	taskNames []string) error {
-	project, err := FindProject("", p.Project, mciSettings.ConfigDir)
+	projectRef, err := FindOneProjectRef(p.Project)
+	if err != nil {
+		return err
+	}
+	project, err := FindProject("", projectRef)
 	if err != nil {
 		return err
 	}
@@ -59,11 +63,18 @@ func AddNewTasksForPatch(p *patch.Patch, mciSettings *mci.MCISettings, patchVers
 
 // Given the patch version and a list of build variants, creates new builds
 // with the patch's tasks.
-func AddNewBuildsForPatch(p *patch.Patch, mciSettings *mci.MCISettings,
-	patchVersion *version.Version, buildVariants []string) (*version.Version, error) {
-	project, err := FindProject("", p.Project, mciSettings.ConfigDir)
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version,
+	buildVariants []string) (*version.Version, error) {
+	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
 		return nil, err
+	}
+	project, err := FindProject("", projectRef)
+	if err != nil {
+		return nil, err
+	}
+	if project == nil {
+		return nil, fmt.Errorf("Project not found for project ref: %v", projectRef.Identifier)
 	}
 
 	// compute a list of the newly added build variants
@@ -207,6 +218,7 @@ func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
 	patchVersion *version.Version, err error) {
 	// marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
+
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Error marshalling patched project config from repository revision “%v”: %v",

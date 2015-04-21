@@ -20,7 +20,7 @@ type ProjectRef struct {
 	RemotePath  string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
 	Identifier  string `bson:"identifier" json:"identifier" yaml:"identifier"`
 	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	Remote      bool   `bson:"remote" json:"remote" yaml:"remote"`
+	LocalConfig string `bson:"local_config" json:"local_config" yaml:"local_config"`
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 }
@@ -36,9 +36,9 @@ var (
 	ProjectRefBatchTimeKey   = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
 	ProjectRefIdentifierKey  = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
 	ProjectRefDisplayNameKey = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
-	ProjectRefRemoteKey      = bsonutil.MustHaveTag(ProjectRef{}, "Remote")
 	ProjectRefRemotePathKey  = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefTrackedKey     = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
+	ProjectRefLocalConfig    = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
 )
 
 const (
@@ -134,9 +134,9 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefBranchKey:      projectRef.Branch,
 				ProjectRefDisplayNameKey: projectRef.DisplayName,
 				ProjectRefTrackedKey:     projectRef.Tracked,
-				ProjectRefRemoteKey:      projectRef.Remote,
 				ProjectRefRemotePathKey:  projectRef.RemotePath,
 				ProjectRefTrackedKey:     projectRef.Tracked,
+				ProjectRefLocalConfig:    projectRef.LocalConfig,
 			},
 		},
 	)

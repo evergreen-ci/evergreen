@@ -27,7 +27,7 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 
 	var allProjects []UIProject
 	for _, p := range projCtx.AllProjects {
-		proj, err := model.FindProject("", p.Identifier, uis.MCISettings.ConfigDir)
+		proj, err := model.FindProject("", &p)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
