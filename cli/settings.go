@@ -4,6 +4,8 @@ import (
 	"10gen.com/mci/util"
 	"bufio"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -49,7 +51,6 @@ func loadSettings(opts Options) (*Settings, error) {
 		}
 		confPath = filepath.Join(u.HomeDir, ".evergreen.yml")
 	}
-	fmt.Println(confPath)
 	f, err := os.Open(confPath)
 	if err != nil {
 		return nil, err
@@ -67,16 +68,51 @@ type Options struct {
 }
 
 type ProjectConf struct {
-	Name    string `yaml:"name"`
-	Default bool   `yaml:"default"`
+	Name    string `yaml:"name,omitempty"`
+	Default bool   `yaml:"default,omitempty"`
 }
 
 // Settings represents the data stored in the user's config file, by default
 // located at ~/.evergreen.yml
 type Settings struct {
-	APIServerHost string        `yaml:"api_server_host"`
-	UIServerHost  string        `yaml:"ui_server_host"`
-	APIKey        string        `yaml:"api_key"`
-	User          string        `yaml:"user"`
-	Projects      []ProjectConf `yaml:"projects"`
+	APIServerHost string        `yaml:"api_server_host,omitempty"`
+	UIServerHost  string        `yaml:"ui_server_host,omitempty"`
+	APIKey        string        `yaml:"api_key,omitempty"`
+	User          string        `yaml:"user,omitempty"`
+	Projects      []ProjectConf `yaml:"projects,omitempty"`
+}
+
+func (s *Settings) Write(opts Options) error {
+	confPath := opts.ConfFile
+	if confPath == "" {
+		u, err := user.Current()
+		if err != nil {
+			return err
+		}
+		confPath = filepath.Join(u.HomeDir, ".evergreen.yml")
+	}
+	yamlData, err := yaml.Marshal(s)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(confPath, yamlData, 0644)
+}
+
+func (s *Settings) FindDefaultProject() string {
+	for _, p := range s.Projects {
+		if p.Default {
+			return p.Name
+		}
+	}
+	return ""
+}
+
+func (s *Settings) SetDefaultProject(name string) {
+	for i, p := range s.Projects {
+		if p.Name == name {
+			s.Projects[i].Default = true
+			return
+		}
+	}
+	s.Projects = append(s.Projects, ProjectConf{name, true})
 }

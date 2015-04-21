@@ -3,6 +3,7 @@
 <script type="text/javascript">
     var user_tz = {{.Data.Timezone}};
 	var userApiKey = {{.User.APIKey}}
+    var userConf = {{.Config}}
 </script>
 {{end}}
 
@@ -26,21 +27,19 @@ Settings for {{.User.Id}}
           <button ng-click="updateUserSettings(new_tz)" class="btn btn-primary">Save</button>
         </div>
       </form>
-      <br/><hr/>
     </div>
   </div>
   <div class="row" ng-controller="SettingsCtrl">
     <div class="col-lg-8">
       <h3>Authentication</h3>
-      <div ng-click="selectKey()">
-        <div class="pull-left" ng-click="selectKey()"> 
-          <label>API Key</label>
-          <div class="muted small">Click to highlight.</div> 
-        </div>
-        <div class="pull-left" ng-click="selectKey()"> 
-          <input id="apikey" type="text" ng-value="userApiKey" style="font-family:monospace; margin-left:15px; font-size:1.4em;" readonly/></label>
-      </div>
-      <div class="pull-left">&nbsp;&nbsp;&nbsp;<button ng-click="newKey()" class="btn btn-primary">New Key</button> </div>
+      <div>Copy and paste these settings into ~/.evergreen.yml to authenticate the command line client.</div>
+      <textarea readonly style="font-family:monospace" id="conf"  ng-click="selectConf()">
+user: "[[userConf.user]]"
+api_key: "[[userConf.api_key]]"
+api_server_host: "[[userConf.api_server_host]]"
+ui_server_host: "[[userConf.ui_server_host]]"
+</textarea>
+      <div><button ng-click="newKey()" class="btn btn-primary">Reset API Key</button> </div>
     </div>
   </div>
 </div>

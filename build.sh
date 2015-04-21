@@ -12,7 +12,7 @@ rm -rf vendor/pkg
 mkdir -p bin
 export GOBIN=bin
 
-for i in apiserver hostinit monitor notify repotracker scheduler taskrunner ui cli; do
+for i in cli apiserver hostinit monitor notify repotracker scheduler taskrunner ui; do
 	echo "Building ${i}..."
 	go install "$i/main/$i.go"
 done

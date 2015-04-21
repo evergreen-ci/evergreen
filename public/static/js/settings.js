@@ -43,11 +43,11 @@ mciModule.controller('SettingsCtrl', function($scope, $http, $window) {
 
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
-  $scope.userApiKey = $window.userApiKey;
+  $scope.userConf = $window.userConf;
 
 
-  $scope.selectKey = function() {
-     $('#apikey').focus().select();
+  $scope.selectConf = function() {
+     $('#conf').focus().select();
   }
 
   $scope.newKey = function(){
@@ -56,8 +56,8 @@ mciModule.controller('SettingsCtrl', function($scope, $http, $window) {
 
     $http.post('/settings/newkey').
       success(function(data, status) {
-        $scope.userApiKey = data.key
-        $scope.selectKey()
+        $scope.userConf.api_key = data.key
+        $scope.selectConf()
       }).
       error(function(data, status, errorThrown) {
         console.log(data,status);

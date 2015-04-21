@@ -77,6 +77,33 @@ func (ac *APIClient) post(path string, body io.Reader) (*http.Response, error) {
 	return ac.doReq("POST", path, body)
 }
 
+func (ac *APIClient) modifyExisting(patchId, action string) error {
+	data := url.Values{}
+	authToken, err := generateTokenParam(ac.User, ac.APIKey)
+	if err != nil {
+		return err
+	}
+	data.Set("id_token", authToken)
+	data.Set("patchId", patchId)
+	data.Set("action", action)
+	resp, err := ac.post(fmt.Sprintf("patches/%s", patchId), bytes.NewBufferString(data.Encode()))
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return NewAPIError(resp)
+	}
+	return nil
+}
+
+func (ac *APIClient) CancelPatch(patchId string) error {
+	return ac.modifyExisting(patchId, "cancel")
+}
+
+func (ac *APIClient) FinalizePatch(patchId string) error {
+	return ac.modifyExisting(patchId, "finalize")
+}
+
 // GetPatches requests a list of the user's patches from the API and returns them as a list
 func (ac *APIClient) GetPatches() ([]patch.Patch, error) {
 	data := url.Values{}
@@ -171,12 +198,13 @@ func (ac *APIClient) UpdatePatchModule(patchId, module, patch, base string) erro
 
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
-func (ac *APIClient) PutPatch(projectId, fullPatch, base, variants string, finalize bool) (*patch.Patch, error) {
+func (ac *APIClient) PutPatch(projectId, fullPatch, descr, base, variants string, finalize bool) (*patch.Patch, error) {
 	authToken, err := generateTokenParam(ac.User, ac.APIKey)
 	if err != nil {
 		return nil, err
 	}
 	data := url.Values{}
+	data.Set("desc", descr)
 	data.Set("project", projectId)
 	data.Set("patch", fullPatch)
 	data.Set("githash", base)

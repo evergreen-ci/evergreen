@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci/db"
 	"10gen.com/mci/model/user"
+	"10gen.com/mci/util"
 	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -51,6 +52,9 @@ func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 				"$set": bson.M{
 					user.DispNameKey:     displayName,
 					user.EmailAddressKey: email,
+				},
+				"$setOnInsert": bson.M{
+					user.APIKeyKey: util.RandomString(),
 				},
 			},
 			ReturnNew: true,

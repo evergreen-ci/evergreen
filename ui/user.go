@@ -83,12 +83,21 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	settingsData := currentUser.Settings
 	flashes := PopFlashes(uis.CookieStore, r, w)
 
+	type confFile struct {
+		User    string `json:"user"`
+		APIKey  string `json:"api_key"`
+		APIHost string `json:"api_server_host"`
+		UIHost  string `json:"ui_server_host"`
+	}
+	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.MCISettings.Motu + "/api", uis.MCISettings.Ui.Url}
+
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		Data        user.UserSettings
 		User        *user.DBUser
+		Config      confFile
 		Flashes     []interface{}
-	}{projCtx, settingsData, currentUser, flashes}, "base",
+	}{projCtx, settingsData, currentUser, exampleConf, flashes}, "base",
 		"settings.html", "base_angular.html", "menu.html")
 }
 

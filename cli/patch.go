@@ -7,18 +7,23 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+	"time"
 )
 
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
              ID : {{.Patch.Id.Hex}}
+        Created : {{.Now.Sub .Patch.CreateTime}} ago
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
            Link : {{.Link}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
+{{if .ShowSummary}}
         Summary : 
-{{range .Patch.Patches}}{{if not (eq .ModuleName "") }}Module:{{.Module}}{{end}}
+{{range .Patch.Patches}}{{if not (eq .ModuleName "") }}Module:{{.ModuleName}}{{end}}
 	Base Commit : {{.Githash}}
-	{{range .PatchSet.Summary}}+{{.Additions}} -{{.Deletions}} {{.Name}}{{end}}
+	{{range .PatchSet.Summary}}+{{.Additions}} -{{.Deletions}} {{.Name}}
+	{{end}}
+{{end}}
 {{end}}
 `))
 
@@ -30,13 +35,26 @@ type localDiff struct {
 
 // ListPatchesCommand is used to list a user's existing patches.
 type ListPatchesCommand struct {
-	GlobalOpts Options
+	GlobalOpts  Options  `no-flag:"true"`
+	Variants    []string `short:"v" long:"variants"`
+	PatchId     string   `short:"i" description:"show details for only the patch with this ID"`
+	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
+}
+
+type CancelPatchCommand struct {
+	GlobalOpts Options `no-flag:"true"`
+	PatchId    string  `short:"i" required description:"id of the patch to modify"`
+}
+
+type FinalizePatchCommand struct {
+	GlobalOpts Options `no-flag:"true"`
+	PatchId    string  `short:"i" required description:"id of the patch to modify"`
 }
 
 // PatchCommand is used to submit a new patch to the API server.
 type PatchCommand struct {
-	GlobalOpts  Options
-	Project     string   `short:"p" long:"project" required:"true" description:"project to submit patch for"`
+	GlobalOpts  Options  `no-flag:"true"`
+	Project     string   `short:"p" long:"project" description:"project to submit patch for"`
 	Variants    []string `short:"v" long:"variants"`
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
@@ -45,17 +63,17 @@ type PatchCommand struct {
 
 // SetModuleCommand adds or updates a module in an existing patch.
 type SetModuleCommand struct {
-	GlobalOpts  Options
-	Module      string `short:"m" long:"module" description:"name of the module to remove from patch"`
-	PatchId     string `short:"i" description:"id of the patch to modif"`
-	SkipConfirm bool   `short:"y" long:"yes" description:"skip confirmation text"`
+	GlobalOpts  Options `no-flag:"true"`
+	Module      string  `short:"m" long:"module" description:"name of the module to remove from patch"`
+	PatchId     string  `short:"i" required description:"id of the patch to modify"`
+	SkipConfirm bool    `short:"y" long:"yes" description:"skip confirmation text"`
 }
 
 // RemoveModuleCommand removes module information from an existing patch.
 type RemoveModuleCommand struct {
-	GlobalOpts Options
-	Module     string `short:"m" long:"module" description:"name of the module to remove from patch"`
-	PatchId    string `short:"i" description:"name of the module to remove from patch"`
+	GlobalOpts Options `no-flag:"true"`
+	Module     string  `short:"m" required long:"module" description:"name of the module to remove from patch"`
+	PatchId    string  `short:"i" required description:"name of the module to remove from patch"`
 }
 
 // getAPIClient loads the user settings and creates an APIClient configured for the API/UI
@@ -79,7 +97,7 @@ func (lpc *ListPatchesCommand) Execute(args []string) error {
 		return err
 	}
 	for _, p := range patches {
-		disp, err := getPatchDisplay(&p, settings.UIServerHost)
+		disp, err := getPatchDisplay(&p, lpc.ShowSummary, settings.UIServerHost)
 		if err != nil {
 			return err
 		}
@@ -90,13 +108,15 @@ func (lpc *ListPatchesCommand) Execute(args []string) error {
 
 // getPatchDisplay returns a human-readable summary representation of a patch object
 // which can be written to the terminal.
-func getPatchDisplay(p *patch.Patch, uiHost string) (string, error) {
+func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, error) {
 	var out bytes.Buffer
 
 	err := patchDisplayTemplate.Execute(&out, struct {
-		Patch *patch.Patch
-		Link  string
-	}{p, uiHost + "patch/" + p.Id.Hex()})
+		Patch       *patch.Patch
+		ShowSummary bool
+		Link        string
+		Now         time.Time
+	}{p, summarize, uiHost + "patch/" + p.Id.Hex(), time.Now()})
 	if err != nil {
 		return "", err
 	}
@@ -145,6 +165,20 @@ func (pc *PatchCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	if pc.Project == "" {
+		pc.Project = settings.FindDefaultProject()
+	} else {
+		if settings.FindDefaultProject() == "" &&
+			!pc.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", pc.Project), true) {
+			settings.SetDefaultProject(pc.Project)
+			if err = settings.Write(pc.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default project: %v", err)
+			}
+		}
+	}
+	if pc.Project == "" {
+		return fmt.Errorf("Need to specify a project.")
+	}
 	ref, err := ac.GetProjectRef(pc.Project)
 	if err != nil {
 		return err
@@ -163,16 +197,42 @@ func (pc *PatchCommand) Execute(args []string) error {
 		}
 	}
 
-	newPatch, err := ac.PutPatch(pc.Project, diffData.fullPatch, diffData.base, "all", pc.Finalize)
+	newPatch, err := ac.PutPatch(pc.Project, diffData.fullPatch, pc.Description, diffData.base, "all", pc.Finalize)
 	if err != nil {
 		return err
 	}
-	patchDisp, err := getPatchDisplay(newPatch, settings.UIServerHost)
+	patchDisp, err := getPatchDisplay(newPatch, true, settings.UIServerHost)
 	if err != nil {
 		return err
 	}
 	fmt.Println("Patch successfully created.")
 	fmt.Print(patchDisp)
+	return nil
+}
+
+func (cpc *CancelPatchCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(cpc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	err = ac.CancelPatch(cpc.PatchId)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Patch canceled.")
+	return nil
+}
+
+func (fpc *FinalizePatchCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(fpc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	err = ac.FinalizePatch(fpc.PatchId)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Patch finalized.")
 	return nil
 }
 
