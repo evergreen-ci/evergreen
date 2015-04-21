@@ -114,20 +114,26 @@ func (uis *UIServer) requireUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// requireSuperUser takes a request handler and returns a wrapped version which verifies that
+// the requester is authenticated as a superuser. For a requester who isn't a super user, the
+// request will be redirected to the login page instead.
 func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if len(uis.MCISettings.SuperUsers) == 0 {
 			next(w, r)
 			return
 		}
-		user := GetUser(r)
-		for _, id := range uis.MCISettings.SuperUsers {
-			if id == user.Id {
-				next(w, r)
-				return
+
+		if user := GetUser(r); user != nil {
+			for _, id := range uis.MCISettings.SuperUsers {
+				if id == user.Id {
+					next(w, r)
+					return
+				}
 			}
 		}
-		http.Error(w, "Unauthorized user", http.StatusUnauthorized)
+		uis.RedirectToLogin(w, r)
+		return
 	}
 }
 

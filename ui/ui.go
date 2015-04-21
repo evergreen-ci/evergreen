@@ -102,12 +102,12 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/host/{host_id}", uis.requireUser(uis.loadCtx(uis.modifyHost))).Methods("PUT")
 
 	// Distros
-	r.HandleFunc("/distros", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.distrosPage)))).Methods("GET")
+	r.HandleFunc("/distros", uis.requireSuperUser(uis.loadCtx(uis.distrosPage))).Methods("GET")
 
-	r.HandleFunc("/distros", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.addDistro)))).Methods("PUT")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.getDistro)))).Methods("GET")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.modifyDistro)))).Methods("POST")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.removeDistro)))).Methods("DELETE")
+	r.HandleFunc("/distros", uis.requireSuperUser(uis.loadCtx(uis.addDistro))).Methods("PUT")
+	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.getDistro))).Methods("GET")
+	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyDistro))).Methods("POST")
+	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.removeDistro))).Methods("DELETE")
 
 	// Event Logs
 	r.HandleFunc("/event_log/{resource_type}/{resource_id:[\\w_\\-\\:\\.\\@]+}", uis.loadCtx(uis.fullEventLogs))
@@ -153,11 +153,11 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task_timing/{project_id}", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
 	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{task_name}", uis.requireUser(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
 
-	//Project routes
+	// Project routes
 	r.HandleFunc("/projects", uis.requireUser(uis.loadCtx(uis.projectsPage))).Methods("GET")
-	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.projectPage)))).Methods("GET")
-	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.modifyProject)))).Methods("POST")
-	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.requireUser(uis.loadCtx(uis.addProject)))).Methods("PUT")
+	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.projectPage))).Methods("GET")
+	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyProject))).Methods("POST")
+	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.addProject))).Methods("PUT")
 
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
 	restRoutes := rest.GetRestRoutes(uis)
