@@ -94,10 +94,10 @@ func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
 		// we need to send a notification for the threshold for this host
 		hostNotification := notification{
 			recipient: h.StartedBy,
-			subject:   fmt.Sprintf("%v host termination reminder", h.Distro),
+			subject:   fmt.Sprintf("%v host termination reminder", h.Distro.Id),
 			message: fmt.Sprintf("Your %v host with id %v will be terminated"+
 				" at %v, in %v minutes. Visit %v to extend its lifetime.",
-				h.Distro, h.Id,
+				h.Distro.Id, h.Id,
 				h.ExpirationTime.Format(time.RFC850),
 				h.ExpirationTime.Sub(time.Now()),
 				mciSettings.Ui.Url+"/ui/spawn"),
