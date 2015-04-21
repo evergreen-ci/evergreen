@@ -746,11 +746,11 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	if setupSuccess == mci.HostStatusFailed {
 		mci.Logger.Logf(slogger.INFO, "Initializing host %v failed", hostObj.Id)
 		// send notification to the MCI team about this provisioning failure
-		subject := fmt.Sprintf("%v MCI provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro)
+		subject := fmt.Sprintf("%v MCI provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
 
 		hostLink := fmt.Sprintf("%v/host/%v", as.MCISettings.Ui.Url, hostObj.Id)
 		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
-			hostObj.Distro, hostObj.Id, hostObj.Host, hostLink)
+			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
 		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
 			mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
@@ -778,7 +778,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v MCI provisioning completion failure on %v",
-			notify.ProvisionFailurePreface, hostObj.Distro)
+			notify.ProvisionFailurePreface, hostObj.Distro.Id)
 		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
 			hostObj.Id, hostObj.Provider, err)
 		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
