@@ -195,7 +195,7 @@ Evergreen - Distros
               <table style="margin-left: -8px;" class="table distro-table">
                 <tbody ng-repeat="opt in activeDistro.ssh_options track by $index">
                   <tr>
-                    <td style="padding-left: 10px;"><input required name="opt" type="text" ng-model="activeDistro.ssh_options[$index]" class="col-md-10">&nbsp;<a ng-click="form.$setDirty();removeSSHOption(ssh_option)"><i class="icon-trash distro-trash-icon"></i></a></td>
+                    <td style="padding-left: 10px;"><input required name="opt" type="text" ng-model="activeDistro.ssh_options[$index]" class="col-md-10">&nbsp;<a ng-click="form.$setDirty();removeSSHOption(opt)"><i class="icon-trash distro-trash-icon"></i></a></td>
                   </tr>
                 </tbody>
               </table>

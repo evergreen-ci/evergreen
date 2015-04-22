@@ -68,7 +68,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
     }
   };
 
-console.log($scope.keys)
   $scope.isUnique = function(id) {
     return $scope.ids.indexOf(id) == -1;
   };
@@ -136,8 +135,8 @@ console.log($scope.keys)
     $scope.scrollElement('#ssh-options-table');
   }
 
-  $scope.removeSSHOption = function(option) {
-    var index = $scope.activeDistro.ssh_options.indexOf(option);
+  $scope.removeSSHOption = function(ssh_option) {
+    var index = $scope.activeDistro.ssh_options.indexOf(ssh_option);
     $scope.activeDistro.ssh_options.splice(index, 1);
   }
 
