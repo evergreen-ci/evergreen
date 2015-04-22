@@ -68,8 +68,9 @@ type Options struct {
 }
 
 type ProjectConf struct {
-	Name    string `yaml:"name,omitempty"`
-	Default bool   `yaml:"default,omitempty"`
+	Name     string   `yaml:"name,omitempty"`
+	Default  bool     `yaml:"default,omitempty"`
+	Variants []string `yaml:"variants,omitempty"`
 }
 
 // Settings represents the data stored in the user's config file, by default
@@ -107,12 +108,38 @@ func (s *Settings) FindDefaultProject() string {
 	return ""
 }
 
-func (s *Settings) SetDefaultProject(name string) {
+func (s *Settings) FindDefaultVariants(project string) []string {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.Variants
+		}
+	}
+	return nil
+}
+
+func (s *Settings) SetDefaultVariants(project string, variants ...string) {
 	for i, p := range s.Projects {
-		if p.Name == name {
-			s.Projects[i].Default = true
+		if p.Name == project {
+			s.Projects[i].Variants = variants
 			return
 		}
 	}
-	s.Projects = append(s.Projects, ProjectConf{name, true})
+
+	s.Projects = append(s.Projects, ProjectConf{project, true, variants})
+}
+
+func (s *Settings) SetDefaultProject(name string) {
+	var foundDefault bool
+	for i, p := range s.Projects {
+		if p.Name == name {
+			s.Projects[i].Default = true
+			foundDefault = true
+		} else {
+			s.Projects[i].Default = false
+		}
+	}
+
+	if !foundDefault {
+		s.Projects = append(s.Projects, ProjectConf{name, true, []string{}})
+	}
 }

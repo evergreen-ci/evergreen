@@ -124,7 +124,6 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 			}
 		} else if len(authData.APIKey) > 0 {
 			dbUser, err := user.FindOne(user.ById(authData.Name))
-			fmt.Println("checking for key", dbUser.APIKey, authData.APIKey)
 			if dbUser != nil && err == nil {
 				if dbUser.APIKey != authData.APIKey {
 					http.Error(w, "Unauthorized - invalid API key", http.StatusUnauthorized)
@@ -269,11 +268,9 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("ENDING TASK")
 	finishTime := time.Now()
 	taskEndResponse := &apimodels.TaskEndResponse{}
 	if !getGlobalLock(APIServerLockTitle) {
-		fmt.Println("coudln't get global lock!!!!!!!")
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
@@ -299,7 +296,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	project, err := model.FindProject("", task.Project, as.MCISettings.ConfigDir)
 	if err != nil {
-		fmt.Println("couldn't find projecT!!!!!!!!!!!!!")
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -308,7 +304,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	err = task.MarkEnd(APIServerLockTitle, finishTime, taskEndRequest, project)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", task.Id, err)
-		fmt.Println("ERROR CALLING MARKEND")
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -316,7 +311,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// if task was aborted, reset to inactive
 	if taskEndRequest.Status == mci.TaskUndispatched {
 		if err = model.SetTaskActivated(task.Id, "", false); err != nil {
-			fmt.Println("ERRORDEATASAFA")
 			message := fmt.Sprintf("Error deactivating task after abort: %v", err)
 			mci.Logger.Logf(slogger.ERROR, message)
 			taskEndResponse.Message = message

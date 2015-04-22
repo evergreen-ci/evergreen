@@ -33,6 +33,15 @@ type localDiff struct {
 	base         string
 }
 
+type patchSubmission struct {
+	projectId   string
+	patchData   string
+	description string
+	base        string
+	variants    string
+	finalize    bool
+}
+
 // ListPatchesCommand is used to list a user's existing patches.
 type ListPatchesCommand struct {
 	GlobalOpts  Options  `no-flag:"true"`
@@ -43,12 +52,12 @@ type ListPatchesCommand struct {
 
 type CancelPatchCommand struct {
 	GlobalOpts Options `no-flag:"true"`
-	PatchId    string  `short:"i" required description:"id of the patch to modify"`
+	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
 type FinalizePatchCommand struct {
 	GlobalOpts Options `no-flag:"true"`
-	PatchId    string  `short:"i" required description:"id of the patch to modify"`
+	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
 // PatchCommand is used to submit a new patch to the API server.
@@ -65,15 +74,15 @@ type PatchCommand struct {
 type SetModuleCommand struct {
 	GlobalOpts  Options `no-flag:"true"`
 	Module      string  `short:"m" long:"module" description:"name of the module to remove from patch"`
-	PatchId     string  `short:"i" required description:"id of the patch to modify"`
+	PatchId     string  `short:"i" description:"id of the patch to modify" required:"true" `
 	SkipConfirm bool    `short:"y" long:"yes" description:"skip confirmation text"`
 }
 
 // RemoveModuleCommand removes module information from an existing patch.
 type RemoveModuleCommand struct {
 	GlobalOpts Options `no-flag:"true"`
-	Module     string  `short:"m" required long:"module" description:"name of the module to remove from patch"`
-	PatchId    string  `short:"i" required description:"name of the module to remove from patch"`
+	Module     string  `short:"m" long:"module" description:"name of the module to remove from patch" required:"true" `
+	PatchId    string  `short:"i" description:"name of the module to remove from patch" required:"true" `
 }
 
 // getAPIClient loads the user settings and creates an APIClient configured for the API/UI
@@ -165,6 +174,7 @@ func (pc *PatchCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+
 	if pc.Project == "" {
 		pc.Project = settings.FindDefaultProject()
 	} else {
@@ -176,13 +186,33 @@ func (pc *PatchCommand) Execute(args []string) error {
 			}
 		}
 	}
+
 	if pc.Project == "" {
 		return fmt.Errorf("Need to specify a project.")
 	}
+
 	ref, err := ac.GetProjectRef(pc.Project)
 	if err != nil {
 		return err
 	}
+
+	if len(pc.Variants) == 0 {
+		pc.Variants = settings.FindDefaultVariants(pc.Project)
+		if len(pc.Variants) == 0 {
+			return fmt.Errorf("Need to specify at least one buildvariant with -v")
+		}
+	} else {
+		defaultVariants := settings.FindDefaultVariants(pc.Project)
+		if len(defaultVariants) == 0 &&
+			!pc.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?", pc.Variants, pc.Project), false) {
+			settings.SetDefaultVariants(pc.Project, pc.Variants...)
+			if err = settings.Write(pc.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default variants: %v", err)
+			}
+		}
+	}
+
 	if pc.Description == "" && !pc.SkipConfirm {
 		pc.Description = prompt("Enter a description for this patch (optional):")
 	}
@@ -197,7 +227,13 @@ func (pc *PatchCommand) Execute(args []string) error {
 		}
 	}
 
-	newPatch, err := ac.PutPatch(pc.Project, diffData.fullPatch, pc.Description, diffData.base, "all", pc.Finalize)
+	variantsStr := strings.Join(pc.Variants, ",")
+	if !pc.Finalize {
+		variantsStr = "all"
+	}
+	patchSub := patchSubmission{pc.Project, diffData.fullPatch, pc.Description, diffData.base, variantsStr, pc.Finalize}
+
+	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
 		return err
 	}

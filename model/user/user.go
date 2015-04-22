@@ -58,6 +58,5 @@ func (u *DBUser) PublicKeys() []PubKey {
 
 func (u *DBUser) Insert() error {
 	u.CreatedAt = time.Now()
-	fmt.Println("inserting!")
 	return db.Insert(Collection, u)
 }
