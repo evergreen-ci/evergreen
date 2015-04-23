@@ -1,4 +1,4 @@
-# Mongo Continuous Integration (MCI)
+# Evergreen
 
 ## <a name="requirements"></a>Go Requirements
  * [Install Go from source](http://golang.org/doc/install/source). This is needed to build the binaries using goxc.
