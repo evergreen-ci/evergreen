@@ -1,0 +1,77 @@
+solaris:
+  name: solaris
+  arch: solaris_amd64
+  spawn_allowed: true
+  ami: ami-80a1e1e8
+  instancetype: m3.xlarge
+  mountinfo: [
+    {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m3.xlarge, this is a 40GB SSD.
+    {devicename: "/dev/xvdc", virtualname: "ephemeral1"}, #on m3.xlarge, this is a 40GB SSD.
+    ]
+  user: mci
+  setup_as_sudo: true
+  keyname: mci
+  key: mci
+  securitygroups: mci
+  provider: ec2
+  settings:
+    bid_price: 0.28
+    ami: ami-80a1e1e8
+    instancetype: m3.xlarge
+    securitygroups: mci
+    keyname: mci
+    mountinfo: [
+        {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m3.xlarge, this is a 40GB SSD.
+        {devicename: "/dev/xvdc", virtualname: "ephemeral1"}, #on m3.xlarge, this is a 40GB SSD.
+    ]
+  setup: |
+    #!/bin/bash
+    #
+    set -o errexit
+    set -o verbose
+
+    # Since we're running under non-root, sbin isn't on the path
+    PATH=/usr/sbin:$PATH
+
+    # create and mount /data
+    #
+    zpool create data c1t1d0 c1t2d0
+
+    # reserve 16gb for swap
+    #
+    zfs create -V 16G data/swap
+    swap -a /dev/zvol/dsk/data/swap
+
+    mkdir -p /data/test_data/tmp/unittest/
+    ln -s /data/test_data/tmp/unittest/ /tmp/unittest
+
+    # prep for diskfulltest.js
+    #
+    #mkdir -p /data/disk /data/db/diskfulltest
+    #zfs create data/disk
+    #zfs set mountpoint=/data/db/diskfulltest data/disk
+    #zfs set quota=42MB data/disk
+    #chmod 700 /data/db/diskfulltest/
+
+    # Fix hardcoded hostname in this AMI
+    # 
+    /usr/bin/curl -s http://169.254.169.254/latest/meta-data/local-hostname > /etc/nodename
+    hostname `cat /etc/nodename`
+
+    chown -R mci:root /data
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a ~mci/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a ~mci/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a ~mci/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    echo "${api_httpscert}" | tee -a ${api_httpscert_path}
+    chmod 600 ~mci/.ssh/*
+    chown -R mci:root ~mci/.ssh
+  hosts: []
+  maxhosts: 20
+  expansions: 
+    decompress: tar zxvf
+    ps: ps aux
+    grep: /usr/sfw/bin/ggrep
+    kill_pid: kill -- -$(ps -o pgid -p %v | tail +2)

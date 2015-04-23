@@ -1,0 +1,26 @@
+<div id ="login-modal" class="modal" ng-controller="LoginModalCtrl" aria-hidden="true" role="dialog" tabindex="-1" style="z-index: 10000;">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="media-body title">
+          <h2>Login to MCI</h2>
+        </div>
+      </div>
+      <div ng-show="errorMessage" class="alert alert-danger">[[errorMessage]]</div>
+      <form class="form-signin" ng-submit="authenticate()">
+        <input type="hidden" name="redirect" value="/" />
+        <div class="form-group">
+          <label for="user">Username:</label>
+          <input class="form-control" id="username-modal" type="text" ng-model="credentials.username" placeholder="Same as your JIRA account">
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input class="form-control" type="password" ng-model="credentials.password" placeholder="Same as your JIRA account">
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" type="submit" ng-click="authenticate()">Login</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

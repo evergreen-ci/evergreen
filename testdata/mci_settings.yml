@@ -1,0 +1,35 @@
+dburl: "mongodb://localhost:27017/mci_test"
+db: "mci_test"
+configdir: "config_test"
+aws_secret: "AWS SECRET VALUE"
+aws_id: "AWS ID VALUE"
+github_oauth: "token GITHUB OAUTH TOKEN"
+motu: "mci-motu.10gen.cc"
+
+keys:
+    mci: "/data/home/etc/mci.pem"
+
+repotracker:
+    log_file: "/Users/michaelobrien/mci/logs/repotracker.log"
+
+api:
+    log_file: "/Users/michaelobrien/mci/logs/api.log"
+
+ui:
+    log_file: "/Users/michaelobrien/mci/logs/ui.log"
+
+notify:
+    log_file: "/Users/michaelobrien/mci/logs/notify.log"
+
+scheduler:
+    log_file: "/Users/michaelobrien/mci/logs/scheduler.log"
+
+taskrunner:
+    log_file: "/Users/michaelobrien/mci/logs/taskrunner.log"
+
+expansions: 
+    github_private_key: |-
+        -----BEGIN RSA PRIVATE KEY-----
+        GITHUB PRIVATE KEY GOES HERE
+        -----END RSA PRIVATE KEY-----
+    github_public_key: ssh-rsa blahblahblah slave@10gen.com

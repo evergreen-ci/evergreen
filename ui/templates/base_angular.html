@@ -1,0 +1,79 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="en" ng-app="MCI">
+
+    <head>
+        <meta charset="utf-8">
+        <title>{{ template "title" .}}</title>
+
+        <link rel="shortcut icon" href="/static/img/favicon.ico">
+
+        <!-- mongostrap (Bootstrap + MongoDB Theme) -->
+        <link href="/static/css/mongostrap.min.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+
+        <!-- fontawesome icons -->
+        <link href="/static/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+
+        <!-- our css -->
+        <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+
+        <!-- underscore.js js v1.4.4 js -->
+        <script type="text/javascript" src="/static/js/underscore-min.js"></script>
+
+        <!-- angular.js v1.2.18 js -->
+        <script type="text/javascript" src="/static/js/angular.min.js"></script>
+        <script type="text/javascript" src="/static/js/angular-sanitize.min.js"></script>
+        <script type="text/javascript" src="/static/js/ansi_up.js"></script>
+        <script type="text/javascript" src="/static/js/angular-md5.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/filters/filters.common.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.eventlogs.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.visualization.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.badges.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.admin.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.github.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.patch.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.spawn.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.events.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/directives/directives.svg.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/services/location_hash.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/services/rest.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/mci_module.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="/static/js/controllers/project_controller.js?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="{{Static "js" "login.js"}}?hash={{ StaticsMD5 }}"></script>
+        <style type="text/css">
+          #footer{ font-size:.8em; color:#888; }
+        </style>
+        <script type="text/javascript">
+          var project = {{.ProjectData.Project.Identifier}}
+		  var projectName = {{.ProjectData.Project.DisplayName}} 
+          var allProjects = {{.ProjectData.AllProjects}}
+        </script>
+    </head>
+
+    <body ng-controller="ProjectController">
+        {{template "menu" .}}
+
+        <script src="/static/js/jquery.js"></script>
+        <script src="/static/js/mongostrap.min.js"></script>
+        <script src="/static/js/common.js"></script>
+        <script src="/static/js/moment.min.js"></script>
+        <script src="/static/js/moment-timezone.min.js"></script>
+        <script src="/static/js/moment-timezone-data.js"></script>
+
+        <!-- our scripts -->
+        {{ template "scripts" .}}
+
+        <!-- insert the actual content -->
+        {{template "content" .}}
+    </body>
+    <login-modal/>
+</html>
+{{end}}
+{{define "flash"}}
+  {{range .Flashes}}
+    <div class="alert alert-{{.Severity}} alert-dismissable">
+      {{.Message}}
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+    </div>
+  {{end}}
+{{end}}

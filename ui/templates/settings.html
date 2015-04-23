@@ -1,0 +1,25 @@
+{{define "scripts"}}
+<script type="text/javascript" src="{{Static "js" "settings.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript">
+    var user_tz = {{.Data.Timezone}};
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - User Settings
+{{end}}
+
+
+{{define "content"}}
+<div id="content" class="container">
+  {{template "flash" . }}
+  <h1>User Settings</h1>
+  <div ng-controller="SettingsCtrl">
+    <form novalidate class="css-form">
+      Timezone: <select ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select>
+      <br />
+      <button ng-click="updateUserSettings(new_tz)">Submit</button>
+    </form>
+  </div>
+</div>
+{{end}}

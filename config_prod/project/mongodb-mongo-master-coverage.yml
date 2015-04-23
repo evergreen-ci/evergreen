@@ -1,0 +1,201 @@
+owner: mongodb
+repo: mongo
+branch: master
+repokind: github
+enabled: false
+batchtime: 2880
+identifier: mongodb-mongo-master-coverage
+display_name: MongoDB (coverage)
+stepback: false
+
+functions:
+  "fetch binaries" :
+    command: s3.get
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      remote_file: mongodb-mongo-master-coverage/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+      bucket: mciuploads
+      local_file: src/mongo-binaries.tgz
+  "extract binaries" :
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        ${decompress|unzip} mongo-binaries.tgz
+  "get buildnumber":
+    command: keyval.inc
+    params:
+      key: "${build_variant}_cvg"
+      destination: "builder_num"
+  "setup credentials" :
+    command: shell.exec
+    params:
+      working_dir: src
+      silent: true
+      script: |
+        cat > mci.buildlogger <<END_OF_CREDS
+        slavename='${slave}'
+        passwd='${passwd}'
+        END_OF_CREDS
+  "fetch artifacts" :
+    command: s3.get
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      remote_file: mongodb-mongo-master-coverage/${build_variant}/${revision}/artifacts/${build_id}.tgz
+      bucket: mciuploads
+      extract_to: src
+
+pre:
+  - command: shell.exec
+    params:
+      silent: true
+      script: |
+        ${killall_mci|pkill -9 mongod; pkill -9 mongos; pkill -9 mongo; pkill -9 bsondump; pkill -9 mongoimport; pkill -9 mongoexport; pkill -9 mongodump; pkill -9 mongorestore; pkill -9 mongostat; pkill -9 mongofiles; pkill -9 mongooplog; pkill -9 mongotop; pkill -9 mongobridge; pkill -9 mongod-2.6; pkill -9 mongos-2.6; pkill -9 mongo-2.6; pkill -9 bsondump-2.6; pkill -9 mongoimport-2.6; pkill -9 mongoexport-2.6; pkill -9 mongodump-2.6; pkill -9 mongorestore-2.6; pkill -9 mongostat-2.6; pkill -9 mongofiles-2.6; pkill -9 mongooplog-2.6; pkill -9 mongotop-2.6; pkill -9 mongobridge-2.6; pkill -9 mongod-2.4; pkill -9 mongos-2.4; pkill -9 mongo-2.4; pkill -9 bsondump-2.4; pkill -9 mongoimport-2.4; pkill -9 mongoexport-2.4; pkill -9 mongodump-2.4; pkill -9 mongorestore-2.4; pkill -9 mongostat-2.4; pkill -9 mongofiles-2.4; pkill -9 mongooplog-2.4; pkill -9 mongotop-2.4; pkill -9 buildlogger.py; pkill -9 smoke.py; pkill -9 python; pkill -9 cl; pkill -9 lock_mgr_test; pkill -9 background_job_test; pkill -9 repl_coordinator_impl_heartbeat_test} >/dev/null 2>&1
+        rm -rf src /data/db/*
+        exit 0
+
+post:
+  - command: attach.results
+    params:
+      file_location: src/report.json
+  - command: shell.exec
+    params:
+      silent: true
+      script: |
+        ${killall_mci|pkill -9 mongod; pkill -9 mongos; pkill -9 mongo; pkill -9 bsondump; pkill -9 mongoimport; pkill -9 mongoexport; pkill -9 mongodump; pkill -9 mongorestore; pkill -9 mongostat; pkill -9 mongofiles; pkill -9 mongooplog; pkill -9 mongotop; pkill -9 mongobridge; pkill -9 mongod-2.6; pkill -9 mongos-2.6; pkill -9 mongo-2.6; pkill -9 bsondump-2.6; pkill -9 mongoimport-2.6; pkill -9 mongoexport-2.6; pkill -9 mongodump-2.6; pkill -9 mongorestore-2.6; pkill -9 mongostat-2.6; pkill -9 mongofiles-2.6; pkill -9 mongooplog-2.6; pkill -9 mongotop-2.6; pkill -9 mongobridge-2.6; pkill -9 mongod-2.4; pkill -9 mongos-2.4; pkill -9 mongo-2.4; pkill -9 bsondump-2.4; pkill -9 mongoimport-2.4; pkill -9 mongoexport-2.4; pkill -9 mongodump-2.4; pkill -9 mongorestore-2.4; pkill -9 mongostat-2.4; pkill -9 mongofiles-2.4; pkill -9 mongooplog-2.4; pkill -9 mongotop-2.4; pkill -9 buildlogger.py; pkill -9 smoke.py; pkill -9 python; pkill -9 cl; pkill -9 lock_mgr_test; pkill -9 background_job_test; pkill -9 repl_coordinator_impl_heartbeat_test} >/dev/null 2>&1
+        exit 0
+
+tasks:
+
+## compile ##
+- name: compile
+  depends_on: []
+  commands:
+    - command: git.get_project
+      params:
+        directory: src
+    - command: git.apply_patch
+      params:
+        directory: src
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o errexit
+          set -o verbose
+          rm -rf ${install_directory|/data/mongo-install-directory}
+          ${scons|scons} ${compile_flags|} all dist ${msi_target|}
+          if [ "${has_debugsymbols|}" = "true" ]; then ${scons|scons} ${compile_flags|} --nostrip dist; original_filename=$(ls | grep debugsymbols); mv $original_filename $(echo $original_filename | sed 's/debugsymbols-//' | sed 's/mongodb/debugsymbols-mongodb/'); fi
+          ${python|python} buildscripts/smoke.py --with-cleanbb --mode files --from-file build/unittests.txt --dont-start-mongod  --report-file report.json --buildlogger-builder MCI_cvg_${build_variant} --buildlogger-buildnum ${builder_num|} --buildlogger-credentials ./mci.buildlogger --buildlogger-phase ${task_name}_${execution} core
+          mv mongodb*.${ext|tgz} mongodb-binaries.tgz
+          mv debugsymbols-*.${ext|tgz} mongo-debugsymbols.tgz || true
+    - command: archive.targz_pack
+      params:
+        target: "artifacts.tgz"
+        source_dir: "src"
+        include:
+          - "src/mongo/db/modules/enterprise/jstests/**"
+          - "compile_expansions.yml"
+          - "*.exe"
+          - "jstests/**"
+          - "./test*"
+          - "./dbtest*"
+          - "./mongobridge*"
+          - "buildscripts/**"
+          - "*Example"
+          - "*Test"
+          # gcov build output
+          - "./**.gcno"
+        exclude_files:
+          - "*_test.pdb"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/mongodb-binaries.tgz
+        remote_file: mongodb-mongo-master-coverage/${build_variant}/${revision}/binaries/mongo-${build_id}.${ext|tgz}
+        bucket: mciuploads
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: Binaries
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: artifacts.tgz
+        remote_file: mongodb-mongo-master-coverage/${build_variant}/${revision}/artifacts/${build_id}.tgz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: application/tar
+        display_name: Artifacts
+    - command: archive.targz_pack
+      params:
+        target: "gcov.tgz"
+        source_dir: "src"
+        include:
+          # gcov run output
+          - "./**.gcda"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: gcov.tgz
+        remote_file: mongodb-mongo-master-coverage/${build_variant}/${revision}/gcov/${task_id}.tgz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: Code Coverage
+
+- name: disk
+  depends_on:
+  - name: compile
+  commands:
+    - func: "fetch artifacts"
+    - func: "fetch binaries"
+    - func: "extract binaries"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          cp mongodb*/bin/* .
+          ${python|python} buildscripts/smoke.py --nopreallocj --with-cleanbb --mongod ./mongod --mongo ./mongo --report-file report.json ${test_flags|} --buildlogger-builder MCI_cvg_${build_variant} --buildlogger-buildnum ${builder_num|} --buildlogger-credentials ./mci.buildlogger --buildlogger-phase ${task_name}_${execution} disk
+    - command: archive.targz_pack
+      params:
+        target: "gcov.tgz"
+        source_dir: "src"
+        include:
+          # gcov run output
+          - "./**.gcda"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: gcov.tgz
+        remote_file: mongodb-mongo-master-coverage/${build_variant}/${revision}/gcov/${task_id}.tgz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: ${content_type|application/x-gzip}
+        display_name: Code Coverage
+
+#######################################
+# Buildvariants
+#######################################
+
+buildvariants:
+
+###########################################
+#         Linux buildvariants             #
+###########################################
+
+- name: linux-64-coverage
+  display_name: Linux 64-bit GCOV
+  run_on:
+  - linux-64-coverage
+  expansions:
+    compile_flags: -j$(grep -c ^processor /proc/cpuinfo) --gcov --dbg --opt=off
+    test_flags: --continue-on-failure
+  tasks:
+  - name: compile
+  - name: disk

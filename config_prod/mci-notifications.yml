@@ -1,0 +1,144 @@
+#####################################################
+#       MCI Notifications Configuration File        #
+#####################################################
+#                                                   #
+# This is the configuration file for MCI email      #
+# notifications.                                    # 
+# It primarily consists of notifications and teams  #
+# subscribed to any number of such notifications.   #
+#                                                   #
+#####################################################
+
+
+#####################################################
+#                      README                       #
+#####################################################
+#                                                   #
+# By default, notifications on build success and    #
+# build failure are sent to the blamelist for that  #
+# build - which consists of all those who made a    #
+# commit between the time the last activated build  #
+# was pulled by MCI and the current build on which  #
+# the notification is triggered for.                #
+#                                                   #
+# Recipients for each notification are optional -   #
+# the typical way to get notified on any event is   #
+# to subscribe to it as part of a team.             #
+#                                                   #
+# Teams can subscribe to as many notifications as   #
+# they wish. They can also specify whether want     # 
+# logs to be included as part of the notifications  #
+# (note that this is only useful for task failure   #
+# notifications). In addition team notifications    #
+# are specified per project.                        #
+#                                                   #
+# If however, an interested party is not part of a  #
+# team but wishes to receive one or more notifica-  #
+# tions, the person can just add their email        #
+# address to the notification's recipients list.    #
+# This will ensure that they equally get notified   #
+# accordingly.                                      #
+#                                                   #
+#####################################################
+
+
+
+#####################################################
+#                   Notifications                   #
+#####################################################
+
+notifications:
+- name: build_failure
+  project: mongodb-mongo-master
+  recipients:
+- name: build_success
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+- name: build_success_to_failure
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+- name: task_failure
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+- name: task_success
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+- name: task_success_to_failure
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+- name: task_completion
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+- name: build_completion
+  project: mongodb-mongo-master
+  recipients:
+  skip_variants:
+
+#####################################################
+#                     Teams                         #
+#####################################################
+
+teams:
+- name: Kernel Team
+  address: kernel@10gen.com
+  subscriptions:
+  - project: mongodb-mongo-master
+    notify_on: 
+    skip_variants:
+- name: Kernel Tools Team
+  address: mci@10gen.com
+  subscriptions:
+  - project: mongodb-mongo-master
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+  - project: mongodb-mongo-v2.6
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+  - project: mci
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+- name: MCI Alerts
+  address: mci-alerts@10gen.com
+  subscriptions:
+  - project: mongodb-mongo-master
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+  - project: mongodb-mongo-v2.6
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+- name: Pager Duty
+  address: mci-failure@mongodb-kernel.pagerduty.com
+  subscriptions:
+  - project: mongodb-mongo-master
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+  - project: mongodb-mongo-v2.6
+    notify_on:
+    - task_success_to_failure
+    skip_variants:
+
+
+#####################################################
+#                    Patches                        #
+#####################################################
+patch_notifications:
+- project: mongodb-mongo-master
+  notify_on:
+    - task_failure
+  skip_variants:
+- project: mongodb-mongo-v2.6
+  notify_on:
+    - task_failure
+  skip_variants:

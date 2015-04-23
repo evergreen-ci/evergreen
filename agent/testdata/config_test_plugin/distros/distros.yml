@@ -1,0 +1,6 @@
+rhel55:
+  name: rhel55
+  arch: linux_386
+  user: root
+  expansions: 
+    distro_exp: DISTRO_EXP

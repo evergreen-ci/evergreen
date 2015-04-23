@@ -1,0 +1,193 @@
+package s3Plugin
+
+import (
+	"10gen.com/mci"
+	"10gen.com/mci/command"
+	"10gen.com/mci/testutils"
+	"10gen.com/mci/util"
+	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestValidateS3BucketName(t *testing.T) {
+
+	Convey("When validating s3 bucket names", t, func() {
+
+		Convey("a bucket name that is too short should be rejected", func() {
+			So(validateS3BucketName("a"), ShouldNotBeNil)
+		})
+
+		Convey("a bucket name that is too long should be rejected", func() {
+			So(validateS3BucketName(strings.Repeat("a", 64)), ShouldNotBeNil)
+		})
+
+		Convey("a bucket name that does not start with a label should be"+
+			" rejected", func() {
+			So(validateS3BucketName(".xx"), ShouldNotBeNil)
+		})
+
+		Convey("a bucket name that does not end with a label should be"+
+			" rejected", func() {
+			So(validateS3BucketName("xx."), ShouldNotBeNil)
+		})
+
+		Convey("a bucket name with two consecutive periods should be"+
+			" rejected", func() {
+			So(validateS3BucketName("xx..xx"), ShouldNotBeNil)
+		})
+
+		Convey("a bucket name with invalid characters should be"+
+			" rejected", func() {
+			So(validateS3BucketName("a*a"), ShouldNotBeNil)
+			So(validateS3BucketName("a'a"), ShouldNotBeNil)
+			So(validateS3BucketName("a?a"), ShouldNotBeNil)
+		})
+
+		Convey("valid bucket names should be accepted", func() {
+			So(validateS3BucketName("aaa"), ShouldBeNil)
+			So(validateS3BucketName("aa.aa.aa"), ShouldBeNil)
+			So(validateS3BucketName("a12.a-a"), ShouldBeNil)
+		})
+	})
+
+}
+
+func TestS3PutAndGet(t *testing.T) {
+
+	conf := mci.TestConfig()
+	testutils.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
+
+	Convey("When putting to and retrieving from an s3 bucket", t, func() {
+
+		var putCmd *S3PutCommand
+		var getCmd *S3GetCommand
+
+		testDataDir := "testdata"
+		remoteFile := "remote_mci_put_test.tgz"
+		bucket := "mci-test-uploads"
+		permissions := "private"
+		contentType := "application/x-tar"
+		displayName := "testfile"
+
+		// create the local directory to be tarred
+		localDirToTar := filepath.Join(testDataDir, "put_test")
+		localFileToTar := filepath.Join(localDirToTar, "put_test_file.txt")
+		util.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing"+
+			" directory")
+		util.HandleTestingErr(os.MkdirAll(localDirToTar, 0755), t,
+			"Error creating directory")
+		randStr := util.RandomString()
+		So(ioutil.WriteFile(localFileToTar, []byte(randStr), 0755), ShouldBeNil)
+
+		// tar it
+		tarCmd := &command.LocalCommand{
+			CmdString:        "tar czf put_test.tgz put_test",
+			WorkingDirectory: testDataDir,
+			Stdout:           ioutil.Discard,
+			Stderr:           ioutil.Discard,
+		}
+		util.HandleTestingErr(tarCmd.Run(), t, "Error tarring directories")
+		tarballSource := filepath.Join(testDataDir, "put_test.tgz")
+
+		// remove the untarred version
+		util.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing"+
+			" directories")
+
+		Convey("the file retrieved should be the exact same as the file"+
+			" put", func() {
+
+			// load params into the put command
+			putCmd = &S3PutCommand{}
+			putParams := map[string]interface{}{
+				"aws_key":      conf.Providers.AWS.Id,
+				"aws_secret":   conf.Providers.AWS.Secret,
+				"local_file":   tarballSource,
+				"remote_file":  remoteFile,
+				"bucket":       bucket,
+				"permissions":  permissions,
+				"content_type": contentType,
+				"display_name": displayName,
+			}
+			So(putCmd.ParseParams(putParams), ShouldBeNil)
+			So(putCmd.Put(), ShouldBeNil)
+
+			// first, get the file, untarring it
+			getCmd = &S3GetCommand{}
+			getParams := map[string]interface{}{
+				"aws_key":      conf.Providers.AWS.Id,
+				"aws_secret":   conf.Providers.AWS.Secret,
+				"remote_file":  remoteFile,
+				"bucket":       bucket,
+				"extract_to":   testDataDir,
+				"display_name": displayName,
+			}
+			So(getCmd.ParseParams(getParams), ShouldBeNil)
+			So(getCmd.Get(), ShouldBeNil)
+			// read in the file that was pulled down
+			fileContents, err := ioutil.ReadFile(localFileToTar)
+			So(err, ShouldBeNil)
+			So(string(fileContents), ShouldEqual, randStr)
+
+			// now, get the tarball without untarring it
+			getCmd = &S3GetCommand{}
+			localDlTarget := filepath.Join(testDataDir, "put_test_dl.tgz")
+			getParams = map[string]interface{}{
+				"aws_key":      conf.Providers.AWS.Id,
+				"aws_secret":   conf.Providers.AWS.Secret,
+				"remote_file":  remoteFile,
+				"bucket":       bucket,
+				"local_file":   localDlTarget,
+				"display_name": displayName,
+			}
+			So(getCmd.ParseParams(getParams), ShouldBeNil)
+			So(getCmd.Get(), ShouldBeNil)
+			exists, err := util.FileExists(localDlTarget)
+			So(err, ShouldBeNil)
+			So(exists, ShouldBeTrue)
+
+		})
+
+		Convey("the put command should always run if there is no variants filter", func() {
+			// load params into the put command
+			putCmd = &S3PutCommand{}
+			putParams := map[string]interface{}{
+				"aws_key":      conf.Providers.AWS.Id,
+				"aws_secret":   conf.Providers.AWS.Secret,
+				"local_file":   tarballSource,
+				"remote_file":  remoteFile,
+				"bucket":       bucket,
+				"permissions":  permissions,
+				"content_type": contentType,
+				"display_name": displayName,
+			}
+			So(putCmd.ParseParams(putParams), ShouldBeNil)
+			So(putCmd.shouldRunForVariant("linux-64"), ShouldBeTrue)
+		})
+
+		Convey("put cmd with variants filter should only run if variant is in list", func() {
+			// load params into the put command
+			putCmd = &S3PutCommand{}
+			putParams := map[string]interface{}{
+				"aws_key":        conf.Providers.AWS.Id,
+				"aws_secret":     conf.Providers.AWS.Secret,
+				"local_file":     tarballSource,
+				"remote_file":    remoteFile,
+				"bucket":         bucket,
+				"permissions":    permissions,
+				"content_type":   contentType,
+				"display_name":   displayName,
+				"build_variants": []string{"linux-64", "windows-64"},
+			}
+			So(putCmd.ParseParams(putParams), ShouldBeNil)
+
+			So(putCmd.shouldRunForVariant("linux-64"), ShouldBeTrue)
+			So(putCmd.shouldRunForVariant("osx-108"), ShouldBeFalse)
+		})
+
+	})
+
+}

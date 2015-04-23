@@ -1,0 +1,56 @@
+{{define "scripts"}}
+    <script src="{{Static "js" "buildmaster.js"}}?hash={{ StaticsMD5 }}"></script>
+
+
+<script type="text/javascript">
+  var builds = {{.Builds}};
+  var version = {{.ProjectData.Version}};
+  var version_hist = {{.VersionHistory}};
+  var gitspecMap = {{.VersionsByGitspec}};
+  var userTz = {{GetTimezone $.User}};
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - Buildmaster
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="VersionMatrixController">
+  <div class="container" style="margin-top:20px;">
+    <div class="row">
+      {{if .ProjectData.Version}}
+      <div class="col-lg-8 col-lg-offset-1">
+        <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}">
+        </github-commit-panel>
+      </div>
+      {{else}}
+      <p class="text-center">There are no builds of this project</p>
+      {{end}}
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-offset-1">
+      <div id="popover"></div>
+      <div class="gridtable-small">  
+        <div class="top-header-row">
+          <div class="header-cell" ng-repeat="test in testnames" id="[['bv' + $index]]">
+            <span class="header-text">
+              <a ng-href="/task_history/[[project]]/[[test]]">[[test]]</a>
+            </span>
+          </div>
+        </div>
+        <div class="tablerow" ng-repeat="bv in variants">
+          <div class="header">
+              <div class="testname" id="[['test' + $index]]">[[bv]]</div>
+          </div>
+           <div class="cells">
+                <div ng-repeat="test in testnames" ng-class="'cell ' + getGridClass(bv, test)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(bv, test, $event.target);">&nbsp;</div>
+           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{end}}

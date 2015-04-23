@@ -1,0 +1,39 @@
+{{ define "base" }}
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+        <title>{{template "title" .}}</title>
+        <link rel="shortcut icon" href="/static/img/favicon.ico">
+
+
+        <!-- mongostrap (Bootstrap + MongoDB Theme) -->
+        <link href="/static/css/mongostrap.min.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+
+        <!-- fontawesome icons -->
+        <link href="/static/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
+
+        <!-- our css -->
+        <link href="/static/dist/css/styles{{if IsProd }}.min{{end}}.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+    </head>
+
+    <body>
+        {{template "menu" .}}
+
+	    <script src="/static/js/jquery.js"></script>
+        <script src="/static/js/mongostrap.min.js"></script>
+        <script src="/static/js/common.js"></script>
+        <script src="/static/js/moment.min.js"></script>
+        <script src="/static/js/moment-timezone.min.js"></script>
+        <script src="/static/js/moment-timezone-data.js"></script>
+
+        <!-- our scripts -->
+        {{ template "scripts" .}}
+
+        <div id="content" class="container-fluid">
+            {{template "content" .}}
+        </div>
+    </body>
+</html>
+{{end}}

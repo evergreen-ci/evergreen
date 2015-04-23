@@ -1,0 +1,79 @@
+package model
+
+import (
+	"10gen.com/mci/db"
+	"fmt"
+	"labix.org/v2/mgo"
+	"labix.org/v2/mgo/bson"
+)
+
+const TestLogCollection = "test_logs"
+
+type TestLog struct {
+	Name          string   `json:"name" bson:"name"`
+	Task          string   `json:"task" bson:"task"`
+	TaskExecution int      `json:"execution" bson:"execution"`
+	Lines         []string `json:"lines" bson:"lines"`
+}
+
+var (
+	TestLogNameKey          = MustHaveBsonTag(TestLog{}, "Name")
+	TestLogTaskKey          = MustHaveBsonTag(TestLog{}, "Task")
+	TestLogTaskExecutionKey = MustHaveBsonTag(TestLog{}, "TaskExecution")
+	TestLogLinesKey         = MustHaveBsonTag(TestLog{}, "Lines")
+)
+
+// FindOneTestLog returns a TestLog, given the test's name, task id,
+// and execution.
+func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
+	tl := &TestLog{}
+	err := db.FindOne(
+		TestLogCollection,
+		bson.M{
+			TestLogNameKey:          name,
+			TestLogTaskKey:          task,
+			TestLogTaskExecutionKey: execution,
+		},
+		db.NoProjection,
+		db.NoSort,
+		tl,
+	)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return tl, err
+}
+
+// Insert inserts the TestLog into the database
+func (self *TestLog) Insert() error {
+	if err := self.Validate(); err != nil {
+		return fmt.Errorf("cannot insert invalid test log: %v", err)
+	}
+	return db.Insert(TestLogCollection, self)
+}
+
+// Validate makes sure the log will accessible in the database
+// before the log itself is inserted. Returns an error if
+// something is wrong.
+func (self *TestLog) Validate() error {
+	switch {
+	case self.Name == "":
+		return fmt.Errorf("test log requires a 'Name' field")
+	case self.Task == "":
+		return fmt.Errorf("test log requires a 'Task' field")
+	default:
+		return nil
+	}
+}
+
+// URL returns the path to access the log based on its current fields.
+// Does not error if fields are not set.
+func (self *TestLog) URL() string {
+	return fmt.Sprintf("/test_log/%v/%v/%v",
+		self.Task,
+		self.TaskExecution,
+		self.Name,
+	)
+}
+
+// TODO we might need an Append function at some point

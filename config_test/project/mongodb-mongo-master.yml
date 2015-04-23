@@ -1,0 +1,42 @@
+owner: mongodb
+repo: mongo
+repokind: github
+branch: master
+enabled: true
+batchtime: 180
+stepback: true
+
+#######################################
+# Buildvariants
+#######################################
+
+buildvariants:
+
+- name: osx-108
+  display_name: OS X 10.8
+  modules: ~
+  expansions: 
+    push_path: osx
+    push_bucket: downloads.mongodb.org
+    push_name: osx
+    push_arch: x86_64
+    compile_flags: --sharedclient --allocator=system -j8 --release --osx-version-min=10.6
+  test_suites:
+  - aggregation_auth
+  - client_auth
+  - clone_auth
+  - core_auth
+  - disk_auth
+  - durability_auth
+  - failpoints_auth
+  - js_auth
+  - mongo-perf
+  - mongosTest_auth
+  - multiversion
+  - replicasets_auth
+  - replication_auth
+  - sharding_auth
+  - ssl
+  - sslSpecial
+  - tool_auth
+  push: true

@@ -1,0 +1,17 @@
+<div>
+  <h6><strong>[[currentTest]]</strong> on <strong>[[currentBV]]</strong></h6>
+  <div class="current-task-run">
+    <span class="tooltip-task-status" ng-class="getTooltipClass(currentCell.current.status)">&nbsp;</span>
+    <a href="/task/[[currentCell.current.id]]" class="gitspec">[[guessGitspec(currentCell.current.id, currentBV).substr(0,5)]]</a>
+    <span>[[guessVersion(currentCell.current.id).message]]</span>
+  </div>
+  <div style="text-align:right"><a href="/task_history/[[currentTest]]">View full history&hellip;</a></div>
+  <ul class="tooltip-tasks">
+    <li class="tooltip-task" ng-repeat="test in currentCell.prevTasks">
+      <div class="test-result">
+        <span class="tooltip-task-status" ng-class="getTooltipClass(test.s)">&nbsp;</span>
+        <span class="gitspec"><a href="/task/[[test.id]]">[[guessGitspec(test.id, currentBV).substr(0,5)]]</a></span><span class="commitmsg">[[guessVersion(test.id).message]]</span>
+      </div>
+    </li>
+  </ul>
+</div>

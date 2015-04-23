@@ -1,0 +1,163 @@
+@wassuccess_green:#01DF01;
+@wasfail_red:#F5A9A9;
+@undispatched_grey:#ccc;
+@started_grey:#ccc;
+@success_green: #4AC948;
+@fail_red: #FF4040;
+@cell_size:20px;
+@rowheader_width:10px;
+@header_height:60px;
+@cell_spacing: 2px;
+@rotation: -45deg;
+
+.gridtable(@cell_spacing, @cell_size, @rowheader_width, @header_height:60px, @extra_rowspacing:0px){
+    .top-header-row.locked {
+		position: fixed;
+		background-color: white;
+		z-index: 100;
+		width: 800px;
+		margin: 0px;
+	}
+	.tablebody.locked {
+		padding-top: @header_height - 30px;
+		width: 800px;
+		margin: 0px;
+	}
+    .top-header-row {
+        padding-top: @header_height;
+        padding-left: @rowheader_width+3px;
+        white-space: nowrap;
+
+        .header-cell {
+            font-size: 16px;
+            white-space: nowrap;
+            margin-left: 0px;
+            display: inline-block;
+            width: @cell_size + @cell_spacing;
+            border-style: none;
+            -webkit-transform: rotate(@rotation);
+            -moz-transform: rotate(@rotation);
+            -ms-transform: rotate(@rotation);
+            -o-transform: rotate(@rotation);
+            transform: rotate(@rotation);
+            filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+
+            .header-text {
+                font-size: .8em;
+                font-weight: bold;
+                border-bottom: 1px solid #ccc;
+            }
+        }
+        .header-cell.highlighted {
+            .header-text {
+                background-color: #eee;
+            }
+        }
+    }
+
+    .tablerow {
+        white-space: nowrap;
+        line-height: @cell_size;
+        margin-bottom: @cell_spacing + @extra_rowspacing;
+        text-align: right;
+        position: relative;
+        top: .5em;
+        float: left;
+        clear: both;
+
+        .header {
+            font-size: 16px;
+            text-align: right;
+            vertical-align: top; 
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            display: inline-block;
+            width: @rowheader_width - 20px;
+            
+            .commit-msg {
+                //display: none; // comment this out to show commits: ;
+                float: right;
+                text-align: right;
+                width: 200px;
+                font-size: .8em;
+                color: #888;
+                text-overflow: ellipsis;
+                overflow: hidden;  
+            }
+        }
+        .header.highlighted {
+            background-color: #eee;
+        }
+        .cells {
+            margin-left: 5px;
+            display: inline-block;
+			
+            a {
+				text-decoration: none;
+			}
+            .cell {
+                //border-radius: @cell_size/2; //uncomment for circular cells;
+                margin-right: 2px;
+                display: inline-block;
+                width: @cell_size;
+                height: @cell_size;
+            }
+        }
+    }
+}
+
+.gridtable-timeline {
+    margin: 0 30px;
+}
+
+.gridtable-small {
+    .gridtable(2px, 20px, 230px, 60px);
+    margin-top: 50px;
+}
+.cell {
+    background: transparent;
+}
+.cell.success {
+    background-color: @success_green;
+}
+.cell.failed {
+    background-color: @fail_red;
+}
+.cell.skipped {
+	background-color: #fafafa;
+	pointer-events: none;
+}
+.cell.failure {
+    background-color:@fail_red;
+}
+.cell.undispatched {
+    background-color: @undispatched_grey;
+	border: 1px solid #ccc;
+}
+.cell.undispatched.active {
+    background-color: @undispatched_grey;
+	border: 1px solid #ccc;
+}
+.cell.undispatched.inactive {
+    background-color: white;
+	border: 1px solid #ccc;
+}
+.cell.was-success {
+    background-color: @wassuccess_green;
+    opacity: 0.3;
+}
+.cell.was-failure {
+    background-color: @wasfail_red;
+}
+.cell.started {
+    background-image: url('/static/img/15.GIF');
+}
+
+.task-history-gridtable .cell.started {
+    border: 1px solid #ccc;
+
+    &.task-doesnt-match {
+        border: 4px solid #fff;
+    }
+}

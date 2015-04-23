@@ -1,0 +1,128 @@
+dburl: "mongodb://localhost:27017/mci_test"
+db: "mci_test"
+configdir: "config_test"
+credentials:  {
+        github: "token xxx",
+}
+
+agentexecutablesdir: "agent/testdata/executables"
+
+motu: "https://localhost:8443"
+
+providers:
+    aws:
+        aws_secret: "aws secret"
+        aws_id: "aws id"
+
+crowd:
+    username: "mci-nonprod"
+    password: "change me"
+    urlroot: "https://crowdtest.10gen.com"
+
+jira:
+    host: jira.mongodb.org
+    username: xgen-mci-user
+    password: Bu1Ld5
+
+keys:
+    mci: "/data/home/etc/mci.pem"
+
+repotracker:
+    logfile: "/tmp/repotracker_test.log"
+
+api:
+    logfile: "/tmp/api_test.log"
+    httplistenaddr: ":8080"
+    httpslistenaddr: ":8443"
+    httpskey: |
+        -----BEGIN RSA PRIVATE KEY-----
+        MIIEpAIBAAKCAQEA0hj8tQa9T5y31+7KgeR02CIzBdUgGxn8+BZ6oHhJ8QZXT3vT
+        ADNHBk0UAyc60JZbJUuL6o/56PTytzma024W56fO/IQM+lnbX05o5i9p+qsT4DsC
+        k2+rXCA7lXC40npjFZ7Wut/9UpI2Ah7uwzNusHRA3yXnvUEtaDHpJ1RPZcxxUmpe
+        bqE+9nCOQu8jiIDMubjlZWZPSNHLgynOoBiqfy9HjIQGv+v/9Fdup8a+FMBsNTUS
+        PiBUUDvkMYHT29i0arQNnJnJDewfoLGBWEqh6+rfAXTiwA0hyejHkhynIZqWeJ56
+        v3uETLb+gCDHPUharUng3fS/tkVDPTZxgsyIQQIDAQABAoIBAQCBjwMXJwbK91uv
+        fwPGQfmD5uML77eSvt3upv4LwuHmDgD9dOBTOUvNKO70Wta8FlwyjXnEtfBopdSf
+        BJjjVPou9J6BvXS7VXogNZwehpKWD7V8Cye1f6FueDoGF7MBqJM9m+vS5Zmzt5Iy
+        kJywJyFVEvuGIDvdyzmTDWQ36pfjr6bp29i5to0TvWyWGNewG9aA2tCvUdSpaDaI
+        aHdBnr5ee/h/zJ94E0/ZAopa3BBR7aGyg+lMmpmTK9rjLlpAouy8AkqZu0X1pAKY
+        iJ39REptfmBE2BXWG+A7hy2ohWGHEVRv1nDHhCnTzrhn/MMCFaBE11+p/GBku2b9
+        KmEn5SH5AoGBAO/BvWbwxgzbim61Q+CCrWAyDFZrUGB6v0PsT+1WOyjm0r5ewufN
+        32AixjY24nKLnye5hrNQMtzQ6LfpDdXkxQ1i29HPXsDT/Lq+M3H96eNjFJqyn6cc
+        vCKicbbDtHM9xU0UbXjw9mELeJqGywYMu6RWmeMLVfcektx9g43DkG8XAoGBAOBU
+        2TCrR1uLCmekcEbheB2Pe36vEeq6/M2K+VoFu2bUqcWSneswT9iI/1rkNsMRCr6f
+        cqahyc2CAGtkjrbcc7Y9c+4kLYqvQwUUST137sBsbaLV2wfvXpaWyk4p3qgJD8G2
+        hVo/mLPeyleeCSCBQlGBCrKMXv5NNIZxWIU/hJpnAoGADjwPdbQn3g2Oy4HhlMvN
+        ZV+zUdIvRHslLfAy0qGDA6uoqXrQ0ZhsgbWu1PsvOKPHgEFImQ7S5j9VAc5JbwCV
+        HnVXHb7VHle3spKmVUdBAqoYSBMA3ZgcJ2ZDoBlAdnMdarUixsJvrlVTBMGp/iL1
+        ZQ1rN4qtwO1ExOiCzgDla2MCgYBHKsPIS94UbZS8co9n/Sl0/0rnUrT1aaK/tmIK
+        rBzar4a4dh4BOc9q23NfK10wHxzwgncF4/e4aZCmgT1BR8ixvOclWnbUM2uoldny
+        VTT5+KwDZ6LX7plsXqQJjgDkABPumW/OxLQ2A+zfRPSSSk92ueBh6mRMesO6DwVN
+        KGxx6wKBgQDiJcPkH3tiIYfDVvc3lhn5Dmo/uYRMXvZym+svOeCsb6mVR9rXXZYO
+        cnv/BlJHM7c3R6qoAQJJmIlGQXbj9q4h9SJG2ainH6vy+08DQ97nalWHBR9rnnVV
+        C9TJq6PK5jzDo3ToAm3DqJBmxl+9YdpYDCyhUXKZDRxu9y/jNlglvg==
+        -----END RSA PRIVATE KEY-----
+
+ui:
+    secret: "this is a secret"
+    defaultproject: "mongodb-mongo-master"
+    logfile: "/tmp/ui_test.log"
+    url: "localhost"
+    httplistenaddr: ":9090"
+
+cleanup:
+    logfile: ""
+
+hostinit:
+    logfile: "/tmp/hostinit_test.log"
+
+notify:
+    logfile: "/tmp/notify_test.log"
+    smtp:
+        from: "mailer@test.test"
+        server: "localhost"
+        port: 25
+        use_ssl: false
+        username:
+        password:
+        admin_email:
+        - test@test.test
+
+arranger:
+    logfile: "/tmp/arranger_test.log"
+    mockexecution: true
+
+scheduler:
+    logfile: "/tmp/scheduler_test.log"
+    mergetoggle: 3
+
+taskrunner:
+    logfile: "/tmp/taskrunner_test.log"
+
+expansions:
+    buildlogger_creds: "mci.buildlogger"
+    github_private_key: |-
+        -----BEGIN RSA PRIVATE KEY-----
+        GH PRIVATE KEY
+        -----END RSA PRIVATE KEY-----
+    github_public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDOKHeJ/AfWWTnwhiZYSPQ4HRSe84sf4qUgyAGGU+rJkq6Pwuk064/wh+D2vx1dOMQMETAcV4xB3AYw3S04ZHKwz61SLJSyjvJ3NItU7SKa8dNxr1EJywfk63tTAudleH4DjAFzHdRMqZT1penOhEJtKruyzxVuSpwFjkjJY/3vhawu9oNiolGhGvm/QzbxF8CjhWsLk/oAT8poWCsbvz5WlU6ttSMc6dkPLIB4kj0nlq8QDHdK6GnB9DRIGActa6fJaDRxGqgmnYIk5W44nFTGqIcfvqBC7LM83rnVeaseVWytSlbAQL11b+ZDw+UaQeT4CZ9Ft9Wi2MNuqU+NHu4f slave@10gen.com
+    api_httpscert_path: "/data/api_httpscert_path.pem"
+    api_httpscert: |
+        -----BEGIN CERTIFICATE-----
+        MIIC6TCCAdOgAwIBAgIBADALBgkqhkiG9w0BAQUwEjEQMA4GA1UEChMHQWNtZSBD
+        bzAeFw0xNDA1MTIyMTQ2NTVaFw0xNTA1MTIyMTQ2NTVaMBIxEDAOBgNVBAoTB0Fj
+        bWUgQ28wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDSGPy1Br1PnLfX
+        7sqB5HTYIjMF1SAbGfz4FnqgeEnxBldPe9MAM0cGTRQDJzrQllslS4vqj/no9PK3
+        OZrTbhbnp878hAz6WdtfTmjmL2n6qxPgOwKTb6tcIDuVcLjSemMVnta63/1SkjYC
+        Hu7DM26wdEDfJee9QS1oMeknVE9lzHFSal5uoT72cI5C7yOIgMy5uOVlZk9I0cuD
+        Kc6gGKp/L0eMhAa/6//0V26nxr4UwGw1NRI+IFRQO+QxgdPb2LRqtA2cmckN7B+g
+        sYFYSqHr6t8BdOLADSHJ6MeSHKchmpZ4nnq/e4RMtv6AIMc9SFqtSeDd9L+2RUM9
+        NnGCzIhBAgMBAAGjTjBMMA4GA1UdDwEB/wQEAwIApDATBgNVHSUEDDAKBggrBgEF
+        BQcDATAPBgNVHRMBAf8EBTADAQH/MBQGA1UdEQQNMAuCCWxvY2FsaG9zdDALBgkq
+        hkiG9w0BAQUDggEBALdGXjsHL5ZiE8Na3Cq+ZXmYVhcNZtFtcH8Kz082QOBGrcHA
+        wvbnUn5jiV+LoUleO686wEpRcDnQ7QUDCZZMsmyqeIYYDp7aP8VKpLdygVyKulqO
+        LcHYHouQmje0jrsKByT26e8bhBxYP0cSO+IbaWs8MyRaihc7nsDdQbiBtln07jDv
+        HZ1tC6Dp0VZJknc2jlGm/hvawR2EHm1GjMhwl9KcCaE9YE35UO77gJzY5J7t2PXA
+        4bQebMbw5NMf5i4TVWknyqrP4Kl+l+Ymg7VZMwJGyPQMqkNatMwZdc1k7thmdEpd
+        WvhQZ1s61AiNLCFfUiANFjoZX7vvSV5fdJ2Sqo4=
+        -----END CERTIFICATE-----

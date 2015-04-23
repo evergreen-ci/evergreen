@@ -1,0 +1,104 @@
+ubuntu1404-tmpl: &ubuntu1404-tmpl
+  template: true
+  arch: linux_amd64
+  user: ubuntu
+  key: mci
+  hosts: []
+  setup_as_sudo: true
+  provider: ec2
+  maxhosts: 5
+  settings:
+    ami: ami-08e5b460
+    instancetype: m1.medium
+    securitygroups: mci
+    keyname: mci
+    mountinfo: [
+        {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m1.medium, this is a 410GB HDD.
+    ]
+  expansions:
+    decompress: tar zxvf
+    ps: ps aux
+    kill_pid: kill -- -$(ps opgid= %v)
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /home/ubuntu/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /home/ubuntu/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /home/ubuntu/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    chmod 600 /home/ubuntu/.ssh/*
+    chown -R ubuntu:ubuntu /data
+    chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+
+ubuntu1404-build:
+  <<: *ubuntu1404-tmpl
+  name: ubuntu1404-build
+  template: false
+  spawn_allowed: false
+  maxhosts: 25
+  provider: ec2-spot
+  settings:
+    ami: ami-08e5b460
+    instancetype: m3.2xlarge
+    bid_price: 0.56
+    securitygroups: mci
+    keyname: mci
+    mountinfo: [
+        {devicename: "/dev/xvdd", virtualname: "ephemeral0"}, #on m3.2xlarge, this is a 80GB SSD.
+        {devicename: "/dev/xvde", virtualname: "ephemeral1"}, #on m3.2xlarge, this is a 80GB SSD.
+    ]
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    umount /mnt || true
+    umount /dev/xvdd || true
+    umount /dev/xvde || true
+    udevadm control --stop-exec-queue
+    yes | mdadm --create /dev/md0 --level=0 -c256 --raid-devices=2 /dev/xvdd /dev/xvde
+    udevadm control --start-exec-queue
+    blockdev --setra 32 /dev/md0
+    /sbin/mkfs.xfs -f /dev/md0
+    mkdir -p /data
+    echo "/dev/md0 /data auto noatime 0 0" | tee -a /etc/fstab
+    mount /data
+
+    chown -R ubuntu:ubuntu /data
+
+ubuntu1404-test: &ubuntu1404-test
+  <<: *ubuntu1404-tmpl
+  name: ubuntu1404-test
+  spawn_allowed: false
+  template: false
+  maxhosts: 40
+  provider: ec2-spot
+  settings:
+    ami: ami-08e5b460
+    bid_price: 0.14
+    instancetype: m3.xlarge
+    securitygroups: mci
+    keyname: mci
+    mountinfo: [
+        {devicename: "/dev/xvdd", virtualname: "ephemeral0"}, #on m3.large, this is a 32GB SSD.
+    ]
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    # DNS tweak for drivers Kerberos tests
+    echo "`host ldaptest.10gen.cc | awk '/has address/ { print $4 ; exit }'` ldaptest.10gen.cc" | tee -a /etc/hosts
+
+    umount /mnt || true
+    umount /dev/xvdd || true
+    /sbin/mkfs.xfs -f /dev/xvdd
+    mkdir -p /data
+    mount /dev/xvdd /data
+
+    chown -R ubuntu:ubuntu /data
+
+ubuntu1404-spawn:
+  <<: *ubuntu1404-test
+  name: ubuntu1404-spawn
+  provider: ec2
+  spawn_allowed: true

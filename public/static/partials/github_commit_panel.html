@@ -1,0 +1,20 @@
+<div class="commit-panel clearfix">
+  <div class="commit-meta-data-wrapper">
+    <img gravatar="commit.author_email" class="gravatar-small">
+    <div class="commit-message">
+      <strong>[[commit.message]]</strong>
+    </div>
+    <div class="commit-message-author">
+      <span class="semi-muted">
+        [[commit.author]]
+        ([[commit.author_email]])
+      </span>
+      <span class="muted">
+        authored at [[commit.push_time | convertDateToUserTimezone:timezone:"MMM D, YYYY h:mm:ss a"]]
+      </span>
+    </div>
+  </div>
+  <div class="pull-right">
+    <a class="btn btn-default btn-hash btn-xs" ng-href="https://github.com/[[commit.repo_owner | default:'mongodb']]/[[commit.repo_name | default:'mongo']]/commit/[[commit.gitspec]]">[[commit.gitspec.substr(0, 10)]]</a>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+owner: visemet
+repo: mongo
+repokind: github
+branch: resmoke
+enabled: true
+batchtime: 180
+identifier: mongo-resmoke
+display_name: Mongo Resmoke
+stepback: true
+remote: true
+remote_path: .mci.yml

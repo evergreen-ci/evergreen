@@ -1,0 +1,64 @@
+{{define "scripts"}}
+<script type="text/javascript" src="{{Static "js" "host.js"}}?hash={{ StaticsMD5 }}"></script>
+{{if .User }}
+<script type="text/javascript" src="{{Static "js" "host_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+<script type="text/javascript">
+  var host = {{.Host}}
+  var events = {{.Events}}
+  var userTz = {{GetTimezone $.User}}
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - Host {{.Host.Id}}
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="HostCtrl">
+  {{template "flash" . }}
+  <header class="clearfix">
+    <h1>MCI Host: <strong>[[host.id]]</strong></h1>
+
+    {{if .User }}
+      <div ng-controller="AdminOptionsCtrl" ng-init="setHost(host)" class="pull-right page-actions">
+        <div id="admin-dropdown" class="dropdown pull-right">
+          <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
+            <i class="icon-gear"></i>
+            <i class="icon-caret-down"></i>
+          </a>
+
+          <ul class="dropdown-menu" role="menu">
+            <li><a tabindex="-1" href="#" ng-click="openAdminModal('statusChange')">Update Status</a></li>
+          </ul>
+        </div>
+        <admin-modal>
+          <admin-update-status ng-if="adminOption=='statusChange'"></admin-update-status>
+        </admin-modal>
+      </div>
+    {{end}}
+  </header>
+
+  <div><b class="h4">User:</b> [[host.user]]</div>
+  <div><b class="h4">DNS Name:</b> [[host.host]]</div>
+  <div><b class="h4">Status:</b> [[host.status]]</div>
+  <div><b class="h4">Started by:</b> <span>[[host.started_by]]</div></span>
+  <div><b class="h4">Distro:</b> [[host.distro]]</div>
+  <div><b class="h4">Uptime:</b> [[host.uptime]]</div>
+  <div><b class="h4">Cloud Provider:</b> [[host.host_type]]</div>
+  <div ng-show="host.termination_time > 0"><b>Terminated at:</b> [[host.termination_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</div>
+  <hr/>
+
+  <div>
+    <span class="h3">Recent Events</span>
+    &nbsp;<a ng-href="/event_log/host/[[host.id]]">view all&hellip;</a>
+  </div>
+
+  <div>
+    <div ng-repeat="event in events">
+       <hostevent event="event" tz="userTz"></hostevent>
+    </div>
+  </div>
+
+</div>
+{{end}}

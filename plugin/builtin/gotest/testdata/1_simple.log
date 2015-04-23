@@ -1,0 +1,17 @@
+=== RUN TestFailures
+
+  With a thing ✘
+
+
+Failures:
+
+  * /filepath/gotest/parser_test.go
+  Line 14:
+  Expected: '2'
+  Actual:   '1'
+  (Should be equal)
+
+--- FAIL: TestFailures (5.02 seconds)
+FAIL
+exit status 1
+FAIL	10gen.com/mci/plugin/builtin/gotest	0.008s

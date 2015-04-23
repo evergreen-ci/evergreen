@@ -1,0 +1,12 @@
+<RegisterInstancesWithLoadBalancerResponse xmlns="http://elasticloadbalancing.amazonaws.com/doc/2012-06-01/">
+  <RegisterInstancesWithLoadBalancerResult>
+    <Instances>
+      <member>
+        <InstanceId>i-315b7e51</InstanceId>
+      </member>
+    </Instances>
+  </RegisterInstancesWithLoadBalancerResult>
+<ResponseMetadata>
+    <RequestId>83c88b9d-12b7-11e3-8b82-87b12EXAMPLE</RequestId>
+</ResponseMetadata>
+</RegisterInstancesWithLoadBalancerResponse>

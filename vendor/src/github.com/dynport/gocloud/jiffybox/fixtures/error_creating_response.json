@@ -1,0 +1,6 @@
+{
+  "messages":[
+    {"type":"error","message":"Der Name existiert bereits."}
+  ],
+  "result":null
+}

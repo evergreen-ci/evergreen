@@ -1,0 +1,155 @@
+{{define "scripts"}}
+<style type="text/css">
+  body{ background: #f5f6f7; }
+</style>
+<script type="text/javascript">
+  window.version = {{ .Version }};
+  window.plugins = {{.PluginContent.Data}}
+</script>
+<script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
+{{if .User}}
+  <script type="text/javascript" src="{{Static "js" "version_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+  {{range .PluginContent.Includes}}
+    {{.}}
+  {{end}}
+{{end}}
+
+{{define "title"}}
+  {{ if .Version.PatchInfo }}
+MCI - Version Patch {{.Version.PatchInfo.Patch.PatchNumber}} by {{.Version.PatchInfo.Patch.Author}}
+  {{else}}
+MCI - Version {{Trunc .Version.Version.Revision 10}}
+  {{end}}
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="VersionController">
+  {{template "flash" . }}
+  <ol class="breadcrumb">
+    <li>
+      <span>
+        <span ng-show="version.PatchInfo">
+          Patch [[version.PatchInfo.Patch.PatchNumber]]
+          by [[version.PatchInfo.Patch.Author]]
+        </span>
+        <span class="gitspec" ng-hide="version.PatchInfo">
+          [[version.Version.revision.substr(0, 10)]]
+        </span>
+      </span>
+    </li>
+  </ol>
+
+  <div class="row">
+    <div class="col-lg-7">
+      <div class="row">
+        <div class="col-lg-10">
+          <br>
+          {{if .Version.PatchInfo}}
+            <patch-commit-panel patchinfo="version.PatchInfo" basecommit="version" timezone="{{GetTimezone .User}}" baselink="/version" base="{{.Version.PatchInfo.BaseVersionId}}"></patch-commit-panel>
+          {{else}}
+            <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
+          {{end}}
+          <div ng-show="[[version.Version.errors.length]]">
+            <i class="icon-warning-sign" style="color:red"></i>
+            [[version.Version.errors.length]]  [[version.Version.errors.length | pluralize:'error']] in configuration file
+            <div style="color:red" ng-repeat="error in version.Version.errors">- [[error]]</div>
+          </div>
+        </div>
+        <div class="col-lg-2">
+          {{if .User}}
+            <div ng-controller="AdminOptionsCtrl">
+              <div id="admin-dropdown" class="dropdown pull-right page-actions">
+                <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
+                  <i class="icon-gear"></i>
+                  <i class="icon-caret-down"></i>
+                </a>
+
+                <ul class="dropdown-menu" role="menu">
+                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('schedule')">Schedule all</a></li>
+                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
+                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set priority</a></li>
+                </ul>
+              </div>
+              <admin-modal>
+                  <admin-schedule-all ng-show="adminOption=='schedule'"></admin-schedule-all>
+                  <admin-unschedule-all ng-show="adminOption=='unschedule'"></admin-unschedule-all>
+                  <admin-set-priority ng-show="adminOption=='priority'"></admin-set-priority>
+              </admin-modal>
+            </div>
+          {{end}}
+        </div>
+      </div>
+
+      <h3 class="section-heading">Build Status</h3>
+      <div class="mci-pod">
+        <div class="row">
+          <div ng-repeat="build in version.Builds" class="col-lg-4">
+            <h4 class="one-liner" style="margin-bottom: 5px;">
+              <a ng-href="/build/[[build.Build._id]]" class="semi-muted">[[build.Build.display_name]]</a>
+            </h4>
+            <div class="progress"
+                 results-bar="taskStatuses[build.Build._id]"
+                 results-bar-tooltips="taskStatusTitles[build.Build._id]"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-12">
+          {{range .PluginContent.Panels.Left}}
+            {{.}}
+          {{end}}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5" ng-controller="VersionHistoryController" ng-init="load(version); targetVersion = version;" ng-show="!version.PatchInfo.Patch">
+      <h3 id="history-header" class="section-heading"><i class="icon-github-alt"></i> Version History</h3>
+
+      <div class="mci-pod">
+        <div ng-repeat="version in versions" class="row history-row" ng-class="targetVersion.Version.id == version.Version.id | conditional:'active':''">
+          <div class="col-lg-7 commit-message">
+            <b>
+              <div class="past-version-highlight-wrapper">
+                <span ng-show="targetVersion.Version.id == version.Version.id">
+                  <i class="icon-arrow-right"></i>
+                </span>
+              </div>
+              <a  href="/version/[[version.Version.id]]"
+                  title="[[version.Version.message]]"
+                  ng-bind-html-unsafe="version.Version.message">
+              </a>
+            </b>
+          </div>
+          <div class="col-lg-5">
+            <div class="progress zero-margin" results-bar="buildStatuses[version.Version.id]">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5" ng-show="version.PatchInfo.StatusDiffs">
+      <patch-diff-panel type="Task"
+                        baselink="/task/"
+                        diffs="version.PatchInfo.StatusDiffs"
+                        ng-show="version.PatchInfo.StatusDiffs">
+      </patch-diff-panel>
+    </div>
+    <div class="col-lg-5">
+      {{range .PluginContent.Panels.Right}}
+        {{.}}
+      {{end}}
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-lg-12">
+      {{range .PluginContent.Panels.Center}}
+        {{.}}
+      {{end}}
+    </div>
+  </div>
+</div>
+
+{{end}}

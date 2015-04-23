@@ -1,0 +1,12 @@
+Source: argo-dev
+Section: devel
+Priority: extra
+Maintainer: Am Laher <am@laher.net.nz>
+Build-Depends: debhelper (>= 9.1.0)
+Standards-Version: 3.9.4
+
+Package: argo-dev
+Architecture: all
+Depends: golang-go
+Description: ar library for golang
+argo is an archive library for the .ar format as used by debian packages

@@ -1,0 +1,45 @@
+test-distro-one:
+  name: "test-distro-one"
+  arch: "linux_amd64"
+  ami: ""
+  instancetype: ""
+  mountinfo: {}
+  user: testuser
+  keyname: ~
+  securitygroups: ~
+  setup: ""
+  hosts: 
+    - testuser@blech.com
+  maxhosts: 1
+  expansions: 
+    distro_exp: DISTRO_EXP
+    kill_pid: kill -- -$(ps opgid= %v)
+test-distro-two:
+  name: "test-distro-two"
+  arch: "linux_amd64"
+  ami: ""
+  instancetype: ""
+  mountinfo: {}
+  user: testuser
+  keyname: ~
+  securitygroups: ~
+  setup: ""
+  hosts: []
+  maxhosts: 2
+  expansions: {}
+
+d1:
+  name: "d1"
+  provider: "mock"
+  maxhosts: 10
+
+
+d2:
+  name: "d2"
+  provider: "mock"
+  maxhosts: 10
+
+d3:
+  name: "d3"
+  provider: "mock"
+  maxhosts: 10

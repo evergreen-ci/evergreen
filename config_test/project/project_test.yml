@@ -1,0 +1,40 @@
+owner: fakeowner
+repo: fakerepo
+repokind: github
+branch: branch_test
+enabled: false
+stepback: true
+identifier: fakeidentifier
+
+## tasks
+tasks:
+- name: compile
+  commands:
+  - command: shell.exec
+    params:
+      script: |
+        echo "compile here"
+- name: testOne
+  depends_on:
+  - name: compile
+  commands:
+  - command: shell.exec
+    params:
+      script: |
+        echo "testOne"
+
+buildvariants:
+  - name: linux-64
+    display_name: Linux-64-bit
+    run_on:
+    - test-distro-two
+    expansions:
+      push_path: linux
+      push_bucket: downloads.mongodb.org
+      push_name: linux
+      push_arch: x86_64
+      compile_flags: -j$(grep -c ^processor /proc/cpuinfo) --release
+      test_flags: --continue-on-failure
+    tasks:
+    - name: compile
+    - name: testOne

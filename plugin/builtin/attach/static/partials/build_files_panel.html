@@ -1,0 +1,16 @@
+<h3 class="section-heading"><i class="icon-file"></i> Files</h3>
+<div class="mci-pod files-panel">
+  <table class="table table-new">
+    <tbody ng-repeat="task in filesByTask | orderBy:'task_name'">
+      <tr>
+        <td colspan="2" style="border: none">
+          <a ng-href="/task/[[task.task]]"><strong>[[task.task_name]]</strong></a>
+        </td>
+      </tr>
+      <tr ng-repeat="file in task.files | orderBy:'name'">
+        <td class="file-name"><strong>[[file.name]]</strong></td>
+        <td><span class="file-link" ng-bind-html="file.link | linkify"></span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>

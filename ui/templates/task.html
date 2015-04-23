@@ -1,0 +1,372 @@
+{{define "scripts"}}
+<style type="text/css">
+  body{ background: #f5f6f7; }
+</style>
+<script type="text/javascript">
+window.plugins = {{.PluginContent.Data}}
+</script>
+<script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ StaticsMD5 }}"></script>
+{{if .User}}
+  <script type="text/javascript" src="{{Static "js" "task_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+<script type="text/javascript">
+  var userTz = {{GetTimezone $.User}}
+  {{if .User}}
+    var have_user = true
+  {{end}}
+  var task_data = {{.Task}}
+</script>
+{{range .PluginContent.Includes}}
+   {{.}}
+{{end}}
+{{end}}
+
+{{define "title"}}
+  {{ if .Task.PatchInfo }}
+MCI - Patch {{.Task.PatchInfo.Patch.PatchNumber}} by {{.Task.PatchInfo.Patch.Author}} / {{.Task.BuildVariantDisplay}} / {{.Task.DisplayName}}
+  {{else}}
+MCI - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Task.DisplayName}}
+  {{end}}
+{{end}}
+
+{{define "plugin-links"}}
+{{end}}
+
+{{define "content"}}
+
+{{ if not .ProjectData.Patch }}
+<div ng-controller="TaskHistoryDrawerCtrl" id="drawer">
+  <div id="drawer-contents">
+    <div id="drawer-filled">
+      <div ng-repeat="revisionsForDate in groupedRevisions">
+        <div class="drawer-section-header">
+          <span class="history-date-header-words">[[revisionsForDate.date | date:'MMM d']]</span>
+          <span class="history-date-header-numbers history-date-header-slash">&nbsp;</span>
+          <span class="history-date-header-numbers">[[revisionsForDate.date | date:'M/d/yyyy']]</span>
+        </div>
+
+        <div ng-repeat="revision in revisionsForDate.revisions" 
+            class="drawer-item"
+            ng-class="{
+              'drawer-item-highlighted': isCurrent(revision),
+            }">
+          <revision-blurb><revision-blurb>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-content" class="container-fluid">
+{{template "flash" . }}
+
+{{ else }}
+
+<div id="content" class="container-fluid">
+{{template "flash" . }}
+
+{{ end }}
+<div ng-controller="TaskCtrl">
+  <ol class="breadcrumb">
+    <li>
+      <span class="gitspec" ng-show="!task.patch_info">
+        <a ng-href="/version/[[task.version_id]]">
+          [[task.gitspec.substr(0, 10)]]
+        </a>
+      </span>
+      <span ng-show="task.patch_info">
+        <a ng-href="/version/[[task.patch_info.Patch.Version]]">
+          Patch [[task.patch_info.Patch.PatchNumber]]
+          by [[task.patch_info.Patch.Author]]
+        </a>
+      </span>
+    </li>
+    <li>
+      <a ng-href="/build/[[task.build_id]]">
+        [[task.build_variant_display]]
+      </a>
+    </li>
+    <li>
+      [[task.display_name]]
+    </li>
+  </ol>
+
+  <div class="row">
+    <div class="col-lg-7">
+      <header class="clearfix">
+        <h1 class="one-liner">
+          <span class="label status-label started" ng-show="task.status == 'started'">Started</span>
+          <span class="label status-label unstarted" ng-show="task.status == 'undispatched' && task.activated">Scheduled</span>
+          <span class="label status-label unstarted" ng-show="task.status == 'undispatched' && !task.activated && task.dispatch_time == 0">Not Scheduled</span>
+          <span class="label status-label unstarted" ng-show="task.status == 'undispatched' && !task.activated && task.dispatch_time != 0">Aborted</span>
+          <span class="label status-label failed" ng-show="task.status == 'failed' && !task.task_end_details.timed_out">Failed</span>
+          <span class="label status-label failed" ng-show="task.status == 'failed' && task.task_end_details.timed_out && task.task_end_details.timeout_stage != 'heartbeat'">Timed Out</span>
+          <span class="label status-label failed" ng-show="task.status == 'failed' && task.task_end_details.timed_out && task.task_end_details.timeout_stage == 'heartbeat'">Unresponsive</span>
+          <span class="label status-label success" ng-show="task.status == 'success'">Success</span>
+          [[task.display_name]] <span class="text-muted">on</span> [[task.build_variant_display]]
+        </h1>
+
+        {{if .User}}
+          <div ng-show="!task.archived" class="pull-right page-actions">
+            <div ng-controller="AdminOptionsCtrl" ng-init="setTask(task)">
+              <div id="admin-dropdown" class="dropdown pull-right">
+                  <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
+                    <i class="icon-gear"></i>
+                    <i class="icon-caret-down"></i>
+                  </a>
+
+                  <ul class="dropdown-menu" role="menu">
+                    <li ng-class="{'admin-disabled': !canSchedule}">
+                      <a tabindex="-1" href="#" ng-click="!canSchedule || openAdminModal('schedule')">Schedule Task</a>
+                    </li>
+                    <li ng-class="{'admin-disabled': !canUnschedule}">
+                      <a tabindex="-1" href="#" ng-click="!canUnschedule || openAdminModal('unschedule')">Unschedule Task</a>
+                    </li>
+                    <li ng-class="{'admin-disabled': !canAbort}">
+                      <a tabindex="-1" href="#" ng-click="!canAbort || openAdminModal('abort')">Abort Task</a>
+                    </li>
+                    <li ng-class="{'admin-disabled': !canRestart}">
+                      <a tabindex="-1" href="#" ng-click="!canRestart || openAdminModal('restart')">Restart Task</a>
+                    </li>
+                    <li><a tabindex="-1" href="#" ng-click="openAdminModal('setPriority')">Set Priority</a></li>
+                  </ul>
+              </div>
+              <admin-modal>
+                <admin-schedule-task ng-show="adminOption=='schedule'"></admin-schedule-task>
+                <admin-unschedule-task ng-show="adminOption=='unschedule'"></admin-unschedule-task>
+                <admin-restart-task ng-show="adminOption=='restart'"></admin-restart-task>
+                <admin-abort-task ng-show="adminOption=='abort'"></admin-abort-task>
+                <admin-set-priority ng-show="adminOption=='setPriority'"></admin-set-priority>
+              </admin-modal>
+            </div>
+          </div>
+        {{end}}
+      </header>
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="mci-pod">
+            {{if .ProjectData.Patch}}
+              <patch-commit-panel patchinfo="task.patch_info" basecommit="task" timezone="{{GetTimezone .User}}" baselink="/task" base="{{.Task.PatchInfo.BaseTaskId}}"></patch-commit-panel>
+            {{else}}
+              <github-commit-panel commit="task" timezone="{{GetTimezone .User}}"></github-commit-panel>
+            {{end}}
+
+            <table id="task-info-elements">
+              <tr ng-show="task.min_queue_pos != 0">
+                <td><i class="icon-sort-by-order"></i></td>
+                <td><strong>[[task.min_queue_pos | ordinalNum]]</strong> in queue</td>
+              </tr>
+              <tr ng-show="task.status != 'undispatched'">
+                <td><i class="icon-time"></i></td>
+                <td>[[timeTaken | stringifyNanoseconds]]<span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span></td>
+              </tr>
+
+              <tr ng-show="task.execution > 0 || task.archived">
+                <td><i class="icon-rotate-left"></i></td>
+
+                <td ng-show="!task.archived">
+                  Latest of [[task.execution+1]] executions
+                  <span class="dropdown">
+                    <button class="btn btn-default btn-dropdown btn-xs" data-toggle="dropdown" href="#" id="dLabel">
+                      Previous executions: <span class="icon-caret-down"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li ng-repeat="i in pastExecutions">
+                        <a href="/task/[[task.id]]/[[i]]">[[i+1|ordinalNum]] execution </a>
+                      </li>
+                    </ul>
+                  </span>
+                </td>
+
+                <td ng-show="task.archived">
+                  <span class="highlight-bg">[[task.execution + 1 | ordinalNum]] execution</span>
+                  (<a href="/task/[[task.id]]">Latest execution</a>)
+                </td>
+              </tr>
+              <tr ng-show="task.host_dns">
+                <td><i class="icon-desktop"></i></td>
+                <td data-element-tooltip="task.distro">[[task.host_dns]]
+                  (<a ng-href="/host/[[task.host_id]]">details</a>)
+                </td>
+              </tr>
+              <tr ng-show="task.abort">
+                <td><i class="icon-level-down"></i></td>
+                <td>Aborting</td>
+              </tr>
+              <tr ng-show="task.start_time > 0 && (task.status != 'undispatched' && task.status != 'dispatched') ">
+                <td><i class="icon-calendar"></i></td>
+                <td>Started on [[task.start_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
+              </tr>
+              <tr ng-show="task.finish_time > 0 && (task.status == 'success' || task.status == 'failed') ">
+                <td><i class="icon-calendar"></i></td>
+                <td>Finished on [[task.finish_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
+              </tr>
+              <tr ng-show="task.priority > 0">
+                <td><i class="icon-rocket"></i></td>
+                <td>Priority: [[task.priority]]</td>
+              </tr>
+              <tr ng-show="task.priority < 0">
+                <td><i class="icon-ban-circle"></i></td>
+                <td>Blacklisted</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" ng-show="!!dependencies && dependencies.length > 0">
+        <div class="col-lg-12">
+          <h3 class="section-heading"><i class="icon-exchange"></i> Depends On</h3>
+          
+          <div class="mci-pod">
+            <div ng-repeat="dependency in dependencies">
+              <span class="label started" ng-show="dependency.status == 'started'">Started</span>
+              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && dependency.Activated">Scheduled</span>
+              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.Activated && task.dispatch_time == 0">Not Scheduled</span>
+              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.Activated && task.dispatch_time != 0">Aborted</span>
+              <span class="label failed" ng-show="dependency.status == 'failed' && !dependency.StatusDetails.TimedOut">Failed</span>
+              <span class="label failed" ng-show="dependency.status == 'failed' && dependency.StatusDetails.TimedOut">Timed Out</span>
+              <span class="label success" ng-show="dependency.status == 'success'">Success</span>
+              <span class="label canceled" ng-show="dependency.status == 'canceled'">Canceled</span>
+              <span style="margin-left: 20px">
+                <a ng-href="/task/[[dependency.id]]">[[dependency.display_name]]</a>
+              </span>
+            </div>
+          </div>
+
+          <patch-diff-panel type="Test" baselink="" diffs="task.patch_info.StatusDiffs" ng-show="task.patch_info"></patch-diff-panel>
+
+          {{range .PluginContent.Panels.Left}}
+            {{.}}
+          {{end}}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <h3 class="section-heading"><i class="icon-beaker"></i> Tests</h3>
+      
+      <div ng-show="!task.test_results || task.test_results.length == 0" class="mci-pod">
+        <h4 class="text-center text-muted">No test results to show</h4>
+      </div>
+      <div ng-show="task.test_results.length > 0" class="mci-pod">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="dropdown">
+              <button class="btn btn-default btn-xs" data-toggle="dropdown" href="#" id="dLabel">
+                <span class="semi-muted">
+                  Sort By:
+                </span>
+                <strong>
+                  [[sortBy.name]]&nbsp;&nbsp;
+                  <span class="icon-caret-down"></span>
+                </strong>
+              </button>
+              <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+                <li role="presentation" class="dropdown-header">Sort Options</li>
+                <li role="presentation" ng-repeat="order in sortOrders">
+                  <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
+                    [[order.name]]
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-md-6 text-right">
+            <span class="label success" style="margin-right: 5px">
+              [[(task.test_results | filter:{'status' : 'pass'}).length]] Succeeded
+            </span>
+            <span class="label failed">
+              [[(task.test_results | filter:{'status' : 'fail'}).length]] Failed
+            </span>
+          </div>
+        </div>
+        <div id="tests-info">
+          <table class="table test-results-table table-new">
+            <thead>
+              <tr>
+                <th class="col-lg-6">Test</th>
+                <th class="col-lg-3">Time</th>
+                <th class="col-lg-3">Logs</th>
+              </tr>
+            </thead>
+            <tbody data-test-results="task.test_results">
+              <tr ng-repeat="test in task.test_results | orderBy:sortBy.by:sortBy.reverse"
+                  ng-show="test.status != 'skip'"
+                  class="test-result-row"
+                  ng-class="test.display_name == hash.test | conditional:'highlight-bg':''">
+                <td class="col-lg-6">
+                  <div class="test-result-link-wrapper">
+                    <i  class="icon icon-link"
+                        style="cursor: pointer;"
+                        ng-click="linkToTest(test.display_name)">
+                    </i>
+                  </div>
+                  <div class="test-result-name one-liner">
+                    <a ng-href="[[getTestHistoryUrl(project, task, test)]]">
+                      [[test.display_name]]
+                    </a>
+                  </div>
+                  <div style="clear: both"></div>
+                </td>
+                <td class="col-lg-3">
+                  <div class="progress [[progressBarClass]]" test-result-bar="test" style="width: [[barWidth]]%"></div>
+                </td>
+                <td class="col-lg-3">
+                  <a href="[[test.url]]" ng-hide="test.url == ''">
+                    View Logs
+                  </a>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {{range .PluginContent.Panels.Right}}
+          {{.}}
+      {{end}}
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-lg-12">
+      {{range .PluginContent.Panels.Center}}
+          {{.}}
+      {{end}}
+    </div>
+  </div>
+</div>
+
+<div class="row" ng-controller="TaskLogCtrl">
+  <div class="col-lg-12">
+    <h3 class="section-heading">
+      <i class="icon-folder-open"></i>
+      Logs (<a ng-href="[[getRawLogLink()]]" target="_blank">view full</a>)
+      <div id="logs-options" class="btn-group btn-group-sm">
+          <a class="pointer btn btn-default" ng-class="{active:currentLogs==allLogs}" ng-click="setCurrentLogs(allLogs)">All logs</a>
+          <a class="pointer btn btn-default" ng-class="{active:currentLogs==taskLogs}" ng-click="setCurrentLogs(taskLogs)">Task logs</a>
+          {{if .User}}
+            <a class="pointer btn btn-default" ng-class="{active:currentLogs==agentLogs}" ng-click="setCurrentLogs(agentLogs)">Agent logs</a>
+          {{end}}
+          {{if .User}}
+            <a class="pointer btn btn-default" ng-class="{active:currentLogs==systemLogs}" ng-click="setCurrentLogs(systemLogs)">System logs</a>
+          {{end}}
+          <a class="pointer btn btn-default" ng-class="{active:currentLogs==eventLogs}" ng-click="setCurrentLogs(eventLogs)">Event logs</a>
+      </div>
+    </h3>
+    <div class="row">
+      <div class="col-lg-12">
+        <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + entry.message + '\n' | linkify | ansi"></span></pre>
+        {{if .User}}
+        <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length">No logs found.</pre>
+        {{else}}
+        <pre ng-show="(currentLogs == agentLogs || currentLogs == systemLogs) && !logs.length"><span class="severity-ERROR">You are not authorized to view these logs.</span></pre>
+        {{end}}
+        <pre ng-show="(currentLogs == allLogs || currentLogs == taskLogs) && !logs.length">No logs found.</pre>
+        <div ng-repeat="eventLogItem in eventLogData" ng-show="currentLogs == eventLogs"> <taskevent event="eventLogItem" tz="userTz"></taskevent></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+{{end}}

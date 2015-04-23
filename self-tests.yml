@@ -1,0 +1,728 @@
+stepback: true
+functions:
+
+  "fetch source" :
+    command: git.get_project
+    params:
+      directory: src
+
+  "apply patches" :
+    command: git.apply_patch
+    params:
+      directory: src
+
+  "setup creds":
+    command: shell.exec
+    params:
+      script: |
+        set -o verbose
+        cp creds.yml src
+
+  "rewrite coverage report":
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+        fi;
+        . ./set_gopath.sh
+        perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+
+  "generate coverage html":
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        set -o verbose
+        . ./set_gopath.sh
+        go tool cover -html=coverage_rewrite.out -o coverage.html
+
+  "generate coverage txt":
+    command: shell.exec
+    params:
+      working_dir: src
+      script: |
+        set -o verbose
+        . ./set_gopath.sh
+        go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+  "upload coverage html report":
+    command: s3.put
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: src/coverage.html
+      remote_file: mci/coverage/${task_id}.html
+      bucket: mciuploads
+      permissions: public-read
+      content_type: text/html
+      display_name: Coverage Report (HTML)
+
+  "upload coverage txt report":
+    command: s3.put
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_file: src/coverage.txt
+      remote_file: mci/coverage/${task_id}.txt
+      bucket: mciuploads
+      permissions: public-read
+      content_type: text/plain
+      display_name: Coverage Report (TXT)
+
+pre:
+  - command: shell.exec
+    params:
+      script: |
+        rm -rf src
+        set -o errexit
+        rm -rf mongodb
+        mkdir mongodb
+        cd mongodb
+        wget -q ${mongo_url} -O mongodb.tgz
+        tar xvf mongodb.tgz --strip-components=1
+        rm -rf db_files
+        rm -rf db_logs
+        mkdir db_files
+        mkdir db_logs
+        ./bin/mongod --dbpath ./db_files --logpath=db_logs/mongod.log --logappend --fork &
+
+  - command: shell.exec
+    params:
+      script: |
+        echo "building creds file!"
+        cat > creds.yml <<END_OF_CREDS
+        credentials:  {
+          github: "${github_token}",
+        }
+
+        providers:
+          aws:
+            aws_id: "${aws_key}"
+            aws_secret: "${aws_secret}"
+
+        crowd:
+          username: ${crowduser}
+          password: ${crowdpw}
+          urlroot: ${crowdserver}
+        END_OF_CREDS
+
+post:
+  - command: shell.exec
+    params:
+      script: |
+        pkill mongo; pkill -9 mongod; pkill -9 mongos; pkill -f buildlogger.py; pkill -f smoke.py
+
+tasks:
+
+- name: agent
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - func: "setup creds"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd agent
+          go test -v -mci.all -mci.settingsOverride=../creds.yml -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv agent/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: archive
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd archive
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv archive/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: cleanup
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd model
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv cleanup/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: db
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd db
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv db/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: mci
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          go test -v -coverprofile=coverage.out
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: model
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd model
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv model/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: notify
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd notify
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv notify/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: patch
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - func: "setup creds"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd patch
+          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv patch/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: plugin
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - func: "setup creds"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd plugin
+          go test -v -coverprofile=coverage.out
+          cd builtin/archivePlugin
+          go test -v -coverprofile=coverage.out
+          cd ../attach
+          go test -v -coverprofile=coverage.out
+          cd ../expansions
+          go test -v -coverprofile=coverage.out
+          cd ../git
+          go test -v -coverprofile=coverage.out
+          cd ../gotest
+          go test -v -coverprofile=coverage.out
+          cd ../s3Plugin
+          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out
+          cd ../s3copy
+          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+
+          cd plugin
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd builtin/archivePlugin
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd ../attach
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd ../expansions
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd ../git
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd ../gotest
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd ../s3Plugin
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+          cd ../s3copy
+          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          go tool cover -html=coverage_rewrite.out -o coverage.html
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
+
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/coverage.txt
+        remote_file: mci/coverage/${task_id}/plugin.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/coverage.html
+        remote_file: mci/coverage/${task_id}/plugin.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/archivePlugin/coverage.txt
+        remote_file: mci/coverage/${task_id}/archive.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Archive Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/archivePlugin/coverage.html
+        remote_file: mci/coverage/${task_id}/archive.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Archive Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/attach/coverage.txt
+        remote_file: mci/coverage/${task_id}/attach.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Attach Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/attach/coverage.html
+        remote_file: mci/coverage/${task_id}/attach.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Attach Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/expansions/coverage.txt
+        remote_file: mci/coverage/${task_id}/expansions.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Expansions Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/expansions/coverage.html
+        remote_file: mci/coverage/${task_id}/expansions.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Expansions Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/git/coverage.txt
+        remote_file: mci/coverage/${task_id}/git.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Git Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/git/coverage.html
+        remote_file: mci/coverage/${task_id}/git.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Git Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/gotest/coverage.txt
+        remote_file: mci/coverage/${task_id}/gotest.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Gotest Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/gotest/coverage.html
+        remote_file: mci/coverage/${task_id}/gotest.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Gotest Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/s3Plugin/coverage.txt
+        remote_file: mci/coverage/${task_id}/s3.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: S3 Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/s3Plugin/coverage.html
+        remote_file: mci/coverage/${task_id}/s3.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: S3 Plugin Coverage Report (HTML)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/s3copy/coverage.txt
+        remote_file: mci/coverage/${task_id}/s3copy.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: S3Copy Plugin Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/plugin/builtin/s3copy/coverage.html
+        remote_file: mci/coverage/${task_id}/s3copy.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: S3Copy Plugin Coverage Report (HTML)
+
+- name: repotracker
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - func: "setup creds"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd repotracker
+          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv repotracker/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: scheduler
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd scheduler
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv scheduler/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: thirdparty
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - func: "setup creds"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd thirdparty
+          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv thirdparty/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: util
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd util
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv util/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+- name: validator
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd validator
+          go test -v -coverprofile=coverage.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv validator/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
+buildvariants:
+    - name: ubuntu
+      display_name: ubuntu
+      run_on:
+      - ubuntu1404-test
+      expansions:
+        mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
+      tasks:
+      - name: agent
+      - name: cleanup
+      - name: db
+      - name: mci
+      - name: model
+      - name: notify
+      - name: patch
+      - name: plugin
+      - name: repotracker
+      - name: scheduler
+      - name: thirdparty
+      - name: util
+      - name: validator

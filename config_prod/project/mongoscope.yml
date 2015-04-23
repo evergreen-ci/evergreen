@@ -1,0 +1,10 @@
+owner: 10gen
+repo: mongoscope
+repokind: github
+branch: dev
+enabled: false
+batchtime: 120
+identifier: mongoscope
+display_name: mongoscope
+remote: true
+remote_path: .mci.yml

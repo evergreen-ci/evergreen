@@ -1,0 +1,58 @@
+{
+ "messages": [],
+ "result": {
+ "12345": {
+ "id": 12345,
+ "name": "Test",
+ "ips": {
+ "public": ["188.93.14.176"],
+ "private": ["10.93.14.175"]
+ },
+ "status": "READY",
+ "created": 1234567890,
+ "recoverymodeActive": false,
+ "manualBackupRunning": false,
+ "isBeingCopied": false,
+ "running": false,
+ "host": "vmhost-testsys-2-2-9-1",
+ "plan": {
+ "id":22,
+ "name":"CloudLevel 3",
+ "diskSizeInMB":307200,
+ "ramInMB":8192,
+ "pricePerHour":0.07,
+ "pricePerHourFrozen":0.02,
+ "cpus":6
+ },
+ "metadata": {
+ "createdby": "JiffyBoxTeam"
+ },
+ "activeProfile": {
+ "name": "Standard",
+ "created": 1234567890,
+ "runlevel": "default",
+ "kernel": "xen-current",
+ "rootdisk": "\/dev\/xvda",
+ "rootdiskMode": "ro",
+ "status": "READY",
+ "disks": {
+ "xvda": {
+ "name": "CentOS 5.4",
+ "filesystem": "ext3",
+ "sizeInMB": 81408,
+ "created": 1234567890,
+ "status": "READY",
+ "distribution": "centos_5_4_32bit"
+ },
+ "xvdb": {
+ "name":" Swap",
+ "filesystem": "swap",
+ "sizeInMB": 512,
+ "created": 1234567890,
+ "status": "READY"
+ }
+ }
+ }
+ }
+ }
+}

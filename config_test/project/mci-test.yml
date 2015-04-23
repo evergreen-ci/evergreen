@@ -1,0 +1,35 @@
+identifier: mci-test
+owner: deafgoat
+repo: mci-test
+repokind: github
+branch: master
+enabled: true
+batchtime: 10
+stepback: true
+remote: false
+tasks:
+- name: taskOne
+  depends_on: []
+  commands:
+    - command: git.get_project
+      params:
+        directory: src
+      params:
+        working_dir: src
+        script: echo "kano"
+buildvariants:
+- name: linux-64-duroff
+  display_name: Linux 64-bit DUR OFF
+  run_on:
+  - d1
+  - d2
+  expansions:
+    push_path: linux
+    push_bucket: downloads.mongodb.org
+    push_name: linux-duroff
+    push_arch: x86_64
+    compile_flags: --durableDefaultOff -j$(grep -c ^processor /proc/cpuinfo)
+    has_debugsymbols: true
+    test_flags: --continue-on-failure
+  tasks:
+  - name: taskOne

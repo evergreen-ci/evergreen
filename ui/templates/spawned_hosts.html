@@ -1,0 +1,104 @@
+{{define "scripts"}}
+{{if .User}}
+  <script type="text/javascript" src="{{Static "js" "spawned_hosts.js"}}?hash={{ StaticsMD5 }}"></script>
+  <script type="text/javascript" src="{{Static "js" "js-yaml.min.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+<script type="text/javascript">
+  window.userTz = {{ GetTimezone $.User }};
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - My Hosts
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="SpawnedHostsCtrl">
+  {{template "flash" . }}
+  <div class="col-lg-6">
+    <div ng-show="hosts && hosts.length == 0">
+      <h2>No hosts for user</h2>
+    </div>
+    <div id="hosts-info" class="panel" ng-show="!!hosts && hosts.length > 0">
+      <div class="panel-heading">
+        <h2>
+          <i class="icon-list-alt" style="margin-right:10px"></i>
+          Hosts
+        </h2>
+      </div>
+      <div class="panel-body" id="host-info-elements">
+        <table class="table">
+          <div class="dropdown" style="float: left">
+            <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="dLabel">
+              <span class="semi-muted">
+                Sort By:
+              </span>
+              <strong>
+                [[sortBy.name]]&nbsp;&nbsp;
+                <span class="icon-caret-down"></span>
+              </strong>
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+              <li role="presentation" class="dropdown-header">Sort Options</li>
+              <li role="presentation" ng-repeat="order in sortOrders">
+                <a role="menuitem" ng-click="setSortBy(order)">
+                  [[order.name]]
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div style="float: right;">
+            <span class="label success" style="margin-right: 5px">
+              [[(hosts | filter:{'status' : 'running'}).length]] Running
+            </span>
+            <span class="label failed">
+              [[(hosts | filter:{'status' : 'terminated'}).length]] Terminated
+            </span>
+          </div>
+          <div style="clear: both"></div>
+          <thead>
+            <tr>
+              <th class="col-lg-2">Host</th>
+              <th class="col-lg-2">Distro</th>
+              <th class="col-lg-2">Status</th>
+              <th class="col-lg-2">Expires In</th>
+              <th class="col-lg-2">Uptime</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr ng-repeat="host in hosts | orderBy:sortBy.by" ng-click="setSelected(host)" ng-class="host.selected">
+              <td class="col-lg-2">
+                [[host.id]]
+              </td>
+              <td class="col-lg-2">
+                [[host.distro]]
+              </td>
+              <td class="col-sm-2">
+                <span ng-class="getSpawnStatusLabel(host)" style="margin-right: 5px">[[host.status]]</span>
+              </td>
+              <td class="col-lg-2">
+                [[host.expires_in]]
+              </td>
+              <td class="col-lg-2">
+                [[host.uptime]]
+                <i class="icon-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <button type="button" class="btn btn-info" ng-click="openSpawnModal('spawnHost')">
+      Spawn Host
+    </button>
+  </div>
+  <div>
+    <user-host-details class="col-lg-6" ng-show="curHostData"></user-host-details>
+    <user-spawn-modal>
+      <user-host-options ng-show="modalOption=='spawnHost'"></user-host-options>
+      <user-host-terminate ng-show="modalOption=='terminateHost'"></user-host-terminate>
+      <user-host-update ng-show="modalOption=='updateRDPPassword'"></user-host-update>
+    </user-spawn-modal>
+  </div>
+</div>
+{{end}}

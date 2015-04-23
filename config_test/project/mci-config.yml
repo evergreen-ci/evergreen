@@ -1,0 +1,10 @@
+identifier: mci-config
+owner: deafgoat
+repo: config
+repokind: github
+branch: master
+enabled: true
+batchtime: 10
+stepback: true
+remote: true
+remote_path: testing/mci.yml

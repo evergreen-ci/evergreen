@@ -1,0 +1,12 @@
+owner: wiredtiger
+repo: wiredtiger
+repokind: github
+branch: develop
+enabled: true
+batchtime: 180
+identifier: wiredtiger
+display_name: WiredTiger
+stepback: false
+remote: true
+remote_path: test/mciproject.yml
+private: true

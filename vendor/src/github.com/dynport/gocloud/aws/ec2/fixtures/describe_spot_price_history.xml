@@ -1,0 +1,20 @@
+<DescribeSpotPriceHistoryResponse xmlns="http://ec2.amazonaws.com/doc/2013-08-15/">
+  <requestId>59dbff89-35bd-4eac-99ed-be587EXAMPLE</requestId> 
+  <spotPriceHistorySet>
+    <item>
+      <instanceType>m1.small</instanceType>
+      <productDescription>Linux/UNIX</productDescription>
+      <spotPrice>0.287</spotPrice>
+      <timestamp>2009-12-04T20:56:05.000Z</timestamp>
+      <availabilityZone>us-east-1a</availabilityZone>
+    </item>
+    <item>
+      <instanceType>m1.small</instanceType>
+      <productDescription>Windows</productDescription>
+      <spotPrice>0.033</spotPrice>
+      <timestamp>2009-12-04T22:33:47.000Z</timestamp>
+      <availabilityZone>us-east-1a</availabilityZone>
+    </item>
+  </spotPriceHistorySet>
+  <nextToken/>
+</DescribeSpotPriceHistoryResponse>

@@ -1,0 +1,78 @@
+{{define "content"}}
+
+<tr><td colspan="3" height="10" bgcolor="#3b291f"></td></tr>
+<tr><td colspan="3" height="20"></td></tr>
+<tr style="font-family:Helvetica,Arial,sans-serif;">
+  <td width="20"></td>
+  <td align="left">
+    <!-- table lvl 2 -->
+    <table cellpadding="0" cellspacing="0" width="100%">
+      <tr>
+        <td width="90%"><span style="font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">{{ .Notification.Current.DisplayName }}</span></td>
+        <td style='padding:0 10px;background-color:{{ if Eq .Notification.Transition "succeeded" }}#23ED1D{{else}}#ed1c24{{end}};'>
+          <span style="font-weight:bold;font-size:18px;color:#ffffff" class="status">{{ .Notification.Transition }}</span>
+        </td>
+      </tr>
+      <tr><td colspan="2" height="10"></td></tr>
+      <tr>
+        <td width="90%">
+          <a href="{{ Global "UIRoot" }}/build/{{ .Notification.Current.Id }}" style="font-weight:normal;font-size:13px;color:#006cbc" class="link">view build</a>
+        </td>
+        <td>&nbsp;</td>
+      </tr>
+
+      <tr><td colspan="2" height="30"></td></tr>
+
+      {{ range .FailedTasks }}
+        <tr>
+          <td width="90%"><span style="font-weight:bold;font-size:10px;color:#999999" class="label">TASK</span></td>
+          <td>&nbsp;</td>
+        </tr>
+        <tr>
+          <td width="90%"><span style="font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">{{ .DisplayName }}</span></td>
+          <td>&nbsp;</td>
+        </tr>
+        <tr><td colspan="2" height="10"></td></tr>
+        <tr>
+          <td width="90%">
+            <a href="{{ Global "UIRoot" }}/task/{{ .Id }}" style="font-weight:normal;font-size:13px;color:#006cbc" class="link">view task</a>
+          </td>
+          <td>&nbsp;</td>
+        </tr>
+      {{end}}
+
+      <tr><td colspan="2" height="40"></td></tr>
+      <tr><td colspan="2"><span style="font-weight:bold;font-size:24px;color:#333333" class="heading">Blamelist</span></td></tr>
+      <tr><td colspan="2" height="15"></td></tr>
+      <tr>
+        <td colspan="2">
+          <!-- table lvl 3 -->
+          <table cellpadding="0" cellspacing="0" width="100%">
+            {{ range .Notification.Info }}
+              <tr>
+                <td rowspan="2" bgcolor="#777777" width="50" height="50">
+                  <img src="{{ Gravatar .Email }}"></img>
+                </td>
+                <td rowspan="2" width="10"></td>
+                <td><span style="font-weight:normal;font-size:16px;color:#333333" class="commit-message">{{ .Message }}</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <span style="font-weight:normal;font-size:12px;color:#999999" class="commit-meta">
+                    {{ .Author }}
+                    ({{ .Email }}) authored at {{ .Pushtime }}
+                  </span>
+                </td>
+              </tr>
+              <tr><td colspan="3" height="15"></td></tr>
+            {{end}}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+  <td width="20"></td>
+</tr>
+<tr><td colspan="3" height="20"></td></tr>
+
+{{end}}

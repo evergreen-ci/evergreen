@@ -1,0 +1,18 @@
+Source: gitso
+Section: utils
+Priority: optional
+Maintainer: Markus Roth <markus.roth@herr-biber.de>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.2
+Homepage: http://code.google.com/p/gitso/
+Vcs-Svn: http://gitso.googlecode.com/svn/gitso/trunk
+Vcs-Browser: http://code.google.com/p/gitso/source/browse/gitso
+
+Package: gitso
+Architecture: all
+Depends: x11vnc, xtightvncviewer, python-wxtools
+Description: gitso is to support others (using wxPython and reverse vnc)
+ gitso is a Python and wxWidgets frontend to x11vnc server
+ and vncviewer.  It runs x11vnc -connect and
+ vncviewer -listen depending on if you are giving
+ or receiving help.

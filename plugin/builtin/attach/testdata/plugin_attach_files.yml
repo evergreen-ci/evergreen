@@ -1,0 +1,37 @@
+owner: deafgoat
+repo: mci_test
+repokind: github
+branch: master
+enabled: true
+batch_time: 180
+
+tasks:
+    - name: testtask1
+      commands:
+        - command: attach.task_files
+          params:
+            file2: replace me!
+            file4: blow me away!
+        - command: attach.task_files
+          params:
+            ${f1}: i am a ${expand_me}
+            file2: replaced!
+            file3: http://kyle.diamonds
+
+modules:
+- name: enterprise
+  repo: git@github.com:10gen/mongo-enterprise-modules.git
+  prefix: src/mongo/db/modules
+  branch: v2.6
+
+buildvariants:
+- name: linux-64
+  display_name: Linux 64-bit
+  modules:
+    - enterprise
+  test_flags: --continue-on-failure
+  expansions:
+    expand_me: "FILE!"
+    f1: "file1"
+    blah: "blah"
+  push: true

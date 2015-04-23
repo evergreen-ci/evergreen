@@ -1,0 +1,164 @@
+owner: mongodb
+repo: mongo
+branch: master
+repokind: github
+enabled: false
+batchtime: 720
+identifier: mongo-cap
+display_name: CAP
+stepback: false
+
+#####################################################
+#               A note on expansions                #
+#####################################################
+# Expansions usually appear in the form ${key|default}
+# If 'key' is found in the executor's map of currently known
+# expansions, the corresponding value is used. If the key can
+# not be found, the default is used.
+#
+# Arbitrary expansions can be specified in the YAML cofiguration
+# files in the following places:
+# - The 'expansions' field for buildvariants (branch file)
+# - The 'expansions' field for distros (distros file)
+#
+# A number of 'built-in' expansions are also available for use; these include:
+# - environment variables available on the host machine
+# - 'workdir' (references the executor's work directory).
+# - 'task_id' (references the task id of the task the executor is working on).
+# - 'build_variant' (references the executing task's buildvariant).
+# - 'config_root' (references the root directory for the executor's configuration artifacts).
+# Others include:
+# - 'builder'
+# - 'builder_num'
+# - 'builder_phase'
+
+pre:
+  - command: shell.exec
+    params:
+      script: |
+        set -o verbose
+        rm -rf src || true
+        ${killall_mci|pkill -9 mongod; pkill -9 mongos; pkill -9 mongo; pkill -9 bsondump; pkill -9 mongoimport; pkill -9 mongoexport; pkill -9 mongodump; pkill -9 mongorestore; pkill -9 mongostat; pkill -9 mongofiles; pkill -9 mongooplog; pkill -9 mongotop; pkill -9 mongobridge; pkill -9 mongod-2.6; pkill -9 mongos-2.6; pkill -9 mongo-2.6; pkill -9 bsondump-2.6; pkill -9 mongoimport-2.6; pkill -9 mongoexport-2.6; pkill -9 mongodump-2.6; pkill -9 mongorestore-2.6; pkill -9 mongostat-2.6; pkill -9 mongofiles-2.6; pkill -9 mongooplog-2.6; pkill -9 mongotop-2.6; pkill -9 mongobridge-2.6; pkill -9 mongod-2.4; pkill -9 mongos-2.4; pkill -9 mongo-2.4; pkill -9 bsondump-2.4; pkill -9 mongoimport-2.4; pkill -9 mongoexport-2.4; pkill -9 mongodump-2.4; pkill -9 mongorestore-2.4; pkill -9 mongostat-2.4; pkill -9 mongofiles-2.4; pkill -9 mongooplog-2.4; pkill -9 mongotop-2.4; pkill -9 buildlogger.py; pkill -9 smoke.py; pkill -9 python; pkill -9 cl; pkill -9 lock_mgr_test; pkill -9 background_job_test; pkill -9 repl_coordinator_impl_heartbeat_test}
+        mkdir -p /data/db
+        rm -rf /data/db/*
+        true
+
+post:
+  - command: attach.results
+    params:
+      file_location: src/report.json
+  - command: shell.exec
+    params:
+      script: |
+        ${killall_mci|pkill -9 mongod; pkill -9 mongos; pkill -9 mongo; pkill -9 bsondump; pkill -9 mongoimport; pkill -9 mongoexport; pkill -9 mongodump; pkill -9 mongorestore; pkill -9 mongostat; pkill -9 mongofiles; pkill -9 mongooplog; pkill -9 mongotop; pkill -9 mongobridge; pkill -9 mongod-2.6; pkill -9 mongos-2.6; pkill -9 mongo-2.6; pkill -9 bsondump-2.6; pkill -9 mongoimport-2.6; pkill -9 mongoexport-2.6; pkill -9 mongodump-2.6; pkill -9 mongorestore-2.6; pkill -9 mongostat-2.6; pkill -9 mongofiles-2.6; pkill -9 mongooplog-2.6; pkill -9 mongotop-2.6; pkill -9 mongobridge-2.6; pkill -9 mongod-2.4; pkill -9 mongos-2.4; pkill -9 mongo-2.4; pkill -9 bsondump-2.4; pkill -9 mongoimport-2.4; pkill -9 mongoexport-2.4; pkill -9 mongodump-2.4; pkill -9 mongorestore-2.4; pkill -9 mongostat-2.4; pkill -9 mongofiles-2.4; pkill -9 mongooplog-2.4; pkill -9 mongotop-2.4; pkill -9 buildlogger.py; pkill -9 smoke.py; pkill -9 python; pkill -9 cl; pkill -9 lock_mgr_test; pkill -9 background_job_test; pkill -9 repl_coordinator_impl_heartbeat_test}
+tasks:
+
+## compile ##
+- name: compile
+  commands:
+    - command: git.get_project
+      params:
+        directory: src
+    - command: git.apply_patch
+      params:
+        directory: src
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o errexit
+          set -o verbose
+          rm -rf ${install_directory|/data/mongo-install-directory}
+          ${scons|scons} ${compile_flags|} all dist
+    - command: archive.targz_pack
+      params:
+        target: "target.tgz"
+        source_dir: "src"
+        include:
+          - "*.tgz"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: target.tgz
+        remote_file: mongo-cap/${build_variant}/${build_id}.tgz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: application/tar
+        display_name: artifacts
+
+- name: mongo-perf
+  depends_on:
+  - name: compile
+  commands:
+    - command: s3.get
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        remote_file: mongo-cap/${build_variant}/${build_id}.tgz
+        bucket: mciuploads
+        extract_to: src
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          ${decompress|unzip} mongodb*.${ext|tgz}
+          cp mongodb*/bin/* .
+          git clone git://github.com/mongodb/mongo-perf
+          ./mongod --dbpath /data/db --logpath dblog.out --fork
+          i=1
+          MONGO_RETRY_MAX=10
+          while true; do
+            echo "sleeping $i seconds"
+            sleep "$i"
+            echo "exit" | ./mongo
+            if [ "$?" -eq "0" ]; then
+              break
+            fi
+            let "i=i+1"
+            if [ "$i" -gt "$MONGO_RETRY_MAX" ]; then
+              echo "ERROR: timed out trying to connect to mongod"
+              exit 1
+            fi
+            echo "could not connect to mongod, retrying..."
+          done
+          set -o errexit
+          cd mongo-perf && ${python|python} benchrun.py --shell ../mongo --label ${build_variant|} -f testcases/*
+          cd .. && ./mongoexport -d bench_results -c raw -o perf_results.json
+          echo "Generating new expansions for s3 upload..."
+          echo "epochtime: $( date +%s )" >> perf_s3_expansions.yml
+          echo "gitspec: $( ./mongo --eval "db.serverBuildInfo().gitVersion" | tail -1 )" >> perf_s3_expansions.yml
+    - command: expansions.update
+      params:
+        file: src/perf_s3_expansions.yml
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/perf_results.json
+        remote_file: mongo-perf/${build_variant}/${epochtime|0000}/${gitspec|nospec}.json
+        permissions: public-read
+        bucket: mciuploads
+        content_type: application/json
+        display_name: Mongo-perf Results
+
+#######################################
+# Buildvariants
+#######################################
+
+buildvariants:
+
+###########################################
+#         Linux buildvariants             #
+###########################################
+
+- name: linux-64
+  display_name: Linux 64-bit
+  run_on:
+  - rhel55
+  expansions:
+    compile_flags: -j$(grep -c ^processor /proc/cpuinfo) --release
+  tasks:
+  - name: compile
+  - name: mongo-perf
+

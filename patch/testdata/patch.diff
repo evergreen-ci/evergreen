@@ -1,0 +1,31 @@
+diff --git a/%v b/%v
+index 0000000..1111111 100644
+--- a/%v
++++ b/%v
+@@ -8,11 +8,21 @@ tasks:
+       params:
+         working_dir: src
+         script: echo "lagos"
++- name: taskTwo
++  depends_on: []
++  commands:
++    - command: git.get_project
++      params:
++        directory: src
++      params:
++        working_dir: src
++        script: echo "abuja"
+ buildvariants:
+ - name: linux-64-duroff
+   display_name: Linux 64-bit DUR OFF
+   run_on:
+   - d1
++  - d2
+   expansions:
+     push_path: linux
+     push_bucket: downloads.mongodb.org
+@@ -23,3 +33,4 @@ buildvariants:
+     test_flags: --continue-on-failure
+   tasks:
+   - name: taskOne
++  - name: taskTwo

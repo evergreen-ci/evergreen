@@ -1,0 +1,99 @@
+{{define "scripts"}}
+<script type="text/javascript">
+  window.userTz = {{GetTimezone .User}};
+
+  {{if .Author}}
+    window.patchesForUsername = '{{.Author}}';
+  {{end}}
+</script>
+<script type="text/javascript" src="{{Static "js" "patches.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+
+{{define "title"}}
+MCI - Patches
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="PatchesController">
+  <header>
+    <h1>
+      Patches
+      <span ng-if="patchesForUsername">
+        submitted by [[patchesForUsername]]
+      </span>
+    </h1>
+
+    <div ng-if="patchesError">
+      Error loading data from server: [[patchesError]]
+    </div>
+
+    <div  ng-if="uiPatches.length > 0"
+          class="btn-group btn-group-sm header-pagination">
+      <span ng-if="currentPage > 0">
+        <a  class="btn btn-default"
+            style="cursor: pointer"
+            ng-click="previousPage()">
+          Newer
+        </a>
+      </span>
+      <span>
+        <a  class="btn btn-default"
+            style="cursor: pointer"
+            ng-click="nextPage()">
+          Older
+        </a>
+      </span>
+    </div>
+  </header>
+
+  <div ng-repeat="patch in uiPatches">
+    <span ng-if="patch.Patch.Version">
+      <a ng-href="/version/[[patch.Patch.Version]]">
+        Activated
+      </a>
+      [&nbsp;
+      <a ng-href="/patch/[[patch.Patch.Id]]" class="semi-muted">
+        Reconfigure
+      </a>
+      &nbsp;]
+    </span>
+    <span ng-if="!patch.Patch.Version">
+      <a ng-href="/patch/[[patch.Patch.Id]]" class="btn btn-info btn-sm">
+        Configure
+      </a>
+    </span>
+
+    <span>
+      Patch from
+      <b><a ng-href="/patches/user/[[patch.Patch.Author]]">[[patch.Patch.Author]]</a></b>
+      at [[patch.Patch.CreateTime | convertDateToUserTimezone:userTz:"MM/DD/YY h:mma"]]
+      on [[patch.Patch.Project]] applied to
+      <a ng-href="/version/[[patch.BaseVersionId]]">
+        [[patch.Patch.Githash | limitTo:7]]
+      </a>
+    </span>
+
+    <div ng-if="patch.Patch.Description">
+      <strong>[[patch.Patch.Description | limitTo:140]]</strong>
+    </div>
+
+    <ul ng-if="patch.Patch.Version">
+      <li ng-repeat="build in versionsMap[patch.Patch.Version].Builds"
+          class="timeline-build">
+        <a  id="[[build.Build._id]]"
+            class="build-link status-[[build.Build.status]] block-status-[[build.Build.status]]"
+            ng-href="/build/[[build.Build._id]]">
+          [[build.Build.display_name]]
+        </a>
+        <div class="tasks-list patches" results-bar="build.taskResults">
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div ng-if="(!uiPatches || uiPatches.length === 0) && !loading">
+    <p>There are no patches on this project</p>
+  </div>
+</div>
+{{end}}
+

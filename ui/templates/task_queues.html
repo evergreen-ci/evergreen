@@ -1,0 +1,66 @@
+{{define "scripts"}}
+  <script type="text/javascript">
+    window.data = {{ .Data }}
+    window.hostStats = window.data.host_stats
+    window.taskQueues = window.data.task_queues
+  </script>
+  <script type="text/javascript" src="{{Static "js" "task_queues.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+
+{{define "title"}}
+MCI - Task queues
+{{end}}
+
+{{define "content"}}
+<div class="container">
+  <div class="row" ng-controller="TaskQueuesCtrl">
+    <div id="nav-container" class="col-lg-2">
+      <div class="panel">
+        <div class="panel-heading">
+          <h2>Distro</h2>
+        </div>
+        <div id="distros-list-container">
+          <ul id="distros-list">
+            <li ng-repeat="distro in distros" ng-click="setActiveDistro(distro)"
+            ng-class="{'active-distro': distro == activeDistro}">
+            [[distro]] ([[queues[distro].length]])
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2"></div>
+    <div class="col-lg-8 col-lg-offset-1">
+      <div id="queues" class="panel">
+        <div class="panel-heading">
+          <h2>Task Queues</h2>
+        </div>
+        <div class="panel-body">
+          <div id="[[distro]]" ng-repeat="distro in distros">
+            <h3>[[distro]] ([[queues[distro].length]])</h3>
+            <table class="table table-striped task-queue-table">
+              <tr ng-repeat="queueItem in queues[distro]">
+                <td class="index-col">[[$index+1]]</td>
+                <td>
+                  <a href="/task/[[queueItem._id]]" ng-show="queueItem.requester=='gitter_request'">
+                    <span>[[queueItem.project]]</span>&nbsp;(<span style="font-family:Monospace">[[queueItem.gitspec.substring(0, 5)]]</span>)
+                  </a>
+                  <a href="/task/[[queueItem._id]]" ng-show="queueItem.requester!='gitter_request'">
+                    <b>[[queueItem.user]]</b>'s patch
+                  </a>
+                </td>
+                <td>
+                  <a ng-href="/task/[[queueItem._id]]">
+                    [[queueItem.display_name]]
+                  </a>
+                  <div class="muted" style="font-size: 10px">[[queueItem.build_variant]]</div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+ </div>
+{{end}}

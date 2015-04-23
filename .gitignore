@@ -1,0 +1,47 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+*~
+*.DS_Store
+*.swp
+*.swo
+*.swn
+
+.gopath
+
+vendor/src/labix.org/v2/mgo/.bzr
+vendor/pkg
+
+# Folders
+_obj
+_test
+bin
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+tags
+
+*.tar.gz
+
+mci_testing_env
+/executables
+logs
+ui/node_modules/
+*testlog*
+
+# directory for gvp
+.godeps
+
+npm-debug.log
+

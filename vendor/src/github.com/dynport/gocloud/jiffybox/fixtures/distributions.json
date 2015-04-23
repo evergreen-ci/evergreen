@@ -1,0 +1,17 @@
+{
+ "messages": [],
+ "result": {
+ "centos_5_4_32bit": {
+ "minDiskSizeMB": 1024,
+ "name": "CentOS 5.4",
+ "rootdiskMode": "ro",
+ "defaultKernel": "xen-current"
+ },
+ "centos_5_4_64bit": {
+ "minDiskSizeMB": 1024,
+ "name": "CentOS 5.4 64-Bit",
+ "rootdiskMode": "ro",
+ "defaultKernel": "xen-current-x86_64"
+ }
+ }
+}

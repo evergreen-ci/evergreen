@@ -1,0 +1,69 @@
+{{ define "base" }}
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <title>{{ .Subject }}</title>
+
+    <style type="text/css">
+      @media only screen and (max-device-width: 600px) {
+        div, p, a, li, td, span { -webkit-text-size-adjust:none; }
+
+        .main-content {
+          width: 100%;
+        }
+
+        .task {
+          font-size: 28px !important;
+          line-height: 22px !important;
+        }
+
+        .status {
+          font-size: 14px !important;
+        }
+
+        .link {
+          font-size: 12px !important;
+        }
+
+        .build {
+          font-size: 16px !important;
+        }
+
+        .commit-message {
+          font-size: 14px !important;
+        }
+
+        .heading {
+          font-size: 18px !important;
+        }
+
+        .code {
+          font-size: 12px !important;
+        }
+
+        .commit-meta {
+          font-size: 11px !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+  <table width="100%" height="100%" cellpadding="0" cellspacing="0" bgcolor="#f5f6f7">
+    <tr><td height="50"></td></tr>
+    <tr>
+      <td align="center" valign="top">
+        <!-- table lvl 1 -->
+        <table width="600" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border:1px solid #f1f2f5" class="main-content">
+
+          {{template "content" .}}
+
+        </table>
+      </td>
+    </tr>
+    <tr><td height="50"></td></tr>
+  </table>
+  </body>
+</html>
+
+{{end}}

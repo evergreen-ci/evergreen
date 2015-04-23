@@ -1,0 +1,2 @@
+MAILTO=mci-cron-alerts@10gen.com
+*/1 * * * * (/data/mci/scripts/runner.sh 2>&1) | tee -a /data/home/cron_logs.txt

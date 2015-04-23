@@ -1,0 +1,70 @@
+<div class="panel">
+  <div class="panel-heading">
+    <h2>
+      <i class="icon-desktop" style="margin-right:10px"></i>Details
+    </h2>
+  </div>
+  <div class="panel-body" style="min-height: 233px">
+    <div class="entry">
+      <strong>ID:</strong> <span>[[curHostData.id]]</span>
+    </div>
+    <div class="entry">
+      <strong>Started at:</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+    </div>
+    <div class="entry" ng-show="curHostData.isTerminated">
+      <strong>Terminated at:</strong> <span>[[curHostData.termination_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
+    </div>
+    <div class="entry">
+      <strong>Status:</strong> <span>[[curHostData.status]]</span>
+    </div>
+    <div class="entry" ng-show="!curHostData.isTerminated">
+      <strong>SSH User:</strong> <span>[[curHostData.user]]</span>
+    </div>
+    <div class="entry" ng-show="!curHostData.isTerminated">
+      <strong>DNS Name:</strong> <span>[[curHostData.host]]</span>
+    </div>
+    <div class="entry" ng-show="true">
+      <strong>
+        Expires On:
+      </strong>
+      <span>
+        [[curHostData.expiration_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]
+      </span>
+    </div>
+    <div class ="entry" ng-show="curHostData.userdata">
+      <strong>User Data:</strong><br/>
+      <pre>[[curHostData.userdata]]</pre>
+    </div>
+    <br>
+    <button type="button" ng-show="curHostData.isWinHost && curHostData.status
+    == 'running'" class="btn btn-info" style="float: right;" ng-click="openSpawnModal('updateRDPPassword')">
+    Set RDP Password
+    </button>
+  </div>
+  <div ng-show="hostExtensionLengths.length != 0" class="expire-row">
+    <span>
+      <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="extLen">
+        <span class="semi-muted">
+         Extend expiration time by:
+        </span>
+        <strong>
+          [[extensionLength.display]]
+          <span class="icon-caret-down"></span>
+        </strong>
+      </button>
+      <ul class="dropdown-menu expire-dropdown" role="menu" aria-labelledby="extLen">
+        <li role="presentation" class="dropdown-header">Extension Durations</li>
+        <li role="presentation" ng-repeat="extensionLength in hostExtensionLengths">
+          <a role="menuitem" ng-click="setExtensionLength(extensionLength);">
+          [[extensionLength.display]]
+          </a>
+        </li>
+      </ul>
+    </span>
+    <span>
+      <button type="button" class="btn btn-info expire-button" style="float: right;" ng-click="updateHostExpiration()">
+      Update Host Expiration
+      </button>
+    </span>
+  </div>
+</div>

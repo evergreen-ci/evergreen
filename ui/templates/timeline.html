@@ -1,0 +1,88 @@
+{{define "scripts"}}
+<script type="text/javascript">
+  window.userTz = '{{GetTimezone $.User}}';
+  window.project = '{{ .ProjectData.Project.Identifier }}';
+</script>
+<script type="text/javascript" src="/static/js/services/timeline_resource.js?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "timeline.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+
+{{define "title"}}
+MCI - Timeline
+{{end}}
+
+{{define "content"}}
+<div ng-controller="TimelineController" class="container-fluid">
+  <header class="clearfix">
+    <h1>Timeline</h1>
+
+    <!-- pagination buttons -->
+    <div class="btn-group btn-group-sm header-pagination">
+      <button id="previous" type="button" class="btn btn-default" ng-disabled="currentPage === 0" ng-click="previousPage()">Newer</button>
+      <button id="next" type="button" class="btn btn-default" ng-disabled="currentPage === getLastPageIndex()" ng-click="nextPage()">Older</button>
+    </div>
+  </header>
+
+  <ul id="timeline">
+    <li class="timeline-version"
+        ng-repeat="versionData in data.Versions"
+        ng-init="version = versionData.Version">
+      <div ng-if="versionActivated(version)" class="timeline-builds-list inline">
+        <div class="timeline-text row-header">
+          <div class="version-info clearfix">
+            <i ng-if="!!version.Errors" class="icon-warning-sign" style="color:red">&nbsp;</i>
+
+            <div class="pull-left">
+              <span class="label label-info">Active</span>
+              <a class="git-link gitspec" ng-href="/version/[[version.id]]">[[version.revision | limitTo:7]]<span ng-if="version.project" class="git-project">[[version.project]]</span></a>
+
+              <span class="text-muted">//</span>
+              <span class="git-msg">&ldquo;[[version.message | limitTo:100]]&rdquo;</span>
+            </div>
+
+            <div class="git-pushtime pull-right">
+              [[version.create_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]
+            </div>
+          </div>
+        </div>
+        <div class="builds">
+          <ul class="builds">
+            <li class="timeline-build"
+                ng-repeat="buildData in versionData.Builds | orderBy:'Build.display_name'"
+                ng-init="build = buildData.Build;">
+              <a  ng-href="/build/[[build._id]]"
+                  id="[[build._id]]"
+                  class="build-link status-[[build.status]] block-status-[[build.status]]">
+                [[build.display_name]]
+              </a>
+              <div class="tasks-list inline" results-bar="buildData.taskResults">
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div ng-if="!versionActivated(version)" class="timeline-builds-list inline inactive">
+        <div class="timeline-text row-header">
+          <div class="version-info">
+            <i ng-if="!!version.Errors" class="icon-warning-sign" style="color:red">&nbsp;</i>
+
+            <div class="pull-left">
+              <span class="label label-default">Inactive</span>
+              <a class="git-link gitspec" ng-href="/version/[[version.id]]">[[version.revision | limitTo:7]]<span class="git-project">[[version.project]]</span></a>
+
+              <span class="text-muted">//</span>
+              <span class="git-msg">&ldquo;[[version.message | limitTo:100]]&rdquo;</span>
+            </div>
+
+            <span class="git-pushtime pull-right">
+              [[version.create_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]
+            </span>
+          </div>
+        </div>
+      </div>
+    </li>
+  </ul>
+</div>
+{{end}}
+

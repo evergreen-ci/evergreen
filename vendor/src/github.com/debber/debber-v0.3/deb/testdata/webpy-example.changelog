@@ -1,0 +1,20 @@
+webpy-example (1.1-0) unstable; urgency=low
+
+  * Added custom error pages
+  * Cleaned up some of the GET/POST handlers
+  * Fixed a bug in the accountdb update function when renaming an account
+
+ -- Anthony L. Awtrey <tony@awtrey.com>  Wed, 14 Apr 2010 09:56:00 -0500
+
+webpy-example (1.0-2) unstable; urgency=low
+
+  * Attempting to correct problems with the database configuration
+
+ -- Anthony L. Awtrey <tony@awtrey.com>  Wed, 14 Apr 2010 09:56:00 -0500
+
+webpy-example (1.0-1) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Anthony L. Awtrey <tony@awtrey.com>  Wed,  2 Mar 2010 14:09:00 -0500
+

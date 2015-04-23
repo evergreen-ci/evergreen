@@ -1,0 +1,32 @@
+tasks:
+    - name: testtask1
+      commands:
+        - command: mock.foo
+          params:
+            param1: "this is a string param"
+            param2: 12345
+        - command: shell.exec
+          params:
+            script: "echo 'hi'"
+        - command: expansions.update
+          params:
+              updates:
+                - key: test_expansion_key
+                  value: "ABCDEFGH"
+                - key: another_expansion_key
+                  value: "ZYXWVUT"
+        - command: shell.exec
+          params:
+              script: |
+                set -v
+                echo '${test_expansion_key}'
+                echo '${another_expansion_key}'
+
+buildvariants:
+- name: linux-64
+  display_name: Linux 64-bit
+  modules: ~
+  test_flags: --continue-on-failure
+  expansions:
+    blah: "blah"
+  push: true

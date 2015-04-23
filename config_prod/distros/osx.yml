@@ -1,0 +1,49 @@
+osx-tmpl: &osx-tmpl
+  template: true
+  arch: darwin_amd64
+  provider: static
+  spawn_allowed: false
+  user: mci
+  key: mci
+  setup: ""
+  setup_as_sudo: true
+  expansions:
+    scons: /usr/local/bin/scons
+    decompress: tar zxvf
+    ps: ps aux
+    kill_pid: kill -- -$(ps opgid= %v)
+    sha1sum: /usr/bin/shasum
+    sha256sum: /usr/bin/shasum -a 256
+    md5sum: /sbin/md5 -r
+
+osx-108:
+  <<: *osx-tmpl
+  name: osx-108
+  template: false
+  hosts: 
+    - mci-osx108-8.build.10gen.cc
+    - mci-osx108-7.build.10gen.cc
+    - mci-osx108-6.build.10gen.cc
+    - mci-osx108-5.build.10gen.cc 
+    - mci-osx108-4.build.10gen.cc
+    - mci-osx108-3.build.10gen.cc
+    - mci-osx108-2.build.10gen.cc
+    - mci-osx108.build.10gen.cc
+    - bs-osx-108-x86-64-2.10gen.cc
+    - ny-osx-1.build.10gen.cc:2201
+    - ny-osx-1.build.10gen.cc:2202
+    - ny-osx-1.build.10gen.cc:2203
+    - ny-osx-1.build.10gen.cc:2204
+    - ny-osx-1.build.10gen.cc:2205
+    - ny-osx-1.build.10gen.cc:2206
+    - ny-osx-1.build.10gen.cc:2207
+    - ny-osx-1.build.10gen.cc:2208
+    - ny-osx-2.build.10gen.cc:2201
+    - ny-osx-2.build.10gen.cc:2202
+    - ny-osx-2.build.10gen.cc:2203
+    - ny-osx-2.build.10gen.cc:2204
+    - ny-osx-2.build.10gen.cc:2205
+    - ny-osx-2.build.10gen.cc:2206
+    - ny-osx-2.build.10gen.cc:2207
+    - ny-osx-2.build.10gen.cc:2208
+  maxhosts: 9

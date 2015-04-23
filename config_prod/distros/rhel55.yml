@@ -1,0 +1,139 @@
+rhel55-tmpl: &rhel55-tmpl
+  template: true
+  arch: linux_amd64
+  provider: ec2-spot
+  settings:
+    ami: ami-1edaa276
+    instancetype: m3.2xlarge
+    securitygroups: mci
+    keyname: mci
+    bid_price: 0.56
+    mountinfo: [
+        {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m1.medium, this is a 410GB HDD.
+    ]
+  user: root
+  key: mci
+  securitygroups: mci
+  setup_as_sudo: true
+  expansions: 
+    decompress: tar zxvf
+    ps: ps aux
+    kill_pid: kill -- -$(ps opgid= %v)
+
+# WARNING: Changes to the "rhel55" distro, especially to the setup script, must also be 
+# accounted for on the 20 static chrooted CentOS machines in NJ.
+# 
+# For more information, see https://github.com/10gen-ops/cb-xgen-mci
+# 
+rhel55:
+  <<: *rhel55-tmpl
+  name: rhel55
+  template: false
+  spawn_allowed: true
+  provider: ec2-spot
+  settings:
+    ami: ami-1edaa276
+    instancetype: m3.xlarge
+    securitygroups: mci
+    keyname: mci
+    bid_price: 0.56
+    mountinfo: [
+        {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m3.xlarge, this is a 40GB SSD.
+        {devicename: "/dev/xvdc", virtualname: "ephemeral1"}, #on m3.xlarge, this is a 40GB SSD.
+    ]
+  hosts:
+    - mci-exec@build.nj1.10gen.cc:2201
+    - mci-exec@build.nj1.10gen.cc:2202
+    - mci-exec@build.nj1.10gen.cc:2203
+    - mci-exec@build.nj1.10gen.cc:2204
+    - mci-exec@build.nj1.10gen.cc:2205
+    - mci-exec@build.nj1.10gen.cc:2206
+    - mci-exec@build.nj1.10gen.cc:2207
+    - mci-exec@build.nj1.10gen.cc:2208
+    - mci-exec@build.nj1.10gen.cc:2209
+    - mci-exec@build.nj1.10gen.cc:2210
+    - mci-exec@build.nj1.10gen.cc:2211
+    - mci-exec@build.nj1.10gen.cc:2212
+    - mci-exec@build.nj1.10gen.cc:2213
+    - mci-exec@build.nj1.10gen.cc:2214
+    - mci-exec@build.nj1.10gen.cc:2215
+    - mci-exec@build.nj1.10gen.cc:2216
+    - mci-exec@build.nj1.10gen.cc:2217
+    - mci-exec@build.nj1.10gen.cc:2218
+    - mci-exec@build.nj1.10gen.cc:2219
+    - mci-exec@build.nj1.10gen.cc:2220
+  maxhosts: 19
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    echo "making raid array"
+    yes | /sbin/mdadm --create /dev/md0 --level=0 -c256 --raid-devices=2 /dev/xvdb /dev/xvdc
+    /sbin/blockdev --setra 32 /dev/md0
+    /sbin/mkfs.xfs -f /dev/md0
+    mkdir -p /data
+    echo "/dev/md0 /data auto noatime 0 0" | tee -a /etc/fstab
+    mount /data
+    echo "done mounting /data."
+
+    mkdir -p /data/test_data/tmp/unittest/
+    ln -s /data/test_data/tmp/unittest/ /tmp/unittest
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /root/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /root/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /root/.ssh/id_rsa.pub
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    echo "${api_httpscert}" | tee -a ${api_httpscert_path}
+    chmod 600 /root/.ssh/*
+    chown -R root:root /data
+    chown -R root:root /root/.ssh
+
+rhel55-test:
+  <<: *rhel55-tmpl
+  name: rhel55-test
+  template: false
+  spawn_allowed: true
+  instancetype: m3.large
+  maxhosts: 40
+  mountinfo: [
+    {devicename: "/dev/xvdb", virtualname: "ephemeral0"},
+  ]
+  provider: ec2
+  settings:
+    ami: ami-1edaa276
+    instancetype: m3.large
+    securitygroups: mci
+    keyname: mci
+    bid_price: 0.14
+    mountinfo: [
+        {devicename: "/dev/xvdb", virtualname: "ephemeral0"}, #on m1.medium, this is a 410GB HDD.
+    ]
+  setup: |
+    #!/bin/bash
+    set -o errexit
+    set -o verbose
+
+    echo "making ephemeral drive"
+    /sbin/mkfs.xfs -f /dev/xvdb
+    mkdir -p /data
+    mount /dev/xvdb /data
+
+    mkdir -p /data/test_data/tmp/unittest/
+    ln -s /data/test_data/tmp/unittest/ /tmp/unittest
+  setup_mci_only: |
+    echo "github.com,207.97.227.239 ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" | tee -a /root/.ssh/known_hosts
+    echo "distro-deb2.build.10gen.cc ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCaWGP8pfTw+CABAuN9BTpOHjCkDhbyJE//z8EbhtQDLE/6JGmLM9EqTEF6KuwYAo3YhQhNk1RT0rABeguiK2WSfuTRlUBtfGLBfRDWyaNpoPtxSSxMiDvrOQsPgNa91DmD0cvbhYIdChDKnkv955AXdBywWvNeGzARE7Nju3k/ZAulBKYuc4z27jX10dgKghSp7ZwkYqE+Ct+5ASXnKUniSuJiFP4KaA7N+lGsEKYf43qX9QwceU1IfN/kRnSWu150uEKXs/mdYjuUFgnytQHFCGSeyeGo2OqEy6km6v1dEv+XJKoRTkyZ4pAx8g0G/83bkzfY3bRAZ+9Md1bm0YWB" | tee -a /root/.ssh/known_hosts
+    echo "${github_private_key}" | tee -a /root/.ssh/id_rsa
+    echo "${github_public_key}" | tee -a /root/.ssh/id_rsa.pub
+    echo "${packaging_private_key}" | tee -a /root/.ssh/id_rsa_packaging
+    echo "${packaging_public_key}" | tee -a /root/.ssh/id_rsa_packaging.pub
+    chmod 600 /root/.ssh/id_rsa_packaging
+    echo -e "Host distro-deb2.build.10gen.cc\nIdentityFile /root/.ssh/id_rsa_packaging\nUser mci" | tee -a /root/.ssh/config
+    echo "s3_key: ${s3_key}" | tee -a /data/expansions_s3.yml
+    echo "s3_secret: ${s3_secret}" | tee -a /data/expansions_s3.yml
+    echo "${api_httpscert}" | tee -a ${api_httpscert_path}
+    chmod 600 /root/.ssh/*
+    chown -R root:root /data
+    chown -R root:root /root/.ssh

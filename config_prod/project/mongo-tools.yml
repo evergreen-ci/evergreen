@@ -1,0 +1,11 @@
+owner: mongodb
+repo: mongo-tools
+branch: master
+repokind: github
+enabled: true
+identifier: mongo-tools
+display_name: Mongo Tools
+batchtime: 120
+stepback: true
+remote: true
+remote_path: common.yml

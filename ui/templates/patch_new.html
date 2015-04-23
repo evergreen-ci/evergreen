@@ -1,0 +1,188 @@
+
+{{define "scripts"}}
+<script type="text/javascript" src="{{Static "js" "patch_new.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript">
+  var userTz = {{GetTimezone $.User}}
+  var variants = {{.Variants}}
+  var tasks = {{.Tasks}}
+  var patch= {{.ProjectData.Patch}}
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - Configure Patch
+{{end}}
+
+{{define "content"}}
+<div  id="content" class="container-fluid"
+      ng-controller="PatchController" ng-init="setPatchInfo()">
+  <form name="variantsTasksForm" ng-controller="PatchUpdateController">
+    <div class="col-lg-7">
+      <h3>
+        <b>
+          Configure Patch
+        </b>
+      </h3>
+      <div class="panel">
+        <label for="description">
+          Description
+        </label>
+        <input type="text" ng-model="patch.Description" placeholder="none"></input>
+        <span ng-show="build.Patch.Description">[[patch.Description]]</span>
+        <div class="one-liner patch-message">
+          <span class="semi-muted">
+            [[patch.Author]]
+          </span>
+          <span class="muted">
+            authored at [[patch.CreateTime | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]
+          </span>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="panel">
+            <div class="panel-heading">
+              <h4 class="config-heading"> <b>Build Variants</b> </h4>
+              <div class="pull-right">
+                <a href="#" ng-click="select(allVariants, true)">all</a>
+                &nbsp; &bull; &nbsp;
+                <a href="#" ng-click="select(allVariants, false)">none</a>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div>
+                <ul id="buildvariants">
+                  <li ng-repeat="variant in allVariants"
+                      mci-mouseenter="selectedVariant.set(variant.id)"
+                      mci-mouseleave="selectedVariant.set('')">
+                    <div  class="highlight-wrapper"
+                          ng-class="{true:'highlight-bg-no-border', false:''}[variantRunsTask(variant, selectedTask.get())]">
+                      <label ng-class="{true:'muted', false:''}[!!patch.Version && allVariantsOriginal[$index].checked]">
+                        <input  type="checkbox"
+                                ng-disabled="!!patch.Version && allVariantsOriginal[$index].checked"
+                                ng-checked="variant.checked"
+                                ng-click="toggleCheck(variant)">
+                        [[variant.name]]
+                      </label>
+                    </div>
+                  </li>
+                  <div class="clearfix"></div>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-heading">
+              <h4 class="config-heading">
+                <b>
+                  Tasks
+                </b>
+              </h4>
+              <div class="pull-right">
+                <a href="#" ng-click="select(allTasks, true)">all</a>
+                &nbsp; &bull; &nbsp;
+                <a href="#" ng-click="select(allTasks, false)">none</a>
+              </div>
+            </div>
+            <div>
+              <ul id="tasks">
+                <li ng-repeat="task in allTasks"
+                    mci-mouseenter="selectedTask.set(task.Name)"
+                    mci-mouseleave="selectedTask.set('')">
+                  <div  class="highlight-wrapper"
+                        ng-class="{true:'highlight-bg-no-border', false:''}[taskRunsOnVariant(task.Name, selectedVariant.get())]">
+                    <label ng-class="{true:'muted', false:''}[!!patch.Version && allVariantsOriginal[$index].checked]">
+                      <input  type="checkbox"
+                              ng-disabled="!!patch.Version && allTasksOriginal[$index].checked"
+                              ng-checked="task.checked"
+                              ng-click="toggleCheck(task)">
+                      [[task.Name]]
+                    </label>
+                  </div>
+                </li>
+                <div class="clearfix"></div>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="alert" ng-show="patch.Version">
+        <b>
+          Builds for this patch are already scheduled. &nbsp;&nbsp;
+          <a href="/version/[[patch.Version]]">Details &rarr;</a>
+        </b>
+      </div>
+      <div class="row" ng-show="true" style="padding-bottom:10px">
+        <div class="col-lg-3 col-lg-offset-3">
+          <div ng-click="scheduleBuilds(variantsTasksForm)" class="btn btn-primary btn-large" ng-disabled="variantsCount == 0">
+            Schedule Builds Now
+            <br/>
+            <span style="font-size:.7em;">
+              [[variantsCount]] [[variantsCount | pluralize:'variant']], [[taskCount]] [[taskCount | pluralize:'task']]
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-heading">
+          <h4 class="config-heading">
+            <b>Patch Summary</b>
+          </h4>
+        </div>
+
+        <div class="panel-body">
+          {{ $head := .}}
+          {{range .ProjectData.Patch.Patches}}
+          <div class="patch-message patch-changes-line">
+            <div>
+              {{if .ModuleName}}
+              Changes on {{.ModuleName}} module:
+              {{else}}
+              Changes on {{$head.ProjectData.Project.Name}} project:
+              {{end}}
+              <span class="pull-right">
+				  <a href="/diff/patch/{{$head.ProjectData.Patch.Id.Hex}}">
+                  FULL DIFF
+                </a>
+              </span>
+            </div>
+          </div>
+          <div class="panel-body patch">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th class="col-lg-2">Additions</th>
+                  <th class="col-lg-2">Deletions</th>
+                  <th class="col-lg-8">File</th>
+                </tr>
+              </thead>
+              <tbody>
+                {{range .PatchSet.Summary}}
+                <tr>
+                  <td class="col-lg-1 additions">
+                    +{{.Additions}}
+                  </td>
+                  <td class="col-lg-1 deletions">
+                    -{{.Deletions}}
+                  </td>
+                  <td class="col-lg-4">
+                    <a href="/filediff/{{$head.ProjectData.Patch.Id.Hex}}?file_name={{.Name}}">
+                      {{.Name}}
+                    </a>
+                  </td>
+                </tr>
+                {{end}}
+              </tbody>
+            </table>
+          </div>
+          {{end}}
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{{end}}
+
+

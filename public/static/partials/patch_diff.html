@@ -1,0 +1,37 @@
+<h3 id="history-header" class="section-heading"><i class="icon-paste"></i> Patch Status</h3>
+<div class="mci-pod patch-diff-panel">
+  <div ng-show="!diffs.length">
+    <h3>No patch status available for this page</h3>
+  </div>
+  <table class="table table-new" ng-show="diffs.length">
+    <thead>
+      <tr>
+        <th style="width:50px;">&nbsp;</th>
+        <th>[[type]]</th>
+        <th>Base</th>
+        <th>Patch</th>
+      </tr>
+    </thead>
+    <tr ng-repeat="diff in diffs | orderBy:['displayInfo.type', 'diff.patch', 'Name']">
+      <td class="text-center">
+        <i ng-class="diff.displayInfo.icon"></i>
+      </td>
+      <td>
+        <a ng-href="[[diff.patchLink]]">
+          <span class="diff-name">[[diff.name]]</span>
+        </a>
+        <span class="extra-info">[[diff.build_variant]]</span>
+      </td>
+      <td>
+        <a ng-href="[[diff.originalLink]]">
+          <span ng-class="['diffbox', diff.diff.original]"></span>
+        </a>
+      </td>
+      <td>
+        <a ng-href="[[diff.patchLink]]">
+          <span ng-class="['diffbox', diff.diff.patch]"></span>
+        </a>
+      </td>
+    </tr>
+  </table>
+</div>

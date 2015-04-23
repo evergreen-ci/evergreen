@@ -1,0 +1,103 @@
+{{define "scripts"}}
+<script type="text/javascript" src="{{Static "js" "tablesorter.js"}}"></script>
+<script type="text/javascript" src="{{Static "js" "hosts.js"}}?hash={{ StaticsMD5 }}"></script>
+{{if .User }}
+<script type="text/javascript" src="{{Static "js" "hosts_admin.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+<script type="text/javascript">
+  window.hosts = {{ .Hosts }};
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - Hosts
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="HostsCtrl">
+  {{template "flash" . }}
+  <header class="clearfix">
+    <h1>MCI Hosts</h1>
+
+    <!-- the filter inputs -->
+    <form class="form-inline header-form" role="form">
+      <div class="form-group">
+        <input class="form-control input-sm" type="text" ng-model="filter.hosts" placeholder="Filter hosts..." />
+      </div>
+
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" {{if .IncludeSpawnedHosts}}checked{{end}}
+                 ng-click="toggleIncludeSpawnedHosts({{if .IncludeSpawnedHosts}}false{{else}}true{{end}});"> Show user spawned hosts
+        </label>
+      </div>
+    </form>
+
+
+    {{if .User }}
+      <div ng-controller="AdminOptionsCtrl" class="pull-right page-actions">
+        <div id="admin-dropdown" class="dropdown pull-right">
+          <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
+            <i class="icon-gear"></i>
+            <i class="icon-caret-down"></i>
+          </a>
+
+          <ul class="dropdown-menu" role="menu">
+            <li><a tabindex="-1" href="#" ng-click="openAdminModal('statusChange')">Update Status</a></li>
+          </ul>
+        </div>
+        <admin-modal>
+          <admin-update-status ng-if="adminOption=='statusChange'"></admin-update-status>
+        </admin-modal>
+      </div>
+    {{end}}
+  </header>
+
+  <table id="hosts-table" class="table table-new table-hover">
+    <thead>
+      <tr>
+        {{if .User}}<th></th>{{end}}
+        <th ng-repeat="headerField in headerFields" ng-click="setSelectedHeader(headerField)">
+          [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr ng-repeat="host in hosts | filter:filter.hosts | orderBy:selectedHeader.by:selectedHeader.order" class="host-row">
+        {{if .User}}
+          <td>
+            &nbsp;&nbsp;
+            <input type="checkbox" ng-checked="host.checked" ng-click="toggleHostCheck(host)"/>&nbsp;&nbsp;
+          </td>
+        {{end}}
+        <td>
+          <div class="host-type-icon">
+            <img ng-src="/static/img/[[host.host_type]].png" class="pull-right" width="32" height="32" title="[[host.host_type]]" alt="">
+          </div>
+          <span ng-switch="host.host">
+            <span ng-switch-when="">
+              <a ng-href="/host/[[host.id]]" target="_blank" class="pull-left">[[host.id]]</a>
+            </span>
+            <span ng-switch-default>
+              <a ng-href="/host/[[host.id]]" target="_blank" class="pull-left">[[host.host]]</a>
+            </span>
+          </span>
+        </td>
+        <td>[[host.distro]]</td>
+        <td>[[host.status]]</td>
+        <td>
+          <span ng-show="host.running_task">
+            <a ng-href="/task/[[host.running_task.id]]" target="_blank">[[host.running_task.display_name]]</a>
+            <div class="muted" style="font-size: 10px">[[host.running_task.branch]]</div>
+          </span>
+        </td>
+        <td>[[host.elapsed]]</td>
+        <td>[[host.uptime]]</td>
+        <td>[[host.started_by]]</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="text-center" ng-show="hosts.length==0">No Hosts</p>
+</div>
+{{end}}

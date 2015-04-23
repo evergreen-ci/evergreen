@@ -1,0 +1,68 @@
+@distros-list-padding: 6px;
+#nav-container {
+    position: fixed;
+    padding-bottom: 20px;
+}
+
+#distros-list-container {
+    height: 410px;
+    overflow: scroll;
+    border-bottom: 1px solid #ddd;
+}
+
+#distros-list{
+    .no-decoration;
+    a {
+        color: black;
+    }
+    li {
+        padding: @distros-list-padding;
+        border-radius: 2px;
+        -moz-border-radius: 2px;
+        margin-bottom: 3px;
+        &:hover {
+            .active-distro-colors;
+            &:not(.active-distro){
+                opacity: .5;
+            }
+            cursor: pointer;
+        }
+    }
+}
+
+.active-distro-colors {
+    background-color: #5F923B;
+    color: white;
+}
+
+.active-distro {
+    .active-distro-colors;
+}
+
+.task-queue-table {
+    table-layout: fixed;
+    td {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+
+	.index-col{
+		width:65px;
+		font-weight: bold;
+	}
+}
+
+#time-stats{
+  table {
+    margin-top: 16px;
+    font-size: 12px;
+  }
+}
+
+#stats {
+  p {
+    font-size: 16px;
+  }
+}
+

@@ -1,0 +1,77 @@
+<form name="form" novalidate ng-submit="form.$valid && spawnHost()">
+  <fieldset>
+    <div style="margin-left: 10px;">
+      <span class="dropdown" style="float: left" ng-show="spawnableDistros.length > 0">
+        <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="distro">
+          <span class="semi-muted">
+           Distro:
+          </span>
+          <strong>
+            [[spawnInfo.distroName]]
+            <span class="icon-caret-down"></span>
+          </strong>
+      </button>
+      <ul class="dropdown-menu" role="menu" aria-labelledby="distro">
+        <li role="presentation" class="dropdown-header">Spawnable distros</li>
+        <li role="presentation" ng-repeat="spawnableDistro in spawnableDistros">
+          <a role="menuitem" ng-click="setSpawnableDistro(spawnableDistro.distro);">
+            [[spawnableDistro.distro.name]]
+          </a>
+        </li>
+      </ul>
+      </span>
+      <span class="dropdown" style="margin-left: 10px; align: left;">
+        <button class="btn btn-link btn-dropdown" data-toggle="dropdown">
+          <span class="semi-muted">
+           Public Key:
+          </span>
+          <strong>
+            [[selectedKey.name]]
+            <span class="icon-caret-down"></span>
+          </strong>
+        </button>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="key">
+          <li role="presentation">
+          <a role="menuitem" ng-click="updateSelectedKey(newKey);">
+            New Key...
+          </a>
+          </li>
+          <li role="presentation" class="dropdown-header" ng-show="userKeys.length != 0">Saved Keys</li>
+          <li role="presentation" ng-repeat="userKey in userKeys">
+            <a role="menuitem" ng-click="updateSelectedKey(userKey);">
+              [[userKey.name]]
+            </a>
+          </li>
+        </ul>
+      </span>
+    </div>
+    <br />
+    <span class="semi-muted invalid" ng-show="saveKey && (form.keyname.$error.required || form.keyname.$error.keyNameUnique)">
+      Please enter a unique key name for your new key<br />
+    </span>
+    <span class="semi-muted invalid" ng-show="form.pubkey.$dirty && (form.pubkey.$error.required || form.pubkey.$error.keyBaseValid)">
+      Key is invalid. It must begin with 'ssh-rsa' or 'ssh-dss'. Ensure you have copied the public half of the key.<br />
+    </span>
+    <span class="semi-muted invalid" ng-show="form.userdata.$dirty && (form.userdata.$error.required || form.userdata.$error.userDataValid)">
+      User Data is required to be valid [[selectedDistro.userDataValidate]].<br />
+    </span>
+    <div ng-show="currKeyName == newKey.name">
+      <p class="textarea">
+        <textarea id="input-key-val" name="pubkey" placeholder="Enter public key here..." required key-base-valid ng-model="selectedKey.key"></textarea>
+      </p>
+      <p class="checkbox">
+        <input type="checkbox" id="input-key-chk" ng-click="toggleSaveKey()">&nbsp;&nbsp;Save public key&nbsp;&nbsp;</input>
+        <input type="text" id="input-key-name" name="keyname" ng-model="selectedKey.name" ng-disabled="!saveKey"; placeholder="mykey.pub" key-name-unique></input>
+      </p>
+    </div>
+    <div ng-show="selectedDistro.userDataFile && selectedDistro.userDataFile != ''" >
+      <p class="textarea">
+        <textarea id="input-userdata-val" name="userdata" placeholder="Enter userdata here (goes to {{selectedDistro.userDataFile}})" ng-required="selectedDistro.userDataValidate != ''" user-data-valid ng-model="userData.text"></textarea>
+      </p>
+    </div>
+    <div>
+      <button type="submit" class="btn btn-primary" style="float: left; margin-left: 10px;" ng-disabled="!form.$valid">Spawn</button>
+      <button type="button" class="btn btn-danger" style="float: left; margin-left: 30px;" data-dismiss="modal">Cancel</button>
+    </div>
+  </fieldset>
+</form>

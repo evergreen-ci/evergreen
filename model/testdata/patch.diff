@@ -1,0 +1,14 @@
+diff --git a/%v b/%v
+index 0000000..1111111 100644
+--- a/%v
++++ b/%v
+@@ -12,3 +12,9 @@ tasks:
+       params:
+         working_dir: src
+         script: ls -al
++- name: hi
++  commands:
++    - command: shell.exec
++      params:
++        working_dir: work
++        script: ls

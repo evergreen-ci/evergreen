@@ -1,0 +1,4 @@
+{{ define "base" }}
+{{ $version := .Other.LogMessageFormatTimestamp }}{{ range .Data }}{{ if $version }}{{if ge .Version $version }}{{ DateFormat .Timestamp "[2006/01/02 15:04:05.000] " $.User }}{{ end }}{{ end }}{{ .Message }}
+{{ end }}
+{{ end }}

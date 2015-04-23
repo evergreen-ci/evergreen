@@ -1,0 +1,10 @@
+owner: 10gen
+repo: mci
+branch: master
+repokind: github
+enabled: true
+batchtime: 1200
+identifier: mci
+display_name: MCI Self-Tests
+remote: true
+remote_path: self-tests.yml

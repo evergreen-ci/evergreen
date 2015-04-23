@@ -1,0 +1,9 @@
+{
+ "messages": [
+   {
+   "type": "error",
+   "message": "Das Modul test existiert nicht"
+   }
+   ],
+ "result": false
+}

@@ -1,0 +1,86 @@
+{{define "scripts"}}
+<script type="text/javascript" src="{{Static "js" "waterfall.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript">
+  window.serverData = {{ .Data }}; 
+</script>
+{{end}}
+
+{{define "title"}}
+MCI - Waterfall
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="WaterfallCtrl">
+  {{if .Data.Versions}}
+  <header class="clearfix">
+    <h1>Waterfall</h1>
+    
+    <!-- the filter inputs -->
+    <form class="form-inline header-form force-inline" role="form">
+      <div class="form-group">
+        <input id="variant-filter" class="form-control input-sm" type="text" ng-model="filter.variant" placeholder="Filter variant..." />
+      </div>
+      <div class="form-group">
+        <input id="task-filter" class="form-control input-sm" type="text" ng-model="filter.task" placeholder="Filter task..." />
+      </div>
+    </form>
+
+    <!-- pagination buttons -->
+    <div class="btn-group btn-group-sm header-pagination">
+      <a ng-if="!disablePreviousLink" class="btn btn-default" ng-href="[[previousPage()]]">Newer</a>
+      <a ng-if="disablePreviousLink" class="btn btn-default" disabled="disabled">Newer</a>
+
+      <a ng-if="!disableNextLink" class="btn btn-default" ng-href="[[nextPage()]]">Older</a>
+      <a ng-if="disableNextLink" class="btn btn-default" disabled="disabled">Older</a>
+    </div>
+
+  </header>
+
+  <!-- the actual waterfall display -->
+  <div id="wrapper" class="row">
+    
+    <!-- column of build variant names -->
+    <div id="build-variant-col" class="col-xs-2">
+      <div class="row waterfall-cell version-header text-right">Build Variant</div>
+      <div class="row waterfall-cell build-variant-name" ng-repeat="variant in buildVariants | filter:filter.variant">[[variant]]</div>
+    </div>
+
+    <!-- version columns -->
+    <div class="col-xs-2" ng-repeat="version in versions">
+      
+      <!-- header -->
+      <div class="row waterfall-cell version-header">
+        <version-header></version-header>
+      </div>
+
+      <!-- build cells -->
+      <div class="row waterfall-cell" ng-class="{ 'inactive-build': version.rolled_up }"
+        ng-repeat="build in version.builds | filter:{ build_variant: filter.variant }">
+
+        <!-- build result - either a summary of the build, or 'inactive build' striping -->
+        <div ng-switch="version.rolled_up">
+
+          <div ng-switch-when="false">
+            <build-result>
+              <task-result ng-repeat="task in build.tasks | filter:{ display_name: filter.task }">
+              </task-result>
+            </build-result>
+
+            <build-summary>
+            </build-summary>
+          </div>
+
+          <div ng-switch-when="true" class="inactive-build">inactive build</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+  {{else}}
+  <p>There are no builds of this project</p>
+  {{end}}
+</div>
+{{end}}

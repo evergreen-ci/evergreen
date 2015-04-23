@@ -1,0 +1,24 @@
+  <div ng-show="validHostStatuses.length != 0">
+    <span>
+      <button class="btn btn-link btn-dropdown" data-toggle="dropdown" href="#" id="status">
+        <span>
+          <i class="icon-desktop" style="margin-right:10px"></i>Update status to 
+        </span>
+        <strong>
+          [[newStatus]]
+          <span class="icon-caret-down"></span>
+        </strong>
+      </button>
+      <ul class="dropdown-menu host-dropdown" role="menu" aria-labelledby="status">
+        <li role="presentation" class="dropdown-header">Available Statuses</li>
+        <li role="presentation" ng-repeat="hostStatus in validHostStatuses">
+          <a role="menuitem" ng-click="setHostStatus(hostStatus);">
+          [[hostStatus]]
+          </a>
+        </li>
+      </ul>
+      <button type="button" class="btn btn-info host-button" style="float: right;" ng-click="updateStatus()">
+      Update
+      </button>
+    </span>
+  </div>

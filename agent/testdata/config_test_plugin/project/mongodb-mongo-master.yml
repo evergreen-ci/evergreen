@@ -1,0 +1,316 @@
+owner: deafgoat
+repo: mci_test
+repokind: github
+branch: master
+enabled: true
+batch_time: 180
+stepback: true
+
+functions:
+  "predefined command test" :
+     command: shell.exec
+     params:
+       script: |
+         echo "predefined command!"
+  "silent shell test" :
+     command: shell.exec
+     params:
+       silent: true
+       script: |
+        cat > testfile <<END_OF_HEREDOC
+        this should not end up in the logs!
+        END_OF_HEREDOC
+  "function with arg test" :
+     command: shell.exec
+     params:
+       script: |
+         echo "arg1 is ${arg1}"
+         echo "arg2 is ${arg2}"
+         echo "arg3 is ${arg3}"
+         echo "arg4 is ${arg4}"
+
+pre:
+  - command: shell.exec
+    params:
+      script: |
+        echo "executing the pre-run script!"
+
+post:
+  - command: attach.results
+    params:
+      file_location: src/report.json
+  - command: shell.exec
+    params:
+      script: |
+        echo "executing the post-run script!"
+
+timeout:
+  - command: shell.exec
+    params:
+      script: |
+        echo "executing the task-timeout script!"
+
+tasks:
+- name: compile
+  depends_on: []
+  commands:
+    - func: "predefined command test"
+    - func: "silent shell test"
+    - func: "function with arg test"
+      vars:
+        arg1: "FOO"
+        arg2: "BAR"
+        arg3: "Expanded: ${expandme}"
+        arg4: "Default: ${empty|default_value}"
+    - command: git.get_project
+      params:
+        directory: src
+    - command: git.apply_patch
+      params:
+        directory: src
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "i am compiling!"
+            echo "blah blah compiling"
+            cp "README.md" "readme2.md"
+            mkdir jstests
+            hostname > jstests/hostname.txt
+            date +"%m-%d-%y" > jstests/date.txt
+            echo "stuff" >> jstests/dont_archive_me_test.pdb
+            echo "i am sanity testing!"
+            echo ${fetch_key}
+            cat README.md
+            cat src/mongo/db/modules/enterprise/README
+    - command: git.apply_patch
+      variants: ["random"]
+      params:
+        directory: src
+    - command: archive.targz_pack
+      params:
+        target: "target.tgz"
+        source_dir: "src"
+        include:
+          - "jstests/**"
+          - "readme2.md"
+          - "date.txt"
+          - "compile_expansions.yml"
+          - "*.tgz"
+          - "*.zip"
+          - "*.exe"
+          - "jstests/**"
+          - "./test*"
+          - "./mongobridge*"
+          - "buildscripts/**"
+          - "*Example"
+          - "*Test"
+          - "sharedclient/**"
+          - "./**.pdb"
+          - "./**.msi"
+        exclude_files:
+          - "*_test.pdb"
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: target.tgz
+        remote_file: unittest/blah.tgz
+        bucket: mci-test-uploads
+        permissions: public-read-write
+        content_type: application/tar
+        display_name: mongodb_binaries
+
+- name: normal_task
+  depends_on:
+  - name: compile
+  commands:
+    - func: "predefined command test"
+    - command: s3.get
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        remote_file: unittest/blah.tgz
+        bucket: mci-test-uploads
+        extract_to: src
+
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "starting normal_task!"
+            echo "here is some log output to stdout"
+            cat "readme2.md"
+            grep $(date +"%m-%d-%y") jstests/date.txt
+            grep $(hostname) jstests/hostname.txt
+            [ ! -e "jstests/dont_archive_me_test.pdb" ]
+            echo "here is some log output to stderr" 1>&2
+            echo "done with normal_task!"
+            echo '{"results":[' > report.json
+            echo '{"status":"success","test_file":"t1", "url":"url","exit_code":0,"start":0, "end":10}' >> report.json
+            echo "]}" >> report.json
+
+- name: very_slow_task
+  depends_on:
+  - name: compile
+  commands:
+    - command: shell.exec
+      params:
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "starting very_slow_task!"
+            sleep 10000
+            echo "done with very slow task!"
+
+- name: failing_task
+  depends_on:
+  - name: compile
+  commands:
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "starting failing_task!"
+            false
+            echo "done with failing" "task!"
+
+- name: timeout_task
+  depends_on:
+  - name: compile
+  commands:
+    - command: shell.exec
+      timeout_secs: 3
+      params:
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "starting slow task!"
+            sleep 10000
+            echo "done with slow" "task!"
+
+
+- name: push
+  depends_on:
+  - name: "*"
+  commands:
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          ls
+          pwd
+          echo "push task pre-run!"
+          date_exp=`date "+%Y-%m-%d:%H-%M-%S"`
+          echo $date_exp | tee -a "unittest-${distro_exp}-${buildvar_exp}.txt"
+          echo "file_exp: FILE_EXP" | tee -a compile_expansions.yml
+          echo "new_date: $date_exp" | tee -a compile_expansions.yml
+    - command: expansions.update
+      params:
+        file: compile_expansions.yml
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file:  unittest-${distro_exp}-${buildvar_exp}.txt
+        remote_file: pushtest-stage/unittest-${task_id}-${distro_exp}-${buildvar_exp}-${file_exp}.txt
+        bucket: build-push-testing
+        permissions: public-read-write
+        content_type: application/tar
+        display_name: push_file
+    - command: s3Copy.copy
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        s3_copy_files:
+        - source:
+            bucket: build-push-testing
+            path: pushtest-stage/unittest-${task_id}-${distro_exp}-${buildvar_exp}-${file_exp}.txt
+          destination:
+            bucket: build-push-testing
+            path: pushtest/unittest-${distro_exp}-${buildvar_exp}-${file_exp}-latest.txt
+          display_name: copy_file
+    - command: shell.exec
+      params:
+        script: |
+          set -o verbose
+          set -o errexit
+          echo "push task post-run!"
+          date +"%m-%d-%y" > "unittest-${distro_exp}-${buildvar_exp}.txt"
+          echo "file_exp: FILE_EXP" > compile_expansions.yml
+modules:
+- name: enterprise
+  repo: git@github.com:10gen/mongo-enterprise-modules.git
+  prefix: src/mongo/db/modules
+  branch: v2.6
+
+#######################################
+# Buildvariants
+#######################################
+
+buildvariants:
+
+###########################################
+#         Linux buildvariants             #
+###########################################
+
+- name: linux-64
+  display_name: Linux 64-bit
+  modules:
+    - enterprise
+  run_on:
+  - rhel55
+  expansions:
+    expandme: "qux"
+    buildvar_exp: BUILDVAR_EXP
+    push_path: linux
+    push_bucket: build-push-testing
+    push_name: linux
+    push_arch: x86_64
+    compile_flags: --sharedclient -j$(grep -c ^processor /proc/cpuinfo) --release
+    test_flags: --continue-on-failure
+    buildvariant_pushes: true
+  tasks:
+  - name: aggregation
+  - name: normal_task
+  - name: very_slow_task
+  - name: failing_task
+  - name: push
+
+build_variant_matrix:
+  template:
+    name: windows${version}
+    display_name: Windows ${version}
+    modules:
+    - enterprise
+    run_on:
+    - rhel55
+    expansions:
+      expandme: "qux"
+      buildvar_exp: BUILDVAR_EXP
+      push_path: windows${version}
+      push_bucket: build-push-testing
+      push_name: windows${version}
+      push_arch: x86_64
+      compile_flags: --sharedclient -j$(grep -c ^processor /proc/cpuinfo) --release
+      test_flags: --continue-on-failure
+      buildvariant_pushes: true
+    tasks:
+    - name: aggregation
+    - name: normal_task
+    - name: very_slow_task
+    - name: failing_task
+    - name: push
+  matrix_parameters:
+  - name: version
+    values:
+    - value: "8"
+      expansions:
+        buildvariant_pushes: false

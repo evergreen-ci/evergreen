@@ -1,0 +1,41 @@
+functions:
+  "function test #1":
+    command: shell.exec
+    params:
+      param1: "this is a string param"
+      param2: 12345
+  "func test XYZ":
+    command: shell.exec
+    params:
+      script: "echo 'hi'"
+  "func test with expansions":
+    command: expansions.update
+    params:
+      updates:
+        - key: test_expansion_key
+          value: "ABCDEFGH"
+        - key: another_expansion_key
+          value: "ZYXWVUT"
+
+
+tasks:
+  - name: testtask1
+    commands:
+      - func: "function test #1"
+      - func: "func test XYZ"
+      - func: "func test with expansions"
+      - command: shell.exec
+        params:
+            script: |
+              set -v
+              echo '${test_expansion_key}'
+              echo '${another_expansion_key}'
+
+buildvariants:
+- name: linux-64
+  display_name: Linux 64-bit
+  modules: ~
+  test_flags: --continue-on-failure
+  expansions:
+    blah: "blah"
+  push: true
