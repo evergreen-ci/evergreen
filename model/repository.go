@@ -8,16 +8,17 @@ import (
 	"time"
 )
 
+// Repository contains fields used to track projects.
 type Repository struct {
-	RepositoryProject   string `bson:"_id"`
+	Project             string `bson:"_id"`
 	LastRevision        string `bson:"last_revision"`
 	RevisionOrderNumber int    `bson:"last_commit_number"`
 }
 
 var (
-	// bson fields for the Repository struct
+	// BSON fields for the Repository struct
 	RepoProjectKey = bsonutil.MustHaveTag(Repository{},
-		"RepositoryProject")
+		"Project")
 	RepoLastRevisionKey = bsonutil.MustHaveTag(Repository{},
 		"LastRevision")
 	RepositoryOrderNumberKey = bsonutil.MustHaveTag(Repository{},
@@ -37,8 +38,6 @@ var (
 	ValidRepoTypes = []string{GithubRepoType}
 )
 
-// Repository contains fields representing basic information
-// that is expected from every repository
 type Revision struct {
 	Author          string
 	AuthorEmail     string
@@ -47,13 +46,13 @@ type Revision struct {
 	CreateTime      time.Time
 }
 
-// FindRepository gets the repository identified by the passed in repositoryName
-func FindRepository(repositoryName string) (*Repository, error) {
+// FindRepository gets the repository object of a project.
+func FindRepository(projectId string) (*Repository, error) {
 	repository := &Repository{}
 	err := db.FindOne(
 		RepositoriesCollection,
 		bson.M{
-			RepoProjectKey: repositoryName,
+			RepoProjectKey: projectId,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -65,14 +64,28 @@ func FindRepository(repositoryName string) (*Repository, error) {
 	return repository, err
 }
 
-// GetNewRevisionOrderNumber gets a new commit order number for the specified
-// repository
-func GetNewRevisionOrderNumber(repository string) (int, error) {
+// UpdateLastRevision updates the last created revision of a project.
+func UpdateLastRevision(projectId, revision string) error {
+	return db.Update(
+		RepositoriesCollection,
+		bson.M{
+			RepoProjectKey: projectId,
+		},
+		bson.M{
+			"$set": bson.M{
+				RepoLastRevisionKey: revision,
+			},
+		},
+	)
+}
+
+// GetNewRevisionOrderNumber gets a new revision order number for a project.
+func GetNewRevisionOrderNumber(projectId string) (int, error) {
 	repo := &Repository{}
 	_, err := db.FindAndModify(
 		RepositoriesCollection,
 		bson.M{
-			RepoProjectKey: repository,
+			RepoProjectKey: projectId,
 		},
 		mgo.Change{
 			Update: bson.M{

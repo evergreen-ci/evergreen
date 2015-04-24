@@ -137,6 +137,12 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 				"repository %v: %v", projectRef, err)
 			return err
 		}
+		err = model.UpdateLastRevision(lastVersion.Project, lastVersion.Revision)
+		if err != nil {
+			mci.Logger.Logf(slogger.ERROR, "error updating last revision for "+
+				"repository %v: %v", projectRef, err)
+			return err
+		}
 	} else {
 		lastVersion, err = version.FindOne(version.ByMostRecentForRequester(projectIdentifier, mci.RepotrackerVersionRequester))
 		if err != nil {
@@ -449,6 +455,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 			mci.Logger.Logf(slogger.ERROR, "Error getting activation time for bv %v", buildvariant.Name)
 			return err
 		}
+
 		var lastActivation *time.Time
 		if lastActivated != nil {
 			for _, buildStatus := range lastActivated.BuildVariants {

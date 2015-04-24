@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/testutils"
 	"10gen.com/mci/util"
@@ -11,7 +12,6 @@ import (
 	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
-	"os"
 	"testing"
 	"time"
 )
@@ -36,7 +36,7 @@ func init() {
 }
 
 func TestFetchRevisions(t *testing.T) {
-
+	dropTestDB(t)
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")
 
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t,
@@ -77,10 +77,17 @@ func TestFetchRevisions(t *testing.T) {
 }
 
 func TestStoreRepositoryRevisions(t *testing.T) {
+	dropTestDB(t)
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestStoreRepositoryRevisions")
 	Convey("When storing revisions gotten from a repository...", t, func() {
 		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
 			testConfig.Credentials["github"])}
+
+		// insert distros used in testing.
+		d := distro.Distro{Id: "test-distro-one"}
+		So(d.Insert(), ShouldBeNil)
+		d.Id = "test-distro-two"
+		So(d.Insert(), ShouldBeNil)
 
 		Convey("On storing a single repo revision, we expect a version to be created"+
 			" in the database for this project, which should be retrieved when we search"+
@@ -119,18 +126,121 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			So(versionOne.Revision, ShouldEqual, revisionOne.Revision)
 			So(versionTwo.Revision, ShouldEqual, revisionTwo.Revision)
 		})
+
+		Reset(func() {
+			dropTestDB(t)
+		})
 	})
 
-	Convey("When storing versions from repositories with remote configuration files...", t,
-		func() {
+	Convey("When storing versions from repositories with remote configuration files...", t, func() {
 
-			project := createTestProject(10, nil, nil)
+		project := createTestProject(10, nil, nil)
 
+		revisions := []model.Revision{
+			*createTestRevision("foo", time.Now().Add(1*time.Minute)),
+		}
+
+		poller := NewMockRepoPoller(project, revisions)
+
+		repoTracker := RepoTracker{
+			testConfig,
+			&model.ProjectRef{
+				Identifier: "testproject",
+				Remote:     true,
+			},
+			poller,
+		}
+
+		// insert distros used in testing.
+		d := distro.Distro{Id: "test-distro-one"}
+		So(d.Insert(), ShouldBeNil)
+		d.Id = "test-distro-two"
+		So(d.Insert(), ShouldBeNil)
+
+		Convey("We should not fetch configs for versions we already have stored.",
+			func() {
+				So(poller.ConfigGets, ShouldBeZeroValue)
+				// Store revisions the first time
+				_, err := repoTracker.StoreRevisions(revisions)
+				So(err, ShouldBeNil)
+				// We should have fetched the config once for each revision
+				So(poller.ConfigGets, ShouldEqual, len(revisions))
+
+				// Store them again
+				_, err = repoTracker.StoreRevisions(revisions)
+				So(err, ShouldBeNil)
+				// We shouldn't have fetched the config any additional times
+				// since we have already stored these versions
+				So(poller.ConfigGets, ShouldEqual, len(revisions))
+			},
+		)
+
+		Convey("We should handle invalid configuration files gracefully by storing a stub version",
+			func() {
+				errStrs := []string{"Someone dun' goof'd"}
+				poller.setNextError(projectConfigError{errStrs})
+				stubVersion, err := repoTracker.StoreRevisions(revisions)
+				// We want this error to get swallowed so a config error
+				// doesn't stop additional versions from getting created
+				So(err, ShouldBeNil)
+				So(stubVersion.Errors, ShouldResemble, errStrs)
+			},
+		)
+
+		Convey("If there is an error other than a config error while fetching a config, we should fail hard",
+			func() {
+				unexpectedError := errors.New("Something terrible has happened!!")
+				poller.setNextError(unexpectedError)
+				v, err := repoTracker.StoreRevisions(revisions)
+				So(v, ShouldBeNil)
+				So(err, ShouldEqual, unexpectedError)
+			},
+		)
+
+		Reset(func() {
+			dropTestDB(t)
+		})
+
+	})
+}
+
+func TestBatchTimes(t *testing.T) {
+	dropTestDB(t)
+	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
+		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
+		previouslyActivatedVersion := version.Version{
+			Id:      "previously activated",
+			Project: "testproject",
+			BuildVariants: []version.BuildStatus{
+				{
+					BuildVariant: "bv1",
+					Activated:    true,
+					ActivateAt:   time.Now(),
+				},
+				{
+					BuildVariant: "bv2",
+					Activated:    true,
+					ActivateAt:   time.Now(),
+				},
+			},
+			RevisionOrderNumber: 0,
+			Requester:           mci.RepotrackerVersionRequester,
+		}
+
+		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
+
+		// insert distros used in testing.
+		d := distro.Distro{Id: "test-distro-one"}
+		So(d.Insert(), ShouldBeNil)
+		d.Id = "test-distro-two"
+		So(d.Insert(), ShouldBeNil)
+
+		Convey("If the project's batch time has not elapsed, and no buildvariants "+
+			"have overriden their batch times, no variants should be activated", func() {
+			project := createTestProject(1, nil, nil)
 			revisions := []model.Revision{
-				*createTestRevision("foo", time.Now().Add(1*time.Minute)),
+				*createTestRevision("foo", time.Now()),
 			}
-
-			poller := NewMockRepoPoller(project, revisions)
 
 			repoTracker := RepoTracker{
 				testConfig,
@@ -138,190 +248,112 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 					Identifier: "testproject",
 					Remote:     true,
 				},
-				poller,
+				NewMockRepoPoller(project, revisions),
+			}
+			v, err := repoTracker.StoreRevisions(revisions)
+			So(v, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(len(v.BuildVariants), ShouldEqual, 2)
+			So(repoTracker.activateElapsedBuilds(v), ShouldBeNil)
+			So(v.BuildVariants[0].Activated, ShouldBeFalse)
+			So(v.BuildVariants[1].Activated, ShouldBeFalse)
+		})
+
+		Convey("If the project's batch time has elapsed, and no buildvariants "+
+			"have overridden their batch times, all variants should be activated", func() {
+			project := createTestProject(0, nil, nil)
+			revisions := []model.Revision{
+				*createTestRevision("bar", time.Now().Add(time.Duration(-6*time.Minute))),
+			}
+			repoTracker := RepoTracker{
+				testConfig,
+				&model.ProjectRef{
+					Identifier: "testproject",
+					Remote:     true,
+				},
+				NewMockRepoPoller(project, revisions),
+			}
+			version, err := repoTracker.StoreRevisions(revisions)
+			So(version, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			bv1, found := findStatus(version, "bv1")
+			So(found, ShouldBeTrue)
+			So(bv1.Activated, ShouldBeTrue)
+			bv2, found := findStatus(version, "bv2")
+			So(found, ShouldBeTrue)
+			So(bv2.Activated, ShouldBeTrue)
+		})
+
+		Convey("If the project's batch time has elapsed, but both variants "+
+			"have overridden their batch times (which have not elapsed)"+
+			", no variants should be activated", func() {
+			// need to assign pointer vals
+			twoforty := 240
+			onetwenty := 120
+
+			project := createTestProject(60, &twoforty, &onetwenty)
+
+			revisions := []model.Revision{
+				*createTestRevision("baz", time.Now()),
 			}
 
-			Convey("We should not fetch configs for versions we already have stored.",
-				func() {
-					So(poller.ConfigGets, ShouldBeZeroValue)
-					// Store revisions the first time
-					_, err := repoTracker.StoreRevisions(revisions)
-					So(err, ShouldBeNil)
-					// We should have fetched the config once for each revision
-					So(poller.ConfigGets, ShouldEqual, len(revisions))
-
-					// Store them again
-					_, err = repoTracker.StoreRevisions(revisions)
-					So(err, ShouldBeNil)
-					// We shouldn't have fetched the config any additional times
-					// since we have already stored these versions
-					So(poller.ConfigGets, ShouldEqual, len(revisions))
+			repoTracker := RepoTracker{
+				testConfig,
+				&model.ProjectRef{
+					Identifier: "testproject",
+					Remote:     true,
 				},
-			)
-
-			Convey("We should handle invalid configuration files gracefully by storing a stub version",
-				func() {
-					errStrs := []string{"Someone dun' goof'd"}
-					poller.setNextError(projectConfigError{errStrs})
-					stubVersion, err := repoTracker.StoreRevisions(revisions)
-					// We want this error to get swallowed so a config error
-					// doesn't stop additional versions from getting created
-					So(err, ShouldBeNil)
-					So(stubVersion.Errors, ShouldResemble, errStrs)
-				},
-			)
-
-			Convey("If there is an error other than a config error while fetching a config, we should fail hard",
-				func() {
-					unexpectedError := errors.New("Something terrible has happened!!")
-					poller.setNextError(unexpectedError)
-					v, err := repoTracker.StoreRevisions(revisions)
-					So(v, ShouldBeNil)
-					So(err, ShouldEqual, unexpectedError)
-				},
-			)
+				NewMockRepoPoller(project, revisions),
+			}
+			version, err := repoTracker.StoreRevisions(revisions)
+			So(version, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			bv1, found := findStatus(version, "bv1")
+			So(found, ShouldBeTrue)
+			So(bv1.Activated, ShouldBeFalse)
+			bv2, found := findStatus(version, "bv2")
+			So(found, ShouldBeTrue)
+			So(bv2.Activated, ShouldBeFalse)
 		})
-}
 
-func TestBatchTimes(t *testing.T) {
-	Convey("When deciding whether or not to activate variants for the most recently stored version",
-		t, func() {
-			now := time.Now()
-			// We create a version with an activation time of now so that all the bvs have a last activation time
-			previouslyActivatedVersion := version.Version{
-				Id:      "previously activated",
-				Project: "testproject",
-				BuildVariants: []version.BuildStatus{
-					{
-						BuildVariant: "bv1",
-						Activated:    true,
-						ActivateAt:   now,
-					},
-					{
-						BuildVariant: "bv2",
-						Activated:    true,
-						ActivateAt:   now,
-					},
-				},
-				RevisionOrderNumber: 0,
-				Requester:           mci.RepotrackerVersionRequester,
+		Convey("If the project's batch time has not elapsed, but one variant "+
+			"has overridden their batch times to be shorter"+
+			", that variant should be activated", func() {
+			zero := 0
+
+			project := createTestProject(60, &zero, nil)
+
+			revisions := []model.Revision{
+				*createTestRevision("garply", time.Now()),
 			}
 
-			previouslyActivatedVersion.Insert()
-
-			Convey("If the project's batch time has not elapsed, and no buildvariants "+
-				"have overriden their batch times, no variants should be activated", func() {
-				project := createTestProject(10, nil, nil)
-				revisions := []model.Revision{
-					*createTestRevision("foo", time.Now()),
-				}
-
-				repoTracker := RepoTracker{
-					testConfig,
-					&model.ProjectRef{
-						Identifier: "testproject",
-						Remote:     true,
-					},
-					NewMockRepoPoller(project, revisions),
-				}
-				v, err := repoTracker.StoreRevisions(revisions)
-				So(v, ShouldNotBeNil)
-				So(err, ShouldBeNil)
-				So(len(v.BuildVariants), ShouldEqual, 2)
-				So(v.BuildVariants[0].Activated, ShouldBeFalse)
-				So(v.BuildVariants[1].Activated, ShouldBeFalse)
-				os.Exit(1)
-			})
-
-			Convey("If the project's batch time has elasped, and no buildvariants "+
-				"have overridden their batch times, all variants should be activated", func() {
-				project := createTestProject(10, nil, nil)
-				revisions := []model.Revision{
-					*createTestRevision("bar", time.Now()),
-				}
-				repoTracker := RepoTracker{
-					testConfig,
-					&model.ProjectRef{
-						Identifier: "testproject",
-						Remote:     true,
-					},
-					NewMockRepoPoller(project, revisions),
-				}
-				version, err := repoTracker.StoreRevisions(revisions)
-				So(err, ShouldBeNil)
-				bv1, found := findStatus(version, "bv1")
-				So(found, ShouldBeTrue)
-				So(bv1.Activated, ShouldBeTrue)
-				bv2, found := findStatus(version, "bv2")
-				So(found, ShouldBeTrue)
-				So(bv2.Activated, ShouldBeTrue)
-			})
-
-			Convey("If the project's batch time has elasped, but both variants "+
-				"have overridden their batch times (which have not elapsed)"+
-				" , no variants should be activated", func() {
-				// need to assign pointer vals
-				twoforty := 240
-				onetwenty := 120
-
-				project := createTestProject(60, &twoforty, &onetwenty)
-
-				revisions := []model.Revision{
-					*createTestRevision("baz", time.Now()),
-				}
-
-				repoTracker := RepoTracker{
-					testConfig,
-					&model.ProjectRef{
-						Identifier: "testproject",
-						Remote:     true,
-					},
-					NewMockRepoPoller(project, revisions),
-				}
-				version, err := repoTracker.StoreRevisions(revisions)
-				So(err, ShouldBeNil)
-				bv1, found := findStatus(version, "bv1")
-				So(found, ShouldBeTrue)
-				So(bv1.Activated, ShouldBeFalse)
-				bv2, found := findStatus(version, "bv2")
-				So(found, ShouldBeTrue)
-				So(bv2.Activated, ShouldBeFalse)
-			})
-
-			Convey("If the project's batch time not elapsed, but one variant "+
-				"has overridden their batch times to be shorter"+
-				", that variant should be activated", func() {
-				ten := 10
-
-				project := createTestProject(60, &ten, nil)
-
-				revisions := []model.Revision{
-					*createTestRevision("garply", time.Now()),
-				}
-
-				repoTracker := RepoTracker{
-					testConfig,
-					&model.ProjectRef{
-						Identifier: "testproject",
-						Remote:     true,
-					},
-					NewMockRepoPoller(project, revisions),
-				}
-				version, err := repoTracker.StoreRevisions(revisions)
-				So(err, ShouldBeNil)
-				bv1, found := findStatus(version, "bv1")
-				So(found, ShouldBeTrue)
-				So(bv1.Activated, ShouldBeTrue)
-				bv2, found := findStatus(version, "bv2")
-				So(found, ShouldBeTrue)
-				So(bv2, ShouldNotBeNil)
-				So(bv2.Activated, ShouldBeFalse)
-			})
-
-			Reset(func() {
-				dropTestDB(t)
-			})
+			repoTracker := RepoTracker{
+				testConfig,
+				&model.ProjectRef{
+					Identifier: "testproject",
+					Remote:     true,
+				},
+				NewMockRepoPoller(project, revisions),
+			}
+			version, err := repoTracker.StoreRevisions(revisions)
+			So(version, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			bv1, found := findStatus(version, "bv1")
+			So(found, ShouldBeTrue)
+			So(bv1.Activated, ShouldBeTrue)
+			bv2, found := findStatus(version, "bv2")
+			So(found, ShouldBeTrue)
+			So(bv2, ShouldNotBeNil)
+			So(bv2.Activated, ShouldBeFalse)
 		})
+
+		Reset(func() {
+			dropTestDB(t)
+		})
+	})
 }
 
 func findStatus(v *version.Version, buildVariant string) (*version.BuildStatus, bool) {
@@ -336,7 +368,7 @@ func findStatus(v *version.Version, buildVariant string) (*version.BuildStatus, 
 func newTestRepoPollRevision(project string,
 	activationTime time.Time) *model.Repository {
 	return &model.Repository{
-		RepositoryProject:   project,
+		Project:             project,
 		RevisionOrderNumber: 0,
 		LastRevision:        firstRevision,
 	}
