@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/mitchellh/mapstructure"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
 )
 
 func init() {
@@ -19,11 +22,14 @@ func init() {
 const (
 	ShellPluginName = "shell"
 	ShellExecCmd    = "exec"
+	CleanupCmd      = "cleanup"
+	TrackCmd        = "track"
 )
 
+var trackedTask = ""
+
 // ShellPlugin runs arbitrary shell code on the agent's machine.
-type ShellPlugin struct {
-}
+type ShellPlugin struct{}
 
 // Name returns the name of the plugin. Required to fulfill
 // the Plugin interface.
@@ -54,10 +60,68 @@ func (self *ShellPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 // NewCommand returns the requested command, or returns an error
 // if a non-existing command is requested.
 func (self *ShellPlugin) NewCommand(cmdName string) (plugin.Command, error) {
-	if cmdName != ShellExecCmd {
-		return nil, fmt.Errorf("No such command: %v", cmdName)
+	if cmdName == TrackCmd {
+		return &TrackCommand{}, nil
+	} else if cmdName == CleanupCmd {
+		return &CleanupCommand{}, nil
+	} else if cmdName == ShellExecCmd {
+		return &ShellExecCommand{}, nil
 	}
-	return &ShellExecCommand{}, nil
+	return nil, fmt.Errorf("no such command: %v", cmdName)
+}
+
+type TrackCommand struct{}
+
+func (cc *TrackCommand) Name() string {
+	return TrackCmd
+}
+
+func (cc *TrackCommand) Plugin() string {
+	return ShellPluginName
+}
+
+func (cc *TrackCommand) ParseParams(params map[string]interface{}) error {
+	return nil
+}
+
+// Execute starts the shell with its given parameters.
+func (cc *TrackCommand) Execute(pluginLogger plugin.Logger,
+	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
+	trackedTask = conf.Task.Id
+	return nil
+}
+
+type CleanupCommand struct{}
+
+func (cc *CleanupCommand) Name() string {
+	return CleanupCmd
+}
+
+func (cc *CleanupCommand) Plugin() string {
+	return ShellPluginName
+}
+
+// ParseParams reads in the command's parameters.
+func (cc *CleanupCommand) ParseParams(params map[string]interface{}) error {
+	return nil
+}
+
+// Execute starts the shell with its given parameters.
+func (cc *CleanupCommand) Execute(pluginLogger plugin.Logger,
+	pluginCom plugin.PluginCommunicator,
+	conf *model.TaskConfig,
+	stop chan bool) error {
+	if trackedTask == "" && trackedTask != conf.Task.Id {
+		pluginLogger.LogExecution(slogger.WARN, "Process tracking was not enabled for task, skipping cleanup.")
+		return nil
+	}
+
+	pluginLogger.LogExecution(slogger.INFO, "Running process cleanup...")
+
+	// Clean up all shell processes spawned during the execution of this task by this agent,
+	// by calling the platform-specific "cleanup" function
+	cleanup(conf.Task.Id, pluginLogger)
+	return nil
 }
 
 // ShellExecCommand is responsible for running the shell code.
@@ -142,11 +206,27 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	doneStatus := make(chan error)
 	go func() {
 		var err error
-		if self.Background {
-			err = command.Start()
-		} else {
-			err = command.Run()
+		env := os.Environ()
+		env = append(env, fmt.Sprintf("EVR_TASK_ID=%v", conf.Task.Id))
+		env = append(env, fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid()))
+		command.Environment = env
+		err = command.Start()
+		if err == nil {
+			pluginLogger.LogSystem(slogger.DEBUG, "spawned shell process with pid %v", command.Cmd.Process.Pid)
+
+			// Call the platform's process-tracking function. On some OSes this will be a noop,
+			// on others this may need to do some additional work to track the process so that
+			// it can be cleaned up later.
+			if trackedTask != "" {
+				trackProcess(conf.Task.Id, command.Cmd.Process.Pid, pluginLogger)
+			}
+
+			if !self.Background {
+				err = command.Cmd.Wait()
+			}
+
 		}
+
 		doneStatus <- err
 	}()
 
@@ -174,4 +254,56 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	}
 
 	return nil
+}
+
+// listProc() returns a list of active pids on the system, by listing the contents of /proc
+// and looking for entries that appear to be valid pids. Only usable on systems with a /proc
+// filesystem (Solaris and UNIX/Linux)
+func listProc() ([]int, error) {
+	d, err := os.Open("/proc")
+	if err != nil {
+		return nil, err
+	}
+	defer d.Close()
+
+	results := make([]int, 0, 50)
+	for {
+		fis, err := d.Readdir(10)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		for _, fi := range fis {
+			// Pid must be a directory with a numeric name
+			if !fi.IsDir() {
+				continue
+			}
+
+			// Using Atoi here will also filter out . and ..
+			pid, err := strconv.Atoi(fi.Name())
+			if err != nil {
+				continue
+			}
+			results = append(results, int(pid))
+		}
+	}
+	return results, nil
+}
+
+// envHasMarkers returns a bool indicating if both marker vars are found in an environment var list
+func envHasMarkers(env []string, pidMarker, taskMarker string) bool {
+	hasPidMarker := false
+	hasTaskMarker := false
+	for _, envVar := range env {
+		if envVar == pidMarker {
+			hasPidMarker = true
+		}
+		if envVar == taskMarker {
+			hasTaskMarker = true
+		}
+	}
+	return hasPidMarker && hasTaskMarker
 }
