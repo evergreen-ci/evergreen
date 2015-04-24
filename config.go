@@ -60,6 +60,10 @@ type MonitorConfig struct {
 	LogFile string
 }
 
+type RunnerConfig struct {
+	LogFile string
+}
+
 type HostInitConfig struct {
 	LogFile string
 }
@@ -130,6 +134,7 @@ type MCISettings struct {
 	Ui                  UIConfig
 	HostInit            HostInitConfig
 	Notify              NotifyConfig
+	Runner              RunnerConfig
 	Scheduler           SchedulerConfig
 	TaskRunner          TaskRunnerConfig
 	Expansions          map[string]string

@@ -28,8 +28,8 @@ type HostInit struct {
 	MCISettings *mci.MCISettings
 }
 
-// SetupReadyHosts runs the distro setup script of all hosts that are up and reachable.
-func (init *HostInit) SetupReadyHosts() error {
+// setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
+func (init *HostInit) setupReadyHosts() error {
 
 	// find all hosts in the uninitialized state
 	uninitializedHosts, err := host.Find(host.IsUninitialized)

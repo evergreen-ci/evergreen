@@ -19,14 +19,14 @@ type TaskMonitor struct {
 // run through the list of task flagging functions, finding all tasks that
 // need to be cleaned up and taking appropriate action. takes in a map
 // of project name -> project info
-func (self *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
+func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 
 	mci.Logger.Logf(slogger.INFO, "Cleaning up tasks...")
 
 	// used to store any errors that occur
 	var errors []error
 
-	for _, f := range self.flaggingFuncs {
+	for _, f := range tm.flaggingFuncs {
 		// find the next batch of tasks to be cleaned up
 		tasksToCleanUp, err := f()
 
@@ -54,8 +54,7 @@ func (self *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error
 }
 
 // clean up the passed-in slice of tasks
-func cleanUpTasks(taskWrappers []doomedTaskWrapper,
-	projects map[string]model.Project) []error {
+func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Project) []error {
 
 	mci.Logger.Logf(slogger.INFO, "Cleaning up %v tasks...", len(taskWrappers))
 
@@ -81,8 +80,7 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper,
 }
 
 // function to clean up a single task
-func cleanUpTask(wrapper doomedTaskWrapper,
-	projects map[string]model.Project) error {
+func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) error {
 
 	// find the appropriate project for the task
 	project, ok := projects[wrapper.task.Project]
@@ -136,7 +134,7 @@ func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host
 	}
 
 	// try to reset the task
-	if err := task.TryReset("", mci.MonitorPackage, &project,
+	if err := task.TryReset("", RunnerName, &project,
 		taskEndRequest); err != nil {
 		return fmt.Errorf("error trying to reset task %v: %v", task.Id, err)
 	}

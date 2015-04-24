@@ -94,23 +94,7 @@ const (
 
 // mci package names
 const (
-	AuthPackage        = "MCI_AUTH"
-	BookkeepingPackage = "MCI_BOOKKEEPING"
-	CloudPackage       = "MCI_CLOUD"
-	CleanupPackage     = "MCI_CLEANUP"
-	DBPackage          = "MCI_DB"
-	AgentPackage       = "MCI_AGENT"
-	RepotrackerPackage = "MCI_REPOTRACKER"
-	HostPackage        = "MCI_HOST"
-	HostInitPackage    = "MCI_INIT"
-	MonitorPackage     = "MCI_MONITOR"
-	NotifyPackage      = "MCI_NOTIFY"
-	PatchPackage       = "MCI_PATCH"
-	SchedulerPackage   = "MCI_SCHEDULER"
-	APIServerPackage   = "MCI_APISERVER"
-	TaskRunnerPackage  = "MCI_TASK_RUNNER"
-	ThirdpartyPackage  = "MCI_THIRDPARTY"
-	UIPackage          = "MCI_UI"
+	UIPackage = "MCI_UI"
 )
 
 const AuthTokenCookie = "mci-token"

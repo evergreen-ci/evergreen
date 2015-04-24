@@ -48,7 +48,7 @@ func NewTaskRunner(mciSettings *mci.MCISettings) *TaskRunner {
 // finding any hosts available to have a task run on them, and then figuring
 // out the next appropriate task for each of the hosts and kicking them off.
 // Returns an error if any error is thrown along the way.
-func (self *TaskRunner) RunTasks() error {
+func (self *TaskRunner) Run() error {
 
 	mci.Logger.Logf(slogger.INFO, "Finding hosts available to take a task...")
 	// find all hosts available to take a task

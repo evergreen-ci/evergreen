@@ -151,7 +151,7 @@ func ConstructMailer(notifyConfig mci.NotifyConfig) Mailer {
 //         ↓↓
 // UpdateNotificationTimes
 //
-func RunPipeline(mciSettings *mci.MCISettings) error {
+func Run(mciSettings *mci.MCISettings) error {
 	// get the notifications
 	mciNotification, err := ParseNotifications(mciSettings.ConfigDir)
 	if err != nil {
@@ -485,6 +485,10 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 		projectFile, err := model.FindProject("", projectName, configName)
 		if err != nil {
 			return nil, fmt.Errorf("unable to find project file: %v", err)
+		}
+
+		if projectFile == nil {
+			return nil, fmt.Errorf("unable to find project file for '%v'", projectName)
 		}
 
 		for _, buildVariant := range projectFile.BuildVariants {

@@ -13,6 +13,14 @@ import (
 	"time"
 )
 
+const (
+	// TODO: move this to configuration file.
+	// determines the default maximum number of revisions
+	// we want to fetch for a newly tracked repo if no max
+	// number is specified in the repotracker configuration
+	DefaultNumNewRepoRevisionsToFetch = 50
+)
+
 // RepoTracker is used to manage polling repository changes and storing such
 // changes. It contains a number of interfaces that specify behavior required by
 // client implementations
