@@ -18,7 +18,7 @@ func prompt(message string) string {
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Print(message + " ")
 	text, _ := reader.ReadString('\n')
-	return text[:len(text)-1] // removes the trailing newline
+	return strings.TrimSpace(text)
 }
 
 // confirm asks the user a yes/no question and returns true/false if they reply with y/yes/n/no.
