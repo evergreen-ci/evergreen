@@ -482,16 +482,30 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 		projectName := projectRef.Identifier
 		var buildVariants []string
 
-		projectFile, err := model.FindProject("", projectName, configName)
-		if err != nil {
-			return nil, fmt.Errorf("unable to find project file: %v", err)
+		var proj *model.Project
+		var err error
+		if !projectRef.Remote {
+			proj, err = model.FindProject("", projectName, configName)
+			if err != nil {
+				return nil, fmt.Errorf("unable to find project file: %v", err)
+			}
+		} else {
+			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(projectRef.Identifier))
+			if err != nil {
+				return nil, fmt.Errorf("unable to find last valid config: %v", err)
+			}
+			if lastGood == nil { // brand new project + no valid config yet, just return an empty map
+				return projectNameToBuildVariants, nil
+			}
+
+			proj = &model.Project{}
+			err = model.LoadProjectInto([]byte(lastGood.Config), proj)
+			if err != nil {
+				return nil, fmt.Errorf("Error loading project from version: %v", err)
+			}
 		}
 
-		if projectFile == nil {
-			return nil, fmt.Errorf("unable to find project file for '%v'", projectName)
-		}
-
-		for _, buildVariant := range projectFile.BuildVariants {
+		for _, buildVariant := range proj.BuildVariants {
 			buildVariants = append(buildVariants, buildVariant.Name)
 		}
 
