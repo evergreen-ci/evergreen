@@ -549,12 +549,5 @@ func (self *Project) GetModuleByName(name string) (*Module, error) {
 
 // Generate the URL to the repo.
 func (project *Project) Location() (string, error) {
-	switch project.RepoKind {
-	case GithubRepoType:
-		return fmt.Sprintf("git@github.com:%v/%v.git", project.Owner,
-			project.Repo), nil
-	default:
-		return "", mci.Logger.Errorf(slogger.ERROR, "Unknown value of RepoKind"+
-			" (“%v”)", project.RepoKind)
-	}
+	return fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo), nil
 }
