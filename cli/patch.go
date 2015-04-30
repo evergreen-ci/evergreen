@@ -125,7 +125,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 		ShowSummary bool
 		Link        string
 		Now         time.Time
-	}{p, summarize, uiHost + "patch/" + p.Id.Hex(), time.Now()})
+	}{p, summarize, uiHost + "/patch/" + p.Id.Hex(), time.Now()})
 	if err != nil {
 		return "", err
 	}

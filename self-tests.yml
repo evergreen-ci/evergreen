@@ -71,6 +71,16 @@ functions:
       content_type: text/plain
       display_name: Coverage Report (TXT)
 
+  "start mongod":
+      command: shell.exec
+      params:
+        background: true
+        script: |
+          set -o verbose
+          cd mongodb
+          echo "starting mongod..."
+          ./mongod${extension} --dbpath ./db_files &
+
 pre:
   - command: shell.exec
     params:
@@ -81,12 +91,13 @@ pre:
         mkdir mongodb
         cd mongodb
         curl ${mongo_url} -o mongodb.tgz
-        tar xvf mongodb.tgz --strip-components=1
+        ${decompress} mongodb.tgz
+        chmod +x ./mongodb-*/bin/*
+        mv ./mongodb-*/bin/* .
         rm -rf db_files
         rm -rf db_logs
         mkdir db_files
         mkdir db_logs
-        ./bin/mongod --dbpath ./db_files --logpath=db_logs/mongod.log --logappend --fork &
 
   - command: shell.exec
     params:
@@ -133,16 +144,21 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           mkdir bin
-          export GOBIN=`pwd`/bin
+          if [ "Windows_NT" = "$OS" ]; then
+            export GOBIN=$(cygpath -w `pwd`/bin)
+          else
+            export GOBIN=`pwd`/bin
+          fi
+          echo "using GOBIN $GOBIN"
           go install cli/main/cli.go
     - command: s3.put
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: src/bin/cli
-        remote_file: mci/cli/${task_id}/evergreen
+        local_file: src/bin/cli${extension}
+        remote_file: mci/cli/${task_id}/evergreen${extension}
         bucket: mciuploads
         permissions: public-read
         content_type: application/octet-stream
@@ -150,6 +166,7 @@ tasks:
 
 - name: agent
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - func: "setup creds"
@@ -161,7 +178,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd agent
           mkfifo test_pipe
           tee -a agent.suite < test_pipe&
@@ -180,6 +197,7 @@ tasks:
 
 - name: archive
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -190,7 +208,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd archive
           mkfifo test_pipe
           tee -a archive.suite < test_pipe&
@@ -209,6 +227,7 @@ tasks:
 
 - name: db
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -219,7 +238,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd db
           mkfifo test_pipe
           tee -a db.suite < test_pipe&
@@ -238,6 +257,7 @@ tasks:
 
 - name: mci
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -248,7 +268,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           mkfifo test_pipe
           tee -a mci.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
@@ -260,6 +280,7 @@ tasks:
 
 - name: model
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -270,7 +291,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd model
           mkfifo test_pipe
           tee -a model.suite < test_pipe&
@@ -305,6 +326,7 @@ tasks:
 
 - name: monitor
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -315,7 +337,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd monitor
           mkfifo test_pipe
           tee -a monitor.suite < test_pipe&
@@ -334,6 +356,7 @@ tasks:
 
 - name: notify
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -344,7 +367,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd notify
           mkfifo test_pipe
           tee -a notify.suite < test_pipe&
@@ -363,6 +386,7 @@ tasks:
 
 - name: plugin
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - func: "setup creds"
@@ -374,7 +398,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
 
           cd plugin
           mkfifo test_pipe
@@ -599,6 +623,7 @@ tasks:
 
 - name: repotracker
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - func: "setup creds"
@@ -610,7 +635,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd repotracker
           mkfifo test_pipe
           tee -a repotracker.suite < test_pipe&
@@ -629,6 +654,7 @@ tasks:
 
 - name: scheduler
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -639,7 +665,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd scheduler
           mkfifo test_pipe
           tee -a scheduler.suite < test_pipe&
@@ -658,6 +684,7 @@ tasks:
 
 - name: thirdparty
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - func: "setup creds"
@@ -669,7 +696,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd thirdparty
           mkfifo test_pipe
           tee -a thirdparty.suite < test_pipe&
@@ -688,6 +715,7 @@ tasks:
 
 - name: util
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -698,7 +726,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd util
           mkfifo test_pipe
           tee < test_pipe&
@@ -717,6 +745,7 @@ tasks:
 
 - name: ui
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -727,7 +756,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd ui
           mkfifo test_pipe
           tee -a ui.suite < test_pipe&
@@ -746,6 +775,7 @@ tasks:
 
 - name: validator
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - func: "setup creds"
@@ -757,7 +787,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export mci_home=${mci_home_cmd}
           cd validator
           mkfifo test_pipe
           tee -a validator.suite < test_pipe&
@@ -780,6 +810,7 @@ buildvariants:
       run_on:
       - ubuntu1404-test
       expansions:
+        mci_home_cmd: "`pwd`"
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
       tasks:
       - name: client
@@ -801,6 +832,7 @@ buildvariants:
       run_on:
       - osx-108
       expansions:
+        mci_home_cmd: "`pwd`"
         mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
       tasks:
       - name: client
@@ -817,3 +849,13 @@ buildvariants:
       - name: ui
       - name: util
       - name: validator
+    - name: windows-64
+      display_name: Windows
+      run_on:
+      - windows-64-vs2013-compile
+      expansions:
+        mci_home_cmd: "$(cygpath -w `pwd`)"
+        mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5.zip
+        extension: .exe
+      tasks:
+      - name: client
