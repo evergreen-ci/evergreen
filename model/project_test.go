@@ -160,13 +160,6 @@ func TestRepoUrl(t *testing.T) {
 				So(err, ShouldBeNil)
 			})
 
-			Convey("attempting with a non-git repo should panic", func() {
-				project.RepoKind = "invalid"
-				location, err := project.Location()
-				So(location, ShouldEqual, "")
-				So(err, ShouldNotBeNil)
-			})
-
 		})
 
 	})
