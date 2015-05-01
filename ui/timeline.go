@@ -2,8 +2,8 @@ package ui
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
@@ -161,7 +161,7 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 
 	var recentVersions []version.Version
 	var gitspecMap map[string]version.Version
-	var builds []model.Build
+	var builds []build.Build
 	var buildmasterData []bson.M
 	var err error
 
@@ -180,6 +180,7 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 			gitspecMap[ver.Revision] = ver
 		}
 
+		//TODO make this return a non-bson map
 		buildmasterData, err = model.GetBuildmasterData(*projCtx.Version, 500)
 
 		if err != nil {
@@ -187,9 +188,7 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		builds, err = model.FindAllBuilds(bson.M{"_id": bson.M{"$in": projCtx.Version.BuildIds}}, bson.M{},
-			db.NoSort, db.NoSkip, db.NoLimit)
-
+		builds, err = build.Find(build.ByIds(projCtx.Version.BuildIds))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error fetching builds: %v", err), http.StatusInternalServerError)
 			return
@@ -197,14 +196,14 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 	} else {
 		recentVersions = make([]version.Version, 0)
 		gitspecMap = make(map[string]version.Version)
-		builds = make([]model.Build, 0)
+		builds = make([]build.Build, 0)
 		buildmasterData = make([]bson.M, 0)
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData       projectContext
 		VersionsByGitspec map[string]version.Version
-		Builds            []model.Build
+		Builds            []build.Build
 		VersionHistory    []bson.M
 		User              *user.DBUser
 	}{projCtx, gitspecMap, builds, buildmasterData, GetUser(r)}, "base", "buildmaster.html", "base_angular.html", "menu.html")

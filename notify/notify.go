@@ -3,6 +3,7 @@ package notify
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
@@ -571,7 +572,7 @@ func encodeRFC2047(String string) string {
 // get the display name for a build variant's
 // task given the build variant name
 func getDisplayName(buildVariant string) (displayName string) {
-	build, err := model.FindDisplayName(buildVariant)
+	build, err := build.FindOne(build.ByVariant(buildVariant))
 	if err != nil || build == nil {
 		mci.Logger.Errorf(slogger.ERROR, "Error fetching buildvariant name: %v", err)
 		displayName = buildVariant
@@ -582,7 +583,7 @@ func getDisplayName(buildVariant string) (displayName string) {
 }
 
 // get the failed task(s) for a given build
-func getFailedTasks(current *model.Build, notificationName string) (failedTasks []model.TaskCache) {
+func getFailedTasks(current *build.Build, notificationName string) (failedTasks []build.TaskCache) {
 	if util.SliceContains(buildFailureKeys, notificationName) {
 		for _, task := range current.Tasks {
 			if task.Status == mci.TaskFailed {
@@ -640,16 +641,16 @@ func getLastProjectNotificationTime(keys []NotificationKey) error {
 }
 
 // This is used to pull recently finished builds
-func getRecentlyFinishedBuilds(notificationKey *NotificationKey) (builds []model.Build, err error) {
+func getRecentlyFinishedBuilds(notificationKey *NotificationKey) (builds []build.Build, err error) {
 	if cachedProjectRecords[notificationKey.String()] == nil {
-		builds, err = model.RecentlyFinishedBuilds(lastProjectNotificationTime[notificationKey.Project], notificationKey.Project, notificationKey.NotificationRequester)
+		builds, err = build.Find(build.ByFinishedAfter(lastProjectNotificationTime[notificationKey.Project], notificationKey.Project, notificationKey.NotificationRequester))
 		if err != nil {
 			return nil, err
 		}
 		cachedProjectRecords[notificationKey.String()] = builds
 		return builds, err
 	}
-	return cachedProjectRecords[notificationKey.String()].([]model.Build), nil
+	return cachedProjectRecords[notificationKey.String()].([]build.Build), nil
 }
 
 // This is used to pull recently finished tasks

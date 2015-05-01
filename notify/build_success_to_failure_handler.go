@@ -2,7 +2,7 @@ package notify
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -32,7 +32,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 	for _, currentBuild := range builds {
 		// Copy by value to make pointer safe
 		curr := currentBuild
-		previousBuild, err := currentBuild.PreviousActivatedBuild(key.Project,
+		previousBuild, err := currentBuild.PreviousActivated(key.Project,
 			mci.RepotrackerVersionRequester)
 		if previousBuild == nil {
 			mci.Logger.Logf(slogger.DEBUG,
@@ -104,7 +104,7 @@ func (self *BuildSuccessToFailureHandler) GetChangeInfo(
 	if err != nil {
 		return nil, err
 	}
-	allBuilds := make([]model.Build, len(intermediateBuilds)+1)
+	allBuilds := make([]build.Build, len(intermediateBuilds)+1)
 
 	// include the current/previous build
 	allBuilds[len(allBuilds)-1] = *current

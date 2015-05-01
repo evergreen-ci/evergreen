@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/util"
@@ -75,7 +76,7 @@ func TestCleanupTask(t *testing.T) {
 				t, "error clearing tasks collection")
 			util.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
-			util.HandleTestingErr(db.ClearCollections(model.BuildsCollection),
+			util.HandleTestingErr(db.ClearCollections(build.Collection),
 				t, "error clearing builds collection")
 			util.HandleTestingErr(db.ClearCollections(model.OldTasksCollection),
 				t, "error clearing old tasks collection")
@@ -112,13 +113,9 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(host.Insert(), ShouldBeNil)
 
-				build := &model.Build{
-					Id: "b1",
-					Tasks: []model.TaskCache{
-						model.TaskCache{
-							Id: "t1",
-						},
-					},
+				build := &build.Build{
+					Id:      "b1",
+					Tasks:   []build.TaskCache{{Id: "t1"}},
 					Version: "v1",
 				}
 				So(build.Insert(), ShouldBeNil)
@@ -170,13 +167,9 @@ func TestCleanupTask(t *testing.T) {
 				}
 				So(h.Insert(), ShouldBeNil)
 
-				build := &model.Build{
-					Id: "b1",
-					Tasks: []model.TaskCache{
-						model.TaskCache{
-							Id: "t1",
-						},
-					},
+				build := &build.Build{
+					Id:      "b1",
+					Tasks:   []build.TaskCache{{Id: "t1"}},
 					Version: "v1",
 				}
 				So(build.Insert(), ShouldBeNil)

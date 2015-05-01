@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apiserver"
 	dbutil "10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
@@ -27,9 +28,9 @@ import (
 
 //Set this to "true" to see the full log output for all tests.
 //If something is failing, try turning this on to see all the details
-var testConfig = mci.TestConfig()
-
 var Verbose = true
+
+var testConfig = mci.TestConfig()
 
 var testSetups = []testConfigPath{
 	{"With plugin mode test config", "testdata/config_test_plugin"},
@@ -553,11 +554,11 @@ func printLogsForTask(taskId string) {
 }
 
 func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
-	variant string, isPatch bool, t *testing.T) (*model.Task, *model.Build, error) {
+	variant string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
-		model.TasksCollection, model.BuildsCollection, host.Collection,
+		model.TasksCollection, build.Collection, host.Collection,
 		distro.Collection, version.Collection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 	}
@@ -688,11 +689,11 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 		RemoveAll(bson.M{"t_id": bson.M{"$in": []string{taskOne.Id, taskTwo.Id}}})
 	util.HandleTestingErr(err, t, "failed to remove logs")
 
-	build := &model.Build{
+	build := &build.Build{
 		Id: "testBuildId",
-		Tasks: []model.TaskCache{
-			model.NewTaskCache(taskOne.Id, taskOne.DisplayName, true),
-			model.NewTaskCache(taskTwo.Id, taskTwo.DisplayName, true),
+		Tasks: []build.TaskCache{
+			build.NewTaskCache(taskOne.Id, taskOne.DisplayName, true),
+			build.NewTaskCache(taskTwo.Id, taskTwo.DisplayName, true),
 		},
 		Version: "testVersionId",
 	}

@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/apimodels"
 	"10gen.com/mci/db"
 	"10gen.com/mci/db/bsonutil"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/event"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
@@ -461,10 +462,10 @@ func (task *Task) FindPreviousTasks(limit int) ([]Task, error) {
 	return reversed, nil
 }
 
-func FindTasksForBuild(build *Build) ([]Task, error) {
+func FindTasksForBuild(b *build.Build) ([]Task, error) {
 	tasks, err := FindAllTasks(
 		bson.M{
-			TaskBuildIdKey: build.Id,
+			TaskBuildIdKey: b.Id,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -727,22 +728,9 @@ func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) erro
 	event.LogTaskDispatched(self.Id, host.Id)
 
 	// update the cached version of the task in its related build document
-	err = UpdateOneBuild(
-		bson.M{
-			BuildIdKey:                           self.BuildId,
-			BuildTasksKey + "." + TaskCacheIdKey: self.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				BuildTasksKey + ".$." + TaskCacheStatusKey: mci.TaskDispatched,
-			},
-		},
-	)
-	if err != nil {
-		return fmt.Errorf("error updating task cache in build %v: %v",
-			self.BuildId, err)
+	if err = build.SetCachedTaskDispatched(self.BuildId, self.Id); err != nil {
+		return fmt.Errorf("error updating task cache in build %v: %v", self.BuildId, err)
 	}
-
 	return nil
 }
 
@@ -860,17 +848,7 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 	}
 
 	// update the cached version of the task, in its build document
-	return UpdateOneBuild(
-		bson.M{
-			BuildIdKey:                           task.BuildId,
-			BuildTasksKey + "." + TaskCacheIdKey: taskId,
-		},
-		bson.M{
-			"$set": bson.M{
-				BuildTasksKey + ".$." + TaskCacheActivatedKey: active,
-			},
-		},
-	)
+	return build.SetCachedTaskActivated(task.BuildId, taskId, active)
 }
 
 // TODO: this takes in an aborted parameter but always aborts the task
@@ -1019,19 +997,7 @@ func (self *Task) reset() error {
 	}
 
 	// update the cached version of the task, in its build document
-	err = UpdateOneBuild(
-		bson.M{
-			BuildIdKey:                           self.BuildId,
-			BuildTasksKey + "." + TaskCacheIdKey: self.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				BuildTasksKey + ".$." + TaskCacheStartTimeKey: ZeroTime,
-				BuildTasksKey + ".$." + TaskCacheStatusKey:    mci.TaskUndispatched,
-			},
-		},
-	)
-	if err != nil {
+	if err = build.ResetCachedTask(self.BuildId, self.Id); err != nil {
 		return err
 	}
 
@@ -1061,7 +1027,7 @@ func (self *Task) MarkStart() error {
 	event.LogTaskStarted(self.Id)
 
 	// ensure the appropriate build is marked as started if necessary
-	if err = TryMarkBuildStarted(self.BuildId, startTime); err != nil {
+	if err = build.TryMarkStarted(self.BuildId, startTime); err != nil {
 		return err
 	}
 
@@ -1078,28 +1044,18 @@ func (self *Task) MarkStart() error {
 	}
 
 	// update the cached version of the task, in its build document
-	selector := bson.M{
-		BuildIdKey:                           self.BuildId,
-		BuildTasksKey + "." + TaskCacheIdKey: self.Id,
-	}
-	update := bson.M{
-		"$set": bson.M{
-			BuildTasksKey + ".$." + TaskCacheStartTimeKey: startTime,
-			BuildTasksKey + ".$." + TaskCacheStatusKey:    mci.TaskStarted,
-		},
-	}
-	return UpdateOneBuild(selector, update)
+	return build.SetCachedTaskStarted(self.BuildId, self.Id, startTime)
 }
 
 func (self *Task) UpdateBuildStatus() error {
 	finishTime := time.Now()
 	// get all of the tasks in the same build
-	build, err := FindBuild(self.BuildId)
+	b, err := build.FindOne(build.ById(self.BuildId))
 	if err != nil {
 		return err
 	}
 
-	buildTasks, err := FindTasksForBuild(build)
+	buildTasks, err := FindTasksForBuild(b)
 	if err != nil {
 		return err
 	}
@@ -1125,7 +1081,7 @@ func (self *Task) UpdateBuildStatus() error {
 				if task.Status != mci.TaskSucceeded {
 					failedTask = true
 					finishedTasks = -1
-					err = build.MarkFinished(mci.BuildFailed, finishTime)
+					err = b.MarkFinished(mci.BuildFailed, finishTime)
 					if err != nil {
 						mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 						return err
@@ -1136,7 +1092,7 @@ func (self *Task) UpdateBuildStatus() error {
 				pushCompleted = true
 				// if it's a finished push, check if it was successful
 				if task.Status != mci.TaskSucceeded {
-					err = build.UpdateStatus(mci.BuildFailed)
+					err = b.UpdateStatus(mci.BuildFailed)
 					if err != nil {
 						mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 						return err
@@ -1146,7 +1102,7 @@ func (self *Task) UpdateBuildStatus() error {
 			} else {
 				// update the build's status when a test task isn't successful
 				if task.Status != mci.TaskSucceeded {
-					err = build.UpdateStatus(mci.BuildFailed)
+					err = b.UpdateStatus(mci.BuildFailed)
 					if err != nil {
 						mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 						return err
@@ -1159,7 +1115,7 @@ func (self *Task) UpdateBuildStatus() error {
 
 	// if there are no failed tasks, mark the build as started
 	if !failedTask {
-		err = build.UpdateStatus(mci.BuildStarted)
+		err = b.UpdateStatus(mci.BuildStarted)
 		if err != nil {
 			mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 			return err
@@ -1174,13 +1130,13 @@ func (self *Task) UpdateBuildStatus() error {
 		if !failedTask {
 			if pushTaskExists { // this build has a push task associated with it.
 				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.
-					err = build.MarkFinished(mci.BuildSucceeded, finishTime)
+					err = b.MarkFinished(mci.BuildSucceeded, finishTime)
 					if err != nil {
 						mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 						return err
 					}
 				} else if pushCompleted && !pushSuccess { // the push failed, mark build failed.
-					err = build.MarkFinished(mci.BuildFailed, finishTime)
+					err = b.MarkFinished(mci.BuildFailed, finishTime)
 					if err != nil {
 						mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 						return err
@@ -1189,39 +1145,39 @@ func (self *Task) UpdateBuildStatus() error {
 					//This build does have a "push" task, but it hasn't finished yet
 					//So do nothing, since we don't know the status yet.
 				}
-				if err = MarkVersionCompleted(build.Version, finishTime); err != nil {
+				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 					return err
 				}
 			} else { // this build has no push task. so go ahead and mark it success/failure.
-				if err = build.MarkFinished(mci.BuildSucceeded, finishTime); err != nil {
+				if err = b.MarkFinished(mci.BuildSucceeded, finishTime); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 					return err
 				}
-				if build.Requester == mci.PatchVersionRequester {
-					if err = build.TryMarkPatchFinished(finishTime); err != nil {
+				if b.Requester == mci.PatchVersionRequester {
+					if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
 						mci.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
 						return err
 					}
 				}
-				if err = MarkVersionCompleted(build.Version, finishTime); err != nil {
+				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 					return err
 				}
 			}
 		} else {
 			// some task failed
-			if err = build.MarkFinished(mci.BuildFailed, finishTime); err != nil {
+			if err = b.MarkFinished(mci.BuildFailed, finishTime); err != nil {
 				mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 				return err
 			}
-			if build.Requester == mci.PatchVersionRequester {
-				if err = build.TryMarkPatchFinished(finishTime); err != nil {
+			if b.Requester == mci.PatchVersionRequester {
+				if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
 					mci.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
 					return err
 				}
 			}
-			if err = MarkVersionCompleted(build.Version, finishTime); err != nil {
+			if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
 				mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 				return err
 			}
@@ -1230,7 +1186,7 @@ func (self *Task) UpdateBuildStatus() error {
 
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
-		err = build.UpdateStatus(mci.BuildCreated)
+		err = b.UpdateStatus(mci.BuildCreated)
 		if err != nil {
 			mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 			return err
@@ -1308,24 +1264,12 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 	}
 
 	// update the cached version of the task, in its build document
-	err = UpdateOneBuild(
-		bson.M{
-			BuildIdKey:                           self.BuildId,
-			BuildTasksKey + "." + TaskCacheIdKey: self.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				BuildTasksKey + ".$." + TaskCacheStatusKey:    self.Status,
-				BuildTasksKey + ".$." + TaskCacheTimeTakenKey: self.TimeTaken,
-			},
-		},
-	)
+	err = build.SetCachedTaskFinished(self.BuildId, self.Id, self.Status, self.TimeTaken)
 	if err != nil {
 		return fmt.Errorf("error updating build: %v", err.Error())
 	}
 
-	// no need to activate/deactivate other task if this is a patch request's
-	// task
+	// no need to activate/deactivate other task if this is a patch request's task
 	if self.Requester == mci.PatchVersionRequester {
 		err = self.UpdateBuildStatus()
 		if err != nil {

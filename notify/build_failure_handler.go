@@ -2,7 +2,7 @@ package notify
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/web"
 	"github.com/10gen-labs/slogger/v1"
 )
@@ -53,5 +53,5 @@ func (self *BuildFailureHandler) TemplateNotification(ae *web.App, _ string,
 
 func (self *BuildFailureHandler) GetChangeInfo(
 	notification *TriggeredBuildNotification) ([]ChangeInfo, error) {
-	return self.constructChangeInfo([]model.Build{*notification.Current}, &notification.Key)
+	return self.constructChangeInfo([]build.Build{*notification.Current}, &notification.Key)
 }

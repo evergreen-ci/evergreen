@@ -2,7 +2,7 @@ package rest
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/gorilla/mux"
@@ -17,7 +17,7 @@ type buildStatusContent struct {
 	Tasks        buildStatusByTask `json:"tasks"`
 }
 
-type build struct {
+type restBuild struct {
 	Id                  string            `json:"id"`
 	CreateTime          time.Time         `json:"create_time"`
 	StartTime           time.Time         `json:"start_time"`
@@ -51,7 +51,7 @@ type buildStatusByTask map[string]buildStatus
 func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 
-	srcBuild, err := model.FindBuild(buildId)
+	srcBuild, err := build.FindOne(build.ById(buildId))
 	if err != nil || srcBuild == nil {
 		msg := fmt.Sprintf("Error finding build '%v'", buildId)
 		statusCode := http.StatusNotFound
@@ -66,7 +66,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	destBuild := &build{}
+	destBuild := &restBuild{}
 	// Copy the contents from the database into our local build type
 	err = angier.TransferByFieldNames(srcBuild, destBuild)
 	if err != nil {
@@ -97,8 +97,8 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 
-	build, err := model.FindBuild(buildId)
-	if err != nil || build == nil {
+	b, err := build.FindOne(build.ById(buildId))
+	if err != nil || b == nil {
 		msg := fmt.Sprintf("Error finding build '%v'", buildId)
 		statusCode := http.StatusNotFound
 
@@ -114,11 +114,11 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 
 	result := buildStatusContent{
 		Id:           buildId,
-		BuildVariant: build.BuildVariant,
-		Tasks:        make(buildStatusByTask, len(build.Tasks)),
+		BuildVariant: b.BuildVariant,
+		Tasks:        make(buildStatusByTask, len(b.Tasks)),
 	}
 
-	for _, task := range build.Tasks {
+	for _, task := range b.Tasks {
 		status := buildStatus{
 			Id:        task.Id,
 			Status:    task.Status,

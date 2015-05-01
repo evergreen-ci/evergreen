@@ -51,11 +51,11 @@ func convertToTimezone(when time.Time, timezone string, layout string) string {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		mci.Logger.Errorf(slogger.WARN, "Could not load location from timezone %v: %v", timezone, err)
-		return util.DateAsString(when, layout)
+		return when.Format(layout)
 	}
 
 	whenTZ := when.In(loc)
-	return util.DateAsString(whenTZ, layout)
+	return whenTZ.Format(layout)
 }
 
 func humanTimeDiff(sinceSecs int) []string {

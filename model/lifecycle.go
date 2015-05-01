@@ -3,22 +3,39 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/build"
+	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
+	"10gen.com/mci/util"
 	"fmt"
+	"github.com/10gen-labs/slogger/v1"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"strconv"
 	"time"
 )
+
+const (
+	AllDependencies = "*"
+)
+
+// cacheFromTask is helper for creating a build.TaskCache from a real Task model.
+func cacheFromTask(t *Task) build.TaskCache {
+	return build.TaskCache{
+		Id:          t.Id,
+		DisplayName: t.DisplayName,
+		Status:      t.Status,
+		StartTime:   t.StartTime,
+		TimeTaken:   t.TimeTaken,
+		Activated:   t.Activated,
+	}
+}
 
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
 func SetVersionActivation(versionId string, active bool) error {
-	builds, err := FindAllBuilds(
-		bson.M{BuildVersionKey: versionId},
-		bson.M{BuildIdKey: 1},
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
+	builds, err := build.Find(
+		build.ByVersion(versionId).WithFields(build.IdKey),
 	)
 	if err != nil {
 		return err
@@ -45,16 +62,7 @@ func SetBuildActivation(buildId string, active bool) error {
 	if err != nil {
 		return err
 	}
-	err = UpdateOneBuild(
-		bson.M{BuildIdKey: buildId},
-		bson.M{
-			"$set": bson.M{
-				BuildActivatedKey:     active,
-				BuildActivatedTimeKey: time.Now(),
-			},
-		},
-	)
-	if err != nil {
+	if err = build.UpdateActivation(buildId, active); err != nil {
 		return err
 	}
 	return RefreshTasksCache(buildId)
@@ -96,14 +104,7 @@ func AbortBuild(buildId string) error {
 	if err != nil {
 		return err
 	}
-	return UpdateOneBuild(
-		bson.M{BuildIdKey: buildId},
-		bson.M{
-			"$set": bson.M{
-				BuildActivatedKey: false,
-			},
-		},
-	)
+	return build.UpdateActivation(buildId, false)
 }
 
 // AbortVersion sets the abort flag on all tasks associated with the version which are in an
@@ -120,6 +121,7 @@ func AbortVersion(versionId string) error {
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {
+	//TODO move these updates into the version package
 	return version.UpdateOne(
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{
@@ -135,26 +137,22 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 	status := mci.VersionSucceeded
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
-	builds, err := FindAllBuilds(
-		bson.M{BuildVersionKey: versionId},
-		bson.M{BuildStatusKey: 1},
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
+	builds, err := build.Find(
+		build.ByVersion(versionId).WithFields(build.StatusKey),
 	)
 	if err != nil {
 		return err
 	}
 
-	for _, build := range builds {
-		if !build.IsFinished() {
+	for _, b := range builds {
+		if !b.IsFinished() {
 			return nil
 		}
-		if build.Status != mci.BuildSucceeded {
+		if b.Status != mci.BuildSucceeded {
 			status = mci.VersionFailed
 		}
 	}
-
+	//TODO move these updates into the version package
 	return version.UpdateOne(
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{
@@ -198,7 +196,6 @@ func SetVersionPriority(versionId string, priority int) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartBuild(buildId string, abortInProgress bool) error {
 	// restart all the 'not in-progress' tasks for the build
-
 	allTasks, err := FindAllTasks(
 		bson.M{
 			TaskBuildIdKey: buildId,
@@ -214,7 +211,6 @@ func RestartBuild(buildId string, abortInProgress bool) error {
 		db.NoSkip,
 		db.NoLimit,
 	)
-
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -244,19 +240,12 @@ func RestartBuild(buildId string, abortInProgress bool) error {
 				},
 			},
 		)
-
 		if err != nil {
 			return err
 		}
 	}
 
-	return UpdateOneBuild(
-		bson.M{BuildIdKey: buildId},
-		bson.M{
-			"$set": bson.M{
-				BuildActivatedKey: true},
-		},
-	)
+	return build.UpdateActivation(buildId, true)
 }
 
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
@@ -280,17 +269,287 @@ func RefreshTasksCache(buildId string) error {
 		return err
 	}
 
-	cache := make([]TaskCache, 0, len(tasks))
+	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, t := range tasks {
-		cache = append(cache, TaskCache{
-			Id:          t.Id,
-			DisplayName: t.DisplayName,
-			Status:      t.Status,
-			StartTime:   t.StartTime,
-			TimeTaken:   t.TimeTaken,
-			Activated:   t.Activated,
-		})
+		cache = append(cache, cacheFromTask(&t))
+	}
+	return build.SetTasksCache(buildId, cache)
+}
+
+//AddTasksToBuild creates the tasks for the given build of a project
+func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
+	taskNames []string) (*build.Build, error) {
+
+	// find the build variant for this project/build
+	buildVariant := project.FindBuildVariant(b.BuildVariant)
+	if buildVariant == nil {
+		return nil, fmt.Errorf("Could not find build %v in %v:%v project file",
+			b.BuildVariant, project.RepoKind, project.Identifier)
 	}
 
-	return UpdateOneBuild(bson.M{BuildIdKey: buildId}, bson.M{"$set": bson.M{BuildTasksKey: cache}})
+	// create the new tasks for the build
+	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskNames)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tasks for build %v: %v",
+			b.Id, err)
+	}
+
+	// insert the tasks into the db
+	for _, task := range tasks {
+		mci.Logger.Logf(slogger.INFO, "Creating task “%v”", task.DisplayName)
+		if err := task.Insert(); err != nil {
+			return nil, fmt.Errorf("error inserting task %v: %v", task.Id, err)
+		}
+	}
+
+	// create task caches for all of the tasks, and add them into the build
+	for _, t := range tasks {
+		b.Tasks = append(b.Tasks, cacheFromTask(t))
+	}
+
+	// update the build to hold the new tasks
+	if err = build.SetTasksCache(b.Id, b.Tasks); err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+// CreateBuildFromVersion creates a build given all of the necessary information
+// from the corresponding version and project and a list of tasks.
+func CreateBuildFromVersion(project *Project, v *version.Version, buildName string,
+	activated bool, taskNames []string) (string, error) {
+
+	mci.Logger.Logf(slogger.DEBUG, "Creating %v %v build, activated: %v", v.Requester, buildName, activated)
+
+	// find the build variant for this project/build
+	buildVariant := project.FindBuildVariant(buildName)
+	if buildVariant == nil {
+		return "", fmt.Errorf("could not find build %v in %v:%v project file",
+			buildName, project.RepoKind, project.Identifier)
+	}
+
+	// create a new build id
+	buildId := util.CleanName(
+		fmt.Sprintf("%v_%v_%v_%v",
+			project.Identifier,
+			buildName,
+			v.Revision,
+			v.CreateTime.Format(build.IdTimeLayout)))
+
+	// create the build itself
+	b := &build.Build{
+		Id:                  buildId,
+		CreateTime:          v.CreateTime,
+		PushTime:            v.CreateTime,
+		Activated:           activated,
+		Project:             project.Identifier,
+		Revision:            v.Revision,
+		Status:              mci.BuildCreated,
+		BuildVariant:        buildName,
+		Version:             v.Id,
+		DisplayName:         buildVariant.DisplayName,
+		RevisionOrderNumber: v.RevisionOrderNumber,
+		Requester:           v.Requester,
+	}
+
+	// get a new build number for the build
+	buildNumber, err := db.GetNewBuildVariantBuildNumber(buildName)
+	if err != nil {
+		return "", fmt.Errorf("could not get build number for build variant"+
+			" %v in %v:%v project file: %v", buildName, project.RepoKind,
+			project.Identifier)
+	}
+	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
+
+	// create all of the necessary tasks for the build
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskNames)
+	if err != nil {
+		return "", fmt.Errorf("error creating tasks for build %v: %v", b.Id, err)
+	}
+
+	// insert all of the build's tasks into the db
+	for _, task := range tasksForBuild {
+		if err := task.Insert(); err != nil {
+			return "", fmt.Errorf("error inserting task %v: %v", task.Id, err)
+		}
+	}
+
+	// create task caches for all of the tasks, and place them into the build
+	b.Tasks = make([]build.TaskCache, 0, len(tasksForBuild))
+	for _, t := range tasksForBuild {
+		b.Tasks = append(b.Tasks, cacheFromTask(t))
+	}
+
+	// insert the build
+	if err := b.Insert(); err != nil {
+		return "", fmt.Errorf("error inserting build %v: %v", b.Id, err)
+	}
+
+	// success!
+	return b.Id, nil
+}
+
+// createTasksForBuild creates all of the necessary tasks for the build.  Returns a
+// slice of all of the tasks created, as well as an error if any occurs.
+// The slice of tasks will be in the same order as the project's specified tasks
+// appear in the specified build variant.
+func createTasksForBuild(project *Project, buildVariant *BuildVariant,
+	b *build.Build, v *version.Version, taskNames []string) ([]*Task, error) {
+
+	// the list of tasks we should create.  if tasks are passed in, then
+	// use those, else use the default set
+	tasksToCreate := []BuildVariantTask{}
+	createAll := len(taskNames) == 0
+	for _, task := range buildVariant.Tasks {
+		if task.Name == mci.PushStage &&
+			b.Requester == mci.PatchVersionRequester {
+			continue
+		}
+		if createAll || util.SliceContains(taskNames, task.Name) {
+			tasksToCreate = append(tasksToCreate, task)
+		}
+	}
+
+	// create a map of display name -> task id for all of the tasks we are
+	// going to create.  we do this ahead of time so we can access it for the
+	// dependency lists.
+	taskIdsByDisplayName := map[string]string{}
+	for _, task := range tasksToCreate {
+		taskId := util.CleanName(fmt.Sprintf("%v_%v_%v", b.Id, task.Name, buildVariant.Name))
+		taskIdsByDisplayName[task.Name] = taskId
+	}
+
+	// if any tasks already exist in the build, add them to the map
+	// so they can be used as dependencies
+	for _, task := range b.Tasks {
+		taskIdsByDisplayName[task.DisplayName] = task.Id
+	}
+
+	// create and insert all of the actual tasks
+	tasks := make([]*Task, 0, len(tasksToCreate))
+	for _, task := range tasksToCreate {
+
+		// get the task spec out of the project
+		var taskSpec ProjectTask
+		for _, projectTask := range project.Tasks {
+			if projectTask.Name == task.Name {
+				taskSpec = projectTask
+				break
+			}
+		}
+
+		// sanity check that the config isn't malformed
+		if taskSpec.Name == "" {
+			return nil, fmt.Errorf("config is malformed: variant '%v' runs "+
+				"task called '%v' but no such task exists for repo %v for "+
+				"version %v", buildVariant.Name, task.Name, project.Identifier,
+				v.Id)
+		}
+
+		newTask := createOneTask(taskIdsByDisplayName[task.Name], task, project, buildVariant, b, v)
+
+		// set the new task's dependencies
+		if len(taskSpec.DependsOn) == 1 &&
+			taskSpec.DependsOn[0].Name == AllDependencies {
+			// the task depends on all of the other tasks in the build
+			newTask.DependsOn = make([]string, 0, len(tasksToCreate)-1)
+			for _, dep := range tasksToCreate {
+				if dep.Name != newTask.DisplayName {
+					newTask.DependsOn = append(newTask.DependsOn,
+						taskIdsByDisplayName[dep.Name])
+				}
+			}
+
+		} else {
+			// the task has specific dependencies
+			newTask.DependsOn = make([]string, 0, len(taskSpec.DependsOn))
+			for _, dep := range taskSpec.DependsOn {
+				// only add as a dependency if the dependency is being created
+				if taskIdsByDisplayName[dep.Name] != "" {
+					newTask.DependsOn = append(newTask.DependsOn,
+						taskIdsByDisplayName[dep.Name])
+				}
+			}
+		}
+
+		// append the task to the list of the created tasks
+		tasks = append(tasks, newTask)
+	}
+
+	// return all of the tasks created
+	return tasks, nil
+}
+
+// TryMarkPatchBuildFinished attempts to mark a patch as finished if all
+// the builds for the patch are finished as well
+func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
+	v, err := version.FindOne(version.ById(b.Version))
+	if err != nil {
+		return err
+	}
+	if v == nil {
+		return fmt.Errorf("Cannot find version for build %v with version %v", b.Id, b.Version)
+	}
+
+	// ensure all builds for this patch are finished as well
+	builds, err := build.Find(build.ByIds(v.BuildIds).WithFields(build.StatusKey))
+	if err != nil {
+		return err
+	}
+
+	patchCompleted := true
+	status := mci.PatchSucceeded
+	for _, build := range builds {
+		if !build.IsFinished() {
+			patchCompleted = false
+		}
+		if build.Status != mci.BuildSucceeded {
+			status = mci.PatchFailed
+		}
+	}
+
+	// nothing to do if the patch isn't completed
+	if !patchCompleted {
+		return nil
+	}
+
+	return patch.TryMarkFinished(v.Id, finishTime, status)
+}
+
+// createOneTask is a helper to create a single task.
+func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
+	buildVariant *BuildVariant, b *build.Build, v *version.Version) *Task {
+	return &Task{
+		Id:                  id,
+		Secret:              util.RandomString(),
+		DisplayName:         buildVarTask.Name,
+		BuildId:             b.Id,
+		DistroId:            "",
+		BuildVariant:        buildVariant.Name,
+		CreateTime:          b.CreateTime,
+		PushTime:            b.PushTime,
+		ScheduledTime:       ZeroTime,
+		StartTime:           ZeroTime, // Certain time fields must be initialized
+		FinishTime:          ZeroTime, // to our own ZeroTime value (which is
+		DispatchTime:        ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		LastHeartbeat:       ZeroTime,
+		Status:              mci.TaskUndispatched,
+		Activated:           b.Activated,
+		RevisionOrderNumber: v.RevisionOrderNumber,
+		Requester:           v.Requester,
+		Version:             v.Id,
+		Revision:            v.Revision,
+		Project:             project.Identifier,
+	}
+}
+
+// DeleteBuild removes any record of the build by removing it and all of the tasks that
+// are a part of it from the database.
+func DeleteBuild(id string) error {
+	err := RemoveAllTasks(bson.M{TaskBuildIdKey: id})
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+	return build.Remove(id)
 }

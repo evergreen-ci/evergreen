@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/util"
 	"fmt"
@@ -263,14 +264,9 @@ func TestTaskSetPriority(t *testing.T) {
 			So(task.SetPriority(1), ShouldBeNil)
 			So(task.Priority, ShouldEqual, 1)
 
-			task, err := FindOneTask(
-				bson.M{
-					BuildIdKey: task.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			task, err := FindTask(task.Id)
 			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 1)
 		})
 
@@ -416,7 +412,7 @@ func TestSetTaskActivated(t *testing.T) {
 	Convey("With a task and build", t, func() {
 
 		util.HandleTestingErr(
-			db.ClearCollections(TasksCollection, BuildsCollection, host.Collection),
+			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
 			t, "Error clearing test collections")
 
 		taskId := "t1"
@@ -430,12 +426,10 @@ func TestSetTaskActivated(t *testing.T) {
 			DependsOn:     []string{"t2", "t3"},
 		}
 
-		build := &Build{
+		b := &build.Build{
 			Id: buildId,
-			Tasks: []TaskCache{
-				TaskCache{Id: taskId},
-				TaskCache{Id: "t2"},
-				TaskCache{Id: "t3"},
+			Tasks: []build.TaskCache{
+				{Id: taskId}, {Id: "t2"}, {Id: "t3"},
 			},
 		}
 
@@ -453,7 +447,7 @@ func TestSetTaskActivated(t *testing.T) {
 		So(dep2.Insert(), ShouldBeNil)
 
 		So(task.Insert(), ShouldBeNil)
-		So(build.Insert(), ShouldBeNil)
+		So(b.Insert(), ShouldBeNil)
 
 		Convey("setting the test to active will update relevant db fields", func() {
 			So(SetTaskActivated(taskId, "", true), ShouldBeNil)
@@ -484,12 +478,14 @@ func TestSetTaskActivated(t *testing.T) {
 
 func TestMarkAsDispatched(t *testing.T) {
 
-	var taskId string
-	var hostId string
-	var buildId string
-	var task *Task
-	var myHost *host.Host
-	var build *Build
+	var (
+		taskId  string
+		hostId  string
+		buildId string
+		task    *Task
+		myHost  *host.Host
+		b       *build.Build
+	)
 
 	Convey("With a task", t, func() {
 
@@ -506,20 +502,20 @@ func TestMarkAsDispatched(t *testing.T) {
 			Id: hostId,
 		}
 
-		build = &Build{
+		b = &build.Build{
 			Id: buildId,
-			Tasks: []TaskCache{
-				TaskCache{Id: taskId},
+			Tasks: []build.TaskCache{
+				{Id: taskId},
 			},
 		}
 
 		util.HandleTestingErr(
-			db.ClearCollections(TasksCollection, BuildsCollection, host.Collection),
+			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
 			t, "Error clearing test collections")
 
 		So(task.Insert(), ShouldBeNil)
 		So(myHost.Insert(), ShouldBeNil)
-		So(build.Insert(), ShouldBeNil)
+		So(b.Insert(), ShouldBeNil)
 
 		Convey("when marking the task as dispatched, the fields for"+
 			" the task, the host it is on, and the build it is a part of"+
@@ -542,9 +538,9 @@ func TestMarkAsDispatched(t *testing.T) {
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 
 			// make sure the build's fields were updated in the db
-			build, err = FindBuild(buildId)
+			b, err = build.FindOne(build.ById(buildId))
 			So(err, ShouldBeNil)
-			So(build.Tasks[0].Status, ShouldEqual, mci.TaskDispatched)
+			So(b.Tasks[0].Status, ShouldEqual, mci.TaskDispatched)
 
 		})
 

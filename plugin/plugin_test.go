@@ -6,6 +6,7 @@ import (
 	"10gen.com/mci/apiserver"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
@@ -316,13 +317,13 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		testTask, workDir)
 }
 
-func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *model.Build, error) {
+func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 
 	util.HandleTestingErr(
 		db.ClearCollections(
-			model.TasksCollection, model.BuildsCollection, host.Collection,
+			model.TasksCollection, build.Collection, host.Collection,
 			version.Collection, patch.Collection),
 		t, clearDataMsg)
 
@@ -392,10 +393,10 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": task.Id})
 	util.HandleTestingErr(err, t, "failed to remove logs")
 
-	build := &model.Build{
+	build := &build.Build{
 		Id: "testBuildId",
-		Tasks: []model.TaskCache{
-			model.NewTaskCache(task.Id, task.DisplayName, true),
+		Tasks: []build.TaskCache{
+			build.NewTaskCache(task.Id, task.DisplayName, true),
 		},
 		Version: "testVersionId",
 	}

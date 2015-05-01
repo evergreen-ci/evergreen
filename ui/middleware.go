@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/auth"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
@@ -29,7 +30,7 @@ type (
 		// The task specified in the request, if applicable.
 		Task *model.Task
 		// The build associated with the request, if applicable.
-		Build *model.Build
+		Build *build.Build
 		// The version associated with the request, if applicable.
 		Version *version.Version
 		// The patch associated with the request, if applicable.
@@ -201,7 +202,7 @@ func (pc *projectContext) populateTaskBuildVersion(taskId, buildId, versionId st
 
 	// Fetch build if there's a build ID present; if we find one, populate version ID from it
 	if len(buildId) > 0 {
-		pc.Build, err = model.FindBuild(buildId)
+		pc.Build, err = build.FindOne(build.ById(buildId))
 		if err != nil {
 			return "", err
 		}

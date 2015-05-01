@@ -3,6 +3,7 @@ package plugin
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
@@ -94,7 +95,7 @@ type UIContext struct {
 	MCISettings mci.MCISettings
 	User        *user.DBUser
 	Task        *model.Task
-	Build       *model.Build
+	Build       *build.Build
 	Version     *version.Version
 	Patch       *patch.Patch
 	Project     *model.Project

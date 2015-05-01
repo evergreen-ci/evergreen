@@ -1,12 +1,11 @@
 package ui
 
 import (
-	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/user"
 	"10gen.com/mci/model/version"
 	"fmt"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
 	"time"
@@ -260,7 +259,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 // Helper function to fetch a group of versions and their associated builds.
 // Returns the versions themselves, as well as a map of version id -> the
 // builds that are a part of the version (unsorted).
-func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersions int) ([]version.Version, map[string][]model.Build, error) {
+func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersions int) ([]version.Version, map[string][]build.Build, error) {
 
 	// fetch the versions from the db
 	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
@@ -283,29 +282,16 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 		versionIds = append(versionIds, v.Id)
 	}
 
-	// fetch all of the builds
-	buildsFromDb, err := model.FindAllBuilds(
-		bson.M{
-			model.BuildVersionKey: bson.M{
-				"$in": versionIds,
-			},
-		},
-		bson.M{
-			model.BuildBuildVariantKey: 1,
-			model.BuildTasksKey:        1,
-			model.BuildVersionKey:      1,
-		},
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-	)
-
+	// fetch all of the builds (with only relevant fields)
+	buildsFromDb, err := build.Find(
+		build.ByVersions(versionIds).
+			WithFields(build.BuildVariantKey, build.TasksKey, build.VersionKey))
 	if err != nil {
 		return nil, nil, fmt.Errorf("error fetching builds from database: %v", err)
 	}
 
 	// sort the builds by version
-	buildsByVersion := map[string][]model.Build{}
+	buildsByVersion := map[string][]build.Build{}
 	for _, build := range buildsFromDb {
 		buildsByVersion[build.Version] = append(
 			buildsByVersion[build.Version], build)
@@ -316,7 +302,7 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 
 // Takes in a slice of tasks, and determines whether any of the tasks in
 // any of the builds are active.
-func anyActiveTasks(builds []model.Build) bool {
+func anyActiveTasks(builds []build.Build) bool {
 	for _, build := range builds {
 		for _, task := range build.Tasks {
 			if task.Activated {

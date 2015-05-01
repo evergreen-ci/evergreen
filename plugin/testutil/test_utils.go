@@ -5,6 +5,7 @@ import (
 	"10gen.com/mci/agent"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
@@ -102,10 +103,10 @@ func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) 
 	return httpCom
 }
 
-func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *model.Build, error) {
+func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	util.HandleTestingErr(
-		db.ClearCollections(model.TasksCollection, model.BuildsCollection,
+		db.ClearCollections(model.TasksCollection, build.Collection,
 			host.Collection, version.Collection, patch.Collection),
 		t, "Failed to clear test data collection")
 
@@ -173,7 +174,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": task.Id})
 	util.HandleTestingErr(err, t, "failed to remove logs")
 
-	build := &model.Build{Id: "testBuildId", Tasks: []model.TaskCache{model.NewTaskCache(task.Id, task.DisplayName, true)}}
+	build := &build.Build{Id: "testBuildId", Tasks: []build.TaskCache{build.NewTaskCache(task.Id, task.DisplayName, true)}}
 
 	util.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
 	return task, build, nil

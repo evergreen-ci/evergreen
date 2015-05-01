@@ -3,7 +3,7 @@ package ui
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/rest"
 	"10gen.com/mci/util"
@@ -102,8 +102,8 @@ func TestGetRecentVersions(t *testing.T) {
 		}
 		So(otherVersion.Insert(), ShouldBeNil)
 
-		builds := make([]*model.Build, 0, rest.NumRecentVersions)
-		task := model.TaskCache{
+		builds := make([]*build.Build, 0, rest.NumRecentVersions)
+		task := build.TaskCache{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
@@ -111,12 +111,12 @@ func TestGetRecentVersions(t *testing.T) {
 		}
 
 		for i := 0; i < rest.NumRecentVersions; i++ {
-			build := &model.Build{
+			build := &build.Build{
 				Id:           fmt.Sprintf(buildIdPreface, i),
 				Version:      versions[i].Id,
 				BuildVariant: "some-build-variant",
 				DisplayName:  "Some Build Variant",
-				Tasks:        []model.TaskCache{task},
+				Tasks:        []build.TaskCache{task},
 			}
 			So(build.Insert(), ShouldBeNil)
 			builds = append(builds, build)
@@ -442,7 +442,7 @@ func TestActivateVersion(t *testing.T) {
 		versionId := "my-version"
 		projectName := "project_test"
 
-		build := &model.Build{
+		build := &build.Build{
 			Id:           "some-build-id",
 			BuildVariant: "some-build-variant",
 		}
@@ -550,23 +550,23 @@ func TestGetVersionStatus(t *testing.T) {
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular version", t, func() {
-		util.HandleTestingErr(db.Clear(model.BuildsCollection), t,
-			"Error clearing '%v' collection", model.BuildsCollection)
+		util.HandleTestingErr(db.Clear(build.Collection), t,
+			"Error clearing '%v' collection", build.Collection)
 
 		versionId := "my-version"
 
-		task := model.TaskCache{
+		task := build.TaskCache{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
 			TimeTaken:   time.Duration(100 * time.Millisecond),
 		}
-		build := &model.Build{
+		build := &build.Build{
 			Id:           "some-build-id",
 			Version:      versionId,
 			BuildVariant: "some-build-variant",
 			DisplayName:  "Some Build Variant",
-			Tasks:        []model.TaskCache{task},
+			Tasks:        []build.TaskCache{task},
 		}
 		So(build.Insert(), ShouldBeNil)
 

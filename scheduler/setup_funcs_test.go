@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -39,7 +40,7 @@ func TestSetupFuncs(t *testing.T) {
 		}
 
 		util.HandleTestingErr(
-			db.ClearCollections(model.BuildsCollection, model.TasksCollection),
+			db.ClearCollections(build.Collection, model.TasksCollection),
 			t, "Failed to clear test collections")
 
 		Convey("the previous task caching setup func should fetch and save the"+

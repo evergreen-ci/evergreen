@@ -1,6 +1,7 @@
 package model
 
 import (
+	"10gen.com/mci/model/build"
 	"path"
 	"strings"
 )
@@ -39,7 +40,7 @@ type TestStatusDiff struct {
 
 // Takes two builds and returns a diff of their results
 // for easy comparison and analysis
-func StatusDiffBuilds(original *Build, patch *Build) BuildStatusDiff {
+func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 	// return an empty diff if one of builds is nonexistant
 	// this is likely to occur after adding a new buildvariant or task
 	if original == nil || patch == nil {
@@ -52,7 +53,7 @@ func StatusDiffBuilds(original *Build, patch *Build) BuildStatusDiff {
 	}
 
 	// build maps of task statuses, for matching
-	originalTasks := make(map[string]TaskCache)
+	originalTasks := make(map[string]build.TaskCache)
 	for _, task := range original.Tasks {
 		originalTasks[task.DisplayName] = task
 	}

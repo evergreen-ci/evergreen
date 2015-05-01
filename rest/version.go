@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
 	"encoding/json"
 	"fmt"
@@ -111,28 +112,14 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Find all builds corresponding the set of version ids
-	builds, err := model.FindAllBuilds(
-		bson.M{
-			model.BuildVersionKey: bson.M{
-				"$in": versionIds,
-			},
-		},
-		bson.M{
-			model.BuildBuildVariantKey: 1,
-			model.BuildDisplayNameKey:  1,
-			model.BuildTasksKey:        1,
-			model.BuildVersionKey:      1,
-		},
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-	)
+	builds, err := build.Find(
+		build.ByVersions(versionIds).
+			WithFields(build.BuildVariantKey, build.DisplayNameKey, build.TasksKey, build.VersionKey))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
-
 	}
 
 	result := recentVersionsContent{
@@ -173,7 +160,6 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 
 	restapi.WriteJSON(w, http.StatusOK, result)
 	return
-
 }
 
 // Returns a JSON response with the marshalled output of the version
@@ -193,7 +179,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 
 		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
 		return
-
 	}
 
 	destVersion := &restVersion{}
@@ -204,7 +189,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
-
 	}
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
@@ -235,7 +219,6 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 
 		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
 		return
-
 	}
 
 	destVersion := &restVersion{}
@@ -280,7 +263,6 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 
 		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
 		return
-
 	}
 
 	if input.Activated != nil {
@@ -319,7 +301,6 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 		msg := fmt.Sprintf("Invalid groupby parameter '%v'", groupBy)
 		restapi.WriteJSON(w, http.StatusBadRequest, responseError{Message: msg})
 		return
-
 	}
 }
 
@@ -336,26 +317,26 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 		// 1. Find only builds corresponding to the specified version
 		{
 			"$match": bson.M{
-				model.BuildVersionKey: versionId,
+				build.VersionKey: versionId,
 			},
 		},
 		// 2. Loop through each task run on a particular build variant
 		{
-			"$unwind": fmt.Sprintf("$%v", model.BuildTasksKey),
+			"$unwind": fmt.Sprintf("$%v", build.TasksKey),
 		},
 		// 3. Group on the task name and construct a new document containing
 		//    all of the relevant info about the task status
 		{
 			"$group": bson.M{
-				id: fmt.Sprintf("$%v.%v", model.BuildTasksKey, model.TaskCacheDisplayNameKey),
+				id: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheDisplayNameKey),
 				statuses: bson.M{
 					"$push": bson.M{
-						model.BuildBuildVariantKey:  fmt.Sprintf("$%v", model.BuildBuildVariantKey),
-						model.TaskCacheIdKey:        fmt.Sprintf("$%v.%v", model.BuildTasksKey, model.TaskCacheIdKey),
-						model.TaskCacheStatusKey:    fmt.Sprintf("$%v.%v", model.BuildTasksKey, model.TaskCacheStatusKey),
-						model.TaskCacheStartTimeKey: fmt.Sprintf("$%v.%v", model.BuildTasksKey, model.TaskCacheStartTimeKey),
-						model.TaskCacheTimeTakenKey: fmt.Sprintf("$%v.%v", model.BuildTasksKey, model.TaskCacheTimeTakenKey),
-						model.TaskCacheActivatedKey: fmt.Sprintf("$%v.%v", model.BuildTasksKey, model.TaskCacheActivatedKey),
+						build.BuildVariantKey:       fmt.Sprintf("$%v", build.BuildVariantKey),
+						build.TaskCacheIdKey:        fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheIdKey),
+						build.TaskCacheStatusKey:    fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStatusKey),
+						build.TaskCacheStartTimeKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheStartTimeKey),
+						build.TaskCacheTimeTakenKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheTimeTakenKey),
+						build.TaskCacheActivatedKey: fmt.Sprintf("$%v.%v", build.TasksKey, build.TaskCacheActivatedKey),
 					},
 				},
 			},
@@ -376,17 +357,16 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 		Statuses    []struct {
 			BuildVariant string `bson:"build_variant"`
 			// Use an anonyous field to make the semantics of inlining
-			model.TaskCache `bson:",inline"`
+			build.TaskCache `bson:",inline"`
 		} `bson:"statuses"`
 	}
 
-	err := db.Aggregate(model.BuildsCollection, pipeline, &tasks)
+	err := db.Aggregate(build.Collection, pipeline, &tasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
-
 	}
 
 	result := versionStatusByTaskContent{
@@ -418,24 +398,14 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 // particular task.
 func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter, r *http.Request) {
 	// Get all of the builds corresponding to this version
-	builds, err := model.FindAllBuilds(
-		bson.M{
-			model.BuildVersionKey: versionId,
-		},
-		bson.M{
-			model.BuildBuildVariantKey: 1,
-			model.BuildTasksKey:        1,
-		},
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
+	builds, err := build.Find(
+		build.ByVersion(versionId).WithFields(build.BuildVariantKey, build.TasksKey),
 	)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
 		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
-
 	}
 
 	result := versionStatusByBuildContent{

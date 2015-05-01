@@ -1,13 +1,12 @@
 package ui
 
 import (
-	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/user"
 	"10gen.com/mci/plugin"
 	"10gen.com/mci/util"
 	"fmt"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 )
 
@@ -28,8 +27,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 	}
 
-	dbBuilds, err := model.FindAllBuilds(bson.M{"_id": bson.M{"$in": projCtx.Version.BuildIds}},
-		bson.M{}, db.NoSort, db.NoSkip, db.NoLimit)
+	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -155,21 +153,25 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		}
 		versions = append(versions, &versionAsUI)
 
-		dbBuilds, err := model.FindAllBuilds(bson.M{"_id": bson.M{"$in": version.BuildIds}},
-			bson.M{}, db.NoSort, db.NoSkip, db.NoLimit)
+		dbBuilds, err := build.Find(build.ByIds(version.BuildIds))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		//TODO this is using a lot of queries inside a loop, fix this.
 		uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
-		for _, build := range dbBuilds {
-			buildAsUI := uiBuild{Build: build}
-
-			uiTasks := make([]uiTask, 0, len(build.Tasks))
-			for _, task := range build.Tasks {
-				uiTasks = append(uiTasks, uiTask{Task: model.Task{Id: task.Id, Status: task.Status, DisplayName: task.DisplayName}})
+		for _, b := range dbBuilds {
+			buildAsUI := uiBuild{Build: b}
+			uiTasks := make([]uiTask, 0, len(b.Tasks))
+			for _, task := range b.Tasks {
+				uiTasks = append(uiTasks,
+					uiTask{
+						Task: model.Task{
+							Id:          task.Id,
+							Status:      task.Status,
+							DisplayName: task.DisplayName,
+						},
+					})
 				if task.Activated {
 					versionAsUI.ActiveTasks++
 				}

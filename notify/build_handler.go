@@ -2,7 +2,7 @@ package notify
 
 import (
 	"10gen.com/mci"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/web"
 	"fmt"
@@ -19,15 +19,15 @@ type BuildNotificationHandler struct {
 
 type BuildNotificationForTemplate struct {
 	Notification *TriggeredBuildNotification
-	FailedTasks  []model.TaskCache
+	FailedTasks  []build.TaskCache
 	Subject      string
 }
 
 // convenience wrapper about everything we want to know about a build
 // notification before it goes off for templating.
 type TriggeredBuildNotification struct {
-	Current    *model.Build
-	Previous   *model.Build
+	Current    *build.Build
+	Previous   *build.Build
 	Info       []ChangeInfo
 	Key        NotificationKey
 	Preface    string
@@ -104,7 +104,7 @@ func (self *BuildNotificationHandler) templateNotification(ae *web.App,
 	return
 }
 
-func (self *BuildNotificationHandler) constructChangeInfo(allBuilds []model.Build,
+func (self *BuildNotificationHandler) constructChangeInfo(allBuilds []build.Build,
 	key *NotificationKey) ([]ChangeInfo, error) {
 	changeInfoSlice := make([]ChangeInfo, 0)
 

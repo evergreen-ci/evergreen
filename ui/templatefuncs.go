@@ -53,11 +53,11 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (template.FuncMap, e
 			}
 			loc, err := time.LoadLocation(timezone)
 			if err != nil {
-				return util.DateAsString(when, layout)
+				return when.Format(layout)
 			}
 
 			whenTZ := when.In(loc)
-			return util.DateAsString(whenTZ, layout)
+			return whenTZ.Format(layout)
 		},
 
 		// REMOVE: only used in patch page with ng-init. should be killed off.

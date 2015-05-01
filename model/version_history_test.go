@@ -3,14 +3,10 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
-	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
-)
-
-var (
-	_ fmt.Stringer = nil
 )
 
 func init() {
@@ -53,7 +49,7 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 
 func insertBuild(id string, project string, buildVariant string, status string,
 	order int) {
-	build := &Build{
+	b := &build.Build{
 		Id:                  id,
 		Project:             project,
 		BuildVariant:        buildVariant,
@@ -61,7 +57,7 @@ func insertBuild(id string, project string, buildVariant string, status string,
 		Requester:           mci.RepotrackerVersionRequester,
 		RevisionOrderNumber: order,
 	}
-	So(build.Insert(), ShouldBeNil)
+	So(b.Insert(), ShouldBeNil)
 }
 
 func insertVersion(id string, order int, project string) {

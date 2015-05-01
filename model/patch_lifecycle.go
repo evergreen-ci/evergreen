@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/command"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/thirdparty"
@@ -42,20 +43,13 @@ func AddNewTasksForPatch(p *patch.Patch, mciSettings *mci.MCISettings, patchVers
 
 	// add new tasks to the build, if they exist
 	if len(newTasks) > 0 {
-		builds, err := FindAllBuilds(
-			bson.M{
-				BuildIdKey: bson.M{
-					"$in": patchVersion.BuildIds,
-				},
-			},
-			bson.M{}, []string{}, 0, 0,
-		)
+		builds, err := build.Find(build.ByIds(patchVersion.BuildIds))
 		if err != nil {
 			return err
 		}
 
-		for _, build := range builds {
-			if _, err = AddTasksToBuild(&build, project, patchVersion, newTasks); err != nil {
+		for _, b := range builds {
+			if _, err = AddTasksToBuild(&b, project, patchVersion, newTasks); err != nil {
 				return err
 			}
 		}

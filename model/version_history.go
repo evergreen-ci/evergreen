@@ -3,6 +3,7 @@ package model
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
 	"fmt"
 	"labix.org/v2/mgo/bson"
@@ -45,16 +46,16 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 		// and build variants
 		{
 			"$match": bson.M{
-				BuildProjectKey:             project.Identifier,
-				BuildRevisionOrderNumberKey: bson.M{"$gte": leastRecentRevisionOrderNumber},
-				BuildBuildVariantKey:        bson.M{"$in": buildVariantNames},
-				BuildStatusKey:              mci.BuildSucceeded,
+				build.ProjectKey:             project.Identifier,
+				build.RevisionOrderNumberKey: bson.M{"$gte": leastRecentRevisionOrderNumber},
+				build.BuildVariantKey:        bson.M{"$in": buildVariantNames},
+				build.StatusKey:              mci.BuildSucceeded,
 			},
 		},
 		// Sum up the number of builds that succeeded for each commit order number
 		{
 			"$group": bson.M{
-				"_id": fmt.Sprintf("$%v", BuildRevisionOrderNumberKey),
+				"_id": fmt.Sprintf("$%v", build.RevisionOrderNumberKey),
 				"numSucceeded": bson.M{
 					"$sum": 1,
 				},
@@ -76,7 +77,7 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 	}
 
 	var result []bson.M
-	err = db.Aggregate(BuildsCollection, pipeline, &result)
+	err = db.Aggregate(build.Collection, pipeline, &result)
 
 	if err != nil {
 		return nil, fmt.Errorf("Aggregation failed: %v", err)

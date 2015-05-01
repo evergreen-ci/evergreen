@@ -3,9 +3,11 @@ package repotracker
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
 	"10gen.com/mci/notify"
 	"10gen.com/mci/thirdparty"
+	"10gen.com/mci/util"
 	"10gen.com/mci/validator"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -191,18 +193,19 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 			status.ActivateAt = now
 			v.BuildVariants[i] = status
 
-			build, err := model.FindBuild(status.BuildId)
+			b, err := build.FindOne(build.ById(status.BuildId))
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "error retrieving build for project %v, variant %v, build %v: %v",
+				mci.Logger.Logf(slogger.ERROR,
+					"error retrieving build for project %v, variant %v, build %v: %v",
 					projectId, status.BuildVariant, status.BuildId, err)
 				continue
 			}
 			mci.Logger.Logf(slogger.INFO, "activating build %v for project %v, variant %v",
 				status.BuildId, projectId, status.BuildVariant)
 			// Don't need to set the version in here since we do it ourselves in a single update
-			if err = model.SetBuildActivation(build.Id, true); err != nil {
+			if err = model.SetBuildActivation(b.Id, true); err != nil {
 				mci.Logger.Logf(slogger.ERROR, "error activating build %v for project %v, variant %v: %v",
-					projectId, build, status.BuildVariant, build, err)
+					b.Id, projectId, status.BuildVariant, err)
 				continue
 			}
 			hasActivated = true
@@ -429,7 +432,7 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 		AuthorEmail:         rev.AuthorEmail,
 		Branch:              ref.Branch,
 		CreateTime:          rev.CreateTime,
-		Id:                  model.CleanName(fmt.Sprintf("%v_%v", ref.String(), rev.Revision)),
+		Id:                  util.CleanName(fmt.Sprintf("%v_%v", ref.String(), rev.Revision)),
 		Identifier:          ref.Identifier,
 		Message:             rev.RevisionMessage,
 		Owner:               ref.Owner,

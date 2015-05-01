@@ -3,7 +3,7 @@ package ui
 import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/rest"
 	"10gen.com/mci/util"
 	"encoding/json"
@@ -46,20 +46,20 @@ func TestGetBuildInfo(t *testing.T) {
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular build", t, func() {
-		util.HandleTestingErr(db.Clear(model.BuildsCollection), t,
-			"Error clearing '%v' collection", model.BuildsCollection)
+		util.HandleTestingErr(db.Clear(build.Collection), t,
+			"Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"
 		versionId := "my-version"
 		projectName := "mci-test"
 
-		task := model.TaskCache{
+		task := build.TaskCache{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
 			TimeTaken:   time.Duration(100 * time.Millisecond),
 		}
-		build := &model.Build{
+		build := &build.Build{
 			Id:                  buildId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
@@ -74,7 +74,7 @@ func TestGetBuildInfo(t *testing.T) {
 			Activated:           true,
 			ActivatedTime:       time.Now().Add(-15 * time.Minute),
 			RevisionOrderNumber: rand.Int(),
-			Tasks:               []model.TaskCache{task},
+			Tasks:               []build.TaskCache{task},
 			TimeTaken:           time.Duration(10 * time.Minute),
 			DisplayName:         "My build",
 			Requester:           mci.RepotrackerVersionRequester,
@@ -208,24 +208,24 @@ func TestGetBuildStatus(t *testing.T) {
 	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular build", t, func() {
-		util.HandleTestingErr(db.Clear(model.BuildsCollection), t,
-			"Error clearing '%v' collection", model.BuildsCollection)
+		util.HandleTestingErr(db.Clear(build.Collection), t,
+			"Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"
 		versionId := "my-version"
 
-		task := model.TaskCache{
+		task := build.TaskCache{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
 			Status:      "success",
 			TimeTaken:   time.Duration(100 * time.Millisecond),
 		}
-		build := &model.Build{
+		build := &build.Build{
 			Id:           buildId,
 			Version:      versionId,
 			BuildVariant: "some-build-variant",
 			DisplayName:  "Some Build Variant",
-			Tasks:        []model.TaskCache{task},
+			Tasks:        []build.TaskCache{task},
 		}
 		So(build.Insert(), ShouldBeNil)
 

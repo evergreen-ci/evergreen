@@ -4,8 +4,8 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/version"
-	"fmt"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -13,14 +13,13 @@ import (
 )
 
 var (
-	_             fmt.Stringer = nil
-	buildId                    = "build"
-	taskId                     = "task"
-	projectId                  = "project"
-	buildVariant               = "buildVariant"
-	displayName                = "displayName"
-	emailSubjects              = make([]string, 0)
-	emailBodies                = make([]string, 0)
+	buildId       = "build"
+	taskId        = "task"
+	projectId     = "project"
+	buildVariant  = "buildVariant"
+	displayName   = "displayName"
+	emailSubjects = make([]string, 0)
+	emailBodies   = make([]string, 0)
 
 	buildFailureNotificationKey = NotificationKey{
 		Project:               projectId,
@@ -518,7 +517,7 @@ func insertTaskDocs(priorTime time.Time) {
 func insertBuild(id, project, display_name, buildVariant, status string, createTime,
 	finishTime time.Time, timeTaken time.Duration, activated bool, requester string,
 	order int) {
-	build := &model.Build{
+	build := &build.Build{
 		Id:                  id,
 		BuildNumber:         id,
 		Project:             project,
@@ -586,7 +585,7 @@ func cleanupdb() {
 		model.TasksCollection,
 		model.NotifyTimesCollection,
 		model.NotifyHistoryCollection,
-		model.BuildsCollection,
+		build.Collection,
 		version.Collection)
 	So(err, ShouldBeNil)
 }

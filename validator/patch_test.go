@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/patch"
 	"10gen.com/mci/model/version"
@@ -41,7 +42,7 @@ func TestFinalize(t *testing.T) {
 			model.ProjectRefCollection,
 			patch.Collection,
 			version.Collection,
-			model.BuildsCollection,
+			build.Collection,
 			model.TasksCollection),
 			t, "Error clearing test collection")
 
@@ -102,12 +103,7 @@ func TestFinalize(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created
-			builds, err := model.FindAllBuilds(bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			builds, err := build.Find(build.All)
 			So(err, ShouldBeNil)
 			So(len(builds), ShouldEqual, 1)
 			So(len(builds[0].Tasks), ShouldEqual, 2)
@@ -181,12 +177,7 @@ func TestFinalize(t *testing.T) {
 			So(version, ShouldNotBeNil)
 
 			// ensure the relevant builds/tasks were created
-			builds, err := model.FindAllBuilds(bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			builds, err := build.Find(build.All)
 			So(err, ShouldBeNil)
 			So(len(builds), ShouldEqual, 1)
 			So(len(builds[0].Tasks), ShouldEqual, 1)
@@ -246,12 +237,7 @@ func TestFinalize(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created
-			builds, err := model.FindAllBuilds(bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			builds, err := build.Find(build.All)
 			So(err, ShouldBeNil)
 			So(len(builds), ShouldEqual, 1)
 			So(len(builds[0].Tasks), ShouldEqual, 1)

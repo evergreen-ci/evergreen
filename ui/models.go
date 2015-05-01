@@ -4,6 +4,7 @@ import (
 	"10gen.com/mci"
 	"10gen.com/mci/db"
 	"10gen.com/mci/model"
+	"10gen.com/mci/model/build"
 	"10gen.com/mci/model/distro"
 	"10gen.com/mci/model/host"
 	"10gen.com/mci/model/patch"
@@ -79,7 +80,7 @@ type uiHost struct {
 }
 
 type uiBuild struct {
-	Build       model.Build
+	Build       build.Build
 	Version     version.Version
 	PatchInfo   *uiPatch `json:",omitempty"`
 	Tasks       []uiTask
@@ -151,13 +152,12 @@ func sortUiTasks(tasks []uiTask) []uiTask {
 
 func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 	buildIds := version.BuildIds
-	dbBuilds, err := model.FindAllBuilds(bson.M{"_id": bson.M{"$in": buildIds}}, bson.M{},
-		db.NoSort, db.NoSkip, db.NoLimit)
+	dbBuilds, err := build.Find(build.ByIds(buildIds))
 	if err != nil {
 		return nil, err
 	}
 
-	buildsMap := make(map[string]model.Build)
+	buildsMap := make(map[string]build.Build)
 	for _, dbBuild := range dbBuilds {
 		buildsMap[dbBuild.Id] = dbBuild
 	}
@@ -210,13 +210,12 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 		uiVersions[versionIdx] = versionAsUI
 
 		buildIds := version.BuildIds
-		dbBuilds, err := model.FindAllBuilds(bson.M{"_id": bson.M{"$in": buildIds}}, bson.M{},
-			db.NoSort, db.NoSkip, db.NoLimit)
+		dbBuilds, err := build.Find(build.ByIds(buildIds))
 		if err != nil {
 			mci.Logger.Errorf(slogger.ERROR, "Ids: %v", buildIds)
 		}
 
-		buildsMap := make(map[string]model.Build)
+		buildsMap := make(map[string]build.Build)
 		for _, dbBuild := range dbBuilds {
 			buildsMap[dbBuild.Id] = dbBuild
 		}
@@ -238,56 +237,32 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 // getBuildVariantHistory returns a slice of builds that surround a given build.
 // As many as 'before' builds (less recent builds) plus as many as 'after' builds
 // (more recent builds) are returned.
-func getBuildVariantHistory(buildId string, before int, after int) ([]model.Build, error) {
-	build, err := model.FindBuild(buildId)
+func getBuildVariantHistory(buildId string, before int, after int) ([]build.Build, error) {
+	b, err := build.FindOne(build.ById(buildId))
 	if err != nil {
 		return nil, err
 	}
-	if build == nil {
+	if b == nil {
 		return nil, fmt.Errorf("no build with id %v", buildId)
 	}
 
-	lessRecentBuilds, err := model.FindAllBuilds(
-		bson.M{
-			model.BuildProjectKey:             build.Project,
-			model.BuildBuildVariantKey:        build.BuildVariant,
-			model.BuildRequesterKey:           mci.RepotrackerVersionRequester,
-			model.BuildRevisionOrderNumberKey: bson.M{"$lt": build.RevisionOrderNumber},
-		},
-		bson.M{
-			model.BuildIdKey:        1,
-			model.BuildTasksKey:     1,
-			model.BuildStatusKey:    1,
-			model.BuildVersionKey:   1,
-			model.BuildActivatedKey: 1,
-		},
-		[]string{fmt.Sprintf("-%v", model.BuildRevisionOrderNumberKey)}, 0, before)
-
+	lessRecentBuilds, err := build.Find(
+		build.ByBeforeRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
+			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
+			Limit(before))
 	if err != nil {
 		return nil, err
 	}
 
-	moreRecentBuilds, err := model.FindAllBuilds(
-		bson.M{
-			model.BuildProjectKey:             build.Project,
-			model.BuildBuildVariantKey:        build.BuildVariant,
-			model.BuildRequesterKey:           mci.RepotrackerVersionRequester,
-			model.BuildRevisionOrderNumberKey: bson.M{"$gte": build.RevisionOrderNumber},
-		},
-		bson.M{
-			model.BuildIdKey:        1,
-			model.BuildTasksKey:     1,
-			model.BuildStatusKey:    1,
-			model.BuildVersionKey:   1,
-			model.BuildActivatedKey: 1,
-		},
-		[]string{model.BuildRevisionOrderNumberKey}, 0, after)
-
+	moreRecentBuilds, err := build.Find(
+		build.ByAfterRevision(b.Project, b.BuildVariant, b.RevisionOrderNumber).
+			WithFields(build.IdKey, build.TasksKey, build.StatusKey, build.VersionKey, build.ActivatedKey).
+			Limit(after))
 	if err != nil {
 		return nil, err
 	}
-	builds := make([]model.Build, 0, len(lessRecentBuilds)+len(moreRecentBuilds))
 
+	builds := make([]build.Build, 0, len(lessRecentBuilds)+len(moreRecentBuilds))
 	for i := len(moreRecentBuilds); i > 0; i-- {
 		builds = append(builds, moreRecentBuilds[i-1])
 	}
@@ -296,17 +271,15 @@ func getBuildVariantHistory(buildId string, before int, after int) ([]model.Buil
 }
 
 // Given build id, get last successful build before this one
-func getBuildVariantHistoryLastSuccess(buildId string) (*model.Build, error) {
-	build, err := model.FindBuild(buildId)
+func getBuildVariantHistoryLastSuccess(buildId string) (*build.Build, error) {
+	b, err := build.FindOne(build.ById(buildId))
 	if err != nil {
 		return nil, err
 	}
-
-	if build.Status == mci.BuildSucceeded {
-		return build, nil
+	if b.Status == mci.BuildSucceeded {
+		return b, nil
 	}
-
-	return build.GetPriorBuildWithStatuses([]string{mci.BuildSucceeded})
+	return b.PreviousSuccessful()
 }
 
 func getVersionHistory(versionId string, N int) ([]version.Version, error) {
@@ -344,6 +317,7 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 		// There are less than N later versions from the same push event
 		// N subsequent versions plus the specified one
 		subsequentVersions, err := version.Find(
+			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
 				"order":  bson.M{"$gt": v.RevisionOrderNumber},
 				"r":      mci.RepotrackerVersionRequester,
