@@ -1,9 +1,9 @@
 package build
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -82,7 +82,7 @@ func ByProject(proj string) db.Q {
 func ByRevisionAndVariant(revision, variant string) db.Q {
 	return db.Query(bson.M{
 		RevisionKey:     revision,
-		RequesterKey:    mci.RepotrackerVersionRequester,
+		RequesterKey:    evergreen.RepotrackerVersionRequester,
 		BuildVariantKey: variant,
 	})
 }
@@ -108,8 +108,8 @@ func ByRecentlySuccessfulForProjectAndVariant(revision int, project, variant str
 		RevisionOrderNumberKey: bson.M{"$lt": revision},
 		BuildVariantKey:        variant,
 		ProjectKey:             project,
-		StatusKey:              mci.BuildSucceeded,
-		RequesterKey:           mci.RepotrackerVersionRequester,
+		StatusKey:              evergreen.BuildSucceeded,
+		RequesterKey:           evergreen.RepotrackerVersionRequester,
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
@@ -151,7 +151,7 @@ func ByBeforeRevision(project, buildVariant string, revision int) db.Q {
 	return db.Query(bson.M{
 		ProjectKey:             project,
 		BuildVariantKey:        buildVariant,
-		RequesterKey:           mci.RepotrackerVersionRequester,
+		RequesterKey:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumberKey: bson.M{"$lt": revision},
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
@@ -163,7 +163,7 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 	return db.Query(bson.M{
 		ProjectKey:             project,
 		BuildVariantKey:        buildVariant,
-		RequesterKey:           mci.RepotrackerVersionRequester,
+		RequesterKey:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumberKey: bson.M{"$gte": revision},
 	}).Sort([]string{RevisionOrderNumberKey})
 }

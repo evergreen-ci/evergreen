@@ -1,9 +1,9 @@
 package command
 
 import (
-	"10gen.com/mci"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"io"
 	"os/exec"
 	"strings"
@@ -55,7 +55,7 @@ func (self *RemoteCommand) Start() error {
 	}
 	cmdArray = append(cmdArray, cmdString)
 
-	mci.Logger.Logf(slogger.WARN, "Remote command executing: '%#v'",
+	evergreen.Logger.Logf(slogger.WARN, "Remote command executing: '%#v'",
 		strings.Join(cmdArray, " "))
 
 	// set up execution

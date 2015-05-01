@@ -1,13 +1,13 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/auth"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/rest"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -34,7 +34,7 @@ type UIServer struct {
 	//authManager
 	UserManager auth.UserManager
 
-	MCISettings mci.MCISettings
+	MCISettings evergreen.MCISettings
 	CookieStore *sessions.CookieStore
 
 	plugin.PanelManager
@@ -179,7 +179,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			panic(fmt.Sprintf("Error getting UI config for plugin %v: %v", pl.Name(), err))
 		}
 		if uiConf == nil {
-			mci.Logger.Logf(slogger.DEBUG, "No UI config needed for plugin %v, skipping", pl.Name())
+			evergreen.Logger.Logf(slogger.DEBUG, "No UI config needed for plugin %v, skipping", pl.Name())
 			continue
 		}
 		// create a root path for the plugin based on its name
@@ -187,7 +187,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 
 		// set up a fileserver in plugin's static root, if one is provided
 		if uiConf.StaticRoot != "" {
-			mci.Logger.Logf(slogger.INFO, "Registering static path for plugin '%v' in %v", pl.Name(), uiConf.StaticRoot)
+			evergreen.Logger.Logf(slogger.INFO, "Registering static path for plugin '%v' in %v", pl.Name(), uiConf.StaticRoot)
 			plRouter.PathPrefix("/static/").Handler(
 				http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
 					http.FileServer(http.Dir(uiConf.StaticRoot))),
@@ -203,7 +203,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	mci.Logger.Logf(slogger.ERROR, fmt.Sprintf("%v %v %v", r.Method, r.URL, err.Error()))
+	evergreen.Logger.Logf(slogger.ERROR, fmt.Sprintf("%v %v %v", r.Method, r.URL, err.Error()))
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
 		uis.WriteJSON(w, code, struct {

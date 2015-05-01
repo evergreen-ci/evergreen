@@ -1,10 +1,10 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -12,7 +12,7 @@ import (
 
 func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -87,7 +87,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			// quarantined host
 			host1 := &host.Host{
 				Id:             "h1",
-				Status:         mci.HostQuarantined,
+				Status:         evergreen.HostQuarantined,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -95,7 +95,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 			// terminated host
 			host2 := &host.Host{
 				Id:             "h2",
-				Status:         mci.HostTerminated,
+				Status:         evergreen.HostTerminated,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -121,7 +121,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
 func TestWarnSlowProvisioningHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -137,7 +137,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-10 * time.Minute),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -153,7 +153,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 				Notifications: map[string]bool{
 					slowProvisioningWarning: true,
@@ -171,8 +171,8 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
-				Status:       mci.HostTerminated,
+				StartedBy:    evergreen.MCIUser,
+				Status:       evergreen.HostTerminated,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -188,7 +188,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")

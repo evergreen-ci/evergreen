@@ -1,18 +1,18 @@
 package hostinit
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/command"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/notify"
-	"10gen.com/mci/remote"
-	"10gen.com/mci/util"
 	"errors"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/remote"
+	"github.com/evergreen-ci/evergreen/util"
 	"labix.org/v2/mgo"
 	"sync"
 	"time"
@@ -25,7 +25,7 @@ var (
 
 // HostInit is responsible for running setup scripts on MCI hosts.
 type HostInit struct {
-	MCISettings *mci.MCISettings
+	MCISettings *evergreen.MCISettings
 }
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
@@ -37,7 +37,7 @@ func (init *HostInit) setupReadyHosts() error {
 		return fmt.Errorf("error fetching uninitialized hosts: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.DEBUG, "There are %v uninitialized hosts",
+	evergreen.Logger.Logf(slogger.DEBUG, "There are %v uninitialized hosts",
 		len(uninitializedHosts))
 
 	// used for making sure we don't exit before a setup script is done
@@ -48,18 +48,18 @@ func (init *HostInit) setupReadyHosts() error {
 		// check whether or not the host is ready for its setup script to be run
 		ready, err := init.IsHostReady(&h)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error checking host %v for readiness: %v",
+			evergreen.Logger.Logf(slogger.ERROR, "Error checking host %v for readiness: %v",
 				h.Id, err)
 			continue
 		}
 
 		// if the host isn't ready (for instance, it might not be up yet), skip it
 		if !ready {
-			mci.Logger.Logf(slogger.DEBUG, "Host %v not ready for setup", h.Id)
+			evergreen.Logger.Logf(slogger.DEBUG, "Host %v not ready for setup", h.Id)
 			continue
 		}
 
-		mci.Logger.Logf(slogger.INFO, "Running setup script for host %v", h.Id)
+		evergreen.Logger.Logf(slogger.INFO, "Running setup script for host %v", h.Id)
 
 		// kick off the setup, in its own goroutine, so pending setups don't have
 		// to wait for it to finish
@@ -67,7 +67,7 @@ func (init *HostInit) setupReadyHosts() error {
 		go func(h host.Host) {
 
 			if err := init.ProvisionHost(&h); err != nil {
-				mci.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
+				evergreen.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
 					h.Id, err)
 
 				// notify the mci team of the failure
@@ -77,7 +77,7 @@ func (init *HostInit) setupReadyHosts() error {
 				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
 					h.Distro, h.Id, hostLink)
 				if err := notify.NotifyAdmins(subject, message, init.MCISettings); err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+					evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 				}
 			}
 
@@ -178,7 +178,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	err = cloudMgr.OnUp(targetHost)
 	if err != nil {
 		// if this fails it is probably due to an API hiccup, so we keep going.
-		mci.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", targetHost.Id, err)
+		evergreen.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", targetHost.Id, err)
 	}
 
 	// get the local path to the SSH keyfile, if not specified
@@ -264,11 +264,11 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 	// deal with any errors that occured while running the setup
 	if err != nil {
 
-		mci.Logger.Logf(slogger.ERROR, "Error running setup script: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Error running setup script: %v", err)
 
 		// another hostinit process beat us there
 		if err == ErrHostAlreadyInitializing {
-			mci.Logger.Logf(slogger.DEBUG,
+			evergreen.Logger.Logf(slogger.DEBUG,
 				"Attempted to initialize already initializing host %v", h.Id)
 			return nil
 		}
@@ -282,7 +282,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 
 		// setup script failed, mark the host's provisioning as failed
 		if err := h.SetUnprovisioned(); err != nil {
-			mci.Logger.Logf(slogger.ERROR, "unprovisioning host %v failed: %v", h.Id, err)
+			evergreen.Logger.Logf(slogger.ERROR, "unprovisioning host %v failed: %v", h.Id, err)
 		}
 
 		return fmt.Errorf("error initializing host %v: %v", h.Id, err)
@@ -294,7 +294,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 		return fmt.Errorf("error marking host %v as provisioned: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Host %v successfully provisioned", h.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Host %v successfully provisioned", h.Id)
 
 	return nil
 

@@ -1,12 +1,12 @@
 package ui
 
 import (
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/validator"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"

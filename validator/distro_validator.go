@@ -1,17 +1,17 @@
 package validator
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/cloud/providers/static"
-	"10gen.com/mci/model/distro"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 )
 
-type distroValidator func(*distro.Distro, *mci.MCISettings) []ValidationError
+type distroValidator func(*distro.Distro, *evergreen.MCISettings) []ValidationError
 
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
@@ -23,7 +23,7 @@ var distroSyntaxValidators = []distroValidator{
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
 // a slice of any validation errors found.
-func CheckDistro(d *distro.Distro, s *mci.MCISettings, newDistro bool) []ValidationError {
+func CheckDistro(d *distro.Distro, s *evergreen.MCISettings, newDistro bool) []ValidationError {
 	// skip _id check for existing distro modifications.
 	if newDistro {
 		if err := populateDistroIds(); err != nil {
@@ -41,7 +41,7 @@ func CheckDistro(d *distro.Distro, s *mci.MCISettings, newDistro bool) []Validat
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
-func ensureHasRequiredFields(d *distro.Distro, s *mci.MCISettings) []ValidationError {
+func ensureHasRequiredFields(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
 	errs := []ValidationError{}
 
 	if d.Id == "" {
@@ -107,7 +107,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *mci.MCISettings) []ValidationE
 }
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
-func ensureUniqueId(d *distro.Distro, s *mci.MCISettings) []ValidationError {
+func ensureUniqueId(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
 	if util.SliceContains(distroIds, d.Id) {
 		return []ValidationError{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}
@@ -115,7 +115,7 @@ func ensureUniqueId(d *distro.Distro, s *mci.MCISettings) []ValidationError {
 }
 
 // ensureValidExpansions checks that no expansion option key is blank.
-func ensureValidExpansions(d *distro.Distro, s *mci.MCISettings) []ValidationError {
+func ensureValidExpansions(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
 	for _, e := range d.Expansions {
 		if e.Key == "" {
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank expansion key")}}
@@ -125,7 +125,7 @@ func ensureValidExpansions(d *distro.Distro, s *mci.MCISettings) []ValidationErr
 }
 
 // ensureValidSSHOptions checks that no SSH option key is blank.
-func ensureValidSSHOptions(d *distro.Distro, s *mci.MCISettings) []ValidationError {
+func ensureValidSSHOptions(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
 	for _, o := range d.SSHOptions {
 		if o == "" {
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}

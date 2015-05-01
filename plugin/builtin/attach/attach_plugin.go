@@ -1,13 +1,13 @@
 package attach
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"net/http"
 	"time"
 )
@@ -138,7 +138,7 @@ func AttachResultsHandler(w http.ResponseWriter, r *http.Request) {
 	task := plugin.GetTask(r)
 	if task == nil {
 		message := "Cannot find task for attach results request"
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
@@ -146,14 +146,14 @@ func AttachResultsHandler(w http.ResponseWriter, r *http.Request) {
 	err := util.ReadJSONInto(r.Body, results)
 	if err != nil {
 		message := fmt.Sprintf("error reading test results: %v", err)
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
 	// set test result of task
 	if err := task.SetResults(results.Results); err != nil {
 		message := fmt.Sprintf("Error calling set results on task %v: %v", task.Id, err)
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}

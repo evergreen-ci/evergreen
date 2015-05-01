@@ -1,8 +1,8 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -12,7 +12,7 @@ import (
 var (
 	runtimeId     = "runtimeId"
 	allRuntimeIds = []string{runtimeId + "1", runtimeId + "2", runtimeId + "3"}
-	testConfig    = mci.TestConfig()
+	testConfig    = evergreen.TestConfig()
 )
 
 func init() {

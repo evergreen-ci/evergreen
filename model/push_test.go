@@ -1,16 +1,16 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	pushTestConfig = mci.TestConfig()
+	pushTestConfig = evergreen.TestConfig()
 )
 
 func init() {

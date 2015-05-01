@@ -1,8 +1,8 @@
 package event
 
 import (
-	"10gen.com/mci"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"time"
 )
 
@@ -49,7 +49,7 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 
 	logger := NewDBEventLogger(Collection)
 	if err := logger.LogEvent(event); err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error logging host event: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error logging host event: %v", err)
 	}
 }
 

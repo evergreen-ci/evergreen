@@ -1,12 +1,12 @@
 package apiserver
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/validator"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -227,7 +227,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		Project:       apiRequest.ProjectFileName,
 		Githash:       apiRequest.Githash,
 		CreateTime:    createTime,
-		Status:        mci.PatchCreated,
+		Status:        evergreen.PatchCreated,
 		BuildVariants: apiRequest.BuildVariants,
 		Tasks:         nil, // nil : ALL tasks. non-nil: compile + any tasks included in list.
 		Patches: []patch.ModulePatch{

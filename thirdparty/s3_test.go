@@ -1,8 +1,8 @@
 package thirdparty
 
 import (
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/goamz/aws"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"

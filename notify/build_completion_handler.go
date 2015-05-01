@@ -1,10 +1,10 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/web"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/web"
 )
 
 // Handler for build completion notifications, i.e. send notifications whenever
@@ -19,7 +19,7 @@ func (self *BuildCompletionHandler) GetNotifications(ae *web.App, configName str
 	key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciCompletionPreface
-	if key.NotificationRequester == mci.PatchVersionRequester {
+	if key.NotificationRequester == evergreen.PatchVersionRequester {
 		preface = patchCompletionPreface
 	}
 	triggeredNotifications, err :=
@@ -31,7 +31,7 @@ func (self *BuildCompletionHandler) GetNotifications(ae *web.App, configName str
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, configName, &triggered)
 		if err != nil {
-			mci.Logger.Logf(slogger.WARN, "Error templating notification for build `%v`: %v",
+			evergreen.Logger.Logf(slogger.WARN, "Error templating notification for build `%v`: %v",
 				triggered.Current.Id, err)
 			continue
 		}

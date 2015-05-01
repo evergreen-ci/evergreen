@@ -1,12 +1,12 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers/static"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"time"
 )
@@ -35,7 +35,7 @@ func NextTaskForHost(h *host.Host) (*Task, error) {
 	return fullTask, nil
 }
 
-func UpdateStaticHosts(e *mci.MCISettings) error {
+func UpdateStaticHosts(e *evergreen.MCISettings) error {
 	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
 	if err != nil {
 		return err
@@ -63,9 +63,9 @@ func UpdateStaticHosts(e *mci.MCISettings) error {
 				Host:         h.Name,
 				Distro:       d,
 				CreationTime: time.Now(),
-				Provider:     mci.HostTypeStatic,
-				StartedBy:    mci.MCIUser,
-				Status:       mci.HostRunning,
+				Provider:     evergreen.HostTypeStatic,
+				StartedBy:    evergreen.MCIUser,
+				Status:       evergreen.HostRunning,
 				Provisioned:  true,
 			}
 

@@ -1,9 +1,9 @@
 package expansions_test
 
 import (
-	"10gen.com/mci/command"
-	"10gen.com/mci/model"
-	. "10gen.com/mci/plugin/builtin/expansions"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model"
+	. "github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )

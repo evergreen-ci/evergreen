@@ -1,17 +1,17 @@
 package spawn
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/command"
-	"10gen.com/mci/hostinit"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/hostinit"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"gopkg.in/yaml.v2"
 	"net/url"
 	"strings"
@@ -36,7 +36,7 @@ func (bsoe BadOptionsErr) Error() string {
 }
 
 type Spawn struct {
-	mciSettings *mci.MCISettings
+	mciSettings *evergreen.MCISettings
 }
 
 type Options struct {
@@ -46,7 +46,7 @@ type Options struct {
 	UserData  string
 }
 
-func New(ms *mci.MCISettings) Spawn {
+func New(ms *evergreen.MCISettings) Spawn {
 	return Spawn{ms}
 }
 
@@ -145,7 +145,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	expireTime := h.CreationTime.Add(DefaultExpiration)
 	err = h.SetExpirationTime(expireTime)
 	if err != nil {
-		return h, mci.Logger.Errorf(slogger.ERROR,
+		return h, evergreen.Logger.Errorf(slogger.ERROR,
 			"error setting expiration on host %v: %v", h.Id, err)
 	}
 
@@ -153,7 +153,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	if so.UserData != "" {
 		err = h.SetUserData(so.UserData)
 		if err != nil {
-			return h, mci.Logger.Errorf(slogger.ERROR,
+			return h, evergreen.Logger.Errorf(slogger.ERROR,
 				"Failed setting userData on host %v: %v", h.Id, err)
 		}
 	}
@@ -172,20 +172,20 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 		// make sure we haven't been spinning for too long
 		if time.Now().Sub(startTime) > 15*time.Minute {
 			if err := h.SetDecommissioned(); err != nil {
-				mci.Logger.Logf(slogger.ERROR, "error decommissioning host %v: %v", h.Id, err)
+				evergreen.Logger.Logf(slogger.ERROR, "error decommissioning host %v: %v", h.Id, err)
 			}
 			return nil, fmt.Errorf("host took too long to come up")
 		}
 
 		time.Sleep(5000 * time.Millisecond)
 
-		mci.Logger.Logf(slogger.INFO, "Checking if host %v is up and ready", h.Id)
+		evergreen.Logger.Logf(slogger.INFO, "Checking if host %v is up and ready", h.Id)
 
 		// see if the host is ready for its setup script to be run
 		ready, err := init.IsHostReady(h)
 		if err != nil {
 			if err := h.SetDecommissioned(); err != nil {
-				mci.Logger.Logf(slogger.ERROR, "error decommissioning host %v: %v", h.Id, err)
+				evergreen.Logger.Logf(slogger.ERROR, "error decommissioning host %v: %v", h.Id, err)
 			}
 			return nil, fmt.Errorf("error checking on host %v; decommissioning to save resources: %v",
 				h.Id, err)
@@ -198,7 +198,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Host %v is ready for its setup script to be run", h.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Host %v is ready for its setup script to be run", h.Id)
 
 	// add any extra user-specified data into the setup script
 	if h.Distro.UserData.File != "" {

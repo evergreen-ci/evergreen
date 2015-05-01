@@ -1,14 +1,14 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -131,7 +131,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if beforeCommit == nil {
-			mci.Logger.Logf(slogger.WARN, "'before' was specified but query returned nil")
+			evergreen.Logger.Logf(slogger.WARN, "'before' was specified but query returned nil")
 		}
 	}
 	projectRef, err := model.FindOneProjectRef(projCtx.Project.Identifier)
@@ -372,7 +372,7 @@ func (uis *UIServer) taskHistoryJson(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "error finding history in reference"+
+		evergreen.Logger.Logf(slogger.ERROR, "error finding history in reference"+
 			" to task %v: %v", anchorTaskId, err)
 		http.Error(w, fmt.Sprintf("error finding history for task %v with window type of %v: %v",
 			projCtx.Task.Id, window, err), http.StatusBadRequest)
@@ -609,7 +609,7 @@ func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []s
 		}
 
 		for _, result := range task.TestResults {
-			if result.Status == mci.TestFailedStatus {
+			if result.Status == evergreen.TestFailedStatus {
 				blurb.Failures = append(blurb.Failures,
 					result.TestFile)
 			}

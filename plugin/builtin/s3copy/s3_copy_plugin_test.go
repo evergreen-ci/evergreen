@@ -1,26 +1,26 @@
 package s3copy_test
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/plugin/builtin/s3Plugin"
-	. "10gen.com/mci/plugin/builtin/s3copy"
-	"10gen.com/mci/plugin/testutil"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/plugin/builtin/s3Plugin"
+	. "github.com/evergreen-ci/evergreen/plugin/builtin/s3copy"
+	"github.com/evergreen-ci/evergreen/plugin/testutil"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestS3CopyPluginExecution(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
@@ -37,7 +37,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, false)
+		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
@@ -47,7 +47,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		taskConfig, err := testutil.CreateTestConfig("testdata/plugin_s3_copy.yml", t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		taskConfig.WorkDir = "."
-		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
 		taskConfig.Expansions.Update(map[string]string{

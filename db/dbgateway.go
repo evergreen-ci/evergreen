@@ -1,7 +1,7 @@
 package db
 
 import (
-	"10gen.com/mci"
+	"github.com/evergreen-ci/evergreen"
 	"labix.org/v2/mgo"
 	"sync"
 	"time"
@@ -23,7 +23,7 @@ type SessionProvider interface {
 	GetSession() (*mgo.Session, *mgo.Database, error)
 }
 
-func SessionFactoryFromConfig(appConf *mci.MCISettings) *SessionFactory {
+func SessionFactoryFromConfig(appConf *evergreen.MCISettings) *SessionFactory {
 	return NewSessionFactory(appConf.DbUrl, appConf.Db, 5*time.Second)
 }
 

@@ -1,8 +1,8 @@
 package build
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -54,9 +54,9 @@ type Build struct {
 
 // Returns whether or not the build has finished, based on its status.
 func (b *Build) IsFinished() bool {
-	return b.Status == mci.BuildFailed ||
-		b.Status == mci.BuildCancelled ||
-		b.Status == mci.BuildSucceeded
+	return b.Status == evergreen.BuildFailed ||
+		b.Status == evergreen.BuildCancelled ||
+		b.Status == evergreen.BuildSucceeded
 }
 
 // Find
@@ -116,10 +116,10 @@ func (b *Build) UpdateStatus(status string) error {
 func TryMarkStarted(buildId string, startTime time.Time) error {
 	selector := bson.M{
 		IdKey:     buildId,
-		StatusKey: mci.BuildCreated,
+		StatusKey: evergreen.BuildCreated,
 	}
 	update := bson.M{"$set": bson.M{
-		StatusKey:    mci.BuildStarted,
+		StatusKey:    evergreen.BuildStarted,
 		StartTimeKey: startTime,
 	}}
 	err := UpdateOne(selector, update)

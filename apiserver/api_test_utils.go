@@ -1,10 +1,10 @@
 package apiserver
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/plugin"
 	"crypto/tls"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"net"
 )
 
@@ -16,7 +16,7 @@ type TestServer struct {
 	*APIServer
 }
 
-func CreateTestServer(mciSettings *mci.MCISettings, tlsConfig *tls.Config, plugins []plugin.Plugin, verbose bool) (*TestServer, error) {
+func CreateTestServer(mciSettings *evergreen.MCISettings, tlsConfig *tls.Config, plugins []plugin.Plugin, verbose bool) (*TestServer, error) {
 	apiServer, err := New(mciSettings, plugins)
 	if err != nil {
 		return nil, err

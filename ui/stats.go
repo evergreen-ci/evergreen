@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/user"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
 	"net/http"
 )

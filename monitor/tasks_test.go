@@ -1,20 +1,20 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestCleanupTask(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -131,7 +131,7 @@ func TestCleanupTask(t *testing.T) {
 				// refresh the task - it should be reset
 				task, err := model.FindTask("t1")
 				So(err, ShouldBeNil)
-				So(task.Status, ShouldEqual, mci.TaskUndispatched)
+				So(task.Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(task.Restarts, ShouldEqual, 2)
 
 			})

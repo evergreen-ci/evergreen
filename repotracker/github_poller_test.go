@@ -1,18 +1,18 @@
 package repotracker
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	testConfig            = mci.TestConfig()
+	testConfig            = evergreen.TestConfig()
 	firstRevision         = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
 	lastRevision          = "d0d878e81b303fd2abbf09331e54af41d6cd0c7d"
 	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
@@ -36,7 +36,7 @@ var (
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	if testConfig.RepoTracker.LogFile != "" {
-		mci.SetLogger(testConfig.RepoTracker.LogFile)
+		evergreen.SetLogger(testConfig.RepoTracker.LogFile)
 	}
 }
 

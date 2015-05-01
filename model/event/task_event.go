@@ -1,8 +1,8 @@
 package event
 
 import (
-	"10gen.com/mci"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"time"
 )
 
@@ -47,7 +47,7 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 
 	logger := NewDBEventLogger(Collection)
 	if err := logger.LogEvent(event); err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error logging task event: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error logging task event: %v", err)
 	}
 }
 

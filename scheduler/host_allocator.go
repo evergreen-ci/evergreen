@@ -1,10 +1,10 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 )
 
 // Interface responsible for determining how many new hosts should be spun up.
@@ -24,7 +24,7 @@ import (
 //
 type HostAllocator interface {
 	NewHostsNeeded(allocatorData HostAllocatorData,
-		mciSettings *mci.MCISettings) (map[string]int, error)
+		mciSettings *evergreen.MCISettings) (map[string]int, error)
 }
 
 type HostAllocatorData struct {

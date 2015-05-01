@@ -1,7 +1,7 @@
 package taskrunner
 
 import (
-	"10gen.com/mci/model/host"
+	"github.com/evergreen-ci/evergreen/model/host"
 )
 
 // Interface responsible for finding all hosts that are ready to run a new

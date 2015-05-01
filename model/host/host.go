@@ -1,12 +1,12 @@
 package host
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/event"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -74,10 +74,10 @@ func (self *Host) IdleTime() time.Duration {
 }
 
 func (self *Host) SetStatus(status string) error {
-	if self.Status == mci.HostTerminated {
+	if self.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+
 			" %v because it is already terminated", self.Id, status)
-		mci.Logger.Logf(slogger.WARN, msg)
+		evergreen.Logger.Logf(slogger.WARN, msg)
 		return fmt.Errorf(msg)
 	}
 
@@ -101,52 +101,52 @@ func (self *Host) SetInitializing() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     self.Id,
-			StatusKey: mci.HostUninitialized,
+			StatusKey: evergreen.HostUninitialized,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: mci.HostInitializing,
+				StatusKey: evergreen.HostInitializing,
 			},
 		},
 	)
 }
 
 func (self *Host) SetDecommissioned() error {
-	return self.SetStatus(mci.HostDecommissioned)
+	return self.SetStatus(evergreen.HostDecommissioned)
 }
 
 func (self *Host) SetUninitialized() error {
-	return self.SetStatus(mci.HostUninitialized)
+	return self.SetStatus(evergreen.HostUninitialized)
 }
 
 func (self *Host) SetRunning() error {
-	return self.SetStatus(mci.HostRunning)
+	return self.SetStatus(evergreen.HostRunning)
 }
 
 func (self *Host) SetTerminated() error {
-	return self.SetStatus(mci.HostTerminated)
+	return self.SetStatus(evergreen.HostTerminated)
 }
 
 func (self *Host) SetUnreachable() error {
-	return self.SetStatus(mci.HostUnreachable)
+	return self.SetStatus(evergreen.HostUnreachable)
 }
 
 func (self *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     self.Id,
-			StatusKey: mci.HostInitializing,
+			StatusKey: evergreen.HostInitializing,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: mci.HostProvisionFailed,
+				StatusKey: evergreen.HostProvisionFailed,
 			},
 		},
 	)
 }
 
 func (self *Host) SetQuarantined(status string) error {
-	return self.SetStatus(mci.HostQuarantined)
+	return self.SetStatus(evergreen.HostQuarantined)
 }
 
 func (self *Host) Terminate() error {
@@ -193,7 +193,7 @@ func (self *Host) SetDNSName(dnsName string) error {
 func (self *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(self.Id)
 
-	self.Status = mci.HostRunning
+	self.Status = evergreen.HostRunning
 	self.Provisioned = true
 	return UpdateOne(
 		bson.M{
@@ -201,7 +201,7 @@ func (self *Host) MarkAsProvisioned() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey:      mci.HostRunning,
+				StatusKey:      evergreen.HostRunning,
 				ProvisionedKey: true,
 			},
 		},
@@ -347,9 +347,9 @@ func (self *Host) SetTaskPid(pid string) error {
 // UpdateReachability sets a host as either running or unreachable, depending on the bool passed
 // in. also update the last reachability check for the host
 func (self *Host) UpdateReachability(reachable bool) error {
-	status := mci.HostRunning
+	status := evergreen.HostRunning
 	if !reachable {
-		status = mci.HostUnreachable
+		status = evergreen.HostUnreachable
 	}
 
 	event.LogHostStatusChanged(self.Id, self.Status, status)

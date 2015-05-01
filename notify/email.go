@@ -1,9 +1,9 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"strings"
 )
 
@@ -52,7 +52,7 @@ type BuildEmail struct {
 func (self *BuildEmail) ShouldSkip(skipVariants []string) bool {
 	buildVariant := self.Trigger.Current.BuildVariant
 	if util.SliceContains(skipVariants, buildVariant) {
-		mci.Logger.Logf(slogger.DEBUG, "Skipping buildvariant %v “%v” notification: “%v”",
+		evergreen.Logger.Logf(slogger.DEBUG, "Skipping buildvariant %v “%v” notification: “%v”",
 			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
 		return true
 	}
@@ -78,7 +78,7 @@ func (self *TaskEmail) ShouldSkip(skipVariants []string) bool {
 	// skip the buildvariant notification if necessary
 	buildVariant := self.Trigger.Current.BuildVariant
 	if util.SliceContains(skipVariants, buildVariant) {
-		mci.Logger.Logf(slogger.DEBUG, "Skipping buildvariant %v “%v” notification: “%v”",
+		evergreen.Logger.Logf(slogger.DEBUG, "Skipping buildvariant %v “%v” notification: “%v”",
 			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
 		return true
 	}

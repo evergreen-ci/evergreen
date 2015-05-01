@@ -1,10 +1,10 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/web"
 	"bytes"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/web"
 	"path/filepath"
 )
 
@@ -13,8 +13,8 @@ const (
 	BaseTemplate = "layout.html"
 )
 
-func createEnvironment(mciSettings *mci.MCISettings, globals map[string]interface{}) (*web.App, error) {
-	home, err := mci.FindMCIHome()
+func createEnvironment(mciSettings *evergreen.MCISettings, globals map[string]interface{}) (*web.App, error) {
+	home, err := evergreen.FindMCIHome()
 	if err != nil {
 		return nil, err
 	}

@@ -1,8 +1,8 @@
 package agent
 
 import (
-	"10gen.com/mci/model"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"

@@ -1,7 +1,7 @@
 package model
 
 import (
-	"10gen.com/mci/model/build"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"path"
 	"strings"
 )

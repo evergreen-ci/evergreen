@@ -1,10 +1,10 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"strconv"
 	"time"
 )
@@ -26,7 +26,7 @@ const (
 )
 
 // a function that outputs any necessary notifications
-type notificationBuilder func(*mci.MCISettings) ([]notification, error)
+type notificationBuilder func(*evergreen.MCISettings) ([]notification, error)
 
 // contains info about a notification that should be sent
 type notification struct {
@@ -43,15 +43,15 @@ type notification struct {
 
 // spawnHostExpirationWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that will be expiring soon (but haven't expired yet)
-func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
+func spawnHostExpirationWarnings(mciSettings *evergreen.MCISettings) ([]notification,
 	error) {
 
-	mci.Logger.Logf(slogger.INFO, "Building spawned host expiration"+
+	evergreen.Logger.Logf(slogger.INFO, "Building spawned host expiration"+
 		" warnings...")
 
 	// sanity check, since the thresholds are supplied in code
 	if len(spawnWarningThresholds) == 0 {
-		mci.Logger.Logf(slogger.WARN, "there are no currently set warning"+
+		evergreen.Logger.Logf(slogger.WARN, "there are no currently set warning"+
 			" thresholds for spawned hosts - users will not receive emails"+
 			" warning them of imminent host expiration")
 		return nil, nil
@@ -88,7 +88,7 @@ func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
 			continue
 		}
 
-		mci.Logger.Logf(slogger.INFO, "Warning needs to be sent for threshold"+
+		evergreen.Logger.Logf(slogger.INFO, "Warning needs to be sent for threshold"+
 			" '%v' for host %v", thresholdKey, h.Id)
 
 		// we need to send a notification for the threshold for this host
@@ -113,7 +113,7 @@ func spawnHostExpirationWarnings(mciSettings *mci.MCISettings) ([]notification,
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Built %v warnings about imminently"+
+	evergreen.Logger.Logf(slogger.INFO, "Built %v warnings about imminently"+
 		" expiring hosts", len(warnings))
 
 	return warnings, nil
@@ -142,10 +142,10 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 
 // slowProvisioningWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that are taking a long time to provision
-func slowProvisioningWarnings(mciSettings *mci.MCISettings) ([]notification,
+func slowProvisioningWarnings(mciSettings *evergreen.MCISettings) ([]notification,
 	error) {
 
-	mci.Logger.Logf(slogger.INFO, "Building warnings for hosts taking a long"+
+	evergreen.Logger.Logf(slogger.INFO, "Building warnings for hosts taking a long"+
 		" time to provision...")
 
 	// fetch all hosts that are taking too long to provision
@@ -165,7 +165,7 @@ func slowProvisioningWarnings(mciSettings *mci.MCISettings) ([]notification,
 			continue
 		}
 
-		mci.Logger.Logf(slogger.INFO, "Slow-provisioning warning needs to"+
+		evergreen.Logger.Logf(slogger.INFO, "Slow-provisioning warning needs to"+
 			" be sent for host %v", h.Id)
 
 		// build the notification
@@ -187,7 +187,7 @@ func slowProvisioningWarnings(mciSettings *mci.MCISettings) ([]notification,
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Built %v warnings about hosts taking a"+
+	evergreen.Logger.Logf(slogger.INFO, "Built %v warnings about hosts taking a"+
 		" long time to provision", len(warnings))
 
 	return warnings, nil

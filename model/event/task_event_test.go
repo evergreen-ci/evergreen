@@ -1,16 +1,16 @@
 package event
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
 func TestLoggingTaskEvents(t *testing.T) {
@@ -29,7 +29,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogTaskStarted(taskId)
 			time.Sleep(1 * time.Millisecond)
-			LogTaskFinished(taskId, mci.TaskSucceeded)
+			LogTaskFinished(taskId, evergreen.TaskSucceeded)
 
 			eventsForTask, err := Find(TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
@@ -78,7 +78,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)
-			So(eventData.Status, ShouldEqual, mci.TaskSucceeded)
+			So(eventData.Status, ShouldEqual, evergreen.TaskSucceeded)
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 		})
 	})

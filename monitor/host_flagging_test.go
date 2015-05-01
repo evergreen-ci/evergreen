@@ -1,12 +1,12 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers/mock"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -14,7 +14,7 @@ import (
 
 func TestFlaggingDecommissionedHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -31,31 +31,31 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:     "h1",
-				Status: mci.HostRunning,
+				Status: evergreen.HostRunning,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:     "h2",
-				Status: mci.HostTerminated,
+				Status: evergreen.HostTerminated,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			host3 := &host.Host{
 				Id:     "h3",
-				Status: mci.HostDecommissioned,
+				Status: evergreen.HostDecommissioned,
 			}
 			util.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 			host4 := &host.Host{
 				Id:     "h4",
-				Status: mci.HostDecommissioned,
+				Status: evergreen.HostDecommissioned,
 			}
 			util.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 			host5 := &host.Host{
 				Id:     "h5",
-				Status: mci.HostQuarantined,
+				Status: evergreen.HostQuarantined,
 			}
 			util.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
@@ -77,7 +77,7 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 
 func TestFlaggingIdleHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -97,8 +97,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Provider:     mock.ProviderName,
 				CreationTime: time.Now().Add(-30 * time.Minute),
 				RunningTask:  "t1",
-				Status:       mci.HostRunning,
-				StartedBy:    mci.MCIUser,
+				Status:       evergreen.HostRunning,
+				StartedBy:    evergreen.MCIUser,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -121,8 +121,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Provider:              mock.ProviderName,
 				LastTaskCompleted:     "t1",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
-				Status:                mci.HostRunning,
-				StartedBy:             mci.MCIUser,
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.MCIUser,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -131,8 +131,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Provider:              mock.ProviderName,
 				LastTaskCompleted:     "t2",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 5),
-				Status:                mci.HostRunning,
-				StartedBy:             mci.MCIUser,
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.MCIUser,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -150,7 +150,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 func TestFlaggingExcessHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -182,8 +182,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host1 := &host.Host{
 					Id:        "h1",
 					Distro:    distro.Distro{Id: "d1"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -191,8 +191,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host2 := &host.Host{
 					Id:        "h2",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -213,8 +213,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host1 := &host.Host{
 					Id:        "h1",
 					Distro:    distro.Distro{Id: "d1"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -222,8 +222,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host2 := &host.Host{
 					Id:        "h2",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -231,8 +231,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host3 := &host.Host{
 					Id:        "h3",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
@@ -240,8 +240,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host4 := &host.Host{
 					Id:        "h4",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host4.Insert(), t, "error inserting host")
@@ -265,8 +265,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host1 := &host.Host{
 					Id:        "h1",
 					Distro:    distro.Distro{Id: "d1"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -274,8 +274,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host2 := &host.Host{
 					Id:        "h2",
 					Distro:    distro.Distro{Id: "d1"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -283,8 +283,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host3 := &host.Host{
 					Id:        "h3",
 					Distro:    distro.Distro{Id: "d1"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
@@ -292,8 +292,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host4 := &host.Host{
 					Id:        "h4",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host4.Insert(), t, "error inserting host")
@@ -301,8 +301,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host5 := &host.Host{
 					Id:        "h5",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host5.Insert(), t, "error inserting host")
@@ -310,8 +310,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host6 := &host.Host{
 					Id:        "h6",
 					Distro:    distro.Distro{Id: "d2"},
-					Status:    mci.HostRunning,
-					StartedBy: mci.MCIUser,
+					Status:    evergreen.HostRunning,
+					StartedBy: evergreen.MCIUser,
 					Provider:  mock.ProviderName,
 				}
 				util.HandleTestingErr(host6.Insert(), t, "error inserting host")
@@ -344,8 +344,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host1 := &host.Host{
 					Id:          "h1",
 					Distro:      distro.Distro{Id: "d1"},
-					Status:      mci.HostRunning,
-					StartedBy:   mci.MCIUser,
+					Status:      evergreen.HostRunning,
+					StartedBy:   evergreen.MCIUser,
 					RunningTask: "t1",
 					Provider:    mock.ProviderName,
 				}
@@ -354,8 +354,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host2 := &host.Host{
 					Id:          "h2",
 					Distro:      distro.Distro{Id: "d1"},
-					Status:      mci.HostRunning,
-					StartedBy:   mci.MCIUser,
+					Status:      evergreen.HostRunning,
+					StartedBy:   evergreen.MCIUser,
 					RunningTask: "t2",
 					Provider:    mock.ProviderName,
 				}
@@ -364,8 +364,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host3 := &host.Host{
 					Id:          "h3",
 					Distro:      distro.Distro{Id: "d2"},
-					Status:      mci.HostRunning,
-					StartedBy:   mci.MCIUser,
+					Status:      evergreen.HostRunning,
+					StartedBy:   evergreen.MCIUser,
 					RunningTask: "t3",
 					Provider:    mock.ProviderName,
 				}
@@ -374,8 +374,8 @@ func TestFlaggingExcessHosts(t *testing.T) {
 				host4 := &host.Host{
 					Id:          "h4",
 					Distro:      distro.Distro{Id: "d2"},
-					Status:      mci.HostRunning,
-					StartedBy:   mci.MCIUser,
+					Status:      evergreen.HostRunning,
+					StartedBy:   evergreen.MCIUser,
 					RunningTask: "t4",
 					Provider:    mock.ProviderName,
 				}
@@ -397,7 +397,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -412,7 +412,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 10),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -427,9 +427,9 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 40),
-				Status:       mci.HostTerminated,
+				Status:       evergreen.HostTerminated,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -443,7 +443,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 40),
 				Provisioned:  true,
 			}
@@ -460,7 +460,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    mci.MCIUser,
+				StartedBy:    evergreen.MCIUser,
 				CreationTime: time.Now().Add(-time.Minute * 40),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -477,7 +477,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -492,19 +492,19 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:     "h1",
-				Status: mci.HostRunning,
+				Status: evergreen.HostRunning,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:     "h2",
-				Status: mci.HostUninitialized,
+				Status: evergreen.HostUninitialized,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			host3 := &host.Host{
 				Id:     "h3",
-				Status: mci.HostProvisionFailed,
+				Status: evergreen.HostProvisionFailed,
 			}
 			util.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
@@ -520,7 +520,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
 func TestFlaggingExpiredHosts(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -535,8 +535,8 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:        "h1",
-				Status:    mci.HostRunning,
-				StartedBy: mci.MCIUser,
+				Status:    evergreen.HostRunning,
+				StartedBy: evergreen.MCIUser,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
@@ -551,13 +551,13 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:     "h1",
-				Status: mci.HostQuarantined,
+				Status: evergreen.HostQuarantined,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:     "h2",
-				Status: mci.HostTerminated,
+				Status: evergreen.HostTerminated,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -573,7 +573,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			// not expired
 			host1 := &host.Host{
 				Id:             "h1",
-				Status:         mci.HostRunning,
+				Status:         evergreen.HostRunning,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -581,7 +581,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 			// expired
 			host2 := &host.Host{
 				Id:             "h2",
-				Status:         mci.HostRunning,
+				Status:         evergreen.HostRunning,
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")

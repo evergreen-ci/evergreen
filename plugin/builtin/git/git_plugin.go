@@ -1,7 +1,7 @@
 package git
 
 import "net/http"
-import "10gen.com/mci/plugin"
+import "github.com/evergreen-ci/evergreen/plugin"
 
 func init() {
 	plugin.Publish(&GitPlugin{})

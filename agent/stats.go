@@ -1,10 +1,10 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
 	"time"
 )
 
@@ -45,8 +45,8 @@ func (self *StatsCollector) LogStats() {
 	if self.Interval == 0 {
 		self.Interval = 60 * time.Second
 	}
-	sysloggerInfoWriter := mci.NewInfoLoggingWriter(self.logger)
-	sysloggerErrWriter := mci.NewErrorLoggingWriter(self.logger)
+	sysloggerInfoWriter := evergreen.NewInfoLoggingWriter(self.logger)
+	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(self.logger)
 	self.stop = make(chan bool)
 	go func() {
 		ticker := time.NewTicker(self.Interval)

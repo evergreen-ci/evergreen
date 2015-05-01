@@ -1,9 +1,9 @@
 package s3Plugin
 
 import (
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/goamz/s3"
 	"net/http"
 	"regexp"

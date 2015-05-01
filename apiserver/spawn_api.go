@@ -1,16 +1,16 @@
 package apiserver
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/notify"
-	"10gen.com/mci/spawn"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/spawn"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
@@ -90,16 +90,16 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		host, err := spawner.CreateHost(opts)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, err.Error())
+			evergreen.Logger.Logf(slogger.ERROR, err.Error())
 			mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),
 				notify.ConstructMailer(as.MCISettings.Notify))
 			if mailErr != nil {
-				mci.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
+				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
 			}
 			if host != nil { // a host was inserted - we need to clean it up
 				dErr := host.SetDecommissioned()
 				if err != nil {
-					mci.Logger.Logf(slogger.ERROR, "Failed to set host %v decommissioned: %v", host.Id, dErr)
+					evergreen.Logger.Logf(slogger.ERROR, "Failed to set host %v decommissioned: %v", host.Id, dErr)
 				}
 			}
 			return
@@ -127,27 +127,27 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if status == mci.HostStatusSuccess {
+	if status == evergreen.HostStatusSuccess {
 		if err := host.SetRunning(); err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error marking host id %v as %v: %v", instanceId, mci.HostStatusSuccess, err)
+			evergreen.Logger.Logf(slogger.ERROR, "Error marking host id %v as %v: %v", instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
 		if err = host.SetDecommissioned(); err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error marking host %v for user %v as decommissioned: %v", host.Host, host.StartedBy, err)
+			evergreen.Logger.Logf(slogger.ERROR, "Error marking host %v for user %v as decommissioned: %v", host.Host, host.StartedBy, err)
 		}
-		mci.Logger.Logf(slogger.INFO, "Decommissioned %v for user %v because provisioning failed", host.Host, host.StartedBy)
+		evergreen.Logger.Logf(slogger.INFO, "Decommissioned %v for user %v because provisioning failed", host.Host, host.StartedBy)
 
 		// send notification to the MCI team about this provisioning failure
 		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, host.Distro)
 		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", host.Distro, host.Host, host.StartedBy)
 		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
 
 		// get/store setup logs
 		setupLog, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, fmt.Sprintf("error reading request: %v", err))
+			evergreen.Logger.Errorf(slogger.ERROR, fmt.Sprintf("error reading request: %v", err))
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -160,13 +160,13 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		To ssh in: ssh -i <your private key> %v@%v`,
 		host.Id, host.Host, host.User, host.Host)
 
-	if status == mci.HostStatusFailed {
+	if status == evergreen.HostStatusFailed {
 		message += fmt.Sprintf("\nUnfortunately, the host's setup script did not run fully - check the setup.log " +
 			"file in the machine's home directory to see more details")
 	}
 	err = notify.TrySendNotificationToUser(host.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.MCISettings.Notify))
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 	}
 
 	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *host})
@@ -229,7 +229,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 
 	switch hostAction {
 	case "terminate":
-		if host.Status == mci.HostTerminated {
+		if host.Status == evergreen.HostTerminated {
 			message := fmt.Sprintf("Host %v is already terminated", host.Id)
 			http.Error(w, message, http.StatusBadRequest)
 			return

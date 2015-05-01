@@ -1,10 +1,10 @@
 package model
 
 import (
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"

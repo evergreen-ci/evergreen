@@ -1,11 +1,11 @@
 package thirdparty
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/util"
 	"bytes"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -73,7 +73,7 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []Summary, err error) {
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			mci.Logger.Errorf(slogger.ERROR, "File stat details for '%v' has "+
+			evergreen.Logger.Errorf(slogger.ERROR, "File stat details for '%v' has "+
 				"length '%v'", details, len(details))
 			continue
 		}
@@ -81,7 +81,7 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []Summary, err error) {
 		additions, err = strconv.Atoi(details[0])
 		if err != nil {
 			if details[0] == "-" {
-				mci.Logger.Logf(slogger.WARN, "Line addition count for %v is '%v' "+
+				evergreen.Logger.Logf(slogger.WARN, "Line addition count for %v is '%v' "+
 					"assuming binary data diff so using 0", details[2], details[0])
 				additions = 0
 			} else {
@@ -92,7 +92,7 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []Summary, err error) {
 		deletions, err = strconv.Atoi(details[1])
 		if err != nil {
 			if details[1] == "-" {
-				mci.Logger.Logf(slogger.WARN, "Line deletion count for %v is '%v' "+
+				evergreen.Logger.Logf(slogger.WARN, "Line deletion count for %v is '%v' "+
 					"assuming binary data diff so using 0", details[2], details[1])
 				deletions = 0
 			} else {

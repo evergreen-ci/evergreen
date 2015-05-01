@@ -1,12 +1,12 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/web"
 	"time"
 )
 
@@ -46,13 +46,13 @@ func (self *BuildNotificationHandler) getRecentlyFinishedBuildsWithStatus(key *N
 		// Copy by value to make pointer safe
 		curr := currentBuild
 		if status == "" || curr.Status == status {
-			mci.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
+			evergreen.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
 				curr.Id, key.Project, key.NotificationName)
 
 			// get the build's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(curr.Project); err != nil {
-				mci.Logger.Logf(slogger.WARN, "Unable to find project ref "+
+				evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
 					"for build ”%v”: %v", curr.Id, err)
 			} else if projectRef != nil {
 				branchName = projectRef.Branch

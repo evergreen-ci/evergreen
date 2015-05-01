@@ -1,4 +1,4 @@
-package mci
+package evergreen
 
 import (
 	"github.com/10gen-labs/slogger/v1"

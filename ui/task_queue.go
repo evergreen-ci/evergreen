@@ -1,14 +1,14 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/user"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -157,7 +157,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			msg := fmt.Sprintf("Error finding tasks: %v", err)
-			mci.Logger.Errorf(slogger.ERROR, msg)
+			evergreen.Logger.Errorf(slogger.ERROR, msg)
 			http.Error(w, msg, http.StatusInternalServerError)
 			return
 		}
@@ -179,7 +179,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		// add all of the necessary patch info into the relevant task queue
 		// items
 		for idx, queueItemAsUI := range asUI.Queue {
-			if queueItemAsUI.Requester == mci.PatchVersionRequester {
+			if queueItemAsUI.Requester == evergreen.PatchVersionRequester {
 				// fetch the patch, if necessary
 				var p *patch.Patch
 				var ok bool
@@ -192,13 +192,13 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 					)
 					if err != nil {
 						msg := fmt.Sprintf("Error finding patch: %v", err)
-						mci.Logger.Errorf(slogger.ERROR, msg)
+						evergreen.Logger.Errorf(slogger.ERROR, msg)
 						http.Error(w, msg, http.StatusInternalServerError)
 						return
 					}
 					if p == nil {
 						msg := fmt.Sprintf("Couldn't find patch for version %v", queueItemAsUI.Version)
-						mci.Logger.Errorf(slogger.ERROR, msg)
+						evergreen.Logger.Errorf(slogger.ERROR, msg)
 						http.Error(w, msg, http.StatusInternalServerError)
 						return
 					}
@@ -218,26 +218,26 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	idleHosts, err := host.Find(host.IsIdle)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding idle hosts: %v", err)
-		mci.Logger.Errorf(slogger.ERROR, msg)
+		evergreen.Logger.Errorf(slogger.ERROR, msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 	activeHosts, err := host.Find(host.IsLive)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding active hosts: %v", err)
-		mci.Logger.Errorf(slogger.ERROR, msg)
+		evergreen.Logger.Errorf(slogger.ERROR, msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 	idleStaticHostsCount := 0
 	for _, host := range idleHosts {
-		if host.Provider == mci.HostTypeStatic {
+		if host.Provider == evergreen.HostTypeStatic {
 			idleStaticHostsCount++
 		}
 	}
 	activeStaticHostsCount := 0
 	for _, host := range activeHosts {
-		if host.Provider == mci.HostTypeStatic {
+		if host.Provider == evergreen.HostTypeStatic {
 			activeStaticHostsCount++
 		}
 	}

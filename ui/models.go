@@ -1,18 +1,18 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
 	"bytes"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"html/template"
 	"labix.org/v2/mgo/bson"
 	"sort"
@@ -118,16 +118,16 @@ func (suts *SortableUiTaskSlice) Less(i, j int) bool {
 	displayNameOne := taskOne.Task.DisplayName
 	displayNameTwo := taskTwo.Task.DisplayName
 
-	if displayNameOne == mci.CompileStage {
+	if displayNameOne == evergreen.CompileStage {
 		return true
 	}
-	if displayNameTwo == mci.CompileStage {
+	if displayNameTwo == evergreen.CompileStage {
 		return false
 	}
-	if displayNameOne == mci.PushStage {
+	if displayNameOne == evergreen.PushStage {
 		return false
 	}
-	if displayNameTwo == mci.PushStage {
+	if displayNameTwo == evergreen.PushStage {
 		return true
 	}
 
@@ -212,7 +212,7 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 		buildIds := version.BuildIds
 		dbBuilds, err := build.Find(build.ByIds(buildIds))
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Ids: %v", buildIds)
+			evergreen.Logger.Errorf(slogger.ERROR, "Ids: %v", buildIds)
 		}
 
 		buildsMap := make(map[string]build.Build)
@@ -276,7 +276,7 @@ func getBuildVariantHistoryLastSuccess(buildId string) (*build.Build, error) {
 	if err != nil {
 		return nil, err
 	}
-	if b.Status == mci.BuildSucceeded {
+	if b.Status == evergreen.BuildSucceeded {
 		return b, nil
 	}
 	return b.PreviousSuccessful()
@@ -296,7 +296,7 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 	siblingVersions, err := version.Find(db.Query(
 		bson.M{
 			"order":  v.RevisionOrderNumber,
-			"r":      mci.RepotrackerVersionRequester,
+			"r":      evergreen.RepotrackerVersionRequester,
 			"branch": v.Project,
 		}).WithoutFields(version.ConfigKey).Sort([]string{"order"}).Limit(2*N + 1))
 	if err != nil {
@@ -320,7 +320,7 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
 				"order":  bson.M{"$gt": v.RevisionOrderNumber},
-				"r":      mci.RepotrackerVersionRequester,
+				"r":      evergreen.RepotrackerVersionRequester,
 				"branch": v.Project,
 			}).WithoutFields(version.ConfigKey).Sort([]string{"order"}).Limit(N - versionIndex))
 		if err != nil {
@@ -338,7 +338,7 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 	if numSiblings-versionIndex < N {
 		previousVersions, err := version.Find(db.Query(bson.M{
 			"order":  bson.M{"$lt": v.RevisionOrderNumber},
-			"r":      mci.RepotrackerVersionRequester,
+			"r":      evergreen.RepotrackerVersionRequester,
 			"branch": v.Project,
 		}).WithoutFields(version.ConfigKey).Sort([]string{"-order"}).Limit(N))
 		if err != nil {
@@ -359,7 +359,7 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 	if includeSpawnedHosts {
 		dbHosts, err = host.Find(host.IsRunning)
 	} else {
-		dbHosts, err = host.Find(host.ByUserWithRunningStatus(mci.MCIUser))
+		dbHosts, err = host.Find(host.ByUserWithRunningStatus(evergreen.MCIUser))
 	}
 
 	if err != nil {
@@ -409,21 +409,21 @@ func getHostData(hostId string) (*uiHost, error) {
 func getPluginDataAndHTML(pluginManager plugin.PanelManager, page plugin.PageScope, ctx plugin.UIContext) pluginData {
 	includes, err := pluginManager.Includes(page)
 	if err != nil {
-		mci.Logger.Errorf(
+		evergreen.Logger.Errorf(
 			slogger.ERROR, "error getting include html from plugin manager on %v page: %v",
 			page, err)
 	}
 
 	panels, err := pluginManager.Panels(page)
 	if err != nil {
-		mci.Logger.Errorf(
+		evergreen.Logger.Errorf(
 			slogger.ERROR, "error getting panel html from plugin manager on %v page: %v",
 			page, err)
 	}
 
 	data, err := pluginManager.UIData(ctx, page)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error getting plugin data on %v page: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error getting plugin data on %v page: %v",
 			page, err)
 	}
 

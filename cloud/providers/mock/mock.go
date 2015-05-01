@@ -1,11 +1,11 @@
 package mock
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"time"
 )
 
@@ -48,7 +48,7 @@ func (staticMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *MockCloudManager) Configure(mciSettings *mci.MCISettings) error {
+func (staticMgr *MockCloudManager) Configure(mciSettings *evergreen.MCISettings) error {
 	//no-op. maybe will need to load something from mciSettings in the future.
 	return nil
 }

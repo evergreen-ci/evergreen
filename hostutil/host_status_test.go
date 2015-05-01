@@ -1,14 +1,14 @@
 package hostutil
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	testConfig = mci.TestConfig()
+	testConfig = evergreen.TestConfig()
 )
 
 func TestHostSshParse(t *testing.T) {

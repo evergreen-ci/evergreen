@@ -1,9 +1,9 @@
 package build
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	buildTestConfig = mci.TestConfig()
+	buildTestConfig = evergreen.TestConfig()
 )
 
 func init() {
@@ -527,11 +527,11 @@ func TestBuildUpdateStatus(t *testing.T) {
 
 		Convey("setting its status should update it both in-memory and"+
 			" in the database", func() {
-			So(build.UpdateStatus(mci.BuildSucceeded), ShouldBeNil)
-			So(build.Status, ShouldEqual, mci.BuildSucceeded)
+			So(build.UpdateStatus(evergreen.BuildSucceeded), ShouldBeNil)
+			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 			build, err := FindOne(ById(build.Id))
 			So(err, ShouldBeNil)
-			So(build.Status, ShouldEqual, mci.BuildSucceeded)
+			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 		})
 	})
 }

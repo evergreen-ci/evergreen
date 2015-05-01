@@ -1,12 +1,12 @@
 package web
 
 import (
-	"10gen.com/mci"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/inject"
+	"github.com/evergreen-ci/evergreen"
 	"html/template"
 	"net/http"
 	"os"
@@ -206,7 +206,7 @@ func (jr JSONResponse) Render(w http.ResponseWriter) error {
 	statusCode := jr.StatusCode
 	jsonBytes, err := json.Marshal(jr.Data)
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "ERROR MARSHALING JSON: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "ERROR MARSHALING JSON: %v", err)
 		statusCode = http.StatusInternalServerError
 		jsonBytes = []byte(fmt.Sprintf(`{"error":"%v"}`, JSONMarshalError))
 	}

@@ -27,7 +27,7 @@ functions:
             set -o igncr
         fi;
         . ./set_gopath.sh
-        perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+        perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
 
   "generate coverage html":
     command: shell.exec
@@ -182,7 +182,7 @@ tasks:
           cd agent
           mkfifo test_pipe
           tee -a agent.suite < test_pipe&
-          go test -v -mci.all -mci.settingsOverride=../creds.yml -coverprofile=coverage.out > test_pipe 
+          go test -v -evergreen.all -evergreen.settingsOverride=../creds.yml -coverprofile=coverage.out > test_pipe 
     - command: shell.exec
       params:
         working_dir: src
@@ -270,7 +270,7 @@ tasks:
           . ./set_gopath.sh
           export mci_home=${mci_home_cmd}
           mkfifo test_pipe
-          tee -a mci.suite < test_pipe&
+          tee -a evergreen.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
     - func: "rewrite coverage report"
     - func: "generate coverage html"
@@ -428,12 +428,12 @@ tasks:
           cd ../s3Plugin
           mkfifo test_pipe
           tee -a s3Plugin.suite < test_pipe&
-          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
+          go test -v -evergreen.all -evergreen.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
 
           cd ../s3copy
           mkfifo test_pipe
           tee -a s3copy.suite < test_pipe&
-          go test -v -mci.all -mci.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
+          go test -v -evergreen.all -evergreen.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
 
     - command: shell.exec
       params:
@@ -446,37 +446,37 @@ tasks:
           . ./set_gopath.sh
 
           cd plugin
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
           cd builtin/attach
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
           cd ../expansions
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
           cd ../git
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
           cd ../gotest
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
           cd ../s3Plugin
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
           cd ../s3copy
-          perl -pe 's/.*src/10gen.com\/mci/' coverage.out > coverage_rewrite.out
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
@@ -639,7 +639,7 @@ tasks:
           cd repotracker
           mkfifo test_pipe
           tee -a repotracker.suite < test_pipe&
-          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
+          go test -v -evergreen.all -evergreen.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -700,7 +700,7 @@ tasks:
           cd thirdparty
           mkfifo test_pipe
           tee -a thirdparty.suite < test_pipe&
-          go test -v -mci.all -mci.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
+          go test -v -evergreen.all -evergreen.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -791,7 +791,7 @@ tasks:
           cd validator
           mkfifo test_pipe
           tee -a validator.suite < test_pipe&
-          go test -v -coverprofile=coverage.out -mci.all -mci.settingsOverride="../creds.yml" > test_pipe
+          go test -v -coverprofile=coverage.out -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
       params:
         working_dir: src

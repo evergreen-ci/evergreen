@@ -1,8 +1,8 @@
 package s3Plugin
 
 import (
-	"10gen.com/mci/command"
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )

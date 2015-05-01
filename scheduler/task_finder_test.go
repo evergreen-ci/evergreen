@@ -1,21 +1,21 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	taskFinderTestConf = mci.TestConfig()
+	taskFinderTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
 	if taskFinderTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(taskFinderTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(taskFinderTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -34,13 +34,13 @@ func TestDBTaskFinder(t *testing.T) {
 		taskIds = []string{"t1", "t2", "t3", "t4"}
 		tasks = []*model.Task{
 			&model.Task{Id: taskIds[0], DependsOn: []string{},
-				Status: mci.TaskUndispatched, Activated: true},
+				Status: evergreen.TaskUndispatched, Activated: true},
 			&model.Task{Id: taskIds[1], DependsOn: []string{},
-				Status: mci.TaskUndispatched, Activated: true},
+				Status: evergreen.TaskUndispatched, Activated: true},
 			&model.Task{Id: taskIds[2], DependsOn: []string{},
-				Status: mci.TaskUndispatched, Activated: true},
+				Status: evergreen.TaskUndispatched, Activated: true},
 			&model.Task{Id: taskIds[3], DependsOn: []string{},
-				Status: mci.TaskUndispatched, Activated: true, Priority: -1},
+				Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
 		}
 
 		depTaskIds = []string{"td1", "td2"}
@@ -77,8 +77,8 @@ func TestDBTaskFinder(t *testing.T) {
 
 			// insert the dependency tasks, setting one to have finished
 			// successfully and one to have finished unsuccessfully
-			depTasks[0].Status = mci.TaskFailed
-			depTasks[1].Status = mci.TaskSucceeded
+			depTasks[0].Status = evergreen.TaskFailed
+			depTasks[1].Status = evergreen.TaskSucceeded
 			for _, depTask := range depTasks {
 				So(depTask.Insert(), ShouldBeNil)
 			}

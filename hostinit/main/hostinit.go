@@ -1,17 +1,17 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/hostinit"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/hostinit"
 	"os"
 )
 
 func main() {
-	config := mci.MustConfig()
+	config := evergreen.MustConfig()
 	if config.HostInit.LogFile != "" {
-		mci.SetLogger(config.HostInit.LogFile)
+		evergreen.SetLogger(config.HostInit.LogFile)
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(config))
 	r := &hostinit.Runner{}

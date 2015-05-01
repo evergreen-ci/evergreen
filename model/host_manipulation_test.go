@@ -1,10 +1,10 @@
 package model
 
 import (
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )

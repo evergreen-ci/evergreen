@@ -1,8 +1,8 @@
 package scheduler
 
 import (
-	"10gen.com/mci/model"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Interface responsible for fetching the expected duration for a given set of

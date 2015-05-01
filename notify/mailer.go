@@ -12,12 +12,12 @@
 package notify
 
 import (
-	"10gen.com/mci"
 	"bytes"
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"net/mail"
 	"net/smtp"
 	"strings"
@@ -70,7 +70,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	from := mail.Address{"MCI Notifications", self.From}
 	err = c.Mail(self.From)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error establishing mail sender (%v): %v", self.From, err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail sender (%v): %v", self.From, err)
 		return err
 	}
 
@@ -78,7 +78,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	for _, recipient := range recipients {
 		err = c.Rcpt(recipient)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error establishing mail recipient (%v): %v", recipient, err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail recipient (%v): %v", recipient, err)
 			return err
 		}
 	}

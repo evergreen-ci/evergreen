@@ -1,22 +1,22 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	hostFinderTestConf = mci.TestConfig()
+	hostFinderTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostFinderTestConf))
 	if hostFinderTestConf.TaskRunner.LogFile != "" {
-		mci.SetLogger(hostFinderTestConf.TaskRunner.LogFile)
+		evergreen.SetLogger(hostFinderTestConf.TaskRunner.LogFile)
 	}
 }
 
@@ -36,12 +36,12 @@ func TestDBHostFinder(t *testing.T) {
 		taskIds = []string{"t1"}
 		hostIds = []string{"h1", "h2", "h3"}
 		hosts = []*host.Host{
-			&host.Host{Id: hostIds[0], StartedBy: mci.MCIUser,
-				Status: mci.HostRunning},
-			&host.Host{Id: hostIds[1], StartedBy: mci.MCIUser,
-				Status: mci.HostRunning},
-			&host.Host{Id: hostIds[2], StartedBy: mci.MCIUser,
-				Status: mci.HostRunning},
+			&host.Host{Id: hostIds[0], StartedBy: evergreen.MCIUser,
+				Status: evergreen.HostRunning},
+			&host.Host{Id: hostIds[1], StartedBy: evergreen.MCIUser,
+				Status: evergreen.HostRunning},
+			&host.Host{Id: hostIds[2], StartedBy: evergreen.MCIUser,
+				Status: evergreen.HostRunning},
 		}
 
 		So(db.Clear(host.Collection), ShouldBeNil)
@@ -78,7 +78,7 @@ func TestDBHostFinder(t *testing.T) {
 
 		Convey("hosts that are not in the 'running' state should not be"+
 			" returned", func() {
-			hosts[2].Status = mci.HostUninitialized
+			hosts[2].Status = evergreen.HostUninitialized
 			for _, host := range hosts {
 				util.HandleTestingErr(host.Insert(), t, "Error inserting host"+
 					" into database")

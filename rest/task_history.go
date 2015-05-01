@@ -1,10 +1,10 @@
 package rest
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -25,7 +25,7 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -37,7 +37,7 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding project '%v'", projectName)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 
@@ -49,7 +49,7 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 	chunk, err := iter.GetChunk(nil, MaxNumRevisions, NoRevisions, false)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding history for task '%v'", taskName)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 

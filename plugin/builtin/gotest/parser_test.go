@@ -1,8 +1,8 @@
 package gotest
 
 import (
-	"10gen.com/mci/util"
 	"bytes"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -71,7 +71,7 @@ func TestParserOnRealTests(t *testing.T) {
 				// return to original working directory at the end
 				util.HandleTestingErr(os.Chdir(startDir), t, "error changing directories %v")
 			})
-			// runs tests on the "10gen.com/mci/plugin" package
+			// runs tests on the "github.com/evergreen-ci/evergreen/plugin" package
 			cmd := exec.Command("go", "test", "-v")
 			stdout, err := cmd.StdoutPipe()
 			util.HandleTestingErr(err, t, "error getting stdout pipe %v")

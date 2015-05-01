@@ -1,10 +1,10 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -12,7 +12,7 @@ import (
 
 func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -26,14 +26,14 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 
 			task1 := &model.Task{
 				Id:            "t1",
-				Status:        mci.TaskUndispatched,
+				Status:        evergreen.TaskUndispatched,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
 			util.HandleTestingErr(task1.Insert(), t, "error inserting task")
 
 			task2 := &model.Task{
 				Id:            "t2",
-				Status:        mci.TaskSucceeded,
+				Status:        evergreen.TaskSucceeded,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
 			util.HandleTestingErr(task2.Insert(), t, "error inserting task")
@@ -49,7 +49,7 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 
 			task1 := &model.Task{
 				Id:            "t1",
-				Status:        mci.TaskStarted,
+				Status:        evergreen.TaskStarted,
 				LastHeartbeat: time.Now().Add(-time.Minute * 5),
 			}
 			util.HandleTestingErr(task1.Insert(), t, "error inserting task")
@@ -65,14 +65,14 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 
 			task1 := &model.Task{
 				Id:            "t1",
-				Status:        mci.TaskStarted,
+				Status:        evergreen.TaskStarted,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
 			util.HandleTestingErr(task1.Insert(), t, "error inserting task")
 
 			task2 := &model.Task{
 				Id:            "t2",
-				Status:        mci.TaskDispatched,
+				Status:        evergreen.TaskDispatched,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
 			util.HandleTestingErr(task2.Insert(), t, "error inserting task")

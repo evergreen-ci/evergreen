@@ -1,7 +1,7 @@
 package db
 
 import (
-	"10gen.com/mci"
+	"github.com/evergreen-ci/evergreen"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	dbUtilsTestConf = mci.TestConfig()
+	dbUtilsTestConf = evergreen.TestConfig()
 )
 
 func TestDBUtils(t *testing.T) {

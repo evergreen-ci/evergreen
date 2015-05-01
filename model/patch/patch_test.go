@@ -1,8 +1,8 @@
 package patch
 
 import (
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/thirdparty"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -13,7 +13,7 @@ func TestConfigChanged(t *testing.T) {
 		"path", t, func() {
 
 		Convey("the function should return true if the config has changed", func() {
-			remoteConfigPath := "config/mci.yml"
+			remoteConfigPath := "config/evergreen.yml"
 			p := &patch.Patch{
 				Patches: []patch.ModulePatch{{
 					PatchSet: patch.PatchSet{
@@ -29,7 +29,7 @@ func TestConfigChanged(t *testing.T) {
 		})
 
 		Convey("the function should not return true if the config has not changed", func() {
-			remoteConfigPath := "config/mci.yml"
+			remoteConfigPath := "config/evergreen.yml"
 			p := &patch.Patch{
 				Patches: []patch.ModulePatch{{
 					PatchSet: patch.PatchSet{

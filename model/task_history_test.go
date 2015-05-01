@@ -1,17 +1,17 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	taskHistoryTestConfig = mci.TestConfig()
+	taskHistoryTestConfig = evergreen.TestConfig()
 )
 
 func init() {
@@ -25,7 +25,7 @@ func TestTaskHistory(t *testing.T) {
 
 		buildVariants := []string{"bv_0", "bv_1", "bv_2"}
 		projectName := "project"
-		taskHistoryIterator := NewTaskHistoryIterator(mci.CompileStage,
+		taskHistoryIterator := NewTaskHistoryIterator(evergreen.CompileStage,
 			buildVariants, projectName)
 
 		Convey("when finding task history items", func() {
@@ -44,7 +44,7 @@ func TestTaskHistory(t *testing.T) {
 					Id:                  vid,
 					RevisionOrderNumber: i,
 					Revision:            vid,
-					Requester:           mci.RepotrackerVersionRequester,
+					Requester:           evergreen.RepotrackerVersionRequester,
 					Project:             projectToUse,
 				}
 
@@ -54,10 +54,10 @@ func TestTaskHistory(t *testing.T) {
 					task := &Task{
 						Id:                  fmt.Sprintf("t%v_%v", i, j),
 						BuildVariant:        fmt.Sprintf("bv_%v", j),
-						DisplayName:         mci.CompileStage,
+						DisplayName:         evergreen.CompileStage,
 						RevisionOrderNumber: i,
 						Revision:            vid,
-						Requester:           mci.RepotrackerVersionRequester,
+						Requester:           evergreen.RepotrackerVersionRequester,
 						Project:             projectToUse,
 					}
 					util.HandleTestingErr(task.Insert(), t,

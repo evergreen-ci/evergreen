@@ -1,10 +1,10 @@
 package rest
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/build"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/gorilla/mux"
 	"github.com/shelman/angier"
 	"net/http"
@@ -57,7 +57,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -71,7 +71,7 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	err = angier.TransferByFieldNames(srcBuild, destBuild)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding build '%v'", buildId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 
@@ -103,7 +103,7 @@ func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 

@@ -1,9 +1,9 @@
 package cli
 
 import (
-	"10gen.com/mci/model/patch"
 	"bytes"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"os/exec"
 	"strings"
 	"text/template"

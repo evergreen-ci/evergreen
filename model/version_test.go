@@ -1,20 +1,20 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
-	mci.SetLogger("/tmp/version_test.log")
+	evergreen.SetLogger("/tmp/version_test.log")
 }
 
-var versionTestSettings = mci.TestConfig()
+var versionTestSettings = evergreen.TestConfig()
 
 func TestLastKnownGoodConfig(t *testing.T) {
 	Convey("When calling LastKnownGoodConfig..", t, func() {
@@ -23,7 +23,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			"last known configurations", func() {
 			v := &version.Version{
 				Identifier: identifier,
-				Requester:  mci.RepotrackerVersionRequester,
+				Requester:  evergreen.RepotrackerVersionRequester,
 				Errors:     []string{"error 1", "error 2"},
 			}
 			util.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
@@ -34,7 +34,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 		Convey("a version should be returned if there is a last known good configuration", func() {
 			v := &version.Version{
 				Identifier: identifier,
-				Requester:  mci.RepotrackerVersionRequester,
+				Requester:  evergreen.RepotrackerVersionRequester,
 			}
 			util.HandleTestingErr(v.Insert(), t, "Error inserting test version: %v")
 			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(identifier))
@@ -45,7 +45,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			v := &version.Version{
 				Id:                  "1",
 				Identifier:          identifier,
-				Requester:           mci.RepotrackerVersionRequester,
+				Requester:           evergreen.RepotrackerVersionRequester,
 				RevisionOrderNumber: 1,
 				Config:              "1",
 			}

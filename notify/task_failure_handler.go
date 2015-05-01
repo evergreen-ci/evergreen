@@ -1,10 +1,10 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/web"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/web"
 )
 
 // Handler for task failure notifications. Implements NotificationHandler from
@@ -18,11 +18,11 @@ func (self *TaskFailureHandler) GetNotifications(ae *web.App, configName string,
 	key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciFailurePreface
-	if key.NotificationRequester == mci.PatchVersionRequester {
+	if key.NotificationRequester == evergreen.PatchVersionRequester {
 		preface = patchFailurePreface
 	}
 	triggeredNotifications, err := self.getRecentlyFinishedTasksWithStatus(key,
-		mci.TaskFailed, preface, failureSubject)
+		evergreen.TaskFailed, preface, failureSubject)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func (self *TaskFailureHandler) GetNotifications(ae *web.App, configName string,
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, configName, &triggered)
 		if err != nil {
-			mci.Logger.Logf(slogger.WARN, "Error templating notification for task `%v`: %v",
+			evergreen.Logger.Logf(slogger.WARN, "Error templating notification for task `%v`: %v",
 				triggered.Current.Id, err)
 			continue
 		}

@@ -1,13 +1,13 @@
 package plugin
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/context"
 	"html/template"
 	"net/http"
@@ -92,7 +92,7 @@ type UIPanel struct {
 }
 
 type UIContext struct {
-	MCISettings mci.MCISettings
+	MCISettings evergreen.MCISettings
 	User        *user.DBUser
 	Task        *model.Task
 	Build       *build.Build

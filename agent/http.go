@@ -1,14 +1,6 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
@@ -16,6 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -484,7 +484,7 @@ func (h *HTTPAgentCommunicator) tryRequest(path string, method string,
 		}
 		req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 	}
-	req.Header.Add(mci.TaskSecretHeader, h.TaskSecret)
+	req.Header.Add(evergreen.TaskSecretHeader, h.TaskSecret)
 	req.Header.Add("Content-Type", "application/json")
 	return h.httpClient.Do(req)
 }

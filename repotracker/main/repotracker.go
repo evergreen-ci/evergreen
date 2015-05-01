@@ -1,17 +1,17 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/repotracker"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/repotracker"
 	"os"
 )
 
 func main() {
-	config := mci.MustConfig()
+	config := evergreen.MustConfig()
 	if config.RepoTracker.LogFile != "" {
-		mci.SetLogger(config.RepoTracker.LogFile)
+		evergreen.SetLogger(config.RepoTracker.LogFile)
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(config))
 	r := &repotracker.Runner{}

@@ -1,14 +1,14 @@
 package static
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/hostutil"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/hostutil"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"time"
 )
 
@@ -64,16 +64,16 @@ func (staticMgr *StaticManager) CanSpawn() (bool, error) {
 // terminate an instance
 func (staticMgr *StaticManager) TerminateInstance(host *host.Host) error {
 	// a decommissioned static host will be removed from the database
-	if host.Status == mci.HostDecommissioned {
-		mci.Logger.Logf(slogger.DEBUG, "Removing decommissioned %v "+
+	if host.Status == evergreen.HostDecommissioned {
+		evergreen.Logger.Logf(slogger.DEBUG, "Removing decommissioned %v "+
 			"static host (%v)", host.Distro, host.Host)
 		if err := host.Remove(); err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error removing "+
+			evergreen.Logger.Errorf(slogger.ERROR, "Error removing "+
 				"decommissioned %v static host (%v): %v",
 				host.Distro, host.Host, err)
 		}
 	}
-	mci.Logger.Logf(slogger.DEBUG, "Not terminating static %v host: %v", host.Distro, host.Host)
+	evergreen.Logger.Logf(slogger.DEBUG, "Not terminating static %v host: %v", host.Distro, host.Host)
 	return nil
 }
 
@@ -81,7 +81,7 @@ func (_ *StaticManager) GetSettings() cloud.ProviderSettings {
 	return &Settings{}
 }
 
-func (staticMgr *StaticManager) Configure(mciSettings *mci.MCISettings) error {
+func (staticMgr *StaticManager) Configure(mciSettings *evergreen.MCISettings) error {
 	//no-op. maybe will need to load something from mciSettings in the future.
 	return nil
 }

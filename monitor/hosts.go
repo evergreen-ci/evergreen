@@ -1,13 +1,13 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"sync"
 	"time"
 )
@@ -23,9 +23,9 @@ type HostMonitor struct {
 
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
-func (self *HostMonitor) RunMonitoringChecks(mciSettings *mci.MCISettings) []error {
+func (self *HostMonitor) RunMonitoringChecks(mciSettings *evergreen.MCISettings) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
+	evergreen.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -41,7 +41,7 @@ func (self *HostMonitor) RunMonitoringChecks(mciSettings *mci.MCISettings) []err
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Finished running host monitoring checks")
+	evergreen.Logger.Logf(slogger.INFO, "Finished running host monitoring checks")
 
 	return errors
 
@@ -49,9 +49,9 @@ func (self *HostMonitor) RunMonitoringChecks(mciSettings *mci.MCISettings) []err
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *mci.MCISettings) []error {
+func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.MCISettings) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Running host cleanup...")
+	evergreen.Logger.Logf(slogger.INFO, "Running host cleanup...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -68,7 +68,7 @@ func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *mci.MCI
 			continue
 		}
 
-		mci.Logger.Logf(slogger.INFO, "Check %v: found %v hosts to be"+
+		evergreen.Logger.Logf(slogger.INFO, "Check %v: found %v hosts to be"+
 			" terminated", idx, len(hostsToTerminate))
 
 		// terminate all of the dead hosts. continue on error to allow further
@@ -89,7 +89,7 @@ func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *mci.MCI
 
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
-func terminateHosts(hosts []host.Host, mciSettings *mci.MCISettings) []error {
+func terminateHosts(hosts []host.Host, mciSettings *evergreen.MCISettings) []error {
 
 	// used to store any errors that occur
 	var errors []error
@@ -102,7 +102,7 @@ func terminateHosts(hosts []host.Host, mciSettings *mci.MCISettings) []error {
 
 	for _, h := range hosts {
 
-		mci.Logger.Logf(slogger.INFO, "Terminating host %v...", h.Id)
+		evergreen.Logger.Logf(slogger.INFO, "Terminating host %v...", h.Id)
 
 		waitGroup.Add(1)
 
@@ -131,7 +131,7 @@ func terminateHosts(hosts []host.Host, mciSettings *mci.MCISettings) []error {
 					" %v", err))
 				errsLock.Unlock()
 			} else {
-				mci.Logger.Logf(slogger.INFO, "Successfully terminated host"+
+				evergreen.Logger.Logf(slogger.INFO, "Successfully terminated host"+
 					" %v", hostToTerminate.Id)
 			}
 
@@ -146,7 +146,7 @@ func terminateHosts(hosts []host.Host, mciSettings *mci.MCISettings) []error {
 }
 
 // helper to terminate a single host
-func terminateHost(host *host.Host, mciSettings *mci.MCISettings) error {
+func terminateHost(host *host.Host, mciSettings *evergreen.MCISettings) error {
 
 	// convert the host to a cloud host
 	cloudHost, err := providers.GetCloudHost(host, mciSettings)

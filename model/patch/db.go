@@ -1,9 +1,9 @@
 package patch
 
 import (
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/thirdparty"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )

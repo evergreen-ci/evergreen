@@ -1,14 +1,14 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/s3"
 	. "github.com/smartystreets/goconvey/convey"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestPushTask(t *testing.T) {
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 	setupTlsConfigs(t)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -31,7 +31,7 @@ func TestPushTask(t *testing.T) {
 				util.HandleTestingErr(err, t, "Couldn't get abs path for config: %v", err)
 
 				Convey("With agent running a push task "+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, mci.PushStage,
+					testTask, _, err := setupAPITestData(testConfig, evergreen.PushStage,
 						"linux-64", false, t)
 					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					util.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
@@ -83,7 +83,7 @@ func TestPushTask(t *testing.T) {
 
 						testTask, err = model.FindTask(testTask.Id)
 						util.HandleTestingErr(err, t, "Error finding test task: %v", err)
-						So(testTask.Status, ShouldEqual, mci.TaskSucceeded)
+						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
 						//Check the file written to s3 is what we expected
 						auth := &aws.Auth{

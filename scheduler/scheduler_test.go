@@ -1,26 +1,26 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers/mock"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/version"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	schedulerTestConf = mci.TestConfig()
+	schedulerTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
 	if schedulerTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(schedulerTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(schedulerTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -34,7 +34,7 @@ func (self *MockTaskFinder) FindRunnableTasks() ([]model.Task, error) {
 
 type MockTaskPrioritizer struct{}
 
-func (self *MockTaskPrioritizer) PrioritizeTasks(mciSettings *mci.MCISettings,
+func (self *MockTaskPrioritizer) PrioritizeTasks(mciSettings *evergreen.MCISettings,
 	tasks []model.Task) ([]model.Task, error) {
 	return nil, fmt.Errorf("PrioritizeTasks not implemented")
 }
@@ -57,7 +57,7 @@ func (self *MockTaskDurationEstimator) GetExpectedDurations(
 
 type MockHostAllocator struct{}
 
-func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *mci.MCISettings) (
+func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *evergreen.MCISettings) (
 	map[string]int, error) {
 	return nil, fmt.Errorf("NewHostsNeeded not implemented")
 }

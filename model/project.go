@@ -1,12 +1,14 @@
 package model
 
 import (
-	"10gen.com/mci/command"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/shelman/angier"
 	"gopkg.in/yaml.v2"
 	"path/filepath"
@@ -403,7 +405,6 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 }
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
-
 	if projectRef == nil {
 		return nil, fmt.Errorf("invalid projectRef")
 	}

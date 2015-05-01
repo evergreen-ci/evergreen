@@ -1,23 +1,23 @@
 package git_test
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
-	. "10gen.com/mci/plugin/builtin/git"
-	"10gen.com/mci/plugin/testutil"
-	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
+	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
+	"github.com/evergreen-ci/evergreen/plugin/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestPatchPluginAPI(t *testing.T) {
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 	Convey("With a running api server and installed plugin", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}
@@ -32,7 +32,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		testTask, err := model.FindTask("testTaskId")
 		util.HandleTestingErr(err, t, "Couldn't set up test patch task")
 
-		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
 		Convey("calls to existing tasks with patches should succeed", func() {
@@ -77,7 +77,7 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
@@ -94,12 +94,12 @@ func TestPatchPlugin(t *testing.T) {
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			taskConfig, _ := testutil.CreateTestConfig("testdata/plugin_patch.yml", t)
-			taskConfig.Task.Requester = mci.PatchVersionRequester
+			taskConfig.Task.Requester = evergreen.PatchVersionRequester
 			_, _, err = testutil.SetupAPITestData("testTask", true, t)
 			util.HandleTestingErr(err, t, "Couldn't set up test documents")
 
@@ -119,7 +119,7 @@ func TestPatchPlugin(t *testing.T) {
 		Convey("broken test project should fail during execution", func() {
 			// this config tries to patch on an empty repo
 			taskConfig, _ := testutil.CreateTestConfig("testdata/plugin_broken_patch.yml", t)
-			taskConfig.Task.Requester = mci.PatchVersionRequester
+			taskConfig.Task.Requester = evergreen.PatchVersionRequester
 			_, _, err = testutil.SetupAPITestData("testTask", true, t)
 			util.HandleTestingErr(err, t, "Couldn't set up test documents")
 

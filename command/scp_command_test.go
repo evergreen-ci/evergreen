@@ -1,8 +1,8 @@
 package command
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -16,7 +16,7 @@ func TestScpCommand(t *testing.T) {
 	Convey("With files to scp", t, func() {
 
 		// the local files and target directory for scping
-		mciHome, err := mci.FindMCIHome()
+		mciHome, err := evergreen.FindMCIHome()
 		So(err, ShouldBeNil)
 
 		tmpBase := filepath.Join(mciHome, "command/testdata/tmp")

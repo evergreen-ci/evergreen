@@ -1,10 +1,10 @@
 package repotracker
 
 import (
-	"10gen.com/mci/model"
-	"10gen.com/mci/thirdparty"
 	"encoding/base64"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/shelman/angier"
 	"time"
 )

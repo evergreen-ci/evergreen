@@ -1,23 +1,23 @@
 package attach_test
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/plugin"
-	. "10gen.com/mci/plugin/builtin/attach"
-	"10gen.com/mci/plugin/testutil"
-	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/plugin"
+	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
+	"github.com/evergreen-ci/evergreen/plugin/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
 )
 
 func resetTasks(t *testing.T) {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 	util.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, model.TestLogCollection), t,
 		"error clearing test collections")
@@ -31,7 +31,7 @@ func TestAttachResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		util.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, true)
+		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		configFile := "testdata/plugin_attach_results.yml"
@@ -39,7 +39,7 @@ func TestAttachResults(t *testing.T) {
 		taskConfig, err := testutil.CreateTestConfig(configFile, t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
-		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {

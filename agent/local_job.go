@@ -1,11 +1,11 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
-	"10gen.com/mci/util"
 	"errors"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/util"
 	"os"
 	"strings"
 )
@@ -31,8 +31,8 @@ func (self *AgentCommand) Run(workingDir string) error {
 		self.ScriptLine,
 		workingDir)
 
-	logWriterInfo := &mci.LoggingWriter{self.AgentLogger.TaskLogger, slogger.INFO}
-	logWriterErr := &mci.LoggingWriter{self.AgentLogger.TaskLogger, slogger.ERROR}
+	logWriterInfo := &evergreen.LoggingWriter{self.AgentLogger.TaskLogger, slogger.INFO}
+	logWriterErr := &evergreen.LoggingWriter{self.AgentLogger.TaskLogger, slogger.ERROR}
 
 	ignoreErrors := false
 	if strings.HasPrefix(self.ScriptLine, "-") {

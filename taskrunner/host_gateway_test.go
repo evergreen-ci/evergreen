@@ -1,12 +1,12 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	hostGatewayTestConf = mci.TestConfig()
+	hostGatewayTestConf = evergreen.TestConfig()
 )
 
 // mock AgentCompiler implementations
@@ -145,7 +145,7 @@ func TestAgentBasedHostGateway(t *testing.T) {
 
 			// create a mock config directory, mock executables
 			// directory, and mock remote shell
-			mciHome, err := mci.FindMCIHome()
+			mciHome, err := evergreen.FindMCIHome()
 			So(err, ShouldBeNil)
 			tmpBase := filepath.Join(mciHome, "taskrunner/testdata/tmp")
 			mockConfigDir := filepath.Join(tmpBase, "mock_config_dir")
@@ -154,7 +154,7 @@ func TestAgentBasedHostGateway(t *testing.T) {
 			hostGateway.ExecutablesDir = mockExecutablesDir
 			mockExecutable := filepath.Join(mockExecutablesDir, "main")
 			mockRemoteShell := filepath.Join(tmpBase, "mock_remote_shell")
-			mci.RemoteShell = mockRemoteShell
+			evergreen.RemoteShell = mockRemoteShell
 
 			// prevent permissions issues
 			syscall.Umask(0000)

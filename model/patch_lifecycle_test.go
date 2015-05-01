@@ -1,9 +1,9 @@
 package model
 
 import (
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/thirdparty"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"testing"
@@ -18,7 +18,7 @@ func TestMakePatchedConfig(t *testing.T) {
 
 	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
 		Convey("the config should be patched correctly", func() {
-			remoteConfigPath := "config/mci.yml"
+			remoteConfigPath := "config/evergreen.yml"
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
 			// update patch with remove config path variable

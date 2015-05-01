@@ -1,16 +1,16 @@
 package repotracker
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/notify"
-	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/util"
-	"10gen.com/mci/validator"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"gopkg.in/yaml.v2"
 	"time"
 )
@@ -27,7 +27,7 @@ const (
 // changes. It contains a number of interfaces that specify behavior required by
 // client implementations
 type RepoTracker struct {
-	*mci.MCISettings
+	*evergreen.MCISettings
 	*model.ProjectRef
 	RepoPoller
 }
@@ -71,7 +71,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	projectIdentifier := projectRef.String()
 
 	if !projectRef.Enabled {
-		mci.Logger.Logf(slogger.INFO, "Skipping disabled project “%v”", projectRef)
+		evergreen.Logger.Logf(slogger.INFO, "Skipping disabled project “%v”", projectRef)
 		return nil
 	}
 
@@ -91,19 +91,19 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	if lastRevision == "" {
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
-		mci.Logger.Logf(slogger.INFO, "No last recorded repository revision "+
+		evergreen.Logger.Logf(slogger.INFO, "No last recorded repository revision "+
 			"for “%v”. Proceeding to fetch most recent %v revisions",
 			projectRef, numNewRepoRevisionsToFetch)
 		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
 	} else {
-		mci.Logger.Logf(slogger.INFO, "Last recorded repository revision for "+
+		evergreen.Logger.Logf(slogger.INFO, "Last recorded repository revision for "+
 			"“%v” is “%v”", projectRef, lastRevision)
 		revisions, err = repoTracker.GetRevisionsSince(lastRevision,
 			settings.RepoTracker.MaxRepoRevisionsToSearch)
 	}
 
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "error fetching revisions for "+
+		evergreen.Logger.Logf(slogger.ERROR, "error fetching revisions for "+
 			"repository “%v”: %v", projectRef, err)
 		repoTracker.sendFailureNotification(lastRevision, err)
 		return nil
@@ -117,34 +117,34 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 		// has changed before re-parsing it from scratch
 		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "error storing revisions for "+
+			evergreen.Logger.Logf(slogger.ERROR, "error storing revisions for "+
 				"repository %v: %v", projectRef, err)
 			return err
 		}
 		err = model.UpdateLastRevision(lastVersion.Project, lastVersion.Revision)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "error updating last revision for "+
+			evergreen.Logger.Logf(slogger.ERROR, "error updating last revision for "+
 				"repository %v: %v", projectRef, err)
 			return err
 		}
 	} else {
-		lastVersion, err = version.FindOne(version.ByMostRecentForRequester(projectIdentifier, mci.RepotrackerVersionRequester))
+		lastVersion, err = version.FindOne(version.ByMostRecentForRequester(projectIdentifier, evergreen.RepotrackerVersionRequester))
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "error getting most recent version for "+
+			evergreen.Logger.Logf(slogger.ERROR, "error getting most recent version for "+
 				"repository %v: %v", projectRef, err)
 			return err
 		}
 	}
 
 	if lastVersion == nil {
-		mci.Logger.Logf(slogger.WARN, "no version to activate for repository %v", projectIdentifier)
+		evergreen.Logger.Logf(slogger.WARN, "no version to activate for repository %v", projectIdentifier)
 		return nil
 	}
 
 	err = repoTracker.activateElapsedBuilds(lastVersion)
 
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "error activating variants: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "error activating variants: %v", err)
 		return err
 	}
 
@@ -159,7 +159,7 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 	for i, status := range v.BuildVariants {
 		// last comparison is to check that ActivateAt is actually set
 		if !status.Activated && now.After(status.ActivateAt) && !status.ActivateAt.IsZero() {
-			mci.Logger.Logf(slogger.INFO, "activating variant %v for project %v, revision %v",
+			evergreen.Logger.Logf(slogger.INFO, "activating variant %v for project %v, revision %v",
 				status.BuildVariant, projectId, v.Revision)
 
 			// Go copies the slice value, we want to modify the actual value
@@ -169,16 +169,16 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 
 			b, err := build.FindOne(build.ById(status.BuildId))
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR,
+				evergreen.Logger.Logf(slogger.ERROR,
 					"error retrieving build for project %v, variant %v, build %v: %v",
 					projectId, status.BuildVariant, status.BuildId, err)
 				continue
 			}
-			mci.Logger.Logf(slogger.INFO, "activating build %v for project %v, variant %v",
+			evergreen.Logger.Logf(slogger.INFO, "activating build %v for project %v, variant %v",
 				status.BuildId, projectId, status.BuildVariant)
 			// Don't need to set the version in here since we do it ourselves in a single update
 			if err = model.SetBuildActivation(b.Id, true); err != nil {
-				mci.Logger.Logf(slogger.ERROR, "error activating build %v for project %v, variant %v: %v",
+				evergreen.Logger.Logf(slogger.ERROR, "error activating build %v for project %v, variant %v: %v",
 					b.Id, projectId, status.BuildVariant, err)
 				continue
 			}
@@ -210,13 +210,13 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 		settings.RepoTracker.MaxRepoRevisionsToSearch, url, err)
 	nErr := notify.NotifyAdmins(subject, message, settings)
 	if nErr != nil {
-		mci.Logger.Logf(slogger.ERROR, "error sending email: %v", nErr)
+		evergreen.Logger.Logf(slogger.ERROR, "error sending email: %v", nErr)
 	}
 }
 
 // Verifies that the given revision order number is higher than the latest number stored for the project.
 func sanityCheckOrderNum(revOrderNum int, projectId string) error {
-	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, mci.RepotrackerVersionRequester))
+	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester))
 	if err != nil {
 		return fmt.Errorf("Error getting latest version: %v", err.Error())
 	}
@@ -247,16 +247,16 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 
 	for i := len(revisions) - 1; i >= 0; i-- {
 		revision := revisions[i].Revision
-		mci.Logger.Logf(slogger.INFO, "Processing revision %v in project %v", revision, ref.Identifier)
+		evergreen.Logger.Logf(slogger.INFO, "Processing revision %v in project %v", revision, ref.Identifier)
 
 		// We check if the version exists here so we can avoid fetching the github config unnecessarily
 		existingVersion, err := version.FindOne(version.ByProjectIdAndRevision(ref.Identifier, revisions[i].Revision))
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR,
+			evergreen.Logger.Logf(slogger.ERROR,
 				"Error looking up version at %v for project %v: %v", ref.Identifier, revision, err)
 		}
 		if existingVersion != nil {
-			mci.Logger.Logf(slogger.INFO,
+			evergreen.Logger.Logf(slogger.INFO,
 				"Skipping creation of version for project %v, revision %v since"+
 					" we already have a record for it", ref.Identifier, revision)
 			// We bind newestVersion here since we still need to return the most recent
@@ -268,7 +268,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		// Create the stub of the version (not stored in DB yet)
 		v, err := NewVersionFromRevision(ref, revisions[i])
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error creating version for project %v: %v", ref.Identifier, err)
+			evergreen.Logger.Logf(slogger.ERROR, "Error creating version for project %v: %v", ref.Identifier, err)
 		}
 		err = sanityCheckOrderNum(v.RevisionOrderNumber, ref.Identifier)
 		if err != nil { // something seriously wrong (bad data in db?) so fail now
@@ -281,7 +281,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 				// Store just the stub version with the project errors
 				v.Errors = projectError.errors
 				if err := v.Insert(); err != nil {
-					mci.Logger.Logf(slogger.ERROR,
+					evergreen.Logger.Logf(slogger.ERROR,
 						"Failed storing stub version for project %v: %v", ref.Identifier, err)
 					return nil, err
 				}
@@ -289,7 +289,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 				continue
 			} else {
 				// Fatal error - don't store the stub
-				mci.Logger.Logf(slogger.INFO,
+				evergreen.Logger.Logf(slogger.INFO,
 					"Failed to get config for project %v at revision %v: %v", ref.Identifier, revision, err)
 				return nil, err
 			}
@@ -305,14 +305,14 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		// We rebind newestVersion each iteration, so the last binding will be the newest version
 		err = createVersionItems(v, ref, project)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error creating version items for %v in project %v: %v",
+			evergreen.Logger.Logf(slogger.ERROR, "Error creating version items for %v in project %v: %v",
 				v.Id, ref.Identifier, err)
 			return nil, err
 		}
 
 		newestVersion = v
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Unable to store revision %v for project %v: %v:",
+			evergreen.Logger.Logf(slogger.ERROR, "Unable to store revision %v for project %v: %v:",
 				revision, ref.Identifier, err)
 			return nil, err
 		}
@@ -347,7 +347,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 			message := fmt.Sprintf("error fetching project “%v” configuration "+
 				"data at revision “%v” (remote path=“%v”): %v",
 				projectRef.Identifier, revision, projectRef.RemotePath, err)
-			mci.Logger.Logf(slogger.ERROR, message)
+			evergreen.Logger.Logf(slogger.ERROR, message)
 			return nil, projectConfigError{[]string{message}}
 		}
 		// If we get here then we have an infrastructural error - e.g.
@@ -364,7 +364,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 		var lastRevision string
 		repository, fErr := model.FindRepository(projectRef.Identifier)
 		if fErr != nil || repository == nil {
-			mci.Logger.Logf(slogger.ERROR, "error finding "+
+			evergreen.Logger.Logf(slogger.ERROR, "error finding "+
 				"repository '%v': %v", projectRef.Identifier, fErr)
 		} else {
 			lastRevision = repository.LastRevision
@@ -384,7 +384,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 			message += fmt.Sprintf("\n\t=> %v", configError)
 			projectParseErrors = append(projectParseErrors, configError.Error())
 		}
-		mci.Logger.Logf(slogger.ERROR, "error validating project '%v' "+
+		evergreen.Logger.Logf(slogger.ERROR, "error validating project '%v' "+
 			"configuration at revision '%v': %v", projectRef.Identifier,
 			revision, message)
 		return nil, projectConfigError{projectParseErrors}
@@ -412,9 +412,9 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 		RemotePath:          ref.RemotePath,
 		Repo:                ref.Repo,
 		RepoKind:            ref.RepoKind,
-		Requester:           mci.RepotrackerVersionRequester,
+		Requester:           evergreen.RepotrackerVersionRequester,
 		Revision:            rev.Revision,
-		Status:              mci.VersionCreated,
+		Status:              evergreen.VersionCreated,
 		RevisionOrderNumber: number,
 	}
 	return v, nil
@@ -434,7 +434,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 
 		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error getting activation time for bv %v", buildvariant.Name)
+			evergreen.Logger.Logf(slogger.ERROR, "Error getting activation time for bv %v", buildvariant.Name)
 			return err
 		}
 
@@ -456,7 +456,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 			activated = true
 		} else {
 			activateAt = lastActivation.Add(time.Minute * time.Duration(project.GetBatchTime(&buildvariant)))
-			mci.Logger.Logf(slogger.INFO, "Going to activate bv %v for project %v, version %v at %v",
+			evergreen.Logger.Logf(slogger.INFO, "Going to activate bv %v for project %v, version %v at %v",
 				buildvariant.Name, ref.Identifier, v.Id, activateAt)
 		}
 
@@ -470,10 +470,10 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 	}
 
 	if err := v.Insert(); err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error inserting version %v: %v", v.Id, err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error inserting version %v: %v", v.Id, err)
 		for _, buildStatus := range v.BuildVariants {
 			if buildErr := model.DeleteBuild(buildStatus.BuildId); buildErr != nil {
-				mci.Logger.Errorf(slogger.ERROR, "Error deleting build %v: %v",
+				evergreen.Logger.Errorf(slogger.ERROR, "Error deleting build %v: %v",
 					buildStatus.BuildId, buildErr)
 			}
 		}

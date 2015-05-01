@@ -1,19 +1,19 @@
 package providers
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/cloud/providers/digitalocean"
-	"10gen.com/mci/cloud/providers/ec2"
-	"10gen.com/mci/cloud/providers/mock"
-	"10gen.com/mci/cloud/providers/static"
-	"10gen.com/mci/model/host"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/providers/digitalocean"
+	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
+	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
+	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/model/host"
 )
 
 // GetCloudManager returns an implementation of CloudManager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetCloudManager(providerName string, mciSettings *mci.MCISettings) (cloud.CloudManager, error) {
+func GetCloudManager(providerName string, mciSettings *evergreen.MCISettings) (cloud.CloudManager, error) {
 
 	var provider cloud.CloudManager
 	switch providerName {
@@ -40,7 +40,7 @@ func GetCloudManager(providerName string, mciSettings *mci.MCISettings) (cloud.C
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
-func GetCloudHost(host *host.Host, mciSettings *mci.MCISettings) (*cloud.CloudHost, error) {
+func GetCloudHost(host *host.Host, mciSettings *evergreen.MCISettings) (*cloud.CloudHost, error) {
 	mgr, err := GetCloudManager(host.Provider, mciSettings)
 	if err != nil {
 		return nil, err

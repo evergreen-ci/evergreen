@@ -1,10 +1,10 @@
 package xunit
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"encoding/xml"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"io"
 	"strings"
 	"time"
@@ -72,16 +72,16 @@ func (tc TestCase) ToModelTestResultAndLog(task *model.Task) (model.TestResult, 
 	// results only include messages if they did *not* succeed.
 	switch {
 	case tc.Failure != nil:
-		res.Status = mci.TestFailedStatus
+		res.Status = evergreen.TestFailedStatus
 		log = tc.Failure.toBasicTestLog("FAILURE")
 	case tc.Error != nil:
-		res.Status = mci.TestFailedStatus
+		res.Status = evergreen.TestFailedStatus
 		log = tc.Error.toBasicTestLog("ERROR")
 	case tc.Skipped != nil:
-		res.Status = mci.TestSkippedStatus
+		res.Status = evergreen.TestSkippedStatus
 		log = tc.Skipped.toBasicTestLog("SKIPPED")
 	default:
-		res.Status = mci.TestSucceededStatus
+		res.Status = evergreen.TestSucceededStatus
 	}
 
 	if log != nil {

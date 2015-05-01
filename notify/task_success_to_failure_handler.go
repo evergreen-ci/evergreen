@@ -1,11 +1,11 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/web"
 )
 
 // Handler for notifications generated specifically when a task fails and the
@@ -25,7 +25,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 	}
 
 	preface := mciFailurePreface
-	if key.NotificationRequester == mci.PatchVersionRequester {
+	if key.NotificationRequester == evergreen.PatchVersionRequester {
 		preface = patchFailurePreface
 	}
 
@@ -36,36 +36,36 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 		// get previous task for this project/build variant
 		previousTask, err := model.PreviousCompletedTask(&currentTask, key.Project, []string{})
 		if previousTask == nil {
-			mci.Logger.Logf(slogger.DEBUG,
+			evergreen.Logger.Logf(slogger.DEBUG,
 				"No previous completed task found for ”%v” on %v %v notification",
 				currentTask.Id, key.Project, key.NotificationName)
 			continue
 		} else if err != nil {
 			return nil, err
 		}
-		mci.Logger.Logf(slogger.DEBUG,
+		evergreen.Logger.Logf(slogger.DEBUG,
 			"Previous completed task found for ”%v” on %v %v notification is %v",
 			currentTask.Id, key.Project, key.NotificationName, previousTask.Id)
 
-		if previousTask.Status == mci.TaskSucceeded &&
-			currentTask.Status == mci.TaskFailed {
+		if previousTask.Status == evergreen.TaskSucceeded &&
+			currentTask.Status == evergreen.TaskFailed {
 
 			// this is now a potential candidate but we must
 			// ensure that no other more recent build has
 			// triggered a notification for this event
 			history, err := model.FindNotificationRecord(previousTask.Id, key.NotificationName,
-				getType(key.NotificationName), key.Project, mci.RepotrackerVersionRequester)
+				getType(key.NotificationName), key.Project, evergreen.RepotrackerVersionRequester)
 
 			// if there's an error log it and move on
 			if err != nil {
-				mci.Logger.Errorf(slogger.ERROR, "Error finding notification record: %v", err)
+				evergreen.Logger.Errorf(slogger.ERROR, "Error finding notification record: %v", err)
 				continue
 			}
 
 			// get the task's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(currentTask.Project); err != nil {
-				mci.Logger.Logf(slogger.WARN, "Unable to find project ref "+
+				evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
 					"for task ”%v”: %v", currentTask.Id, err)
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
@@ -73,7 +73,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 
 			// if no notification for this handler has been registered, register it
 			if history == nil {
-				mci.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
+				evergreen.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
 					currentTask.Id, key.NotificationName, key.Project)
 				notification := TriggeredTaskNotification{
 					Current:    &curr,
@@ -85,7 +85,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 
 				email, err := self.TemplateNotification(ae, configName, &notification)
 				if err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error executing template for `%v`: %v",
+					evergreen.Logger.Errorf(slogger.ERROR, "Error executing template for `%v`: %v",
 						currentTask.Id, err)
 					continue
 				}
@@ -94,13 +94,13 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 
 				err = model.InsertNotificationRecord(previousTask.Id, currentTask.Id,
 					key.NotificationName, getType(key.NotificationName), key.Project,
-					mci.RepotrackerVersionRequester)
+					evergreen.RepotrackerVersionRequester)
 				if err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error inserting notification record: %v", err)
+					evergreen.Logger.Errorf(slogger.ERROR, "Error inserting notification record: %v", err)
 					continue
 				}
 			} else {
-				mci.Logger.Logf(slogger.DEBUG, "Skipping intermediate %v handler trigger on ”%v”",
+				evergreen.Logger.Logf(slogger.DEBUG, "Skipping intermediate %v handler trigger on ”%v”",
 					key.NotificationName, currentTask.Id)
 			}
 		}

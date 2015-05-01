@@ -1,13 +1,13 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -18,7 +18,7 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
 	skip, perPage := getSkipAndLimit(r, DefaultSkip, DefaultLimit)
-	data, err := getTimelineData(projCtx.Project.Identifier, mci.RepotrackerVersionRequester, skip, perPage)
+	data, err := getTimelineData(projCtx.Project.Identifier, evergreen.RepotrackerVersionRequester, skip, perPage)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error getting timeline data: %v", err.Error()), http.StatusInternalServerError)
 		return
@@ -149,7 +149,7 @@ func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
 
 	// If no version was specified in the URL, grab the latest version on the project
 	if projCtx.Version == nil {
-		versions, err := version.Find(version.ByMostRecentForRequester(projCtx.Project.Identifier, mci.RepotrackerVersionRequester).Limit(1))
+		versions, err := version.Find(version.ByMostRecentForRequester(projCtx.Project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error finding version: %v", err), http.StatusInternalServerError)
 			return

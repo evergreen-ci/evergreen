@@ -1,17 +1,17 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/auth"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"log"
@@ -85,7 +85,7 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 	return u
 }
 
-func (pc projectContext) ToPluginContext(mciSettings mci.MCISettings, user *user.DBUser) plugin.UIContext {
+func (pc projectContext) ToPluginContext(mciSettings evergreen.MCISettings, user *user.DBUser) plugin.UIContext {
 	return plugin.UIContext{
 		MCISettings: mciSettings,
 		User:        user,
@@ -98,7 +98,7 @@ func (pc projectContext) ToPluginContext(mciSettings mci.MCISettings, user *user
 	}
 }
 
-func (uis *UIServer) GetMCISettings() mci.MCISettings {
+func (uis *UIServer) GetMCISettings() evergreen.MCISettings {
 	return uis.MCISettings
 }
 
@@ -358,7 +358,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		token := ""
 		var err error
 		for _, cookie := range r.Cookies() {
-			if cookie.Name == mci.AuthTokenCookie {
+			if cookie.Name == evergreen.AuthTokenCookie {
 				if token, err = url.QueryUnescape(cookie.Value); err == nil {
 					break
 				}
@@ -367,12 +367,12 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		if len(token) > 0 {
 			user, err := um.GetUserByToken(token)
 			if err != nil {
-				mci.Logger.Logf(slogger.INFO, "Error getting user: %v", err)
+				evergreen.Logger.Logf(slogger.INFO, "Error getting user: %v", err)
 			} else {
 				// Get the user's full details from the DB or create them if they don't exists
 				dbUser, err := model.GetOrCreateUser(user.Username(), user.DisplayName(), user.Email())
 				if err != nil {
-					mci.Logger.Logf(slogger.INFO, "Error looking up user %v: %v", user.Username(), err)
+					evergreen.Logger.Logf(slogger.INFO, "Error looking up user %v: %v", user.Username(), err)
 				} else {
 					context.Set(r, myUserKey, dbUser)
 				}

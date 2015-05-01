@@ -1,10 +1,10 @@
 package s3Plugin
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -58,7 +58,7 @@ func TestValidateS3BucketName(t *testing.T) {
 
 func TestS3PutAndGet(t *testing.T) {
 
-	conf := mci.TestConfig()
+	conf := evergreen.TestConfig()
 	testutils.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
 
 	Convey("When putting to and retrieving from an s3 bucket", t, func() {

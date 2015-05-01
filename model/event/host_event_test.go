@@ -1,15 +1,15 @@
 package event
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
 func TestLoggingHostEvents(t *testing.T) {
@@ -29,7 +29,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			// log some events, sleeping in between to make sure the times are different
 			LogHostCreated(hostId)
 			time.Sleep(1 * time.Millisecond)
-			LogHostStatusChanged(hostId, mci.HostRunning, mci.HostTerminated)
+			LogHostStatusChanged(hostId, evergreen.HostRunning, evergreen.HostTerminated)
 			time.Sleep(1 * time.Millisecond)
 			LogHostDNSNameSet(hostId, hostname)
 			time.Sleep(1 * time.Millisecond)
@@ -69,8 +69,8 @@ func TestLoggingHostEvents(t *testing.T) {
 			eventData, ok = event.Data.Data.(*HostEventData)
 			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeHost)
-			So(eventData.OldStatus, ShouldEqual, mci.HostRunning)
-			So(eventData.NewStatus, ShouldEqual, mci.HostTerminated)
+			So(eventData.OldStatus, ShouldEqual, evergreen.HostRunning)
+			So(eventData.NewStatus, ShouldEqual, evergreen.HostTerminated)
 			So(eventData.SetupLog, ShouldBeBlank)
 			So(eventData.Hostname, ShouldBeBlank)
 			So(eventData.TaskId, ShouldBeBlank)

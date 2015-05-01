@@ -1,15 +1,15 @@
 package s3copy
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/s3"
 	"github.com/mitchellh/mapstructure"
@@ -300,7 +300,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	s3CopyReq := &S3CopyRequest{}
 	err := util.ReadJSONInto(r.Body, s3CopyReq)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error reading push request: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "error reading push request: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -309,7 +309,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	// any already-done pushes
 	v, err := version.FindOne(version.ById(task.Version))
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "error querying task %v with version id %v: %v",
+		evergreen.Logger.Logf(slogger.ERROR, "error querying task %v with version id %v: %v",
 			task.Id, task.Version, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -318,7 +318,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	// Check for an already-pushed file with this same file path,
 	// but from a conflicting or newer commit sequence num
 	if v == nil {
-		mci.Logger.Logf(slogger.ERROR, "no version found for build %v", task.BuildId)
+		evergreen.Logger.Logf(slogger.ERROR, "no version found for build %v", task.BuildId)
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
@@ -328,13 +328,13 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "error querying for push log at %v: %v", copyToLocation, err)
+		evergreen.Logger.Logf(slogger.ERROR, "error querying for push log at %v: %v", copyToLocation, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if newestPushLog != nil {
-		mci.Logger.Logf(slogger.ERROR, "conflict with existing pushed file: "+
+		evergreen.Logger.Logf(slogger.ERROR, "conflict with existing pushed file: "+
 			"%v", copyToLocation)
 		http.Error(w, "conflicting push target for this file already exists.", http.StatusConflict)
 		return
@@ -344,7 +344,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	newPushLog := model.NewPushLog(v, task, copyToLocation)
 	err = newPushLog.Insert()
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "failed to create new push log: %v %v", newPushLog, err)
+		evergreen.Logger.Logf(slogger.ERROR, "failed to create new push log: %v %v", newPushLog, err)
 		http.Error(w, fmt.Sprintf("failed to create push log: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -355,7 +355,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 		SecretKey: s3CopyReq.AwsSecret,
 	}
 
-	mci.Logger.Logf(slogger.INFO, "performing S3 copy: '%v' => '%v'",
+	evergreen.Logger.Logf(slogger.INFO, "performing S3 copy: '%v' => '%v'",
 		copyFromLocation, copyToLocation)
 
 	_, err = util.RetryArithmeticBackoff(func() error {
@@ -367,13 +367,13 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 			string(s3.PublicRead),
 		)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "S3 copy failed for task %v, "+
+			evergreen.Logger.Logf(slogger.ERROR, "S3 copy failed for task %v, "+
 				"retrying: %v", task.Id, err)
 			return util.RetriableError{err}
 		} else {
 			err := newPushLog.UpdateStatus(model.PushLogSuccess)
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "updating pushlog status failed"+
+				evergreen.Logger.Logf(slogger.ERROR, "updating pushlog status failed"+
 					" for task %v: %v", task.Id, err)
 			}
 			return err
@@ -382,10 +382,10 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		message := fmt.Sprintf("S3 copy failed for task %v: %v", task.Id, err)
-		mci.Logger.Logf(slogger.ERROR, message)
+		evergreen.Logger.Logf(slogger.ERROR, message)
 		err = newPushLog.UpdateStatus(model.PushLogFailed)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "updating pushlog status failed: %v", err)
+			evergreen.Logger.Logf(slogger.ERROR, "updating pushlog status failed: %v", err)
 		}
 		http.Error(w, message, http.StatusInternalServerError)
 		return

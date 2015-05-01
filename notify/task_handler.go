@@ -1,13 +1,13 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/web"
 	"time"
 )
 
@@ -54,13 +54,13 @@ func (self *TaskNotificationHandler) getRecentlyFinishedTasksWithStatus(key *Not
 		// Copy by value to make pointer safe
 		curr := currentTask
 		if status == "" || curr.Status == status {
-			mci.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
+			evergreen.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
 				curr.Id, key.Project, key.NotificationName)
 
 			// get the task's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(curr.Project); err != nil {
-				mci.Logger.Logf(slogger.WARN, "Unable to find project ref "+
+				evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
 					"for task ”%v”: %v", curr.Id, err)
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
@@ -84,7 +84,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	// *This could potential break some buildlogger links when MCI changes version as in-progress
 	// tasks will still be using the previous version number.*
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error getting MCI version: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error getting MCI version: %v", err)
 		return
 	}
 

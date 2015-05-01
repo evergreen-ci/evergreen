@@ -1,10 +1,10 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/notify"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/notify"
 )
 
 type Notifier struct {
@@ -14,9 +14,9 @@ type Notifier struct {
 }
 
 // create and send any notifications that need to be sent
-func (self *Notifier) Notify(mciSettings *mci.MCISettings) []error {
+func (self *Notifier) Notify(mciSettings *evergreen.MCISettings) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Building and sending necessary"+
+	evergreen.Logger.Logf(slogger.INFO, "Building and sending necessary"+
 		" notifications...")
 
 	// used to store any errors that occur
@@ -47,7 +47,7 @@ func (self *Notifier) Notify(mciSettings *mci.MCISettings) []error {
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Done building and sending notifications")
+	evergreen.Logger.Logf(slogger.INFO, "Done building and sending notifications")
 
 	return errors
 }
@@ -56,9 +56,9 @@ func (self *Notifier) Notify(mciSettings *mci.MCISettings) []error {
 // that are successfully sent. returns an aggregate list of any errors
 // that occur
 func sendNotifications(notifications []notification,
-	mciSettings *mci.MCISettings) []error {
+	mciSettings *evergreen.MCISettings) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Sending %v notifications...",
+	evergreen.Logger.Logf(slogger.INFO, "Sending %v notifications...",
 		len(notifications))
 
 	// used to store any errors that occur

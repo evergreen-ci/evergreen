@@ -1,19 +1,19 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"os"
 )
 
 func main() {
 	var err error
-	mciSettings := mci.MustConfig()
+	mciSettings := evergreen.MustConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mciSettings))
 
 	apis, err := apiserver.New(mciSettings, plugin.Published)
@@ -48,12 +48,12 @@ func main() {
 	}
 
 	go func() {
-		mci.Logger.Logf(slogger.INFO, "Starting nonssl API server")
+		evergreen.Logger.Logf(slogger.INFO, "Starting nonssl API server")
 		errChan <- apiserver.Serve(nonssl, handler)
 	}()
 
 	go func() {
-		mci.Logger.Logf(slogger.INFO, "Starting ssl API server")
+		evergreen.Logger.Logf(slogger.INFO, "Starting ssl API server")
 		errChan <- apiserver.Serve(ssl, handler)
 	}()
 

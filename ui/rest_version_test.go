@@ -1,16 +1,15 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/rest"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
@@ -22,7 +21,7 @@ import (
 )
 
 var (
-	versionTestConfig = mci.TestConfig()
+	versionTestConfig = evergreen.TestConfig()
 )
 
 func init() {
@@ -36,8 +35,8 @@ func TestGetRecentVersions(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -79,7 +78,7 @@ func TestGetRecentVersions(t *testing.T) {
 				Revision:            fmt.Sprintf("%x", rand.Int()),
 				Message:             fmt.Sprintf("message%v", i),
 				RevisionOrderNumber: i + 1,
-				Requester:           mci.RepotrackerVersionRequester,
+				Requester:           evergreen.RepotrackerVersionRequester,
 			}
 			So(v.Insert(), ShouldBeNil)
 			versions = append(versions, v)
@@ -95,7 +94,7 @@ func TestGetRecentVersions(t *testing.T) {
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Message:             "some-message",
 			RevisionOrderNumber: 0,
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(earlyVersion.Insert(), ShouldBeNil)
 
@@ -108,7 +107,7 @@ func TestGetRecentVersions(t *testing.T) {
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Message:             "some-other-message",
 			RevisionOrderNumber: rest.NumRecentVersions + 1,
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(otherVersion.Insert(), ShouldBeNil)
 
@@ -243,8 +242,8 @@ func TestGetVersionInfo(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -292,7 +291,7 @@ func TestGetVersionInfo(t *testing.T) {
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(v.Insert(), ShouldBeNil)
 
@@ -345,8 +344,8 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -387,7 +386,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(v.Insert(), ShouldBeNil)
 
@@ -442,8 +441,8 @@ func TestActivateVersion(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -488,7 +487,7 @@ func TestActivateVersion(t *testing.T) {
 			Identifier:          versionId,
 			Remote:              false,
 			RemotePath:          "",
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(v.Insert(), ShouldBeNil)
 
@@ -556,8 +555,8 @@ func TestGetVersionStatus(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),

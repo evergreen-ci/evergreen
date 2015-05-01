@@ -1,24 +1,24 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
 )
 
 var (
-	taskDurationEstimatorTestConf = mci.TestConfig()
+	taskDurationEstimatorTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(
 		taskDurationEstimatorTestConf))
 	if taskDurationEstimatorTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(taskDurationEstimatorTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(taskDurationEstimatorTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -59,7 +59,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[0],
 							TimeTaken:    timeTaken[0],
 							Project:      projects[0],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -68,7 +68,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[0],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[0],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 					}
@@ -120,7 +120,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[3],
 							TimeTaken:    timeTaken[2],
 							Project:      projects[2],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -129,7 +129,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[4],
 							TimeTaken:    timeTaken[0],
 							Project:      projects[2],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 					}
@@ -187,7 +187,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[3],
 							TimeTaken:    timeTaken[3],
 							Project:      projects[3],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -196,7 +196,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[3],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[3],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 					}
@@ -250,7 +250,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -259,7 +259,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[5],
 							Project:      projects[5],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 					}
@@ -323,7 +323,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
-							Status:       mci.TaskUndispatched,
+							Status:       evergreen.TaskUndispatched,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -332,7 +332,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[5],
 							Project:      projects[4],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 					}
@@ -386,7 +386,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime: time.Now().
 								Add(-model.TaskCompletionEstimateWindow).
 								Add(-model.TaskCompletionEstimateWindow),
@@ -397,7 +397,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[3],
 							Project:      projects[4],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 					}
@@ -452,7 +452,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[0],
 							TimeTaken:    timeTaken[0],
 							Project:      projects[0],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -461,7 +461,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[0],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[0],
-							Status:       mci.TaskFailed,
+							Status:       evergreen.TaskFailed,
 							FinishTime:   time.Now(),
 						},
 						// task 1 is the only runnable task with this project,
@@ -473,7 +473,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[1],
 							TimeTaken:    timeTaken[1],
 							Project:      projects[1],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						// task 2 is the only runnable task with this project,
@@ -485,7 +485,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[2],
 							TimeTaken:    timeTaken[2],
 							Project:      projects[2],
-							Status:       mci.TaskFailed,
+							Status:       evergreen.TaskFailed,
 							FinishTime:   time.Now(),
 						},
 						// task 3/6 are from the same project and buildvariant
@@ -497,7 +497,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[3],
 							TimeTaken:    timeTaken[3],
 							Project:      projects[3],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -506,7 +506,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[3],
 							TimeTaken:    timeTaken[5],
 							Project:      projects[3],
-							Status:       mci.TaskSucceeded,
+							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
 						// task 4/5 are from the same project and buildvariant
@@ -518,7 +518,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[4],
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
-							Status:       mci.TaskFailed,
+							Status:       evergreen.TaskFailed,
 							FinishTime:   time.Now(),
 						},
 						model.Task{
@@ -527,7 +527,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[4],
 							TimeTaken:    timeTaken[5],
 							Project:      projects[4],
-							Status:       mci.TaskFailed,
+							Status:       evergreen.TaskFailed,
 							FinishTime:   time.Now(),
 						},
 						// task 9 is undispatched so shouldn't
@@ -539,7 +539,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							BuildVariant: buildVariants[4],
 							TimeTaken:    timeTaken[5],
 							Project:      projects[4],
-							Status:       mci.TaskUndispatched,
+							Status:       evergreen.TaskUndispatched,
 							FinishTime:   time.Now(),
 						},
 					}

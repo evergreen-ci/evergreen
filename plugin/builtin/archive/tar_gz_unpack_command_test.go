@@ -1,9 +1,9 @@
 package archive_test
 
 import (
-	. "10gen.com/mci/plugin/builtin/archive"
-	"10gen.com/mci/plugin/testutil"
-	"10gen.com/mci/util"
+	. "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
+	"github.com/evergreen-ci/evergreen/plugin/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"path/filepath"

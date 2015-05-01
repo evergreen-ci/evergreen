@@ -1,10 +1,10 @@
 package ui
 
 import (
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/user"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strings"

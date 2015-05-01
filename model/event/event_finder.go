@@ -1,7 +1,7 @@
 package event
 
 import (
-	"10gen.com/mci/db"
+	"github.com/evergreen-ci/evergreen/db"
 	"labix.org/v2/mgo/bson"
 )
 

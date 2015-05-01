@@ -1,16 +1,16 @@
 package digitalocean
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/hostutil"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	digo "github.com/dynport/gocloud/digitalocean"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/hostutil"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"math"
 	"math/rand"
@@ -94,7 +94,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 		Distro:           *d,
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
-		Status:           mci.HostUninitialized,
+		Status:           evergreen.HostUninitialized,
 		TerminationTime:  model.ZeroTime,
 		TaskDispatchTime: model.ZeroTime,
 		Provider:         ProviderName,
@@ -110,23 +110,23 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 	}
 
 	if err := intentHost.Insert(); err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Could not insert intent "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not insert intent "+
 			"host '%v': %v", intentHost.Id, err)
 	}
 
-	mci.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host '%v' "+
+	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host '%v' "+
 		"for distro '%v' to signal cloud instance spawn intent", instanceName,
 		d.Id)
 
 	newDroplet, err := digoMgr.account.CreateDroplet(dropletReq)
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "DigitalOcean create droplet API call failed"+
+		evergreen.Logger.Logf(slogger.ERROR, "DigitalOcean create droplet API call failed"+
 			" for intent host '%v': %v", intentHost.Id, err)
 
 		// remove the intent host document
 		rmErr := intentHost.Remove()
 		if rmErr != nil {
-			return nil, mci.Logger.Errorf(slogger.ERROR, "Could not remove intent host "+
+			return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not remove intent host "+
 				"'%v': %v", intentHost.Id, rmErr)
 		}
 		return nil, err
@@ -135,11 +135,11 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 	// find old intent host
 	host, err := host.FindOne(host.ById(intentHost.Id))
 	if host == nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Can't locate "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Can't locate "+
 			"record inserted for intended host “%v”", intentHost.Id)
 	}
 	if err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Failed to look up intent host %v: %v",
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to look up intent host %v: %v",
 			intentHost.Id, err)
 	}
 
@@ -147,14 +147,14 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 	host.Host = newDroplet.IpAddress
 	err = host.Insert()
 	if err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Failed to insert new host %v"+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to insert new host %v"+
 			"for intent host %v: %v", host.Id, intentHost.Id, err)
 	}
 
 	// remove the intent host document
 	err = intentHost.Remove()
 	if err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Could not remove "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not remove "+
 			"insert host “%v” (replaced by “%v”): %v", intentHost.Id, host.Id,
 			err)
 	}
@@ -179,7 +179,7 @@ func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet
 func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, mci.Logger.Errorf(slogger.ERROR,
+		return cloud.StatusUnknown, evergreen.Logger.Errorf(slogger.ERROR,
 			"Can't get status of '%v': DigitalOcean host id's must be integers", host.Id)
 	}
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
@@ -206,7 +206,7 @@ func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		return "", mci.Logger.Errorf(slogger.ERROR,
+		return "", evergreen.Logger.Errorf(slogger.ERROR,
 			"Can't get DNS name of '%v': DigitalOcean host id's must be integers", host.Id)
 	}
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
@@ -227,15 +227,15 @@ func (digoMgr *DigitalOceanManager) CanSpawn() (bool, error) {
 func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
 	}
 	response, err := digoMgr.account.DestroyDroplet(hostIdAsInt)
 	if err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': %v", err)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': %v", err)
 	}
 
 	if response.Status != "OK" {
-		return mci.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': error message %v", err, response.ErrorMessage)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': error message %v", err, response.ErrorMessage)
 	}
 
 	return host.Terminate()
@@ -243,7 +243,7 @@ func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 
 //Configure populates a DigitalOceanManager by reading relevant settings from the
 //config object.
-func (digoMgr *DigitalOceanManager) Configure(mciSettings *mci.MCISettings) error {
+func (digoMgr *DigitalOceanManager) Configure(mciSettings *evergreen.MCISettings) error {
 	digoMgr.account = digo.NewAccount(mciSettings.Providers.DigitalOcean.ClientId,
 		mciSettings.Providers.DigitalOcean.Key)
 	return nil

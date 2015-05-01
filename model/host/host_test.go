@@ -1,11 +1,11 @@
 package host
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
 func hostIdInSlice(hosts []Host, id string) bool {
@@ -143,25 +143,25 @@ func TestUpdatingHostStatus(t *testing.T) {
 		Convey("setting the host's status should update both the in-memory"+
 			" and database versions of the host", func() {
 
-			So(host.SetStatus(mci.HostRunning), ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostRunning)
+			So(host.SetStatus(evergreen.HostRunning), ShouldBeNil)
+			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostRunning)
+			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 		})
 
 		Convey("if the host is terminated, the status update should fail"+
 			" with an error", func() {
 
-			So(host.SetStatus(mci.HostTerminated), ShouldBeNil)
-			So(host.SetStatus(mci.HostRunning), ShouldNotBeNil)
-			So(host.Status, ShouldEqual, mci.HostTerminated)
+			So(host.SetStatus(evergreen.HostTerminated), ShouldBeNil)
+			So(host.SetStatus(evergreen.HostRunning), ShouldNotBeNil)
+			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 
 			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostTerminated)
+			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 
 		})
 
@@ -186,12 +186,12 @@ func TestSetHostTerminated(t *testing.T) {
 			" the host", func() {
 
 			So(host.Terminate(), ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostTerminated)
+			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
 			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostTerminated)
+			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
 		})
@@ -251,12 +251,12 @@ func TestMarkAsProvisioned(t *testing.T) {
 			" database copies of the host", func() {
 
 			So(host.MarkAsProvisioned(), ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostRunning)
+			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
 			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostRunning)
+			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
 		})
@@ -352,7 +352,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 }
 
 func TestFindRunningSpawnedHosts(t *testing.T) {
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
 	util.HandleTestingErr(db.Clear(Collection), t, "Error"+
@@ -433,8 +433,8 @@ func TestHostClearRunningTask(t *testing.T) {
 		host := &Host{
 			Id:               "hostOne",
 			RunningTask:      "taskId",
-			StartedBy:        mci.MCIUser,
-			Status:           mci.HostRunning,
+			StartedBy:        evergreen.MCIUser,
+			Status:           evergreen.HostRunning,
 			TaskDispatchTime: time.Now(),
 			Pid:              "12345",
 		}
@@ -495,17 +495,17 @@ func TestUpsert(t *testing.T) {
 			Host:   "host",
 			User:   "user",
 			Distro: distro.Distro{Id: "distro"},
-			Status: mci.HostRunning,
+			Status: evergreen.HostRunning,
 		}
 
 		Convey("Performing a host upsert should upsert correctly", func() {
 			_, err := host.Upsert()
 			So(err, ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostRunning)
+			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
-			So(host.Status, ShouldEqual, mci.HostRunning)
+			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 		})
 
@@ -514,11 +514,11 @@ func TestUpsert(t *testing.T) {
 			func() {
 				_, err := host.Upsert()
 				So(err, ShouldBeNil)
-				So(host.Status, ShouldEqual, mci.HostRunning)
+				So(host.Status, ShouldEqual, evergreen.HostRunning)
 
 				host, err := FindOne(ById(host.Id))
 				So(err, ShouldBeNil)
-				So(host.Status, ShouldEqual, mci.HostRunning)
+				So(host.Status, ShouldEqual, evergreen.HostRunning)
 				So(host.Host, ShouldEqual, "host")
 
 				err = UpdateOne(
@@ -527,7 +527,7 @@ func TestUpsert(t *testing.T) {
 					},
 					bson.M{
 						"$set": bson.M{
-							StatusKey: mci.HostDecommissioned,
+							StatusKey: evergreen.HostDecommissioned,
 						},
 					},
 				)
@@ -535,14 +535,14 @@ func TestUpsert(t *testing.T) {
 
 				// update the hostname and status
 				host.Host = "host2"
-				host.Status = mci.HostRunning
+				host.Status = evergreen.HostRunning
 				_, err = host.Upsert()
 				So(err, ShouldBeNil)
 
 				// host db status should remain unchanged
 				host, err = FindOne(ById(host.Id))
 				So(err, ShouldBeNil)
-				So(host.Status, ShouldEqual, mci.HostDecommissioned)
+				So(host.Status, ShouldEqual, evergreen.HostDecommissioned)
 				So(host.Host, ShouldEqual, "host2")
 
 			})

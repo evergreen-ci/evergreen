@@ -1,16 +1,16 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/command"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"bytes"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -31,7 +31,7 @@ type HostGateway interface {
 	RunSetup() error
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	RunTaskOnHost(*mci.MCISettings, model.Task, host.Host) (string, error)
+	RunTaskOnHost(*evergreen.MCISettings, model.Task, host.Host) (string, error)
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -60,14 +60,14 @@ func (self *AgentBasedHostGateway) RunSetup() error {
 			err)
 	}
 	if needsBuild {
-		mci.Logger.Logf(slogger.INFO, "Rebuilding agent package...")
+		evergreen.Logger.Logf(slogger.INFO, "Rebuilding agent package...")
 		err := self.buildAgent()
 		if err != nil {
 			return fmt.Errorf("error building agent: %v", err)
 		}
-		mci.Logger.Logf(slogger.INFO, "Agent package successfully rebuilt")
+		evergreen.Logger.Logf(slogger.INFO, "Agent package successfully rebuilt")
 	} else {
-		mci.Logger.Logf(slogger.INFO, "Agent package does not need to be"+
+		evergreen.Logger.Logf(slogger.INFO, "Agent package does not need to be"+
 			" rebuilt")
 	}
 	return nil
@@ -77,11 +77,11 @@ func (self *AgentBasedHostGateway) RunSetup() error {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine.
 // Returns an error if any step along the way fails.
-func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *mci.MCISettings,
+func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *evergreen.MCISettings,
 	taskToRun model.Task, host host.Host) (string, error) {
 
 	// cache mci home
-	mciHome, err := mci.FindMCIHome()
+	mciHome, err := evergreen.FindMCIHome()
 	if err != nil {
 		return "", fmt.Errorf("error finding mci home: %v", err)
 	}
@@ -97,16 +97,16 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *mci.MCISettings,
 	}
 
 	// prep the remote host
-	mci.Logger.Logf(slogger.INFO, "Prepping remote host %v...", host.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Prepping remote host %v...", host.Id)
 	agentRevision, err := self.prepRemoteHost(mciSettings, host, sshOptions,
 		mciHome)
 	if err != nil {
 		return "", fmt.Errorf("error prepping remote host %v: %v", host.Id, err)
 	}
-	mci.Logger.Logf(slogger.INFO, "Prepping host finished successfully")
+	evergreen.Logger.Logf(slogger.INFO, "Prepping host finished successfully")
 
 	// start the agent on the remote machine
-	mci.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...",
+	evergreen.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...",
 		host.Id, taskToRun.Id)
 
 	err = self.startAgentOnRemote(mciSettings, &taskToRun, &host, sshOptions)
@@ -114,7 +114,7 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *mci.MCISettings,
 		return "", fmt.Errorf("error starting agent on %v for task %v: %v",
 			host.Id, taskToRun.Id, err)
 	}
-	mci.Logger.Logf(slogger.INFO, "Agent successfully started")
+	evergreen.Logger.Logf(slogger.INFO, "Agent successfully started")
 
 	return agentRevision, nil
 }
@@ -193,7 +193,7 @@ func (self *AgentBasedHostGateway) buildAgent() error {
 }
 
 // Prepare the remote machine to run a task.
-func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
+func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *evergreen.MCISettings,
 	host host.Host, sshOptions []string, mciHome string) (string, error) {
 
 	// compute any info necessary to ssh into the host
@@ -204,7 +204,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 
 	// first, create the necessary sandbox of directories on the remote machine
 	makeShellCmd := &command.RemoteCommand{
-		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", mci.RemoteShell),
+		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", evergreen.RemoteShell),
 		Stdout:         ioutil.Discard, // TODO: change to real logging
 		Stderr:         ioutil.Discard, // TODO: change to real logging
 		RemoteHostName: hostInfo.Hostname,
@@ -213,7 +213,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 		Background:     false,
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Directories command: '%#v'", makeShellCmd)
+	evergreen.Logger.Logf(slogger.INFO, "Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
 	err = util.RunFunctionWithTimeout(
@@ -232,7 +232,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 
 	scpConfigsCmd := &command.ScpCommand{
 		Source:         filepath.Join(mciHome, mciSettings.ConfigDir),
-		Dest:           mci.RemoteShell,
+		Dest:           evergreen.RemoteShell,
 		Stdout:         ioutil.Discard, // TODO: change to real logging
 		Stderr:         ioutil.Discard, // TODO: change to real logging
 		RemoteHostName: hostInfo.Hostname,
@@ -264,7 +264,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 	}
 	scpAgentCmd := &command.ScpCommand{
 		Source:         filepath.Join(self.ExecutablesDir, executableSubPath),
-		Dest:           mci.RemoteShell,
+		Dest:           evergreen.RemoteShell,
 		Stdout:         ioutil.Discard, // TODO: change to real logging
 		Stderr:         &scpAgentCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
@@ -276,7 +276,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 	// get the agent's revision before scp'ing over the executable
 	preSCPAgentRevision, err := self.GetAgentRevision()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error getting pre scp agent "+
+		evergreen.Logger.Errorf(slogger.ERROR, "Error getting pre scp agent "+
 			"revision: %v", err)
 	}
 
@@ -297,12 +297,12 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 	// get the agent's revision after scp'ing over the executable
 	postSCPAgentRevision, err := self.GetAgentRevision()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error getting post scp agent "+
+		evergreen.Logger.Errorf(slogger.ERROR, "Error getting post scp agent "+
 			"revision: %v", err)
 	}
 
 	if preSCPAgentRevision != postSCPAgentRevision {
-		mci.Logger.Logf(slogger.WARN, "Agent revision was %v before scp "+
+		evergreen.Logger.Logf(slogger.WARN, "Agent revision was %v before scp "+
 			"but is now %v. Using previous revision %v for host %v",
 			preSCPAgentRevision, postSCPAgentRevision, preSCPAgentRevision,
 			host.Id)
@@ -315,11 +315,11 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *mci.MCISettings,
 // the specified task.
 // Returns an error if starting the agent remotely fails.
 func (self *AgentBasedHostGateway) startAgentOnRemote(
-	mciSettings *mci.MCISettings, task *model.Task,
+	mciSettings *evergreen.MCISettings, task *model.Task,
 	host *host.Host, sshOptions []string) error {
 
 	// the path to the agent binary on the remote machine
-	pathToExecutable := filepath.Join(mci.RemoteShell, "main")
+	pathToExecutable := filepath.Join(evergreen.RemoteShell, "main")
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
@@ -327,7 +327,7 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 		pathToExecutable, mciSettings.Motu, task.Id, task.Secret,
 		mciSettings.ConfigDir, mciSettings.Expansions["api_httpscert_path"],
 	)
-	mci.Logger.Logf(slogger.INFO, "%v", remoteCmd)
+	evergreen.Logger.Logf(slogger.INFO, "%v", remoteCmd)
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(host.Host)

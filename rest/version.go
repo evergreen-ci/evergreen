@@ -1,14 +1,14 @@
 package rest
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/shelman/angier"
 	"labix.org/v2/mgo/bson"
@@ -92,10 +92,10 @@ type versionStatusByBuild map[string]versionStatus
 func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request) {
 	projectId := mux.Vars(r)["project_id"]
 
-	versions, err := version.Find(version.ByMostRecentForRequester(projectId, mci.RepotrackerVersionRequester).Limit(10))
+	versions, err := version.Find(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester).Limit(10))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 	}
@@ -117,7 +117,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 			WithFields(build.BuildVariantKey, build.DisplayNameKey, build.TasksKey, build.VersionKey))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding recent versions of project '%v'", projectId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 	}
@@ -173,7 +173,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -186,13 +186,13 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	err = angier.TransferByFieldNames(srcVersion, destVersion)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding version '%v'", versionId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 	}
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		mci.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
+		evergreen.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
@@ -213,7 +213,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -226,14 +226,14 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	err = angier.TransferByFieldNames(srcVersion, destVersion)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 
 	}
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
-		mci.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
+		evergreen.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
 	}
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
@@ -257,7 +257,7 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 		statusCode := http.StatusNotFound
 
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -364,7 +364,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 	err := db.Aggregate(build.Collection, pipeline, &tasks)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 	}
@@ -403,7 +403,7 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding status for version '%v'", versionId)
-		mci.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 	}

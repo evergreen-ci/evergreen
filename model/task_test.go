@@ -1,12 +1,12 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -15,13 +15,13 @@ import (
 
 var (
 	_     fmt.Stringer = nil
-	conf               = mci.TestConfig()
+	conf               = evergreen.TestConfig()
 	oneMs              = time.Millisecond
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
-	mci.SetLogger("/tmp/task_test.log")
+	evergreen.SetLogger("/tmp/task_test.log")
 }
 
 func TestDependenciesMet(t *testing.T) {
@@ -41,11 +41,11 @@ func TestDependenciesMet(t *testing.T) {
 		}
 
 		depTasks = []*Task{
-			&Task{Id: depTaskIds[0], Status: mci.TaskUndispatched},
-			&Task{Id: depTaskIds[1], Status: mci.TaskUndispatched},
-			&Task{Id: depTaskIds[2], Status: mci.TaskUndispatched},
-			&Task{Id: depTaskIds[3], Status: mci.TaskUndispatched},
-			&Task{Id: depTaskIds[4], Status: mci.TaskUndispatched},
+			&Task{Id: depTaskIds[0], Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[1], Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[2], Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[3], Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[4], Status: evergreen.TaskUndispatched},
 		}
 
 		So(db.Clear(TasksCollection), ShouldBeNil)
@@ -69,7 +69,7 @@ func TestDependenciesMet(t *testing.T) {
 					bson.M{"_id": depTaskIds[0]},
 					bson.M{
 						"$set": bson.M{
-							"status": mci.TaskSucceeded,
+							"status": evergreen.TaskSucceeded,
 						},
 					},
 				), ShouldBeNil)
@@ -87,7 +87,7 @@ func TestDependenciesMet(t *testing.T) {
 						bson.M{"_id": depTaskId},
 						bson.M{
 							"$set": bson.M{
-								"status": mci.TaskSucceeded,
+								"status": evergreen.TaskSucceeded,
 							},
 						},
 					), t, "Error setting task status")
@@ -116,7 +116,7 @@ func TestDependenciesMet(t *testing.T) {
 					bson.M{"_id": depTaskId},
 					bson.M{
 						"$set": bson.M{
-							"status": mci.TaskSucceeded,
+							"status": evergreen.TaskSucceeded,
 						},
 					},
 				), ShouldBeNil)
@@ -130,8 +130,8 @@ func TestDependenciesMet(t *testing.T) {
 			// alter the dependency cache so that it should seem as if the
 			// dependencies are not met
 			cachedTask := dependencyCache[depTaskIds[0]]
-			So(cachedTask.Status, ShouldEqual, mci.TaskSucceeded)
-			cachedTask.Status = mci.TaskFailed
+			So(cachedTask.Status, ShouldEqual, evergreen.TaskSucceeded)
+			cachedTask.Status = evergreen.TaskFailed
 			dependencyCache[depTaskIds[0]] = cachedTask
 			met, err = task.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
@@ -145,7 +145,7 @@ func TestDependenciesMet(t *testing.T) {
 					bson.M{"_id": depTaskIds[0]},
 					bson.M{
 						"$set": bson.M{
-							"status": mci.TaskSucceeded,
+							"status": evergreen.TaskSucceeded,
 						},
 					},
 				), ShouldBeNil)
@@ -153,7 +153,7 @@ func TestDependenciesMet(t *testing.T) {
 					bson.M{"_id": depTaskIds[1]},
 					bson.M{
 						"$set": bson.M{
-							"status": mci.TaskSucceeded,
+							"status": evergreen.TaskSucceeded,
 						},
 					},
 				), ShouldBeNil)
@@ -161,7 +161,7 @@ func TestDependenciesMet(t *testing.T) {
 					bson.M{"_id": depTaskIds[2]},
 					bson.M{
 						"$set": bson.M{
-							"status": mci.TaskFailed,
+							"status": evergreen.TaskFailed,
 						},
 					},
 				), ShouldBeNil)
@@ -332,7 +332,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant + "2",
 						Revision:     revision,
 						Requester:    requester,
-						Status:       mci.TaskFailed,
+						Status:       evergreen.TaskFailed,
 					},
 					// task succeeded so should not be returned
 					Task{
@@ -342,7 +342,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant + "2",
 						Revision:     revision,
 						Requester:    requester,
-						Status:       mci.TaskSucceeded,
+						Status:       evergreen.TaskSucceeded,
 					},
 					// same buildvariant so should not be returned
 					Task{
@@ -352,7 +352,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant + "1",
 						Revision:     revision,
 						Requester:    requester,
-						Status:       mci.TaskFailed,
+						Status:       evergreen.TaskFailed,
 					},
 					// different project so should not be returned
 					Task{
@@ -362,7 +362,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant + "2",
 						Revision:     revision,
 						Requester:    requester,
-						Status:       mci.TaskFailed,
+						Status:       evergreen.TaskFailed,
 					},
 					// different requester so should not be returned
 					Task{
@@ -372,7 +372,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant + "2",
 						Revision:     revision,
 						Requester:    requester + "1",
-						Status:       mci.TaskFailed,
+						Status:       evergreen.TaskFailed,
 					},
 					// different revision so should not be returned
 					Task{
@@ -382,7 +382,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant + "1",
 						Revision:     revision + "1",
 						Requester:    requester,
-						Status:       mci.TaskFailed,
+						Status:       evergreen.TaskFailed,
 					},
 					// different display name so should not be returned
 					Task{
@@ -392,7 +392,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						BuildVariant: buildVariant,
 						Revision:     revision,
 						Requester:    requester,
-						Status:       mci.TaskFailed,
+						Status:       evergreen.TaskFailed,
 					},
 				}
 
@@ -527,20 +527,20 @@ func TestMarkAsDispatched(t *testing.T) {
 			// make sure the task's fields were updated, both in memory and
 			// in the db
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
-			So(task.Status, ShouldEqual, mci.TaskDispatched)
+			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(task.HostId, ShouldEqual, myHost.Id)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 			task, err := FindTask(taskId)
 			So(err, ShouldBeNil)
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
-			So(task.Status, ShouldEqual, mci.TaskDispatched)
+			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(task.HostId, ShouldEqual, myHost.Id)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
 
 			// make sure the build's fields were updated in the db
 			b, err = build.FindOne(build.ById(buildId))
 			So(err, ShouldBeNil)
-			So(b.Tasks[0].Status, ShouldEqual, mci.TaskDispatched)
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskDispatched)
 
 		})
 
@@ -640,25 +640,25 @@ func TestFindTasksForHostIds(t *testing.T) {
 		task1 := Task{
 			Id:        "t1",
 			HostId:    "h1",
-			Status:    mci.TaskSucceeded,
+			Status:    evergreen.TaskSucceeded,
 			Requester: "r1",
 		}
 		task2 := Task{
 			Id:        "t2",
 			HostId:    "h2",
-			Status:    mci.TaskFailed,
+			Status:    evergreen.TaskFailed,
 			Requester: "r1",
 		}
 		task3 := Task{
 			Id:        "t3",
 			HostId:    "h3",
-			Status:    mci.TaskSucceeded,
+			Status:    evergreen.TaskSucceeded,
 			Requester: "r2",
 		}
 		task4 := Task{
 			Id:        "t4",
 			HostId:    "h1",
-			Status:    mci.TaskDispatched,
+			Status:    evergreen.TaskDispatched,
 			Requester: "r2",
 		}
 		So(task1.Insert(), ShouldBeNil)

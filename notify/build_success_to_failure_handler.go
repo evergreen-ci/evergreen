@@ -1,11 +1,11 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/web"
 )
 
 // Handler for notifications generated specifically when a build fails and the
@@ -25,7 +25,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 	}
 
 	preface := mciFailurePreface
-	if key.NotificationRequester == mci.PatchVersionRequester {
+	if key.NotificationRequester == evergreen.PatchVersionRequester {
 		preface = patchFailurePreface
 	}
 
@@ -33,9 +33,9 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 		// Copy by value to make pointer safe
 		curr := currentBuild
 		previousBuild, err := currentBuild.PreviousActivated(key.Project,
-			mci.RepotrackerVersionRequester)
+			evergreen.RepotrackerVersionRequester)
 		if previousBuild == nil {
-			mci.Logger.Logf(slogger.DEBUG,
+			evergreen.Logger.Logf(slogger.DEBUG,
 				"No previous completed build found for ”%v” on %v %v notification", currentBuild.Id,
 				key.Project, key.NotificationName)
 			continue
@@ -44,7 +44,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 		}
 
 		if !previousBuild.IsFinished() {
-			mci.Logger.Logf(slogger.DEBUG, "Build before ”%v” (on %v %v notification) isn't finished",
+			evergreen.Logger.Logf(slogger.DEBUG, "Build before ”%v” (on %v %v notification) isn't finished",
 				currentBuild.Id, key.Project, key.NotificationName)
 			unprocessedBuilds = append(unprocessedBuilds, currentBuild.Id)
 			continue
@@ -53,17 +53,17 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 		// get the build's project to add to the notification subject line
 		branchName := UnknownProjectBranch
 		if projectRef, err := getProjectRef(currentBuild.Project); err != nil {
-			mci.Logger.Logf(slogger.WARN, "Unable to find project ref "+
+			evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
 				"for build ”%v”: %v", currentBuild.Id, err)
 		} else if projectRef != nil {
 			branchName = projectRef.Branch
 		}
-		mci.Logger.Logf(slogger.DEBUG,
+		evergreen.Logger.Logf(slogger.DEBUG,
 			"Previous completed build found for ”%v” on %v %v notification is %v",
 			currentBuild.Id, key.Project, key.NotificationName, previousBuild.Id)
 
-		if previousBuild.Status == mci.BuildSucceeded &&
-			currentBuild.Status == mci.BuildFailed {
+		if previousBuild.Status == evergreen.BuildSucceeded &&
+			currentBuild.Status == evergreen.BuildFailed {
 			notification := TriggeredBuildNotification{
 				Current:    &curr,
 				Previous:   previousBuild,
@@ -73,7 +73,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 			}
 			email, err := self.TemplateNotification(ae, configName, &notification)
 			if err != nil {
-				mci.Logger.Logf(slogger.DEBUG, "Error templating for build `%v`: %v", currentBuild.Id, err)
+				evergreen.Logger.Logf(slogger.DEBUG, "Error templating for build `%v`: %v", currentBuild.Id, err)
 				continue
 			}
 			emails = append(emails, email)

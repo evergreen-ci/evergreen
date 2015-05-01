@@ -1,9 +1,9 @@
 package apiserver
 
 import (
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/model"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"

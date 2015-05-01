@@ -1,11 +1,11 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/version"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -54,7 +54,7 @@ func NewTaskHistoryIterator(name string, buildVariants []string, projectName str
 
 func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevisions int, before, include bool) ([]version.Version, bool, error) {
 	versionQuery := bson.M{
-		version.RequesterKey: mci.RepotrackerVersionRequester,
+		version.RequesterKey: evergreen.RepotrackerVersionRequester,
 		version.ProjectKey:   iter.ProjectName,
 	}
 
@@ -152,7 +152,7 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 	pipeline := database.C(TasksCollection).Pipe(
 		[]bson.M{
 			{"$match": bson.M{
-				TaskRequesterKey:    mci.RepotrackerVersionRequester,
+				TaskRequesterKey:    evergreen.RepotrackerVersionRequester,
 				TaskProjectKey:      iter.ProjectName,
 				TaskDisplayNameKey:  iter.TaskName,
 				TaskBuildVariantKey: bson.M{"$in": iter.BuildVariants},
@@ -246,7 +246,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 	for {
 		if iter.Next(&taskHistory) {
 			for _, task := range taskHistory.Tasks {
-				if task.Status == mci.TaskFailed {
+				if task.Status == evergreen.TaskFailed {
 					failedTaskIds = append(failedTaskIds, task.Id)
 				}
 			}
@@ -282,7 +282,7 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 	// create the mapping of the task id to the list of failed tasks
 	for _, task := range tasks {
 		for _, test := range task.TestResults {
-			if test.Status == mci.TestFailedStatus {
+			if test.Status == evergreen.TestFailedStatus {
 				failedTestsMap[task.Id] = append(failedTestsMap[task.Id], test)
 			}
 		}

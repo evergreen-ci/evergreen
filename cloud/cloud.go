@@ -1,9 +1,9 @@
 package cloud
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"time"
 )
 
@@ -63,7 +63,7 @@ type CloudManager interface {
 	GetSettings() ProviderSettings
 
 	//Load credentials or other settings from the config file
-	Configure(*mci.MCISettings) error
+	Configure(*evergreen.MCISettings) error
 
 	// SpawnInstance attempts to create a new host by requesting one from the
 	// provider's API.

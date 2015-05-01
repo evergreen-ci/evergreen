@@ -1,10 +1,10 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"sort"
 )
 
@@ -14,7 +14,7 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(mciSettings *mci.MCISettings, tasks []model.Task) (
+	PrioritizeTasks(mciSettings *evergreen.MCISettings, tasks []model.Task) (
 		[]model.Task, error)
 }
 
@@ -44,7 +44,7 @@ func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 		},
 		comparators: []taskPriorityCmp{
 			byPriority,
-			byStageName(mci.CompileStage),
+			byStageName(evergreen.CompileStage),
 			byRevisionOrderNumber,
 			byCreateTime,
 			bySimilarFailing,
@@ -58,7 +58,7 @@ func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
-	mciSettings *mci.MCISettings, tasks []model.Task) ([]model.Task, error) {
+	mciSettings *evergreen.MCISettings, tasks []model.Task) ([]model.Task, error) {
 
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
@@ -164,12 +164,12 @@ func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
 
 	for _, task := range allTasks {
 		switch task.Requester {
-		case mci.RepotrackerVersionRequester:
+		case evergreen.RepotrackerVersionRequester:
 			repoTrackerTasks = append(repoTrackerTasks, task)
-		case mci.PatchVersionRequester:
+		case evergreen.PatchVersionRequester:
 			patchTasks = append(patchTasks, task)
 		default:
-			mci.Logger.Errorf(slogger.ERROR, "Unrecognized requester '%v'"+
+			evergreen.Logger.Errorf(slogger.ERROR, "Unrecognized requester '%v'"+
 				" for task %v:", task.Requester, task.Id)
 		}
 	}
@@ -179,7 +179,7 @@ func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
 
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
-func (self *CmpBasedTaskPrioritizer) mergeTasks(mciSettings *mci.MCISettings,
+func (self *CmpBasedTaskPrioritizer) mergeTasks(mciSettings *evergreen.MCISettings,
 	repoTrackerTasks []model.Task, patchTasks []model.Task) []model.Task {
 
 	mergedTasks := make([]model.Task, 0, len(repoTrackerTasks)+len(patchTasks))

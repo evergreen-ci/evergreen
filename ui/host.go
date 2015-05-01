@@ -1,12 +1,12 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -15,9 +15,9 @@ import (
 
 var (
 	validUpdateToStatuses = []string{
-		mci.HostRunning,
-		mci.HostQuarantined,
-		mci.HostDecommissioned,
+		evergreen.HostRunning,
+		evergreen.HostQuarantined,
+		evergreen.HostDecommissioned,
 	}
 )
 

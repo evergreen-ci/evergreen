@@ -1,23 +1,23 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
 )
 
 var (
-	taskImportanceCmpTestConf = mci.TestConfig()
+	taskImportanceCmpTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(
 		taskImportanceCmpTestConf))
 	if taskImportanceCmpTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(taskImportanceCmpTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(taskImportanceCmpTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -64,13 +64,13 @@ func TestTaskImportanceComparators(t *testing.T) {
 		Convey("the stage name comparator should prioritize the appropriate"+
 			" specific stage", func() {
 
-			prioritizeCompile := byStageName(mci.CompileStage)
+			prioritizeCompile := byStageName(evergreen.CompileStage)
 			cmpResult, err := prioritizeCompile(tasks[0], tasks[1],
 				taskPrioritizer)
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, 0)
 
-			tasks[0].DisplayName = mci.CompileStage
+			tasks[0].DisplayName = evergreen.CompileStage
 			cmpResult, err = prioritizeCompile(tasks[0], tasks[1],
 				taskPrioritizer)
 			So(err, ShouldBeNil)
@@ -81,7 +81,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(cmpResult, ShouldEqual, -1)
 
-			tasks[1].DisplayName = mci.CompileStage
+			tasks[1].DisplayName = evergreen.CompileStage
 			cmpResult, err = prioritizeCompile(tasks[0], tasks[1],
 				taskPrioritizer)
 			So(err, ShouldBeNil)
@@ -170,7 +170,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(cmpResult, ShouldEqual, 0)
 
 			pt1 := taskPrioritizer.previousTasksCache[taskIds[0]]
-			pt1.Status = mci.TaskFailed
+			pt1.Status = evergreen.TaskFailed
 			taskPrioritizer.previousTasksCache[taskIds[0]] = pt1
 
 			cmpResult, err = byRecentlyFailing(tasks[0], tasks[1],
@@ -184,7 +184,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(cmpResult, ShouldEqual, -1)
 
 			pt2 := taskPrioritizer.previousTasksCache[taskIds[1]]
-			pt2.Status = mci.TaskFailed
+			pt2.Status = evergreen.TaskFailed
 			taskPrioritizer.previousTasksCache[taskIds[1]] = pt2
 
 			cmpResult, err = byRecentlyFailing(tasks[0], tasks[1],

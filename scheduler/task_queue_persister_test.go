@@ -1,23 +1,23 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
 )
 
 var (
-	taskQueuePersisterTestConf = mci.TestConfig()
+	taskQueuePersisterTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(
 		taskQueuePersisterTestConf))
 	if taskQueuePersisterTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(taskQueuePersisterTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(taskQueuePersisterTestConf.Scheduler.LogFile)
 	}
 }
 

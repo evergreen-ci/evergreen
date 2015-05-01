@@ -1,14 +1,14 @@
 package thirdparty
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/testutils"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutils"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
-var testConfig = mci.TestConfig()
+var testConfig = evergreen.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))

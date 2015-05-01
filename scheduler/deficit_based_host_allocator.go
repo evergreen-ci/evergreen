@@ -1,13 +1,13 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 // Implementation, that uses the difference between the number of free hosts
@@ -19,7 +19,7 @@ type DeficitBasedHostAllocator struct{}
 // distro if the number of tasks that need to be run for the distro is greater
 // than the number of hosts currently free to run a task.
 func (self *DeficitBasedHostAllocator) NewHostsNeeded(
-	hostAllocatorData HostAllocatorData, mciSettings *mci.MCISettings) (map[string]int, error) {
+	hostAllocatorData HostAllocatorData, mciSettings *evergreen.MCISettings) (map[string]int, error) {
 
 	newHostsNeeded := make(map[string]int)
 
@@ -46,19 +46,19 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
 func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
-	hostAllocatorData *HostAllocatorData, distro distro.Distro, mciSettings *mci.MCISettings) int {
+	hostAllocatorData *HostAllocatorData, distro distro.Distro, mciSettings *evergreen.MCISettings) int {
 
 	cloudManager, err := providers.GetCloudManager(distro.Provider, mciSettings)
 
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "Couldn't get cloud manager for distro %v with provider %v: %v",
+		evergreen.Logger.Logf(slogger.ERROR, "Couldn't get cloud manager for distro %v with provider %v: %v",
 			distro.Id, distro.Provider, err)
 		return 0
 	}
 
 	can, err := cloudManager.CanSpawn()
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "Couldn't check if cloud provider %v is spawnable: %v",
+		evergreen.Logger.Logf(slogger.ERROR, "Couldn't check if cloud provider %v is spawnable: %v",
 			distro.Provider, err)
 		return 0
 	}

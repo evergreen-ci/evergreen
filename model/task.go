@@ -1,17 +1,17 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -162,19 +162,19 @@ var (
 )
 
 func (self *Task) Abortable() bool {
-	return self.Status == mci.TaskStarted ||
-		self.Status == mci.TaskDispatched
+	return self.Status == evergreen.TaskStarted ||
+		self.Status == evergreen.TaskDispatched
 }
 
 func (task Task) IsStarted() bool {
-	return task.Status == mci.TaskStarted
+	return task.Status == evergreen.TaskStarted
 }
 
 func (task Task) IsFinished() bool {
-	return task.Status == mci.TaskFailed ||
-		task.Status == mci.TaskCancelled ||
-		task.Status == mci.TaskSucceeded ||
-		(task.Status == mci.TaskUndispatched && task.DispatchTime != ZeroTime)
+	return task.Status == evergreen.TaskFailed ||
+		task.Status == evergreen.TaskCancelled ||
+		task.Status == evergreen.TaskSucceeded ||
+		(task.Status == evergreen.TaskUndispatched && task.DispatchTime != ZeroTime)
 }
 
 // Checks whether the dependencies for the task have all completed successfully.
@@ -221,7 +221,7 @@ func (self *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if depTask.Status != mci.TaskSucceeded {
+		if depTask.Status != evergreen.TaskSucceeded {
 			return false, nil
 		}
 	}
@@ -288,7 +288,7 @@ func FindAllTasks(query interface{}, projection interface{},
 
 var (
 	SelectorTaskInProgress = bson.M{
-		"$in": []string{mci.TaskStarted, mci.TaskDispatched},
+		"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched},
 	}
 )
 
@@ -367,7 +367,7 @@ func (self *Task) FindTaskOnBaseCommit() (*Task, error) {
 	return FindOneTask(
 		bson.M{
 			TaskRevisionKey:     self.Revision,
-			TaskRequesterKey:    mci.RepotrackerVersionRequester,
+			TaskRequesterKey:    evergreen.RepotrackerVersionRequester,
 			TaskBuildVariantKey: self.BuildVariant,
 			TaskDisplayNameKey:  self.DisplayName,
 			TaskProjectKey:      self.Project,
@@ -381,7 +381,7 @@ func FindUndispatchedTasks() ([]Task, error) {
 	return FindAllTasks(
 		bson.M{
 			TaskActivatedKey: true,
-			TaskStatusKey:    mci.TaskUndispatched,
+			TaskStatusKey:    evergreen.TaskUndispatched,
 			//Filter out blacklisted tasks
 			//TODO eventually this $or should be removed as new tasks
 			//will not omit the priority key.
@@ -485,7 +485,7 @@ func (task *Task) CountSimilarFailingTasks() (int, error) {
 			"$ne": task.BuildVariant,
 		},
 		TaskDisplayNameKey: task.DisplayName,
-		TaskStatusKey:      mci.TaskFailed,
+		TaskStatusKey:      evergreen.TaskFailed,
 		TaskProjectKey:     task.Project,
 		TaskRequesterKey:   task.Requester,
 		TaskRevisionKey:    task.Revision,
@@ -500,8 +500,8 @@ func PreviousCompletedTask(task *Task, project string,
 	statuses []string) (*Task, error) {
 
 	if len(statuses) == 0 {
-		statuses = []string{mci.TaskCancelled, mci.TaskFailed,
-			mci.TaskSucceeded}
+		statuses = []string{evergreen.TaskCancelled, evergreen.TaskFailed,
+			evergreen.TaskSucceeded}
 	}
 
 	priorRevisions := bson.M{
@@ -542,9 +542,9 @@ func RecentlyFinishedTasks(finishTime time.Time, project string,
 		bson.M{
 			TaskStatusKey: bson.M{
 				"$in": []string{
-					mci.TaskFailed,
-					mci.TaskSucceeded,
-					mci.TaskCancelled,
+					evergreen.TaskFailed,
+					evergreen.TaskSucceeded,
+					evergreen.TaskCancelled,
 				},
 			},
 		},
@@ -613,7 +613,7 @@ func (task *Task) SetExpectedDuration(duration time.Duration) error {
 func FindTasksForHostIds(ids []string) ([]Task, error) {
 	return FindAllTasks(
 		bson.M{
-			TaskStatusKey: bson.M{"$in": mci.CompletedStatuses},
+			TaskStatusKey: bson.M{"$in": evergreen.CompletedStatuses},
 			TaskHostIdKey: bson.M{"$in": ids},
 		},
 		// Only return host names and requester
@@ -629,7 +629,7 @@ func FindCompletedTasksByVariantAndName(project string, buildVariant string,
 	query := bson.M{
 		TaskBuildVariantKey: buildVariant,
 		TaskDisplayNameKey:  taskName,
-		TaskStatusKey:       bson.M{"$in": mci.CompletedStatuses},
+		TaskStatusKey:       bson.M{"$in": evergreen.CompletedStatuses},
 		TaskProjectKey:      project,
 	}
 
@@ -696,7 +696,7 @@ func UpdateAllTasks(query interface{}, update interface{}) (*mgo.ChangeInfo, err
 func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) error {
 	// then, update the task document
 	self.DispatchTime = dispatchTime
-	self.Status = mci.TaskDispatched
+	self.Status = evergreen.TaskDispatched
 	self.HostId = host.Id
 	self.LastHeartbeat = dispatchTime
 	self.DistroId = host.Distro.Id
@@ -707,7 +707,7 @@ func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) erro
 		bson.M{
 			"$set": bson.M{
 				TaskDispatchTimeKey:  dispatchTime,
-				TaskStatusKey:        mci.TaskDispatched,
+				TaskStatusKey:        evergreen.TaskDispatched,
 				TaskHostIdKey:        host.Id,
 				TaskLastHeartbeatKey: dispatchTime,
 				TaskDistroIdKey:      host.Distro.Id,
@@ -803,7 +803,7 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 			}
 		}
 
-		if task.DispatchTime != ZeroTime && task.Status == mci.TaskUndispatched {
+		if task.DispatchTime != ZeroTime && task.Status == evergreen.TaskUndispatched {
 			err = task.reset()
 		} else {
 			err = UpdateOneTask(
@@ -858,7 +858,7 @@ func (self *Task) Abort(caller string, aborted bool) error {
 			" in this status", self.Id, self.Status)
 	}
 
-	mci.Logger.Logf(slogger.DEBUG, "Setting abort=%v for task %v", aborted, self.Id)
+	evergreen.Logger.Logf(slogger.DEBUG, "Setting abort=%v for task %v", aborted, self.Id)
 
 	err := SetTaskActivated(self.Id, caller, false)
 	if err != nil {
@@ -919,15 +919,15 @@ func (self *Task) TryReset(user, origin string, project *Project,
 	taskEndRequest *apimodels.TaskEndRequest) (err error) {
 	// if we've reached the max # of executions
 	// for this task, mark it as finished and failed
-	if self.Execution >= mci.MaxTaskExecution {
+	if self.Execution >= evergreen.MaxTaskExecution {
 		// restarting from the ui bypassed the restart cap
-		if origin == mci.UIPackage {
-			mci.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
+		if origin == evergreen.UIPackage {
+			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
 				" (%v); Allowing exception for %v", self.Id,
-				mci.MaxTaskExecution, user)
+				evergreen.MaxTaskExecution, user)
 		} else {
-			mci.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
-				" (%v); marking as failed.", self.Id, mci.MaxTaskExecution)
+			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
+				" (%v); marking as failed.", self.Id, evergreen.MaxTaskExecution)
 			if taskEndRequest != nil {
 				return self.MarkEnd(origin, time.Now(), taskEndRequest, project)
 			} else {
@@ -940,8 +940,8 @@ func (self *Task) TryReset(user, origin string, project *Project,
 	// only allow re-execution for failed, cancelled or successful tasks
 	if !self.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
-		if origin == mci.UIPackage {
-			mci.Logger.Logf(slogger.DEBUG, "Will not satisfy '%v' requested"+
+		if origin == evergreen.UIPackage {
+			evergreen.Logger.Logf(slogger.DEBUG, "Will not satisfy '%v' requested"+
 				" reset for '%v' - current status is '%v'", user, self.Id,
 				self.Status)
 			return fmt.Errorf("Task '%v' is currently '%v' - can not reset"+
@@ -957,7 +957,7 @@ func (self *Task) TryReset(user, origin string, project *Project,
 	}
 
 	if err = self.reset(); err == nil {
-		if origin == mci.UIPackage {
+		if origin == evergreen.UIPackage {
 			event.LogTaskRestarted(self.Id, user)
 		} else {
 			event.LogTaskRestarted(self.Id, origin)
@@ -975,7 +975,7 @@ func (self *Task) reset() error {
 		"$set": bson.M{
 			TaskActivatedKey:     true,
 			TaskSecretKey:        util.RandomString(),
-			TaskStatusKey:        mci.TaskUndispatched,
+			TaskStatusKey:        evergreen.TaskUndispatched,
 			TaskDispatchTimeKey:  ZeroTime,
 			TaskStartTimeKey:     ZeroTime,
 			TaskScheduledTimeKey: ZeroTime,
@@ -1008,14 +1008,14 @@ func (self *Task) MarkStart() error {
 	// record the start time in the in-memory task
 	startTime := time.Now()
 	self.StartTime = startTime
-	self.Status = mci.TaskStarted
+	self.Status = evergreen.TaskStarted
 	err := UpdateOneTask(
 		bson.M{
 			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				TaskStatusKey:    mci.TaskStarted,
+				TaskStatusKey:    evergreen.TaskStarted,
 				TaskStartTimeKey: startTime,
 			},
 		},
@@ -1037,7 +1037,7 @@ func (self *Task) MarkStart() error {
 	}
 
 	// if it's a patch, mark the patch as started if necessary
-	if self.Requester == mci.PatchVersionRequester {
+	if self.Requester == evergreen.PatchVersionRequester {
 		if err = patch.TryMarkStarted(self.Version, startTime); err != nil {
 			return err
 		}
@@ -1062,7 +1062,7 @@ func (self *Task) UpdateBuildStatus() error {
 
 	pushTaskExists := false
 	for _, task := range buildTasks {
-		if task.DisplayName == mci.PushStage {
+		if task.DisplayName == evergreen.PushStage {
 			pushTaskExists = true
 		}
 	}
@@ -1077,34 +1077,34 @@ func (self *Task) UpdateBuildStatus() error {
 		if task.IsFinished() {
 			finishedTasks += 1
 			// if it was a compile task, mark the build status accordingly
-			if task.DisplayName == mci.CompileStage {
-				if task.Status != mci.TaskSucceeded {
+			if task.DisplayName == evergreen.CompileStage {
+				if task.Status != evergreen.TaskSucceeded {
 					failedTask = true
 					finishedTasks = -1
-					err = b.MarkFinished(mci.BuildFailed, finishTime)
+					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 						return err
 					}
 					break
 				}
-			} else if task.DisplayName == mci.PushStage {
+			} else if task.DisplayName == evergreen.PushStage {
 				pushCompleted = true
 				// if it's a finished push, check if it was successful
-				if task.Status != mci.TaskSucceeded {
-					err = b.UpdateStatus(mci.BuildFailed)
+				if task.Status != evergreen.TaskSucceeded {
+					err = b.UpdateStatus(evergreen.BuildFailed)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 						return err
 					}
 					pushSuccess = false
 				}
 			} else {
 				// update the build's status when a test task isn't successful
-				if task.Status != mci.TaskSucceeded {
-					err = b.UpdateStatus(mci.BuildFailed)
+				if task.Status != evergreen.TaskSucceeded {
+					err = b.UpdateStatus(evergreen.BuildFailed)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 						return err
 					}
 					failedTask = true
@@ -1115,9 +1115,9 @@ func (self *Task) UpdateBuildStatus() error {
 
 	// if there are no failed tasks, mark the build as started
 	if !failedTask {
-		err = b.UpdateStatus(mci.BuildStarted)
+		err = b.UpdateStatus(evergreen.BuildStarted)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 			return err
 		}
 	}
@@ -1130,15 +1130,15 @@ func (self *Task) UpdateBuildStatus() error {
 		if !failedTask {
 			if pushTaskExists { // this build has a push task associated with it.
 				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.
-					err = b.MarkFinished(mci.BuildSucceeded, finishTime)
+					err = b.MarkFinished(evergreen.BuildSucceeded, finishTime)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 						return err
 					}
 				} else if pushCompleted && !pushSuccess { // the push failed, mark build failed.
-					err = b.MarkFinished(mci.BuildFailed, finishTime)
+					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 						return err
 					}
 				} else {
@@ -1146,39 +1146,39 @@ func (self *Task) UpdateBuildStatus() error {
 					//So do nothing, since we don't know the status yet.
 				}
 				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
+					evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 					return err
 				}
 			} else { // this build has no push task. so go ahead and mark it success/failure.
-				if err = b.MarkFinished(mci.BuildSucceeded, finishTime); err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+				if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
+					evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 					return err
 				}
-				if b.Requester == mci.PatchVersionRequester {
+				if b.Requester == evergreen.PatchVersionRequester {
 					if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
 						return err
 					}
 				}
 				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
+					evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 					return err
 				}
 			}
 		} else {
 			// some task failed
-			if err = b.MarkFinished(mci.BuildFailed, finishTime); err != nil {
-				mci.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
+				evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
 				return err
 			}
-			if b.Requester == mci.PatchVersionRequester {
+			if b.Requester == evergreen.PatchVersionRequester {
 				if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
+					evergreen.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
 					return err
 				}
 			}
 			if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-				mci.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
+				evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 				return err
 			}
 		}
@@ -1186,9 +1186,9 @@ func (self *Task) UpdateBuildStatus() error {
 
 	// this is helpful for when we restart a compile task
 	if finishedTasks == 0 {
-		err = b.UpdateStatus(mci.BuildCreated)
+		err = b.UpdateStatus(evergreen.BuildCreated)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
 			return err
 		}
 	}
@@ -1254,7 +1254,7 @@ func (self *Task) markEnd(caller string, finishTime time.Time,
 func (self *Task) MarkEnd(caller string, finishTime time.Time,
 	taskEndRequest *apimodels.TaskEndRequest, project *Project) error {
 	if self.Status == taskEndRequest.Status {
-		mci.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice",
+		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice",
 			self.Id)
 		return nil
 	}
@@ -1270,7 +1270,7 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 	}
 
 	// no need to activate/deactivate other task if this is a patch request's task
-	if self.Requester == mci.PatchVersionRequester {
+	if self.Requester == evergreen.PatchVersionRequester {
 		err = self.UpdateBuildStatus()
 		if err != nil {
 			return fmt.Errorf("Error updating build status (1): %v", err.Error())
@@ -1279,12 +1279,12 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 	}
 
 	// Do stepback
-	if taskEndRequest.Status == mci.TaskFailed {
+	if taskEndRequest.Status == evergreen.TaskFailed {
 		if shouldStepBack := self.getStepback(project); shouldStepBack {
 			//See if there is a prior success for this particular task.
 			//If there isn't, we should not activate the previous task because
 			//it could trigger stepping backwards ad infinitum.
-			_, err := PreviousCompletedTask(self, self.Project, []string{mci.TaskSucceeded})
+			_, err := PreviousCompletedTask(self, self.Project, []string{evergreen.TaskSucceeded})
 			if err != nil {
 				if err == mgo.ErrNotFound {
 					shouldStepBack = false
@@ -1301,7 +1301,7 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 					return fmt.Errorf("Error activating previous task: %v", err)
 				}
 			} else {
-				mci.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task"+
+				evergreen.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task"+
 					" failure: %v", self.Id)
 			}
 		}
@@ -1344,7 +1344,7 @@ func (self *Task) MarkUnscheduled() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				TaskStatusKey: mci.TaskUndispatched,
+				TaskStatusKey: evergreen.TaskUndispatched,
 			},
 		},
 	)
@@ -1403,8 +1403,8 @@ func (self *Task) DeactivatePreviousTasks(caller string) (err error) {
 		TaskBuildVariantKey:        self.BuildVariant,
 		TaskDisplayNameKey:         self.DisplayName,
 		TaskRevisionOrderNumberKey: priorRevisions,
-		TaskStatusKey:              mci.TaskUndispatched,
-		TaskRequesterKey:           mci.RepotrackerVersionRequester,
+		TaskStatusKey:              evergreen.TaskUndispatched,
+		TaskRequesterKey:           evergreen.RepotrackerVersionRequester,
 		TaskActivatedKey:           true,
 		TaskProjectKey:             self.Project,
 	}
@@ -1543,7 +1543,7 @@ func AverageTaskTimeDifference(field1 string, field2 string,
 
 	err := db.Aggregate(TasksCollection, pipeline, &results)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR,
+		evergreen.Logger.Errorf(slogger.ERROR,
 			"Error aggregating task times by [%v, %v]: %v",
 			field1, field2, err)
 		return nil, err
@@ -1567,7 +1567,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 				TaskBuildVariantKey: buildvariant,
 				TaskProjectKey:      project,
 				TaskStatusKey: bson.M{
-					"$in": []string{mci.TaskSucceeded, mci.TaskFailed},
+					"$in": []string{evergreen.TaskSucceeded, evergreen.TaskFailed},
 				},
 				TaskStatusDetailsKey + "." + TaskStatusDetailsTimedOut: bson.M{
 					"$ne": true,

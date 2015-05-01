@@ -1,15 +1,15 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/rest"
-	"10gen.com/mci/util"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	taskTestConfig = mci.TestConfig()
+	taskTestConfig = evergreen.TestConfig()
 )
 
 func init() {
@@ -35,8 +35,8 @@ func TestGetTaskInfo(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -86,7 +86,7 @@ func TestGetTaskInfo(t *testing.T) {
 			Execution:           0,
 			Archived:            false,
 			RevisionOrderNumber: 42,
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 			Status:              "success",
 			StatusDetails: apimodels.TaskEndDetails{
 				TimedOut:     false,
@@ -273,8 +273,8 @@ func TestGetTaskStatus(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),

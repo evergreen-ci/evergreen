@@ -1,9 +1,9 @@
 package host
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -20,15 +20,15 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 
 			inactiveOne := &Host{
 				Id:       "inactiveOne",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeStatic,
 			}
 			So(inactiveOne.Insert(), ShouldBeNil)
 
 			inactiveTwo := &Host{
 				Id:       "inactiveTwo",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeStatic,
 			}
 			So(inactiveTwo.Insert(), ShouldBeNil)
 
@@ -37,8 +37,8 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			found, err := Find(All)
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
-			So(found[0].Status, ShouldEqual, mci.HostRunning)
-			So(found[1].Status, ShouldEqual, mci.HostRunning)
+			So(found[0].Status, ShouldEqual, evergreen.HostRunning)
+			So(found[1].Status, ShouldEqual, evergreen.HostRunning)
 
 		})
 
@@ -47,42 +47,42 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 
 			activeOne := &Host{
 				Id:       "activeStaticOne",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeStatic,
 			}
 			So(activeOne.Insert(), ShouldBeNil)
 
 			activeTwo := &Host{
 				Id:       "activeStaticTwo",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeStatic,
 			}
 			So(activeTwo.Insert(), ShouldBeNil)
 
 			inactiveOne := &Host{
 				Id:       "inactiveStaticOne",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeStatic,
 			}
 			So(inactiveOne.Insert(), ShouldBeNil)
 
 			inactiveTwo := &Host{
 				Id:       "inactiveStaticTwo",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeStatic,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeStatic,
 			}
 			So(inactiveTwo.Insert(), ShouldBeNil)
 
 			inactiveEC2One := &Host{
 				Id:       "inactiveEC2One",
-				Status:   mci.HostRunning,
-				Provider: mci.HostTypeEC2,
+				Status:   evergreen.HostRunning,
+				Provider: evergreen.HostTypeEC2,
 			}
 			So(inactiveEC2One.Insert(), ShouldBeNil)
 
 			inactiveUnknownTypeOne := &Host{
 				Id:     "inactiveUnknownTypeOne",
-				Status: mci.HostRunning,
+				Status: evergreen.HostRunning,
 			}
 			So(inactiveUnknownTypeOne.Insert(), ShouldBeNil)
 

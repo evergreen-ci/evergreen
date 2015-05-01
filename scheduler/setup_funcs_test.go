@@ -1,23 +1,23 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	setupFuncsTestConf = mci.TestConfig()
+	setupFuncsTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
 	if setupFuncsTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(setupFuncsTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(setupFuncsTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -52,19 +52,19 @@ func TestSetupFuncs(t *testing.T) {
 			project := "project"
 
 			tasks[0].RevisionOrderNumber = 100
-			tasks[0].Requester = mci.RepotrackerVersionRequester
+			tasks[0].Requester = evergreen.RepotrackerVersionRequester
 			tasks[0].DisplayName = displayNames[0]
 			tasks[0].BuildVariant = buildVariant
 			tasks[0].Project = project
 
 			tasks[1].RevisionOrderNumber = 200
-			tasks[1].Requester = mci.RepotrackerVersionRequester
+			tasks[1].Requester = evergreen.RepotrackerVersionRequester
 			tasks[1].DisplayName = displayNames[1]
 			tasks[1].BuildVariant = buildVariant
 			tasks[1].Project = project
 
 			tasks[2].RevisionOrderNumber = 300
-			tasks[2].Requester = mci.RepotrackerVersionRequester
+			tasks[2].Requester = evergreen.RepotrackerVersionRequester
 			tasks[2].DisplayName = displayNames[2]
 			tasks[2].BuildVariant = buildVariant
 			tasks[2].Project = project
@@ -74,31 +74,31 @@ func TestSetupFuncs(t *testing.T) {
 			prevTaskOne := &model.Task{
 				Id:                  prevTaskIds[0],
 				RevisionOrderNumber: 99,
-				Requester:           mci.RepotrackerVersionRequester,
+				Requester:           evergreen.RepotrackerVersionRequester,
 				DisplayName:         displayNames[0],
 				BuildVariant:        buildVariant,
 				Project:             project,
-				Status:              mci.TaskFailed,
+				Status:              evergreen.TaskFailed,
 			}
 
 			prevTaskTwo := &model.Task{
 				Id:                  prevTaskIds[1],
 				RevisionOrderNumber: 199,
-				Requester:           mci.RepotrackerVersionRequester,
+				Requester:           evergreen.RepotrackerVersionRequester,
 				DisplayName:         displayNames[1],
 				BuildVariant:        buildVariant,
 				Project:             project,
-				Status:              mci.TaskSucceeded,
+				Status:              evergreen.TaskSucceeded,
 			}
 
 			prevTaskThree := &model.Task{
 				Id:                  prevTaskIds[2],
 				RevisionOrderNumber: 299,
-				Requester:           mci.RepotrackerVersionRequester,
+				Requester:           evergreen.RepotrackerVersionRequester,
 				DisplayName:         displayNames[2],
 				BuildVariant:        buildVariant,
 				Project:             project,
-				Status:              mci.TaskSucceeded,
+				Status:              evergreen.TaskSucceeded,
 			}
 
 			So(prevTaskOne.Insert(), ShouldBeNil)

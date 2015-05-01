@@ -1,13 +1,13 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/auth"
-	"10gen.com/mci/db"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/ui"
 	"fmt"
 	"github.com/codegangsta/negroni"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/db"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/ui"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/sessions"
 	"net/http"
@@ -18,13 +18,13 @@ import (
 const UIPort = ":9090"
 
 func main() {
-	mciSettings := mci.MustConfig()
+	mciSettings := evergreen.MustConfig()
 	if mciSettings.Ui.LogFile != "" {
-		mci.SetLogger(mciSettings.Ui.LogFile)
+		evergreen.SetLogger(mciSettings.Ui.LogFile)
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mciSettings))
 
-	home, err := mci.FindMCIHome()
+	home, err := evergreen.FindMCIHome()
 	if err != nil {
 		fmt.Println("Can't find mci home", err)
 		os.Exit(1)

@@ -1,10 +1,10 @@
 package testutils
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"flag"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/model"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
@@ -13,14 +13,14 @@ import (
 
 var (
 	// run the integration tests
-	runIntegration = flag.Bool("mci.all", false, "Run integration tests")
+	runIntegration = flag.Bool("evergreen.all", false, "Run integration tests")
 	// path to an mci settings file containing sensitive information
-	settingsOverride = flag.String("mci.settingsOverride", "", "Settings file"+
+	settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+
 		" to be used to override sensitive info in the testing mci settings"+
 		" file")
 )
 
-func ConfigureIntegrationTest(t *testing.T, testSettings *mci.MCISettings,
+func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.MCISettings,
 	testName string) {
 	if !(*runIntegration) {
 		t.Skip(fmt.Sprintf("Skipping integration test %v...", testName))
@@ -33,7 +33,7 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *mci.MCISettings,
 	}
 
 	// grab the file with the integration test settings
-	integrationSettings, err := mci.NewMCISettings(*settingsOverride)
+	integrationSettings, err := evergreen.NewMCISettings(*settingsOverride)
 	if err != nil {
 		panic(fmt.Sprintf("Error opening settings override file %v: %v",
 			*settingsOverride, err))
@@ -49,9 +49,9 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *mci.MCISettings,
 
 // Creates a project ref local config that can be used for testing, with the string identifier given
 // and the local config from a path
-func CreateTestLocalConfig(testSettings *mci.MCISettings, projectName string) error {
+func CreateTestLocalConfig(testSettings *evergreen.MCISettings, projectName string) error {
 
-	config, err := mci.FindMCIConfig(testSettings.ConfigDir)
+	config, err := evergreen.FindMCIConfig(testSettings.ConfigDir)
 	if err != nil {
 		return err
 	}

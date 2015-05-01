@@ -1,13 +1,13 @@
 package gotest_test
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
-	"10gen.com/mci/model"
-	. "10gen.com/mci/plugin/builtin/gotest"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/model"
+	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
@@ -23,7 +23,7 @@ func TestRunAndParseTests(t *testing.T) {
 	}
 
 	SkipConvey("With a parser", t, func() {
-		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 		parser = &VanillaParser{}
 
@@ -129,12 +129,12 @@ func TestResultsConversion(t *testing.T) {
 
 			Convey("fields should be transformed correctly", func() {
 				So(newRes.Results[0].TestFile, ShouldEqual, results[0].Name)
-				So(newRes.Results[0].Status, ShouldEqual, mci.TestSucceededStatus)
+				So(newRes.Results[0].Status, ShouldEqual, evergreen.TestSucceededStatus)
 				So(newRes.Results[0].StartTime, ShouldBeLessThan, newRes.Results[0].EndTime)
 				So(newRes.Results[0].EndTime-newRes.Results[0].StartTime,
 					ShouldBeBetween, .243, .245) //floating point weirdness
 				So(newRes.Results[1].TestFile, ShouldEqual, results[1].Name)
-				So(newRes.Results[1].Status, ShouldEqual, mci.TestSkippedStatus)
+				So(newRes.Results[1].Status, ShouldEqual, evergreen.TestSkippedStatus)
 				So(newRes.Results[1].StartTime, ShouldBeLessThan, newRes.Results[1].EndTime)
 				So(newRes.Results[1].EndTime-newRes.Results[1].StartTime,
 					ShouldBeBetween, 4.9, 5.1)

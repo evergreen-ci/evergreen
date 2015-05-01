@@ -1,14 +1,14 @@
 package git
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"io/ioutil"
@@ -55,7 +55,7 @@ func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 
 	//Apply patches only if necessary
-	if conf.Task.Requester == mci.PatchVersionRequester {
+	if conf.Task.Requester == evergreen.PatchVersionRequester {
 		pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
 		patch, err := self.GetPatch(conf, pluginCom, pluginLogger)
 		if err != nil {
@@ -230,13 +230,13 @@ func servePatch(w http.ResponseWriter, r *http.Request) {
 	patch, err := task.FetchPatch()
 	if err != nil {
 		msg := fmt.Sprintf("error fetching patch for task %v from db: %v", task.Id, err)
-		mci.Logger.Logf(slogger.ERROR, msg)
+		evergreen.Logger.Logf(slogger.ERROR, msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 	if patch == nil {
 		msg := fmt.Sprintf("no patch found for task %v", task.Id)
-		mci.Logger.Errorf(slogger.ERROR, msg)
+		evergreen.Logger.Errorf(slogger.ERROR, msg)
 		http.Error(w, msg, http.StatusNotFound)
 		return
 	}

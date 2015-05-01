@@ -1,11 +1,11 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"io"
 	"os"
 	"os/exec"
@@ -26,7 +26,7 @@ type AgentLogger struct {
 }
 
 func (self *AgentLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
-	return &mci.LoggingWriter{
+	return &evergreen.LoggingWriter{
 		Logger:   self.TaskLogger,
 		Severity: level,
 	}
@@ -101,7 +101,7 @@ func (self *AgentCommandLogger) Flush() {
 }
 
 func initLocalLogger() (slogger.Appender, error) {
-	mciHome := mci.RemoteShell
+	mciHome := evergreen.RemoteShell
 	logDir := filepath.Join(mciHome, "logs")
 	exists, err := util.FileExists(logDir)
 	if err != nil {
@@ -242,7 +242,7 @@ func (self *TaskCommunicatorAppender) Append(log *slogger.Log) error {
 		Timestamp: log.Timestamp,
 		Severity:  levelToString(log.Level),
 		Type:      log.Prefix,
-		Version:   mci.LogmessageCurrentVersion,
+		Version:   evergreen.LogmessageCurrentVersion,
 		Message:   message,
 	}
 

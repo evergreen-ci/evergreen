@@ -1,12 +1,12 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"time"
 )
 
@@ -21,7 +21,7 @@ type TaskMonitor struct {
 // of project name -> project info
 func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Cleaning up tasks...")
+	evergreen.Logger.Logf(slogger.INFO, "Cleaning up tasks...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -47,7 +47,7 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Done cleaning up tasks")
+	evergreen.Logger.Logf(slogger.INFO, "Done cleaning up tasks")
 
 	return errors
 
@@ -56,14 +56,14 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 // clean up the passed-in slice of tasks
 func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Project) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Cleaning up %v tasks...", len(taskWrappers))
+	evergreen.Logger.Logf(slogger.INFO, "Cleaning up %v tasks...", len(taskWrappers))
 
 	// used to store any errors that occur
 	var errors []error
 
 	for _, wrapper := range taskWrappers {
 
-		mci.Logger.Logf(slogger.INFO, "Cleaning up task %v, for reason '%v'",
+		evergreen.Logger.Logf(slogger.INFO, "Cleaning up task %v, for reason '%v'",
 			wrapper.task.Id, wrapper.reason)
 
 		// clean up the task. continue on error to let others be cleaned up
@@ -71,7 +71,7 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Pr
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error cleaning up task %v: %v", wrapper.task.Id, err))
 		} else {
-			mci.Logger.Logf(slogger.INFO, "Successfully cleaned up task %v", wrapper.task.Id)
+			evergreen.Logger.Logf(slogger.INFO, "Successfully cleaned up task %v", wrapper.task.Id)
 		}
 
 	}
@@ -98,7 +98,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 
 	// if there's no relevant host, something went wrong
 	if host == nil {
-		mci.Logger.Logf(slogger.ERROR, "no entry found for host %v", wrapper.task.HostId)
+		evergreen.Logger.Logf(slogger.ERROR, "no entry found for host %v", wrapper.task.HostId)
 		return wrapper.task.MarkUnscheduled()
 	}
 
@@ -129,7 +129,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host.Host) error {
 	// mock up the failure details of the task
 	taskEndRequest := &apimodels.TaskEndRequest{
-		Status:        mci.TaskFailed,
+		Status:        evergreen.TaskFailed,
 		StatusDetails: apimodels.TaskEndDetails{"heartbeat", true},
 	}
 

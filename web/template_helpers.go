@@ -1,14 +1,14 @@
 package web
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/auth"
-	"10gen.com/mci/model"
-	"10gen.com/mci/util"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"html/template"
 	"io"
 	"reflect"
@@ -50,7 +50,7 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 func convertToTimezone(when time.Time, timezone string, layout string) string {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		mci.Logger.Errorf(slogger.WARN, "Could not load location from timezone %v: %v", timezone, err)
+		evergreen.Logger.Errorf(slogger.WARN, "Could not load location from timezone %v: %v", timezone, err)
 		return when.Format(layout)
 	}
 
@@ -126,7 +126,7 @@ func (self sortableDisplayProjects) Less(i, j int) bool {
 
 //Create function Mappings - Add functions here to
 //make them usable in the template language
-func MakeCommonFunctionMap(mciSettings *mci.MCISettings) (template.FuncMap,
+func MakeCommonFunctionMap(mciSettings *evergreen.MCISettings) (template.FuncMap,
 	error) {
 	funcs := map[string]interface{}{}
 
@@ -280,7 +280,7 @@ func MakeCommonFunctionMap(mciSettings *mci.MCISettings) (template.FuncMap,
 	//A map of systemwide globals, set up only once, which can be accessed via
 	//template function for usage on the front-end.
 	GLOBALS := make(map[string]string)
-	GLOBALS["revision"] = "none" //mci.GetCurrentRevision()
+	GLOBALS["revision"] = "none" //evergreen.GetCurrentRevision()
 	GLOBALS["uiUrl"] = mciSettings.Ui.Url
 	funcs["Global"] = func(key string) string {
 		val, present := GLOBALS[key]

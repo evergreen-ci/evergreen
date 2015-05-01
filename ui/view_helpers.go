@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"10gen.com/mci/auth"
 	"crypto/md5"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/auth"
 	"html/template"
 	"io"
 	"os/exec"

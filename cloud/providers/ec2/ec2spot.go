@@ -1,14 +1,14 @@
 package ec2
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/hostutil"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/hostutil"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
@@ -70,7 +70,7 @@ func (self *EC2SpotSettings) Validate() error {
 
 //Configure loads necessary credentials or other settings from the global config
 //object.
-func (cloudManager *EC2SpotManager) Configure(mciSettings *mci.MCISettings) error {
+func (cloudManager *EC2SpotManager) Configure(mciSettings *evergreen.MCISettings) error {
 	if mciSettings.Providers.AWS.Id == "" || mciSettings.Providers.AWS.Secret == "" {
 		return fmt.Errorf("AWS ID/Secret must not be blank")
 	}
@@ -97,7 +97,7 @@ func (cloudManager *EC2SpotManager) GetSSHOptions(h *host.Host, keyPath string) 
 func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
 	instanceStatus, err := cloudManager.GetInstanceStatus(host)
 	if err != nil {
-		return false, mci.Logger.Errorf(slogger.ERROR,
+		return false, evergreen.Logger.Errorf(slogger.ERROR,
 			"Failed to check if host %v is up: %v", host.Id, err)
 	}
 
@@ -116,7 +116,7 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 		return err
 	}
 	if spotReq.InstanceId == "" {
-		return mci.Logger.Errorf(slogger.ERROR, "Could not retrieve instanceID for filled SpotRequest '%v'",
+		return evergreen.Logger.Errorf(slogger.ERROR, "Could not retrieve instanceID for filled SpotRequest '%v'",
 			host.Id)
 	}
 	return attachTags(getUSEast(*cloudManager.awsCredentials), tags, spotReq.InstanceId)
@@ -143,7 +143,7 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, mci.Logger.Errorf(slogger.ERROR,
+		return cloud.StatusUnknown, evergreen.Logger.Errorf(slogger.ERROR,
 			"failed to get spot request info for %v: %v", host.Id, err)
 	}
 
@@ -152,7 +152,7 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 		ec2Handle := getUSEast(*cloudManager.awsCredentials)
 		instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Got an error checking spot details %v", err)
+			evergreen.Logger.Logf(slogger.ERROR, "Got an error checking spot details %v", err)
 			return cloud.StatusUnknown, err
 		}
 		return ec2StatusToMCIStatus(instanceInfo.State.Name), nil
@@ -172,7 +172,7 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 	case SpotStatusFailed:
 		return cloud.StatusFailed, nil
 	default:
-		mci.Logger.Logf(slogger.ERROR, "Unexpected status code in spot req: %v", spotDetails.State)
+		evergreen.Logger.Logf(slogger.ERROR, "Unexpected status code in spot req: %v", spotDetails.State)
 		return cloud.StatusUnknown, nil
 	}
 }
@@ -184,7 +184,7 @@ func (cloudManager *EC2SpotManager) CanSpawn() (bool, error) {
 func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		return "", mci.Logger.Errorf(slogger.ERROR, "failed to get spot request info for %v: %v", host.Id, err)
+		return "", evergreen.Logger.Errorf(slogger.ERROR, "failed to get spot request info for %v: %v", host.Id, err)
 	}
 
 	//Spot request has not been fulfilled yet, so there is still no DNS name
@@ -229,7 +229,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 		Distro:           *d,
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
-		Status:           mci.HostUninitialized,
+		Status:           evergreen.HostUninitialized,
 		TerminationTime:  model.ZeroTime,
 		TaskDispatchTime: model.ZeroTime,
 		Provider:         SpotProviderName,
@@ -242,11 +242,11 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 
 	// record this 'intent host'
 	if err := intentHost.Insert(); err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Could not insert intent "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not insert intent "+
 			"host “%v”: %v", intentHost.Id, err)
 	}
 
-	mci.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host “%v” "+
+	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host “%v” "+
 		"for distro “%v” to signal cloud instance spawn intent", instanceName,
 		d.Id)
 
@@ -264,22 +264,22 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 	if err != nil {
 		//Remove the intent host if the API call failed
 		if err := intentHost.Remove(); err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Failed to remove intent host %v: %v", intentHost.Id, err)
+			evergreen.Logger.Logf(slogger.ERROR, "Failed to remove intent host %v: %v", intentHost.Id, err)
 		}
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Failed starting spot instance "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed starting spot instance "+
 			" for distro '%v' on intent host %v: %v", d.Id, intentHost.Id, err)
 	}
 
 	spotReqRes := spotResp.SpotRequestResults[0]
 	if spotReqRes.State != SpotStatusOpen && spotReqRes.State != SpotStatusActive {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Spot request %v was found in "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Spot request %v was found in "+
 			" state %v on intent host %v", spotReqRes.SpotRequestId, spotReqRes.State, intentHost.Id)
 	}
 
 	intentHost.Id = spotReqRes.SpotRequestId
 	err = intentHost.Insert()
 	if err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Could not insert updated host info with id %v"+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not insert updated host info with id %v"+
 			" for intent host %v: %v", intentHost.Id, instanceName, err)
 	}
 
@@ -287,18 +287,18 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 	//host doc successfully stored.
 	oldIntenthost, err := host.FindOne(host.ById(instanceName))
 	if err != nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Can't locate "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Can't locate "+
 			"record inserted for intended host '%v' due to error: %v",
 			instanceName, err)
 	}
 	if oldIntenthost == nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Can't locate "+
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Can't locate "+
 			"record inserted for intended host '%v'", instanceName)
 	}
 
 	err = oldIntenthost.Remove()
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "Could not remove intent host "+
+		evergreen.Logger.Logf(slogger.ERROR, "Could not remove intent host "+
 			"“%v”: %v", oldIntenthost.Id, err)
 		return nil, err
 	}
@@ -310,10 +310,10 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 	err = attachTags(ec2Handle, tags, intentHost.Id)
 
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Unable to attach tags for %v: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "Unable to attach tags for %v: %v",
 			intentHost.Id, err)
 	} else {
-		mci.Logger.Logf(slogger.DEBUG, "Attached tag name “%v” for “%v”",
+		evergreen.Logger.Logf(slogger.DEBUG, "Attached tag name “%v” for “%v”",
 			instanceName, intentHost.Id)
 	}
 	return intentHost, nil
@@ -321,10 +321,10 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 
 func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
-	if host.Status == mci.HostTerminated {
+	if host.Status == evergreen.HostTerminated {
 		errMsg := fmt.Errorf("Can not terminate %v - already marked as "+
 			"terminated!", host.Id)
-		mci.Logger.Errorf(slogger.ERROR, errMsg.Error())
+		evergreen.Logger.Errorf(slogger.ERROR, errMsg.Error())
 		return errMsg
 	}
 
@@ -334,38 +334,38 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 		if ok && ec2err.Code == EC2ErrorSpotRequestNotFound {
 			// EC2 says the spot request is not found - assume this means amazon
 			// terminated our spot instance
-			mci.Logger.Logf(slogger.WARN, "EC2 could not find spot instance '%v', "+
+			evergreen.Logger.Logf(slogger.WARN, "EC2 could not find spot instance '%v', "+
 				"marking as terminated", host.Id)
 			return host.Terminate()
 		}
-		return mci.Logger.Errorf(slogger.ERROR, "Couldn't terminate, "+
+		return evergreen.Logger.Errorf(slogger.ERROR, "Couldn't terminate, "+
 			"failed to get spot request info for %v: %v", host.Id, err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Cancelling spot request %v", host.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Cancelling spot request %v", host.Id)
 	//First cancel the spot request
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	_, err = ec2Handle.CancelSpotRequests([]string{host.Id})
 	if err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Failed to cancel spot request for host %v: %v",
+		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to cancel spot request for host %v: %v",
 			host.Id, err)
 	}
 
 	//Canceling the spot request doesn't terminate the instance that fulfilled it,
 	// if it was fulfilled. We need to terminate the instance explicitly
 	if spotDetails.InstanceId != "" {
-		mci.Logger.Logf(slogger.INFO, "Spot request %v cancelled, now terminating instance %v",
+		evergreen.Logger.Logf(slogger.INFO, "Spot request %v cancelled, now terminating instance %v",
 			spotDetails.InstanceId, host.Id)
 		resp, err := ec2Handle.TerminateInstances([]string{spotDetails.InstanceId})
 		if err != nil {
-			return mci.Logger.Errorf(slogger.INFO, "Failed to terminate host %v: %v", host.Id, err)
+			return evergreen.Logger.Errorf(slogger.INFO, "Failed to terminate host %v: %v", host.Id, err)
 		}
 
 		for _, stateChange := range resp.StateChanges {
-			mci.Logger.Logf(slogger.INFO, "Terminated %v", stateChange.InstanceId)
+			evergreen.Logger.Logf(slogger.INFO, "Terminated %v", stateChange.InstanceId)
 		}
 	} else {
-		mci.Logger.Logf(slogger.INFO, "Spot request %v cancelled (no instances have fulfilled it)", host.Id)
+		evergreen.Logger.Logf(slogger.INFO, "Spot request %v cancelled (no instances have fulfilled it)", host.Id)
 	}
 
 	// set the host status as terminated and update its termination time
@@ -382,11 +382,11 @@ func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.
 		return nil, err
 	}
 	if resp == nil {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Received a nil response from EC2 looking up spot request %v",
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Received a nil response from EC2 looking up spot request %v",
 			spotReqId)
 	}
 	if len(resp.SpotRequestResults) != 1 {
-		return nil, mci.Logger.Errorf(slogger.ERROR, "Expected one spot request info, but got %v",
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Expected one spot request info, but got %v",
 			len(resp.SpotRequestResults))
 	}
 	return &resp.SpotRequestResults[0], nil

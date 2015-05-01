@@ -1,14 +1,14 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/version"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"math"
 	"time"
 )
@@ -16,7 +16,7 @@ import (
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
 // basis.
 type Scheduler struct {
-	*mci.MCISettings
+	*evergreen.MCISettings
 	TaskFinder
 	TaskPrioritizer
 	TaskDurationEstimator
@@ -36,21 +36,21 @@ type versionBuildVariant struct {
 // for each distro, and spins them up.
 func (self *Scheduler) Schedule() error {
 	// make sure the correct static hosts are in the database
-	mci.Logger.Logf(slogger.INFO, "Updating static hosts...")
+	evergreen.Logger.Logf(slogger.INFO, "Updating static hosts...")
 	err := model.UpdateStaticHosts(self.MCISettings)
 	if err != nil {
 		return fmt.Errorf("error updating static hosts: %v", err)
 	}
 
 	// find all tasks ready to be run
-	mci.Logger.Logf(slogger.INFO, "Finding runnable tasks...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding runnable tasks...")
 
 	runnableTasks, err := self.FindRunnableTasks()
 	if err != nil {
 		return fmt.Errorf("Error finding runnable tasks: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "There are %v tasks ready to be run", len(runnableTasks))
+	evergreen.Logger.Logf(slogger.INFO, "There are %v tasks ready to be run", len(runnableTasks))
 
 	// split the tasks by distro
 	tasksByDistro, taskRunDistros, err := self.splitTasksByDistro(runnableTasks)
@@ -77,7 +77,7 @@ func (self *Scheduler) Schedule() error {
 	taskQueueItems := make(map[string][]model.TaskQueueItem)
 	for _, d := range distros {
 		runnableTasksForDistro := tasksByDistro[d.Id]
-		mci.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
+		evergreen.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
 			len(runnableTasksForDistro), d.Id)
 
 		prioritizedTasks, err := self.PrioritizeTasks(self.MCISettings,
@@ -100,7 +100,7 @@ func (self *Scheduler) Schedule() error {
 		}
 
 		// persist the queue of tasks
-		mci.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...",
+		evergreen.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...",
 			d.Id)
 		queuedTasks, err := self.PersistTaskQueue(d.Id, prioritizedTasks,
 			taskExpectedDuration)
@@ -165,16 +165,16 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	if len(hostsSpawned) != 0 {
-		mci.Logger.Logf(slogger.INFO, "Hosts spawned (%v total), by distro: ",
+		evergreen.Logger.Logf(slogger.INFO, "Hosts spawned (%v total), by distro: ",
 			len(hostsSpawned))
 		for distro, hosts := range hostsSpawned {
-			mci.Logger.Logf(slogger.INFO, "  %v ->", distro)
+			evergreen.Logger.Logf(slogger.INFO, "  %v ->", distro)
 			for _, host := range hosts {
-				mci.Logger.Logf(slogger.INFO, "    %v", host.Id)
+				evergreen.Logger.Logf(slogger.INFO, "    %v", host.Id)
 			}
 		}
 	} else {
-		mci.Logger.Logf(slogger.INFO, "No new hosts spawned")
+		evergreen.Logger.Logf(slogger.INFO, "No new hosts spawned")
 	}
 
 	return nil
@@ -226,7 +226,7 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []model.Task) (
 		if _, exists := versionBuildVarMap[key]; !exists {
 			err := self.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
 			if err != nil {
-				mci.Logger.Logf(slogger.WARN, "error getting buildvariant "+
+				evergreen.Logger.Logf(slogger.WARN, "error getting buildvariant "+
 					"map for task %v: %v", task.Id, err)
 				continue
 			}
@@ -235,7 +235,7 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []model.Task) (
 		// get the build variant for the task
 		buildVariant, ok := versionBuildVarMap[key]
 		if !ok {
-			mci.Logger.Logf(slogger.WARN, "task %v has no buildvariant called "+
+			evergreen.Logger.Logf(slogger.WARN, "task %v has no buildvariant called "+
 				"'%v' on project %v", task.Id, task.BuildVariant, task.Project)
 			continue
 		}
@@ -251,7 +251,7 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []model.Task) (
 
 		// if no matching spec was found log it and continue
 		if taskSpec.Name == "" {
-			mci.Logger.Logf(slogger.WARN, "task %v has no matching spec for "+
+			evergreen.Logger.Logf(slogger.WARN, "task %v has no matching spec for "+
 				"build variant %v on project %v", task.Id,
 				task.BuildVariant, task.Project)
 			continue
@@ -297,17 +297,17 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 		for i := 0; i < numHostsToSpawn; i++ {
 			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroId, err)
+				evergreen.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroId, err)
 			}
 
 			allDistroHosts, err := host.Find(host.ByDistroId(distroId))
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "Error getting hosts for distro %v: %v", distroId, err)
+				evergreen.Logger.Logf(slogger.ERROR, "Error getting hosts for distro %v: %v", distroId, err)
 				continue
 			}
 
 			if len(allDistroHosts) >= d.PoolSize {
-				mci.Logger.Logf(slogger.ERROR, "Already at max (%v) hosts for distro '%v'",
+				evergreen.Logger.Logf(slogger.ERROR, "Already at max (%v) hosts for distro '%v'",
 					d.Id,
 					d.PoolSize)
 				continue
@@ -315,13 +315,13 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 
 			cloudManager, err := providers.GetCloudManager(d.Provider, self.MCISettings)
 			if err != nil {
-				mci.Logger.Errorf(slogger.ERROR, "Error getting cloud manager for distro: %v", err)
+				evergreen.Logger.Errorf(slogger.ERROR, "Error getting cloud manager for distro: %v", err)
 				continue
 			}
 
-			newHost, err := cloudManager.SpawnInstance(d, mci.MCIUser, false)
+			newHost, err := cloudManager.SpawnInstance(d, evergreen.MCIUser, false)
 			if err != nil {
-				mci.Logger.Errorf(slogger.ERROR, "Error spawning instance: %v,",
+				evergreen.Logger.Errorf(slogger.ERROR, "Error spawning instance: %v,",
 					err)
 				continue
 			}

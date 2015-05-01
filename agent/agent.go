@@ -1,16 +1,16 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/plugin"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/plugin"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/util"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -165,16 +165,16 @@ func (self *AgentSignalHandler) HandleSignals(taskCom TaskCommunicator,
 		self.AgentLogger.LogLocal(slogger.ERROR, "Secret doesn't match.")
 		os.Exit(1)
 	case HeartbeatMaxFailed:
-		finalStatus = mci.TaskFailed
+		finalStatus = evergreen.TaskFailed
 		self.AgentLogger.LogExecution(slogger.ERROR, "Max heartbeats failed - stopping.")
 	case AbortedByUser:
-		finalStatus = mci.TaskUndispatched
+		finalStatus = evergreen.TaskUndispatched
 		self.AgentLogger.LogTask(slogger.WARN, "Received abort signal - stopping.")
 	case IdleTimeout:
 		currentStage := self.execTracker.GetCurrentStage()
 		self.AgentLogger.LogTask(slogger.ERROR, "Task timed out during: %v",
 			currentStage)
-		finalStatus = mci.TaskFailed
+		finalStatus = evergreen.TaskFailed
 		endDetails = &apimodels.TaskEndDetails{
 			TimeoutStage: currentStage,
 			TimedOut:     true,
@@ -196,10 +196,10 @@ func (self *AgentSignalHandler) HandleSignals(taskCom TaskCommunicator,
 			}
 		}
 	case CompletedSuccess:
-		finalStatus = mci.TaskSucceeded
+		finalStatus = evergreen.TaskSucceeded
 		self.AgentLogger.LogTask(slogger.INFO, "Task completed - SUCCESS.")
 	case CompletedFailure:
-		finalStatus = mci.TaskFailed
+		finalStatus = evergreen.TaskFailed
 		self.AgentLogger.LogTask(slogger.INFO, "Task completed - FAILURE.")
 	}
 
@@ -236,7 +236,7 @@ func (self *Agent) StartBackgroundActions(signalHandler TerminateHandler) chan F
 	go signalHandler.HandleSignals(self.TaskCommunicator, self.signalChan, completed)
 
 	// Listen for SIGQUIT and dump a stack trace to system logs if received.
-	go util.DumpStackOnSIGQUIT(mci.NewInfoLoggingWriter(self.agentLogger.SystemLogger))
+	go util.DumpStackOnSIGQUIT(evergreen.NewInfoLoggingWriter(self.agentLogger.SystemLogger))
 	return completed
 }
 

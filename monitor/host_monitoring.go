@@ -1,12 +1,12 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"time"
 )
 
@@ -16,13 +16,13 @@ const (
 )
 
 // responsible for monitoring and checking in on hosts
-type hostMonitoringFunc func(*mci.MCISettings) []error
+type hostMonitoringFunc func(*evergreen.MCISettings) []error
 
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
-func monitorReachability(mciSettings *mci.MCISettings) []error {
+func monitorReachability(mciSettings *evergreen.MCISettings) []error {
 
-	mci.Logger.Logf(slogger.INFO, "Running reachability checks...")
+	evergreen.Logger.Logf(slogger.INFO, "Running reachability checks...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -49,16 +49,16 @@ func monitorReachability(mciSettings *mci.MCISettings) []error {
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Finished running host reachability checks")
+	evergreen.Logger.Logf(slogger.INFO, "Finished running host reachability checks")
 
 	return errors
 }
 
 // check reachability for a single host, and take any necessary action
 func checkHostReachability(host host.Host,
-	mciSettings *mci.MCISettings) error {
+	mciSettings *evergreen.MCISettings) error {
 
-	mci.Logger.Logf(slogger.INFO, "Running reachability check for host %v...",
+	evergreen.Logger.Logf(slogger.INFO, "Running reachability check for host %v...",
 		host.Id)
 
 	// get a cloud version of the host
@@ -88,11 +88,11 @@ func checkHostReachability(host host.Host,
 		}
 
 		// log the status update if the reachability of the host is changing
-		if host.Status == mci.HostUnreachable && reachable {
-			mci.Logger.Logf(slogger.INFO, "Setting host %v as reachable",
+		if host.Status == evergreen.HostUnreachable && reachable {
+			evergreen.Logger.Logf(slogger.INFO, "Setting host %v as reachable",
 				host.Id)
-		} else if host.Status != mci.HostUnreachable && !reachable {
-			mci.Logger.Logf(slogger.INFO, "Setting host %v as unreachable",
+		} else if host.Status != evergreen.HostUnreachable && !reachable {
+			evergreen.Logger.Logf(slogger.INFO, "Setting host %v as unreachable",
 				host.Id)
 		}
 
@@ -104,7 +104,7 @@ func checkHostReachability(host host.Host,
 
 	case cloud.StatusTerminated:
 
-		mci.Logger.Logf(slogger.INFO, "Host %v terminated externally; updating"+
+		evergreen.Logger.Logf(slogger.INFO, "Host %v terminated externally; updating"+
 			" db status to terminated", host.Id)
 
 		// the instance was terminated from outside our control

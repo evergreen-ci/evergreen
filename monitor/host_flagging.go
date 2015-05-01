@@ -1,12 +1,12 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"time"
 )
 
@@ -18,13 +18,13 @@ const (
 // function that takes in all distros - specified as a map of
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
-type hostFlaggingFunc func([]distro.Distro, *mci.MCISettings) ([]host.Host, error)
+type hostFlaggingFunc func([]distro.Distro, *evergreen.MCISettings) ([]host.Host, error)
 
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
-func flagDecommissionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagDecommissionedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding decommissioned hosts...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding decommissioned hosts...")
 
 	// fetch the decommissioned hosts
 	hosts, err := host.Find(host.IsDecommissioned)
@@ -32,16 +32,16 @@ func flagDecommissionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host
 		return nil, fmt.Errorf("error finding decommissioned hosts: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v decommissioned hosts", len(hosts))
+	evergreen.Logger.Logf(slogger.INFO, "Found %v decommissioned hosts", len(hosts))
 
 	return hosts, nil
 }
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
-func flagIdleHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagIdleHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding idle hosts...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding idle hosts...")
 
 	// will ultimately contain all of the hosts determined to be idle
 	idleHosts := []host.Host{}
@@ -89,16 +89,16 @@ func flagIdleHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v idle hosts", len(idleHosts))
+	evergreen.Logger.Logf(slogger.INFO, "Found %v idle hosts", len(idleHosts))
 
 	return idleHosts, nil
 }
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
-func flagExcessHosts(distros []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagExcessHosts(distros []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding excess hosts...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding excess hosts...")
 
 	// will ultimately contain all the hosts that can be terminated
 	excessHosts := []host.Host{}
@@ -146,23 +146,23 @@ func flagExcessHosts(distros []distro.Distro, s *mci.MCISettings) ([]host.Host, 
 				}
 			}
 
-			mci.Logger.Logf(slogger.INFO, "Flagged %v excess hosts for distro"+
+			evergreen.Logger.Logf(slogger.INFO, "Flagged %v excess hosts for distro"+
 				" %v", counter, d.Id)
 
 		}
 
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v total excess hosts", len(excessHosts))
+	evergreen.Logger.Logf(slogger.INFO, "Found %v total excess hosts", len(excessHosts))
 
 	return excessHosts, nil
 }
 
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
-func flagUnprovisionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding unprovisioned hosts...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding unprovisioned hosts...")
 
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-ProvisioningCutoff)
@@ -171,16 +171,16 @@ func flagUnprovisionedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host,
 		return nil, fmt.Errorf("error finding unprovisioned hosts: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v unprovisioned hosts", len(hosts))
+	evergreen.Logger.Logf(slogger.INFO, "Found %v unprovisioned hosts", len(hosts))
 
 	return hosts, err
 }
 
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
-func flagProvisioningFailedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding hosts whose provisioning failed...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding hosts whose provisioning failed...")
 
 	// fetch all hosts whose provisioning failed
 	hosts, err := host.Find(host.IsProvisioningFailure)
@@ -189,7 +189,7 @@ func flagProvisioningFailedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.
 			" failed: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v hosts whose provisioning failed",
+	evergreen.Logger.Logf(slogger.INFO, "Found %v hosts whose provisioning failed",
 		len(hosts))
 
 	return hosts, nil
@@ -198,9 +198,9 @@ func flagProvisioningFailedHosts(d []distro.Distro, s *mci.MCISettings) ([]host.
 
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
-func flagExpiredHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error) {
+func flagExpiredHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding expired hosts")
+	evergreen.Logger.Logf(slogger.INFO, "Finding expired hosts")
 
 	// fetch the expired hosts
 	hosts, err := host.Find(host.ByExpiredSince(time.Now()))
@@ -208,14 +208,14 @@ func flagExpiredHosts(d []distro.Distro, s *mci.MCISettings) ([]host.Host, error
 		return nil, fmt.Errorf("error finding expired spawned hosts: %v", err)
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v expired hosts", len(hosts))
+	evergreen.Logger.Logf(slogger.INFO, "Found %v expired hosts", len(hosts))
 
 	return hosts, nil
 
 }
 
 // helper to check if a host can be terminated
-func hostCanBeTerminated(h host.Host, s *mci.MCISettings) (bool, error) {
+func hostCanBeTerminated(h host.Host, s *evergreen.MCISettings) (bool, error) {
 
 	// get a cloud manager for the host
 	cloudManager, err := providers.GetCloudManager(h.Provider, s)

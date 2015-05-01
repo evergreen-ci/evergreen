@@ -1,9 +1,9 @@
 package cli
 
 import (
-	"10gen.com/mci/util"
 	"bufio"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"

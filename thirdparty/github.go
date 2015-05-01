@@ -1,10 +1,10 @@
 package thirdparty
 
 import (
-	"10gen.com/mci"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -26,13 +26,13 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 	resp, err := tryGithubGet(oauthToken, commitsURL)
 	if resp == nil {
 		errMsg := fmt.Sprintf("nil response from url ‘%v’", commitsURL)
-		mci.Logger.Logf(slogger.ERROR, errMsg)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, nil, APIResponseError{errMsg}
 	}
 	defer resp.Body.Close()
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying ‘%v’: %v", commitsURL, err)
-		mci.Logger.Logf(slogger.ERROR, errMsg)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, nil, APIResponseError{errMsg}
 	}
 
@@ -42,7 +42,7 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
 		resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
@@ -66,19 +66,19 @@ func GetGithubFile(oauthToken, fileURL string) (
 	resp, err := tryGithubGet(oauthToken, fileURL)
 	if resp == nil {
 		errMsg := fmt.Sprintf("nil response from url ‘%v’", fileURL)
-		mci.Logger.Logf(slogger.ERROR, errMsg)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 	defer resp.Body.Close()
 
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying ‘%v’: %v", fileURL, err)
-		mci.Logger.Logf(slogger.ERROR, errMsg)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		mci.Logger.Errorf(slogger.ERROR, "Github API response: ‘%v’",
+		evergreen.Logger.Errorf(slogger.ERROR, "Github API response: ‘%v’",
 			resp.Status)
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, FileNotFoundError{fileURL}
@@ -91,7 +91,7 @@ func GetGithubFile(oauthToken, fileURL string) (
 		return nil, ResponseReadError{err.Error()}
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
 		resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
@@ -120,14 +120,14 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	resp, err := tryGithubGet(oauthToken, commitURL)
 	if resp == nil {
 		errMsg := fmt.Sprintf("nil response from url ‘%v’", commitURL)
-		mci.Logger.Logf(slogger.ERROR, errMsg)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
 	defer resp.Body.Close()
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying ‘%v’: %v", commitURL, err)
-		mci.Logger.Logf(slogger.ERROR, errMsg)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
@@ -135,7 +135,7 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	mci.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
 		resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
@@ -155,11 +155,11 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 
 // tryGithubGet wraps githubGet in a retry block
 func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
-	mci.Logger.Errorf(slogger.ERROR, "Attempting API call at ‘%v’...", url)
+	evergreen.Logger.Errorf(slogger.ERROR, "Attempting API call at ‘%v’...", url)
 	for i := 1; i < NumGithubRetries; i++ {
 		resp, err = githubGet(oauthToken, url)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Unable to make request for "+
+			evergreen.Logger.Errorf(slogger.ERROR, "Unable to make request for "+
 				"‘%v’: %v", url, err.Error())
 			continue
 		}
@@ -167,11 +167,11 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 			if resp.StatusCode == http.StatusOK {
 				break
 			}
-			mci.Logger.Logf(slogger.DEBUG, "Github gave a bad http response "+
+			evergreen.Logger.Logf(slogger.DEBUG, "Github gave a bad http response "+
 				"(%v) to url %#v - sleeping for %v", resp.Status,
 				url, time.Duration(GithubSleepTimeSecs*i)*time.Second)
 		} else {
-			mci.Logger.Logf(slogger.DEBUG, "Github returned a nil response at:",
+			evergreen.Logger.Logf(slogger.DEBUG, "Github returned a nil response at:",
 				url)
 		}
 		time.Sleep(time.Duration(GithubSleepTimeSecs*i) * time.Second)
@@ -179,7 +179,7 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 	if resp != nil {
 		header := resp.Header
 		rateMessage, loglevel := getGithubRateLimit(header)
-		mci.Logger.Logf(loglevel, "Github API response: %v. %v", resp.Status,
+		evergreen.Logger.Logf(loglevel, "Github API response: %v. %v", resp.Status,
 			rateMessage)
 	}
 	return

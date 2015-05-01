@@ -1,18 +1,18 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -106,7 +106,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projCtx.ProjectRef == nil {
-		mci.Logger.Logf(slogger.ERROR, "Project ref is nil")
+		evergreen.Logger.Logf(slogger.ERROR, "Project ref is nil")
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("version not found"))
 		return
 	}
@@ -191,7 +191,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	// Activating and deactivating tasks should clear out the
 	// MinQueuePos but just in case, lets not show it if we shouldn't
-	if projCtx.Task.Status == mci.TaskUndispatched && projCtx.Task.Activated {
+	if projCtx.Task.Status == evergreen.TaskUndispatched && projCtx.Task.Activated {
 		task.MinQueuePos = projCtx.Task.MinQueuePos
 	}
 
@@ -393,7 +393,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 			User *user.DBUser
 		}{channel, GetUser(r)}, "base", templateToUse)
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, err.Error())
+		evergreen.Logger.Logf(slogger.ERROR, err.Error())
 	}
 }
 
@@ -434,7 +434,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "restart":
-		if err := projCtx.Task.TryReset(authName, mci.UIPackage, projCtx.Project, nil); err != nil {
+		if err := projCtx.Task.TryReset(authName, evergreen.UIPackage, projCtx.Project, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -525,7 +525,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 			displayLogs <- model.LogMessage{
 				Type:     model.TaskLogPrefix,
 				Severity: model.LogInfoPrefix,
-				Version:  mci.LogmessageCurrentVersion,
+				Version:  evergreen.LogmessageCurrentVersion,
 				Message:  line,
 			}
 		}

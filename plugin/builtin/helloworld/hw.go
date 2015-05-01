@@ -1,8 +1,8 @@
 package git
 
 import (
-	"10gen.com/mci/plugin"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"net/http"
 )
 

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
 	"io/ioutil"
 	"os"
 )
@@ -38,7 +38,7 @@ func main() {
 	taskSecret := flag.String("task_secret", "", "secret of task to run")
 	motuURL := flag.String("motu_url", "", "URL of motu server")
 	configDir := flag.String("config_dir", "", "directory containing task instructions")
-	workDir := flag.String("work_dir", mci.RemoteShell, "working directory to run task from")
+	workDir := flag.String("work_dir", evergreen.RemoteShell, "working directory to run task from")
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
 	flag.Parse()
 

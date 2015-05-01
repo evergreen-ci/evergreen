@@ -1,10 +1,10 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -13,7 +13,7 @@ import (
 func TestLocalJob(t *testing.T) {
 	Convey("With an agent command", t, func() {
 		Convey("command's stdout/stderr should be captured by logger", func() {
-			appender := &mci.SliceAppender{[]*slogger.Log{}}
+			appender := &evergreen.SliceAppender{[]*slogger.Log{}}
 			killChan := make(chan bool)
 			testCmd := &AgentCommand{
 				ScriptLine:  "echo 'hi stdout!'; echo 'hi stderr!' >&2;",
@@ -41,7 +41,7 @@ func TestLocalJob(t *testing.T) {
 		})
 
 		Convey("command's stdout/stderr should only print newlines with \\n", func() {
-			appender := &mci.SliceAppender{[]*slogger.Log{}}
+			appender := &evergreen.SliceAppender{[]*slogger.Log{}}
 			killChan := make(chan bool)
 			newlineTestCmd := &AgentCommand{
 				ScriptLine:  "printf 'this is not a newline...'; printf 'this is a newline \n';",
@@ -66,7 +66,7 @@ func TestLocalJob(t *testing.T) {
 	})
 
 	Convey("With a long-running agent command", t, func() {
-		appender := &mci.SliceAppender{[]*slogger.Log{}}
+		appender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		killChan := make(chan bool)
 		testCmd := &AgentCommand{
 			ScriptLine:  "echo 'hi'; sleep 4; echo 'i should not get run'",

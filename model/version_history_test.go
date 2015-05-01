@@ -1,10 +1,10 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -28,14 +28,14 @@ func TestFindLastPassingVersionForBuildVariants(t *testing.T) {
 		insertVersion("2", 2, project)
 		insertVersion("3", 3, project)
 
-		insertBuild("1a", project, bv1, mci.BuildSucceeded, 1)
-		insertBuild("1b", project, bv2, mci.BuildSucceeded, 1)
+		insertBuild("1a", project, bv1, evergreen.BuildSucceeded, 1)
+		insertBuild("1b", project, bv2, evergreen.BuildSucceeded, 1)
 
-		insertBuild("2a", project, bv1, mci.BuildSucceeded, 2)
-		insertBuild("2b", project, bv2, mci.BuildSucceeded, 2)
+		insertBuild("2a", project, bv1, evergreen.BuildSucceeded, 2)
+		insertBuild("2b", project, bv2, evergreen.BuildSucceeded, 2)
 
-		insertBuild("3a", project, bv1, mci.BuildSucceeded, 3)
-		insertBuild("3b", project, bv2, mci.BuildFailed, 3)
+		insertBuild("3a", project, bv1, evergreen.BuildSucceeded, 3)
+		insertBuild("3b", project, bv2, evergreen.BuildFailed, 3)
 
 		version, err := FindLastPassingVersionForBuildVariants(projectObj,
 			[]string{bv1, bv2})
@@ -54,7 +54,7 @@ func insertBuild(id string, project string, buildVariant string, status string,
 		Project:             project,
 		BuildVariant:        buildVariant,
 		Status:              status,
-		Requester:           mci.RepotrackerVersionRequester,
+		Requester:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumber: order,
 	}
 	So(b.Insert(), ShouldBeNil)
@@ -65,7 +65,7 @@ func insertVersion(id string, order int, project string) {
 		Id:                  id,
 		RevisionOrderNumber: order,
 		Project:             project,
-		Requester:           mci.RepotrackerVersionRequester,
+		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	So(v.Insert(), ShouldBeNil)
 }

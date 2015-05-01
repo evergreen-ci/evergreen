@@ -1,7 +1,7 @@
 package event
 
 import (
-	"10gen.com/mci/db"
+	"github.com/evergreen-ci/evergreen/db"
 )
 
 type EventLogger interface {

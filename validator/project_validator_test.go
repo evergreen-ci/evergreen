@@ -1,18 +1,18 @@
 package validator
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/testutils"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/testutils"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	projectValidatorConf = mci.TestConfig()
+	projectValidatorConf = evergreen.TestConfig()
 )
 
 func init() {

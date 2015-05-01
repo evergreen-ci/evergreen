@@ -1,10 +1,10 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
-	"10gen.com/mci/model/distro"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -28,7 +28,7 @@ type AgentCompiler interface {
 // Implementation of an AgentCompiler, using goxc as the cross-compiler
 // of choice.
 type GoxcAgentCompiler struct {
-	*mci.MCISettings
+	*evergreen.MCISettings
 }
 
 var (
@@ -45,7 +45,7 @@ func init() {
 	// find and store the path to the goxc executable.
 	// TODO: this shouldn't be necessary, goxc should be compiled,
 	// added to $PATH, and called directly rather than using 'go run'
-	mciHome, err := mci.FindMCIHome()
+	mciHome, err := evergreen.FindMCIHome()
 	if err != nil {
 		panic(fmt.Sprintf("error finding mci home while initializing"+
 			" compiler: %v", err))

@@ -1,11 +1,11 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -32,7 +32,7 @@ func createVersion(order int, project string, buildVariants []string) error {
 	v.RevisionOrderNumber = order
 	v.Project = project
 	v.Id = fmt.Sprintf("version_%v_%v", order, project)
-	v.Requester = mci.RepotrackerVersionRequester
+	v.Requester = evergreen.RepotrackerVersionRequester
 	return v.Insert()
 }
 
@@ -44,7 +44,7 @@ func createTask(id string, order int, project string, buildVariant string, gitsp
 	task.Revision = gitspec
 	task.DisplayName = id
 	task.Id = id
-	task.Requester = mci.RepotrackerVersionRequester
+	task.Requester = evergreen.RepotrackerVersionRequester
 	return task.Insert()
 }
 

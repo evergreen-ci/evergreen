@@ -1,14 +1,14 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"io/ioutil"
 	"net/http"
@@ -50,14 +50,14 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 
 	buildAsUI.Tasks = sortUiTasks(uiTasks)
 
-	if projCtx.Build.Requester == mci.PatchVersionRequester {
+	if projCtx.Build.Requester == evergreen.PatchVersionRequester {
 		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if buildOnBaseCommit == nil {
-			mci.Logger.Logf(slogger.WARN,
+			evergreen.Logger.Logf(slogger.WARN,
 				"Could not find build for base commit of patch build: %v", projCtx.Build.Id)
 		}
 		diffs := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)

@@ -1,9 +1,9 @@
 package db
 
 import (
-	"10gen.com/mci"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -84,7 +84,7 @@ func FindOne(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return err
 	}
@@ -105,7 +105,7 @@ func FindAll(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return err
 	}
@@ -124,7 +124,7 @@ func Update(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return err
 	}
@@ -138,7 +138,7 @@ func UpdateId(collection string, id, update interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return err
 	}
@@ -153,7 +153,7 @@ func UpdateAll(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func Upsert(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func Count(collection string, query interface{}) (int, error) {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return 0, err
 	}
@@ -198,7 +198,7 @@ func FindAndModify(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
 			err)
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func FindAndModify(collection string, query interface{},
 func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v", err)
 		return err
 	}
 	defer session.Close()

@@ -1,9 +1,9 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/version"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -37,7 +37,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 	var versionQuery db.Q
 	if beforeCommit != nil {
 		versionQuery = db.Query(bson.M{
-			version.RequesterKey:           mci.RepotrackerVersionRequester,
+			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
 			version.RevisionOrderNumberKey: bson.M{"$lt": beforeCommit.RevisionOrderNumber},
 			version.ProjectKey:             self.ProjectName,
 			version.BuildVariantsKey: bson.M{
@@ -48,7 +48,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 		})
 	} else {
 		versionQuery = db.Query(bson.M{
-			version.RequesterKey: mci.RepotrackerVersionRequester,
+			version.RequesterKey: evergreen.RepotrackerVersionRequester,
 			version.ProjectKey:   self.ProjectName,
 			version.BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
@@ -80,7 +80,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 	versionEndBoundary := versions[len(versions)-1]
 
 	matchFilter := bson.M{
-		TaskRequesterKey:    mci.RepotrackerVersionRequester,
+		TaskRequesterKey:    evergreen.RepotrackerVersionRequester,
 		TaskBuildVariantKey: self.BuildVariantInTask,
 		TaskProjectKey:      self.ProjectName,
 	}

@@ -1,23 +1,23 @@
 package plugin_test
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/plugin/builtin/expansions"
-	"10gen.com/mci/plugin/builtin/shell"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
+	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	. "github.com/smartystreets/goconvey/convey"
@@ -35,7 +35,7 @@ type MockPlugin struct {
 }
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
 func MockPluginEcho(w http.ResponseWriter, request *http.Request) {
@@ -184,7 +184,7 @@ func TestPluginFunctions(t *testing.T) {
 			err = registry.Register(&expansions.ExpansionsPlugin{})
 			util.HandleTestingErr(err, t, "Couldn't register plugin")
 
-			testServer, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugin.Published, false)
+			testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
 			util.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 			taskConfig, err := createTestConfig("testdata/plugin_project_functions.yml", t)
@@ -206,7 +206,7 @@ func TestPluginFunctions(t *testing.T) {
 			So(httpCom, ShouldNotBeNil)
 
 			Convey("all commands in test project should execute successfully", func() {
-				sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+				sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 				logger := agent.NewTestAgentLogger(sliceAppender)
 				for _, task := range taskConfig.Project.Tasks {
 					So(len(task.Commands), ShouldNotEqual, 0)
@@ -237,7 +237,7 @@ func TestPluginExecution(t *testing.T) {
 			util.HandleTestingErr(err, t, "failed to register plugin")
 		}
 
-		testServer, err := apiserver.CreateTestServer(mci.TestConfig(), nil, plugins, false)
+		testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugins, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom, err := agent.NewHTTPAgentCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "")
@@ -246,7 +246,7 @@ func TestPluginExecution(t *testing.T) {
 
 		taskConfig, err := createTestConfig("testdata/plugin_project.yml", t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
-		sliceAppender := &mci.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestAgentLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
@@ -298,9 +298,9 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		DisplayName:  "test",
 		HostId:       "testHost",
 		Secret:       "mocktasksecret",
-		Status:       mci.TaskDispatched,
+		Status:       evergreen.TaskDispatched,
 		Revision:     "d0c52298b222f4973c48e9834a57966c448547de",
-		Requester:    mci.RepotrackerVersionRequester,
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	util.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
 
@@ -331,7 +331,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		Id:          "testHost",
 		Host:        "testHost",
 		RunningTask: "testTaskId",
-		StartedBy:   mci.MCIUser,
+		StartedBy:   evergreen.MCIUser,
 	}
 	util.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 
@@ -344,12 +344,12 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		DisplayName:  taskDisplayName,
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",
-		Status:       mci.TaskDispatched,
-		Requester:    mci.RepotrackerVersionRequester,
+		Status:       evergreen.TaskDispatched,
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 
 	if isPatch {
-		task.Requester = mci.PatchVersionRequester
+		task.Requester = evergreen.PatchVersionRequester
 	}
 
 	util.HandleTestingErr(task.Insert(), t, "failed to insert task")
@@ -366,7 +366,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		util.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
 		p := &patch.Patch{
-			Status:  mci.PatchCreated,
+			Status:  evergreen.PatchCreated,
 			Version: v.Id,
 			Patches: []patch.ModulePatch{
 				{

@@ -1,14 +1,13 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/rest"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
@@ -20,7 +19,7 @@ import (
 )
 
 var (
-	buildTestConfig = mci.TestConfig()
+	buildTestConfig = evergreen.TestConfig()
 )
 
 func init() {
@@ -34,8 +33,8 @@ func TestGetBuildInfo(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -86,7 +85,7 @@ func TestGetBuildInfo(t *testing.T) {
 			Tasks:               []build.TaskCache{task},
 			TimeTaken:           time.Duration(10 * time.Minute),
 			DisplayName:         "My build",
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(build.Insert(), ShouldBeNil)
 
@@ -204,8 +203,8 @@ func TestGetBuildStatus(t *testing.T) {
 		MCISettings: *buildTestConfig,
 	}
 
-	home, err := mci.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in mci.FindMCIHome()")
+	home, err := evergreen.FindMCIHome()
+	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),

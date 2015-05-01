@@ -1,17 +1,17 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/notify"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/notify"
 	"os"
 )
 
 func main() {
-	config := mci.MustConfig()
+	config := evergreen.MustConfig()
 	if config.Notify.LogFile != "" {
-		mci.SetLogger(config.Notify.LogFile)
+		evergreen.SetLogger(config.Notify.LogFile)
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(config))
 	r := &notify.Runner{}

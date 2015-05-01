@@ -1,12 +1,12 @@
 package shell
 
 import (
-	"10gen.com/mci/command"
-	"10gen.com/mci/model"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"net/http"

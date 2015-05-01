@@ -1,7 +1,7 @@
 package repotracker
 
 import (
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // MockRepoPoller is a utility for testing the repotracker using a dummy

@@ -1,13 +1,13 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"net/http"
@@ -76,7 +76,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 				})
 
 			So(agentCommunicator.Start("1"), ShouldBeNil)
-			_, err := agentCommunicator.End(mci.TaskFailed, nil)
+			_, err := agentCommunicator.End(evergreen.TaskFailed, nil)
 			So(err, ShouldBeNil)
 		})
 
@@ -150,7 +150,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 					}
 				})
 			So(agentCommunicator.Start("1"), ShouldBeNil)
-			_, err := agentCommunicator.End(mci.TaskFailed, nil)
+			_, err := agentCommunicator.End(evergreen.TaskFailed, nil)
 			So(err, ShouldBeNil)
 		})
 
@@ -183,11 +183,11 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 		Convey("Calling Log() should serialize/deserialize correctly", func() {
 			outgoingMessages := []model.LogMessage{
-				model.LogMessage{"S", "E", "message1", time.Now(), mci.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message2", time.Now(), mci.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message3", time.Now(), mci.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message4", time.Now(), mci.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message5", time.Now(), mci.LogmessageCurrentVersion},
+				model.LogMessage{"S", "E", "message1", time.Now(), evergreen.LogmessageCurrentVersion},
+				model.LogMessage{"S", "E", "message2", time.Now(), evergreen.LogmessageCurrentVersion},
+				model.LogMessage{"S", "E", "message3", time.Now(), evergreen.LogmessageCurrentVersion},
+				model.LogMessage{"S", "E", "message4", time.Now(), evergreen.LogmessageCurrentVersion},
+				model.LogMessage{"S", "E", "message5", time.Now(), evergreen.LogmessageCurrentVersion},
 			}
 			incoming := &model.TaskLog{}
 			serveMux.HandleFunc("/task/mocktaskid/log",

@@ -1,18 +1,18 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/command"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/notify"
-	"10gen.com/mci/spawn"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/spawn"
+	"github.com/evergreen-ci/evergreen/util"
 	"net/http"
 	"strconv"
 	"time"
@@ -128,16 +128,16 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		host, err := spawner.CreateHost(opts)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
+			evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
 			mailErr := notify.TrySendNotificationToUser(authedUser.Email(), fmt.Sprintf("Spawning failed"),
 				err.Error(), notify.ConstructMailer(uis.MCISettings.Notify))
 			if mailErr != nil {
-				mci.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
+				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
 			}
 			if host != nil { // a host was inserted - we need to clean it up
 				dErr := host.SetDecommissioned()
 				if err != nil {
-					mci.Logger.Logf(slogger.ERROR, "Failed to set host %v decommissioned: %v", host.Id, dErr)
+					evergreen.Logger.Logf(slogger.ERROR, "Failed to set host %v decommissioned: %v", host.Id, dErr)
 				}
 			}
 			return
@@ -176,7 +176,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch updateParams.Action {
 	case HostTerminate:
-		if host.Status == mci.HostTerminated {
+		if host.Status == evergreen.HostTerminated {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", host.Id))
 			return
 		}
@@ -238,7 +238,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(mciSettings *mci.MCISettings, hostObj *host.Host,
+func constructPwdUpdateCommand(mciSettings *evergreen.MCISettings, hostObj *host.Host,
 	password string) (*command.RemoteCommand, error) {
 
 	cloudHost, err := providers.GetCloudHost(hostObj, mciSettings)
@@ -256,8 +256,8 @@ func constructPwdUpdateCommand(mciSettings *mci.MCISettings, hostObj *host.Host,
 		return nil, err
 	}
 
-	outputLineHandler := mci.NewInfoLoggingWriter(&mci.Logger)
-	errorLineHandler := mci.NewErrorLoggingWriter(&mci.Logger)
+	outputLineHandler := evergreen.NewInfoLoggingWriter(&evergreen.Logger)
+	errorLineHandler := evergreen.NewErrorLoggingWriter(&evergreen.Logger)
 
 	updatePwdCmd := fmt.Sprintf("net user %v %v && sc config "+
 		"sshd obj= '.\\%v' password= \"%v\"", hostObj.User, password,

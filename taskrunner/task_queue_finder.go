@@ -1,7 +1,7 @@
 package taskrunner
 
 import (
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Interface responsible for finding the queues of tasks that need to be run

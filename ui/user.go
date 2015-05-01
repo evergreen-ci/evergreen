@@ -1,11 +1,11 @@
 package ui
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"net/http"
 )
 
@@ -15,7 +15,7 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 
 func setLoginToken(token string, w http.ResponseWriter) {
 	authTokenCookie := &http.Cookie{
-		Name:     mci.AuthTokenCookie,
+		Name:     evergreen.AuthTokenCookie,
 		Value:    token,
 		HttpOnly: true,
 		Path:     "/",
@@ -25,7 +25,7 @@ func setLoginToken(token string, w http.ResponseWriter) {
 
 func clearSession(w http.ResponseWriter) {
 	authTokenCookie := &http.Cookie{
-		Name:   mci.AuthTokenCookie,
+		Name:   evergreen.AuthTokenCookie,
 		Value:  "",
 		MaxAge: -1,
 		Path:   "/",

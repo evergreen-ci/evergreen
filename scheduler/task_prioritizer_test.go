@@ -1,22 +1,22 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	taskPrioritizerTestConf = mci.TestConfig()
+	taskPrioritizerTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(
 		db.SessionFactoryFromConfig(taskPrioritizerTestConf))
 	if taskPrioritizerTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(taskPrioritizerTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(taskPrioritizerTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -157,11 +157,11 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 
 		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks := []model.Task{
-			model.Task{Id: taskIds[0], Requester: mci.RepotrackerVersionRequester},
-			model.Task{Id: taskIds[1], Requester: mci.PatchVersionRequester},
-			model.Task{Id: taskIds[2], Requester: mci.PatchVersionRequester},
-			model.Task{Id: taskIds[3], Requester: mci.RepotrackerVersionRequester},
-			model.Task{Id: taskIds[4], Requester: mci.RepotrackerVersionRequester},
+			model.Task{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
+			model.Task{Id: taskIds[1], Requester: evergreen.PatchVersionRequester},
+			model.Task{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
+			model.Task{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
+			model.Task{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
 		}
 
 		repoTrackerTasks, patchTasks := taskPrioritizer.splitTasksByRequester(tasks)
@@ -189,9 +189,9 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 		}
 
 		Convey("With no patch tasks, the list of repotracker tasks should be returned", func() {
-			tasks[0].Requester = mci.RepotrackerVersionRequester
-			tasks[1].Requester = mci.RepotrackerVersionRequester
-			tasks[2].Requester = mci.RepotrackerVersionRequester
+			tasks[0].Requester = evergreen.RepotrackerVersionRequester
+			tasks[1].Requester = evergreen.RepotrackerVersionRequester
+			tasks[2].Requester = evergreen.RepotrackerVersionRequester
 			repoTrackerTasks := []model.Task{tasks[0], tasks[1], tasks[2]}
 			patchTasks := []model.Task{}
 
@@ -203,9 +203,9 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 		})
 
 		Convey("With no repotracker tasks, the list of patch tasks should be returned", func() {
-			tasks[0].Requester = mci.PatchVersionRequester
-			tasks[1].Requester = mci.PatchVersionRequester
-			tasks[2].Requester = mci.PatchVersionRequester
+			tasks[0].Requester = evergreen.PatchVersionRequester
+			tasks[1].Requester = evergreen.PatchVersionRequester
+			tasks[2].Requester = evergreen.PatchVersionRequester
 			repoTrackerTasks := []model.Task{}
 			patchTasks := []model.Task{tasks[0], tasks[1], tasks[2]}
 

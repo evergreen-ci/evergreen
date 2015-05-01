@@ -1,21 +1,21 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
 	_                 fmt.Stringer = nil
-	taskQueueTestConf              = mci.TestConfig()
+	taskQueueTestConf              = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueueTestConf))
-	mci.SetLogger("/tmp/task_queue_test.log")
+	evergreen.SetLogger("/tmp/task_queue_test.log")
 }
 
 func TestDequeueTask(t *testing.T) {

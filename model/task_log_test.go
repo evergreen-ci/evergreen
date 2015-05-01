@@ -1,9 +1,9 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	taskLogTestConfig = mci.TestConfig()
+	taskLogTestConfig = evergreen.TestConfig()
 )
 
 func init() {

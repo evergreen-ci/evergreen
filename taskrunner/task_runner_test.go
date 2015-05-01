@@ -1,23 +1,23 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/host"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 var (
-	taskRunnerTestConf = mci.TestConfig()
+	taskRunnerTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskRunnerTestConf))
 	if taskRunnerTestConf.TaskRunner.LogFile != "" {
-		mci.SetLogger(taskRunnerTestConf.TaskRunner.LogFile)
+		evergreen.SetLogger(taskRunnerTestConf.TaskRunner.LogFile)
 	}
 }
 
@@ -45,7 +45,7 @@ func (self *MockHostGateway) GetAgentRevision() (string, error) {
 	return "", fmt.Errorf("GetAgentRevision not implemented")
 }
 
-func (self *MockHostGateway) RunTaskOnHost(mciSettings *mci.MCISettings,
+func (self *MockHostGateway) RunTaskOnHost(mciSettings *evergreen.MCISettings,
 	taskToRun model.Task, targetHost host.Host) (string, error) {
 	return "", fmt.Errorf("RunTaskOnHost not implemented")
 }

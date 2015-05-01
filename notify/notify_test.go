@@ -1,11 +1,11 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -25,49 +25,49 @@ var (
 		Project:               projectId,
 		NotificationName:      buildFailureKey,
 		NotificationType:      buildType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	buildSucceessNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      buildSuccessKey,
 		NotificationType:      buildType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	buildCompletionNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      buildCompletionKey,
 		NotificationType:      buildType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	buildSuccessToFailureNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      buildSuccessToFailureKey,
 		NotificationType:      buildType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	taskFailureNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      taskFailureKey,
 		NotificationType:      taskType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	taskSucceessNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      taskSuccessKey,
 		NotificationType:      taskType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	taskCompletionNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      taskCompletionKey,
 		NotificationType:      taskType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	taskSuccessToFailureNotificationKey = NotificationKey{
 		Project:               projectId,
 		NotificationName:      taskSuccessToFailureKey,
 		NotificationType:      taskType,
-		NotificationRequester: mci.RepotrackerVersionRequester,
+		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
 	allNotificationKeys = []NotificationKey{
 		buildFailureNotificationKey,
@@ -81,11 +81,11 @@ var (
 	}
 )
 
-var TestConfig = mci.TestConfig()
+var TestConfig = evergreen.TestConfig()
 
 func TestNotify(t *testing.T) {
-	if mci.TestConfig().Notify.LogFile != "" {
-		mci.SetLogger(mci.TestConfig().Notify.LogFile)
+	if evergreen.TestConfig().Notify.LogFile != "" {
+		evergreen.SetLogger(evergreen.TestConfig().Notify.LogFile)
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(TestConfig))
 	emailSubjects = make([]string, 0)
@@ -323,7 +323,7 @@ func TestNotify(t *testing.T) {
 			m[notificationKey] = []Email{&email}
 
 			mailer := MockMailer{}
-			mockSettings := mci.MCISettings{Notify: mci.NotifyConfig{}}
+			mockSettings := evergreen.MCISettings{Notify: evergreen.NotifyConfig{}}
 			err = SendNotifications(&mockSettings, notificationSettings, m, mailer)
 			So(err, ShouldBeNil)
 
@@ -345,14 +345,14 @@ func insertBuildDocs(priorTime time.Time) {
 	// - buildFailureHandler
 	// - buildCompletionHandler
 	insertBuild(buildId+"1", projectId, displayName, buildVariant,
-		mci.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 1)
+		evergreen.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 1)
 
 	// build 2
 	// build not finished
 	insertBuild(buildId+"2", projectId, displayName, buildVariant,
-		mci.BuildStarted, time.Now(), time.Now(), time.Duration(0), true,
-		mci.RepotrackerVersionRequester, 2)
+		evergreen.BuildStarted, time.Now(), time.Now(), time.Duration(0), true,
+		evergreen.RepotrackerVersionRequester, 2)
 
 	// build 3
 	// build finished successfully (success)
@@ -360,21 +360,21 @@ func insertBuildDocs(priorTime time.Time) {
 	// - buildSuccessHandler
 	// - buildCompletionHandler
 	insertBuild(buildId+"3", projectId, displayName, buildVariant,
-		mci.BuildSucceeded, time.Now(), time.Now(), time.Duration(50), true,
-		mci.RepotrackerVersionRequester, 3)
+		evergreen.BuildSucceeded, time.Now(), time.Now(), time.Duration(50), true,
+		evergreen.RepotrackerVersionRequester, 3)
 
 	// build 4
 	// build cancelled (cancelled)
 	// - buildCompletionHandler
 	insertBuild(buildId+"4", projectId, displayName, buildVariant,
-		mci.BuildCancelled, time.Now(), priorTime, time.Duration(50), true,
-		mci.RepotrackerVersionRequester, 4)
+		evergreen.BuildCancelled, time.Now(), priorTime, time.Duration(50), true,
+		evergreen.RepotrackerVersionRequester, 4)
 
 	// build 5
 	// build not finished
 	insertBuild(buildId+"5", projectId, displayName, buildVariant,
-		mci.BuildStarted, time.Now(), time.Now(), time.Duration(0), true,
-		mci.RepotrackerVersionRequester, 5)
+		evergreen.BuildStarted, time.Now(), time.Now(), time.Duration(0), true,
+		evergreen.RepotrackerVersionRequester, 5)
 
 	// build 6
 	// build finished (failed) from different project
@@ -382,16 +382,16 @@ func insertBuildDocs(priorTime time.Time) {
 	// - buildFailureHandler
 	// - buildCompletionHandler
 	insertBuild(buildId+"6", projectId+"_", displayName, buildVariant,
-		mci.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 6)
+		evergreen.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 6)
 
 	// build 7
 	// build finished (succeeded) from different project
 	// should trigger the following handler(s):
 	// - buildSuccessHandler
 	insertBuild(buildId+"7", projectId+"_", displayName, buildVariant,
-		mci.BuildSucceeded, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 7)
+		evergreen.BuildSucceeded, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 7)
 
 	// build 8
 	// build finished (succeeded) from different build variant
@@ -399,8 +399,8 @@ func insertBuildDocs(priorTime time.Time) {
 	// - buildSuccessToFailureHandler (in conjunction with 9)
 	// - buildCompletionHandler
 	insertBuild(buildId+"8", projectId, displayName, buildVariant+"_",
-		mci.BuildSucceeded, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 8)
+		evergreen.BuildSucceeded, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 8)
 
 	// build 9
 	// build finished (failed) from different build variant
@@ -408,14 +408,14 @@ func insertBuildDocs(priorTime time.Time) {
 	// - buildSuccessToFailureHandler (in conjunction with 8)
 	// - buildCompletionHandler
 	insertBuild(buildId+"9", projectId, displayName, buildVariant+"_",
-		mci.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 9)
+		evergreen.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 9)
 
 	// build 10
 	// build finished (cancelled) from different build variant
 	insertBuild(buildId+"10", projectId, displayName, buildVariant+"_",
-		mci.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 10)
+		evergreen.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 10)
 
 	insertVersions()
 }
@@ -428,15 +428,15 @@ func insertTaskDocs(priorTime time.Time) {
 	// should trigger the following handler(s):
 	// - taskFailureHandler
 	// - taskCompletionHandler
-	insertTask(taskId+"1", projectId, displayName, buildVariant, mci.TaskFailed,
+	insertTask(taskId+"1", projectId, displayName, buildVariant, evergreen.TaskFailed,
 		time.Now(), time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 1)
+		evergreen.RepotrackerVersionRequester, 1)
 
 	// task 2
 	// task not finished
-	insertTask(taskId+"2", projectId, displayName, buildVariant, mci.TaskStarted,
+	insertTask(taskId+"2", projectId, displayName, buildVariant, evergreen.TaskStarted,
 		time.Now(), time.Now(), time.Now(), time.Duration(0), true,
-		mci.RepotrackerVersionRequester, 2)
+		evergreen.RepotrackerVersionRequester, 2)
 
 	// task 3
 	// task finished successfully (success)
@@ -444,34 +444,34 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskSuccessHandler
 	// - taskCompletionHandler
 	insertTask(taskId+"3", projectId, displayName, buildVariant,
-		mci.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(50),
-		true, mci.RepotrackerVersionRequester, 3)
+		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(50),
+		true, evergreen.RepotrackerVersionRequester, 3)
 
 	// task 4
 	// task cancelled (cancelled)
 	// should trigger the following handler(s):
 	// - taskCompletionHandler
 	insertTask(taskId+"4", projectId, displayName, buildVariant,
-		mci.TaskCancelled, time.Now(), time.Now(), priorTime, time.Duration(50),
-		true, mci.RepotrackerVersionRequester, 4)
+		evergreen.TaskCancelled, time.Now(), time.Now(), priorTime, time.Duration(50),
+		true, evergreen.RepotrackerVersionRequester, 4)
 
 	// task 5
 	// task not finished
-	insertTask(taskId+"5", projectId, displayName, buildVariant, mci.TaskStarted,
+	insertTask(taskId+"5", projectId, displayName, buildVariant, evergreen.TaskStarted,
 		time.Now(), time.Now(), time.Now(), time.Duration(0), true,
-		mci.RepotrackerVersionRequester, 5)
+		evergreen.RepotrackerVersionRequester, 5)
 
 	// task 6
 	// task finished (failed) from different project
 	insertTask(taskId+"6", projectId+"_", displayName, buildVariant,
-		mci.TaskFailed, time.Now(), time.Now(), time.Now(), time.Duration(10),
-		true, mci.RepotrackerVersionRequester, 6)
+		evergreen.TaskFailed, time.Now(), time.Now(), time.Now(), time.Duration(10),
+		true, evergreen.RepotrackerVersionRequester, 6)
 
 	// task 7
 	// task finished (succeeded) from different project
 	insertTask(taskId+"7", projectId+"_", displayName, buildVariant,
-		mci.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(10),
-		true, mci.RepotrackerVersionRequester, 7)
+		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(10),
+		true, evergreen.RepotrackerVersionRequester, 7)
 
 	// task 8
 	// task finished (succeeded) from different build variant
@@ -480,8 +480,8 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskCompletionHandler
 	// - taskSuccessToFailureHandler (in conjunction with 9)
 	insertTask(taskId+"8", projectId, displayName, buildVariant+"_",
-		mci.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(10),
-		true, mci.RepotrackerVersionRequester, 8)
+		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(10),
+		true, evergreen.RepotrackerVersionRequester, 8)
 
 	// task 9
 	// task finished (failed) from different build variant
@@ -490,28 +490,28 @@ func insertTaskDocs(priorTime time.Time) {
 	// - taskCompletionHandler
 	// - taskSuccessToFailureHandler (in conjunction with 8)
 	insertTask(taskId+"9", projectId, displayName, buildVariant+"_",
-		mci.TaskFailed, time.Now(), time.Now(),
+		evergreen.TaskFailed, time.Now(), time.Now(),
 		time.Now().Add(time.Duration(3*time.Minute)), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 9)
+		evergreen.RepotrackerVersionRequester, 9)
 
 	// task 10
 	// task finished (cancelled) from different build variant
 	// should trigger the following handler(s):
 	// - taskCompletionHandler
 	insertTask(taskId+"10", projectId, displayName, buildVariant+"_",
-		mci.TaskCancelled, time.Now(), time.Now(),
+		evergreen.TaskCancelled, time.Now(), time.Now(),
 		time.Now().Add(time.Duration(-1*time.Minute)), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 10)
+		evergreen.RepotrackerVersionRequester, 10)
 
 	insertVersions()
 
 	insertBuild(buildId+"0", projectId, displayName, buildVariant+"_",
-		mci.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 10)
+		evergreen.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 10)
 
 	insertBuild(buildId+"1", projectId, displayName, buildVariant,
-		mci.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
-		mci.RepotrackerVersionRequester, 10)
+		evergreen.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
+		evergreen.RepotrackerVersionRequester, 10)
 }
 
 func insertBuild(id, project, display_name, buildVariant, status string, createTime,

@@ -1,12 +1,12 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 )
 
 var (
@@ -41,7 +41,7 @@ var (
 )
 
 // run all monitoring functions
-func RunAllMonitoring(mciSettings *mci.MCISettings) error {
+func RunAllMonitoring(mciSettings *evergreen.MCISettings) error {
 
 	// load in all of the distros
 	distros, err := distro.Find(db.Q{})
@@ -63,13 +63,13 @@ func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 		// continue on error to stop the whole monitoring process from
 		// being held up
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "error finding project %v: %v",
+			evergreen.Logger.Logf(slogger.ERROR, "error finding project %v: %v",
 				ref.Identifier, err)
 			continue
 		}
 
 		if project == nil {
-			mci.Logger.Logf(slogger.ERROR, "no project entry found for"+
+			evergreen.Logger.Logf(slogger.ERROR, "no project entry found for"+
 				" ref %v", ref.Identifier)
 			continue
 		}
@@ -85,7 +85,7 @@ func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 	// clean up any necessary tasks
 	errs := taskMonitor.CleanupTasks(projects)
 	for _, err := range errs {
-		mci.Logger.Logf(slogger.ERROR, "Error cleaning up tasks: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up tasks: %v", err)
 	}
 
 	// initialize the host monitor
@@ -97,13 +97,13 @@ func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 	// clean up any necessary hosts
 	errs = hostMonitor.CleanupHosts(distros, mciSettings)
 	for _, err := range errs {
-		mci.Logger.Logf(slogger.ERROR, "Error cleaning up hosts: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up hosts: %v", err)
 	}
 
 	// run monitoring checks
 	errs = hostMonitor.RunMonitoringChecks(mciSettings)
 	for _, err := range errs {
-		mci.Logger.Logf(slogger.ERROR, "Error running host monitoring"+
+		evergreen.Logger.Logf(slogger.ERROR, "Error running host monitoring"+
 			" checks: %v", err)
 	}
 
@@ -115,7 +115,7 @@ func RunAllMonitoring(mciSettings *mci.MCISettings) error {
 	// send notifications
 	errs = notifier.Notify(mciSettings)
 	for _, err := range errs {
-		mci.Logger.Logf(slogger.ERROR, "Error sending notifications: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Error sending notifications: %v", err)
 	}
 
 	return nil

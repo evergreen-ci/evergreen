@@ -1,11 +1,11 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers/mock"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -13,7 +13,7 @@ import (
 
 func TestMonitorReachability(t *testing.T) {
 
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -32,7 +32,7 @@ func TestMonitorReachability(t *testing.T) {
 			h := &host.Host{
 				Id: "h1",
 				LastReachabilityCheck: time.Now().Add(-time.Minute),
-				Status:                mci.HostUnreachable,
+				Status:                evergreen.HostUnreachable,
 				Provider:              mock.ProviderName,
 			}
 			util.HandleTestingErr(h.Insert(), t, "error inserting host")
@@ -42,7 +42,7 @@ func TestMonitorReachability(t *testing.T) {
 			// refresh the host - its status should not have been updated
 			h, err := host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
-			So(h.Status, ShouldEqual, mci.HostUnreachable)
+			So(h.Status, ShouldEqual, evergreen.HostUnreachable)
 
 		})
 
@@ -53,7 +53,7 @@ func TestMonitorReachability(t *testing.T) {
 			host1 := &host.Host{
 				Id: "h1",
 				LastReachabilityCheck: time.Now().Add(-15 * time.Minute),
-				Status:                mci.HostUnreachable,
+				Status:                evergreen.HostUnreachable,
 				Provider:              mock.ProviderName,
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -62,7 +62,7 @@ func TestMonitorReachability(t *testing.T) {
 			host2 := &host.Host{
 				Id: "h2",
 				LastReachabilityCheck: time.Now().Add(-15 * time.Minute),
-				Status:                mci.HostQuarantined,
+				Status:                evergreen.HostQuarantined,
 				Provider:              mock.ProviderName,
 			}
 			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
@@ -72,12 +72,12 @@ func TestMonitorReachability(t *testing.T) {
 			// refresh the first host - its status should have been updated
 			host1, err := host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
-			So(host1.Status, ShouldEqual, mci.HostUnreachable)
+			So(host1.Status, ShouldEqual, evergreen.HostUnreachable)
 
 			// refresh the second host - its status should not have been updated
 			host1, err = host.FindOne(host.ById("h2"))
 			So(err, ShouldBeNil)
-			So(host1.Status, ShouldEqual, mci.HostQuarantined)
+			So(host1.Status, ShouldEqual, evergreen.HostQuarantined)
 
 		})
 

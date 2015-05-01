@@ -16,12 +16,12 @@
 package config
 
 // ===== PLUGINS INCLUDED WITH MCI =====
-import _ "10gen.com/mci/plugin/builtin/archive"
-import _ "10gen.com/mci/plugin/builtin/attach"
-import _ "10gen.com/mci/plugin/builtin/expansions"
-import _ "10gen.com/mci/plugin/builtin/git"
-import _ "10gen.com/mci/plugin/builtin/helloworld"
-import _ "10gen.com/mci/plugin/builtin/gotest"
-import _ "10gen.com/mci/plugin/builtin/s3Plugin"
-import _ "10gen.com/mci/plugin/builtin/s3copy"
-import _ "10gen.com/mci/plugin/builtin/shell"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/git"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/helloworld"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/s3Plugin"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/s3copy"
+import _ "github.com/evergreen-ci/evergreen/plugin/builtin/shell"

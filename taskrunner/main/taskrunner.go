@@ -1,17 +1,17 @@
 package main
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/taskrunner"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/taskrunner"
 	"os"
 )
 
 func main() {
-	config := mci.MustConfig()
+	config := evergreen.MustConfig()
 	if config.TaskRunner.LogFile != "" {
-		mci.SetLogger(config.TaskRunner.LogFile)
+		evergreen.SetLogger(config.TaskRunner.LogFile)
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(config))
 	r := &taskrunner.Runner{}

@@ -1,13 +1,13 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apiserver"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"path/filepath"
@@ -17,7 +17,7 @@ import (
 
 func TestPatchTask(t *testing.T) {
 	setupTlsConfigs(t)
-	testConfig := mci.TestConfig()
+	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")
@@ -28,7 +28,7 @@ func TestPatchTask(t *testing.T) {
 				util.HandleTestingErr(err, t, "Couldn't get abs path for config: %v", err)
 
 				Convey("With agent running a patched 'compile'"+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, mci.CompileStage,
+					testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
 						"linux-64", true, t)
 					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 
@@ -63,7 +63,7 @@ func TestPatchTask(t *testing.T) {
 
 						testTask, err = model.FindTask(testTask.Id)
 						util.HandleTestingErr(err, t, "Error finding test task: %v", err)
-						So(testTask.Status, ShouldEqual, mci.TaskSucceeded)
+						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 					})
 				})
 			})

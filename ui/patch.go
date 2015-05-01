@@ -1,12 +1,12 @@
 package ui
 
 import (
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/util"
-	"10gen.com/mci/validator"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"net/http"
 )
 

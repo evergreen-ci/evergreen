@@ -1,11 +1,11 @@
 package bookkeeping
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -46,7 +46,7 @@ func findOneTaskBk(matcher interface{}, selector interface{}) (*TaskBookkeeping,
 	// establish a database connection
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error establishing database connection: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing database connection: %v", err)
 		return nil, err
 	}
 
@@ -64,7 +64,7 @@ func findOneTaskBk(matcher interface{}, selector interface{}) (*TaskBookkeeping,
 
 	// failure
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Unexpected error retrieving task bookkeeping entry from database: %v",
+		evergreen.Logger.Errorf(slogger.ERROR, "Unexpected error retrieving task bookkeeping entry from database: %v",
 			err)
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func upsertOneTaskBk(matcher interface{}, update interface{}) error {
 	// establish a database connection
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error establishing database connection: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing database connection: %v", err)
 		return err
 	}
 

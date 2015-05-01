@@ -1,11 +1,11 @@
 package ui
 
 import (
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"net/http"
 	"strconv"
 	"time"

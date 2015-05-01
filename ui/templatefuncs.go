@@ -1,11 +1,11 @@
 package ui
 
 import (
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/util"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"html/template"
 	"io"

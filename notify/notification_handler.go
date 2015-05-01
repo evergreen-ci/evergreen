@@ -1,7 +1,7 @@
 package notify
 
 import (
-	"10gen.com/mci/web"
+	"github.com/evergreen-ci/evergreen/web"
 )
 
 // General interface for how notify.go deals with a given type of notification.

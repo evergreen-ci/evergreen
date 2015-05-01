@@ -1,16 +1,16 @@
 package notify
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
-	"10gen.com/mci/web"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/web"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/mail"
@@ -121,7 +121,7 @@ var (
 	cachedProjectRef = make(map[string]*model.ProjectRef)
 )
 
-func ConstructMailer(notifyConfig mci.NotifyConfig) Mailer {
+func ConstructMailer(notifyConfig evergreen.NotifyConfig) Mailer {
 	if notifyConfig.SMTP != nil {
 		return SmtpMailer{
 			notifyConfig.SMTP.From,
@@ -152,18 +152,18 @@ func ConstructMailer(notifyConfig mci.NotifyConfig) Mailer {
 //         ↓↓
 // UpdateNotificationTimes
 //
-func Run(mciSettings *mci.MCISettings) error {
+func Run(mciSettings *evergreen.MCISettings) error {
 	// get the notifications
 	mciNotification, err := ParseNotifications(mciSettings.ConfigDir)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error parsing notifications: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error parsing notifications: %v", err)
 		return err
 	}
 
 	// validate the notifications
 	err = ValidateNotifications(mciSettings.ConfigDir, mciNotification)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error validating notifications: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error validating notifications: %v", err)
 		return err
 	}
 
@@ -179,7 +179,7 @@ func Run(mciSettings *mci.MCISettings) error {
 	// process the notifications
 	emails, err := ProcessNotifications(ae, mciSettings.ConfigDir, mciNotification, true)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error processing notifications: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error processing notifications: %v", err)
 		return err
 	}
 
@@ -187,22 +187,22 @@ func Run(mciSettings *mci.MCISettings) error {
 	// we couldn't process on a prior run of the notifier
 	// Currently, this can only happen if an administrator
 	// bumps up the priority of a build/task
-	// mci.Logger.Logf(slogger.INFO, "Remnant builds %v", len(unprocessedBuilds))
-	// mci.Logger.Logf(slogger.INFO, "Remnant tasks %v", len(unprocessedTasks))
+	// evergreen.Logger.Logf(slogger.INFO, "Remnant builds %v", len(unprocessedBuilds))
+	// evergreen.Logger.Logf(slogger.INFO, "Remnant tasks %v", len(unprocessedTasks))
 
 	// send the notifications
 
 	err = SendNotifications(mciSettings, mciNotification, emails,
 		ConstructMailer(mciSettings.Notify))
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error sending notifications: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error sending notifications: %v", err)
 		return err
 	}
 
 	// update notification times
 	err = UpdateNotificationTimes()
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error updating notification times: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error updating notification times: %v", err)
 		return err
 	}
 	return nil
@@ -210,13 +210,13 @@ func Run(mciSettings *mci.MCISettings) error {
 
 // This function is responsible for reading the notifications file
 func ParseNotifications(configName string) (*MCINotification, error) {
-	mci.Logger.Logf(slogger.INFO, "Parsing notifications...")
-	configRoot, err := mci.FindMCIConfig(configName)
+	evergreen.Logger.Logf(slogger.INFO, "Parsing notifications...")
+	configRoot, err := evergreen.FindMCIConfig(configName)
 	if err != nil {
 		return nil, err
 	}
 
-	notificationsFile := filepath.Join(configRoot, mci.NotificationsFile)
+	notificationsFile := filepath.Join(configRoot, evergreen.NotificationsFile)
 	data, err := ioutil.ReadFile(notificationsFile)
 	if err != nil {
 		return nil, err
@@ -234,7 +234,7 @@ func ParseNotifications(configName string) (*MCINotification, error) {
 
 // This function is responsible for validating the notifications file
 func ValidateNotifications(configName string, mciNotification *MCINotification) error {
-	mci.Logger.Logf(slogger.INFO, "Validating notifications...")
+	evergreen.Logger.Logf(slogger.INFO, "Validating notifications...")
 	allNotifications := []string{}
 
 	projectNameToBuildVariants, err := findProjectBuildVariants(configName)
@@ -330,13 +330,13 @@ func ProcessNotifications(ae *web.App, configName string, mciNotification *MCINo
 		}
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Processing notifications...")
+	evergreen.Logger.Logf(slogger.INFO, "Processing notifications...")
 
 	emails := make(map[NotificationKey][]Email)
 	for _, key := range allNotificationsSlice {
 		emailsForKey, err := Handlers[key.NotificationName].GetNotifications(ae, configName, &key)
 		if err != nil {
-			mci.Logger.Logf(slogger.INFO, "Error processing %v on %v: %v", key.NotificationName, key.Project, err)
+			evergreen.Logger.Logf(slogger.INFO, "Error processing %v on %v: %v", key.NotificationName, key.Project, err)
 			continue
 		}
 		emails[key] = emailsForKey
@@ -346,9 +346,9 @@ func ProcessNotifications(ae *web.App, configName string, mciNotification *MCINo
 }
 
 // This function is responsible for managing the sending triggered email notifications
-func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotification,
+func SendNotifications(mciSettings *evergreen.MCISettings, mciNotification *MCINotification,
 	emails map[NotificationKey][]Email, mailer Mailer) (err error) {
-	mci.Logger.Logf(slogger.INFO, "Sending notifications...")
+	evergreen.Logger.Logf(slogger.INFO, "Sending notifications...")
 
 	// parse all notifications, sending it to relevant recipients
 	for _, notification := range mciNotification.Notifications {
@@ -356,7 +356,7 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 			Project:               notification.Project,
 			NotificationName:      notification.Name,
 			NotificationType:      getType(notification.Name),
-			NotificationRequester: mci.RepotrackerVersionRequester,
+			NotificationRequester: evergreen.RepotrackerVersionRequester,
 		}
 
 		for _, recipient := range notification.Recipients {
@@ -378,7 +378,7 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 				}
 				err = TrySendNotification(recipients, email.GetSubject(), email.GetBody(), mailer)
 				if err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Unable to send "+
+					evergreen.Logger.Errorf(slogger.ERROR, "Unable to send "+
 						"individual notification %#v: %v", key, err)
 					continue
 				}
@@ -394,7 +394,7 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 					Project:               subscription.Project,
 					NotificationName:      name,
 					NotificationType:      getType(name),
-					NotificationRequester: mci.RepotrackerVersionRequester,
+					NotificationRequester: evergreen.RepotrackerVersionRequester,
 				}
 
 				// send all triggered notifications for this key
@@ -407,7 +407,7 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 					teamEmail := fmt.Sprintf("%v <%v>", team.Name, team.Address)
 					err = TrySendNotification([]string{teamEmail}, email.GetSubject(), email.GetBody(), mailer)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Unable to send notification %#v: %v", key, err)
+						evergreen.Logger.Errorf(slogger.ERROR, "Unable to send notification %#v: %v", key, err)
 						continue
 					}
 				}
@@ -422,7 +422,7 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 				Project:               subscription.Project,
 				NotificationName:      notification,
 				NotificationType:      getType(notification),
-				NotificationRequester: mci.PatchVersionRequester,
+				NotificationRequester: evergreen.PatchVersionRequester,
 			}
 
 			for _, email := range emails[key] {
@@ -440,7 +440,7 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 					err = TrySendNotification([]string{patchRequester},
 						email.GetSubject(), email.GetBody(), mailer)
 					if err != nil {
-						mci.Logger.Errorf(slogger.ERROR, "Unable to send "+
+						evergreen.Logger.Errorf(slogger.ERROR, "Unable to send "+
 							"notification %#v: %v", key, err)
 						continue
 					}
@@ -455,9 +455,9 @@ func SendNotifications(mciSettings *mci.MCISettings, mciNotification *MCINotific
 // This stores the last time threshold after which
 // we search for possible new notification events
 func UpdateNotificationTimes() (err error) {
-	mci.Logger.Logf(slogger.INFO, "Updating notification times...")
+	evergreen.Logger.Logf(slogger.INFO, "Updating notification times...")
 	for project, time := range newProjectNotificationTime {
-		mci.Logger.Logf(slogger.INFO, "Updating %v notification time...", project)
+		evergreen.Logger.Logf(slogger.INFO, "Updating %v notification time...", project)
 		err = model.SetLastNotificationsEventTime(project, time)
 		if err != nil {
 			return err
@@ -519,34 +519,34 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 func constructChangeInfo(v *version.Version, notification *NotificationKey) (changeInfo *ChangeInfo) {
 	changeInfo = &ChangeInfo{}
 	switch notification.NotificationRequester {
-	case mci.RepotrackerVersionRequester:
+	case evergreen.RepotrackerVersionRequester:
 		changeInfo.Project = v.Project
 		changeInfo.Author = v.Author
 		changeInfo.Message = v.Message
 		changeInfo.Revision = v.Revision
 		changeInfo.Email = v.AuthorEmail
 
-	case mci.PatchVersionRequester:
+	case evergreen.PatchVersionRequester:
 		// get the author and description from the patch request
 		patch, err := patch.FindOne(patch.ByVersion(v.Id))
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error finding patch for version %v: %v", v.Id, err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error finding patch for version %v: %v", v.Id, err)
 			return
 		}
 
 		if patch == nil {
-			mci.Logger.Errorf(slogger.ERROR, "%v notification was unable to locate patch with version: %v", notification, v.Id)
+			evergreen.Logger.Errorf(slogger.ERROR, "%v notification was unable to locate patch with version: %v", notification, v.Id)
 			return
 		}
 		// get the display name and email for this user
 		dbUser, err := user.FindOne(user.ById(patch.Author))
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error finding user %v: %v",
+			evergreen.Logger.Errorf(slogger.ERROR, "Error finding user %v: %v",
 				patch.Author, err)
 			changeInfo.Author = patch.Author
 			changeInfo.Email = patch.Author
 		} else if dbUser == nil {
-			mci.Logger.Errorf(slogger.ERROR, "User %v not found", patch.Author)
+			evergreen.Logger.Errorf(slogger.ERROR, "User %v not found", patch.Author)
 			changeInfo.Author = patch.Author
 			changeInfo.Email = patch.Author
 		} else {
@@ -572,7 +572,7 @@ func encodeRFC2047(String string) string {
 func getDisplayName(buildVariant string) (displayName string) {
 	build, err := build.FindOne(build.ByVariant(buildVariant))
 	if err != nil || build == nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error fetching buildvariant name: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error fetching buildvariant name: %v", err)
 		displayName = buildVariant
 	} else {
 		displayName = build.DisplayName
@@ -584,7 +584,7 @@ func getDisplayName(buildVariant string) (displayName string) {
 func getFailedTasks(current *build.Build, notificationName string) (failedTasks []build.TaskCache) {
 	if util.SliceContains(buildFailureKeys, notificationName) {
 		for _, task := range current.Tasks {
-			if task.Status == mci.TaskFailed {
+			if task.Status == evergreen.TaskFailed {
 				failedTasks = append(failedTasks, task)
 			}
 		}
@@ -684,7 +684,7 @@ func notificationsToStruct(mciNotification *MCINotification) (notifyOn []Notific
 				Project:               notification.Project,
 				NotificationName:      notification.Name,
 				NotificationType:      getType(notification.Name),
-				NotificationRequester: mci.RepotrackerVersionRequester,
+				NotificationRequester: evergreen.RepotrackerVersionRequester,
 			}
 
 			// prevent duplicate notifications from being sent
@@ -702,7 +702,7 @@ func notificationsToStruct(mciNotification *MCINotification) (notifyOn []Notific
 					Project:               subscription.Project,
 					NotificationName:      name,
 					NotificationType:      getType(name),
-					NotificationRequester: mci.RepotrackerVersionRequester,
+					NotificationRequester: evergreen.RepotrackerVersionRequester,
 				}
 
 				// prevent duplicate notifications from being sent
@@ -720,7 +720,7 @@ func notificationsToStruct(mciNotification *MCINotification) (notifyOn []Notific
 				Project:               subscription.Project,
 				NotificationName:      notification,
 				NotificationType:      getType(notification),
-				NotificationRequester: mci.PatchVersionRequester,
+				NotificationRequester: evergreen.PatchVersionRequester,
 			}
 
 			// prevent duplicate notifications from being sent
@@ -733,12 +733,12 @@ func notificationsToStruct(mciNotification *MCINotification) (notifyOn []Notific
 }
 
 // NotifyAdmins is a helper method to send a notification to the MCI admin team
-func NotifyAdmins(subject, message string, mciSettings *mci.MCISettings) error {
+func NotifyAdmins(subject, message string, mciSettings *evergreen.MCISettings) error {
 	if mciSettings.Notify.SMTP != nil {
 		return TrySendNotification(mciSettings.Notify.SMTP.AdminEmail,
 			subject, message, ConstructMailer(mciSettings.Notify))
 	}
-	return mci.Logger.Errorf(slogger.ERROR, "Cannot notify admins: admin_email not set")
+	return evergreen.Logger.Errorf(slogger.ERROR, "Cannot notify admins: admin_email not set")
 }
 
 // String method for notification key
@@ -748,12 +748,12 @@ func (nk NotificationKey) String() string {
 
 // Helper function to send notifications
 func TrySendNotification(recipients []string, subject, body string, mailer Mailer) (err error) {
-	// mci.Logger.Logf(slogger.DEBUG, "address: %v subject: %v body: %v", recipients, subject, body)
+	// evergreen.Logger.Logf(slogger.DEBUG, "address: %v subject: %v body: %v", recipients, subject, body)
 	// return nil
 	_, err = util.RetryArithmeticBackoff(func() error {
 		err = mailer.SendMail(recipients, subject, body)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error sending notification: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error sending notification: %v", err)
 			return util.RetriableError{err}
 		}
 		return nil

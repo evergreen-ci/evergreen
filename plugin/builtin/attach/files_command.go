@@ -1,13 +1,13 @@
 package attach
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"io/ioutil"
 	"net/http"
@@ -132,7 +132,7 @@ func (self *AttachTaskFilesCommand) SendTaskFiles(taskConfig *model.TaskConfig,
 // AttachFilesHandler updates file mappings for a task or build
 func AttachFilesHandler(w http.ResponseWriter, r *http.Request) {
 	task := plugin.GetTask(r)
-	mci.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
 
 	fileEntry := &artifact.Entry{}
 	fileEntry.TaskId = task.Id
@@ -142,14 +142,14 @@ func AttachFilesHandler(w http.ResponseWriter, r *http.Request) {
 	err := util.ReadJSONInto(r.Body, &fileEntry.Files)
 	if err != nil {
 		message := fmt.Sprintf("error reading file definitions: %v", err)
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
 
 	if err := fileEntry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info: %v", err)
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}

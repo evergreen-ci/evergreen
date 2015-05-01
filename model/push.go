@@ -1,10 +1,10 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/model/version"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -52,7 +52,7 @@ func NewPushLog(v *version.Version, task *Task, location string) *PushLog {
 		CreateTime:          time.Now(),
 		Revision:            v.Revision,
 		RevisionOrderNumber: v.RevisionOrderNumber,
-		Status:              mci.PushLogPushing,
+		Status:              evergreen.PushLogPushing,
 	}
 }
 
@@ -96,7 +96,7 @@ func FindPushLogAfter(fileLoc string, revisionOrderNumber int) (*PushLog, error)
 	query := bson.M{
 		PushLogStatusKey: bson.M{
 			"$in": []string{
-				mci.PushLogPushing, mci.PushLogSuccess,
+				evergreen.PushLogPushing, evergreen.PushLogSuccess,
 			},
 		},
 		PushLogLocationKey: fileLoc,

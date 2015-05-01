@@ -1,8 +1,8 @@
 package model
 
 import (
-	"10gen.com/mci/db"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )

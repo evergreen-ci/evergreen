@@ -1,7 +1,7 @@
 package command
 
 import (
-	"10gen.com/mci"
+	"github.com/evergreen-ci/evergreen"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -69,7 +69,7 @@ func TestLocalCommands(t *testing.T) {
 
 			stdout := &CacheLastWritten{}
 
-			mciHome, err := mci.FindMCIHome()
+			mciHome, err := evergreen.FindMCIHome()
 			So(err, ShouldBeNil)
 			workingDir := filepath.Join(mciHome, "command/testdata")
 
@@ -170,7 +170,7 @@ func TestLocalScript(t *testing.T) {
 
 			stdout := &CacheLastWritten{}
 
-			mciHome, err := mci.FindMCIHome()
+			mciHome, err := evergreen.FindMCIHome()
 			So(err, ShouldBeNil)
 			workingDir := filepath.Join(mciHome, "command/testdata")
 

@@ -1,10 +1,10 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -15,7 +15,7 @@ func GetBuildmasterData(v version.Version, depth int) ([]bson.M, error) {
 	output := []bson.M{}
 	pipeline := []bson.M{
 		{"$match": bson.M{
-			build.RequesterKey:           mci.RepotrackerVersionRequester,
+			build.RequesterKey:           evergreen.RepotrackerVersionRequester,
 			build.RevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
 			build.ProjectKey:             v.Project,
 		}},

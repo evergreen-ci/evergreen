@@ -1,15 +1,15 @@
 package repotracker
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
 	"errors"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -31,7 +31,7 @@ func (c mockClock) Now() time.Time {
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	if testConfig.RepoTracker.LogFile != "" {
-		mci.SetLogger(testConfig.RepoTracker.LogFile)
+		evergreen.SetLogger(testConfig.RepoTracker.LogFile)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			resultVersion, err := repoTracker.StoreRevisions(revisions)
 			util.HandleTestingErr(err, t, "Error storing repository revisions %v")
 
-			newestVersion, err := version.FindOne(version.ByMostRecentForRequester(projectRef.String(), mci.RepotrackerVersionRequester))
+			newestVersion, err := version.FindOne(version.ByMostRecentForRequester(projectRef.String(), evergreen.RepotrackerVersionRequester))
 			util.HandleTestingErr(err, t, "Error retreiving newest version %v")
 
 			So(resultVersion, ShouldResemble, newestVersion)
@@ -225,7 +225,7 @@ func TestBatchTimes(t *testing.T) {
 				},
 			},
 			RevisionOrderNumber: 0,
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 
 		So(previouslyActivatedVersion.Insert(), ShouldBeNil)

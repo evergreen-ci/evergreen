@@ -1,17 +1,17 @@
 package validator
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	patchTestConfig   = mci.TestConfig()
+	patchTestConfig   = evergreen.TestConfig()
 	configFilePath    = "testing/mci.yml"
 	patchedProject    = "mci-config"
 	unpatchedProject  = "mci-test"

@@ -1,9 +1,9 @@
 package version
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -55,7 +55,7 @@ func ByLastKnownGoodConfig(projectId string) db.Q {
 	return db.Query(
 		bson.M{
 			IdentifierKey: projectId,
-			RequesterKey:  mci.RepotrackerVersionRequester,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
 			ErrorsKey: bson.M{
 				"$exists": false,
 			},
@@ -68,7 +68,7 @@ func ByProjectIdAndRevision(projectId, revision string) db.Q {
 		bson.M{
 			ProjectKey:   projectId,
 			RevisionKey:  revision,
-			RequesterKey: mci.RepotrackerVersionRequester,
+			RequesterKey: evergreen.RepotrackerVersionRequester,
 		})
 }
 
@@ -78,7 +78,7 @@ func ByLastVariantActivation(projectId, variant string) db.Q {
 	return db.Query(
 		bson.M{
 			ProjectKey:   projectId,
-			RequesterKey: mci.RepotrackerVersionRequester,
+			RequesterKey: evergreen.RepotrackerVersionRequester,
 			BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
 					BuildStatusActivatedKey: true,
@@ -94,7 +94,7 @@ func ByProjectId(projectId string) db.Q {
 	return db.Query(
 		bson.M{
 			ProjectKey:   projectId,
-			RequesterKey: mci.RepotrackerVersionRequester,
+			RequesterKey: evergreen.RepotrackerVersionRequester,
 		})
 }
 

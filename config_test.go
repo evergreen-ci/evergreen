@@ -1,4 +1,4 @@
-package mci
+package evergreen
 
 import (
 	. "github.com/smartystreets/goconvey/convey"

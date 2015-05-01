@@ -1,29 +1,29 @@
 package apiserver
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apimodels"
-	"10gen.com/mci/auth"
-	"10gen.com/mci/bookkeeping"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/artifact"
-	"10gen.com/mci/model/event"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/user"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/notify"
-	"10gen.com/mci/plugin"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/taskrunner"
-	"10gen.com/mci/util"
-	"10gen.com/mci/validator"
 	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/bookkeeping"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/plugin"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/taskrunner"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -56,7 +56,7 @@ const (
 type APIServer struct {
 	*render.Render
 	UserManager auth.UserManager
-	MCISettings mci.MCISettings
+	MCISettings evergreen.MCISettings
 	plugins     []plugin.Plugin
 }
 
@@ -65,7 +65,7 @@ const (
 	PatchLockTitle     = "patches"
 )
 
-func New(mciSettings *mci.MCISettings, plugins []plugin.Plugin) (*APIServer, error) {
+func New(mciSettings *evergreen.MCISettings, plugins []plugin.Plugin) (*APIServer, error) {
 	crowdManager, err := auth.NewCrowdUserManager(
 		mciSettings.Crowd.Username,
 		mciSettings.Crowd.Password,
@@ -111,13 +111,13 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		if len(authData.Token) > 0 { // legacy auth - token lookup
 			authedUser, err := um.GetUserByToken(authData.Token)
 			if err != nil {
-				mci.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
+				evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 			} else {
 				// Get the user's full details from the DB or create them if they don't exists
 				dbUser, err := model.GetOrCreateUser(authedUser.Username(),
 					authedUser.DisplayName(), authedUser.Email())
 				if err != nil {
-					mci.Logger.Logf(slogger.ERROR, "Error looking up user %v: %v", authedUser.Username(), err)
+					evergreen.Logger.Logf(slogger.ERROR, "Error looking up user %v: %v", authedUser.Username(), err)
 				} else {
 					context.Set(r, apiUserKey, dbUser)
 				}
@@ -131,7 +131,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				}
 				context.Set(r, apiUserKey, dbUser)
 			} else {
-				mci.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
+				evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 			}
 		}
 		next(w, r)
@@ -188,11 +188,11 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 		}
 
 		if checkSecret {
-			secret := r.Header.Get(mci.TaskSecretHeader)
+			secret := r.Header.Get(evergreen.TaskSecretHeader)
 
 			// Check the secret - if it doesn't match, write error back to the client
 			if secret != task.Secret {
-				mci.Logger.Logf(slogger.ERROR, "Wrong secret sent for task %v: Expected %v but got %v", taskId, task.Secret, secret)
+				evergreen.Logger.Logf(slogger.ERROR, "Wrong secret sent for task %v: Expected %v but got %v", taskId, task.Secret, secret)
 				http.Error(w, "wrong secret!", http.StatusConflict)
 				return
 			}
@@ -232,7 +232,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	task := MustHaveTask(r)
 
-	mci.Logger.Logf(slogger.INFO, "Marking task started: %v", task.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Marking task started: %v", task.Id)
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err := util.ReadJSONInto(r.Body, taskStartInfo); err != nil {
@@ -285,9 +285,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check that finishing status is a valid constant
-	if taskEndRequest.Status != mci.TaskSucceeded &&
-		taskEndRequest.Status != mci.TaskFailed &&
-		taskEndRequest.Status != mci.TaskUndispatched {
+	if taskEndRequest.Status != evergreen.TaskSucceeded &&
+		taskEndRequest.Status != evergreen.TaskFailed &&
+		taskEndRequest.Status != evergreen.TaskUndispatched {
 
 		msg := fmt.Errorf("Invalid end status '%v' for task %v", taskEndRequest.Status, task.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
@@ -312,10 +312,10 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if task was aborted, reset to inactive
-	if taskEndRequest.Status == mci.TaskUndispatched {
+	if taskEndRequest.Status == evergreen.TaskUndispatched {
 		if err = model.SetTaskActivated(task.Id, "", false); err != nil {
 			message := fmt.Sprintf("Error deactivating task after abort: %v", err)
-			mci.Logger.Logf(slogger.ERROR, message)
+			evergreen.Logger.Logf(slogger.ERROR, message)
 			taskEndResponse.Message = message
 			as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 			return
@@ -328,12 +328,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// update the bookkeeping entry for the task
 	err = bookkeeping.UpdateExpectedDuration(task, task.TimeTaken)
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "Error updating expected duration: %v",
+		evergreen.Logger.Logf(slogger.ERROR, "Error updating expected duration: %v",
 			err)
 	}
 
 	// log the task as finished
-	mci.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished",
+	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished",
 		task.Id)
 
 	// construct and return the appropriate response for the agent
@@ -343,7 +343,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 func markHostRunningTaskFinished(h *host.Host, task *model.Task, newTaskId string) {
 	// update the given host's running_task field accordingly
 	if err := h.UpdateRunningTask(task.Id, newTaskId, time.Now()); err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error updating running task "+
+		evergreen.Logger.Errorf(slogger.ERROR, "Error updating running task "+
 			"%v on host %v to '': %v", task.Id, h.Id, err)
 	}
 }
@@ -368,7 +368,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	if err != nil {
 		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", task.Id,
 			task.HostId, err)
-		mci.Logger.Logf(slogger.ERROR, message)
+		evergreen.Logger.Logf(slogger.ERROR, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
@@ -376,16 +376,16 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	if host == nil {
 		message := fmt.Sprintf("Error finding host running for task %v - set to %v: %v", task.Id,
 			task.HostId, err)
-		mci.Logger.Logf(slogger.ERROR, message)
+		evergreen.Logger.Logf(slogger.ERROR, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
 	}
-	if host.Status == mci.HostDecommissioned || host.Status == mci.HostQuarantined {
+	if host.Status == evergreen.HostDecommissioned || host.Status == evergreen.HostQuarantined {
 		markHostRunningTaskFinished(host, task, "")
 		message := fmt.Sprintf("Host %v - running %v - is in state '%v'. Agent will terminate",
 			task.HostId, task.Id, host.Status)
-		mci.Logger.Logf(slogger.INFO, message)
+		evergreen.Logger.Logf(slogger.INFO, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
@@ -396,7 +396,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 	if err != nil {
 		markHostRunningTaskFinished(host, task, "")
-		mci.Logger.Logf(slogger.ERROR, "failed to get agent revision: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "failed to get agent revision: %v", err)
 		taskEndResponse.Message = err.Error()
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
@@ -404,7 +404,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	if host.AgentRevision != agentRevision {
 		markHostRunningTaskFinished(host, task, "")
 		message := fmt.Sprintf("Remote agent needs to be rebuilt")
-		mci.Logger.Logf(slogger.INFO, message)
+		evergreen.Logger.Logf(slogger.INFO, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
@@ -414,7 +414,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	nextTask, err := getNextDistroTask(task, host)
 	if err != nil {
 		markHostRunningTaskFinished(host, task, "")
-		mci.Logger.Logf(slogger.ERROR, err.Error())
+		evergreen.Logger.Logf(slogger.ERROR, err.Error())
 		taskEndResponse.Message = err.Error()
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
@@ -462,12 +462,12 @@ func getNextDistroTask(currentTask *model.Task, host *host.Host) (
 // loadTaskEndResponseInto fetches the necessary field members needed by the
 // agent to continue working on a new task
 func loadTaskEndResponseInto(taskEndResponse *apimodels.TaskEndResponse,
-	task *model.Task, mciSettings *mci.MCISettings) {
+	task *model.Task, mciSettings *evergreen.MCISettings) {
 	taskEndResponse.RunNext = true
 	taskEndResponse.TaskId = task.Id
 	taskEndResponse.TaskSecret = task.Secret
 	taskEndResponse.ConfigDir = mciSettings.ConfigDir
-	taskEndResponse.WorkDir = mci.RemoteShell
+	taskEndResponse.WorkDir = evergreen.RemoteShell
 }
 
 // AttachTestLog is the API Server hook for getting
@@ -531,7 +531,7 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 // AttachFiles updates file mappings for a task or build
 func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
-	mci.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
 
 	entry := &artifact.Entry{
 		TaskId:          task.Id,
@@ -542,7 +542,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	err := util.ReadJSONInto(r.Body, &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", task.Id, err)
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		as.WriteJSON(w, http.StatusBadRequest, message)
 		return
 	}
@@ -550,7 +550,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 
 	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", task.Id, err)
-		mci.Logger.Errorf(slogger.ERROR, message)
+		evergreen.Logger.Errorf(slogger.ERROR, message)
 		as.WriteJSON(w, http.StatusInternalServerError, message)
 		return
 	}
@@ -617,12 +617,12 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 
 	heartbeatResponse := apimodels.HeartbeatResponse{}
 	if task.Aborted {
-		//mci.Logger.Logf(slogger.INFO, "Sending abort signal for task %v", task.Id)
+		//evergreen.Logger.Logf(slogger.INFO, "Sending abort signal for task %v", task.Id)
 		heartbeatResponse.Abort = true
 	}
 
 	if err := task.UpdateHeartbeat(); err != nil {
-		//mci.Logger.Errorf(slogger.ERROR, "Error updating heartbeat for task %v : %v", task.Id, err)
+		//evergreen.Logger.Errorf(slogger.ERROR, "Error updating heartbeat for task %v : %v", task.Id, err)
 	}
 	as.WriteJSON(w, http.StatusOK, heartbeatResponse)
 }
@@ -655,7 +655,7 @@ func attachUser(userM auth.UserManager, r *http.Request) web.HTTPResponse {
 	// Get the user's full details from the DB or create them if they don't exists
 	dbUser, err := model.GetOrCreateUser(user.Username(), user.DisplayName(), user.Email())
 	if err != nil {
-		mci.Logger.Logf(slogger.INFO, "Error looking up user: %v", err)
+		evergreen.Logger.Logf(slogger.INFO, "Error looking up user: %v", err)
 	} else {
 		context.Set(r, userKey, dbUser)
 	}
@@ -733,15 +733,15 @@ func getHostFromRequest(r *http.Request) (*host.Host, error) {
 func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	hostObj, err := getHostFromRequest(r)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, err.Error())
+		evergreen.Logger.Errorf(slogger.ERROR, err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// if the host failed
 	setupSuccess := mux.Vars(r)["status"]
-	if setupSuccess == mci.HostStatusFailed {
-		mci.Logger.Logf(slogger.INFO, "Initializing host %v failed", hostObj.Id)
+	if setupSuccess == evergreen.HostStatusFailed {
+		evergreen.Logger.Logf(slogger.INFO, "Initializing host %v failed", hostObj.Id)
 		// send notification to the MCI team about this provisioning failure
 		subject := fmt.Sprintf("%v MCI provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
 
@@ -749,7 +749,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
 			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
 		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
 
 		// get/store setup logs
@@ -779,7 +779,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
 			hostObj.Id, hostObj.Provider, err)
 		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
 		return
 	}
@@ -796,7 +796,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Successfully marked host “%v” with dns “%v” as provisioned", hostObj.Id, dns)
+	evergreen.Logger.Logf(slogger.INFO, "Successfully marked host “%v” with dns “%v” as provisioned", hostObj.Id, dns)
 }
 
 // fetchProjectRef returns a project ref given the project identifier
@@ -836,36 +836,36 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 // helper function for grabbing the global lock
 func getGlobalLock(requester string) bool {
-	mci.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v", requester)
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v", requester)
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(requester, db.LockTimeout)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
 		return false
 	}
 	if !lockAcquired {
-		mci.Logger.Errorf(slogger.ERROR, "Cannot proceed with %v api method because the global lock could not be taken", requester)
+		evergreen.Logger.Errorf(slogger.ERROR, "Cannot proceed with %v api method because the global lock could not be taken", requester)
 		return false
 	}
 
-	mci.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v", requester)
+	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v", requester)
 	return true
 }
 
 // helper function for releasing the global lock
 func releaseGlobalLock(requester string) {
-	mci.Logger.Logf(slogger.DEBUG, "Attempting to release global lock from %v", requester)
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to release global lock from %v", requester)
 
 	err := db.ReleaseGlobalLock(requester)
 	if err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error releasing global lock from %v - this is really bad: %v", requester, err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock from %v - this is really bad: %v", requester, err)
 	}
-	mci.Logger.Logf(slogger.DEBUG, "Released global lock from %v", requester)
+	evergreen.Logger.Logf(slogger.DEBUG, "Released global lock from %v", requester)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	mci.Logger.Logf(slogger.ERROR, fmt.Sprintf("%v %v %v", r.Method, r.URL, err.Error()))
+	evergreen.Logger.Logf(slogger.ERROR, fmt.Sprintf("%v %v %v", r.Method, r.URL, err.Error()))
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
 		as.WriteJSON(w, code, struct {
@@ -956,10 +956,10 @@ func (as *APIServer) Handler() (http.Handler, error) {
 		}
 		handler := pl.GetAPIHandler()
 		if handler == nil {
-			mci.Logger.Logf(slogger.WARN, "no API handlers to install for %v", pl.Name())
+			evergreen.Logger.Logf(slogger.WARN, "no API handlers to install for %v", pl.Name())
 			continue
 		}
-		mci.Logger.Logf(slogger.WARN, "Installing API plugin handlers for %v", pl.Name())
+		evergreen.Logger.Logf(slogger.WARN, "Installing API plugin handlers for %v", pl.Name())
 		util.MountHandler(taskRouter, fmt.Sprintf("/%v/", pl.Name()), as.checkTask(false, handler.ServeHTTP))
 	}
 

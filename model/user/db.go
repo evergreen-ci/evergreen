@@ -1,12 +1,12 @@
 package user
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/auth"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/thirdparty"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -91,7 +91,7 @@ func (umgr *DBCachedCrowdUserManager) GetUserById(token string) (auth.MCIUser,
 	// Crowd user is valid. See if they exist in DB
 	user, err := umgr.DBUserManager.GetUserById(crowdUser.Name)
 	if err != nil {
-		mci.Logger.Logf(slogger.ERROR, "Error getting user obj from db: %v",
+		evergreen.Logger.Logf(slogger.ERROR, "Error getting user obj from db: %v",
 			err)
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (umgr *DBCachedCrowdUserManager) GetUserById(token string) (auth.MCIUser,
 		EmailAddress: crowdUser.EmailAddress,
 	}
 	if err = newUser.Insert(); err != nil {
-		mci.Logger.Logf(slogger.ERROR, "Error inserting user obj: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Error inserting user obj: %v", err)
 		return nil, err
 	}
 	return newUser, nil

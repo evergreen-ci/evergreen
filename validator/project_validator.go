@@ -1,12 +1,12 @@
 package validator
 
 import (
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/plugin"
-	_ "10gen.com/mci/plugin/config"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/plugin"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/util"
 	"strings"
 )
 

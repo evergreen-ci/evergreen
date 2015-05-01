@@ -1,10 +1,10 @@
 package repotracker
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"time"
 )
 
@@ -18,28 +18,28 @@ func (r *Runner) Name() string {
 	return RunnerName
 }
 
-func (r *Runner) Run(config *mci.MCISettings) error {
+func (r *Runner) Run(config *evergreen.MCISettings) error {
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
 	}
 
 	if !lockAcquired {
-		return mci.Logger.Errorf(slogger.ERROR, "Timed out acquiring global lock")
+		return evergreen.Logger.Errorf(slogger.ERROR, "Timed out acquiring global lock")
 	}
 
 	defer func() {
 		if err := db.ReleaseGlobalLock(RunnerName); err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error releasing global lock: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock: %v", err)
 		}
 	}()
 
 	startTime := time.Now()
-	mci.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", config.Db)
+	evergreen.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", config.Db)
 
 	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Error finding tracked projects %v", err)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Error finding tracked projects %v", err)
 	}
 
 	for _, projectRef := range allProjects {
@@ -56,15 +56,15 @@ func (r *Runner) Run(config *mci.MCISettings) error {
 
 		err = tracker.FetchRevisions(numNewRepoRevisionsToFetch)
 		if err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error fetching revisions: %v", err)
+			evergreen.Logger.Errorf(slogger.ERROR, "Error fetching revisions: %v", err)
 			continue
 		}
 	}
 
 	runtime := time.Now().Sub(startTime)
 	if err = model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Error updating process status: %v", err)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Error updating process status: %v", err)
 	}
-	mci.Logger.Logf(slogger.INFO, "Repository tracker took %v to run", runtime)
+	evergreen.Logger.Logf(slogger.INFO, "Repository tracker took %v to run", runtime)
 	return nil
 }

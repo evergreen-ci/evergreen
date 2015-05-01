@@ -4,13 +4,13 @@
 package runner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/hostinit"
-	"10gen.com/mci/monitor"
-	"10gen.com/mci/notify"
-	"10gen.com/mci/repotracker"
-	"10gen.com/mci/scheduler"
-	"10gen.com/mci/taskrunner"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/hostinit"
+	"github.com/evergreen-ci/evergreen/monitor"
+	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/repotracker"
+	"github.com/evergreen-ci/evergreen/scheduler"
+	"github.com/evergreen-ci/evergreen/taskrunner"
 )
 
 // ProcessRunner wraps a basic Run method that allows various processes in Evergreen
@@ -19,7 +19,7 @@ type ProcessRunner interface {
 	// Name returns the id of the process runner.
 	Name() string
 	// Run executes the process runner with the supplied configuration.
-	Run(*mci.MCISettings) error
+	Run(*evergreen.MCISettings) error
 }
 
 // Runners is a slice of all Evergreen processes that implement the ProcessRunner interface.

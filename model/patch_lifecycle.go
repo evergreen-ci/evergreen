@@ -1,15 +1,15 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/command"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/thirdparty"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -93,7 +93,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version,
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
 	for _, buildVariant := range newVariants {
-		mci.Logger.Logf(slogger.INFO,
+		evergreen.Logger.Logf(slogger.INFO,
 			"Creating build for version %v, buildVariant %v, activated = %v",
 			patchVersion.Id, buildVariant, p.Activated)
 		buildId, err := CreateBuildFromVersion(project, patchVersion, buildVariant, p.Activated, p.Tasks)
@@ -187,8 +187,8 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		patchCmd := &command.LocalCommand{
 			CmdString:        strings.Join(patchCommandStrings, "\n"),
 			WorkingDirectory: workingDirectory,
-			Stdout:           mci.NewInfoLoggingWriter(&mci.Logger),
-			Stderr:           mci.NewErrorLoggingWriter(&mci.Logger),
+			Stdout:           evergreen.NewInfoLoggingWriter(&evergreen.Logger),
+			Stderr:           evergreen.NewErrorLoggingWriter(&evergreen.Logger),
 			ScriptMode:       true,
 		}
 		if err = patchCmd.Run(); err != nil {
@@ -214,7 +214,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
 func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
-	mciSettings *mci.MCISettings, project *Project) (
+	mciSettings *evergreen.MCISettings, project *Project) (
 	patchVersion *version.Version, err error) {
 	// marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
@@ -236,8 +236,8 @@ func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
 		BuildIds:      []string{},
 		BuildVariants: []version.BuildStatus{},
 		Config:        string(projectYamlBytes),
-		Status:        mci.PatchCreated,
-		Requester:     mci.PatchVersionRequester,
+		Status:        evergreen.PatchCreated,
+		Requester:     evergreen.PatchVersionRequester,
 	}
 
 	buildVariants := p.BuildVariants

@@ -1,8 +1,8 @@
 package build
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"labix.org/v2/mgo/bson"
 	"time"
 )
@@ -13,7 +13,7 @@ func NewTaskCache(id string, displayName string, activated bool) TaskCache {
 	return TaskCache{
 		Id:          id,
 		DisplayName: displayName,
-		Status:      mci.TaskUndispatched,
+		Status:      evergreen.TaskUndispatched,
 		StartTime:   util.ZeroTime,
 		TimeTaken:   time.Duration(0),
 		Activated:   activated,
@@ -44,7 +44,7 @@ func updateOneTaskCache(buildId, taskId string, updateDoc bson.M) error {
 // in the cache of the given build.
 func SetCachedTaskDispatched(buildId, taskId string) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
-		"$set": bson.M{TasksKey + ".$." + TaskCacheStatusKey: mci.TaskDispatched},
+		"$set": bson.M{TasksKey + ".$." + TaskCacheStatusKey: evergreen.TaskDispatched},
 	})
 }
 
@@ -54,7 +54,7 @@ func SetCachedTaskStarted(buildId, taskId string, startTime time.Time) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
 		"$set": bson.M{
 			TasksKey + ".$." + TaskCacheStartTimeKey: startTime,
-			TasksKey + ".$." + TaskCacheStatusKey:    mci.TaskStarted,
+			TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskStarted,
 		},
 	})
 }
@@ -84,7 +84,7 @@ func ResetCachedTask(buildId, taskId string) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
 		"$set": bson.M{
 			TasksKey + ".$." + TaskCacheStartTimeKey: util.ZeroTime,
-			TasksKey + ".$." + TaskCacheStatusKey:    mci.TaskUndispatched,
+			TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskUndispatched,
 		},
 	})
 }

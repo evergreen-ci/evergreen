@@ -1,9 +1,9 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
@@ -101,12 +101,12 @@ func byRecentlyFailing(t1, t2 model.Task,
 			" id %v", t2.Id)
 	}
 
-	if firstPrev.Status == mci.TaskFailed &&
-		secondPrev.Status != mci.TaskFailed {
+	if firstPrev.Status == evergreen.TaskFailed &&
+		secondPrev.Status != evergreen.TaskFailed {
 		return 1, nil
 	}
-	if secondPrev.Status == mci.TaskFailed &&
-		firstPrev.Status != mci.TaskFailed {
+	if secondPrev.Status == evergreen.TaskFailed &&
+		firstPrev.Status != evergreen.TaskFailed {
 		return -1, nil
 	}
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MCI_PKG='10gen.com/mci'
+MCI_PKG='github.com/evergreen-ci/evergreen'
 
 setgopath() {
     if [ "Windows_NT" != "$OS" ]; then

@@ -1,15 +1,15 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/cloud/providers"
-	"10gen.com/mci/cloud/providers/static"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"math"
 	"sort"
@@ -89,14 +89,14 @@ type DurationBasedHostAllocator struct{}
 // helper type to sort distros by the number of static hosts they have
 type sortableDistroByNumStaticHost struct {
 	distros  []distro.Distro
-	settings *mci.MCISettings
+	settings *evergreen.MCISettings
 }
 
 // Implementation of NewHostsNeeded.  Decides that new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
 // consideration
 func (self *DurationBasedHostAllocator) NewHostsNeeded(
-	hostAllocatorData HostAllocatorData, mciSettings *mci.MCISettings) (newHostsNeeded map[string]int,
+	hostAllocatorData HostAllocatorData, mciSettings *evergreen.MCISettings) (newHostsNeeded map[string]int,
 	err error) {
 
 	queueDistros := make([]distro.Distro, 0,
@@ -144,12 +144,12 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
 			distroScheduleData, mciSettings)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error getting num hosts for distro: %v", err)
+			evergreen.Logger.Logf(slogger.ERROR, "Error getting num hosts for distro: %v", err)
 			return nil, err
 		}
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Reporting hosts needed: %#v", newHostsNeeded)
+	evergreen.Logger.Logf(slogger.INFO, "Reporting hosts needed: %#v", newHostsNeeded)
 	return newHostsNeeded, nil
 }
 
@@ -414,7 +414,7 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	hostAllocatorData *HostAllocatorData, distro distro.Distro,
 	tasksAccountedFor map[string]bool,
-	distroScheduleData map[string]DistroScheduleData, mciSettings *mci.MCISettings) (numNewHosts int,
+	distroScheduleData map[string]DistroScheduleData, mciSettings *evergreen.MCISettings) (numNewHosts int,
 	err error) {
 
 	projectTaskDurations := hostAllocatorData.projectTaskDurations
@@ -477,7 +477,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 	cloudManager, err := providers.GetCloudManager(distro.Provider, mciSettings)
 	if err != nil {
-		return 0, mci.Logger.Errorf(slogger.ERROR, "Couldn't get cloud manager for %v (%v): %v",
+		return 0, evergreen.Logger.Errorf(slogger.ERROR, "Couldn't get cloud manager for %v (%v): %v",
 			distro.Provider, distro.Id, err)
 	}
 
@@ -494,11 +494,11 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	numNewHosts = orderedScheduleNumNewHosts(distroScheduleData, distro.Id,
 		MaxDurationPerDistroHost, SharedTasksAllocationProportion)
 
-	mci.Logger.Logf(slogger.INFO, "Spawning %v additional hosts for %v - "+
+	evergreen.Logger.Logf(slogger.INFO, "Spawning %v additional hosts for %v - "+
 		"currently at %v existing hosts (%v free)", numNewHosts, distro.Id,
 		len(existingDistroHosts), numFreeHosts)
 
-	mci.Logger.Logf(slogger.INFO, "Total estimated time to process all '%v' "+
+	evergreen.Logger.Logf(slogger.INFO, "Total estimated time to process all '%v' "+
 		"scheduled tasks is %v; %v running tasks at %v, %v pending tasks at "+
 		"%v (shared tasks duration map: %v)",
 		distro.Id,
@@ -514,7 +514,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 // sortDistrosByNumStaticHosts returns a sorted slice of distros where the
 // distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []distro.Distro, settings *mci.MCISettings) []distro.Distro {
+func sortDistrosByNumStaticHosts(distros []distro.Distro, settings *evergreen.MCISettings) []distro.Distro {
 	sortableDistroObj := &sortableDistroByNumStaticHost{distros, settings}
 	sort.Sort(sortableDistroObj)
 	return sortableDistroObj.distros
@@ -526,16 +526,16 @@ func (sd *sortableDistroByNumStaticHost) Len() int {
 }
 
 func (sd *sortableDistroByNumStaticHost) Less(i, j int) bool {
-	if sd.distros[i].Provider != mci.HostTypeStatic &&
-		sd.distros[j].Provider != mci.HostTypeStatic {
+	if sd.distros[i].Provider != evergreen.HostTypeStatic &&
+		sd.distros[j].Provider != evergreen.HostTypeStatic {
 		return false
 	}
-	if sd.distros[i].Provider == mci.HostTypeStatic &&
-		sd.distros[j].Provider != mci.HostTypeStatic {
+	if sd.distros[i].Provider == evergreen.HostTypeStatic &&
+		sd.distros[j].Provider != evergreen.HostTypeStatic {
 		return true
 	}
-	if sd.distros[i].Provider != mci.HostTypeStatic &&
-		sd.distros[j].Provider == mci.HostTypeStatic {
+	if sd.distros[i].Provider != evergreen.HostTypeStatic &&
+		sd.distros[j].Provider == evergreen.HostTypeStatic {
 		return false
 	}
 

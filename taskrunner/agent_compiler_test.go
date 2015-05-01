@@ -1,8 +1,8 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -23,10 +23,10 @@ func TestGoxcAgentCompiler(t *testing.T) {
 			" should be built in the specified destination directory", func() {
 
 			// create a fake go env for building
-			mciHome, err := mci.FindMCIHome()
+			mciHome, err := evergreen.FindMCIHome()
 			So(err, ShouldBeNil)
 			mockGoPath := filepath.Join(mciHome,
-				"src/10gen.com/mci/taskrunner/testdata/tmp/mockGoPath/")
+				"src/github.com/evergreen-ci/evergreen/taskrunner/testdata/tmp/mockGoPath/")
 			srcDir := filepath.Join(mockGoPath, "src")
 			So(os.MkdirAll(srcDir, 0777), ShouldBeNil)
 			binDir := filepath.Join(mockGoPath, "bin")

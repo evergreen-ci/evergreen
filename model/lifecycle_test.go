@@ -1,11 +1,11 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"labix.org/v2/mgo/bson"
 	"testing"
@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
 func taskIdInSlice(tasks []Task, id string) bool {
@@ -81,22 +81,22 @@ func TestBuildRestart(t *testing.T) {
 			Tasks: []build.TaskCache{
 				{
 					Id:        "taskOne",
-					Status:    mci.TaskSucceeded,
+					Status:    evergreen.TaskSucceeded,
 					Activated: true,
 				},
 				{
 					Id:        "taskTwo",
-					Status:    mci.TaskDispatched,
+					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				},
 				{
 					Id:        "taskThree",
-					Status:    mci.TaskDispatched,
+					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				},
 				{
 					Id:        "taskFour",
-					Status:    mci.TaskDispatched,
+					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				},
 			},
@@ -109,29 +109,29 @@ func TestBuildRestart(t *testing.T) {
 			taskOne := &Task{
 				Id:      "taskOne",
 				BuildId: b.Id,
-				Status:  mci.TaskSucceeded,
+				Status:  evergreen.TaskSucceeded,
 			}
 			So(taskOne.Insert(), ShouldBeNil)
 
 			taskTwo := &Task{
 				Id:      "taskTwo",
 				BuildId: b.Id,
-				Status:  mci.TaskDispatched,
+				Status:  evergreen.TaskDispatched,
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
 			So(RestartBuild(b.Id, true), ShouldBeNil)
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, mci.BuildCreated)
+			So(b.Status, ShouldEqual, evergreen.BuildCreated)
 			So(b.Activated, ShouldEqual, true)
-			So(b.Tasks[0].Status, ShouldEqual, mci.TaskUndispatched)
-			So(b.Tasks[1].Status, ShouldEqual, mci.TaskDispatched)
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskDispatched)
 			So(b.Tasks[0].Activated, ShouldEqual, true)
 			So(b.Tasks[1].Activated, ShouldEqual, true)
 			taskOne, err = FindTask("taskOne")
 			So(err, ShouldBeNil)
-			So(taskOne.Status, ShouldEqual, mci.TaskUndispatched)
+			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
 			taskTwo, err = FindTask("taskTwo")
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
@@ -143,14 +143,14 @@ func TestBuildRestart(t *testing.T) {
 			taskThree := &Task{
 				Id:      "taskThree",
 				BuildId: b.Id,
-				Status:  mci.TaskSucceeded,
+				Status:  evergreen.TaskSucceeded,
 			}
 			So(taskThree.Insert(), ShouldBeNil)
 
 			taskFour := &Task{
 				Id:      "taskFour",
 				BuildId: b.Id,
-				Status:  mci.TaskDispatched,
+				Status:  evergreen.TaskDispatched,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
@@ -158,19 +158,19 @@ func TestBuildRestart(t *testing.T) {
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, mci.BuildCreated)
+			So(b.Status, ShouldEqual, evergreen.BuildCreated)
 			So(b.Activated, ShouldEqual, true)
-			So(b.Tasks[2].Status, ShouldEqual, mci.TaskUndispatched)
-			So(b.Tasks[3].Status, ShouldEqual, mci.TaskDispatched)
+			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
+			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskDispatched)
 			So(b.Tasks[2].Activated, ShouldEqual, true)
 			So(b.Tasks[3].Activated, ShouldEqual, true)
 			taskThree, err = FindTask("taskThree")
 			So(err, ShouldBeNil)
-			So(taskThree.Status, ShouldEqual, mci.TaskUndispatched)
+			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
 			taskFour, err = FindTask("taskFour")
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
-			So(taskFour.Status, ShouldEqual, mci.TaskDispatched)
+			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
 		})
 
 	})
@@ -220,28 +220,28 @@ func TestBuildMarkAborted(t *testing.T) {
 				abortableOne := &Task{
 					Id:      "abortableOne",
 					BuildId: b.Id,
-					Status:  mci.TaskStarted,
+					Status:  evergreen.TaskStarted,
 				}
 				So(abortableOne.Insert(), ShouldBeNil)
 
 				abortableTwo := &Task{
 					Id:      "abortableTwo",
 					BuildId: b.Id,
-					Status:  mci.TaskDispatched,
+					Status:  evergreen.TaskDispatched,
 				}
 				So(abortableTwo.Insert(), ShouldBeNil)
 
 				notAbortable := &Task{
 					Id:      "notAbortable",
 					BuildId: b.Id,
-					Status:  mci.TaskSucceeded,
+					Status:  evergreen.TaskSucceeded,
 				}
 				So(notAbortable.Insert(), ShouldBeNil)
 
 				wrongBuildId := &Task{
 					Id:      "wrongBuildId",
 					BuildId: "blech",
-					Status:  mci.TaskStarted,
+					Status:  evergreen.TaskStarted,
 				}
 				So(wrongBuildId.Insert(), ShouldBeNil)
 
@@ -293,7 +293,7 @@ func TestBuildSetActivated(t *testing.T) {
 				wrongBuildId := &Task{
 					Id:        "wrongBuildId",
 					BuildId:   "blech",
-					Status:    mci.TaskUndispatched,
+					Status:    evergreen.TaskUndispatched,
 					Activated: true,
 				}
 				So(wrongBuildId.Insert(), ShouldBeNil)
@@ -301,7 +301,7 @@ func TestBuildSetActivated(t *testing.T) {
 				wrongStatus := &Task{
 					Id:        "wrongStatus",
 					BuildId:   b.Id,
-					Status:    mci.TaskDispatched,
+					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				}
 				So(wrongStatus.Insert(), ShouldBeNil)
@@ -309,7 +309,7 @@ func TestBuildSetActivated(t *testing.T) {
 				matching := &Task{
 					Id:        "matching",
 					BuildId:   b.Id,
-					Status:    mci.TaskUndispatched,
+					Status:    evergreen.TaskUndispatched,
 					Activated: true,
 				}
 				So(matching.Insert(), ShouldBeNil)
@@ -345,26 +345,26 @@ func TestBuildSetActivated(t *testing.T) {
 					Tasks: []build.TaskCache{
 						{
 							Id:        "tc1",
-							Status:    mci.TaskUndispatched,
+							Status:    evergreen.TaskUndispatched,
 							Activated: true,
 						},
 						{
 							Id:        "tc2",
-							Status:    mci.TaskDispatched,
+							Status:    evergreen.TaskDispatched,
 							Activated: true,
 						},
 						{
 							Id:        "tc3",
-							Status:    mci.TaskUndispatched,
+							Status:    evergreen.TaskUndispatched,
 							Activated: true,
 						},
 					},
 				}
 				So(b.Insert(), ShouldBeNil)
 
-				t1 := &Task{Id: "tc1", BuildId: b.Id, Status: mci.TaskUndispatched, Activated: true}
-				t2 := &Task{Id: "tc2", BuildId: b.Id, Status: mci.TaskDispatched, Activated: true}
-				t3 := &Task{Id: "tc3", BuildId: b.Id, Status: mci.TaskUndispatched, Activated: true}
+				t1 := &Task{Id: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
+				t2 := &Task{Id: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
+				t3 := &Task{Id: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
 				So(t1.Insert(), ShouldBeNil)
 				So(t2.Insert(), ShouldBeNil)
 				So(t3.Insert(), ShouldBeNil)
@@ -391,7 +391,7 @@ func TestBuildMarkStarted(t *testing.T) {
 
 		b := &build.Build{
 			Id:     "build",
-			Status: mci.BuildCreated,
+			Status: evergreen.BuildCreated,
 		}
 		So(b.Insert(), ShouldBeNil)
 
@@ -404,7 +404,7 @@ func TestBuildMarkStarted(t *testing.T) {
 			// refresh from db and check again
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, mci.BuildStarted)
+			So(b.Status, ShouldEqual, evergreen.BuildStarted)
 			So(b.StartTime.Round(time.Second).Equal(
 				startTime.Round(time.Second)), ShouldBeTrue)
 		})
@@ -430,8 +430,8 @@ func TestBuildMarkFinished(t *testing.T) {
 			" database", func() {
 
 			finishTime := time.Now()
-			So(b.MarkFinished(mci.BuildSucceeded, finishTime), ShouldBeNil)
-			So(b.Status, ShouldEqual, mci.BuildSucceeded)
+			So(b.MarkFinished(evergreen.BuildSucceeded, finishTime), ShouldBeNil)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 			So(b.FinishTime.Equal(finishTime), ShouldBeTrue)
 			So(b.TimeTaken, ShouldEqual, finishTime.Sub(startTime))
 
@@ -439,7 +439,7 @@ func TestBuildMarkFinished(t *testing.T) {
 
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
-			So(b.Status, ShouldEqual, mci.BuildSucceeded)
+			So(b.Status, ShouldEqual, evergreen.BuildSucceeded)
 			So(b.FinishTime.Round(time.Second).Equal(
 				finishTime.Round(time.Second)), ShouldBeTrue)
 			So(b.TimeTaken, ShouldEqual, finishTime.Sub(startTime))
@@ -514,7 +514,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			CreateTime:          time.Now(),
 			Revision:            "foobar",
 			RevisionOrderNumber: 500,
-			Requester:           mci.RepotrackerVersionRequester,
+			Requester:           evergreen.RepotrackerVersionRequester,
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: buildVar.Name,
@@ -600,16 +600,16 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// in the same order that they appear in the project file
 			So(b.Tasks[0].Id, ShouldNotEqual, "")
 			So(b.Tasks[0].DisplayName, ShouldEqual, "taskA")
-			So(b.Tasks[0].Status, ShouldEqual, mci.TaskUndispatched)
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[1].Id, ShouldNotEqual, "")
 			So(b.Tasks[1].DisplayName, ShouldEqual, "taskB")
-			So(b.Tasks[1].Status, ShouldEqual, mci.TaskUndispatched)
+			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[2].Id, ShouldNotEqual, "")
 			So(b.Tasks[2].DisplayName, ShouldEqual, "taskC")
-			So(b.Tasks[2].Status, ShouldEqual, mci.TaskUndispatched)
+			So(b.Tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(b.Tasks[3].Id, ShouldNotEqual, "")
 			So(b.Tasks[3].DisplayName, ShouldEqual, "taskD")
-			So(b.Tasks[3].Status, ShouldEqual, mci.TaskUndispatched)
+			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 
 		})
 
@@ -661,7 +661,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(b.Activated, ShouldEqual, v.BuildVariants[0].Activated)
 			So(b.Project, ShouldEqual, project.Identifier)
 			So(b.Revision, ShouldEqual, v.Revision)
-			So(b.Status, ShouldEqual, mci.BuildCreated)
+			So(b.Status, ShouldEqual, evergreen.BuildCreated)
 			So(b.BuildVariant, ShouldEqual, buildVar.Name)
 			So(b.Version, ShouldEqual, v.Id)
 			So(b.DisplayName, ShouldEqual, buildVar.DisplayName)
@@ -702,7 +702,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[0].PushTime.Truncate(time.Second), ShouldResemble,
 				b.PushTime.Truncate(time.Second))
-			So(tasks[0].Status, ShouldEqual, mci.TaskUndispatched)
+			So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[0].Activated, ShouldEqual, b.Activated)
 			So(tasks[0].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[0].Requester, ShouldEqual, b.Requester)
@@ -720,7 +720,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[1].PushTime.Truncate(time.Second), ShouldResemble,
 				b.PushTime.Truncate(time.Second))
-			So(tasks[1].Status, ShouldEqual, mci.TaskUndispatched)
+			So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[1].Activated, ShouldEqual, b.Activated)
 			So(tasks[1].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[1].Requester, ShouldEqual, b.Requester)
@@ -738,7 +738,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[2].PushTime.Truncate(time.Second), ShouldResemble,
 				b.PushTime.Truncate(time.Second))
-			So(tasks[2].Status, ShouldEqual, mci.TaskUndispatched)
+			So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[2].Activated, ShouldEqual, b.Activated)
 			So(tasks[2].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[2].Requester, ShouldEqual, b.Requester)
@@ -756,7 +756,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				b.CreateTime.Truncate(time.Second))
 			So(tasks[3].PushTime.Truncate(time.Second), ShouldResemble,
 				b.PushTime.Truncate(time.Second))
-			So(tasks[3].Status, ShouldEqual, mci.TaskUndispatched)
+			So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 			So(tasks[3].Activated, ShouldEqual, b.Activated)
 			So(tasks[3].RevisionOrderNumber, ShouldEqual, b.RevisionOrderNumber)
 			So(tasks[3].Requester, ShouldEqual, b.Requester)
@@ -798,7 +798,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					build.CreateTime.Truncate(time.Second))
 				So(tasks[0].PushTime.Truncate(time.Second), ShouldResemble,
 					build.PushTime.Truncate(time.Second))
-				So(tasks[0].Status, ShouldEqual, mci.TaskUndispatched)
+				So(tasks[0].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[0].Activated, ShouldEqual, build.Activated)
 				So(tasks[0].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[0].Requester, ShouldEqual, build.Requester)
@@ -816,7 +816,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					build.CreateTime.Truncate(time.Second))
 				So(tasks[1].PushTime.Truncate(time.Second), ShouldResemble,
 					build.PushTime.Truncate(time.Second))
-				So(tasks[1].Status, ShouldEqual, mci.TaskUndispatched)
+				So(tasks[1].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[1].Activated, ShouldEqual, build.Activated)
 				So(tasks[1].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[1].Requester, ShouldEqual, build.Requester)
@@ -834,7 +834,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					build.CreateTime.Truncate(time.Second))
 				So(tasks[2].PushTime.Truncate(time.Second), ShouldResemble,
 					build.PushTime.Truncate(time.Second))
-				So(tasks[2].Status, ShouldEqual, mci.TaskUndispatched)
+				So(tasks[2].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[2].Activated, ShouldEqual, build.Activated)
 				So(tasks[2].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[2].Requester, ShouldEqual, build.Requester)
@@ -852,7 +852,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					build.CreateTime.Truncate(time.Second))
 				So(tasks[3].PushTime.Truncate(time.Second), ShouldResemble,
 					build.PushTime.Truncate(time.Second))
-				So(tasks[3].Status, ShouldEqual, mci.TaskUndispatched)
+				So(tasks[3].Status, ShouldEqual, evergreen.TaskUndispatched)
 				So(tasks[3].Activated, ShouldEqual, build.Activated)
 				So(tasks[3].RevisionOrderNumber, ShouldEqual, build.RevisionOrderNumber)
 				So(tasks[3].Requester, ShouldEqual, build.Requester)

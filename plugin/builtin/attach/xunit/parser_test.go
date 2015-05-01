@@ -1,9 +1,9 @@
 package xunit
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
@@ -112,11 +112,11 @@ func TestXMLToModelConversion(t *testing.T) {
 				passCount := 0
 				for _, t := range tests {
 					switch t.Status {
-					case mci.TestFailedStatus:
+					case evergreen.TestFailedStatus:
 						failCount++
-					case mci.TestSkippedStatus:
+					case evergreen.TestSkippedStatus:
 						skipCount++
-					case mci.TestSucceededStatus:
+					case evergreen.TestSucceededStatus:
 						passCount++
 					}
 				}

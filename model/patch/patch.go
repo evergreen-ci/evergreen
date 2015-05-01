@@ -1,9 +1,9 @@
 package patch
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/thirdparty"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -101,12 +101,12 @@ func (p *Patch) AddTasks(tasks []string) error {
 func TryMarkStarted(versionId string, startTime time.Time) error {
 	filter := bson.M{
 		VersionKey: versionId,
-		StatusKey:  mci.PatchCreated,
+		StatusKey:  evergreen.PatchCreated,
 	}
 	update := bson.M{
 		"$set": bson.M{
 			StartTimeKey: startTime,
-			StatusKey:    mci.PatchStarted,
+			StatusKey:    evergreen.PatchStarted,
 		},
 	}
 	err := UpdateOne(filter, update)

@@ -1,11 +1,11 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 	"strconv"
 	"testing"
@@ -13,14 +13,14 @@ import (
 )
 
 var (
-	hostAllocatorTestConf = mci.TestConfig()
+	hostAllocatorTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(
 		db.SessionFactoryFromConfig(hostAllocatorTestConf))
 	if hostAllocatorTestConf.Scheduler.LogFile != "" {
-		mci.SetLogger(hostAllocatorTestConf.Scheduler.LogFile)
+		evergreen.SetLogger(hostAllocatorTestConf.Scheduler.LogFile)
 	}
 }
 
@@ -436,7 +436,7 @@ func TestSortDistrosByNumStaticHosts(t *testing.T) {
 					r = append(r, map[interface{}]interface{}{"name": strconv.Itoa(i)})
 				}
 				d.Id = strconv.Itoa(j)
-				d.Provider = mci.HostTypeStatic
+				d.Provider = evergreen.HostTypeStatic
 				d.ProviderSettings = &map[string]interface{}{"hosts": r}
 				return d
 			}

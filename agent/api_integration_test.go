@@ -1,21 +1,21 @@
 package agent
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/apiserver"
-	dbutil "10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/plugin"
-	"10gen.com/mci/testutils"
-	"10gen.com/mci/util"
 	"crypto/tls"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apiserver"
+	dbutil "github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -30,7 +30,7 @@ import (
 //If something is failing, try turning this on to see all the details
 var Verbose = true
 
-var testConfig = mci.TestConfig()
+var testConfig = evergreen.TestConfig()
 
 var testSetups = []testConfigPath{
 	{"With plugin mode test config", "testdata/config_test_plugin"},
@@ -93,7 +93,7 @@ func TestBasicEndpoints(t *testing.T) {
 
 	for tlsString, tlsConfig := range tlsConfigs {
 
-		testTask, _, err := setupAPITestData(testConfig, mci.CompileStage,
+		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
 			"linux-64", false, t)
 		util.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
@@ -110,7 +110,7 @@ func TestBasicEndpoints(t *testing.T) {
 				testAgent.Start("1")
 				testTask, err = model.FindTask(testTask.Id)
 				util.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)
-				So(testTask.Status, ShouldEqual, mci.TaskStarted)
+				So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 
 				testHost, err := host.FindOne(host.ByRunningTaskId(testTask.Id))
 				So(err, ShouldBeNil)
@@ -151,11 +151,11 @@ func TestBasicEndpoints(t *testing.T) {
 			})
 
 			Convey("calling end() should update task status properly", func() {
-				testAgent.End(mci.TaskSucceeded, nil)
+				testAgent.End(evergreen.TaskSucceeded, nil)
 				time.Sleep(100 * time.Millisecond)
 				taskUpdate, err := model.FindTask(testTask.Id)
 				So(err, ShouldBeNil)
-				So(taskUpdate.Status, ShouldEqual, mci.TaskSucceeded)
+				So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
 			})
 
 			Convey("no checkins should trigger timeout signal", func() {
@@ -175,7 +175,7 @@ func TestHeartbeatSignals(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 
-		testTask, _, err := setupAPITestData(testConfig, mci.CompileStage, "linux-64", false, t)
+		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", false, t)
 		util.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -200,7 +200,7 @@ func TestHeartbeatSignals(t *testing.T) {
 
 func TestSecrets(t *testing.T) {
 	setupTlsConfigs(t)
-	testTask, _, err := setupAPITestData(testConfig, mci.CompileStage,
+	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
 		"linux-64", false, t)
 	util.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
@@ -241,7 +241,7 @@ func TestTaskSuccess(t *testing.T) {
 
 					Convey("With agent running 'compile' step and live API server over "+
 						tlsString+" with variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, mci.CompileStage,
+						testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
 							variant, false, t)
 						util.HandleTestingErr(err, t, "Couldn't create test task: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
@@ -292,7 +292,7 @@ func TestTaskSuccess(t *testing.T) {
 
 							testTask, err = model.FindTask(testTask.Id)
 							util.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
-							So(testTask.Status, ShouldEqual, mci.TaskSucceeded)
+							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 						})
 					})
 
@@ -323,7 +323,7 @@ func TestTaskSuccess(t *testing.T) {
 
 							testTask, err = model.FindTask(testTask.Id)
 							util.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
-							So(testTask.Status, ShouldEqual, mci.TaskSucceeded)
+							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
 							expectedResults := []model.TestResult{
 								model.TestResult{
@@ -387,7 +387,7 @@ func TestTaskFailures(t *testing.T) {
 						Convey("the tasks's final status should be FAILED", func() {
 							testTask, err = model.FindTask(testTask.Id)
 							util.HandleTestingErr(err, t, "Failed to find test task")
-							So(testTask.Status, ShouldEqual, mci.TaskFailed)
+							So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 						})
 					})
 				})
@@ -440,7 +440,7 @@ func TestTaskAbortion(t *testing.T) {
 							So(scanLogsForTask(testTask.Id, "done with very_slow_task!"), ShouldBeFalse)
 							testTask, err = model.FindTask(testTask.Id)
 							util.HandleTestingErr(err, t, "Failed to find test task")
-							So(testTask.Status, ShouldEqual, mci.TaskUndispatched)
+							So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 						})
 					})
 				})
@@ -479,7 +479,7 @@ func TestTaskTimeout(t *testing.T) {
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = model.FindTask(testTask.Id)
-					So(testTask.Status, ShouldEqual, mci.TaskFailed)
+					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.StatusDetails.TimedOut, ShouldBeTrue)
 				})
 			})
@@ -490,7 +490,7 @@ func TestTaskTimeout(t *testing.T) {
 func TestTaskEndEndpoint(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, mci.CompileStage,
+		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
 			"linux-64", false, t)
 		util.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
@@ -506,13 +506,13 @@ func TestTaskEndEndpoint(t *testing.T) {
 			Convey("calling end() should update task's/host's status properly "+
 				"and start running the next task", func() {
 				subsequentTaskId := testTask.Id + "Two"
-				taskEndResp, err := testAgent.End(mci.TaskSucceeded, nil)
+				taskEndResp, err := testAgent.End(evergreen.TaskSucceeded, nil)
 				time.Sleep(1 * time.Second)
 				So(err, ShouldBeNil)
 
 				taskUpdate, err := model.FindTask(testTask.Id)
 				So(err, ShouldBeNil)
-				So(taskUpdate.Status, ShouldEqual, mci.TaskSucceeded)
+				So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
 
 				testHost, err := host.FindOne(host.ById(testTask.HostId))
 				So(err, ShouldBeNil)
@@ -520,7 +520,7 @@ func TestTaskEndEndpoint(t *testing.T) {
 
 				taskUpdate, err = model.FindTask(subsequentTaskId)
 				So(err, ShouldBeNil)
-				So(taskUpdate.Status, ShouldEqual, mci.TaskDispatched)
+				So(taskUpdate.Status, ShouldEqual, evergreen.TaskDispatched)
 
 				So(taskEndResp, ShouldNotBeNil)
 				So(taskEndResp.RunNext, ShouldBeTrue)
@@ -563,7 +563,7 @@ func printLogsForTask(taskId string) {
 	}
 }
 
-func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
+func setupAPITestData(testConfig *evergreen.MCISettings, taskDisplayName string,
 	variant string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
@@ -594,8 +594,8 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",
 		Version:      "testVersionId",
-		Status:       mci.TaskDispatched,
-		Requester:    mci.RepotrackerVersionRequester,
+		Status:       evergreen.TaskDispatched,
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 
 	taskTwo := &model.Task{
@@ -609,12 +609,12 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 		Secret:       "testTaskSecret",
 		Activated:    true,
 		Version:      "testVersionId",
-		Status:       mci.TaskUndispatched,
-		Requester:    mci.RepotrackerVersionRequester,
+		Status:       evergreen.TaskUndispatched,
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 
 	if isPatch {
-		taskOne.Requester = mci.PatchVersionRequester
+		taskOne.Requester = evergreen.PatchVersionRequester
 	}
 
 	util.HandleTestingErr(taskOne.Insert(), t, "failed to insert taskOne")
@@ -639,7 +639,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
 		},
 		RunningTask:   "testTaskId",
-		StartedBy:     mci.MCIUser,
+		StartedBy:     evergreen.MCIUser,
 		AgentRevision: agentRevision,
 	}
 	util.HandleTestingErr(host.Insert(), t, "failed to insert host")
@@ -673,7 +673,7 @@ func setupAPITestData(testConfig *mci.MCISettings, taskDisplayName string,
 		util.HandleTestingErr(err, t, "failed to read test module patch file")
 
 		patch := &patch.Patch{
-			Status:  mci.PatchCreated,
+			Status:  evergreen.PatchCreated,
 			Version: v.Id,
 			Patches: []patch.ModulePatch{
 				{

@@ -1,18 +1,18 @@
 package taskrunner
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/host"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"path/filepath"
 	"sync"
 	"time"
 )
 
 type TaskRunner struct {
-	*mci.MCISettings
+	*evergreen.MCISettings
 	HostFinder
 	TaskQueueFinder
 	HostGateway
@@ -22,10 +22,10 @@ var (
 	AgentPackageDirectorySubPath = filepath.Join("agent", "main")
 )
 
-func NewTaskRunner(mciSettings *mci.MCISettings) *TaskRunner {
+func NewTaskRunner(mciSettings *evergreen.MCISettings) *TaskRunner {
 	// get mci home, and set the source and destination for the agent
 	// executables
-	mciHome, err := mci.FindMCIHome()
+	mciHome, err := evergreen.FindMCIHome()
 	if err != nil {
 		panic(fmt.Sprintf("error finding mci home: %v", err))
 	}
@@ -50,13 +50,13 @@ func NewTaskRunner(mciSettings *mci.MCISettings) *TaskRunner {
 // Returns an error if any error is thrown along the way.
 func (self *TaskRunner) Run() error {
 
-	mci.Logger.Logf(slogger.INFO, "Finding hosts available to take a task...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding hosts available to take a task...")
 	// find all hosts available to take a task
 	availableHosts, err := self.FindAvailableHosts()
 	if err != nil {
 		return fmt.Errorf("error finding available hosts: %v", err)
 	}
-	mci.Logger.Logf(slogger.INFO, "Found %v host(s) available to take a task",
+	evergreen.Logger.Logf(slogger.INFO, "Found %v host(s) available to take a task",
 		len(availableHosts))
 
 	// split the hosts by distro
@@ -67,7 +67,7 @@ func (self *TaskRunner) Run() error {
 
 	// assign the free hosts for each distro to the tasks they need to run
 	for distroId, freeHostsForDistro := range hostsByDistro {
-		mci.Logger.Logf(slogger.INFO, "Kicking off tasks on distro %v...",
+		evergreen.Logger.Logf(slogger.INFO, "Kicking off tasks on distro %v...",
 			distroId)
 
 		// load in the queue of tasks for the distro
@@ -78,7 +78,7 @@ func (self *TaskRunner) Run() error {
 		}
 
 		if taskQueue == nil {
-			mci.Logger.Logf(slogger.ERROR, "nil task queue found for distro '%v'", distroId)
+			evergreen.Logger.Logf(slogger.ERROR, "nil task queue found for distro '%v'", distroId)
 			continue
 		}
 
@@ -110,10 +110,10 @@ func (self *TaskRunner) Run() error {
 				agentRevision, err := self.RunTaskOnHost(self.MCISettings,
 					dereferencedTask, nextHost)
 				if err != nil {
-					mci.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
+					evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
 						" on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
 				} else {
-					mci.Logger.Logf(slogger.INFO, "task %v successfully kicked"+
+					evergreen.Logger.Logf(slogger.INFO, "task %v successfully kicked"+
 						" off on host %v", dereferencedTask.Id, nextHost.Id)
 				}
 
@@ -122,7 +122,7 @@ func (self *TaskRunner) Run() error {
 				err = nextHost.SetRunningTask(dereferencedTask.Id,
 					agentRevision, time.Now())
 				if err != nil {
-					mci.Logger.Errorf(slogger.ERROR, "Error updating running "+
+					evergreen.Logger.Errorf(slogger.ERROR, "Error updating running "+
 						"task %v on host %v: %v", dereferencedTask.Id,
 						nextHost.Id, err)
 				}
@@ -133,7 +133,7 @@ func (self *TaskRunner) Run() error {
 	// wait for everything to finish
 	waitGroup.Wait()
 
-	mci.Logger.Logf(slogger.INFO, "Finished kicking off all pending tasks")
+	evergreen.Logger.Logf(slogger.INFO, "Finished kicking off all pending tasks")
 
 	return nil
 }
@@ -171,7 +171,7 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 		// validate that the task can be run, if not fetch the next one in
 		// the queue
 		if shouldSkipTask(nextTask) {
-			mci.Logger.Logf(slogger.WARN, "Skipping task %v, which was "+
+			evergreen.Logger.Logf(slogger.WARN, "Skipping task %v, which was "+
 				"picked up to be run but is not runnable - "+
 				"status (%v) activated (%v)", nextTask.Id, nextTask.Status,
 				nextTask.Activated)
@@ -194,7 +194,7 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 // task runner. Checks if the task is not undispatched, as a sanity check that
 // it is not already running.
 func shouldSkipTask(task *model.Task) bool {
-	return task.Status != mci.TaskUndispatched || !task.Activated
+	return task.Status != evergreen.TaskUndispatched || !task.Activated
 }
 
 // Takes in a list of hosts, and returns the hosts sorted by distro, in the

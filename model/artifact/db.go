@@ -1,8 +1,8 @@
 package artifact
 
 import (
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )

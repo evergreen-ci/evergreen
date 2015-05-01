@@ -1,9 +1,9 @@
 package event
 
 import (
-	"10gen.com/mci/db/bsonutil"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo/bson"
 	"time"
 )

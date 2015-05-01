@@ -1,11 +1,11 @@
 package host
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/model/distro"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -57,19 +57,19 @@ func ByUserWithRunningStatus(user string) db.Q {
 	return db.Query(
 		bson.M{
 			StartedByKey: user,
-			StatusKey:    bson.M{"$ne": mci.HostTerminated},
+			StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
 		})
 }
 
 // IsRunning is a query that returns all hosts that are running
 // (i.e. status != terminated).
-var IsRunning = db.Query(bson.M{StatusKey: bson.M{"$ne": mci.HostTerminated}})
+var IsRunning = db.Query(bson.M{StatusKey: bson.M{"$ne": evergreen.HostTerminated}})
 
 // IsLive is a query that returns all working hosts started by Evergreen
 var IsLive = db.Query(
 	bson.M{
-		StartedByKey: mci.MCIUser,
-		StatusKey:    bson.M{"$in": mci.UphostStatus},
+		StartedByKey: evergreen.MCIUser,
+		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
 	},
 )
 
@@ -79,7 +79,7 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 	return db.Query(
 		bson.M{
 			StartedByKey: user,
-			StatusKey:    bson.M{"$ne": mci.HostTerminated},
+			StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
 		},
 	)
 }
@@ -89,8 +89,8 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 var IsAvailableAndFree = db.Query(
 	bson.M{
 		"$or":        noRunningTask,
-		StatusKey:    mci.HostRunning,
-		StartedByKey: mci.MCIUser,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.MCIUser,
 	},
 )
 
@@ -99,9 +99,9 @@ var IsAvailableAndFree = db.Query(
 var IsFree = db.Query(
 	bson.M{
 		"$or":        noRunningTask,
-		StartedByKey: mci.MCIUser,
+		StartedByKey: evergreen.MCIUser,
 		StatusKey: bson.M{
-			"$nin": []string{mci.HostTerminated, mci.HostQuarantined},
+			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 		},
 	},
 )
@@ -113,14 +113,14 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		ProvisionedKey: false,
 		CreateTimeKey:  bson.M{"$lte": threshold},
-		StatusKey:      bson.M{"$ne": mci.HostTerminated},
-		StartedByKey:   mci.MCIUser,
+		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:   evergreen.MCIUser,
 	})
 }
 
 // IsUninitialized is a query that returns all uninitialized Evergreen hosts.
 var IsUninitialized = db.Query(
-	bson.M{StatusKey: mci.HostUninitialized, StartedByKey: mci.MCIUser},
+	bson.M{StatusKey: evergreen.HostUninitialized, StartedByKey: evergreen.MCIUser},
 )
 
 // ByUnproductiveSince produces a query that returns all hosts that
@@ -130,8 +130,8 @@ func ByUnproductiveSince(threshold time.Time) db.Q {
 		"$or":         noRunningTask,
 		LTCKey:        "",
 		CreateTimeKey: bson.M{"$lte": threshold},
-		StatusKey:     bson.M{"$ne": mci.HostTerminated},
-		StartedByKey:  mci.MCIUser,
+		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:  evergreen.MCIUser,
 	})
 }
 
@@ -141,8 +141,8 @@ func ByHungSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		RunningTaskKey:      bson.M{"$ne": ""},
 		TaskDispatchTimeKey: bson.M{"$lte": threshold},
-		StatusKey:           bson.M{"$ne": mci.HostTerminated},
-		StartedByKey:        mci.MCIUser,
+		StatusKey:           bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:        evergreen.MCIUser,
 	})
 }
 
@@ -150,8 +150,8 @@ func ByHungSince(threshold time.Time) db.Q {
 // spawned by an Evergreen user.
 var IsRunningAndSpawned = db.Query(
 	bson.M{
-		StartedByKey: bson.M{"$ne": mci.MCIUser},
-		StatusKey:    bson.M{"$ne": mci.HostTerminated},
+		StartedByKey: bson.M{"$ne": evergreen.MCIUser},
+		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
 	},
 )
 
@@ -160,7 +160,7 @@ var IsRunningAndSpawned = db.Query(
 var IsDecommissioned = db.Query(
 	bson.M{
 		RunningTaskKey: "",
-		StatusKey:      mci.HostDecommissioned,
+		StatusKey:      evergreen.HostDecommissioned,
 	},
 )
 
@@ -170,8 +170,8 @@ func ByDistroId(distroId string) db.Q {
 	dId := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
 	return db.Query(bson.M{
 		dId:          distroId,
-		StartedByKey: mci.MCIUser,
-		StatusKey:    bson.M{"$in": mci.UphostStatus},
+		StartedByKey: evergreen.MCIUser,
+		StatusKey:    bson.M{"$in": evergreen.UphostStatus},
 	})
 }
 
@@ -196,8 +196,8 @@ func ByRunningTaskId(taskId string) db.Q {
 var IsIdle = db.Query(
 	bson.M{
 		"$or":        noRunningTask,
-		StatusKey:    mci.HostRunning,
-		StartedByKey: mci.MCIUser,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.MCIUser,
 	},
 )
 
@@ -205,10 +205,10 @@ var IsIdle = db.Query(
 // capable of being assigned work to do.
 var IsActive = db.Query(
 	bson.M{
-		StartedByKey: mci.MCIUser,
+		StartedByKey: evergreen.MCIUser,
 		StatusKey: bson.M{
 			"$nin": []string{
-				mci.HostTerminated, mci.HostDecommissioned, mci.HostInitializing,
+				evergreen.HostTerminated, evergreen.HostDecommissioned, evergreen.HostInitializing,
 			},
 		},
 	},
@@ -221,9 +221,9 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		RunningTaskKey: "",
 		StatusKey: bson.M{
-			"$in": []string{mci.HostRunning, mci.HostUnreachable},
+			"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
 		},
-		StartedByKey: mci.MCIUser,
+		StartedByKey: evergreen.MCIUser,
 		"$or": []bson.M{
 			bson.M{LastReachabilityCheckKey: bson.M{"$lte": threshold}},
 			bson.M{LastReachabilityCheckKey: bson.M{"$exists": false}},
@@ -235,9 +235,9 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 // that will expire between the specified times.
 func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 	return db.Query(bson.M{
-		StartedByKey: bson.M{"$ne": mci.MCIUser},
+		StartedByKey: bson.M{"$ne": evergreen.MCIUser},
 		StatusKey: bson.M{
-			"$nin": []string{mci.HostTerminated, mci.HostQuarantined},
+			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 		},
 		ExpirationTimeKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
 	})
@@ -247,9 +247,9 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 // that will expired after the given time.
 func ByExpiredSince(time time.Time) db.Q {
 	return db.Query(bson.M{
-		StartedByKey: bson.M{"$ne": mci.MCIUser},
+		StartedByKey: bson.M{"$ne": evergreen.MCIUser},
 		StatusKey: bson.M{
-			"$nin": []string{mci.HostTerminated, mci.HostQuarantined},
+			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 		},
 		ExpirationTimeKey: bson.M{"$lte": time},
 	})
@@ -257,7 +257,7 @@ func ByExpiredSince(time time.Time) db.Q {
 
 // IsProvisioningFailure is a query that returns all hosts that
 // failed to provision.
-var IsProvisioningFailure = db.Query(bson.D{{StatusKey, mci.HostProvisionFailed}})
+var IsProvisioningFailure = db.Query(bson.D{{StatusKey, evergreen.HostProvisionFailed}})
 
 // === DB Logic ===
 

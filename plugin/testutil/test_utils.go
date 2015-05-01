@@ -1,17 +1,17 @@
 package testutil
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/agent"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/distro"
-	"10gen.com/mci/model/host"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
@@ -74,9 +74,9 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		DisplayName:  "test",
 		HostId:       "testHost",
 		Secret:       "mocktasksecret",
-		Status:       mci.TaskDispatched,
+		Status:       evergreen.TaskDispatched,
 		Revision:     "d0c52298b222f4973c48e9834a57966c448547de",
-		Requester:    mci.RepotrackerVersionRequester,
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	util.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
 
@@ -114,7 +114,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		Id:          "testHost",
 		Host:        "testHost",
 		RunningTask: "testTaskId",
-		StartedBy:   mci.MCIUser,
+		StartedBy:   evergreen.MCIUser,
 	}
 	util.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 
@@ -128,12 +128,12 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		HostId:       "testHost",
 		Version:      "testVersionId",
 		Secret:       "testTaskSecret",
-		Status:       mci.TaskDispatched,
-		Requester:    mci.RepotrackerVersionRequester,
+		Status:       evergreen.TaskDispatched,
+		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 
 	if isPatch {
-		task.Requester = mci.PatchVersionRequester
+		task.Requester = evergreen.PatchVersionRequester
 	}
 
 	util.HandleTestingErr(task.Insert(), t, "failed to insert task")
@@ -147,7 +147,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		util.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
 		patch := &patch.Patch{
-			Status:  mci.PatchCreated,
+			Status:  evergreen.PatchCreated,
 			Version: version.Id,
 			Patches: []patch.ModulePatch{
 				{

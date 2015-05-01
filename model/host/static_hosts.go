@@ -1,7 +1,7 @@
 package host
 
 import (
-	"10gen.com/mci"
+	"github.com/evergreen-ci/evergreen"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -18,11 +18,11 @@ func DecommissionInactiveStaticHosts(activeStaticHosts []string) error {
 			IdKey: bson.M{
 				"$nin": activeStaticHosts,
 			},
-			ProviderKey: mci.HostTypeStatic,
+			ProviderKey: evergreen.HostTypeStatic,
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: mci.HostDecommissioned,
+				StatusKey: evergreen.HostDecommissioned,
 			},
 		},
 	)

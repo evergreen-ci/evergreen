@@ -1,14 +1,14 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/util"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"strconv"
@@ -55,7 +55,7 @@ func SetBuildActivation(buildId string, active bool) error {
 	_, err := UpdateAllTasks(
 		bson.M{
 			TaskBuildIdKey: buildId,
-			TaskStatusKey:  mci.TaskUndispatched,
+			TaskStatusKey:  evergreen.TaskUndispatched,
 		},
 		bson.M{"$set": bson.M{TaskActivatedKey: active}},
 	)
@@ -84,7 +84,7 @@ func AbortTask(taskId string) error {
 	err := UpdateOneTask(
 		bson.M{
 			TaskIdKey:     taskId,
-			TaskStatusKey: bson.M{"$in": mci.AbortableStatuses},
+			TaskStatusKey: bson.M{"$in": evergreen.AbortableStatuses},
 		},
 		bson.M{"$set": bson.M{TaskAbortedKey: true}},
 	)
@@ -97,7 +97,7 @@ func AbortBuild(buildId string) error {
 	_, err := UpdateAllTasks(
 		bson.M{
 			TaskBuildIdKey: buildId,
-			TaskStatusKey:  bson.M{"$in": mci.AbortableStatuses},
+			TaskStatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 		},
 		bson.M{"$set": bson.M{TaskAbortedKey: true}},
 	)
@@ -113,7 +113,7 @@ func AbortVersion(versionId string) error {
 	_, err := UpdateAllTasks(
 		bson.M{
 			TaskVersionKey: versionId,
-			TaskStatusKey:  bson.M{"$in": mci.AbortableStatuses},
+			TaskStatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 		},
 		bson.M{"$set": bson.M{TaskAbortedKey: true}},
 	)
@@ -126,7 +126,7 @@ func MarkVersionStarted(versionId string, startTime time.Time) error {
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{
 			version.StartTimeKey: startTime,
-			version.StatusKey:    mci.VersionStarted,
+			version.StatusKey:    evergreen.VersionStarted,
 		}},
 	)
 }
@@ -134,7 +134,7 @@ func MarkVersionStarted(versionId string, startTime time.Time) error {
 // MarkVersionCompleted updates the status of a completed version to reflect its correct state by
 // checking the status of its individual builds.
 func MarkVersionCompleted(versionId string, finishTime time.Time) error {
-	status := mci.VersionSucceeded
+	status := evergreen.VersionSucceeded
 
 	// Find the statuses for all builds in the version so we can figure out the version's status
 	builds, err := build.Find(
@@ -148,8 +148,8 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 		if !b.IsFinished() {
 			return nil
 		}
-		if b.Status != mci.BuildSucceeded {
-			status = mci.VersionFailed
+		if b.Status != evergreen.BuildSucceeded {
+			status = evergreen.VersionFailed
 		}
 	}
 	//TODO move these updates into the version package
@@ -201,8 +201,8 @@ func RestartBuild(buildId string, abortInProgress bool) error {
 			TaskBuildIdKey: buildId,
 			TaskStatusKey: bson.M{
 				"$in": []string{
-					mci.TaskSucceeded,
-					mci.TaskFailed,
+					evergreen.TaskSucceeded,
+					evergreen.TaskFailed,
 				},
 			},
 		},
@@ -231,7 +231,7 @@ func RestartBuild(buildId string, abortInProgress bool) error {
 			bson.M{
 				TaskBuildIdKey: buildId,
 				TaskStatusKey: bson.M{
-					"$in": mci.AbortableStatuses,
+					"$in": evergreen.AbortableStatuses,
 				},
 			},
 			bson.M{
@@ -296,7 +296,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// insert the tasks into the db
 	for _, task := range tasks {
-		mci.Logger.Logf(slogger.INFO, "Creating task “%v”", task.DisplayName)
+		evergreen.Logger.Logf(slogger.INFO, "Creating task “%v”", task.DisplayName)
 		if err := task.Insert(); err != nil {
 			return nil, fmt.Errorf("error inserting task %v: %v", task.Id, err)
 		}
@@ -320,7 +320,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 func CreateBuildFromVersion(project *Project, v *version.Version, buildName string,
 	activated bool, taskNames []string) (string, error) {
 
-	mci.Logger.Logf(slogger.DEBUG, "Creating %v %v build, activated: %v", v.Requester, buildName, activated)
+	evergreen.Logger.Logf(slogger.DEBUG, "Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(buildName)
@@ -345,7 +345,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, buildName stri
 		Activated:           activated,
 		Project:             project.Identifier,
 		Revision:            v.Revision,
-		Status:              mci.BuildCreated,
+		Status:              evergreen.BuildCreated,
 		BuildVariant:        buildName,
 		Version:             v.Id,
 		DisplayName:         buildVariant.DisplayName,
@@ -402,8 +402,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	tasksToCreate := []BuildVariantTask{}
 	createAll := len(taskNames) == 0
 	for _, task := range buildVariant.Tasks {
-		if task.Name == mci.PushStage &&
-			b.Requester == mci.PatchVersionRequester {
+		if task.Name == evergreen.PushStage &&
+			b.Requester == evergreen.PatchVersionRequester {
 			continue
 		}
 		if createAll || util.SliceContains(taskNames, task.Name) {
@@ -499,13 +499,13 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 	}
 
 	patchCompleted := true
-	status := mci.PatchSucceeded
+	status := evergreen.PatchSucceeded
 	for _, build := range builds {
 		if !build.IsFinished() {
 			patchCompleted = false
 		}
-		if build.Status != mci.BuildSucceeded {
-			status = mci.PatchFailed
+		if build.Status != evergreen.BuildSucceeded {
+			status = evergreen.PatchFailed
 		}
 	}
 
@@ -534,7 +534,7 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 		FinishTime:          ZeroTime, // to our own ZeroTime value (which is
 		DispatchTime:        ZeroTime, // Unix epoch 0, not Go's time.Time{})
 		LastHeartbeat:       ZeroTime,
-		Status:              mci.TaskUndispatched,
+		Status:              evergreen.TaskUndispatched,
 		Activated:           b.Activated,
 		RevisionOrderNumber: v.RevisionOrderNumber,
 		Requester:           v.Requester,

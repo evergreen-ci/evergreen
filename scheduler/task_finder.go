@@ -1,9 +1,9 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Interface responsible for finding all tasks that are ready to be run.
@@ -33,7 +33,7 @@ func (self *DBTaskFinder) FindRunnableTasks() ([]model.Task, error) {
 	for _, task := range undispatchedTasks {
 		depsMet, err := task.DependenciesMet(dependencyCaches)
 		if err != nil {
-			mci.Logger.Logf(slogger.ERROR, "Error checking dependencies for"+
+			evergreen.Logger.Logf(slogger.ERROR, "Error checking dependencies for"+
 				" task %v: %v", task.Id, err)
 			continue
 		}

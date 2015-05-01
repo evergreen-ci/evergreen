@@ -1,7 +1,7 @@
 package rest
 
 import (
-	"10gen.com/mci"
+	"github.com/evergreen-ci/evergreen"
 	"net/http"
 )
 
@@ -14,7 +14,7 @@ type RouteInfo struct {
 
 type restUISAPI interface {
 	WriteJSON(w http.ResponseWriter, status int, data interface{})
-	GetMCISettings() mci.MCISettings
+	GetMCISettings() evergreen.MCISettings
 }
 
 type restAPI struct {

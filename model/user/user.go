@@ -1,8 +1,8 @@
 package user
 
 import (
-	"10gen.com/mci/db"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/db"
 	"time"
 )
 

@@ -1,17 +1,17 @@
 package validator
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/model/version"
-	"10gen.com/mci/thirdparty"
 	"encoding/base64"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/shelman/angier"
 )
 
-func ValidateAndFinalize(p *patch.Patch, mciSettings *mci.MCISettings) (*version.Version, error) {
+func ValidateAndFinalize(p *patch.Patch, mciSettings *evergreen.MCISettings) (*version.Version, error) {
 	if p.Version != "" {
 		return nil, fmt.Errorf("Patch %v already finalized", p.Version)
 	}

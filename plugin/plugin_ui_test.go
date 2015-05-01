@@ -1,8 +1,8 @@
 package plugin_test
 
 import (
-	"10gen.com/mci/plugin"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/smartystreets/goconvey/convey"
 	"html/template"
 	"net/http"

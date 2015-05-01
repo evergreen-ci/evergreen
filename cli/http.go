@@ -1,12 +1,12 @@
 package cli
 
 import (
-	"10gen.com/mci/model"
-	"10gen.com/mci/model/patch"
-	"10gen.com/mci/util"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"io"
 	"io/ioutil"
 	"net/http"

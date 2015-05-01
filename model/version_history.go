@@ -1,11 +1,11 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/model/build"
-	"10gen.com/mci/model/version"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -24,7 +24,7 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 
 	// Get latest commit order number for this project
 	latestVersion, err := version.FindOne(db.Query(
-		version.ByMostRecentForRequester(project.Identifier, mci.RepotrackerVersionRequester).
+		version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).
 			WithFields(version.RevisionOrderNumberKey)))
 	if err != nil {
 		return nil, fmt.Errorf("Error getting latest version: %v", err)
@@ -49,7 +49,7 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 				build.ProjectKey:             project.Identifier,
 				build.RevisionOrderNumberKey: bson.M{"$gte": leastRecentRevisionOrderNumber},
 				build.BuildVariantKey:        bson.M{"$in": buildVariantNames},
-				build.StatusKey:              mci.BuildSucceeded,
+				build.StatusKey:              evergreen.BuildSucceeded,
 			},
 		},
 		// Sum up the number of builds that succeeded for each commit order number
@@ -90,7 +90,7 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 	// Get the version corresponding to the resulting commit order number
 	v, err := version.FindOne(
 		db.Query(bson.M{
-			version.RequesterKey:           mci.RepotrackerVersionRequester,
+			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
 			version.ProjectKey:             project.Identifier,
 			version.RevisionOrderNumberKey: result[0]["_id"],
 		}))

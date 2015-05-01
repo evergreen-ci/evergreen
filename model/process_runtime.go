@@ -1,10 +1,10 @@
 package model
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
@@ -108,7 +108,7 @@ func UpsertOneProcessRuntime(query interface{}, update interface{}) error {
 		update,
 	)
 	if info.UpsertedId != nil {
-		mci.Logger.Logf(slogger.INFO, "Added \"%s\" process to ProcessRuntime"+
+		evergreen.Logger.Logf(slogger.INFO, "Added \"%s\" process to ProcessRuntime"+
 			" db", info.UpsertedId)
 	}
 	return err

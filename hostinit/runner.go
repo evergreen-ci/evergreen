@@ -1,9 +1,9 @@
 package hostinit
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"time"
 )
 
@@ -17,20 +17,20 @@ func (r *Runner) Name() string {
 	return RunnerName
 }
 
-func (r *Runner) Run(config *mci.MCISettings) error {
+func (r *Runner) Run(config *evergreen.MCISettings) error {
 	startTime := time.Now()
-	mci.Logger.Logf(slogger.INFO, "Starting hostinit at time %v", startTime)
+	evergreen.Logger.Logf(slogger.INFO, "Starting hostinit at time %v", startTime)
 
 	init := &HostInit{config}
 
 	if err := init.setupReadyHosts(); err != nil {
-		return mci.Logger.Errorf(slogger.ERROR, "Error running hostinit: %v", err)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Error running hostinit: %v", err)
 	}
 
 	runtime := time.Now().Sub(startTime)
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		mci.Logger.Errorf(slogger.ERROR, "Error updating process status: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error updating process status: %v", err)
 	}
-	mci.Logger.Logf(slogger.INFO, "Hostinit took %v to run", runtime)
+	evergreen.Logger.Logf(slogger.INFO, "Hostinit took %v to run", runtime)
 	return nil
 }

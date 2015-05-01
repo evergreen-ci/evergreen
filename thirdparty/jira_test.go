@@ -1,8 +1,8 @@
 package thirdparty
 
 import (
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"net/http"
 	"testing"

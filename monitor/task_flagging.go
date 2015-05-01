@@ -1,10 +1,10 @@
 package monitor
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"time"
 )
 
@@ -35,7 +35,7 @@ type doomedTaskWrapper struct {
 // heartbeats have timed out
 func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 
-	mci.Logger.Logf(slogger.INFO, "Finding tasks with timed-out heartbeats...")
+	evergreen.Logger.Logf(slogger.INFO, "Finding tasks with timed-out heartbeats...")
 
 	// fetch any running tasks whose last heartbeat was too long in the past
 	threshold := time.Now().Add(-HeartbeatTimeoutThreshold)
@@ -53,7 +53,7 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 		wrappers = append(wrappers, doomedTaskWrapper{task, HeartbeatTimeout})
 	}
 
-	mci.Logger.Logf(slogger.INFO, "Found %v tasks whose heartbeats timed out",
+	evergreen.Logger.Logf(slogger.INFO, "Found %v tasks whose heartbeats timed out",
 		len(wrappers))
 
 	return wrappers, nil

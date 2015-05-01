@@ -1,9 +1,9 @@
 package plugin
 
 import (
-	"10gen.com/mci/command"
-	"10gen.com/mci/util"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/util"
 	"reflect"
 	"strings"
 )

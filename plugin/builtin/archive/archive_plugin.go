@@ -1,7 +1,7 @@
 package archive
 
 import (
-	"10gen.com/mci/plugin"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"net/http"
 )
 

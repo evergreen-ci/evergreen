@@ -1,7 +1,7 @@
 package main
 
 import (
-	"10gen.com/mci/cli"
+	"github.com/evergreen-ci/evergreen/cli"
 	"github.com/jessevdk/go-flags"
 	"os"
 )

@@ -1,9 +1,9 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Interface responsible for taking a task queue for a particular distro
@@ -36,7 +36,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 			ExpectedDuration:    expectedTaskDuration,
 		})
 		if err := task.SetExpectedDuration(expectedTaskDuration); err != nil {
-			mci.Logger.Errorf(slogger.ERROR, "Error updating projected task "+
+			evergreen.Logger.Errorf(slogger.ERROR, "Error updating projected task "+
 				"duration for %v: %v", task.Id, err)
 		}
 	}

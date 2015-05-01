@@ -1,9 +1,9 @@
 package scheduler
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Function run before sorting all the tasks.  Used to fetch and store
@@ -19,7 +19,7 @@ func cachePreviousTasks(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 		prevTask := &model.Task{}
 
 		// only relevant for repotracker tasks
-		if task.Requester == mci.RepotrackerVersionRequester {
+		if task.Requester == evergreen.RepotrackerVersionRequester {
 			prevTask, err = model.PreviousCompletedTask(&task, task.Project, []string{})
 			if err != nil {
 				return fmt.Errorf("cachePreviousTasks: %v", err)
@@ -43,7 +43,7 @@ func cacheSimilarFailing(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 		numSimilarFailing := 0
 
 		// only relevant for repotracker tasks
-		if task.Requester == mci.RepotrackerVersionRequester {
+		if task.Requester == evergreen.RepotrackerVersionRequester {
 			numSimilarFailing, err = task.CountSimilarFailingTasks()
 			if err != nil {
 				return fmt.Errorf("cacheSimilarFailing: %v", err)

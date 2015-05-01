@@ -1,15 +1,15 @@
 package event
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/db"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mci.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
 func TestLoggingDistroEvents(t *testing.T) {

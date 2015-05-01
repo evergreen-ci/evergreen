@@ -1,11 +1,11 @@
 package expansions
 
 import (
-	"10gen.com/mci"
-	"10gen.com/mci/model"
-	"10gen.com/mci/plugin"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
 	"net/http"
 )
@@ -69,7 +69,7 @@ func FetchVarsHandler(w http.ResponseWriter, r *http.Request) {
 	projectVars, err := model.FindOneProjectVars(task.Project)
 	if err != nil {
 		message := fmt.Sprintf("Failed to fetch vars for task %v: %v", task.Id, err)
-		mci.Logger.Logf(slogger.ERROR, message)
+		evergreen.Logger.Logf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}

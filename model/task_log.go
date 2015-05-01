@@ -1,9 +1,9 @@
 package model
 
 import (
-	"10gen.com/mci/db"
-	"10gen.com/mci/db/bsonutil"
-	"10gen.com/mci/util"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
