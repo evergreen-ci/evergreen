@@ -424,8 +424,10 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 		taskEndResponse.Message = "No next task on queue"
 	} else {
 		taskEndResponse.Message = "Proceed with next task"
+		taskEndResponse.RunNext = true
+		taskEndResponse.TaskId = nextTask.Id
+		taskEndResponse.TaskSecret = nextTask.Secret
 		markHostRunningTaskFinished(host, task, nextTask.Id)
-		loadTaskEndResponseInto(taskEndResponse, nextTask, &as.Settings)
 	}
 
 	// give the agent the green light to keep churning
@@ -457,17 +459,6 @@ func getNextDistroTask(currentTask *model.Task, host *host.Host) (
 		return nil, nil
 	}
 	return nextTask, nil
-}
-
-// loadTaskEndResponseInto fetches the necessary field members needed by the
-// agent to continue working on a new task
-func loadTaskEndResponseInto(taskEndResponse *apimodels.TaskEndResponse,
-	task *model.Task, settings *evergreen.Settings) {
-	taskEndResponse.RunNext = true
-	taskEndResponse.TaskId = task.Id
-	taskEndResponse.TaskSecret = task.Secret
-	taskEndResponse.ConfigDir = settings.ConfigDir
-	taskEndResponse.WorkDir = evergreen.RemoteShell
 }
 
 // AttachTestLog is the API Server hook for getting
@@ -742,8 +733,8 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	setupSuccess := mux.Vars(r)["status"]
 	if setupSuccess == evergreen.HostStatusFailed {
 		evergreen.Logger.Logf(slogger.INFO, "Initializing host %v failed", hostObj.Id)
-		// send notification to the MCI team about this provisioning failure
-		subject := fmt.Sprintf("%v MCI provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
+		// send notification to the Evergreen team about this provisioning failure
+		subject := fmt.Sprintf("%v Evergreen provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
 
 		hostLink := fmt.Sprintf("%v/host/%v", as.Settings.Ui.Url, hostObj.Id)
 		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
@@ -774,7 +765,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	cloudManager, err := providers.GetCloudManager(hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		subject := fmt.Sprintf("%v MCI provisioning completion failure on %v",
+		subject := fmt.Sprintf("%v Evergreen provisioning completion failure on %v",
 			notify.ProvisionFailurePreface, hostObj.Distro.Id)
 		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
 			hostObj.Id, hostObj.Provider, err)

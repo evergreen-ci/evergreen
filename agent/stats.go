@@ -9,69 +9,78 @@ import (
 )
 
 type StatsCollector struct {
-	logger   *slogger.Logger
-	Cmds     []string
+	logger *slogger.Logger
+	Cmds   []string
+	// indicates the sampling frequency
 	Interval time.Duration
-	// A channel which, when closed, tells the stats collector ticker to stop.
+	// when closed this stops stats collector ticker
 	stop chan bool
 }
 
-func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration,
-	exp *command.Expansions, rawCmds ...string) *StatsCollector {
-	expandedCmds := []string{}
-	for _, cmd := range rawCmds {
-		expanded, err := exp.ExpandString(cmd)
-		if err != nil {
-			logger.Logf(slogger.ERROR, "Couldn't expand stats command, "+
-				"skipping: %v", err)
-			continue
-		}
-		expandedCmds = append(expandedCmds, expanded)
-	}
+func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration, cmds ...string) *StatsCollector {
 	return &StatsCollector{
 		logger:   logger,
-		Cmds:     expandedCmds,
+		Cmds:     cmds,
 		Interval: interval,
 	}
 }
 
-func (self *StatsCollector) LogStats() {
-	if self.Interval < 0 {
-		panic(fmt.Sprintf("Illegal interval: %v", self.Interval))
+func (sc *StatsCollector) expandCommands(exp *command.Expansions) {
+	expandedCmds := []string{}
+	for _, cmd := range sc.Cmds {
+		expanded, err := exp.ExpandString(cmd)
+		if err != nil {
+			sc.logger.Logf(slogger.WARN, "Couldn't expand '%v': %v", cmd, err)
+			continue
+		}
+		expandedCmds = append(expandedCmds, expanded)
 	}
-	if self.stop != nil {
+	sc.Cmds = expandedCmds
+}
+
+func (sc *StatsCollector) LogStats(exp *command.Expansions) {
+	sc.expandCommands(exp)
+
+	if sc.Interval < 0 {
+		panic(fmt.Sprintf("Illegal interval: %v", sc.Interval))
+	}
+	if sc.stop != nil {
 		panic("StatsCollector goroutine already running!")
 	}
-	if self.Interval == 0 {
-		self.Interval = 60 * time.Second
+	if sc.Interval == 0 {
+		sc.Interval = 60 * time.Second
 	}
-	sysloggerInfoWriter := evergreen.NewInfoLoggingWriter(self.logger)
-	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(self.logger)
-	self.stop = make(chan bool)
+
+	sysloggerInfoWriter := evergreen.NewInfoLoggingWriter(sc.logger)
+	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(sc.logger)
+	sc.stop = make(chan bool)
+
 	go func() {
-		ticker := time.NewTicker(self.Interval)
+		ticker := time.NewTicker(sc.Interval)
 		for {
 			select {
 			case <-ticker.C:
-				for _, cmd := range self.Cmds {
-					self.logger.Logf(slogger.INFO, "Running %v", cmd)
+				for _, cmd := range sc.Cmds {
+					sc.logger.Logf(slogger.INFO, "Running %v", cmd)
 					command := &command.LocalCommand{
 						CmdString: cmd,
 						Stdout:    sysloggerInfoWriter,
 						Stderr:    sysloggerErrWriter,
 					}
-					err := command.Run()
-					if err != nil {
-						self.logger.Logf(slogger.ERROR, "system stats command "+
-							"exited with err: %v", err)
+					if err := command.Run(); err != nil {
+						sc.logger.Logf(slogger.ERROR, "error running '%v': %v", cmd, err)
 					}
 				}
-			case <-self.stop:
-				self.logger.Logf(slogger.INFO, "StatsCollector ticker stopping.")
+			case <-sc.stop:
+				sc.logger.Logf(slogger.INFO, "StatsCollector ticker stopping.")
 				ticker.Stop()
-				self.stop = nil
+				sc.stop = nil
 				return
 			}
 		}
 	}()
+}
+
+func (sc *StatsCollector) Stop() {
+	sc.stop <- true
 }

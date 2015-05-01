@@ -46,20 +46,28 @@ Evergreen - Distros
         <div style="padding-top: -25px;" class="panel-body panel-default">
           <div>
             <label class="distro-label">Identifier:</label>
-            <input required ng-readonly="!activeDistro.new" id="identifier" name="id" type="text" class="form-control" ng-model="activeDistro._id">
+            <input required ng-readonly="!activeDistro.new" id="identifier" name="id" type="text" class="form-control" ng-model="activeDistro._id" placeholder="Unique identifier for this distro">
             <label class="icon icon-warning-sign distro-error" ng-show="form.id.$dirty && form.id.$error.required">&nbsp;Distro identifier is required<br></label>
-            <label class="icon icon-warning-sign distro-error" ng-show="form.id.$dirty && form.id.$error.unique || (activeDistro.new && form.id.$error.unique)">&nbsp;Distro identifier already exists</label>
+            <label class="icon icon-warning-sign distro-error" ng-show="form.id.$dirty && form.id.$error.unsique || (activeDistro.new && form.id.$error.unique)">&nbsp;Distro identifier already exists</label>
           </div>
           <br>
-          <div class="dropdown">
-            <span class="distro-menu-title">Agent Architecture:</span>
-            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true">
-            <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]&nbsp;<span class="icon-caret-down"></span></strong>
-            </button>
-            <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
-              <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures" role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
-            </ul>
-            <div class="icon icon-warning-sign distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid">&nbsp;Agent architecture is required</div>
+
+          <div class="panel-body panel panel-default">
+            <div class="dropdown">
+              <span class="distro-menu-title">Agent Architecture:</span>
+              <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="true">
+              <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]&nbsp;<span class="icon-caret-down"></span></strong>
+              </button>
+              <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
+                <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures" role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
+              </ul>
+              <div class="icon icon-warning-sign distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid">&nbsp;Agent architecture is required</div>
+            </div>
+            <div>
+              <label class="distro-label">Working Directory:</label>
+              <input required name="workDir" type="text" class="form-control" ng-model="activeDistro.work_dir" placeholder="Absolute path in which agent runs tasks on host machine">
+              <div class="icon icon-warning-sign distro-error" ng-show="form.workDir.$dirty && form.workDir.$error.required || form.workDir.$invalid">&nbsp;Working Directory is required</div>
+            </div>
           </div>
           <br>
           <div class="panel-body panel panel-default">
@@ -98,27 +106,27 @@ Evergreen - Distros
             <div ng-show="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'">
               <div>
                 <label class="distro-label">AMI ID:</label>
-                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="ami" class="form-control" ng-model="activeDistro.settings.ami">
+                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="ami" class="form-control" ng-model="activeDistro.settings.ami" placeholder="EC2 image identifier e.g. ami-1ecae776">
                 <div class="icon icon-warning-sign distro-error" ng-show="form.ami.$dirty && form.ami.$error.required || form.ami.$invalid">&nbsp;AMI ID is required</div>
               </div>
               <div>
                 <label class="distro-label">Instance Type:</label>
-                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type">
+                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="instanceType" class="form-control" ng-model="activeDistro.settings.instance_type" placeholder="EC2 instance type for the AMI e.g t1.micro (must be available)">
                 <div class="icon icon-warning-sign distro-error" ng-show="form.instanceType.$dirty && form.instanceType.$error.required || form.instanceType.$invalid">&nbsp;Instance type is required</div>
               </div>
               <div ng-show="activeDistro.provider == 'ec2-spot'">
                 <label class="distro-label">Bid Price:</label>
-                <input ng-required="activeDistro.provider == 'ec2-spot'" name="bidPrice" type="number" class="form-control" ng-model="activeDistro.settings.bid_price">
+                <input ng-required="activeDistro.provider == 'ec2-spot'" name="bidPrice" type="number" class="form-control" ng-model="activeDistro.settings.bid_price" placeholder="Maximum amount you're willing to pay per hour (dollars)">
                 <div class="icon icon-warning-sign distro-error" ng-show="form.bidPrice.$dirty && form.bidPrice.$error.required || form.bidPrice.$invalid">&nbsp;Numeric bid price is required</div>
               </div>
               <div>
                 <label class="distro-label">Key Name:</label>
-                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name">
+                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in EC2) to add on host machine">
                 <div class="icon icon-warning-sign distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">&nbsp;EC2 key name is required</div>
               </div>
               <div>
                 <label class="distro-label">Security Group:</label>
-                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="securityGroup" class="form-control" ng-model="activeDistro.settings.security_group">
+                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="securityGroup" class="form-control" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)">
                 <div class="icon icon-warning-sign distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">&nbsp;Security group is required</div>
               </div>
               <div ng-show="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'">
@@ -152,7 +160,7 @@ Evergreen - Distros
             </div>
             <div ng-show="activeDistro.provider != 'static'">
               <label class="distro-label">Max Pool Size:</label>
-              <input type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size">
+              <input type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Maximum number of hosts allowed for this distro">
               <div class="icon icon-warning-sign distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">&nbsp;Numeric pool size is required</div>
             </div>
             <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
@@ -161,7 +169,7 @@ Evergreen - Distros
                 <table style="margin-left: -8px;" class="table table-bordered distro-table" ng-show="activeDistro.settings.hosts">
                   <tbody id="hosts-table" ng-repeat="host in activeDistro.settings.hosts">
                     <tr>
-                      <td><input required name="hostName" type="text" ng-model="host.name" class="col-md-10">&nbsp;<a ng-click="form.$setDirty();removeHost(host)"><i class="icon-trash distro-trash-icon"></i></a></td>
+                      <td><input required name="hostName" type="text" ng-model="host.name" class="col-md-10" placeholder="Machine DNS name">&nbsp;<a ng-click="form.$setDirty();removeHost(host)"><i class="icon-trash distro-trash-icon"></i></a></td>
                     </tr>
                   </tbody>
                 </table>
@@ -175,7 +183,7 @@ Evergreen - Distros
           </div>
           <div>
             <label class="distro-label">User:</label>
-            <input required name="userName" type="text" class="form-control" ng-model="activeDistro.user">
+            <input required name="userName" type="text" class="form-control" ng-model="activeDistro.user" placeholder="Username with which to SSH into host machine">
             <div class="icon icon-warning-sign distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">&nbsp;SSH user is required</div><br>
           </div>
           <div class="dropdown">
@@ -195,7 +203,7 @@ Evergreen - Distros
               <table style="margin-left: -8px;" class="table distro-table">
                 <tbody ng-repeat="opt in activeDistro.ssh_options track by $index">
                   <tr>
-                    <td style="padding-left: 10px;"><input required name="opt" type="text" ng-model="activeDistro.ssh_options[$index]" class="col-md-10">&nbsp;<a ng-click="form.$setDirty();removeSSHOption(opt)"><i class="icon-trash distro-trash-icon"></i></a></td>
+                    <td style="padding-left: 10px;"><input required name="opt" type="text" ng-model="activeDistro.ssh_options[$index]" class="col-md-10" placeholder="e.g. BatchMode=yes">&nbsp;<a ng-click="form.$setDirty();removeSSHOption(opt)"><i class="icon-trash distro-trash-icon"></i></a></td>
                   </tr>
                 </tbody>
               </table>

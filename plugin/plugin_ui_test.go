@@ -440,7 +440,7 @@ func TestUIDataInjection(t *testing.T) {
 					},
 				},
 				&MockUIPlugin{
-					NickName: "userhttpmotu",
+					NickName: "userhttpapiserver",
 					Conf: &plugin.PanelConfig{
 						Panels: []plugin.UIPanel{
 							{

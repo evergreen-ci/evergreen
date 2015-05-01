@@ -24,15 +24,15 @@ func TestCommunicatorServerDown(t *testing.T) {
 		)
 		downServer.Close()
 
-		agentCommunicator := HTTPAgentCommunicator{
-			downServer.URL,   //root URL of api server
-			"mocktaskid",     //task ID
+		agentCommunicator := HTTPCommunicator{
+			downServer.URL,   // root URL of api server
+			"mocktaskid",     // task ID
 			"mocktasksecret", // task Secret
 			3,                // max # of retries for each API call
-			100 * time.Millisecond, //sleep time between API call retries
-			make(chan AgentSignal), // channel for agent signals
-			logger,                 //logger to use for logging retry attempts
-			"",                     //cert
+			100 * time.Millisecond, // sleep time between API call retries
+			make(chan Signal),      // channel for agent signals
+			logger,                 // logger to use for logging retry attempts
+			"",                     // cert
 			&http.Client{},
 		}
 		Convey("Calling start() should return err after max retries", func() {
@@ -53,19 +53,19 @@ func TestCommunicatorServerUp(t *testing.T) {
 		ts := httptest.NewServer(serveMux)
 		logger := &slogger.Logger{"test", []slogger.Appender{}}
 
-		agentCommunicator := HTTPAgentCommunicator{ts.URL,
+		agentCommunicator := HTTPCommunicator{ts.URL,
 			"mocktaskid",
 			"mocktasksecret",
 			3,
 			100 * time.Millisecond,
-			make(chan AgentSignal),
+			make(chan Signal),
 			logger,
 			"",
 			&http.Client{},
 		}
 
 		Convey("Calls to start() or end() should not return err", func() {
-			//Mock start/end handlers to answer the agent's requests
+			// Mock start/end handlers to answer the agent's requests
 			serveMux.HandleFunc("/task/mocktaskid/start",
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskStartRequest{}, http.StatusOK)
@@ -129,8 +129,8 @@ func TestCommunicatorServerUp(t *testing.T) {
 			startCount := 0
 			endCount := 0
 
-			//Use mock start and end handlers which will succeed only after
-			//a certain number of requests have been made.
+			// Use mock start and end handlers which will succeed only after
+			// a certain number of requests have been made.
 			serveMux.HandleFunc("/task/mocktaskid/start",
 				func(w http.ResponseWriter, req *http.Request) {
 					startCount++

@@ -22,7 +22,7 @@ func TestCheckDistro(t *testing.T) {
 	Convey("When validating a distro", t, func() {
 
 		Convey("if a new distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a",
+			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: ec2.OnDemandProviderName,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "a",
@@ -37,7 +37,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a",
+			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: ec2.OnDemandProviderName,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "a",
@@ -54,7 +54,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a",
+			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: ec2.OnDemandProviderName,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "a",
@@ -69,7 +69,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
-			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a",
+			d := &distro.Distro{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a",
 				Provider: ec2.OnDemandProviderName,
 				ProviderSettings: &map[string]interface{}{
 					"ami":            "",
@@ -114,33 +114,34 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			{Id: "a", Arch: "a"},
 			{Id: "a", Arch: "a", User: "a"},
 			{Id: "a", Arch: "a", User: "a", SSHKey: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: "a"},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: ec2.OnDemandProviderName},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a"},
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: "a"},
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName},
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
 				"instance_type":  "a",
 				"security_group": "a",
 				"key_name":       "a",
 				"mount_points":   nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
 				"ami":            "a",
 				"security_group": "a",
 				"key_name":       "a",
 				"mount_points":   nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
 				"ami":           "a",
 				"instance_type": "a",
 				"key_name":      "a",
 				"mount_points":  nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
 				"ami":            "a",
 				"instance_type":  "a",
 				"security_group": "a",
 				"mount_points":   nil,
 			}},
-			{Id: "a", Arch: "a", User: "a", SSHKey: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
+			{Id: "a", Arch: "a", User: "a", SSHKey: "a", WorkDir: "a", Provider: ec2.OnDemandProviderName, ProviderSettings: &map[string]interface{}{
 				"ami":            "a",
 				"key_name":       "a",
 				"instance_type":  "a",
@@ -159,6 +160,9 @@ func TestEnsureHasRequiredFields(t *testing.T) {
 			So(ensureHasRequiredFields(&d[i], conf), ShouldNotResemble, []ValidationError{})
 		})
 		Convey("an error should be returned if the distro does not contain an ssh key", func() {
+			So(ensureHasRequiredFields(&d[i], conf), ShouldNotResemble, []ValidationError{})
+		})
+		Convey("an error should be returned if the distro does not contain a working directory", func() {
 			So(ensureHasRequiredFields(&d[i], conf), ShouldNotResemble, []ValidationError{})
 		})
 		Convey("an error should be returned if the distro does not contain a provider", func() {

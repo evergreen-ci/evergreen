@@ -23,42 +23,41 @@ import (
 
 var HTTPConflictError = errors.New("Conflict")
 
-type HTTPAgentCommunicator struct {
+type HTTPCommunicator struct {
 	ServerURLRoot string
 	TaskId        string
 	TaskSecret    string
 	MaxAttempts   int
 	RetrySleep    time.Duration
-	SignalChan    chan AgentSignal
+	SignalChan    chan Signal
 	Logger        *slogger.Logger
 	HttpsCert     string
 	httpClient    *http.Client
 }
 
-func NewHTTPAgentCommunicator(rootUrl string, taskId string, taskSecret string,
-	cert string) (*HTTPAgentCommunicator, error) {
-
-	taskCom := &HTTPAgentCommunicator{
-		ServerURLRoot: fmt.Sprintf("%v/api/%v", rootUrl, APIVersion),
+func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
+	agentCommunicator := &HTTPCommunicator{
+		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, APIVersion),
 		TaskId:        taskId,
 		TaskSecret:    taskSecret,
 		MaxAttempts:   10,
 		RetrySleep:    time.Second * 3,
 		HttpsCert:     cert,
+		SignalChan:    sigChan,
 	}
 
-	if taskCom.HttpsCert != "" {
+	if agentCommunicator.HttpsCert != "" {
 		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM([]byte(taskCom.HttpsCert)) {
+		if !pool.AppendCertsFromPEM([]byte(agentCommunicator.HttpsCert)) {
 			return nil, errors.New("failed to append HttpsCert to new cert pool")
 		}
 		tc := &tls.Config{RootCAs: pool}
 		tr := &http.Transport{TLSClientConfig: tc}
-		taskCom.httpClient = &http.Client{Transport: tr}
+		agentCommunicator.httpClient = &http.Client{Transport: tr}
 	} else {
-		taskCom.httpClient = &http.Client{}
+		agentCommunicator.httpClient = &http.Client{}
 	}
-	return taskCom, nil
+	return agentCommunicator, nil
 }
 
 type Heartbeat interface {
@@ -70,16 +69,12 @@ type TaskJSONCommunicator struct {
 	TaskCommunicator
 }
 
-func (t *TaskJSONCommunicator) TaskPostJSON(endpoint string,
-	data interface{}) (*http.Response, error) {
-	uri := fmt.Sprintf("%s/%s", t.PluginName, endpoint)
-	return t.tryPostJSON(uri, data)
+func (t *TaskJSONCommunicator) TaskPostJSON(endpoint string, data interface{}) (*http.Response, error) {
+	return t.tryPostJSON(fmt.Sprintf("%s/%s", t.PluginName, endpoint), data)
 }
 
-func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response,
-	error) {
-	uri := fmt.Sprintf("%s/%s", t.PluginName, endpoint)
-	return t.tryGet(uri)
+func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response, error) {
+	return t.tryGet(fmt.Sprintf("%s/%s", t.PluginName, endpoint))
 }
 
 func (t *TaskJSONCommunicator) TaskPostResults(results *model.TestResults) error {
@@ -189,7 +184,7 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 	return logId, nil
 }
 
-func (h *HTTPAgentCommunicator) Start(pid string) error {
+func (h *HTTPCommunicator) Start(pid string) error {
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pid}
 	resp, retryFail, err := h.postJSON("start", taskStartRequest)
 	if resp != nil {
@@ -209,7 +204,7 @@ func (h *HTTPAgentCommunicator) Start(pid string) error {
 	return nil
 }
 
-func (h *HTTPAgentCommunicator) End(status string,
+func (h *HTTPCommunicator) End(status string,
 	details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error) {
 	taskEndReq := &apimodels.TaskEndRequest{Status: status}
 	taskEndResp := &apimodels.TaskEndResponse{}
@@ -252,7 +247,7 @@ func (h *HTTPAgentCommunicator) End(status string,
 	return taskEndResp, err
 }
 
-func (h *HTTPAgentCommunicator) Log(messages []model.LogMessage) error {
+func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 	outgoingData := model.TaskLog{
 		TaskId:       h.TaskId,
 		Timestamp:    time.Now(),
@@ -270,8 +265,8 @@ func (h *HTTPAgentCommunicator) Log(messages []model.LogMessage) error {
 	return nil
 }
 
-//TODO log errors in this function
-func (h *HTTPAgentCommunicator) GetPatch() (*patch.Patch, error) {
+// TODO log errors in this function
+func (h *HTTPCommunicator) GetPatch() (*patch.Patch, error) {
 	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -280,11 +275,11 @@ func (h *HTTPAgentCommunicator) GetPatch() (*patch.Patch, error) {
 				defer resp.Body.Close()
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
-				//Something very wrong, fail now with no retry.
+				// Something very wrong, fail now with no retry.
 				return fmt.Errorf("conflict - wrong secret!")
 			}
 			if err != nil {
-				//Some generic error trying to connect - try again
+				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
@@ -307,8 +302,8 @@ func (h *HTTPAgentCommunicator) GetPatch() (*patch.Patch, error) {
 	return patch, nil
 }
 
-//TODO log errors in this function
-func (h *HTTPAgentCommunicator) GetTask() (*model.Task, error) {
+// TODO log errors in this function
+func (h *HTTPCommunicator) GetTask() (*model.Task, error) {
 	task := &model.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -317,11 +312,11 @@ func (h *HTTPAgentCommunicator) GetTask() (*model.Task, error) {
 				defer resp.Body.Close()
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
-				//Something very wrong, fail now with no retry.
+				// Something very wrong, fail now with no retry.
 				return fmt.Errorf("conflict - wrong secret!")
 			}
 			if err != nil {
-				//Some generic error trying to connect - try again
+				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
@@ -345,7 +340,7 @@ func (h *HTTPAgentCommunicator) GetTask() (*model.Task, error) {
 	return task, nil
 }
 
-func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
+func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -354,11 +349,11 @@ func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
 				defer resp.Body.Close()
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
-				//Something very wrong, fail now with no retry.
+				// Something very wrong, fail now with no retry.
 				return fmt.Errorf("conflict - wrong secret!")
 			}
 			if err != nil {
-				//Some generic error trying to connect - try again
+				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
@@ -377,13 +372,12 @@ func (h *HTTPAgentCommunicator) GetDistro() (*distro.Distro, error) {
 
 	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return nil, fmt.Errorf("getting distro failed after %v tries: %v",
-			h.MaxAttempts, err)
+		return nil, fmt.Errorf("getting distro failed after %v tries: %v", h.MaxAttempts, err)
 	}
 	return d, nil
 }
 
-func (h *HTTPAgentCommunicator) GetProjectConfig() (*model.Project, error) {
+func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 	projectConfig := &model.Project{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -392,11 +386,11 @@ func (h *HTTPAgentCommunicator) GetProjectConfig() (*model.Project, error) {
 				defer resp.Body.Close()
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
-				//Something very wrong, fail now with no retry.
+				// Something very wrong, fail now with no retry.
 				return fmt.Errorf("conflict - wrong secret!")
 			}
 			if err != nil {
-				//Some generic error trying to connect - try again
+				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
@@ -430,7 +424,7 @@ func (h *HTTPAgentCommunicator) GetProjectConfig() (*model.Project, error) {
 	return projectConfig, nil
 }
 
-func (h *HTTPAgentCommunicator) Heartbeat() (bool, error) {
+func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	h.Logger.Logf(slogger.INFO, "Sending heartbeat.")
 	resp, err := h.tryPostJSON("heartbeat", "heartbeat")
 	if resp != nil {
@@ -459,16 +453,16 @@ func (h *HTTPAgentCommunicator) Heartbeat() (bool, error) {
 	return heartbeatResponse.Abort, nil
 }
 
-func (h *HTTPAgentCommunicator) tryGet(path string) (*http.Response, error) {
+func (h *HTTPCommunicator) tryGet(path string) (*http.Response, error) {
 	return h.tryRequest(path, "GET", nil)
 }
 
-func (h *HTTPAgentCommunicator) tryPostJSON(path string, data interface{}) (
+func (h *HTTPCommunicator) tryPostJSON(path string, data interface{}) (
 	*http.Response, error) {
 	return h.tryRequest(path, "POST", &data)
 }
 
-func (h *HTTPAgentCommunicator) tryRequest(path string, method string,
+func (h *HTTPCommunicator) tryRequest(path string, method string,
 	data *interface{}) (*http.Response, error) {
 	endpointUrl := fmt.Sprintf("%s/task/%s/%s", h.ServerURLRoot, h.TaskId,
 		path)
@@ -489,7 +483,7 @@ func (h *HTTPAgentCommunicator) tryRequest(path string, method string,
 	return h.httpClient.Do(req)
 }
 
-func (h *HTTPAgentCommunicator) postJSON(path string, data interface{}) (
+func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 	resp *http.Response, retryFail bool, err error) {
 	retriablePost := util.RetriableFunc(
 		func() error {
@@ -517,7 +511,7 @@ func (h *HTTPAgentCommunicator) postJSON(path string, data interface{}) (
 	return resp, retryFail, err
 }
 
-func (h *HTTPAgentCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
+func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
 	resultVars := &apimodels.ExpansionVars{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -526,7 +520,7 @@ func (h *HTTPAgentCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, 
 				defer resp.Body.Close()
 			}
 			if err != nil {
-				//Some generic error trying to connect - try again
+				// Some generic error trying to connect - try again
 				h.Logger.Logf(slogger.ERROR, "failed trying to call fetch GET: %v", err)
 				return util.RetriableError{err}
 			}
@@ -546,7 +540,7 @@ func (h *HTTPAgentCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, 
 				return util.RetriableError{err}
 			}
 
-			//got here safely, so all is good - read the results
+			// got here safely, so all is good - read the results
 			err = util.ReadJSONInto(resp.Body, resultVars)
 			if err != nil {
 				err = fmt.Errorf("failed to read vars from response: %v", err)
@@ -559,7 +553,7 @@ func (h *HTTPAgentCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, 
 
 	retryFail, err := util.Retry(retriableGet, 10, 1*time.Second)
 	if err != nil {
-		//stop trying to make fetch happen, it's not going to happen
+		// stop trying to make fetch happen, it's not going to happen
 		if retryFail {
 			h.Logger.Logf(slogger.ERROR, "Fetching vars used up all retries.")
 		}

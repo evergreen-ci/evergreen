@@ -37,11 +37,11 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			util.HandleTestingErr(err, t, "Couldn't get working directory")
+			util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 			taskConfig, err := testutil.CreateTestConfig("testdata/bad.yml", t)
 			// manually override working dirctory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
@@ -102,11 +102,11 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			util.HandleTestingErr(err, t, "Couldn't get working directory")
+			util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 			taskConfig, err := testutil.CreateTestConfig("testdata/good.yml", t)
 			// manually override working directory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
@@ -170,11 +170,11 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("test command should get a copy of custom environment variables", func() {
 			curWD, err := os.Getwd()
-			util.HandleTestingErr(err, t, "Couldn't get working directory")
+			util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 			taskConfig, err := testutil.CreateTestConfig("testdata/env.yml", t)
 			// manually override working directory to the main repo, since this
 			// is much easier than copying over the required testing dependencies

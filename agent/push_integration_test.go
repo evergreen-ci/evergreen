@@ -13,7 +13,6 @@ import (
 	"github.com/mitchellh/goamz/s3"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -22,33 +21,25 @@ func TestPushTask(t *testing.T) {
 	testConfig := evergreen.TestConfig()
 	setupTlsConfigs(t)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-
 	testutils.ConfigureIntegrationTest(t, testConfig, "TestPushTask")
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
-				configAbsPath, err := filepath.Abs(testSetup.configPath)
-				util.HandleTestingErr(err, t, "Couldn't get abs path for config: %v", err)
-
 				Convey("With agent running a push task "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, evergreen.PushStage,
 						"linux-64", false, t)
 					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					util.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
-
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 					util.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-					testAgent, err := NewAgent(testServer.URL, testTask.Id, testTask.Secret,
-						Verbose, testConfig.Expansions["api_httpscert"])
+					testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 					util.HandleTestingErr(err, t, "Error making test agent: %v", err)
 
-					//actually run the task.
-					//this function won't return until the whole thing is done.
-					workDir, err := ioutil.TempDir("", "testtask_")
-					util.HandleTestingErr(err, t, "Error creating temp data: %v", err)
-					RunTask(testAgent, configAbsPath, workDir)
+					// actually run the task.
+					// this function won't return until the whole thing is done.
+					testAgent.RunTask()
 					time.Sleep(100 * time.Millisecond)
-					testAgent.RemoteAppender.FlushAndWait()
+					testAgent.APILogger.FlushAndWait()
 					printLogsForTask(testTask.Id)
 					newDate := testAgent.taskConfig.Expansions.Get("new_date")
 
@@ -85,7 +76,7 @@ func TestPushTask(t *testing.T) {
 						util.HandleTestingErr(err, t, "Error finding test task: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
-						//Check the file written to s3 is what we expected
+						// Check the file written to s3 is what we expected
 						auth := &aws.Auth{
 							AccessKey: testConfig.Providers.AWS.Id,
 							SecretKey: testConfig.Providers.AWS.Secret,

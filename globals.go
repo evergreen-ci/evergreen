@@ -10,11 +10,6 @@ import (
 )
 
 const (
-	Revisionfile    = "revision.txt"
-	DefaultRevision = "DEV"
-)
-
-const (
 	User = "mci"
 
 	TestDir      = "config_test"
@@ -72,10 +67,6 @@ const (
 	HostTypeStatic = "static"
 	HostTypeEC2    = "ec2"
 
-	// patch types
-	ProjectPatch = "project"
-	ModulePatch  = "module"
-
 	CompileStage = "compile"
 	TestStage    = "single_test"
 	SanityStage  = "smokeCppUnitTests"
@@ -90,6 +81,8 @@ const (
 	// LogMessage struct versions
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
+
+	EvergreenHome = "mci_home"
 )
 
 // evergreen package names
@@ -97,8 +90,10 @@ const (
 	UIPackage = "EVERGREEN_UI"
 )
 
-const AuthTokenCookie = "mci-token"
-const TaskSecretHeader = "Task-Secret"
+const (
+	AuthTokenCookie  = "mci-token"
+	TaskSecretHeader = "Task-Secret"
+)
 
 var (
 	UphostStatus = []string{
@@ -108,10 +103,9 @@ var (
 		HostProvisionFailed,
 		HostUnreachable,
 	}
+
 	// vars instead of consts so they can be changed for testing
-	RemoteRoot  = "/data/mci/"
-	RemoteShell = RemoteRoot + "shell/"
-	Logger      = slogger.Logger{
+	Logger = slogger.Logger{
 		Prefix:    "",
 		Appenders: []slogger.Appender{slogger.StdOutAppender()},
 	}
@@ -149,41 +143,26 @@ func FindEvergreenHome() string {
 	// TODO: Legacy--remove once we're far from the name transition
 	root = os.Getenv("mci_home")
 	if len(root) > 0 {
-		Logger.Logf(slogger.WARN,
-			"mci_home env variable is deprecated; please use EVGHOME instead")
+		Logger.Logf(slogger.WARN, "'mci_home' environment variable is deprecated; please use 'EVGHOME' instead")
 		return root
 	}
-	// if the env var isn't set, use the remote shell
-	return RemoteShell
+	return root
 }
 
 func FindConfig(configName string) (string, error) {
-	// check if env var is set
-	root := os.Getenv("EVGHOME")
-	if root == "" { // TODO legacy fix--see FindEvergreenHome above
-		root = os.Getenv("mci_home")
-		Logger.Logf(slogger.WARN,
-			"mci_home env variable is deprecated; please use EVGHOME instead")
-	}
-	if len(root) > 0 {
-		if fixed, is := isConfigRoot(root, configName); is == true {
-			return fixed, nil
-		} else {
-			return "", fmt.Errorf("Can't find mci config root '%v'", configName)
+	home := FindEvergreenHome()
+	if len(home) > 0 {
+		root, yes := isConfigRoot(home, configName)
+		if yes {
+			return root, nil
 		}
+		return "", fmt.Errorf("Can't find mci config root: '%v'", root)
 	}
-
-	// check on remote shell
-	if fixed, is := isConfigRoot(RemoteShell, configName); is {
-		return fixed, nil
-	}
-
-	return "", fmt.Errorf("Can't find mci config root '%v'", configName)
+	return "", fmt.Errorf("%v environment variable must be set", EvergreenHome)
 }
 
-func isConfigRoot(potential string, configName string) (fixed string, is bool) {
-	is = false
-	fixed = filepath.Join(potential, configName)
+func isConfigRoot(home string, configName string) (fixed string, is bool) {
+	fixed = filepath.Join(home, configName)
 	fixed = strings.Replace(fixed, "\\", "/", -1)
 	stat, err := os.Stat(fixed)
 	if err == nil && stat.IsDir() {
@@ -194,8 +173,8 @@ func isConfigRoot(potential string, configName string) (fixed string, is bool) {
 
 func TestConfig() *Settings {
 	evgHome := FindEvergreenHome()
-	confFileLocation := filepath.Join(evgHome, TestDir, TestSettings)
-	settings, err := NewSettings(confFileLocation)
+	file := filepath.Join(evgHome, TestDir, TestSettings)
+	settings, err := NewSettings(file)
 	if err != nil {
 		panic(err)
 	}

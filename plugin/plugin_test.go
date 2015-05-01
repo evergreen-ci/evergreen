@@ -57,29 +57,29 @@ func MockPluginEcho(w http.ResponseWriter, request *http.Request) {
 	http.Error(w, "couldn't get task from context", http.StatusInternalServerError)
 }
 
-func (self *MockPlugin) Configure(conf map[string]interface{}) error {
+func (mp *MockPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (self *MockPlugin) GetAPIHandler() http.Handler {
+func (mp *MockPlugin) GetAPIHandler() http.Handler {
 	r := mux.NewRouter()
 	r.Path("/blah/{param1}/{param2}").Methods("GET").HandlerFunc(MockPluginEcho)
 	return r
 }
 
-func (self *MockPlugin) GetUIHandler() http.Handler {
+func (mp *MockPlugin) GetUIHandler() http.Handler {
 	return nil
 }
 
-func (self *MockPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
+func (mp *MockPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	return nil, nil
 }
 
-func (self *MockPlugin) Name() string {
+func (mp *MockPlugin) Name() string {
 	return "mock"
 }
 
-func (self *MockPlugin) NewCommand(commandName string) (plugin.Command, error) {
+func (mp *MockPlugin) NewCommand(commandName string) (plugin.Command, error) {
 	if commandName != "foo" {
 		return nil, &plugin.ErrUnknownCommand{commandName}
 	}
@@ -91,31 +91,31 @@ type MockCommand struct {
 	Param2 int64
 }
 
-func (self *MockCommand) Name() string {
+func (mc *MockCommand) Name() string {
 	return "mock"
 }
 
-func (self *MockCommand) Plugin() string {
+func (mc *MockCommand) Plugin() string {
 	return "mock"
 }
 
-func (self *MockCommand) ParseParams(params map[string]interface{}) error {
-	err := mapstructure.Decode(params, self)
+func (mc *MockCommand) ParseParams(params map[string]interface{}) error {
+	err := mapstructure.Decode(params, mc)
 	if err != nil {
 		return err
 	}
-	if self.Param1 == "" {
+	if mc.Param1 == "" {
 		return fmt.Errorf("Param1 must be a non-blank string.")
 	}
-	if self.Param2 == 0 {
+	if mc.Param2 == 0 {
 		return fmt.Errorf("Param2 must be a non-zero integer.")
 	}
 	return nil
 }
 
-func (self *MockCommand) Execute(logger plugin.Logger,
+func (mc *MockCommand) Execute(logger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
-	resp, err := pluginCom.TaskGetJSON(fmt.Sprintf("blah/%s/%d", self.Param1, self.Param2))
+	resp, err := pluginCom.TaskGetJSON(fmt.Sprintf("blah/%s/%d", mc.Param1, mc.Param2))
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -134,7 +134,7 @@ func (self *MockCommand) Execute(logger plugin.Logger,
 		return fmt.Errorf("Got bad status code from API response: %v, body: %v", resp.StatusCode, jsonReply)
 	}
 
-	expectedEchoReply := fmt.Sprintf("%v/%v/%v", self.Param1, self.Param2, conf.Task.Id)
+	expectedEchoReply := fmt.Sprintf("%v/%v/%v", mc.Param1, mc.Param2, conf.Task.Id)
 	if jsonReply["echo"] != expectedEchoReply {
 		return fmt.Errorf("Wrong echo reply! Wanted %v, got %v", expectedEchoReply, jsonReply["echo"])
 	}
@@ -201,13 +201,13 @@ func TestPluginFunctions(t *testing.T) {
 				}
 			})
 
-			httpCom, err := agent.NewHTTPAgentCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "")
+			httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
 			So(err, ShouldBeNil)
 			So(httpCom, ShouldNotBeNil)
 
 			Convey("all commands in test project should execute successfully", func() {
 				sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-				logger := agent.NewTestAgentLogger(sliceAppender)
+				logger := agent.NewTestLogger(sliceAppender)
 				for _, task := range taskConfig.Project.Tasks {
 					So(len(task.Commands), ShouldNotEqual, 0)
 					for _, command := range task.Commands {
@@ -240,14 +240,14 @@ func TestPluginExecution(t *testing.T) {
 		testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugins, false)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 
-		httpCom, err := agent.NewHTTPAgentCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "")
+		httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
 
 		taskConfig, err := createTestConfig("testdata/plugin_project.yml", t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {
@@ -279,8 +279,8 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	if err != nil {
 		return nil, err
 	}
-	project := &model.Project{}
-	err = yaml.Unmarshal(data, project)
+	testProject := &model.Project{}
+	err = yaml.Unmarshal(data, testProject)
 	if err != nil {
 		return nil, err
 	}
@@ -313,8 +313,8 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	}
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
-	return model.NewTaskConfig(&distro.Distro{Id: "linux-64"}, project,
-		testTask, workDir)
+	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
+	return model.NewTaskConfig(testDistro, testProject, testTask)
 }
 
 func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {

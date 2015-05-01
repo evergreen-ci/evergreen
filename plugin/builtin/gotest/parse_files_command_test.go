@@ -59,7 +59,7 @@ func TestParseOutputFiles(t *testing.T) {
 
 			// mock up a logger
 			sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-			logger := agent.NewTestAgentLogger(sliceAppender)
+			logger := agent.NewTestLogger(sliceAppender)
 
 			// mock up a task config
 			taskConfig := &model.TaskConfig{Task: &model.Task{Id: "taskOne", Execution: 1}}

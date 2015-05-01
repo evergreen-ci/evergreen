@@ -206,7 +206,7 @@ var ConfigValidationRules = []ConfigValidator{
 
 	func(settings *Settings) error {
 		if settings.Motu == "" {
-			return fmt.Errorf("MOTU hostname must not be empty")
+			return fmt.Errorf("API hostname must not be empty")
 		}
 		return nil
 	},

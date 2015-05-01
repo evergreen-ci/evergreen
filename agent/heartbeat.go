@@ -4,69 +4,70 @@ import "time"
 import "github.com/10gen-labs/slogger/v1"
 
 type HeartbeatTicker struct {
-	//Number of consecutive failed heartbeats allowed before signaling a failure
+	// Number of consecutive failed heartbeats allowed before signaling a failure
 	MaxFailedHeartbeats int
 
-	//Period of time to wait between heartbeat attempts
+	// Period of time to wait between heartbeat attempts
 	Interval time.Duration
 
-	//Channel on which to notify of failed heartbeats or aborted task
-	SignalChan chan AgentSignal
+	// Channel on which to notify of failed heartbeats or aborted task
+	SignalChan chan Signal
 
-	//A channel which, when closed, tells the heartbeat ticker should stop.
+	// A channel which, when closed, tells the heartbeat ticker should stop.
 	stop chan bool
 
-	//The current count of how many heartbeats have failed consecutively.
+	// The current count of how many heartbeats have failed consecutively.
 	numFailed int
 
-	//Interface which handles sending the actual heartbeat over the network
+	// Interface which handles sending the actual heartbeat over the network
 	TaskCommunicator
 
 	Logger *slogger.Logger
 }
 
-func (self *HeartbeatTicker) StartHeartbeating() {
-	if self.stop != nil {
+func (hbt *HeartbeatTicker) StartHeartbeating() {
+	if hbt.stop != nil {
 		panic("Heartbeat goroutine already running!")
 	}
-	self.numFailed = 0
-	self.stop = make(chan bool)
+	hbt.numFailed = 0
+	hbt.stop = make(chan bool)
+
 	go func() {
-		ticker := time.NewTicker(self.Interval)
+		ticker := time.NewTicker(hbt.Interval)
 		for {
 			select {
 			case <-ticker.C:
-				abort, err := self.TaskCommunicator.Heartbeat()
+				abort, err := hbt.TaskCommunicator.Heartbeat()
 				if err != nil {
-					self.numFailed++
-					self.Logger.Logf(slogger.ERROR, "Error sending heartbeat "+
-						"(%v): %v", self.numFailed, err)
+					hbt.numFailed++
+					hbt.Logger.Logf(slogger.ERROR, "Error sending heartbeat "+
+						"(%v): %v", hbt.numFailed, err)
 				} else {
-					self.numFailed = 0
+					hbt.numFailed = 0
 				}
-				if self.numFailed == self.MaxFailedHeartbeats+1 {
-					self.Logger.Logf(slogger.ERROR, "Max heartbeats failed - trying to stop...")
-					self.SignalChan <- HeartbeatMaxFailed
+				if hbt.numFailed == hbt.MaxFailedHeartbeats+1 {
+					hbt.Logger.Logf(slogger.ERROR, "Max heartbeats failed - trying to stop...")
+					hbt.SignalChan <- HeartbeatMaxFailed
 					ticker.Stop()
-					self.stop = nil
+					hbt.stop = nil
 					return
 				}
 				if abort {
-					self.SignalChan <- AbortedByUser
+					hbt.SignalChan <- AbortedByUser
 					ticker.Stop()
-					self.stop = nil
+					hbt.stop = nil
 					return
 				}
-			case <-self.stop:
-				self.Logger.Logf(slogger.INFO, "Heartbeat ticker stopping.")
+			case <-hbt.stop:
+				hbt.Logger.Logf(slogger.INFO, "Heartbeat ticker stopping.")
 				ticker.Stop()
-				self.stop = nil
+				hbt.stop = nil
 				return
 			}
 		}
 	}()
 }
 
-func (self *HeartbeatTicker) Stop() {
-	self.stop <- true
+func (hbt *HeartbeatTicker) Stop() {
+	hbt.stop <- true
 }

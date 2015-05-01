@@ -65,6 +65,13 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 		})
 	}
 
+	if d.WorkDir == "" {
+		errs = append(errs, ValidationError{
+			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.WorkDirKey),
+			Level:   Error,
+		})
+	}
+
 	if d.SSHKey == "" && d.Provider != static.ProviderName {
 		errs = append(errs, ValidationError{
 			Message: fmt.Sprintf("distro '%v' cannot be blank", distro.SSHKeyKey),

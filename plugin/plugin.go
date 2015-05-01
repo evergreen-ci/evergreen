@@ -109,7 +109,7 @@ type Registry interface {
 //handles sending log data to the remote server
 type Logger interface {
 	//Log a message locally. Will be persisted in the log file on the builder, but
-	//not appended to the log data sent to MOTU.
+	//not appended to the log data sent to API server.
 	LogLocal(level slogger.Level, messageFmt string, args ...interface{})
 
 	//Log data about the plugin's execution.

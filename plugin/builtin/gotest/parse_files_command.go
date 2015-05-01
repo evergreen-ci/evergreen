@@ -152,7 +152,7 @@ func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 	// now, open all the files, and parse the test results
 	for _, outputFile := range outputFiles {
 
-		// kill the execution if motu wants
+		// kill the execution if API server requests
 		select {
 		case <-stop:
 			return nil, nil, fmt.Errorf("command was stopped")

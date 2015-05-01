@@ -77,7 +77,7 @@ type uiTaskData struct {
 	RepoOwner string `json:"repo_owner"`
 	Repo      string `json:"repo_name"`
 
-	// to avoid time skew b/t browser and motu
+	// to avoid time skew b/t browser and API server
 	CurrentTime int64 `json:"current_time"`
 
 	// flag to indicate whether this is the current execution of this task, or

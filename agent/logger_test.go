@@ -9,24 +9,22 @@ import (
 )
 
 func TestLogging(t *testing.T) {
-	var remoteAppender *TaskCommunicatorAppender
+	var apiLogger *APILogger
 	var taskCommunicator *MockCommunicator
-	var signalChan chan AgentSignal
 	var testLogger slogger.Logger
 	Convey("With a remote logging appender", t, func() {
 		taskCommunicator = &MockCommunicator{
 			logChan: make(chan []model.LogMessage, 100),
 		}
-		signalChan = make(chan AgentSignal)
-		remoteAppender = NewTaskCommunicatorAppender(taskCommunicator, signalChan)
+		apiLogger = NewAPILogger(taskCommunicator)
 
 		testLogger = slogger.Logger{
 			Prefix:    "",
-			Appenders: []slogger.Appender{remoteAppender},
+			Appenders: []slogger.Appender{apiLogger},
 		}
 
 		Convey("Logging fewer msgs than threshold should not flush", func() {
-			for i := 0; i < remoteAppender.SendAfterLines-1; i++ {
+			for i := 0; i < apiLogger.SendAfterLines-1; i++ {
 				testLogger.Logf(slogger.INFO, "test %v", i)
 			}
 
@@ -41,15 +39,15 @@ func TestLogging(t *testing.T) {
 				time.Sleep(10 * time.Millisecond)
 				receivedMsgs, ok := <-taskCommunicator.logChan
 				So(ok, ShouldBeTrue)
-				So(len(receivedMsgs), ShouldEqual, remoteAppender.SendAfterLines)
-				So(len(remoteAppender.messages), ShouldEqual, 0)
+				So(len(receivedMsgs), ShouldEqual, apiLogger.SendAfterLines)
+				So(len(apiLogger.messages), ShouldEqual, 0)
 			})
 		})
 
 		Convey("Calling flush() directly should trigger a flush", func() {
 			testLogger.Logf(slogger.INFO, "test %v", 11)
 			time.Sleep(10 * time.Millisecond)
-			remoteAppender.Flush()
+			apiLogger.Flush()
 
 			receivedMsgs, ok := <-taskCommunicator.logChan
 			So(ok, ShouldBeTrue)
@@ -57,7 +55,7 @@ func TestLogging(t *testing.T) {
 		})
 
 		Convey("Calling flush() when empty should not send anything", func() {
-			remoteAppender.Flush()
+			apiLogger.Flush()
 			time.Sleep(10 * time.Millisecond)
 			select {
 			case _, ok := <-taskCommunicator.logChan:
@@ -80,31 +78,31 @@ func (self *sliceAppender) Append(log *slogger.Log) error {
 	return nil
 }
 
-func TestAgentCommandLogger(t *testing.T) {
+func TestCommandLogger(t *testing.T) {
 
-	Convey("With an AgentCommandLogger", t, func() {
+	Convey("With an CommandLogger", t, func() {
 
-		var agentLogger *AgentLogger
-		var agentCommandLogger *AgentCommandLogger
+		var logger *StreamLogger
+		var commandLogger *CommandLogger
 
-		Convey("logging via the AgentCommandLogger should add the command"+
+		Convey("logging via the CommandLogger should add the command"+
 			" name to the front of the message", func() {
 
 			appender := &sliceAppender{}
-			agentLogger = &AgentLogger{
-				LocalLogger: &slogger.Logger{
+			logger = &StreamLogger{
+				Local: &slogger.Logger{
 					Prefix:    "test",
 					Appenders: []slogger.Appender{appender},
 				},
 			}
 
-			agentCommandLogger = &AgentCommandLogger{
+			commandLogger = &CommandLogger{
 				commandName: "test",
-				agentLogger: agentLogger,
+				logger:      logger,
 			}
 
-			agentCommandLogger.LogLocal(slogger.INFO, "Test %v", 1)
-			agentCommandLogger.LogLocal(slogger.INFO, "Test %v", "2")
+			commandLogger.LogLocal(slogger.INFO, "Test %v", 1)
+			commandLogger.LogLocal(slogger.INFO, "Test %v", "2")
 			So(len(appender.messages), ShouldEqual, 2)
 			So(appender.messages[0], ShouldEndWith, "[test] Test 1\n")
 			So(appender.messages[1], ShouldEndWith, "[test] Test 2\n")

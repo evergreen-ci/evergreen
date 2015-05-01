@@ -27,9 +27,7 @@ type TaskEndDetails struct {
 type TaskEndResponse struct {
 	TaskId     string `json:"task_id,omitempty"`
 	TaskSecret string `json:"task_secret,omitempty"`
-	ConfigDir  string `json:"config_dir,omitempty"`
 	Message    string `json:"message,omitempty"`
-	WorkDir    string `json:"work_dir,omitempty"`
 	RunNext    bool   `json:"run_next,omitempty"`
 }
 

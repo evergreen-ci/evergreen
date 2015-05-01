@@ -180,7 +180,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	defer outBufferWriter.Flush()
 	defer errorBufferWriter.Flush()
 
-	command := &command.LocalCommand{
+	localCmd := &command.LocalCommand{
 		CmdString:  self.Script,
 		Stdout:     outBufferWriter,
 		Stderr:     errorBufferWriter,
@@ -188,19 +188,19 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	}
 
 	if self.WorkingDir != "" {
-		command.WorkingDirectory = filepath.Join(conf.WorkDir, self.WorkingDir)
+		localCmd.WorkingDirectory = filepath.Join(conf.WorkDir, self.WorkingDir)
 	} else {
-		command.WorkingDirectory = conf.WorkDir
+		localCmd.WorkingDirectory = conf.WorkDir
 	}
 
-	err := command.PrepToRun(conf.Expansions)
+	err := localCmd.PrepToRun(conf.Expansions)
 	if err != nil {
 		return fmt.Errorf("Failed to apply expansions: %v", err)
 	}
 	if self.Silent {
 		pluginLogger.LogExecution(slogger.INFO, "Executing script (source hidden)...")
 	} else {
-		pluginLogger.LogExecution(slogger.INFO, "Executing script: %v", command.CmdString)
+		pluginLogger.LogExecution(slogger.INFO, "Executing script: %v", localCmd.CmdString)
 	}
 
 	doneStatus := make(chan error)
@@ -209,24 +209,25 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 		env := os.Environ()
 		env = append(env, fmt.Sprintf("EVR_TASK_ID=%v", conf.Task.Id))
 		env = append(env, fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid()))
-		command.Environment = env
-		err = command.Start()
+		localCmd.Environment = env
+		err = localCmd.Start()
 		if err == nil {
-			pluginLogger.LogSystem(slogger.DEBUG, "spawned shell process with pid %v", command.Cmd.Process.Pid)
+			pluginLogger.LogSystem(slogger.DEBUG, "spawned shell process with pid %v", localCmd.Cmd.Process.Pid)
 
 			// Call the platform's process-tracking function. On some OSes this will be a noop,
 			// on others this may need to do some additional work to track the process so that
 			// it can be cleaned up later.
 			if trackedTask != "" {
-				trackProcess(conf.Task.Id, command.Cmd.Process.Pid, pluginLogger)
+				trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
 			}
 
 			if !self.Background {
-				err = command.Cmd.Wait()
+				err = localCmd.Cmd.Wait()
 			}
 
+		} else {
+			pluginLogger.LogSystem(slogger.DEBUG, "error spawning shell process: %v", err)
 		}
-
 		doneStatus <- err
 	}()
 
@@ -245,11 +246,18 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 			pluginLogger.LogExecution(slogger.INFO, "Script execution complete.")
 		}
 	case _ = <-stop:
-		//try and kill the process
-		pluginLogger.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", command.Cmd.Process.Pid)
-		if err := command.Stop(); err != nil {
-			pluginLogger.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
+		pluginLogger.LogExecution(slogger.INFO, "Got kill signal")
+
+		// need to check command has started
+		if localCmd.Cmd != nil {
+			pluginLogger.LogExecution(slogger.INFO, "Stopping process: %v", localCmd.Cmd.Process.Pid)
+
+			// try and stop the process
+			if err := localCmd.Stop(); err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
+			}
 		}
+
 		return fmt.Errorf("Shell command interrupted.")
 	}
 

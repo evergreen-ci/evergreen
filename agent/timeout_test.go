@@ -9,8 +9,8 @@ import (
 func TestTimeoutWatcher(t *testing.T) {
 	Convey("With a timeout watcher at a set interval", t, func() {
 		tw := TimeoutWatcher{}
-		tw.timeoutDuration = time.Second
-		signalChan := make(chan AgentSignal)
+		tw.duration = time.Second
+		signalChan := make(chan Signal)
 		Convey("timeout should only get sent after Checkin() is not called "+
 			"within threshold", func() {
 			started := time.Now()

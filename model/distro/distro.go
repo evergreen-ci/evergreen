@@ -10,6 +10,7 @@ const (
 type Distro struct {
 	Id               string                  `bson:"_id" json:"_id,omitempty" mapstructure:"_id,omitempty"`
 	Arch             string                  `bson:"arch" json:"arch,omitempty" mapstructure:"arch,omitempty"`
+	WorkDir          string                  `bson:"work_dir" json:"work_dir,omitempty" mapstructure:"work_dir,omitempty"`
 	PoolSize         int                     `bson:"pool_size,omitempty" json:"pool_size,omitempty" mapstructure:"pool_size,omitempty" yaml:poolsize`
 	Provider         string                  `bson:"provider" json:"provider,omitempty" mapstructure:"provider,omitempty"`
 	ProviderSettings *map[string]interface{} `bson:"settings" json:"settings,omitempty" mapstructure:"settings,omitempty"`

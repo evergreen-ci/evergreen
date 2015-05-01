@@ -30,7 +30,7 @@ func TestAttachXUnitResults(t *testing.T) {
 		util.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {

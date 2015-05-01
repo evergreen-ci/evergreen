@@ -11,32 +11,28 @@ import (
 )
 
 type AgentCommand struct {
+	*StreamLogger
 	ScriptLine string
-	*AgentLogger
-	Expansions  *command.Expansions
-	KillChannel chan bool
+	Expansions *command.Expansions
+	KillChan   chan bool
 }
 
 var InterruptedCmdError = errors.New("Command interrupted")
 
-//Run will execute the command in workingDir, by applying the expansions to
-//the script and then invoking it with sh -c, and logging all of the command's
-//stdout/stderr using the AgentLogger.
-//It will block until the command either finishes, or is aborted prematurely
-//via the kill channel.
-func (self *AgentCommand) Run(workingDir string) error {
-	self.LogTask(
-		slogger.INFO,
-		"Running script task for command \n%v in directory %v",
-		self.ScriptLine,
-		workingDir)
+// Run will execute the command in workingDir, by applying the expansions to
+// the script and then invoking it with sh -c, and logging all of the command's
+// stdout/stderr using the Logger.
+// It will block until the command either finishes, or is aborted prematurely
+// via the kill channel.
+func (ac *AgentCommand) Run(workingDir string) error {
+	ac.LogTask(slogger.INFO, "Running script task for command \n%v in directory %v", ac.ScriptLine, workingDir)
 
-	logWriterInfo := &evergreen.LoggingWriter{self.AgentLogger.TaskLogger, slogger.INFO}
-	logWriterErr := &evergreen.LoggingWriter{self.AgentLogger.TaskLogger, slogger.ERROR}
+	logWriterInfo := &evergreen.LoggingWriter{ac.Task, slogger.INFO}
+	logWriterErr := &evergreen.LoggingWriter{ac.Task, slogger.ERROR}
 
 	ignoreErrors := false
-	if strings.HasPrefix(self.ScriptLine, "-") {
-		self.ScriptLine = self.ScriptLine[1:]
+	if strings.HasPrefix(ac.ScriptLine, "-") {
+		ac.ScriptLine = ac.ScriptLine[1:]
 		ignoreErrors = true
 	}
 
@@ -46,18 +42,18 @@ func (self *AgentCommand) Run(workingDir string) error {
 	defer errorBufferWriter.Flush()
 
 	cmd := &command.LocalCommand{
-		CmdString:        self.ScriptLine,
+		CmdString:        ac.ScriptLine,
 		WorkingDirectory: workingDir,
 		Stdout:           outBufferWriter,
 		Stderr:           errorBufferWriter,
 		Environment:      os.Environ(),
 	}
-	err := cmd.PrepToRun(self.Expansions)
+	err := cmd.PrepToRun(ac.Expansions)
 	if err != nil {
-		self.LogTask(slogger.ERROR, "Failed to prepare command: %v", err)
+		ac.LogTask(slogger.ERROR, "Failed to prepare command: %v", err)
 	}
 
-	self.LogTask(slogger.INFO, "Running command (expanded): %v", cmd.CmdString)
+	ac.LogTask(slogger.INFO, "Running command (expanded): %v", cmd.CmdString)
 
 	doneStatus := make(chan error)
 	go func() {
@@ -72,11 +68,11 @@ func (self *AgentCommand) Run(workingDir string) error {
 		} else {
 			return err
 		}
-	case _ = <-self.KillChannel:
-		//try and kill the process
-		self.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.Cmd.Process.Pid)
+	case _ = <-ac.KillChan:
+		// try and kill the process
+		ac.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.Cmd.Process.Pid)
 		if err := cmd.Stop(); err != nil {
-			self.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
+			ac.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
 		}
 		return InterruptedCmdError
 	}

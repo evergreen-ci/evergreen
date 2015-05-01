@@ -33,7 +33,7 @@ func TestGitPlugin(t *testing.T) {
 		taskConfig, err := testutil.CreateTestConfig("testdata/plugin_clone.yml", t)
 		util.HandleTestingErr(err, t, "failed to create test config")
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {

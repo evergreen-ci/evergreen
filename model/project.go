@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/shelman/angier"
 	"gopkg.in/yaml.v2"
-	"path/filepath"
 	"reflect"
 	"strings"
 )
@@ -175,7 +174,6 @@ type TaskConfig struct {
 	BuildVariant *BuildVariant
 	Expansions   *command.Expansions
 	WorkDir      string
-	SourceDir    string
 }
 
 var (
@@ -198,46 +196,31 @@ var (
 	ProjectBVMatrixKey      = bsonutil.MustHaveTag(Project{}, "BuildVariantMatrix")
 )
 
-func NewTaskConfig(distro *distro.Distro, project *Project, task *Task, workDir string) (*TaskConfig, error) {
-	buildVariant := project.FindBuildVariant(task.BuildVariant)
-	if buildVariant == nil {
-		return nil, fmt.Errorf("Couldn't find buildvariant: %v", task.BuildVariant)
+func NewTaskConfig(d *distro.Distro, p *Project, t *Task) (*TaskConfig, error) {
+	bv := p.FindBuildVariant(t.BuildVariant)
+	if bv == nil {
+		return nil, fmt.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
 	}
-	expansions := populateExpansions(distro, project, buildVariant, task)
-	workDirPart := project.Identifier
-	workDirPart = strings.Replace(workDirPart, ":", "", -1)
-	workDirPart = strings.Replace(workDirPart, "//", "/", -1)
-	sourceDir := filepath.Join(workDir, workDirPart)
-	expansions.Put("workdir", sourceDir)
-
-	return &TaskConfig{distro, project, task, buildVariant, expansions, workDir, sourceDir}, nil
+	e := populateExpansions(d, p, bv, t)
+	return &TaskConfig{d, p, t, bv, e, d.WorkDir}, nil
 }
 
-func populateExpansions(distro *distro.Distro, project *Project,
-	buildVariant *BuildVariant, task *Task) *command.Expansions {
+func populateExpansions(d *distro.Distro, p *Project, bv *BuildVariant, t *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
-	for _, e := range distro.Expansions {
+	// TODO: Some of these expansions aren't strictly needed for Evergreen (MCI-1072)
+	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
+	expansions.Put("task_id", t.Id)
+	expansions.Put("task_name", t.DisplayName)
+	expansions.Put("build_id", t.BuildId)
+	expansions.Put("build_variant", t.BuildVariant)
+	expansions.Put("workdir", d.WorkDir)
+	expansions.Put("revision", t.Revision)
+	expansions.Put("project", t.Project)
+	expansions.Put("branch_name", t.Project)
+	for _, e := range d.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
-
-	if buildVariant != nil {
-		expansions.Update(buildVariant.Expansions)
-	}
-
-	// this is done this way since we don't have a good way of having the agent
-	// interact with buildlogger. Once we have it rewritten, this should be
-	// cleaner. Follow MCI-1072 for progress on this
-	expansions.Put("execution", fmt.Sprintf("%v", task.Execution))
-	expansions.Put("task_id", task.Id)
-	expansions.Put("task_name", task.DisplayName)
-	expansions.Put("build_id", task.BuildId)
-	expansions.Put("build_variant", task.BuildVariant)
-	expansions.Put("revision", task.Revision)
-
-	//DEPRECATED - eliminate uses of branch_name expansion in favor of 'project'
-	expansions.Put("branch_name", task.Project)
-
-	expansions.Put("project", task.Project)
+	expansions.Update(bv.Expansions)
 	return expansions
 }
 
@@ -248,8 +231,12 @@ func expandBuildVariantMatrixParameters(project *Project, current BuildVariant,
 	matrixParameterValues []MatrixParameterValue) (*BuildVariant, error) {
 	// Create a new build variant with the same parameters
 	newBv := BuildVariant{}
-	angier.TransferByFieldNames(&current, &newBv)
+	err := angier.TransferByFieldNames(&current, &newBv)
+	if err != nil {
+		return nil, err
+	}
 	newBv.Expansions = make(map[string]string)
+
 	// Make sure to copy over expansions
 	for k, v := range current.Expansions {
 		newBv.Expansions[k] = v
@@ -477,8 +464,8 @@ func LoadProjectInto(data []byte, project *Project) error {
 	return addMatrixVariants(project)
 }
 
-func (self *Project) FindBuildVariant(build string) *BuildVariant {
-	for _, b := range self.BuildVariants {
+func (p *Project) FindBuildVariant(build string) *BuildVariant {
+	for _, b := range p.BuildVariants {
 		if b.Name == build {
 			return &b
 		}
@@ -486,15 +473,15 @@ func (self *Project) FindBuildVariant(build string) *BuildVariant {
 	return nil
 }
 
-func (self *Project) GetBatchTime(variant *BuildVariant) int {
+func (p *Project) GetBatchTime(variant *BuildVariant) int {
 	if variant.BatchTime != nil {
 		return *variant.BatchTime
 	}
-	return self.BatchTime
+	return p.BatchTime
 }
 
-func (self *Project) FindTestSuite(name string) *ProjectTask {
-	for _, ts := range self.Tasks {
+func (p *Project) FindTestSuite(name string) *ProjectTask {
+	for _, ts := range p.Tasks {
 		if ts.Name == name {
 			return &ts
 		}
@@ -502,17 +489,17 @@ func (self *Project) FindTestSuite(name string) *ProjectTask {
 	return nil
 }
 
-func (self *Project) FindProjectTask(name string) *ProjectTask {
-	for _, pa := range self.Tasks {
-		if pa.Name == name {
-			return &pa
+func (p *Project) FindProjectTask(name string) *ProjectTask {
+	for _, t := range p.Tasks {
+		if t.Name == name {
+			return &t
 		}
 	}
 	return nil
 }
 
-func (self *Project) GetModuleByName(name string) (*Module, error) {
-	for _, v := range self.Modules {
+func (p *Project) GetModuleByName(name string) (*Module, error) {
+	for _, v := range p.Modules {
 		if v.Name == name {
 			return &v, nil
 		}
@@ -521,6 +508,6 @@ func (self *Project) GetModuleByName(name string) (*Module, error) {
 }
 
 // Generate the URL to the repo.
-func (project *Project) Location() (string, error) {
-	return fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo), nil
+func (p *Project) Location() (string, error) {
+	return fmt.Sprintf("git@github.com:%v/%v.git", p.Owner, p.Repo), nil
 }

@@ -9,8 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutils"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"io/ioutil"
-	"path/filepath"
 	"testing"
 	"time"
 )
@@ -24,27 +22,18 @@ func TestPatchTask(t *testing.T) {
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
-				configAbsPath, err := filepath.Abs(testSetup.configPath)
-				util.HandleTestingErr(err, t, "Couldn't get abs path for config: %v", err)
-
 				Convey("With agent running a patched 'compile'"+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
-						"linux-64", true, t)
+					testTask, _, err := setupAPITestData(testConfig, "compile", "linux-64", true, t)
 					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
-
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 					util.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-					testAgent, err := NewAgent(testServer.URL, testTask.Id,
-						testTask.Secret,
-						Verbose, testConfig.Expansions["api_httpscert"])
+					testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 
-					//actually run the task.
-					//this function won't return until the whole thing is done.
-					workDir, err := ioutil.TempDir("", "mci_testtask_")
-					util.HandleTestingErr(err, t, "Error creating temp data: %v", err)
-					RunTask(testAgent, configAbsPath, workDir)
+					// actually run the task.
+					// this function won't return until the whole thing is done.
+					testAgent.RunTask()
 					time.Sleep(100 * time.Millisecond)
-					testAgent.RemoteAppender.FlushAndWait()
+					testAgent.APILogger.FlushAndWait()
 					printLogsForTask(testTask.Id)
 
 					Convey("all scripts in task should have been run successfully", func() {

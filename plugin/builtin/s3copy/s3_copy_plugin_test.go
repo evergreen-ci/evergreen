@@ -48,7 +48,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		taskConfig.Expansions.Update(map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,

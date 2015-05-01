@@ -59,7 +59,6 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newDistro := *oldDistro
-	newDistro.ProviderSettings = nil
 
 	// attempt to unmarshal data into distros field for type validation
 	if err = json.Unmarshal(b, &newDistro); err != nil {

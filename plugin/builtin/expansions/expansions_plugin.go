@@ -28,7 +28,7 @@ func (self *ExpansionsPlugin) Name() string {
 }
 
 // GetRoutes registers the API handler for fetching expansion variables
-// from the MOTU server.
+// from the API server.
 func (self *ExpansionsPlugin) GetAPIHandler() http.Handler {
 	r := http.NewServeMux()
 	r.HandleFunc(fmt.Sprintf("/%v", FetchVarsRoute), FetchVarsHandler) // GET

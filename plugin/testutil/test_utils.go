@@ -22,29 +22,12 @@ import (
 
 type MockLogger struct{}
 
-func (self *MockLogger) LogLocal(level slogger.Level, messageFmt string,
-	args ...interface{}) {
-}
-
-func (self *MockLogger) LogExecution(level slogger.Level, messageFmt string,
-	args ...interface{}) {
-}
-
-func (self *MockLogger) LogTask(level slogger.Level, messageFmt string,
-	args ...interface{}) {
-}
-
-func (self *MockLogger) LogSystem(level slogger.Level, messageFmt string,
-	args ...interface{}) {
-}
-
-func (self *MockLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
-	return ioutil.Discard
-}
-
-func (self *MockLogger) Flush() {
-	return
-}
+func (_ *MockLogger) Flush()                                                                   {}
+func (_ *MockLogger) LogLocal(level slogger.Level, messageFmt string, args ...interface{})     {}
+func (_ *MockLogger) LogExecution(level slogger.Level, messageFmt string, args ...interface{}) {}
+func (_ *MockLogger) LogTask(level slogger.Level, messageFmt string, args ...interface{})      {}
+func (_ *MockLogger) LogSystem(level slogger.Level, messageFmt string, args ...interface{})    {}
+func (_ *MockLogger) GetTaskLogWriter(level slogger.Level) io.Writer                           { return ioutil.Discard }
 
 func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) {
 	util.HandleTestingErr(
@@ -55,13 +38,9 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	if err != nil {
 		return nil, err
 	}
-	project := &model.Project{}
-	err = yaml.Unmarshal(data, project)
-	if err != nil {
-		return nil, err
-	}
+	testProject := &model.Project{}
 
-	workDir, err := ioutil.TempDir("", "plugintest_")
+	err = yaml.Unmarshal(data, testProject)
 	if err != nil {
 		return nil, err
 	}
@@ -89,18 +68,20 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	}
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
-	return model.NewTaskConfig(&distro.Distro{Id: "linux-64"}, project,
-		testTask, workDir)
+	workDir, err := ioutil.TempDir("", "plugintest_")
+	util.HandleTestingErr(err, t, "failed to get working directory: %v")
+	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
+	return model.NewTaskConfig(testDistro, testProject, testTask)
 }
 
-func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *agent.HTTPAgentCommunicator {
-	httpCom, err := agent.NewHTTPAgentCommunicator(apiRootUrl, taskId, taskSecret, "")
+func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *agent.HTTPCommunicator {
+	agentCommunicator, err := agent.NewHTTPCommunicator(apiRootUrl, taskId, taskSecret, "", nil)
 	if err != nil {
 		panic(err)
 	}
-	httpCom.MaxAttempts = 3
-	httpCom.RetrySleep = 100 * time.Millisecond
-	return httpCom
+	agentCommunicator.MaxAttempts = 3
+	agentCommunicator.RetrySleep = 100 * time.Millisecond
+	return agentCommunicator
 }
 
 func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
@@ -108,7 +89,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 	util.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, build.Collection,
 			host.Collection, version.Collection, patch.Collection),
-		t, "Failed to clear test data collection")
+		t, "Failed to clear test collections")
 
 	testHost := &host.Host{
 		Id:          "testHost",
@@ -163,7 +144,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 			},
 		}
 
-		util.HandleTestingErr(patch.Insert(), t, "failed to insert version %v")
+		util.HandleTestingErr(patch.Insert(), t, "failed to insert patch %v")
 
 	}
 

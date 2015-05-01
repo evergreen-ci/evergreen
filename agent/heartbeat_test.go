@@ -21,68 +21,68 @@ type MockCommunicator struct {
 	logChan             chan []model.LogMessage
 }
 
-func (self *MockCommunicator) tryGet(path string) (*http.Response, error) {
+func (mc *MockCommunicator) tryGet(path string) (*http.Response, error) {
 	return nil, nil
 }
 
-func (self *MockCommunicator) tryPostJSON(path string, data interface{}) (*http.Response, error) {
+func (mc *MockCommunicator) tryPostJSON(path string, data interface{}) (*http.Response, error) {
 	return nil, nil
 }
 
-func (self *MockCommunicator) Start(pid string) error {
-	if self.shouldFailStart {
+func (mc *MockCommunicator) Start(pid string) error {
+	if mc.shouldFailStart {
 		return fmt.Errorf("failed to start!")
 	}
 	return nil
 }
 
-func (self *MockCommunicator) End(status string,
+func (mc *MockCommunicator) End(status string,
 	details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error) {
-	if self.shouldFailEnd {
+	if mc.shouldFailEnd {
 		return nil, fmt.Errorf("failed to end!")
 	}
 	return nil, nil
 }
 
-func (self *MockCommunicator) GetTask() (*model.Task, error) {
+func (_ *MockCommunicator) GetTask() (*model.Task, error) {
 	return &model.Task{}, nil
 }
 
-func (self *MockCommunicator) GetPatch() (*patch.Patch, error) {
+func (_ *MockCommunicator) GetPatch() (*patch.Patch, error) {
 	return &patch.Patch{}, nil
 }
 
-func (self *MockCommunicator) GetDistro() (*distro.Distro, error) {
+func (_ *MockCommunicator) GetDistro() (*distro.Distro, error) {
 	return &distro.Distro{}, nil
 }
 
-func (self *MockCommunicator) GetProjectConfig() (*model.Project, error) {
+func (_ *MockCommunicator) GetProjectConfig() (*model.Project, error) {
 	return &model.Project{}, nil
 }
 
-func (self *MockCommunicator) Log(logMessages []model.LogMessage) error {
-	if self.shouldFailEnd {
+func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
+	if mc.shouldFailEnd {
 		return fmt.Errorf("failed to end!")
 	}
-	self.logChan <- logMessages
+	mc.logChan <- logMessages
 	return nil
 }
 
-func (self *MockCommunicator) Heartbeat() (bool, error) {
-	if self.shouldFailHeartbeat {
+func (mc *MockCommunicator) Heartbeat() (bool, error) {
+	if mc.shouldFailHeartbeat {
 		return false, fmt.Errorf("failed to heartbeat!")
 	}
-	return self.abort, nil
+	return mc.abort, nil
 }
 
-func (self *MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
+func (mc *MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{}, nil
 }
 
 func TestHeartbeat(t *testing.T) {
 
 	Convey("With a simple heartbeat ticker", t, func() {
-		sigChan := make(chan AgentSignal)
+		sigChan := make(chan Signal)
 		mockCommunicator := &MockCommunicator{}
 		hbTicker := &HeartbeatTicker{
 			MaxFailedHeartbeats: 10,

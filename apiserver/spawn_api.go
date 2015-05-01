@@ -137,7 +137,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		}
 		evergreen.Logger.Logf(slogger.INFO, "Decommissioned %v for user %v because provisioning failed", host.Host, host.StartedBy)
 
-		// send notification to the MCI team about this provisioning failure
+		// send notification to the Evergreen team about this provisioning failure
 		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, host.Distro)
 		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", host.Distro, host.Host, host.StartedBy)
 		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {

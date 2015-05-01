@@ -87,8 +87,7 @@ func (self *RunTestCommand) Execute(pluginLogger plugin.Logger,
 
 	// run all tests, concat results. Hold onto failures until the end
 	for idx, test := range self.Tests {
-
-		// kill the execution if motu wants us to shut down
+		// kill the execution if API server requests
 		select {
 		case <-stop:
 			return fmt.Errorf("command was stopped")

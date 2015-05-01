@@ -16,15 +16,15 @@ func TestLocalJob(t *testing.T) {
 			appender := &evergreen.SliceAppender{[]*slogger.Log{}}
 			killChan := make(chan bool)
 			testCmd := &AgentCommand{
-				ScriptLine:  "echo 'hi stdout!'; echo 'hi stderr!' >&2;",
-				AgentLogger: NewTestAgentLogger(appender),
-				KillChannel: killChan,
-				Expansions:  command.NewExpansions(map[string]string{}),
+				ScriptLine:   "echo 'hi stdout!'; echo 'hi stderr!' >&2;",
+				StreamLogger: NewTestLogger(appender),
+				KillChan:     killChan,
+				Expansions:   command.NewExpansions(map[string]string{}),
 			}
 			err := testCmd.Run("")
 			So(err, ShouldBeNil)
 			testCmd.FlushAndWait()
-			//2 lines from the command, plus 2 lines from the Run() func itself
+			// 2 lines from the command, plus 2 lines from the Run() func itself
 			for _, v := range appender.Messages {
 				fmt.Println(v.Message())
 			}
@@ -44,17 +44,17 @@ func TestLocalJob(t *testing.T) {
 			appender := &evergreen.SliceAppender{[]*slogger.Log{}}
 			killChan := make(chan bool)
 			newlineTestCmd := &AgentCommand{
-				ScriptLine:  "printf 'this is not a newline...'; printf 'this is a newline \n';",
-				AgentLogger: NewTestAgentLogger(appender),
-				KillChannel: killChan,
-				Expansions:  command.NewExpansions(map[string]string{}),
+				ScriptLine:   "printf 'this is not a newline...'; printf 'this is a newline \n';",
+				StreamLogger: NewTestLogger(appender),
+				KillChan:     killChan,
+				Expansions:   command.NewExpansions(map[string]string{}),
 			}
 
 			err := newlineTestCmd.Run("")
 			So(err, ShouldBeNil)
 			newlineTestCmd.FlushAndWait()
 
-			//2 lines from the command, plus 1 lines from the Run() func itself
+			// 2 lines from the command, plus 1 lines from the Run() func itself
 			for _, v := range appender.Messages {
 				fmt.Println(v.Message())
 			}
@@ -69,10 +69,10 @@ func TestLocalJob(t *testing.T) {
 		appender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		killChan := make(chan bool)
 		testCmd := &AgentCommand{
-			ScriptLine:  "echo 'hi'; sleep 4; echo 'i should not get run'",
-			AgentLogger: NewTestAgentLogger(appender),
-			KillChannel: killChan,
-			Expansions:  command.NewExpansions(map[string]string{}),
+			ScriptLine:   "echo 'hi'; sleep 4; echo 'i should not get run'",
+			StreamLogger: NewTestLogger(appender),
+			KillChan:     killChan,
+			Expansions:   command.NewExpansions(map[string]string{}),
 		}
 
 		Convey("using kill channel should abort command right away", func() {
@@ -84,7 +84,7 @@ func TestLocalJob(t *testing.T) {
 			}()
 
 			go func() {
-				//after a delay, signal the command to stop
+				// after a delay, signal the command to stop
 				time.Sleep(1 * time.Second)
 				close(killChan)
 			}()

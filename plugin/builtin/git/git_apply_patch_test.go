@@ -33,7 +33,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		util.HandleTestingErr(err, t, "Couldn't set up test patch task")
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("calls to existing tasks with patches should succeed", func() {
 			httpCom := testutil.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
@@ -95,7 +95,7 @@ func TestPatchPlugin(t *testing.T) {
 		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			taskConfig, _ := testutil.CreateTestConfig("testdata/plugin_patch.yml", t)

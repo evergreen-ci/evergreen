@@ -35,7 +35,7 @@ func TestAttachFilesApi(t *testing.T) {
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
+		logger := agent.NewTestLogger(sliceAppender)
 
 		testTask := model.Task{Id: "test1", DisplayName: "TASK!!!", BuildId: "build1"}
 		util.HandleTestingErr(testTask.Insert(), t, "couldn't insert test task")
@@ -126,8 +126,7 @@ func TestAttachTaskFilesPlugin(t *testing.T) {
 		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestAgentLogger(sliceAppender)
-
+		logger := agent.NewTestLogger(sliceAppender)
 		Convey("all commands in test project should execute successfully", func() {
 			taskConfig, _ := testutil.CreateTestConfig("testdata/plugin_attach_files.yml", t)
 			_, _, err = testutil.SetupAPITestData("testTask", true, t)
