@@ -26,7 +26,7 @@ func ByTaskId(id string) db.Q {
 
 // ByBuildId returns all entries with the given Build Id, sorted by Task name
 func ByBuildId(id string) db.Q {
-	return db.Query(bson.D{{TaskIdKey, id}}).Sort([]string{TaskNameKey})
+	return db.Query(bson.D{{BuildIdKey, id}}).Sort([]string{TaskNameKey})
 }
 
 // === DB Logic ===
