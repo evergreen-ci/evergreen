@@ -19,7 +19,7 @@ type DeficitBasedHostAllocator struct{}
 // distro if the number of tasks that need to be run for the distro is greater
 // than the number of hosts currently free to run a task.
 func (self *DeficitBasedHostAllocator) NewHostsNeeded(
-	hostAllocatorData HostAllocatorData, mciSettings *evergreen.MCISettings) (map[string]int, error) {
+	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (map[string]int, error) {
 
 	newHostsNeeded := make(map[string]int)
 
@@ -37,7 +37,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 		}
 
 		newHostsNeeded[distroId] = self.numNewHostsForDistro(
-			&hostAllocatorData, distro, mciSettings)
+			&hostAllocatorData, distro, settings)
 	}
 
 	return newHostsNeeded, nil
@@ -46,9 +46,9 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 // numNewHostsForDistro determine how many new hosts should be spun up for an
 // individual distro
 func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
-	hostAllocatorData *HostAllocatorData, distro distro.Distro, mciSettings *evergreen.MCISettings) int {
+	hostAllocatorData *HostAllocatorData, distro distro.Distro, settings *evergreen.Settings) int {
 
-	cloudManager, err := providers.GetCloudManager(distro.Provider, mciSettings)
+	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Couldn't get cloud manager for distro %v with provider %v: %v",

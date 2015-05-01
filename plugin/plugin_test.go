@@ -331,7 +331,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		Id:          "testHost",
 		Host:        "testHost",
 		RunningTask: "testTaskId",
-		StartedBy:   evergreen.MCIUser,
+		StartedBy:   evergreen.User,
 	}
 	util.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 

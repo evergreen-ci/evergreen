@@ -92,14 +92,14 @@ type UIPanel struct {
 }
 
 type UIContext struct {
-	MCISettings evergreen.MCISettings
-	User        *user.DBUser
-	Task        *model.Task
-	Build       *build.Build
-	Version     *version.Version
-	Patch       *patch.Patch
-	Project     *model.Project
-	ProjectRef  *model.ProjectRef
+	Settings   evergreen.Settings
+	User       *user.DBUser
+	Task       *model.Task
+	Build      *build.Build
+	Version    *version.Version
+	Patch      *patch.Patch
+	Project    *model.Project
+	ProjectRef *model.ProjectRef
 }
 
 // PanelLayout tells the view renderer what panel HTML data to inject and where

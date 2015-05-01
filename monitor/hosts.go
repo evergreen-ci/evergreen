@@ -23,7 +23,7 @@ type HostMonitor struct {
 
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
-func (self *HostMonitor) RunMonitoringChecks(mciSettings *evergreen.MCISettings) []error {
+func (self *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
 
@@ -33,7 +33,7 @@ func (self *HostMonitor) RunMonitoringChecks(mciSettings *evergreen.MCISettings)
 	for _, f := range self.monitoringFuncs {
 
 		// continue on error to allow the other monitoring functions to run
-		if errs := f(mciSettings); errs != nil {
+		if errs := f(settings); errs != nil {
 			for _, err := range errs {
 				errors = append(errors, err)
 			}
@@ -49,7 +49,7 @@ func (self *HostMonitor) RunMonitoringChecks(mciSettings *evergreen.MCISettings)
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.MCISettings) []error {
+func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Running host cleanup...")
 
@@ -89,7 +89,7 @@ func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergre
 
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
-func terminateHosts(hosts []host.Host, mciSettings *evergreen.MCISettings) []error {
+func terminateHosts(hosts []host.Host, settings *evergreen.Settings) []error {
 
 	// used to store any errors that occur
 	var errors []error
@@ -114,7 +114,7 @@ func terminateHosts(hosts []host.Host, mciSettings *evergreen.MCISettings) []err
 
 			// wrapper function to terminate the host
 			terminateFunc := func() error {
-				return terminateHost(&hostToTerminate, mciSettings)
+				return terminateHost(&hostToTerminate, settings)
 			}
 
 			// run the function with a timeout
@@ -146,10 +146,10 @@ func terminateHosts(hosts []host.Host, mciSettings *evergreen.MCISettings) []err
 }
 
 // helper to terminate a single host
-func terminateHost(host *host.Host, mciSettings *evergreen.MCISettings) error {
+func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 
 	// convert the host to a cloud host
-	cloudHost, err := providers.GetCloudHost(host, mciSettings)
+	cloudHost, err := providers.GetCloudHost(host, settings)
 	if err != nil {
 		return fmt.Errorf("error getting cloud host for %v: %v", host.Id, err)
 	}

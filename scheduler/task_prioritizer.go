@@ -14,7 +14,7 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(mciSettings *evergreen.MCISettings, tasks []model.Task) (
+	PrioritizeTasks(settings *evergreen.Settings, tasks []model.Task) (
 		[]model.Task, error)
 }
 
@@ -58,7 +58,7 @@ func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
-	mciSettings *evergreen.MCISettings, tasks []model.Task) ([]model.Task, error) {
+	settings *evergreen.Settings, tasks []model.Task) ([]model.Task, error) {
 
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
@@ -87,7 +87,7 @@ func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
 		prioritizedTaskLists = append(prioritizedTaskLists, self.tasks)
 	}
 
-	self.tasks = self.mergeTasks(mciSettings, prioritizedTaskLists[0],
+	self.tasks = self.mergeTasks(settings, prioritizedTaskLists[0],
 		prioritizedTaskLists[1])
 
 	return self.tasks, nil
@@ -179,12 +179,12 @@ func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
 
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
-func (self *CmpBasedTaskPrioritizer) mergeTasks(mciSettings *evergreen.MCISettings,
+func (self *CmpBasedTaskPrioritizer) mergeTasks(settings *evergreen.Settings,
 	repoTrackerTasks []model.Task, patchTasks []model.Task) []model.Task {
 
 	mergedTasks := make([]model.Task, 0, len(repoTrackerTasks)+len(patchTasks))
 
-	toggle := mciSettings.Scheduler.MergeToggle
+	toggle := settings.Scheduler.MergeToggle
 	if toggle == 0 {
 		toggle = 2 // defaults to interleaving evenly
 	}

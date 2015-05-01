@@ -98,7 +98,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData:  putParams.UserData,
 	}
 
-	spawner := spawn.New(&uis.MCISettings)
+	spawner := spawn.New(&uis.Settings)
 
 	if err := spawner.Validate(opts); err != nil {
 		errCode := http.StatusBadRequest
@@ -130,7 +130,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
 			mailErr := notify.TrySendNotificationToUser(authedUser.Email(), fmt.Sprintf("Spawning failed"),
-				err.Error(), notify.ConstructMailer(uis.MCISettings.Notify))
+				err.Error(), notify.ConstructMailer(uis.Settings.Notify))
 			if mailErr != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
 			}
@@ -180,7 +180,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Host %v is already terminated", host.Id))
 			return
 		}
-		cloudHost, err := providers.GetCloudHost(host, &uis.MCISettings)
+		cloudHost, err := providers.GetCloudHost(host, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -192,7 +192,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, "host terminated")
 		return
 	case HostPasswordUpdate:
-		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.MCISettings, host, updateParams.RDPPwd)
+		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.Settings, host, updateParams.RDPPwd)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error constructing host RDP password: %v", err))
 			return
@@ -238,10 +238,10 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
-func constructPwdUpdateCommand(mciSettings *evergreen.MCISettings, hostObj *host.Host,
+func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 	password string) (*command.RemoteCommand, error) {
 
-	cloudHost, err := providers.GetCloudHost(hostObj, mciSettings)
+	cloudHost, err := providers.GetCloudHost(hostObj, settings)
 	if err != nil {
 		return nil, err
 	}

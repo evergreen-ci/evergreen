@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MCI_PKG='github.com/evergreen-ci/evergreen'
+EVG_PKG='github.com/evergreen-ci/evergreen'
 
 setgopath() {
     if [ "Windows_NT" != "$OS" ]; then
@@ -10,8 +10,8 @@ setgopath() {
         # set up the $GOPATH to use the vendored dependencies as
         # well as the source 
         rm -rf .gopath/
-        mkdir -p .gopath/src/"$(dirname "${MCI_PKG}")"
-        ln -sf `pwd` .gopath/src/$MCI_PKG
+        mkdir -p .gopath/src/"$(dirname "${EVG_PKG}")"
+        ln -sf `pwd` .gopath/src/$EVG_PKG
         export GOPATH=`pwd`/vendor:`pwd`/.gopath
 
     else
@@ -24,10 +24,10 @@ setgopath() {
         # set up the $GOPATH to use the vendored dependencies as
         # well as the source for the mongo tools
         rm -rf .gopath/
-        mkdir -p .gopath/src/"$MCI_PKG"
-        cp -r `pwd`/* .gopath/src/$MCI_PKG
+        mkdir -p .gopath/src/"$EVG_PKG"
+        cp -r `pwd`/* .gopath/src/$EVG_PKG
         # now handle vendoring
-        rm -rf .gopath/src/$MCI_PKG/vendor 
+        rm -rf .gopath/src/$EVG_PKG/vendor 
         cp -r `pwd`/vendor/src/* .gopath/src/.
         export GOPATH="$SOURCE_GOPATH;$VENDOR_GOPATH"
     fi;

@@ -63,7 +63,7 @@ type CloudManager interface {
 	GetSettings() ProviderSettings
 
 	//Load credentials or other settings from the config file
-	Configure(*evergreen.MCISettings) error
+	Configure(*evergreen.Settings) error
 
 	// SpawnInstance attempts to create a new host by requesting one from the
 	// provider's API.

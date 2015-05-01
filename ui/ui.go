@@ -34,7 +34,7 @@ type UIServer struct {
 	//authManager
 	UserManager auth.UserManager
 
-	MCISettings evergreen.MCISettings
+	Settings    evergreen.Settings
 	CookieStore *sessions.CookieStore
 
 	plugin.PanelManager
@@ -169,7 +169,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()
 	for _, pl := range plugin.Published {
-		pluginSettings := uis.MCISettings.Plugins[pl.Name()]
+		pluginSettings := uis.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to configure plugin %v: %v", pl.Name(), err)

@@ -563,7 +563,7 @@ func printLogsForTask(taskId string) {
 	}
 }
 
-func setupAPITestData(testConfig *evergreen.MCISettings, taskDisplayName string,
+func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	variant string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
@@ -639,7 +639,7 @@ func setupAPITestData(testConfig *evergreen.MCISettings, taskDisplayName string,
 			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
 		},
 		RunningTask:   "testTaskId",
-		StartedBy:     evergreen.MCIUser,
+		StartedBy:     evergreen.User,
 		AgentRevision: agentRevision,
 	}
 	util.HandleTestingErr(host.Insert(), t, "failed to insert host")

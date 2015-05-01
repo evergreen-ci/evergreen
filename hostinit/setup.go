@@ -25,7 +25,7 @@ var (
 
 // HostInit is responsible for running setup scripts on MCI hosts.
 type HostInit struct {
-	MCISettings *evergreen.MCISettings
+	Settings *evergreen.Settings
 }
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
@@ -73,10 +73,10 @@ func (init *HostInit) setupReadyHosts() error {
 				// notify the mci team of the failure
 				subject := fmt.Sprintf("%v MCI provisioning failure on %v",
 					notify.ProvisionFailurePreface, h.Distro)
-				hostLink := fmt.Sprintf("%v/host/%v", init.MCISettings.Ui.Url, h.Id)
+				hostLink := fmt.Sprintf("%v/host/%v", init.Settings.Ui.Url, h.Id)
 				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
 					h.Distro, h.Id, hostLink)
-				if err := notify.NotifyAdmins(subject, message, init.MCISettings); err != nil {
+				if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
 					evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 				}
 			}
@@ -98,7 +98,7 @@ func (init *HostInit) setupReadyHosts() error {
 func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := providers.GetCloudManager(host.Distro.Provider, init.MCISettings)
+	cloudMgr, err := providers.GetCloudManager(host.Distro.Provider, init.Settings)
 	if err != nil {
 		return false,
 			fmt.Errorf("failed to get cloud manager for provider %v: %v", host.Distro.Provider, err)
@@ -139,7 +139,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	}
 
 	// check if the host is reachable via SSH
-	cloudHost, err := providers.GetCloudHost(host, init.MCISettings)
+	cloudHost, err := providers.GetCloudHost(host, init.Settings)
 	if err != nil {
 		return false, fmt.Errorf("failed to get cloud host for %v: %v", host.Id, err)
 	}
@@ -158,7 +158,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 
 	// fetch the appropriate cloud provider for the host
-	cloudMgr, err := providers.GetCloudManager(targetHost.Provider, init.MCISettings)
+	cloudMgr, err := providers.GetCloudManager(targetHost.Provider, init.Settings)
 	if err != nil {
 		return nil,
 			fmt.Errorf("failed to get cloud manager for host %v with provider %v: %v",
@@ -182,7 +182,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	}
 
 	// get the local path to the SSH keyfile, if not specified
-	keyfile := init.MCISettings.Keys[targetHost.Distro.SSHKey]
+	keyfile := init.Settings.Keys[targetHost.Distro.SSHKey]
 
 	// run the remote setup script as sudo, if appropriate
 	sudoStr := ""
@@ -247,7 +247,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 // Build the setup script that will need to be run on the specified host.
 func (init *HostInit) buildSetupScript(h *host.Host) (string, error) {
 	// replace expansions in the script
-	exp := command.NewExpansions(init.MCISettings.Expansions)
+	exp := command.NewExpansions(init.Settings.Expansions)
 	setupScript, err := exp.ExpandString(h.Distro.Setup)
 	if err != nil {
 		return "", fmt.Errorf("expansions error: %v", err)

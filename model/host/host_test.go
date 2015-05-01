@@ -433,7 +433,7 @@ func TestHostClearRunningTask(t *testing.T) {
 		host := &Host{
 			Id:               "hostOne",
 			RunningTask:      "taskId",
-			StartedBy:        evergreen.MCIUser,
+			StartedBy:        evergreen.User,
 			Status:           evergreen.HostRunning,
 			TaskDispatchTime: time.Now(),
 			Pid:              "12345",

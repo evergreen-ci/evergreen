@@ -12,7 +12,7 @@ import (
 )
 
 type TaskRunner struct {
-	*evergreen.MCISettings
+	*evergreen.Settings
 	HostFinder
 	TaskQueueFinder
 	HostGateway
@@ -22,24 +22,21 @@ var (
 	AgentPackageDirectorySubPath = filepath.Join("agent", "main")
 )
 
-func NewTaskRunner(mciSettings *evergreen.MCISettings) *TaskRunner {
+func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 	// get mci home, and set the source and destination for the agent
 	// executables
-	mciHome, err := evergreen.FindMCIHome()
-	if err != nil {
-		panic(fmt.Sprintf("error finding mci home: %v", err))
-	}
+	evgHome := evergreen.FindEvergreenHome()
 
 	return &TaskRunner{
-		mciSettings,
+		settings,
 		&DBHostFinder{},
 		&DBTaskQueueFinder{},
 		&AgentBasedHostGateway{
 			Compiler: &GoxcAgentCompiler{
-				mciSettings,
+				settings,
 			},
-			ExecutablesDir:  filepath.Join(mciHome, mciSettings.AgentExecutablesDir),
-			AgentPackageDir: filepath.Join(mciHome, AgentPackageDirectorySubPath),
+			ExecutablesDir:  filepath.Join(evgHome, settings.AgentExecutablesDir),
+			AgentPackageDir: filepath.Join(evgHome, AgentPackageDirectorySubPath),
 		},
 	}
 }
@@ -107,7 +104,7 @@ func (self *TaskRunner) Run() error {
 			waitGroup.Add(1)
 			go func() {
 				defer waitGroup.Done()
-				agentRevision, err := self.RunTaskOnHost(self.MCISettings,
+				agentRevision, err := self.RunTaskOnHost(self.Settings,
 					dereferencedTask, nextHost)
 				if err != nil {
 					evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+

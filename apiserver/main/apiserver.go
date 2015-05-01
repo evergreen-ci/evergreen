@@ -13,27 +13,27 @@ import (
 
 func main() {
 	var err error
-	mciSettings := evergreen.MustConfig()
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mciSettings))
+	settings := evergreen.MustConfig()
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	apis, err := apiserver.New(mciSettings, plugin.Published)
+	apis, err := apiserver.New(settings, plugin.Published)
 	if err != nil {
 		fmt.Println("Failed to create API server:", err)
 		os.Exit(1)
 	}
 
-	tlsConfig, err := util.MakeTlsConfig(mciSettings.Expansions["api_httpscert"], mciSettings.Api.HttpsKey)
+	tlsConfig, err := util.MakeTlsConfig(settings.Expansions["api_httpscert"], settings.Api.HttpsKey)
 	if err != nil {
 		fmt.Println("Failed to make TLS config: ", err)
 		os.Exit(1)
 	}
 
-	nonssl, err := apiserver.GetListener(mciSettings.Api.HttpListenAddr)
+	nonssl, err := apiserver.GetListener(settings.Api.HttpListenAddr)
 	if err != nil {
 		fmt.Println("Failed to listen for HTTP: ", err)
 		os.Exit(1)
 	}
-	ssl, err := apiserver.GetTLSListener(mciSettings.Api.HttpsListenAddr, tlsConfig)
+	ssl, err := apiserver.GetTLSListener(settings.Api.HttpsListenAddr, tlsConfig)
 	if err != nil {
 		fmt.Println("Failed to listen for HTTPS: ", err)
 		os.Exit(1)

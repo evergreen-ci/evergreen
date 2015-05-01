@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/testutils"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -29,12 +30,11 @@ func init() {
 func TestGetBuildInfo(t *testing.T) {
 
 	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		MCISettings: *buildTestConfig,
+		RootURL:  buildTestConfig.Ui.Url,
+		Settings: *buildTestConfig,
 	}
 
-	home, err := evergreen.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
+	home := evergreen.FindEvergreenHome()
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -199,12 +199,11 @@ func TestGetBuildInfo(t *testing.T) {
 func TestGetBuildStatus(t *testing.T) {
 
 	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		MCISettings: *buildTestConfig,
+		RootURL:  buildTestConfig.Ui.Url,
+		Settings: *buildTestConfig,
 	}
 
-	home, err := evergreen.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
+	home := evergreen.FindEvergreenHome()
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),

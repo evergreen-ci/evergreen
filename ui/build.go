@@ -70,7 +70,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set data for plugin data function injection
-	pluginContext := projCtx.ToPluginContext(uis.MCISettings, GetUser(r))
+	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
 
 	uis.WriteHTML(w, http.StatusOK, struct {

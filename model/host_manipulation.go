@@ -35,7 +35,7 @@ func NextTaskForHost(h *host.Host) (*Task, error) {
 	return fullTask, nil
 }
 
-func UpdateStaticHosts(e *evergreen.MCISettings) error {
+func UpdateStaticHosts(e *evergreen.Settings) error {
 	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func UpdateStaticHosts(e *evergreen.MCISettings) error {
 				Distro:       d,
 				CreationTime: time.Now(),
 				Provider:     evergreen.HostTypeStatic,
-				StartedBy:    evergreen.MCIUser,
+				StartedBy:    evergreen.User,
 				Status:       evergreen.HostRunning,
 				Provisioned:  true,
 			}

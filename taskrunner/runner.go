@@ -18,7 +18,7 @@ func (r *Runner) Name() string {
 	return RunnerName
 }
 
-func (r *Runner) Run(config *evergreen.MCISettings) error {
+func (r *Runner) Run(config *evergreen.Settings) error {
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
 		return evergreen.Logger.Errorf(slogger.ERROR, "error acquiring global lock: %v", err)

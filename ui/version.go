@@ -50,7 +50,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	}
 	versionAsUI.Builds = uiBuilds
 
-	pluginContext := projCtx.ToPluginContext(uis.MCISettings, GetUser(r))
+	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
 	flashes := PopFlashes(uis.CookieStore, r, w)

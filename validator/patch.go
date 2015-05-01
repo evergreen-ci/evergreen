@@ -11,7 +11,7 @@ import (
 	"github.com/shelman/angier"
 )
 
-func ValidateAndFinalize(p *patch.Patch, mciSettings *evergreen.MCISettings) (*version.Version, error) {
+func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version.Version, error) {
 	if p.Version != "" {
 		return nil, fmt.Errorf("Patch %v already finalized", p.Version)
 	}
@@ -26,7 +26,7 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *evergreen.MCISettings) (*v
 	}
 
 	gitCommit, err := thirdparty.GetCommitEvent(
-		mciSettings.Credentials["github"],
+		settings.Credentials["github"],
 		projectRef.Owner, projectRef.Repo, p.Githash,
 	)
 	if err != nil {
@@ -47,7 +47,7 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *evergreen.MCISettings) (*v
 			p.Githash,
 		)
 		githubFile, err := thirdparty.GetGithubFile(
-			mciSettings.Credentials["github"],
+			settings.Credentials["github"],
 			projectFileURL,
 		)
 		if err != nil {
@@ -78,5 +78,5 @@ func ValidateAndFinalize(p *patch.Patch, mciSettings *evergreen.MCISettings) (*v
 			return nil, fmt.Errorf(message)
 		}
 	}
-	return model.FinalizePatch(p, gitCommit, mciSettings, project)
+	return model.FinalizePatch(p, gitCommit, settings, project)
 }

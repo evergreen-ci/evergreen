@@ -31,12 +31,11 @@ func init() {
 func TestGetTaskInfo(t *testing.T) {
 
 	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		MCISettings: *buildTestConfig,
+		RootURL:  buildTestConfig.Ui.Url,
+		Settings: *buildTestConfig,
 	}
 
-	home, err := evergreen.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
+	home := evergreen.FindEvergreenHome()
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
@@ -269,12 +268,11 @@ func TestGetTaskInfo(t *testing.T) {
 func TestGetTaskStatus(t *testing.T) {
 
 	uis := UIServer{
-		RootURL:     buildTestConfig.Ui.Url,
-		MCISettings: *buildTestConfig,
+		RootURL:  buildTestConfig.Ui.Url,
+		Settings: *buildTestConfig,
 	}
 
-	home, err := evergreen.FindMCIHome()
-	util.HandleTestingErr(err, t, "Failure in evergreen.FindMCIHome()")
+	home := evergreen.FindEvergreenHome()
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),

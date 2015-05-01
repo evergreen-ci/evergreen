@@ -45,7 +45,7 @@ func (self *MockHostGateway) GetAgentRevision() (string, error) {
 	return "", fmt.Errorf("GetAgentRevision not implemented")
 }
 
-func (self *MockHostGateway) RunTaskOnHost(mciSettings *evergreen.MCISettings,
+func (self *MockHostGateway) RunTaskOnHost(settings *evergreen.Settings,
 	taskToRun model.Task, targetHost host.Host) (string, error) {
 	return "", fmt.Errorf("RunTaskOnHost not implemented")
 }

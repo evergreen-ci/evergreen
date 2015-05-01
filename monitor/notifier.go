@@ -14,7 +14,7 @@ type Notifier struct {
 }
 
 // create and send any notifications that need to be sent
-func (self *Notifier) Notify(mciSettings *evergreen.MCISettings) []error {
+func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Building and sending necessary"+
 		" notifications...")
@@ -25,7 +25,7 @@ func (self *Notifier) Notify(mciSettings *evergreen.MCISettings) []error {
 	for _, f := range self.notificationBuilders {
 
 		// get the necessary notifications
-		notifications, err := f(mciSettings)
+		notifications, err := f(settings)
 
 		// continue on error so that one wonky function doesn't stop the others
 		// from running
@@ -37,7 +37,7 @@ func (self *Notifier) Notify(mciSettings *evergreen.MCISettings) []error {
 
 		// send the actual notifications. continue on error to allow further
 		// notifications to be sent
-		if errs := sendNotifications(notifications, mciSettings); errs != nil {
+		if errs := sendNotifications(notifications, settings); errs != nil {
 			for _, err := range errs {
 				errors = append(errors, fmt.Errorf("error sending"+
 					" notifications: %v", err))
@@ -56,7 +56,7 @@ func (self *Notifier) Notify(mciSettings *evergreen.MCISettings) []error {
 // that are successfully sent. returns an aggregate list of any errors
 // that occur
 func sendNotifications(notifications []notification,
-	mciSettings *evergreen.MCISettings) []error {
+	settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Sending %v notifications...",
 		len(notifications))
@@ -65,7 +65,7 @@ func sendNotifications(notifications []notification,
 	var errors []error
 
 	// ask for the mailer we'll use
-	mailer := notify.ConstructMailer(mciSettings.Notify)
+	mailer := notify.ConstructMailer(settings.Notify)
 
 	for _, n := range notifications {
 

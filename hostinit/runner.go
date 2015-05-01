@@ -17,7 +17,7 @@ func (r *Runner) Name() string {
 	return RunnerName
 }
 
-func (r *Runner) Run(config *evergreen.MCISettings) error {
+func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
 	evergreen.Logger.Logf(slogger.INFO, "Starting hostinit at time %v", startTime)
 

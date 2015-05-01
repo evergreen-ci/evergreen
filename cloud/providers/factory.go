@@ -13,7 +13,7 @@ import (
 
 // GetCloudManager returns an implementation of CloudManager for the given provider name.
 // It returns an error if the provider name doesn't have a known implementation.
-func GetCloudManager(providerName string, mciSettings *evergreen.MCISettings) (cloud.CloudManager, error) {
+func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.CloudManager, error) {
 
 	var provider cloud.CloudManager
 	switch providerName {
@@ -31,7 +31,7 @@ func GetCloudManager(providerName string, mciSettings *evergreen.MCISettings) (c
 		return nil, fmt.Errorf("No known provider for '%v'", providerName)
 	}
 
-	if err := provider.Configure(mciSettings); err != nil {
+	if err := provider.Configure(settings); err != nil {
 		return nil, fmt.Errorf("Failed to configure ec2 provider: %v", err)
 	}
 
@@ -40,15 +40,15 @@ func GetCloudManager(providerName string, mciSettings *evergreen.MCISettings) (c
 
 // GetCloudHost returns an instance of CloudHost wrapping the given model.Host,
 // giving access to the provider-specific methods to manipulate on the host.
-func GetCloudHost(host *host.Host, mciSettings *evergreen.MCISettings) (*cloud.CloudHost, error) {
-	mgr, err := GetCloudManager(host.Provider, mciSettings)
+func GetCloudHost(host *host.Host, settings *evergreen.Settings) (*cloud.CloudHost, error) {
+	mgr, err := GetCloudManager(host.Provider, settings)
 	if err != nil {
 		return nil, err
 	}
 
 	keyPath := ""
 	if host.Distro.SSHKey != "" {
-		keyPath = mciSettings.Keys[host.Distro.SSHKey]
+		keyPath = settings.Keys[host.Distro.SSHKey]
 	}
 	return &cloud.CloudHost{host, keyPath, mgr}, nil
 }

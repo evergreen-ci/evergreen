@@ -31,7 +31,6 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 
 		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
 		return
-
 	}
 
 	project, err := model.FindProject("", projectRef)
@@ -40,7 +39,6 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
-
 	}
 
 	buildVariants := project.GetVariantsWithTask(taskName)

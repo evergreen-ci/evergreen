@@ -48,8 +48,8 @@ func (staticMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
 	return nil
 }
 
-func (staticMgr *MockCloudManager) Configure(mciSettings *evergreen.MCISettings) error {
-	//no-op. maybe will need to load something from mciSettings in the future.
+func (staticMgr *MockCloudManager) Configure(settings *evergreen.Settings) error {
+	//no-op. maybe will need to load something from settings in the future.
 	return nil
 }
 

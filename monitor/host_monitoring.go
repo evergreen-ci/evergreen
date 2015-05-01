@@ -16,11 +16,11 @@ const (
 )
 
 // responsible for monitoring and checking in on hosts
-type hostMonitoringFunc func(*evergreen.MCISettings) []error
+type hostMonitoringFunc func(*evergreen.Settings) []error
 
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
-func monitorReachability(mciSettings *evergreen.MCISettings) []error {
+func monitorReachability(settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Running reachability checks...")
 
@@ -41,7 +41,7 @@ func monitorReachability(mciSettings *evergreen.MCISettings) []error {
 	// checked successfully
 	for _, host := range hosts {
 
-		if err := checkHostReachability(host, mciSettings); err != nil {
+		if err := checkHostReachability(host, settings); err != nil {
 			errors = append(errors, fmt.Errorf("error checking reachability"+
 				" for host %v: %v", host.Id, err))
 			continue
@@ -56,13 +56,13 @@ func monitorReachability(mciSettings *evergreen.MCISettings) []error {
 
 // check reachability for a single host, and take any necessary action
 func checkHostReachability(host host.Host,
-	mciSettings *evergreen.MCISettings) error {
+	settings *evergreen.Settings) error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Running reachability check for host %v...",
 		host.Id)
 
 	// get a cloud version of the host
-	cloudHost, err := providers.GetCloudHost(&host, mciSettings)
+	cloudHost, err := providers.GetCloudHost(&host, settings)
 	if err != nil {
 		return fmt.Errorf("error getting cloud host for host %v: %v",
 			host.Id, err)

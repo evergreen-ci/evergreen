@@ -224,7 +224,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	flashes := PopFlashes(uis.CookieStore, r, w)
 
-	pluginContext := projCtx.ToPluginContext(uis.MCISettings, GetUser(r))
+	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 
 	uis.WriteHTML(w, http.StatusOK, struct {

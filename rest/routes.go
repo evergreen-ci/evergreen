@@ -14,7 +14,7 @@ type RouteInfo struct {
 
 type restUISAPI interface {
 	WriteJSON(w http.ResponseWriter, status int, data interface{})
-	GetMCISettings() evergreen.MCISettings
+	GetSettings() evergreen.Settings
 }
 
 type restAPI struct {

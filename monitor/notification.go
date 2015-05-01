@@ -26,7 +26,7 @@ const (
 )
 
 // a function that outputs any necessary notifications
-type notificationBuilder func(*evergreen.MCISettings) ([]notification, error)
+type notificationBuilder func(*evergreen.Settings) ([]notification, error)
 
 // contains info about a notification that should be sent
 type notification struct {
@@ -43,7 +43,7 @@ type notification struct {
 
 // spawnHostExpirationWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that will be expiring soon (but haven't expired yet)
-func spawnHostExpirationWarnings(mciSettings *evergreen.MCISettings) ([]notification,
+func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 	error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Building spawned host expiration"+
@@ -100,7 +100,7 @@ func spawnHostExpirationWarnings(mciSettings *evergreen.MCISettings) ([]notifica
 				h.Distro.Id, h.Id,
 				h.ExpirationTime.Format(time.RFC850),
 				h.ExpirationTime.Sub(time.Now()),
-				mciSettings.Ui.Url+"/ui/spawn"),
+				settings.Ui.Url+"/ui/spawn"),
 			threshold: thresholdKey,
 			host:      h,
 			callback: func(h host.Host, thresholdKey string) error {
@@ -142,7 +142,7 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 
 // slowProvisioningWarnings is a notificationBuilder to build any necessary
 // warnings about hosts that are taking a long time to provision
-func slowProvisioningWarnings(mciSettings *evergreen.MCISettings) ([]notification,
+func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification,
 	error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Building warnings for hosts taking a long"+
@@ -170,11 +170,11 @@ func slowProvisioningWarnings(mciSettings *evergreen.MCISettings) ([]notificatio
 
 		// build the notification
 		hostNotification := notification{
-			recipient: mciSettings.Notify.SMTP.AdminEmail[0],
+			recipient: settings.Notify.SMTP.AdminEmail[0],
 			subject: fmt.Sprintf("Host %v taking a long time to provision",
 				h.Id),
 			message: fmt.Sprintf("See %v/ui/host/%v",
-				mciSettings.Ui.Url, h.Id),
+				settings.Ui.Url, h.Id),
 			threshold: slowProvisioningWarning,
 			host:      h,
 			callback: func(h host.Host, s string) error {

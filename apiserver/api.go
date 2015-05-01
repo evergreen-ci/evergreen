@@ -56,7 +56,7 @@ const (
 type APIServer struct {
 	*render.Render
 	UserManager auth.UserManager
-	MCISettings evergreen.MCISettings
+	Settings    evergreen.Settings
 	plugins     []plugin.Plugin
 }
 
@@ -65,17 +65,17 @@ const (
 	PatchLockTitle     = "patches"
 )
 
-func New(mciSettings *evergreen.MCISettings, plugins []plugin.Plugin) (*APIServer, error) {
+func New(settings *evergreen.Settings, plugins []plugin.Plugin) (*APIServer, error) {
 	crowdManager, err := auth.NewCrowdUserManager(
-		mciSettings.Crowd.Username,
-		mciSettings.Crowd.Password,
-		mciSettings.Crowd.Urlroot,
+		settings.Crowd.Username,
+		settings.Crowd.Password,
+		settings.Crowd.Urlroot,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &APIServer{render.New(render.Options{}), crowdManager, *mciSettings, plugins}, nil
+	return &APIServer{render.New(render.Options{}), crowdManager, *settings, plugins}, nil
 }
 
 // UserMiddleware checks for session tokens on the request, then looks up and attaches a user
@@ -392,7 +392,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	}
 
 	// b. check if the agent needs to be rebuilt
-	taskRunnerInstance := taskrunner.NewTaskRunner(&as.MCISettings)
+	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 	if err != nil {
 		markHostRunningTaskFinished(host, task, "")
@@ -425,7 +425,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	} else {
 		taskEndResponse.Message = "Proceed with next task"
 		markHostRunningTaskFinished(host, task, nextTask.Id)
-		loadTaskEndResponseInto(taskEndResponse, nextTask, &as.MCISettings)
+		loadTaskEndResponseInto(taskEndResponse, nextTask, &as.Settings)
 	}
 
 	// give the agent the green light to keep churning
@@ -462,11 +462,11 @@ func getNextDistroTask(currentTask *model.Task, host *host.Host) (
 // loadTaskEndResponseInto fetches the necessary field members needed by the
 // agent to continue working on a new task
 func loadTaskEndResponseInto(taskEndResponse *apimodels.TaskEndResponse,
-	task *model.Task, mciSettings *evergreen.MCISettings) {
+	task *model.Task, settings *evergreen.Settings) {
 	taskEndResponse.RunNext = true
 	taskEndResponse.TaskId = task.Id
 	taskEndResponse.TaskSecret = task.Secret
-	taskEndResponse.ConfigDir = mciSettings.ConfigDir
+	taskEndResponse.ConfigDir = settings.ConfigDir
 	taskEndResponse.WorkDir = evergreen.RemoteShell
 }
 
@@ -745,10 +745,10 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		// send notification to the MCI team about this provisioning failure
 		subject := fmt.Sprintf("%v MCI provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
 
-		hostLink := fmt.Sprintf("%v/host/%v", as.MCISettings.Ui.Url, hostObj.Id)
+		hostLink := fmt.Sprintf("%v/host/%v", as.Settings.Ui.Url, hostObj.Id)
 		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
 			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
-		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
+		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
 
@@ -771,14 +771,14 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cloudManager, err := providers.GetCloudManager(hostObj.Provider, &as.MCISettings)
+	cloudManager, err := providers.GetCloudManager(hostObj.Provider, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		subject := fmt.Sprintf("%v MCI provisioning completion failure on %v",
 			notify.ProvisionFailurePreface, hostObj.Distro.Id)
 		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
 			hostObj.Id, hostObj.Provider, err)
-		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
+		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
 		return
@@ -949,7 +949,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 		if pl == nil {
 			continue
 		}
-		pluginSettings := as.MCISettings.Plugins[pl.Name()]
+		pluginSettings := as.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to configure plugin %v: %v", pl.Name(), err)

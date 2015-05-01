@@ -66,14 +66,14 @@ func (self *EC2ProviderSettings) Validate() error {
 
 //Configure loads necessary credentials or other settings from the global config
 //object.
-func (cloudManager *EC2Manager) Configure(mciSettings *evergreen.MCISettings) error {
-	if mciSettings.Providers.AWS.Id == "" || mciSettings.Providers.AWS.Secret == "" {
+func (cloudManager *EC2Manager) Configure(settings *evergreen.Settings) error {
+	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
 		return fmt.Errorf("AWS ID/Secret must not be blank")
 	}
 
 	cloudManager.awsCredentials = &aws.Auth{
-		AccessKey: mciSettings.Providers.AWS.Id,
-		SecretKey: mciSettings.Providers.AWS.Secret,
+		AccessKey: settings.Providers.AWS.Id,
+		SecretKey: settings.Providers.AWS.Secret,
 	}
 	return nil
 }
@@ -96,7 +96,7 @@ func (cloudManager *EC2Manager) GetInstanceStatus(host *host.Host) (cloud.CloudS
 	if err != nil {
 		return cloud.StatusUnknown, err
 	}
-	return ec2StatusToMCIStatus(instanceInfo.State.Name), nil
+	return ec2StatusToEvergreenStatus(instanceInfo.State.Name), nil
 }
 
 func (cloudManager *EC2Manager) CanSpawn() (bool, error) {

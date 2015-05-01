@@ -171,7 +171,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		message := fmt.Errorf("Error locating project '%v' from '%v': %v",
-			projId, as.MCISettings.ConfigDir, err)
+			projId, as.Settings.ConfigDir, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -181,7 +181,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchMetadata, err := apiRequest.Validate(as.MCISettings.Credentials[project.RepoKind])
+	patchMetadata, err := apiRequest.Validate(as.Settings.Credentials[project.RepoKind])
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
 		return
@@ -198,7 +198,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.MCISettings.Credentials[project.RepoKind],
+	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[project.RepoKind],
 		patchMetadata.Project.Owner,
 		patchMetadata.Project.Repo,
 		apiRequest.Githash)
@@ -256,7 +256,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if strings.ToLower(r.FormValue("finalize")) == "true" {
-		if _, err = validator.ValidateAndFinalize(patchDoc, &as.MCISettings); err != nil {
+		if _, err = validator.ValidateAndFinalize(patchDoc, &as.Settings); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -315,7 +315,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.MCISettings.Credentials[project.RepoKind], repoOwner, repo, githash)
+	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[project.RepoKind], repoOwner, repo, githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -389,7 +389,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		_, err = validator.ValidateAndFinalize(p, &as.MCISettings)
+		_, err = validator.ValidateAndFinalize(p, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

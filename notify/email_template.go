@@ -13,14 +13,11 @@ const (
 	BaseTemplate = "layout.html"
 )
 
-func createEnvironment(mciSettings *evergreen.MCISettings, globals map[string]interface{}) (*web.App, error) {
-	home, err := evergreen.FindMCIHome()
-	if err != nil {
-		return nil, err
-	}
+func createEnvironment(settings *evergreen.Settings, globals map[string]interface{}) (*web.App, error) {
+	home := evergreen.FindEvergreenHome()
 	templateHome := filepath.Join(home, TemplatePath)
 
-	funcs, err := web.MakeCommonFunctionMap(mciSettings)
+	funcs, err := web.MakeCommonFunctionMap(settings)
 	if err != nil {
 		return nil, fmt.Errorf("error creating templating functions: %v", err)
 	}

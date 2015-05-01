@@ -18,35 +18,31 @@ import (
 const UIPort = ":9090"
 
 func main() {
-	mciSettings := evergreen.MustConfig()
-	if mciSettings.Ui.LogFile != "" {
-		evergreen.SetLogger(mciSettings.Ui.LogFile)
+	settings := evergreen.MustConfig()
+	if settings.Ui.LogFile != "" {
+		evergreen.SetLogger(settings.Ui.LogFile)
 	}
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(mciSettings))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	home, err := evergreen.FindMCIHome()
-	if err != nil {
-		fmt.Println("Can't find mci home", err)
-		os.Exit(1)
-	}
+	home := evergreen.FindEvergreenHome()
 
 	crowdManager, err := auth.NewCrowdUserManager(
-		mciSettings.Crowd.Username,
-		mciSettings.Crowd.Password,
-		mciSettings.Crowd.Urlroot,
+		settings.Crowd.Username,
+		settings.Crowd.Password,
+		settings.Crowd.Urlroot,
 	)
 	if err != nil {
 		fmt.Println("Failed to create user manager:", err)
 		os.Exit(1)
 	}
 
-	cookieStore := sessions.NewCookieStore([]byte(mciSettings.Ui.Secret))
+	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 
 	uis := ui.UIServer{
 		nil,                // render
-		mciSettings.Ui.Url, // RootURL
+		settings.Ui.Url, // RootURL
 		crowdManager,       // User Manager
-		*mciSettings,       // mci settings
+		*settings,       // mci settings
 		cookieStore,        // cookiestore
 		nil,                // plugin panel manager
 	}
@@ -58,9 +54,9 @@ func main() {
 
 	webHome := filepath.Join(home, "public")
 
-	functionOptions := ui.FuncOptions{webHome, mciSettings.Ui.HelpUrl, true, router}
+	functionOptions := ui.FuncOptions{webHome, settings.Ui.HelpUrl, true, router}
 
-	functions, err := ui.MakeTemplateFuncs(functionOptions, mciSettings.SuperUsers)
+	functions, err := ui.MakeTemplateFuncs(functionOptions, settings.SuperUsers)
 	if err != nil {
 		fmt.Println("Failed to create template function map:", err)
 		os.Exit(1)
@@ -68,7 +64,7 @@ func main() {
 
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, ui.WebRootPath, ui.Templates),
-		DisableCache: !mciSettings.Ui.CacheTemplates,
+		DisableCache: !settings.Ui.CacheTemplates,
 		Funcs:        functions,
 	})
 	uis.InitPlugins()
@@ -79,5 +75,5 @@ func main() {
 	n.Use(negroni.HandlerFunc(ui.UserMiddleware(crowdManager)))
 	n.UseHandler(router)
 
-	n.Run(mciSettings.Ui.HttpListenAddr)
+	n.Run(settings.Ui.HttpListenAddr)
 }

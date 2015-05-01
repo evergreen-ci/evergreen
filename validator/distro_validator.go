@@ -11,7 +11,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type distroValidator func(*distro.Distro, *evergreen.MCISettings) []ValidationError
+type distroValidator func(*distro.Distro, *evergreen.Settings) []ValidationError
 
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
@@ -23,7 +23,7 @@ var distroSyntaxValidators = []distroValidator{
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
 // a slice of any validation errors found.
-func CheckDistro(d *distro.Distro, s *evergreen.MCISettings, newDistro bool) []ValidationError {
+func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) []ValidationError {
 	// skip _id check for existing distro modifications.
 	if newDistro {
 		if err := populateDistroIds(); err != nil {
@@ -41,7 +41,7 @@ func CheckDistro(d *distro.Distro, s *evergreen.MCISettings, newDistro bool) []V
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
-func ensureHasRequiredFields(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
+func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	errs := []ValidationError{}
 
 	if d.Id == "" {
@@ -107,7 +107,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.MCISettings) []Valid
 }
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
-func ensureUniqueId(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
+func ensureUniqueId(d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	if util.SliceContains(distroIds, d.Id) {
 		return []ValidationError{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}
@@ -115,7 +115,7 @@ func ensureUniqueId(d *distro.Distro, s *evergreen.MCISettings) []ValidationErro
 }
 
 // ensureValidExpansions checks that no expansion option key is blank.
-func ensureValidExpansions(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
+func ensureValidExpansions(d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	for _, e := range d.Expansions {
 		if e.Key == "" {
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank expansion key")}}
@@ -125,7 +125,7 @@ func ensureValidExpansions(d *distro.Distro, s *evergreen.MCISettings) []Validat
 }
 
 // ensureValidSSHOptions checks that no SSH option key is blank.
-func ensureValidSSHOptions(d *distro.Distro, s *evergreen.MCISettings) []ValidationError {
+func ensureValidSSHOptions(d *distro.Distro, s *evergreen.Settings) []ValidationError {
 	for _, o := range d.SSHOptions {
 		if o == "" {
 			return []ValidationError{{Error, fmt.Sprintf("distro cannot be blank SSH option")}}

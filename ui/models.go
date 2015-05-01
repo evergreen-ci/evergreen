@@ -359,7 +359,7 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 	if includeSpawnedHosts {
 		dbHosts, err = host.Find(host.IsRunning)
 	} else {
-		dbHosts, err = host.Find(host.ByUserWithRunningStatus(evergreen.MCIUser))
+		dbHosts, err = host.Find(host.ByUserWithRunningStatus(evergreen.User))
 	}
 
 	if err != nil {

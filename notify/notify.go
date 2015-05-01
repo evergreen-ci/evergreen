@@ -152,32 +152,32 @@ func ConstructMailer(notifyConfig evergreen.NotifyConfig) Mailer {
 //         ↓↓
 // UpdateNotificationTimes
 //
-func Run(mciSettings *evergreen.MCISettings) error {
+func Run(settings *evergreen.Settings) error {
 	// get the notifications
-	mciNotification, err := ParseNotifications(mciSettings.ConfigDir)
+	mciNotification, err := ParseNotifications(settings.ConfigDir)
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error parsing notifications: %v", err)
 		return err
 	}
 
 	// validate the notifications
-	err = ValidateNotifications(mciSettings.ConfigDir, mciNotification)
+	err = ValidateNotifications(settings.ConfigDir, mciNotification)
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error validating notifications: %v", err)
 		return err
 	}
 
 	templateGlobals := map[string]interface{}{
-		"UIRoot": mciSettings.Ui.Url,
+		"UIRoot": settings.Ui.Url,
 	}
 
-	ae, err := createEnvironment(mciSettings, templateGlobals)
+	ae, err := createEnvironment(settings, templateGlobals)
 	if err != nil {
 		return err
 	}
 
 	// process the notifications
-	emails, err := ProcessNotifications(ae, mciSettings.ConfigDir, mciNotification, true)
+	emails, err := ProcessNotifications(ae, settings.ConfigDir, mciNotification, true)
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error processing notifications: %v", err)
 		return err
@@ -192,8 +192,8 @@ func Run(mciSettings *evergreen.MCISettings) error {
 
 	// send the notifications
 
-	err = SendNotifications(mciSettings, mciNotification, emails,
-		ConstructMailer(mciSettings.Notify))
+	err = SendNotifications(settings, mciNotification, emails,
+		ConstructMailer(settings.Notify))
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error sending notifications: %v", err)
 		return err
@@ -211,7 +211,7 @@ func Run(mciSettings *evergreen.MCISettings) error {
 // This function is responsible for reading the notifications file
 func ParseNotifications(configName string) (*MCINotification, error) {
 	evergreen.Logger.Logf(slogger.INFO, "Parsing notifications...")
-	configRoot, err := evergreen.FindMCIConfig(configName)
+	configRoot, err := evergreen.FindConfig(configName)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +346,7 @@ func ProcessNotifications(ae *web.App, configName string, mciNotification *MCINo
 }
 
 // This function is responsible for managing the sending triggered email notifications
-func SendNotifications(mciSettings *evergreen.MCISettings, mciNotification *MCINotification,
+func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotification,
 	emails map[NotificationKey][]Email, mailer Mailer) (err error) {
 	evergreen.Logger.Logf(slogger.INFO, "Sending notifications...")
 
@@ -370,8 +370,8 @@ func SendNotifications(mciSettings *evergreen.MCISettings, mciNotification *MCIN
 
 				// send to individual subscriber, or the admin team if it's not their fault
 				recipients := []string{}
-				if mciSettings.Notify.SMTP != nil {
-					recipients = mciSettings.Notify.SMTP.AdminEmail
+				if settings.Notify.SMTP != nil {
+					recipients = settings.Notify.SMTP.AdminEmail
 				}
 				if !email.IsLikelySystemFailure() {
 					recipients = email.GetRecipients(recipient)
@@ -733,10 +733,10 @@ func notificationsToStruct(mciNotification *MCINotification) (notifyOn []Notific
 }
 
 // NotifyAdmins is a helper method to send a notification to the MCI admin team
-func NotifyAdmins(subject, message string, mciSettings *evergreen.MCISettings) error {
-	if mciSettings.Notify.SMTP != nil {
-		return TrySendNotification(mciSettings.Notify.SMTP.AdminEmail,
-			subject, message, ConstructMailer(mciSettings.Notify))
+func NotifyAdmins(subject, message string, settings *evergreen.Settings) error {
+	if settings.Notify.SMTP != nil {
+		return TrySendNotification(settings.Notify.SMTP.AdminEmail,
+			subject, message, ConstructMailer(settings.Notify))
 	}
 	return evergreen.Logger.Errorf(slogger.ERROR, "Cannot notify admins: admin_email not set")
 }

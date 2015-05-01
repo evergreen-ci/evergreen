@@ -51,7 +51,7 @@ var (
 
 //Utility func to create a create a temporary instance name for a host
 func generateName(distroId string) string {
-	return "mci_" + distroId + "_" + time.Now().Format(NameTimeFormat) +
+	return "evg_" + distroId + "_" + time.Now().Format(NameTimeFormat) +
 		fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
@@ -106,7 +106,6 @@ func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
 func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, error) {
 	amis := []string{instanceId}
 	resp, err := ec2Handle.Instances(amis, nil)
-
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +124,9 @@ func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, erro
 	return &instances[0], nil
 }
 
-//ec2StatusToMCIStatus returns a "universal" status code based on EC2's
+//ec2StatusToEvergreenStatus returns a "universal" status code based on EC2's
 //provider-specific status codes.
-func ec2StatusToMCIStatus(ec2Status string) cloud.CloudStatus {
+func ec2StatusToEvergreenStatus(ec2Status string) cloud.CloudStatus {
 	switch ec2Status {
 	case EC2StatusPending:
 		return cloud.StatusInitializing

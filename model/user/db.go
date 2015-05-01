@@ -57,7 +57,7 @@ func (self *DBUser) RemovePublicKey(name string) error {
 
 type DBUserManager struct{}
 
-func (self *DBUserManager) GetUserById(userId string) (auth.MCIUser, error) {
+func (self *DBUserManager) GetUserById(userId string) (auth.User, error) {
 	user, err := FindOne(ById(userId))
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (umgr *DBCachedCrowdUserManager) GetUserSession(username string,
 	return umgr.RESTCrowdService.CreateSession(username, password)
 }
 
-func (umgr *DBCachedCrowdUserManager) GetUserById(token string) (auth.MCIUser,
+func (umgr *DBCachedCrowdUserManager) GetUserById(token string) (auth.User,
 	error) {
 
 	crowdUser, err := umgr.RESTCrowdService.GetUserFromToken(token)

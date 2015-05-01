@@ -22,7 +22,7 @@ type OtherPageData map[string]interface{}
 type pageData struct {
 	ActiveItem         string
 	Data               interface{}
-	User               auth.MCIUser
+	User               auth.User
 	Project            string
 	ProjectDisplayName string
 	Other              OtherPageData

@@ -89,7 +89,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		APIHost string `json:"api_server_host"`
 		UIHost  string `json:"ui_server_host"`
 	}
-	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.MCISettings.Motu + "/api", uis.MCISettings.Ui.Url}
+	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.Motu + "/api", uis.Settings.Ui.Url}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext

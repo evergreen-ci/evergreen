@@ -85,21 +85,21 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 	return u
 }
 
-func (pc projectContext) ToPluginContext(mciSettings evergreen.MCISettings, user *user.DBUser) plugin.UIContext {
+func (pc projectContext) ToPluginContext(settings evergreen.Settings, user *user.DBUser) plugin.UIContext {
 	return plugin.UIContext{
-		MCISettings: mciSettings,
-		User:        user,
-		Task:        pc.Task,
-		Build:       pc.Build,
-		Version:     pc.Version,
-		Patch:       pc.Patch,
-		Project:     pc.Project,
-		ProjectRef:  pc.ProjectRef,
+		Settings:   settings,
+		User:       user,
+		Task:       pc.Task,
+		Build:      pc.Build,
+		Version:    pc.Version,
+		Patch:      pc.Patch,
+		Project:    pc.Project,
+		ProjectRef: pc.ProjectRef,
 	}
 }
 
-func (uis *UIServer) GetMCISettings() evergreen.MCISettings {
-	return uis.MCISettings
+func (uis *UIServer) GetSettings() evergreen.Settings {
+	return uis.Settings
 }
 
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
@@ -120,13 +120,13 @@ func (uis *UIServer) requireUser(next http.HandlerFunc) http.HandlerFunc {
 // request will be redirected to the login page instead.
 func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if len(uis.MCISettings.SuperUsers) == 0 {
+		if len(uis.Settings.SuperUsers) == 0 {
 			next(w, r)
 			return
 		}
 
 		if user := GetUser(r); user != nil {
-			for _, id := range uis.MCISettings.SuperUsers {
+			for _, id := range uis.Settings.SuperUsers {
 				if id == user.Id {
 					next(w, r)
 					return
@@ -146,7 +146,7 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 		querySep = "?"
 	}
 	location := fmt.Sprintf("%v/login?redirect=%v%v%v",
-		uis.MCISettings.Ui.Url,
+		uis.Settings.Ui.Url,
 		url.QueryEscape(r.URL.Path),
 		querySep,
 		r.URL.RawQuery)
@@ -315,7 +315,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 	// Still no project ID found anywhere, just use the default one according to config.
 	if len(projectId) == 0 {
-		projectId = uis.MCISettings.Ui.DefaultProject
+		projectId = uis.Settings.Ui.DefaultProject
 	}
 
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests

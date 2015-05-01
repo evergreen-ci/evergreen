@@ -101,8 +101,8 @@ func (self *AgentCommandLogger) Flush() {
 }
 
 func initLocalLogger() (slogger.Appender, error) {
-	mciHome := evergreen.RemoteShell
-	logDir := filepath.Join(mciHome, "logs")
+	evgHome := evergreen.RemoteShell
+	logDir := filepath.Join(evgHome, "logs")
 	exists, err := util.FileExists(logDir)
 	if err != nil {
 		return nil, err

@@ -36,7 +36,7 @@ func (bsoe BadOptionsErr) Error() string {
 }
 
 type Spawn struct {
-	mciSettings *evergreen.MCISettings
+	settings *evergreen.Settings
 }
 
 type Options struct {
@@ -46,8 +46,8 @@ type Options struct {
 	UserData  string
 }
 
-func New(ms *evergreen.MCISettings) Spawn {
-	return Spawn{ms}
+func New(settings *evergreen.Settings) Spawn {
+	return Spawn{settings}
 }
 
 // Validate() returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
@@ -130,7 +130,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	}
 
 	// get the appropriate cloud manager
-	cloudManager, err := providers.GetCloudManager(d.Provider, sm.mciSettings)
+	cloudManager, err := providers.GetCloudManager(d.Provider, sm.settings)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +160,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 
 	// create a hostinit to take care of setting up the host
 	init := &hostinit.HostInit{
-		MCISettings: sm.mciSettings,
+		Settings: sm.settings,
 	}
 
 	// for making sure the host doesn't take too long to spawn
@@ -218,7 +218,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 		so.PublicKey, h.Distro.User)
 
 	// replace expansions in the script
-	exp := command.NewExpansions(init.MCISettings.Expansions)
+	exp := command.NewExpansions(init.Settings.Expansions)
 	h.Distro.Setup, err = exp.ExpandString(h.Distro.Setup)
 	if err != nil {
 		return nil, fmt.Errorf("expansions error: %v", err)

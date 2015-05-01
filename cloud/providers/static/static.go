@@ -81,8 +81,8 @@ func (_ *StaticManager) GetSettings() cloud.ProviderSettings {
 	return &Settings{}
 }
 
-func (staticMgr *StaticManager) Configure(mciSettings *evergreen.MCISettings) error {
-	//no-op. maybe will need to load something from mciSettings in the future.
+func (staticMgr *StaticManager) Configure(settings *evergreen.Settings) error {
+	//no-op. maybe will need to load something from settings in the future.
 	return nil
 }
 

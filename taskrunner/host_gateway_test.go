@@ -145,9 +145,8 @@ func TestAgentBasedHostGateway(t *testing.T) {
 
 			// create a mock config directory, mock executables
 			// directory, and mock remote shell
-			mciHome, err := evergreen.FindMCIHome()
-			So(err, ShouldBeNil)
-			tmpBase := filepath.Join(mciHome, "taskrunner/testdata/tmp")
+			evgHome := evergreen.FindEvergreenHome()
+			tmpBase := filepath.Join(evgHome, "taskrunner/testdata/tmp")
 			mockConfigDir := filepath.Join(tmpBase, "mock_config_dir")
 			hostGatewayTestConf.ConfigDir = mockConfigDir
 			mockExecutablesDir := filepath.Join(tmpBase, "mock_executables_dir")

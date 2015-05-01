@@ -28,7 +28,7 @@ type AgentCompiler interface {
 // Implementation of an AgentCompiler, using goxc as the cross-compiler
 // of choice.
 type GoxcAgentCompiler struct {
-	*evergreen.MCISettings
+	*evergreen.Settings
 }
 
 var (
@@ -45,12 +45,8 @@ func init() {
 	// find and store the path to the goxc executable.
 	// TODO: this shouldn't be necessary, goxc should be compiled,
 	// added to $PATH, and called directly rather than using 'go run'
-	mciHome, err := evergreen.FindMCIHome()
-	if err != nil {
-		panic(fmt.Sprintf("error finding mci home while initializing"+
-			" compiler: %v", err))
-	}
-	goxc = filepath.Join(mciHome, "src/github.com/laher/goxc/goxc.go")
+	evgHome := evergreen.FindEvergreenHome()
+	goxc = filepath.Join(evgHome, "src/github.com/laher/goxc/goxc.go")
 }
 
 // Cross-compiles the specified package into the specified destination dir,

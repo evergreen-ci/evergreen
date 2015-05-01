@@ -243,9 +243,9 @@ func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 
 //Configure populates a DigitalOceanManager by reading relevant settings from the
 //config object.
-func (digoMgr *DigitalOceanManager) Configure(mciSettings *evergreen.MCISettings) error {
-	digoMgr.account = digo.NewAccount(mciSettings.Providers.DigitalOcean.ClientId,
-		mciSettings.Providers.DigitalOcean.Key)
+func (digoMgr *DigitalOceanManager) Configure(settings *evergreen.Settings) error {
+	digoMgr.account = digo.NewAccount(settings.Providers.DigitalOcean.ClientId,
+		settings.Providers.DigitalOcean.Key)
 	return nil
 }
 

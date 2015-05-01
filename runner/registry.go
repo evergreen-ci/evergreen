@@ -19,7 +19,7 @@ type ProcessRunner interface {
 	// Name returns the id of the process runner.
 	Name() string
 	// Run executes the process runner with the supplied configuration.
-	Run(*evergreen.MCISettings) error
+	Run(*evergreen.Settings) error
 }
 
 // Runners is a slice of all Evergreen processes that implement the ProcessRunner interface.

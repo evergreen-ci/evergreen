@@ -75,7 +75,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		UserData:  hostRequest.UserData,
 	}
 
-	spawner := spawn.New(&as.MCISettings)
+	spawner := spawn.New(&as.Settings)
 	err = spawner.Validate(opts)
 	if err != nil {
 		errCode := http.StatusBadRequest
@@ -92,7 +92,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, err.Error())
 			mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),
-				notify.ConstructMailer(as.MCISettings.Notify))
+				notify.ConstructMailer(as.Settings.Notify))
 			if mailErr != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
 			}
@@ -140,7 +140,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		// send notification to the MCI team about this provisioning failure
 		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, host.Distro)
 		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", host.Distro, host.Host, host.StartedBy)
-		if err = notify.NotifyAdmins(subject, message, &as.MCISettings); err != nil {
+		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
 			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 		}
 
@@ -164,7 +164,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		message += fmt.Sprintf("\nUnfortunately, the host's setup script did not run fully - check the setup.log " +
 			"file in the machine's home directory to see more details")
 	}
-	err = notify.TrySendNotificationToUser(host.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.MCISettings.Notify))
+	err = notify.TrySendNotificationToUser(host.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.Settings.Notify))
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 	}
@@ -235,7 +235,7 @@ func (as *APIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		cloudHost, err := providers.GetCloudHost(host, &as.MCISettings)
+		cloudHost, err := providers.GetCloudHost(host, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

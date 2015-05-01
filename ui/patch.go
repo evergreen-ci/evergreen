@@ -122,7 +122,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				fmt.Errorf("Error setting description: %v", err))
 			return
 		}
-		ver, err := validator.ValidateAndFinalize(projCtx.Patch, &uis.MCISettings)
+		ver, err := validator.ValidateAndFinalize(projCtx.Patch, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finalizing patch: %v", err))
 			return

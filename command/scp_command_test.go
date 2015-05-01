@@ -16,10 +16,9 @@ func TestScpCommand(t *testing.T) {
 	Convey("With files to scp", t, func() {
 
 		// the local files and target directory for scping
-		mciHome, err := evergreen.FindMCIHome()
-		So(err, ShouldBeNil)
+		evgHome := evergreen.FindEvergreenHome()
 
-		tmpBase := filepath.Join(mciHome, "command/testdata/tmp")
+		tmpBase := filepath.Join(evgHome, "command/testdata/tmp")
 		fileToScp := filepath.Join(tmpBase, "copy_me_please.txt")
 		directoryToScp := filepath.Join(tmpBase, "copy_my_children_please")
 		nestedFileToScp := filepath.Join(directoryToScp,

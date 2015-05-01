@@ -126,7 +126,7 @@ func (self sortableDisplayProjects) Less(i, j int) bool {
 
 //Create function Mappings - Add functions here to
 //make them usable in the template language
-func MakeCommonFunctionMap(mciSettings *evergreen.MCISettings) (template.FuncMap,
+func MakeCommonFunctionMap(settings *evergreen.Settings) (template.FuncMap,
 	error) {
 	funcs := map[string]interface{}{}
 
@@ -183,7 +183,7 @@ func MakeCommonFunctionMap(mciSettings *evergreen.MCISettings) (template.FuncMap
 	}
 
 	// return the project infos, sorted by repo
-	funcs["ProjectNamesByRepo"] = func(user auth.MCIUser) map[string][]model.ProjectRef {
+	funcs["ProjectNamesByRepo"] = func(user auth.User) map[string][]model.ProjectRef {
 		if user != nil {
 			return projectRefsByRepo
 		}
@@ -196,7 +196,7 @@ func MakeCommonFunctionMap(mciSettings *evergreen.MCISettings) (template.FuncMap
 		namesByRepo: projectRefsByRepo,
 	}
 	sort.Sort(forSorting)
-	funcs["SortedRepoNames"] = func(user auth.MCIUser) []string {
+	funcs["SortedRepoNames"] = func(user auth.User) []string {
 		if user != nil {
 			return repoNames
 		}
@@ -245,7 +245,7 @@ func MakeCommonFunctionMap(mciSettings *evergreen.MCISettings) (template.FuncMap
 	funcs["Trunc"] = util.Truncate
 
 	funcs["IsProd"] = func() bool {
-		return mciSettings.IsProd
+		return settings.IsProd
 	}
 
 	/* Generate a URL to github for the given repo, project, and gitspec. */
@@ -281,7 +281,7 @@ func MakeCommonFunctionMap(mciSettings *evergreen.MCISettings) (template.FuncMap
 	//template function for usage on the front-end.
 	GLOBALS := make(map[string]string)
 	GLOBALS["revision"] = "none" //evergreen.GetCurrentRevision()
-	GLOBALS["uiUrl"] = mciSettings.Ui.Url
+	GLOBALS["uiUrl"] = settings.Ui.Url
 	funcs["Global"] = func(key string) string {
 		val, present := GLOBALS[key]
 		if !present {

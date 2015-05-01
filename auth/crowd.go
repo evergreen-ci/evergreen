@@ -16,7 +16,7 @@ func NewCrowdUserManager(user, pw, url string) (*CrowdUserManager, error) {
 	return &CrowdUserManager{crowdClient}, nil
 }
 
-func (c *CrowdUserManager) GetUserByToken(token string) (MCIUser, error) {
+func (c *CrowdUserManager) GetUserByToken(token string) (User, error) {
 	user, err := c.GetUserFromToken(token)
 	if err != nil {
 		return nil, err

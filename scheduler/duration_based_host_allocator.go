@@ -89,14 +89,14 @@ type DurationBasedHostAllocator struct{}
 // helper type to sort distros by the number of static hosts they have
 type sortableDistroByNumStaticHost struct {
 	distros  []distro.Distro
-	settings *evergreen.MCISettings
+	settings *evergreen.Settings
 }
 
 // Implementation of NewHostsNeeded.  Decides that new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
 // consideration
 func (self *DurationBasedHostAllocator) NewHostsNeeded(
-	hostAllocatorData HostAllocatorData, mciSettings *evergreen.MCISettings) (newHostsNeeded map[string]int,
+	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (newHostsNeeded map[string]int,
 	err error) {
 
 	queueDistros := make([]distro.Distro, 0,
@@ -123,7 +123,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	// hosts and other without, we want to spin up new machines for the latter
 	// only if the former is unable to satisfy the turnaround requirement - as
 	// determined by MaxDurationPerDistroHost
-	distros := sortDistrosByNumStaticHosts(queueDistros, mciSettings)
+	distros := sortDistrosByNumStaticHosts(queueDistros, settings)
 
 	// for all distros, this maintains a mapping of distro name -> the number
 	// of new hosts needed for that distro
@@ -142,7 +142,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	for _, d := range distros {
 		newHostsNeeded[d.Id], err = self.
 			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
-			distroScheduleData, mciSettings)
+			distroScheduleData, settings)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "Error getting num hosts for distro: %v", err)
 			return nil, err
@@ -414,7 +414,7 @@ func numNewDistroHosts(poolSize, numExistingHosts, numFreeHosts, durNewHosts,
 func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	hostAllocatorData *HostAllocatorData, distro distro.Distro,
 	tasksAccountedFor map[string]bool,
-	distroScheduleData map[string]DistroScheduleData, mciSettings *evergreen.MCISettings) (numNewHosts int,
+	distroScheduleData map[string]DistroScheduleData, settings *evergreen.Settings) (numNewHosts int,
 	err error) {
 
 	projectTaskDurations := hostAllocatorData.projectTaskDurations
@@ -475,7 +475,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 		totalTasksDuration:   scheduledTasksDuration + runningTasksDuration,
 	}
 
-	cloudManager, err := providers.GetCloudManager(distro.Provider, mciSettings)
+	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 	if err != nil {
 		return 0, evergreen.Logger.Errorf(slogger.ERROR, "Couldn't get cloud manager for %v (%v): %v",
 			distro.Provider, distro.Id, err)
@@ -514,7 +514,7 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 // sortDistrosByNumStaticHosts returns a sorted slice of distros where the
 // distro with the greatest number of static host is first - at index position 0
-func sortDistrosByNumStaticHosts(distros []distro.Distro, settings *evergreen.MCISettings) []distro.Distro {
+func sortDistrosByNumStaticHosts(distros []distro.Distro, settings *evergreen.Settings) []distro.Distro {
 	sortableDistroObj := &sortableDistroByNumStaticHost{distros, settings}
 	sort.Sort(sortableDistroObj)
 	return sortableDistroObj.distros

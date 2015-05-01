@@ -323,7 +323,7 @@ func TestNotify(t *testing.T) {
 			m[notificationKey] = []Email{&email}
 
 			mailer := MockMailer{}
-			mockSettings := evergreen.MCISettings{Notify: evergreen.NotifyConfig{}}
+			mockSettings := evergreen.Settings{Notify: evergreen.NotifyConfig{}}
 			err = SendNotifications(&mockSettings, notificationSettings, m, mailer)
 			So(err, ShouldBeNil)
 

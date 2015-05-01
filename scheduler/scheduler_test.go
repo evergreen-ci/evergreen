@@ -34,7 +34,7 @@ func (self *MockTaskFinder) FindRunnableTasks() ([]model.Task, error) {
 
 type MockTaskPrioritizer struct{}
 
-func (self *MockTaskPrioritizer) PrioritizeTasks(mciSettings *evergreen.MCISettings,
+func (self *MockTaskPrioritizer) PrioritizeTasks(settings *evergreen.Settings,
 	tasks []model.Task) ([]model.Task, error) {
 	return nil, fmt.Errorf("PrioritizeTasks not implemented")
 }
@@ -57,7 +57,7 @@ func (self *MockTaskDurationEstimator) GetExpectedDurations(
 
 type MockHostAllocator struct{}
 
-func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *evergreen.MCISettings) (
+func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *evergreen.Settings) (
 	map[string]int, error) {
 	return nil, fmt.Errorf("NewHostsNeeded not implemented")
 }

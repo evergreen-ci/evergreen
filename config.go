@@ -115,7 +115,7 @@ type DigitalOceanConfig struct {
 
 type PluginConfig map[string]map[string]interface{}
 
-type MCISettings struct {
+type Settings struct {
 	DbUrl               string
 	Db                  string
 	ConfigDir           string
@@ -142,25 +142,25 @@ type MCISettings struct {
 	IsProd              bool
 }
 
-func NewMCISettings(filename string) (*MCISettings, error) {
+func NewSettings(filename string) (*Settings, error) {
 	configData, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	mciSettings := &MCISettings{}
-	err = yaml.Unmarshal(configData, mciSettings)
+	settings := &Settings{}
+	err = yaml.Unmarshal(configData, settings)
 	if err != nil {
 		return nil, err
 	}
 
-	return mciSettings, nil
+	return settings, nil
 }
 
 //Validate() checks the settings and returns nil if the config is valid,
 //or an error with a message explaining why otherwise.
-func (mciSettings *MCISettings) Validate(validators []ConfigValidator) error {
+func (settings *Settings) Validate(validators []ConfigValidator) error {
 	for _, validator := range validators {
-		err := validator(mciSettings)
+		err := validator(settings)
 		if err != nil {
 			return err
 		}
@@ -169,8 +169,8 @@ func (mciSettings *MCISettings) Validate(validators []ConfigValidator) error {
 	return nil
 }
 
-func MustConfigFile(settingsPath string) *MCISettings {
-	settings, err := NewMCISettings(settingsPath)
+func MustConfigFile(settingsPath string) *Settings {
+	settings, err := NewSettings(settingsPath)
 	if err != nil {
 		panic(err)
 	}
@@ -181,65 +181,65 @@ func MustConfigFile(settingsPath string) *MCISettings {
 	return settings
 }
 
-func MustConfig() *MCISettings {
+func MustConfig() *Settings {
 	var configFilePath = flag.String("conf", DefaultConfFile, "path to config file")
 	flag.Parse()
 	return MustConfigFile(*configFilePath)
 }
 
-type ConfigValidator func(settings *MCISettings) error
+type ConfigValidator func(settings *Settings) error
 
 var ConfigValidationRules = []ConfigValidator{
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.DbUrl == "" || settings.Db == "" {
 			return fmt.Errorf("DBUrl and DB must not be empty")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.Providers.AWS.Secret == "" || settings.Providers.AWS.Id == "" {
 			return fmt.Errorf("AWS Secret and ID must not be empty")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.Motu == "" {
 			return fmt.Errorf("MOTU hostname must not be empty")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.Ui.Secret == "" {
 			return fmt.Errorf("UI Secret must not be empty")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.ConfigDir == "" {
 			return fmt.Errorf("Config directory must not be empty")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.Ui.DefaultProject == "" {
 			return fmt.Errorf("You must specify a default project in UI")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		if settings.Ui.Url == "" {
 			return fmt.Errorf("You must specify a default UI url")
 		}
 		return nil
 	},
 
-	func(settings *MCISettings) error {
+	func(settings *Settings) error {
 		notifyConfig := settings.Notify.SMTP
 
 		if notifyConfig == nil {

@@ -69,9 +69,8 @@ func TestLocalCommands(t *testing.T) {
 
 			stdout := &CacheLastWritten{}
 
-			mciHome, err := evergreen.FindMCIHome()
-			So(err, ShouldBeNil)
-			workingDir := filepath.Join(mciHome, "command/testdata")
+			evgHome := evergreen.FindEvergreenHome()
+			workingDir := filepath.Join(evgHome, "command/testdata")
 
 			command := &LocalCommand{
 				CmdString:        "pwd",
@@ -170,9 +169,8 @@ func TestLocalScript(t *testing.T) {
 
 			stdout := &CacheLastWritten{}
 
-			mciHome, err := evergreen.FindMCIHome()
-			So(err, ShouldBeNil)
-			workingDir := filepath.Join(mciHome, "command/testdata")
+			evgHome := evergreen.FindEvergreenHome()
+			workingDir := filepath.Join(evgHome, "command/testdata")
 
 			command := &LocalCommand{
 				CmdString:        "set -v\necho 'hi'\necho 'foo'\necho `pwd`",

@@ -137,7 +137,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    evergreen.MCIUser,
+				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-10 * time.Minute),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
@@ -153,7 +153,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    evergreen.MCIUser,
+				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 				Notifications: map[string]bool{
 					slowProvisioningWarning: true,
@@ -171,7 +171,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    evergreen.MCIUser,
+				StartedBy:    evergreen.User,
 				Status:       evergreen.HostTerminated,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
@@ -188,7 +188,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 
 			host1 := &host.Host{
 				Id:           "h1",
-				StartedBy:    evergreen.MCIUser,
+				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
 			util.HandleTestingErr(host1.Insert(), t, "error inserting host")

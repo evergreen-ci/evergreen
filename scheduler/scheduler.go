@@ -16,7 +16,7 @@ import (
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
 // basis.
 type Scheduler struct {
-	*evergreen.MCISettings
+	*evergreen.Settings
 	TaskFinder
 	TaskPrioritizer
 	TaskDurationEstimator
@@ -37,7 +37,7 @@ type versionBuildVariant struct {
 func (self *Scheduler) Schedule() error {
 	// make sure the correct static hosts are in the database
 	evergreen.Logger.Logf(slogger.INFO, "Updating static hosts...")
-	err := model.UpdateStaticHosts(self.MCISettings)
+	err := model.UpdateStaticHosts(self.Settings)
 	if err != nil {
 		return fmt.Errorf("error updating static hosts: %v", err)
 	}
@@ -80,7 +80,7 @@ func (self *Scheduler) Schedule() error {
 		evergreen.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
 			len(runnableTasksForDistro), d.Id)
 
-		prioritizedTasks, err := self.PrioritizeTasks(self.MCISettings,
+		prioritizedTasks, err := self.PrioritizeTasks(self.Settings,
 			runnableTasksForDistro)
 		if err != nil {
 			return fmt.Errorf("Error prioritizing tasks: %v", err)
@@ -152,7 +152,7 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	// figure out how many new hosts we need
-	newHostsNeeded, err := self.NewHostsNeeded(hostAllocatorData, self.MCISettings)
+	newHostsNeeded, err := self.NewHostsNeeded(hostAllocatorData, self.Settings)
 	if err != nil {
 		return fmt.Errorf("Error determining how many new hosts are needed: %v",
 			err)
@@ -313,13 +313,13 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 				continue
 			}
 
-			cloudManager, err := providers.GetCloudManager(d.Provider, self.MCISettings)
+			cloudManager, err := providers.GetCloudManager(d.Provider, self.Settings)
 			if err != nil {
 				evergreen.Logger.Errorf(slogger.ERROR, "Error getting cloud manager for distro: %v", err)
 				continue
 			}
 
-			newHost, err := cloudManager.SpawnInstance(d, evergreen.MCIUser, false)
+			newHost, err := cloudManager.SpawnInstance(d, evergreen.User, false)
 			if err != nil {
 				evergreen.Logger.Errorf(slogger.ERROR, "Error spawning instance: %v,",
 					err)

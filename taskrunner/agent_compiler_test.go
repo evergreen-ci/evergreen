@@ -23,9 +23,8 @@ func TestGoxcAgentCompiler(t *testing.T) {
 			" should be built in the specified destination directory", func() {
 
 			// create a fake go env for building
-			mciHome, err := evergreen.FindMCIHome()
-			So(err, ShouldBeNil)
-			mockGoPath := filepath.Join(mciHome,
+			evgHome := evergreen.FindEvergreenHome()
+			mockGoPath := filepath.Join(evgHome,
 				"src/github.com/evergreen-ci/evergreen/taskrunner/testdata/tmp/mockGoPath/")
 			srcDir := filepath.Join(mockGoPath, "src")
 			So(os.MkdirAll(srcDir, 0777), ShouldBeNil)

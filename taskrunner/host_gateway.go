@@ -31,7 +31,7 @@ type HostGateway interface {
 	RunSetup() error
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	RunTaskOnHost(*evergreen.MCISettings, model.Task, host.Host) (string, error)
+	RunTaskOnHost(*evergreen.Settings, model.Task, host.Host) (string, error)
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -77,17 +77,14 @@ func (self *AgentBasedHostGateway) RunSetup() error {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine.
 // Returns an error if any step along the way fails.
-func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *evergreen.MCISettings,
+func (self *AgentBasedHostGateway) RunTaskOnHost(settings *evergreen.Settings,
 	taskToRun model.Task, host host.Host) (string, error) {
 
 	// cache mci home
-	mciHome, err := evergreen.FindMCIHome()
-	if err != nil {
-		return "", fmt.Errorf("error finding mci home: %v", err)
-	}
+	evgHome := evergreen.FindEvergreenHome()
 
 	// get the host's SSH options
-	cloudHost, err := providers.GetCloudHost(&host, mciSettings)
+	cloudHost, err := providers.GetCloudHost(&host, settings)
 	if err != nil {
 		return "", fmt.Errorf("Failed to get cloud host for %v: %v", host.Id, err)
 	}
@@ -98,8 +95,8 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *evergreen.MCISetti
 
 	// prep the remote host
 	evergreen.Logger.Logf(slogger.INFO, "Prepping remote host %v...", host.Id)
-	agentRevision, err := self.prepRemoteHost(mciSettings, host, sshOptions,
-		mciHome)
+	agentRevision, err := self.prepRemoteHost(settings, host, sshOptions,
+		evgHome)
 	if err != nil {
 		return "", fmt.Errorf("error prepping remote host %v: %v", host.Id, err)
 	}
@@ -109,7 +106,7 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(mciSettings *evergreen.MCISetti
 	evergreen.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...",
 		host.Id, taskToRun.Id)
 
-	err = self.startAgentOnRemote(mciSettings, &taskToRun, &host, sshOptions)
+	err = self.startAgentOnRemote(settings, &taskToRun, &host, sshOptions)
 	if err != nil {
 		return "", fmt.Errorf("error starting agent on %v for task %v: %v",
 			host.Id, taskToRun.Id, err)
@@ -193,7 +190,7 @@ func (self *AgentBasedHostGateway) buildAgent() error {
 }
 
 // Prepare the remote machine to run a task.
-func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *evergreen.MCISettings,
+func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	host host.Host, sshOptions []string, mciHome string) (string, error) {
 
 	// compute any info necessary to ssh into the host
@@ -231,7 +228,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *evergreen.MCISett
 	}
 
 	scpConfigsCmd := &command.ScpCommand{
-		Source:         filepath.Join(mciHome, mciSettings.ConfigDir),
+		Source:         filepath.Join(mciHome, settings.ConfigDir),
 		Dest:           evergreen.RemoteShell,
 		Stdout:         ioutil.Discard, // TODO: change to real logging
 		Stderr:         ioutil.Discard, // TODO: change to real logging
@@ -315,7 +312,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(mciSettings *evergreen.MCISett
 // the specified task.
 // Returns an error if starting the agent remotely fails.
 func (self *AgentBasedHostGateway) startAgentOnRemote(
-	mciSettings *evergreen.MCISettings, task *model.Task,
+	settings *evergreen.Settings, task *model.Task,
 	host *host.Host, sshOptions []string) error {
 
 	// the path to the agent binary on the remote machine
@@ -324,8 +321,8 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
 		`%v -motu_url "%v" -task_id "%v" -task_secret "%v" -config_dir "%v" -https_cert "%v"`,
-		pathToExecutable, mciSettings.Motu, task.Id, task.Secret,
-		mciSettings.ConfigDir, mciSettings.Expansions["api_httpscert_path"],
+		pathToExecutable, settings.Motu, task.Id, task.Secret,
+		settings.ConfigDir, settings.Expansions["api_httpscert_path"],
 	)
 	evergreen.Logger.Logf(slogger.INFO, "%v", remoteCmd)
 

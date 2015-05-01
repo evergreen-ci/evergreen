@@ -16,8 +16,8 @@ type TestServer struct {
 	*APIServer
 }
 
-func CreateTestServer(mciSettings *evergreen.MCISettings, tlsConfig *tls.Config, plugins []plugin.Plugin, verbose bool) (*TestServer, error) {
-	apiServer, err := New(mciSettings, plugins)
+func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugins []plugin.Plugin, verbose bool) (*TestServer, error) {
+	apiServer, err := New(settings, plugins)
 	if err != nil {
 		return nil, err
 	}

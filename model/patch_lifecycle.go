@@ -214,7 +214,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
 func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
-	mciSettings *evergreen.MCISettings, project *Project) (
+	settings *evergreen.Settings, project *Project) (
 	patchVersion *version.Version, err error) {
 	// marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)

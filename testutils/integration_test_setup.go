@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/model"
+	"github.com/evergreen-ci/evergreen/model"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
@@ -20,7 +20,7 @@ var (
 		" file")
 )
 
-func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.MCISettings,
+func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testName string) {
 	if !(*runIntegration) {
 		t.Skip(fmt.Sprintf("Skipping integration test %v...", testName))
@@ -33,7 +33,7 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.MCISettings,
 	}
 
 	// grab the file with the integration test settings
-	integrationSettings, err := evergreen.NewMCISettings(*settingsOverride)
+	integrationSettings, err := evergreen.NewSettings(*settingsOverride)
 	if err != nil {
 		panic(fmt.Sprintf("Error opening settings override file %v: %v",
 			*settingsOverride, err))
@@ -49,9 +49,9 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.MCISettings,
 
 // Creates a project ref local config that can be used for testing, with the string identifier given
 // and the local config from a path
-func CreateTestLocalConfig(testSettings *evergreen.MCISettings, projectName string) error {
+func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName string) error {
 
-	config, err := evergreen.FindMCIConfig(testSettings.ConfigDir)
+	config, err := evergreen.FindConfig(testSettings.ConfigDir)
 	if err != nil {
 		return err
 	}

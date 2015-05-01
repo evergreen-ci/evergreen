@@ -18,11 +18,11 @@ const (
 // function that takes in all distros - specified as a map of
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
-type hostFlaggingFunc func([]distro.Distro, *evergreen.MCISettings) ([]host.Host, error)
+type hostFlaggingFunc func([]distro.Distro, *evergreen.Settings) ([]host.Host, error)
 
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
-func flagDecommissionedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
+func flagDecommissionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding decommissioned hosts...")
 
@@ -39,7 +39,7 @@ func flagDecommissionedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]hos
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
-func flagIdleHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
+func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding idle hosts...")
 
@@ -96,7 +96,7 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, er
 
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
-func flagExcessHosts(distros []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
+func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding excess hosts...")
 
@@ -160,7 +160,7 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.MCISettings) ([]host.
 
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
-func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
+func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding unprovisioned hosts...")
 
@@ -178,7 +178,7 @@ func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host
 
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
-func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
+func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding hosts whose provisioning failed...")
 
@@ -198,7 +198,7 @@ func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.MCISettings) ([
 
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
-func flagExpiredHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host, error) {
+func flagExpiredHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding expired hosts")
 
@@ -215,7 +215,7 @@ func flagExpiredHosts(d []distro.Distro, s *evergreen.MCISettings) ([]host.Host,
 }
 
 // helper to check if a host can be terminated
-func hostCanBeTerminated(h host.Host, s *evergreen.MCISettings) (bool, error) {
+func hostCanBeTerminated(h host.Host, s *evergreen.Settings) (bool, error) {
 
 	// get a cloud manager for the host
 	cloudManager, err := providers.GetCloudManager(h.Provider, s)

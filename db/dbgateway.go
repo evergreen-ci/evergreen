@@ -23,7 +23,7 @@ type SessionProvider interface {
 	GetSession() (*mgo.Session, *mgo.Database, error)
 }
 
-func SessionFactoryFromConfig(appConf *evergreen.MCISettings) *SessionFactory {
+func SessionFactoryFromConfig(appConf *evergreen.Settings) *SessionFactory {
 	return NewSessionFactory(appConf.DbUrl, appConf.Db, 5*time.Second)
 }
 

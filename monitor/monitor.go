@@ -41,7 +41,7 @@ var (
 )
 
 // run all monitoring functions
-func RunAllMonitoring(mciSettings *evergreen.MCISettings) error {
+func RunAllMonitoring(settings *evergreen.Settings) error {
 
 	// load in all of the distros
 	distros, err := distro.Find(db.Q{})
@@ -95,13 +95,13 @@ func RunAllMonitoring(mciSettings *evergreen.MCISettings) error {
 	}
 
 	// clean up any necessary hosts
-	errs = hostMonitor.CleanupHosts(distros, mciSettings)
+	errs = hostMonitor.CleanupHosts(distros, settings)
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up hosts: %v", err)
 	}
 
 	// run monitoring checks
-	errs = hostMonitor.RunMonitoringChecks(mciSettings)
+	errs = hostMonitor.RunMonitoringChecks(settings)
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error running host monitoring"+
 			" checks: %v", err)
@@ -113,7 +113,7 @@ func RunAllMonitoring(mciSettings *evergreen.MCISettings) error {
 	}
 
 	// send notifications
-	errs = notifier.Notify(mciSettings)
+	errs = notifier.Notify(settings)
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error sending notifications: %v", err)
 	}

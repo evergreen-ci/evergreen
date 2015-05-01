@@ -27,7 +27,7 @@ const (
 // changes. It contains a number of interfaces that specify behavior required by
 // client implementations
 type RepoTracker struct {
-	*evergreen.MCISettings
+	*evergreen.Settings
 	*model.ProjectRef
 	RepoPoller
 }
@@ -66,7 +66,7 @@ func (p projectConfigError) Error() string {
 // persisting any changes retrieved from the repository reference.
 func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	err error) {
-	settings := repoTracker.MCISettings
+	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
 
@@ -200,7 +200,7 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 	err error) {
 	// Send a notification to the MCI team
 	projectRef := repoTracker.ProjectRef
-	settings := repoTracker.MCISettings
+	settings := repoTracker.Settings
 	subject := fmt.Sprintf(notify.RepotrackerFailurePreface,
 		projectRef.Identifier, lastRevision)
 	url := fmt.Sprintf("%v/%v/%v/commits/%v", thirdparty.GithubBase,

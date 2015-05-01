@@ -17,7 +17,7 @@ func (r *Runner) Name() string {
 	return RunnerName
 }
 
-func (r *Runner) Run(config *evergreen.MCISettings) error {
+func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
 	evergreen.Logger.Logf(slogger.INFO, "Starting notifications at time %v", startTime)
 	evergreen.Logger.Logf(slogger.INFO, "Running notifications with db %v and notifications configuration %v/%v", config.Db, config.ConfigDir, evergreen.NotificationsFile)

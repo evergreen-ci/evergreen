@@ -144,7 +144,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           mkdir bin
           if [ "Windows_NT" = "$OS" ]; then
             export GOBIN=$(cygpath -w `pwd`/bin)
@@ -178,7 +178,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd agent
           mkfifo test_pipe
           tee -a agent.suite < test_pipe&
@@ -208,7 +208,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd archive
           mkfifo test_pipe
           tee -a archive.suite < test_pipe&
@@ -238,7 +238,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd db
           mkfifo test_pipe
           tee -a db.suite < test_pipe&
@@ -255,7 +255,7 @@ tasks:
     - func: "upload coverage html report"
     - func: "upload coverage txt report"
 
-- name: mci
+- name: evergreen
   commands:
     - func: "start mongod"
     - func: "fetch source"
@@ -268,7 +268,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           mkfifo test_pipe
           tee -a evergreen.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
@@ -291,7 +291,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd model
           mkfifo test_pipe
           tee -a model.suite < test_pipe&
@@ -337,7 +337,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd monitor
           mkfifo test_pipe
           tee -a monitor.suite < test_pipe&
@@ -367,7 +367,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd notify
           mkfifo test_pipe
           tee -a notify.suite < test_pipe&
@@ -398,7 +398,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
 
           cd plugin
           mkfifo test_pipe
@@ -635,7 +635,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd repotracker
           mkfifo test_pipe
           tee -a repotracker.suite < test_pipe&
@@ -665,7 +665,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd scheduler
           mkfifo test_pipe
           tee -a scheduler.suite < test_pipe&
@@ -696,7 +696,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd thirdparty
           mkfifo test_pipe
           tee -a thirdparty.suite < test_pipe&
@@ -726,7 +726,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd util
           mkfifo test_pipe
           tee < test_pipe&
@@ -756,7 +756,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd ui
           mkfifo test_pipe
           tee -a ui.suite < test_pipe&
@@ -787,7 +787,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=${mci_home_cmd}
+          export EVGHOME=${EVGHOME_cmd}
           cd validator
           mkfifo test_pipe
           tee -a validator.suite < test_pipe&
@@ -810,13 +810,13 @@ buildvariants:
       run_on:
       - ubuntu1404-test
       expansions:
-        mci_home_cmd: "`pwd`"
+        EVGHOME_cmd: "`pwd`"
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
       tasks:
       - name: client
       - name: agent
       - name: db
-      - name: mci
+      - name: evergreen
       - name: model
       - name: monitor
       - name: notify
@@ -832,13 +832,13 @@ buildvariants:
       run_on:
       - osx-108
       expansions:
-        mci_home_cmd: "`pwd`"
+        EVGHOME_cmd: "`pwd`"
         mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
       tasks:
       - name: client
       - name: agent
       - name: db
-      - name: mci
+      - name: evergreen
       - name: model
       - name: monitor
       - name: notify
@@ -854,7 +854,7 @@ buildvariants:
       run_on:
       - windows-64-vs2013-compile
       expansions:
-        mci_home_cmd: "$(cygpath -w `pwd`)"
+        EVGHOME_cmd: "$(cygpath -w `pwd`)"
         mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5.zip
         extension: .exe
       tasks:

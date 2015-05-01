@@ -24,7 +24,7 @@ import (
 //
 type HostAllocator interface {
 	NewHostsNeeded(allocatorData HostAllocatorData,
-		mciSettings *evergreen.MCISettings) (map[string]int, error)
+		settings *evergreen.Settings) (map[string]int, error)
 }
 
 type HostAllocatorData struct {

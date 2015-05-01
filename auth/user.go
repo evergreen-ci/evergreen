@@ -1,15 +1,13 @@
 package auth
 
-import ()
-
-type MCIUser interface {
+type User interface {
 	DisplayName() string
 	Email() string
 	Username() string
 }
 
 type UserManager interface {
-	GetUserByToken(token string) (MCIUser, error)
+	GetUserByToken(token string) (User, error)
 	CreateUserToken(username, password string) (string, error)
 }
 

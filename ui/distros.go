@@ -32,7 +32,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 		User        *user.DBUser
 		ProjectData projectContext
 		Flashes     []interface{}
-	}{distros, uis.MCISettings.Keys, GetUser(r), projCtx, PopFlashes(uis.CookieStore, r, w)},
+	}{distros, uis.Settings.Keys, GetUser(r), projCtx, PopFlashes(uis.CookieStore, r, w)},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 
@@ -70,7 +70,7 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check that the resulting distro is valid
-	vErrs := validator.CheckDistro(&newDistro, &uis.MCISettings, false)
+	vErrs := validator.CheckDistro(&newDistro, &uis.Settings, false)
 	if len(vErrs) != 0 {
 		for _, e := range vErrs {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(e.Error()))
@@ -153,7 +153,7 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vErrs := validator.CheckDistro(&d, &uis.MCISettings, true)
+	vErrs := validator.CheckDistro(&d, &uis.Settings, true)
 	if len(vErrs) != 0 {
 		for _, e := range vErrs {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(e.Error()))
