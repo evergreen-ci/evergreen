@@ -26,11 +26,7 @@ func main() {
 
 	home := evergreen.FindEvergreenHome()
 
-	crowdManager, err := auth.NewCrowdUserManager(
-		settings.Crowd.Username,
-		settings.Crowd.Password,
-		settings.Crowd.Urlroot,
-	)
+	userManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		fmt.Println("Failed to create user manager:", err)
 		os.Exit(1)
@@ -41,7 +37,7 @@ func main() {
 	uis := ui.UIServer{
 		nil,             // render
 		settings.Ui.Url, // RootURL
-		crowdManager,    // User Manager
+		userManager,     // User Manager
 		*settings,       // mci settings
 		cookieStore,     // cookiestore
 		nil,             // plugin panel manager
@@ -72,7 +68,7 @@ func main() {
 	n := negroni.New()
 	n.Use(negroni.NewStatic(http.Dir(webHome)))
 	n.Use(ui.NewLogger())
-	n.Use(negroni.HandlerFunc(ui.UserMiddleware(crowdManager)))
+	n.Use(negroni.HandlerFunc(ui.UserMiddleware(userManager)))
 	n.UseHandler(router)
 
 	n.Run(settings.Ui.HttpListenAddr)

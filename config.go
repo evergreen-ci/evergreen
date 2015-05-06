@@ -11,10 +11,29 @@ const (
 	DefaultConfFile = "/etc/mci_settings.yml"
 )
 
+// AuthUser is a struct containing the Username, DisplayName, Password and Email.
+type AuthUser struct {
+	Username    string `yaml:"username"`
+	DisplayName string `yaml:"display_name"`
+	Password    string `yaml:"password"`
+	Email       string `yaml:"email"`
+}
+
+// NaiveAuthConfig is a struct with a list of AuthUsers.
+type NaiveAuthConfig struct {
+	Users []*AuthUser
+}
+
 type CrowdConfig struct {
 	Username string
 	Password string
 	Urlroot  string
+}
+
+// AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
+type AuthConfig struct {
+	Crowd *CrowdConfig     `yaml:"crowd"`
+	Naive *NaiveAuthConfig `yaml:"naive"`
 }
 
 type RepoTrackerConfig struct {
@@ -113,29 +132,29 @@ type DigitalOceanConfig struct {
 type PluginConfig map[string]map[string]interface{}
 
 type Settings struct {
-	DbUrl               string
-	Db                  string
-	ConfigDir           string
-	Motu                string
-	AgentExecutablesDir string
-	SuperUsers          []string
-	Jira                JiraConfig
-	Providers           CloudProviders
-	Keys                map[string]string
-	Credentials         map[string]string
-	Crowd               CrowdConfig
-	RepoTracker         RepoTrackerConfig
-	Monitor             MonitorConfig
-	Api                 ApiConfig
-	Ui                  UIConfig
-	HostInit            HostInitConfig
-	Notify              NotifyConfig
-	Runner              RunnerConfig
-	Scheduler           SchedulerConfig
-	TaskRunner          TaskRunnerConfig
-	Expansions          map[string]string
-	Plugins             PluginConfig
-	IsProd              bool
+	DbUrl               string            `yaml:"dburl"`
+	Db                  string            `yaml:"db"`
+	ConfigDir           string            `yaml:"configdir"`
+	Motu                string            `yaml:"motu"`
+	AgentExecutablesDir string            `yaml:"agentexecutablesdir"`
+	SuperUsers          []string          `yaml:"superusers"`
+	Jira                JiraConfig        `yaml:"jira"`
+	Providers           CloudProviders    `yaml:"providers"`
+	Keys                map[string]string `yaml:"keys"`
+	Credentials         map[string]string `yaml:"credentials"`
+	AuthConfig          AuthConfig        `yaml:"auth"`
+	RepoTracker         RepoTrackerConfig `yaml:"repotracker"`
+	Monitor             MonitorConfig     `yaml:"monitor"`
+	Api                 ApiConfig         `yaml:"api"`
+	Ui                  UIConfig          `yaml:"ui"`
+	HostInit            HostInitConfig    `yaml:"hostinit"`
+	Notify              NotifyConfig      `yaml:"notify"`
+	Runner              RunnerConfig      `yaml:"runner"`
+	Scheduler           SchedulerConfig   `yaml:"scheduler"`
+	TaskRunner          TaskRunnerConfig  `yaml:"taskrunner"`
+	Expansions          map[string]string `yaml:"expansions"`
+	Plugins             PluginConfig      `yaml:"plugins"`
+	IsProd              bool              `yaml:"isprod"`
 }
 
 func NewSettings(filename string) (*Settings, error) {
@@ -254,6 +273,22 @@ var ConfigValidationRules = []ConfigValidator{
 			return fmt.Errorf("You must specify a from address")
 		}
 
+		return nil
+	},
+	func(settings *Settings) error {
+		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil {
+			return fmt.Errorf("You must specify one form of authentication")
+		}
+		if settings.AuthConfig.Naive != nil {
+
+			used := map[string]bool{}
+			for _, x := range settings.AuthConfig.Naive.Users {
+				if used[x.Username] {
+					return fmt.Errorf("Duplicate user in list")
+				}
+				used[x.Username] = true
+			}
+		}
 		return nil
 	},
 }

@@ -33,7 +33,6 @@ type UIServer struct {
 	RootURL string
 	//authManager
 	UserManager auth.UserManager
-
 	Settings    evergreen.Settings
 	CookieStore *sessions.CookieStore
 

@@ -114,10 +114,11 @@ pre:
             aws_id: "${aws_key}"
             aws_secret: "${aws_secret}"
 
-        crowd:
-          username: ${crowduser}
-          password: ${crowdpw}
-          urlroot: ${crowdserver}
+        auth:
+            crowd:
+              username: ${crowduser}
+              password: ${crowdpw}
+              urlroot: ${crowdserver}
         END_OF_CREDS
 
 post:

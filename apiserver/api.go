@@ -66,16 +66,12 @@ const (
 )
 
 func New(settings *evergreen.Settings, plugins []plugin.Plugin) (*APIServer, error) {
-	crowdManager, err := auth.NewCrowdUserManager(
-		settings.Crowd.Username,
-		settings.Crowd.Password,
-		settings.Crowd.Urlroot,
-	)
+	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return &APIServer{render.New(render.Options{}), crowdManager, *settings, plugins}, nil
+	return &APIServer{render.New(render.Options{}), authManager, *settings, plugins}, nil
 }
 
 // UserMiddleware checks for session tokens on the request, then looks up and attaches a user
