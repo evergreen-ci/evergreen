@@ -1,9 +1,9 @@
 export PATH="/data/dist/go1.3/bin:$PATH"
 export GOTOOLDIR="/data/dist/go1.3/pkg/tool/linux_amd64"
 export GOROOT="/data/dist/go1.3"
-export mci_home="/data/mci"
+export EVGHOME="/data/mci"
 
-cd $mci_home
+cd $EVGHOME
 
 ./bin/hostinit -conf /data/home/etc/mci_settings.yml &
 flock --close --nonblock monitor.lock ./bin/monitor -conf /data/home/etc/mci_settings.yml
