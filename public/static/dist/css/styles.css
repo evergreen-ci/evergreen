@@ -1192,10 +1192,14 @@ textarea {
   white-space: nowrap;
 }
 .history-item-revision {
-  font-family: Monaco, "Liberation Mono", Courier, monospace;
+  text-transform: none;
+  font-size: .9em;
+  font-weight: bold;
+  font-family: Menlo, Monaco, monospace;
+  padding: 0px 3px 0px 3px;
+  margin-right: 3px;
 }
 .history-item-message {
-  font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -1,21 +1,17 @@
-<a ng-href="/task/[[ revision.defaultExecution.id ]]"
-   ng-if="revision.defaultExecution.id"
+<a ng-href="/[[ linkType ]]/[[ linkId ]]#[[$parent.$parent.tab]]"
    class="history-status-marker"
-   ng-class="classFromStatus(revision.defaultExecution.status)">
-</a>
+   ng-class="showStatus ? classFromStatus(revision.exec.status) : ''" > </a>
 
-<div class="history-status-marker" ng-class="classFromStatus(revision.defaultExecution.status)" ng-if="!revision.defaultExecution.id"></div>
+<div class="history-status-marker" ng-class="classFromStatus(revision.exec.status)" ng-if="!!revision.exec.status && linkType=='task'"></div>
 <div class="row">
-  <div id="message-[[ revision.revision.substring(0, 8) ]]" class="col-lg-12 drawer-message-wrapper">
-    <a ng-href="/task/[[ revision.defaultExecution.id ]]"
-       ng-if="revision.defaultExecution.id"
-       class="history-item-info">
-      <span class="history-item-revision">[[ revision.revision.substring(0, 8) ]]</span>
+  <div class="col-lg-12 drawer-message-wrapper">
+    <a ng-href="/[[linkType]]/[[linkId]]#[[$parent.$parent.tab]]" ng-if="revision.exec.status" class="history-item-info">
+      <span class="btn btn-default btn-hash history-item-revision">[[ revision.revision.substring(0, 5) ]]</span>
       <span class="history-item-message" title="[[ revision.message ]]">[[ revision.message ]]</span>
     </a>
 
-    <div class="history-item-info" ng-if="!revision.defaultExecution.id">
-      <span class="history-item-revision">[[ revision.revision.substring(0, 8) ]]</span>
+    <div class="history-item-info" ng-if="!linkId">
+      <span class="btn btn-default btn-hash history-item-revision">[[ revision.revision.substring(0, 5) ]]</span>
       <span class="history-item-message" title="[[ revision.message ]]">[[ revision.message ]]</span>
     </div>
 
@@ -23,12 +19,10 @@
   </div>
 </div>
 
-<div id="failures-[[ revision.revision.substring(0, 8) ]]"
-      class="row history-item-failures failed-text" 
-      title="[[ failuresTooltip(revision.defaultExecution.failures) ]]"
-      ng-if="revision.defaultExecution.failures">
-
+<div class="row history-item-failures failed-text" 
+     title="[[ failuresTooltip(revision.failures) ]]"
+     ng-if="revision.exec.failures">
   <div class="col-lg-12">
-    <span ng-repeat="failure in revision.defaultExecution.failures">[[ failure | endOfPath ]]<span ng-if="!$last">, </span></span>
+    <span ng-repeat="failure in revision.exec.failures">[[ failure | endOfPath ]]<span ng-if="!$last">, </span></span>
   </div>
 </div>

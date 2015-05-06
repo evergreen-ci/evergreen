@@ -24,7 +24,38 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
 {{end}}
 
 {{define "content"}}
-<div id="content" class="container-fluid" ng-controller="VersionController">
+<span ng-controller="VersionController">
+{{ if not .ProjectData.Patch }}
+<div ng-controller="VersionHistoryDrawerCtrl" id="drawer">
+  <div id="drawer-contents">
+    <div id="drawer-filled">
+      <div ng-repeat="revisionsForDate in groupedRevisions">
+        <div class="drawer-section-header">
+          <span class="history-date-header-words">[[revisionsForDate.date | date:'MMM d']]</span>
+          <span class="history-date-header-numbers history-date-header-slash">&nbsp;</span>
+          <span class="history-date-header-numbers">[[revisionsForDate.date | date:'M/d/yyyy']]</span>
+        </div>
+
+        <div ng-repeat="revision in revisionsForDate.revisions" class="drawer-item"
+            ng-class="{ 'drawer-item-highlighted': isCurrent(revision), }">
+          <revision-blurb  linktype="'version'" linkid="revision.version_id" revision="revision" hash="getTab()"><revision-blurb>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-content" class="container-fluid">
+{{template "flash" . }}
+
+{{ else }}
+
+<div id="content" class="container-fluid">
+{{template "flash" . }}
+
+{{ end }}
+
+<div id="content" class="container-fluid">
   {{template "flash" . }}
   <ol class="breadcrumb">
     <li>
@@ -81,51 +112,45 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
         </div>
       </div>
 
-      <h3 class="section-heading">Build Status</h3>
+      <h3 class="section-heading">Status</h3>
       <div class="mci-pod">
-        <div class="row">
+        <ul class="nav nav-tabs">
+          <li ng-class="{active:tab==0}"><a href="#" ng-click="setTab(0)">By Variant</a></li>
+          <li ng-class="{active:tab==1}"><a href="#" ng-click="setTab(1)">Grid</a></li>
+        </ul>
+        <div class="row" ng-hide="tab!=0">
           <div ng-repeat="build in version.Builds" class="col-lg-4">
             <h4 class="one-liner" style="margin-bottom: 5px;">
               <a ng-href="/build/[[build.Build._id]]" class="semi-muted">[[build.Build.display_name]]</a>
             </h4>
-            <div class="progress"
-                 results-bar="taskStatuses[build.Build._id]"
-                 results-bar-tooltips="taskStatusTitles[build.Build._id]"></div>
+            <div class="progress" results-bar="taskStatuses[build.Build._id]" results-bar-tooltips="taskStatusTitles[build.Build._id]"></div>
+          </div>
+        </div>
+        <div class="row" ng-hide="tab!=1">
+          <div class="gridtable-small">  
+            <div class="top-header-row">
+              <div class="header-cell" ng-repeat="task in taskNames" id="[['bv' + $index]]">
+                <span class="header-text">[[task]]</span>
+              </div>
+            </div>
+            <div class="tablerow" ng-repeat="build in version.Builds">
+              <div class="header">
+                <div class="testname" id="[['test' + $index]]">[[build.Build.display_name]]</div>
+              </div>
+              <div class="cells">
+                <a ng-href="[[getGridLink(build.Build.display_name, task)]]" ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(build.Build.display_name, task)">&nbsp;</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
 
       <div class="row">
         <div class="col-lg-12">
           {{range .PluginContent.Panels.Left}}
             {{.}}
           {{end}}
-        </div>
-      </div>
-    </div>
-
-    <div class="col-lg-5" ng-controller="VersionHistoryController" ng-init="load(version); targetVersion = version;" ng-show="!version.PatchInfo.Patch">
-      <h3 id="history-header" class="section-heading"><i class="icon-github-alt"></i> Version History</h3>
-
-      <div class="mci-pod">
-        <div ng-repeat="version in versions" class="row history-row" ng-class="targetVersion.Version.id == version.Version.id | conditional:'active':''">
-          <div class="col-lg-7 commit-message">
-            <b>
-              <div class="past-version-highlight-wrapper">
-                <span ng-show="targetVersion.Version.id == version.Version.id">
-                  <i class="icon-arrow-right"></i>
-                </span>
-              </div>
-              <a  href="/version/[[version.Version.id]]"
-                  title="[[version.Version.message]]"
-                  ng-bind-html-unsafe="version.Version.message">
-              </a>
-            </b>
-          </div>
-          <div class="col-lg-5">
-            <div class="progress zero-margin" results-bar="buildStatuses[version.Version.id]">
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -151,5 +176,6 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
     </div>
   </div>
 </div>
+</span>
 
 {{end}}

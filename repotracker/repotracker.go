@@ -16,10 +16,8 @@ import (
 )
 
 const (
-	// TODO: move this to configuration file.
-	// determines the default maximum number of revisions
-	// we want to fetch for a newly tracked repo if no max
-	// number is specified in the repotracker configuration
+	// determines the default maximum number of revisions to fetch for a newly tracked repo
+	// if not specified in configuration file
 	DefaultNumNewRepoRevisionsToFetch = 50
 )
 

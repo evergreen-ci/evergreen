@@ -47,10 +47,8 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
         <div ng-repeat="revision in revisionsForDate.revisions" 
             class="drawer-item"
-            ng-class="{
-              'drawer-item-highlighted': isCurrent(revision),
-            }">
-          <revision-blurb><revision-blurb>
+            ng-class="{ 'drawer-item-highlighted': isCurrent(revision), }">
+            <revision-blurb linktype="'task'" linkid="revision.task.id" revision="revision" task="task"><revision-blurb>
         </div>
       </div>
     </div>

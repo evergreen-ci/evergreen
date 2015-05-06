@@ -33,18 +33,23 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
     return service;
 }]);
 
-mciServices.rest.factory('mciTaskDrawerRestService', 
-    [
-      'mciBaseRestService', 
+mciServices.rest.factory('historyDrawerService', 
+    [ 'mciBaseRestService', 
       function(baseSvc) {
-        var resource = 'task_history_json';
+        var resource = 'history';
         var service = {};
         var defaultRadius = 10;
+      
+        // modelType could be either "tasks" or "versions"
+        var historyFetcher = function(modelType){
+          return function(modelId, historyType, radius, callbacks){
+            var config = { params: { radius: radius || defaultRadius } };
+            baseSvc.getResource(resource, [modelType, modelId, historyType], config, callbacks);
+          }
+        }
 
-        service.fetchHistory = function(taskId, historyType, radius, callbacks) {
-          var config = { params: { radius: radius || defaultRadius } };
-          baseSvc.getResource(resource, [taskId, historyType], config, callbacks);
-        };
+        service.fetchVersionHistory = historyFetcher("versions");
+        service.fetchTaskHistory = historyFetcher("tasks");
 
         return service;
       }

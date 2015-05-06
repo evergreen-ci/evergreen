@@ -17,6 +17,9 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set the config to blank to avoid writing it to the UI unnecessarily.
+	projCtx.Version.Config = ""
+
 	versionAsUI := uiVersion{
 		Version:   *projCtx.Version,
 		RepoOwner: projCtx.Project.Owner,
@@ -39,7 +42,9 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
 		for _, task := range build.Tasks {
-			uiTasks = append(uiTasks, uiTask{Task: model.Task{Id: task.Id, Status: task.Status, DisplayName: task.DisplayName}})
+			uiTasks = append(uiTasks,
+				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated,
+					Status: task.Status, DisplayName: task.DisplayName}})
 			if task.Activated {
 				versionAsUI.ActiveTasks++
 			}
@@ -169,6 +174,7 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 						Task: model.Task{
 							Id:          task.Id,
 							Status:      task.Status,
+							Activated:   task.Activated,
 							DisplayName: task.DisplayName,
 						},
 					})

@@ -79,8 +79,7 @@ func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
 	if len(pr.Githash) != 40 {
 		return nil, fmt.Errorf("invalid githash")
 	}
-	gitCommit, err := thirdparty.GetCommitEvent(oauthToken, repoOwner, repo,
-		pr.Githash)
+	gitCommit, err := thirdparty.GetCommitEvent(oauthToken, repoOwner, repo, pr.Githash)
 	if err != nil {
 		return nil, fmt.Errorf("could not find base revision %v for project %v: %v",
 			pr.Githash, project.Identifier, err)

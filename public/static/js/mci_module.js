@@ -4,6 +4,7 @@ var mciModule = angular.module('MCI', [
   'directives.visualization',
   'directives.badges',
   'directives.admin',
+  'directives.drawer',
   'directives.github',
   'directives.patch',
   'directives.spawn',

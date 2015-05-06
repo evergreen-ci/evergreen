@@ -46,7 +46,7 @@ Evergreen - Buildmaster
               <div class="testname" id="[['test' + $index]]">[[bv]]</div>
           </div>
            <div class="cells">
-                <div ng-repeat="test in testnames" ng-class="'cell ' + getGridClass(bv, test)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(bv, test, $event.target);">&nbsp;</div>
+            <div ng-repeat="test in testnames" ng-class="'cell ' + getGridClass(bv, test)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(bv, test, $event.target);">&nbsp;</div>
            </div>
         </div>
       </div>

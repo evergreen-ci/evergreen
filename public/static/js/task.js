@@ -1,28 +1,4 @@
-mciModule.directive('revisionBlurb', function($timeout) {
-
-  return {
-    restrict: 'E', 
-    scope: true,
-    link: function(scope, element, attrs) {
-
-      // set the default task
-      scope.revision.defaultExecution = { status: 'inactive' };
-      _.some(scope.revision.tasks, function(task) {
-        if (task.variant === scope.task.build_variant) {
-          scope.revision.defaultExecution = task;
-          return true;
-        }
-        return false;
-      });
-
-    },
-    templateUrl: '/static/partials/revision_blurb.html'
-  }
-
-});
-
-mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $filter, $timeout,
-  mciTaskDrawerRestService) {
+mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $location, $filter, $timeout, historyDrawerService) {
 
   // cache the task being displayed on the page
   $scope.task = $window.task_data;
@@ -65,41 +41,34 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $filter,
 
   // make a backend call to get the drawer contents
   function fetchHistory() {
-    mciTaskDrawerRestService.fetchHistory(
-        $scope.task.id, 
-        'surround',
-        20,
-        {
-          success: function(data) {
+    historyDrawerService.fetchTaskHistory($scope.task.id, 'surround', 20,
+      {
+        success: function(data) {
 
-            // save the revisions as a list
-            $scope.revisions = data.revisions;
+        // save the revisions as a list
+        $scope.revisions = data.revisions;
 
-            // group the history by revision, and save it
-            $scope.groupedRevisions = groupHistory(data.revisions);
+        // group the history by revision, and save it
+        $scope.groupedRevisions = groupHistory(data.revisions);
 
-            // scroll to the relevant element
-            $timeout(
-              function() { 
-                var currentRevisionDomEl = $('.drawer-item-highlighted')[0];
-                if (!currentRevisionDomEl) {
-                  return;
-                }
-                var offsetTop = $(currentRevisionDomEl).position().top;
-                var drawerContentsHeight = drawerContentsEl.height();
-                if (offsetTop >= drawerContentsHeight) {
-                  drawerContentsEl.scrollTop(offsetTop); 
-                }
-              }, 
-              500
-            )
-
-          },
-          error: function(data) {
-            console.log('error fetching history: ' + data);
-          }
+        // scroll to the relevant element
+        $timeout(
+          function() { 
+            var currentRevisionDomEl = $('.drawer-item-highlighted')[0];
+            if (!currentRevisionDomEl) {
+              return;
+            }
+            var offsetTop = $(currentRevisionDomEl).position().top;
+            var drawerContentsHeight = drawerContentsEl.height();
+            if (offsetTop >= drawerContentsHeight) {
+              drawerContentsEl.scrollTop(offsetTop); 
+            }
+          }, 500)
+        },
+        error: function(data) {
+          console.log('error fetching history: ' + data);
         }
-    );
+      });
 
   }
 
@@ -107,7 +76,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $filter,
   // loads more revisions asynchronously
   var fetchLaterRevisions = _.debounce(
     function() {
-
       // get the most recent revision in the history
       var mostRecentRevision = ($scope.revisions && $scope.revisions[0]);
 
@@ -119,34 +87,26 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $filter,
       // get a task id from it 
       var anchorId = mostRecentRevision.tasks[0].id;
 
-      mciTaskDrawerRestService.fetchHistory(
-        anchorId,
-        'after',
-        20,
+      historyDrawerService.fetchTaskHistory(anchorId, 'after', 20,
         {
           success: function(data) {
+           // no computation necessary
+           if (!data) {
+             return
+           }
 
-            // no computation necessary
-            if (!data) {
-              return
-            }
+           // place on the beginning of the stored revisions
+           $scope.revisions = data.revisions.concat($scope.revisions);
 
-            // place on the beginning of the stored revisions
-            $scope.revisions = data.revisions.concat($scope.revisions);
-
-            // regroup
-            $scope.groupedRevisions = groupHistory($scope.revisions);
+           // regroup
+           $scope.groupedRevisions = groupHistory($scope.revisions);
 
           },
           error: function(data) {
             console.log('error fetching later revisions: ' + data);
           }
-        }
-      )
-    },
-    500,
-    true
-  );
+        })
+    }, 500, true);
 
   // function fired when scrolling down hits the bottom of the frame,
   // loads more revisions asynchronously
@@ -259,25 +219,6 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $filter,
 
   // set up infinite scrolling on the drawer element
   drawerContentsEl.scroll(bigScrollFunc);
-
-  $scope.classFromStatus = function(status) {
-    switch (status) {
-      case 'failed':
-      case 'timed_out':
-      case 'heartbeat_timeout':
-        return 'failed';
-      case 'success':
-        return 'success';
-      case 'dispatched':
-        return 'dispatched';
-      case 'started':
-        return 'started';
-      case 'inactive':
-        return 'inactive';
-      default:
-        return 'unstarted';
-    }
-  }
 
   var eopFilter = $filter('endOfPath');
   $scope.failuresTooltip = function(failures) {

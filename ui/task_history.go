@@ -17,16 +17,27 @@ import (
 	"time"
 )
 
+const (
+	surroundWindow = "surround"
+	beforeWindow   = "before"
+	afterWindow    = "after"
+)
+
 // Representation of a group of tasks with the same display name and revision,
 // but different build variants.
-type siblingTaskGroup struct {
-	// revision-level info
+type taskDrawerItem struct {
 	Revision string    `json:"revision"`
 	Message  string    `json:"message"`
 	PushTime time.Time `json:"push_time"`
+	// small amount of info about each task in this group
+	TaskBlurb taskBlurb `json:"task"`
+}
 
-	// small amount of info about each appropriate task
-	TaskBlurbs []taskBlurb `json:"tasks"`
+type versionDrawerItem struct {
+	Revision string    `json:"revision"`
+	Message  string    `json:"message"`
+	PushTime time.Time `json:"push_time"`
+	Id       string    `json:"version_id"`
 }
 
 // Represents a small amount of information about a task - used as part of the
@@ -134,12 +145,8 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 			evergreen.Logger.Logf(slogger.WARN, "'before' was specified but query returned nil")
 		}
 	}
-	projectRef, err := model.FindOneProjectRef(projCtx.Project.Identifier)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	project, err := model.FindProject("", projectRef)
+
+	project, err := model.FindProject("", projCtx.ProjectRef)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -324,26 +331,21 @@ func (uis *UIServer) taskHistoryTestNames(w http.ResponseWriter, r *http.Request
 	uis.WriteJSON(w, http.StatusOK, results)
 }
 
-// Handler for serving json representing a task history.  Is based on the
-// task used as an anchor for the point in history, as well as whether the
-// history is taken to mean tasks before, after, or surrounding the task in
-// time.
-func (uis *UIServer) taskHistoryJson(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
+// drawerParams contains the parameters from a request to populate a task or version history drawer.
+type drawerParams struct {
+	anchorId string
+	window   string
+	radius   int
+}
 
-	// get the request vars
+func validateDrawerParams(r *http.Request) (drawerParams, error) {
 	requestVars := mux.Vars(r)
-
-	// get the id of the task serving as our reference point for the history
-	anchorTaskId := requestVars["anchor"]
-
-	// whether we are fetching tasks from versions before, after, or surrounding the id
+	anchorId := requestVars["anchor"] // id of the item serving as reference point in history
 	window := requestVars["window"]
 
 	// do some validation on the window of tasks requested
 	if window != "surround" && window != "before" && window != "after" {
-		http.Error(w, fmt.Sprintf("invalid value %v for window", window), http.StatusBadRequest)
-		return
+		return drawerParams{}, fmt.Errorf("invalid value %v for window", window)
 	}
 
 	// the 'radius' of the history we want (how many tasks on each side of the anchor task)
@@ -353,141 +355,111 @@ func (uis *UIServer) taskHistoryJson(w http.ResponseWriter, r *http.Request) {
 	}
 	historyRadius, err := strconv.Atoi(radius)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("invalid value %v for radius", radius), http.StatusBadRequest)
+		return drawerParams{}, fmt.Errorf("invalid value %v for radius", radius)
+	}
+	return drawerParams{anchorId, window, historyRadius}, nil
+}
+
+// Handler for serving the data used to populate the task history drawer.
+func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+
+	drawerInfo, err := validateDrawerParams(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	variantMappings := projCtx.Project.GetVariantMappings()
-
-	// fetch the appropriate task groups
-	var tasksWithinWindow []siblingTaskGroup
-	switch window {
-	case "surround":
-		tasksWithinWindow, err = getGroupsSurrounding(projCtx.Task, historyRadius)
-	case "before":
-		tasksWithinWindow, err = getGroupsBefore(projCtx.Task, historyRadius)
-	case "after":
-		tasksWithinWindow, err = getGroupsAfter(projCtx.Task, historyRadius)
-		// can't hit another value since we validate 'window' above
-	}
+	// get the versions in the requested window
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Project,
+		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "error finding history in reference"+
-			" to task %v: %v", anchorTaskId, err)
-		http.Error(w, fmt.Sprintf("error finding history for task %v with window type of %v: %v",
-			projCtx.Task.Id, window, err), http.StatusBadRequest)
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
-	data := struct {
-		Revisions       []siblingTaskGroup `json:"revisions"`
-		VariantMappings map[string]string  `json:"variant_mappings"`
-	}{tasksWithinWindow, variantMappings}
-
-	// Representation of the necessary data to build the task history
-	type taskHistoryInfo struct {
+	versionDrawerItems := []versionDrawerItem{}
+	for _, v := range versions {
+		versionDrawerItems = append(versionDrawerItems, versionDrawerItem{v.Revision, v.Message, v.CreateTime, v.Id})
 	}
 
-	uis.WriteJSON(w, http.StatusOK, data)
+	uis.WriteJSON(w, http.StatusOK, struct {
+		Revisions []versionDrawerItem `json:"revisions"`
+	}{versionDrawerItems})
 }
 
-// Get all of the sibling task groups for the revisions surrounding the one
-// containing the passed-in task.
-func getGroupsSurrounding(anchorTask *model.Task,
-	historyRadius int) ([]siblingTaskGroup, error) {
+// Handler for serving the data used to populate the task history drawer.
+func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
 
-	// first, get the sibling group for the version containing the
-	// anchor task itself
-
-	anchorVersion, err := version.FindOne(version.ById(anchorTask.Version))
+	drawerInfo, err := validateDrawerParams(r)
 	if err != nil {
-		return nil, fmt.Errorf("error finding version %v: %v",
-			anchorTask.Version, err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	if anchorVersion == nil {
-		return nil, fmt.Errorf("no such version %v", anchorTask.Version)
-	}
-
-	// len(anchorSiblingGroupSlice) should always be 1, since it's only
-	// getting a group for the single relevant revision.
-	anchorSiblingGroupSlice, err := getSiblingTaskGroups(anchorTask.DisplayName,
-		false, []version.Version{*anchorVersion})
+	// get the versions in the requested window
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Project,
+		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
-		return nil, fmt.Errorf("error getting sibling tasks: %v", err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
-	// then, get the appropriate tasks before the anchor in time
-
-	siblingGroupsBefore, err := getGroupsBefore(anchorTask, historyRadius)
-
+	// populate task groups for the versions in the window
+	taskGroups, err := getTaskDrawerItems(projCtx.Task.DisplayName, projCtx.Task.BuildVariant, false, versions)
 	if err != nil {
-		return nil, fmt.Errorf("error getting sibling groups before %v: %v",
-			anchorTask.Id, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
-	// then, get the appropriate tasks after the anchor in time
-
-	siblingGroupsAfter, err := getGroupsAfter(anchorTask, historyRadius)
-
-	if err != nil {
-		return nil, fmt.Errorf("error getting sibling groups after %v: %v",
-			anchorTask.Id, err)
-	}
-
-	// merge the groups
-
-	fullGroupList := mergeGroups(siblingGroupsAfter, anchorSiblingGroupSlice,
-		siblingGroupsBefore)
-
-	return fullGroupList, nil
+	uis.WriteJSON(w, http.StatusOK, struct {
+		Revisions []taskDrawerItem `json:"revisions"`
+	}{taskGroups})
 }
 
-// Get the sibling groups for the revisions before the one containing the
-// specified task.
-func getGroupsBefore(anchorTask *model.Task,
-	numGroupsWanted int) ([]siblingTaskGroup, error) {
-
-	// first, get the relevant versions we will need
-	versions, err := makeVersionsQuery(anchorTask, numGroupsWanted, true)
+func getVersionsInWindow(wt, anchorId, projectId string, anchorOrderNum, radius int,
+	center *version.Version) ([]version.Version, error) {
+	if wt == beforeWindow {
+		return makeVersionsQuery(anchorOrderNum, projectId, radius, true)
+	} else if wt == afterWindow {
+		after, err := makeVersionsQuery(anchorOrderNum, projectId, radius, false)
+		if err != nil {
+			return nil, err
+		}
+		// reverse the versions in "after" so that they're ordered backwards in time
+		for i, j := 0, len(after)-1; i < j; i, j = i+1, j-1 {
+			after[i], after[j] = after[j], after[i]
+		}
+		return after, nil
+	}
+	before, err := makeVersionsQuery(anchorOrderNum, projectId, radius, true)
 	if err != nil {
-		return nil, fmt.Errorf("error getting versions before task: %v", err)
+		return nil, err
 	}
-
-	// now, get the appropriate sibling task groups
-	return getSiblingTaskGroups(anchorTask.DisplayName, true, versions)
-}
-
-// Get the sibling groups for the revisions after the one containing the
-// specified task.
-func getGroupsAfter(anchorTask *model.Task,
-	numGroupsWanted int) ([]siblingTaskGroup, error) {
-
-	// first, get the relevant versions we will need
-	versions, err := makeVersionsQuery(anchorTask, numGroupsWanted, false)
+	after, err := makeVersionsQuery(anchorOrderNum, projectId, radius, false)
 	if err != nil {
-		return nil, fmt.Errorf("error getting versions after: %v", err)
+		return nil, err
 	}
-
-	// reverse the versions so that they're ordered backwards in time
-	for i, j := 0, len(versions)-1; i < j; i, j = i+1, j-1 {
-		versions[i], versions[j] = versions[j], versions[i]
+	// reverse the versions in "after" so that they're ordered backwards in time
+	for i, j := 0, len(after)-1; i < j; i, j = i+1, j-1 {
+		after[i], after[j] = after[j], after[i]
 	}
-
-	// now, get the appropriate sibling task groups
-	return getSiblingTaskGroups(anchorTask.DisplayName, true, versions)
+	after = append(after, *center)
+	after = append(after, before...)
+	return after, nil
 }
 
 // Helper to make the appropriate query to the versions collection for what
 // we will need.  "before" indicates whether to fetch versions before or
 // after the passed-in task.
-func makeVersionsQuery(anchorTask *model.Task, versionsToFetch int, before bool) ([]version.Version, error) {
-	// decide how the versions we want relative to the task's revision order
-	// number
-	ronQuery := bson.M{"$gt": anchorTask.RevisionOrderNumber}
+func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int, before bool) ([]version.Version, error) {
+	// decide how the versions we want relative to the task's revision order number
+	ronQuery := bson.M{"$gt": anchorOrderNum}
 	if before {
-		ronQuery = bson.M{"$lt": anchorTask.RevisionOrderNumber}
+		ronQuery = bson.M{"$lt": anchorOrderNum}
 	}
 
 	// switch how to sort the versions
@@ -499,7 +471,7 @@ func makeVersionsQuery(anchorTask *model.Task, versionsToFetch int, before bool)
 	// fetch the versions
 	return version.Find(
 		db.Query(bson.M{
-			version.ProjectKey:             anchorTask.Project,
+			version.ProjectKey:             projectId,
 			version.RevisionOrderNumberKey: ronQuery,
 		}).WithFields(
 			version.RevisionOrderNumberKey,
@@ -510,34 +482,11 @@ func makeVersionsQuery(anchorTask *model.Task, versionsToFetch int, before bool)
 
 }
 
-// Merge the specified slices of sibling task groups into a single slice.
-func mergeGroups(groups ...[]siblingTaskGroup) []siblingTaskGroup {
-
-	// get the total length of the groups
-	totalLen := 0
-	for _, group := range groups {
-		totalLen += len(group)
-	}
-
-	// allocate the final slice
-	mergedGroups := make([]siblingTaskGroup, totalLen)
-
-	// add all the groups in to the merged one
-	copied := 0
-	for _, group := range groups {
-		copy(mergedGroups[copied:], group)
-		copied += len(group)
-	}
-
-	return mergedGroups
-}
-
 // Given a task name and a slice of versions, return the appropriate sibling
 // groups of tasks.  They will be sorted by ascending revision order number,
 // unless reverseOrder is true, in which case they will be sorted
 // descending.
-func getSiblingTaskGroups(displayName string, reverseOrder bool,
-	versions []version.Version) ([]siblingTaskGroup, error) {
+func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, versions []version.Version) ([]taskDrawerItem, error) {
 
 	orderNumbers := make([]int, 0, len(versions))
 	for _, v := range versions {
@@ -554,6 +503,7 @@ func getSiblingTaskGroups(displayName string, reverseOrder bool,
 		bson.M{
 			model.TaskRevisionOrderNumberKey: revisionCriteria,
 			model.TaskDisplayNameKey:         displayName,
+			model.TaskBuildVariantKey:        variant,
 		},
 		db.NoProjection,
 		[]string{
@@ -566,21 +516,18 @@ func getSiblingTaskGroups(displayName string, reverseOrder bool,
 	if err != nil {
 		return nil, fmt.Errorf("error getting sibling tasks: %v", err)
 	}
-
 	return createSiblingTaskGroups(tasks, versions), nil
-
 }
 
 // Given versions and the appropriate tasks within them, sorted by build
 // variant, create sibling groups for the tasks.
-func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []siblingTaskGroup {
-
+func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []taskDrawerItem {
 	// version id -> group
-	groupsByVersion := map[string]siblingTaskGroup{}
+	groupsByVersion := map[string]taskDrawerItem{}
 
 	// create a group for each version
 	for _, v := range versions {
-		group := siblingTaskGroup{
+		group := taskDrawerItem{
 			Revision: v.Revision,
 			Message:  v.Message,
 			PushTime: v.CreateTime,
@@ -610,20 +557,18 @@ func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []s
 
 		for _, result := range task.TestResults {
 			if result.Status == evergreen.TestFailedStatus {
-				blurb.Failures = append(blurb.Failures,
-					result.TestFile)
+				blurb.Failures = append(blurb.Failures, result.TestFile)
 			}
 		}
 
 		// add the blurb to the appropriate group
 		groupForVersion := groupsByVersion[task.Version]
-		groupForVersion.TaskBlurbs = append(groupForVersion.TaskBlurbs, blurb)
+		groupForVersion.TaskBlurb = blurb
 		groupsByVersion[task.Version] = groupForVersion
-
 	}
 
 	// create a slice of the sibling groups, in the appropriate order
-	orderedGroups := make([]siblingTaskGroup, 0, len(versions))
+	orderedGroups := make([]taskDrawerItem, 0, len(versions))
 	for _, version := range versions {
 		orderedGroups = append(orderedGroups, groupsByVersion[version.Id])
 	}
