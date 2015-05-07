@@ -56,6 +56,12 @@
             <ul class="dropdown-menu">
               <li><a href="/settings">Settings</a></li>
               <li class="divider"></li>
+              {{if IsSuperUser .User.Id}}
+              <li><a ng-href="/distros">Distros</a></li>
+              <li class="divider"></li>
+              <li><a ng-href="/projects">Projects</a></li>
+              <li class="divider"></li>
+              {{end}}
               <li><a href="/spawn">Hosts</a></li>
               <li class="divider"></li>
               <li><a href="/patches/mine">Patches</a></li>
