@@ -78,7 +78,7 @@ func GetGithubFile(oauthToken, fileURL string) (
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		evergreen.Logger.Errorf(slogger.ERROR, "Github API response: ‘%v’",
+		evergreen.Logger.Logf(slogger.ERROR, "Github API response: ‘%v’",
 			resp.Status)
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, FileNotFoundError{fileURL}
@@ -116,6 +116,8 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 		repo,
 		githash,
 	)
+
+	evergreen.Logger.Logf(slogger.ERROR, "requesting github commit from url: %v", commitURL)
 
 	resp, err := tryGithubGet(oauthToken, commitURL)
 	if resp == nil {
@@ -155,11 +157,11 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 
 // tryGithubGet wraps githubGet in a retry block
 func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
-	evergreen.Logger.Errorf(slogger.ERROR, "Attempting API call at ‘%v’...", url)
+	evergreen.Logger.Logf(slogger.ERROR, "Attempting API call at ‘%v’...", url)
 	for i := 1; i < NumGithubRetries; i++ {
 		resp, err = githubGet(oauthToken, url)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Unable to make request for "+
+			evergreen.Logger.Logf(slogger.ERROR, "Unable to make request for "+
 				"‘%v’: %v", url, err.Error())
 			continue
 		}
