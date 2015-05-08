@@ -1,2 +1,3 @@
-killall -9 mci_api_server
-killall -9 mci_ui_server
+killall -9 evergreen_api_server
+killall -9 evergreen_ui_server
+killall evergreen_runner

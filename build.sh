@@ -12,11 +12,12 @@ rm -rf vendor/pkg
 mkdir -p bin
 export GOBIN=bin
 
-for i in cli apiserver hostinit monitor notify repotracker scheduler taskrunner ui; do
+for i in apiserver ui runner cli hostinit monitor notify repotracker scheduler taskrunner; do
 	echo "Building ${i}..."
 	go install "$i/main/$i.go"
 done
 
-# move the api and ui servers to have more explicit names
-mv bin/apiserver bin/mci_api_server
-mv bin/ui bin/mci_ui_server
+# rename API/UI servers and Evergreen runner
+mv bin/apiserver bin/evergreen_api_server
+mv bin/ui bin/evergreen_ui_server
+mv bin/runner bin/evergreen_runner

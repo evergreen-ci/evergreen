@@ -61,7 +61,8 @@ type MonitorConfig struct {
 }
 
 type RunnerConfig struct {
-	LogFile string
+	LogFile         string
+	IntervalSeconds int64
 }
 
 type HostInitConfig struct {

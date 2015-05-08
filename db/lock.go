@@ -12,7 +12,7 @@ var _ fmt.Stringer = nil
 const (
 	LockCollection = "lock"
 	GlobalLockId   = "global"
-	LockTimeout    = time.Millisecond * 3 * 60000
+	LockTimeout    = time.Minute * 3
 )
 
 type Lock struct {
