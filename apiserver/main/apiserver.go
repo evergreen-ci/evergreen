@@ -14,6 +14,10 @@ import (
 func main() {
 	var err error
 	settings := evergreen.MustConfig()
+	if settings.Api.LogFile != "" {
+		evergreen.SetLogger(settings.Api.LogFile)
+	}
+
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	apis, err := apiserver.New(settings, plugin.Published)

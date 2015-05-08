@@ -39,12 +39,12 @@ func main() {
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 
 	uis := ui.UIServer{
-		nil,                // render
+		nil,             // render
 		settings.Ui.Url, // RootURL
-		crowdManager,       // User Manager
+		crowdManager,    // User Manager
 		*settings,       // mci settings
-		cookieStore,        // cookiestore
-		nil,                // plugin panel manager
+		cookieStore,     // cookiestore
+		nil,             // plugin panel manager
 	}
 	router, err := uis.NewRouter()
 	if err != nil {
