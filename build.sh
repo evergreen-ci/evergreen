@@ -18,6 +18,9 @@ for i in apiserver ui runner cli hostinit monitor notify repotracker scheduler t
 done
 
 # rename API/UI servers and Evergreen runner
+echo "Renaming API server..."
 mv bin/apiserver bin/evergreen_api_server
+echo "Renaming UI server..."
 mv bin/ui bin/evergreen_ui_server
+echo "Renaming runner..."
 mv bin/runner bin/evergreen_runner

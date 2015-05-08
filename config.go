@@ -52,10 +52,6 @@ type UIConfig struct {
 	CacheTemplates bool
 }
 
-type CleanupConfig struct {
-	LogFile string
-}
-
 type MonitorConfig struct {
 	LogFile string
 }
@@ -129,7 +125,6 @@ type Settings struct {
 	Credentials         map[string]string
 	Crowd               CrowdConfig
 	RepoTracker         RepoTrackerConfig
-	Cleanup             CleanupConfig
 	Monitor             MonitorConfig
 	Api                 ApiConfig
 	Ui                  UIConfig
