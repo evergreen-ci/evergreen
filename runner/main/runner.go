@@ -2,9 +2,11 @@
 package main
 
 import (
+	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/notify"
 	. "github.com/evergreen-ci/evergreen/runner"
 	"os"
 	"os/signal"
@@ -43,7 +45,12 @@ func main() {
 // runProcess runs a ProcessRunner with the given settings.
 func runProcess(r ProcessRunner, s *evergreen.Settings) {
 	if err := r.Run(s); err != nil {
-		evergreen.Logger.Logf(slogger.WARN, "error running %v: %v", r.Name(), err)
+		subject := fmt.Sprintf("%v Failure", r.Name())
+		message := fmt.Sprintf("Error running %v: %v", r.Name(), err)
+		evergreen.Logger.Logf(slogger.ERROR, message)
+		if err = notify.NotifyAdmins(subject, message, s); err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
+		}
 	}
 }
 
