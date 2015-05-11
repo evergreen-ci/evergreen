@@ -1,6 +1,8 @@
 package command
 
 import (
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"io"
 	"os"
 	"os/exec"
@@ -53,7 +55,11 @@ func (self *LocalCommand) Start() error {
 }
 
 func (self *LocalCommand) Stop() error {
-	return self.Cmd.Process.Kill()
+	if self.Cmd != nil && self.Cmd.Process != nil {
+		return self.Cmd.Process.Kill()
+	}
+	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
+	return nil
 }
 
 func (self *LocalCommand) PrepToRun(expansions *Expansions) error {
