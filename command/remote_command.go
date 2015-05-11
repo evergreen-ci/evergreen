@@ -69,5 +69,9 @@ func (self *RemoteCommand) Start() error {
 }
 
 func (self *RemoteCommand) Stop() error {
-	return self.Cmd.Process.Kill()
+	if self.Cmd != nil && self.Cmd.Process != nil {
+		return self.Cmd.Process.Kill()
+	}
+	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
+	return nil
 }
