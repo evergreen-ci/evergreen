@@ -214,7 +214,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	}
 
 	// modify the setup script to add the user's public key
-	h.Distro.Setup += fmt.Sprintf("echo \"\n%v\" >> ~%v/.ssh/authorized_keys\n",
+	h.Distro.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n",
 		so.PublicKey, h.Distro.User)
 
 	// replace expansions in the script
