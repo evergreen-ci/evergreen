@@ -10,14 +10,14 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
-// Implementation, that uses the difference between the number of free hosts
+// DeficitBasedHostAllocator uses the difference between the number of free hosts
 // and the number of tasks that need to be run as a metric for how many new
 // hosts need to be spun up
 type DeficitBasedHostAllocator struct{}
 
-// Implementation of NewHostsNeeded.  Decides that new hosts are needed for a
-// distro if the number of tasks that need to be run for the distro is greater
-// than the number of hosts currently free to run a task.
+// NewHostsNeeded decides host many new hosts are needed for a distro by seeing if
+// the number of tasks that need to be run for the distro is greater than the number 
+// of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
 func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (map[string]int, error) {
 

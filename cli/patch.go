@@ -50,11 +50,13 @@ type ListPatchesCommand struct {
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
 }
 
+// CancelPatchCommand is used to cancel a patch.
 type CancelPatchCommand struct {
 	GlobalOpts Options `no-flag:"true"`
 	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
+// FinalizePatchCommand is used to finalize a patch, allowing it to be scheduled.
 type FinalizePatchCommand struct {
 	GlobalOpts Options `no-flag:"true"`
 	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`

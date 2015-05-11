@@ -36,6 +36,7 @@ import (
 
 type key int
 
+// ErrLockTimeout is returned when the database lock takes too long to be acquired.
 var ErrLockTimeout = errors.New("Timed out acquiring global lock")
 
 type (
@@ -53,6 +54,7 @@ const (
 	apiProjCtxKey projectContextKey = 0
 )
 
+// APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
 	*render.Render
 	UserManager auth.UserManager
@@ -65,6 +67,7 @@ const (
 	PatchLockTitle     = "patches"
 )
 
+// New returns an APIServer initialized with the given settings and plugins.
 func New(settings *evergreen.Settings, plugins []plugin.Plugin) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
@@ -134,6 +137,8 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 	}
 }
 
+// MustHaveUser gets the DBUser from an HTTP Request.
+// Panics if the user is not found.
 func MustHaveUser(r *http.Request) *user.DBUser {
 	u := GetUser(r)
 	if u == nil {
@@ -142,6 +147,8 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 	return u
 }
 
+// MustHaveTask get the task from an HTTP Request.
+// Panics if the task is not in request context.
 func MustHaveTask(r *http.Request) *model.Task {
 	t := GetTask(r)
 	if t == nil {
@@ -150,10 +157,12 @@ func MustHaveTask(r *http.Request) *model.Task {
 	return t
 }
 
+// GetListener creates a network listener on the given address.
 func GetListener(addr string) (net.Listener, error) {
 	return net.Listen("tcp", addr)
 }
 
+// GetTLSListener creates an encrypted listener with the given TLS config and address.
 func GetTLSListener(addr string, conf *tls.Config) (net.Listener, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -162,6 +171,7 @@ func GetTLSListener(addr string, conf *tls.Config) (net.Listener, error) {
 	return tls.NewListener(l, conf), nil
 }
 
+// Serve serves the handler on the given listener.
 func Serve(l net.Listener, handler http.Handler) error {
 	return (&http.Server{Handler: handler}).Serve(l)
 }
@@ -482,6 +492,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, logReply)
 }
 
+// AttachResults attaches the received results to the task in the database.
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 	results := &model.TestResults{}
@@ -544,6 +555,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Artifact files for task %v successfully attached", task.Id))
 }
 
+// AppendTaskLog appends the received logs to the task's internal logs.
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
@@ -564,6 +576,8 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, "Logs added")
 }
 
+// GetPatch loads the task's patch data from the database and sends
+// it to the requester.
 func (as *APIServer) GetPatch(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
@@ -579,11 +593,13 @@ func (as *APIServer) GetPatch(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, patch)
 }
 
+// FetchTask loads the task from the database and sends it to the requester.
 func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 	as.WriteJSON(w, http.StatusOK, task)
 }
 
+// GetDistro loads the task's distro and sends it to the requester.
 func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
@@ -599,6 +615,8 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, h.Distro)
 }
 
+// Heartbeat handles heartbeat pings from Evergreen agents. If the heartbeating
+// task is marked to be aborted, the abort response is sent.
 func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
@@ -618,44 +636,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the API server's home :)\n")
 }
 
-/*
-func attachUser(userM auth.UserManager, r *http.Request) web.HTTPResponse {
-	// Note: at this point the "token" is actually a json object in string form,
-	// containing both the username and token.
-	token := r.FormValue("id_token")
-	authData := struct {
-		Name  string `json:"auth_user"`
-		Token string `json:"auth_token"`
-	}{}
-	err := json.Unmarshal([]byte(token), &authData)
-	if err != nil {
-		return web.JSONResponse{Data: map[string]string{"message": err.Error()},
-			StatusCode: http.StatusInternalServerError}
-	}
-
-	user, err := userM.GetUserByToken(authData.Token)
-	if err != nil {
-		return web.JSONResponse{Data: map[string]string{"message": err.Error()},
-			StatusCode: http.StatusUnauthorized}
-	}
-
-	// Get the user's full details from the DB or create them if they don't exists
-	dbUser, err := model.GetOrCreateUser(user.Username(), user.DisplayName(), user.Email())
-	if err != nil {
-		evergreen.Logger.Logf(slogger.INFO, "Error looking up user: %v", err)
-	} else {
-		context.Set(r, userKey, dbUser)
-	}
-
-	if user != nil {
-		context.Set(r, "isAdmin", true)
-		context.Set(r, userKey, dbUser)
-	}
-
-	return web.ChainHttpResponse{}
-}
-*/
-
+// GetUser loads the user attached to a request.
 func GetUser(r *http.Request) *user.DBUser {
 	if rv := context.Get(r, apiUserKey); rv != nil {
 		return rv.(*user.DBUser)
@@ -663,6 +644,7 @@ func GetUser(r *http.Request) *user.DBUser {
 	return nil
 }
 
+// GetTask loads the task attached to a request.
 func GetTask(r *http.Request) *model.Task {
 	if rv := context.Get(r, apiTaskKey); rv != nil {
 		return rv.(*model.Task)
@@ -874,6 +856,7 @@ func requireUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// Handler returns the root handler for all APIServer endpoints.
 func (as *APIServer) Handler() (http.Handler, error) {
 	root := mux.NewRouter()
 	r := root.PathPrefix("/api/2/").Subrouter()

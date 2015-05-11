@@ -31,17 +31,18 @@ const APIVersion = 2
 
 // Recognized agent signals.
 const (
-	// Indicates that repeated attempts to send heartbeat to the API server fails.
+	// HeartbeatMaxFailed indicates that repeated attempts to send heartbeat to the API server fails.
 	HeartbeatMaxFailed Signal = iota
-	// Indicates that the secret agent is started with does not match that held by API server.
+	// IncorrectSecret indicates that the secret for the task the agent is running
+	// does not match the task secret held by API server.
 	IncorrectSecret
-	// Indicates a user decided to prematurely end the task.
+	// AbortedByUser indicates a user decided to prematurely end the task.
 	AbortedByUser
-	// Indicates the task appears to be idle - e.g. no logs produced for a while.
+	// IdleTimeout indicates the task appears to be idle - e.g. no logs produced for a while.
 	IdleTimeout
-	// Indicates task successfully ran to completion and passed.
+	// CompletedSuccess indicates task successfully ran to completion and passed.
 	CompletedSuccess
-	// Indicates task successfully ran to completion but failed.
+	// CompletedFailure indicates task successfully ran to completion but failed.
 	CompletedFailure
 )
 

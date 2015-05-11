@@ -6,7 +6,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// A wrapper for an sftp client.
+// SFTPGateway wraps an SFTP client.
 type SFTPGateway struct {
 
 	// the sftp client that the gateway is managing
@@ -21,7 +21,7 @@ type SFTPGateway struct {
 	Keyfile string
 }
 
-// Connect to the other side, and initialize the sftp client.
+// Connect to the other side, and initialize the SFTP client.
 func (gateway *SFTPGateway) Init() error {
 
 	// configure appropriately
@@ -46,7 +46,7 @@ func (gateway *SFTPGateway) Init() error {
 
 }
 
-// Free any necessary resources.
+// Close frees any necessary resources.
 func (gateway *SFTPGateway) Close() error {
 	return gateway.Client.Close()
 }

@@ -429,7 +429,6 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 
 	authUser := GetUser(r)
 	authName := authUser.DisplayName()
-	_ = authName
 
 	// determine what action needs to be taken
 	switch putParams.Action {

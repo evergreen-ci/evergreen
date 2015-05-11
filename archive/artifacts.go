@@ -12,11 +12,14 @@ import (
 	"strings"
 )
 
+// TarContentsFile represents a tar file on disk.
 type TarContentsFile struct {
 	path string
 	info os.FileInfo
 }
 
+// BuildArchive reads the rootPath directory into the tar.Writer,
+// taking included and excluded strings into account.
 func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 	excludes []string, log *slogger.Logger) error {
 
@@ -174,6 +177,7 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 	}
 }
 
+// Extract unpacks the tar.Reader into rootPath.
 func Extract(tarReader *tar.Reader, rootPath string) error {
 	for {
 		hdr, err := tarReader.Next()
@@ -233,6 +237,10 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 	}
 }
 
+// TODO the functions below could just be inlined in the place that uses them.
+
+// TarGzReader returns a file, gzip reader, and tar reader for the given path.
+// The tar reader wraps the gzip reader, which wraps the file.
 func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
 	f, err = os.Open(path)
 	if err != nil {
@@ -247,6 +255,8 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 	return f, gz, tarReader, nil
 }
 
+// TarGzWriter returns a file, gzip writer, and tarWriter for the path.
+// The tar writer wraps the gzip writer, which wraps the file.
 func TarGzWriter(path string) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
 	f, err = os.Create(path)
 	if err != nil {

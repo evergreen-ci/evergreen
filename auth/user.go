@@ -1,11 +1,13 @@
 package auth
 
+// User describes an Evergreen user and is returned by a UserManager.
 type User interface {
 	DisplayName() string
 	Email() string
 	Username() string
 }
 
+// UserManager sets and gets user tokens for am implemented authentication mechanism.
 type UserManager interface {
 	GetUserByToken(token string) (User, error)
 	CreateUserToken(username, password string) (string, error)

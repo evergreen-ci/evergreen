@@ -10,8 +10,15 @@ import (
 	"strings"
 )
 
-// Interface comprising any type meant to cross-compile the
-// agent package
+func init() {
+	// find and store the path to the goxc executable.
+	// TODO: this shouldn't be necessary, goxc should be compiled,
+	// added to $PATH, and called directly rather than using 'go run'
+	evgHome := evergreen.FindEvergreenHome()
+	goxc = filepath.Join(evgHome, "src/github.com/laher/goxc/goxc.go")
+}
+
+// AgentCompiler controls cross-compilation of the agent package.
 type AgentCompiler interface {
 	// Compile the agent package into the specified directory
 	// Takes in the sourceDir (where the agent package lives) and the desired
@@ -25,11 +32,12 @@ type AgentCompiler interface {
 	ExecutableSubPath(distroId string) (string, error)
 }
 
-// Implementation of an AgentCompiler, using goxc as the cross-compiler
-// of choice.
+// GoxcAgentCompiler uses goxc as the cross-compiler of choice.
 type GoxcAgentCompiler struct {
 	*evergreen.Settings
 }
+
+// TODO native gc cross-compiler for Go 1.5
 
 var (
 	// These variables determine what platforms and architectures we build the
@@ -41,15 +49,7 @@ var (
 	goxc string
 )
 
-func init() {
-	// find and store the path to the goxc executable.
-	// TODO: this shouldn't be necessary, goxc should be compiled,
-	// added to $PATH, and called directly rather than using 'go run'
-	evgHome := evergreen.FindEvergreenHome()
-	goxc = filepath.Join(evgHome, "src/github.com/laher/goxc/goxc.go")
-}
-
-// Cross-compiles the specified package into the specified destination dir,
+// Compile cross-compiles the specified package into the specified destination dir,
 // using goxc as the cross-compiler.
 func (self *GoxcAgentCompiler) Compile(sourceDir string, destDir string) error {
 
@@ -72,6 +72,7 @@ func (self *GoxcAgentCompiler) Compile(sourceDir string, destDir string) error {
 	return nil
 }
 
+// ExecutableSubPath returns the directory containing the compiled agents.
 func (self *GoxcAgentCompiler) ExecutableSubPath(id string) (string, error) {
 
 	// get the full distro info, so we can figure out the architecture

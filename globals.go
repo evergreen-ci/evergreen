@@ -72,9 +72,6 @@ const (
 	SanityStage  = "smokeCppUnitTests"
 	PushStage    = "push"
 
-	// max allowed hosts
-	TooManyHosts = 150
-
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 3
 
@@ -82,7 +79,7 @@ const (
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
-	EvergreenHome = "mci_home"
+	EvergreenHome = "EVGHOME"
 )
 
 // evergreen package names
@@ -96,6 +93,8 @@ const (
 )
 
 var (
+	// UphostStatus is a list of all host statuses that are considered "up."
+	// This is used for query building.
 	UphostStatus = []string{
 		HostRunning,
 		HostUninitialized,
@@ -104,7 +103,7 @@ var (
 		HostUnreachable,
 	}
 
-	// vars instead of consts so they can be changed for testing
+	// Logger is our global logger. It can be changed for testing.
 	Logger = slogger.Logger{
 		Prefix:    "",
 		Appenders: []slogger.Appender{slogger.StdOutAppender()},
@@ -122,6 +121,7 @@ var (
 	CompletedStatuses = []string{TaskSucceeded, TaskFailed}
 )
 
+// SetLogger sets the global logger to write to the given path.
 func SetLogger(logPath string) {
 	logfile, err := util.GetAppendingFile(logPath)
 	if err != nil {
@@ -134,6 +134,7 @@ func SetLogger(logPath string) {
 	}
 }
 
+// FindEvergreenHome finds the directory of the EVGHOME environment variable.
 func FindEvergreenHome() string {
 	// check if env var is set
 	root := os.Getenv("EVGHOME")
@@ -146,9 +147,11 @@ func FindEvergreenHome() string {
 		Logger.Logf(slogger.WARN, "'mci_home' environment variable is deprecated; please use 'EVGHOME' instead")
 		return root
 	}
-	return root
+	return ""
 }
 
+// FindConfig finds the config root in the home directory.
+// Returns an error if the root cannot be found or EVGHOME is unset.
 func FindConfig(configName string) (string, error) {
 	home := FindEvergreenHome()
 	if len(home) > 0 {
@@ -171,6 +174,7 @@ func isConfigRoot(home string, configName string) (fixed string, is bool) {
 	return
 }
 
+// TestConfig creates test settings from a test config.
 func TestConfig() *Settings {
 	evgHome := FindEvergreenHome()
 	file := filepath.Join(evgHome, TestDir, TestSettings)

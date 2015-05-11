@@ -1,24 +1,22 @@
 package db
 
 import (
-	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
-
-var _ fmt.Stringer = nil
 
 const (
 	GlobalsCollection = "globals"
 	LastBuildId       = "last_agent_build"
 )
 
-// for remembering the last version of the agent that was built
+// LastAgentBuild stores the last version of the agent that was built.
 type LastAgentBuild struct {
 	Id   string `bson:"_id"`
 	Hash string `bson:"hash"`
 }
 
+// GetLastAgentBuild returns the most recent agent githash stored in the database.
 func GetLastAgentBuild() (string, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -42,6 +40,9 @@ func GetLastAgentBuild() (string, error) {
 	return lastBuild.Hash, nil
 }
 
+// StoreLastAgentBuild stores the given agent git hash in the database,
+// so that Evergreen can detect when a new version of the agent should
+// be compiled.
 func StoreLastAgentBuild(hash string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -54,12 +55,15 @@ func StoreLastAgentBuild(hash string) error {
 	return err
 }
 
+// Global stores internal tracking information.
 type Global struct {
 	BuildVariant    string `bson:"_id"`
 	LastBuildNumber uint64 `bson:"last_build_number"`
 	LastTaskNumber  uint64 `bson:"last_task_number"`
 }
 
+// GetNewBuildVariantTaskNumber atomically gets a new number for a task,
+// given its variant name.
 func GetNewBuildVariantTaskNumber(buildVariant string) (uint64, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -111,6 +115,8 @@ func GetNewBuildVariantTaskNumber(buildVariant string) (uint64, error) {
 	return global.LastTaskNumber, nil
 }
 
+// GetNewBuildVariantBuildNumber atomically gets a new number for a build,
+// given its variant name.
 func GetNewBuildVariantBuildNumber(buildVariant string) (uint64, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {

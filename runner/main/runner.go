@@ -26,7 +26,8 @@ func main() {
 	}
 
 	if settings.Runner.IntervalSeconds <= 0 {
-		evergreen.Logger.Logf(slogger.WARN, "Interval set to %vs (<= 0s) using %vs instead", settings.Runner.IntervalSeconds, runInterval)
+		evergreen.Logger.Logf(slogger.WARN, "Interval set to %vs (<= 0s) using %vs instead",
+			settings.Runner.IntervalSeconds, runInterval)
 	} else {
 		runInterval = settings.Runner.IntervalSeconds
 	}
@@ -43,10 +44,10 @@ func main() {
 }
 
 // runProcess runs a ProcessRunner with the given settings and
-// returns a channel on which the caller can listen for errors.
-func runProcess(r ProcessRunner, s *evergreen.Settings) chan error {
-	c := make(chan error)
-	go func(c chan error) {
+// returns a channel on which the caller can listen for process completion.
+func runProcess(r ProcessRunner, s *evergreen.Settings) chan struct{} {
+	c := make(chan struct{})
+	go func(doneChan chan struct{}) {
 		err := r.Run(s)
 		if err != nil {
 			subject := fmt.Sprintf(`%v failure`, r.Name())
@@ -55,8 +56,8 @@ func runProcess(r ProcessRunner, s *evergreen.Settings) chan error {
 				evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
 			}
 		}
-		c <- err
-		close(c)
+		// close the channel to indicate the process is finished
+		close(doneChan)
 	}(c)
 	return c
 }

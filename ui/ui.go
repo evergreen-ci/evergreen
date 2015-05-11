@@ -26,6 +26,7 @@ const (
 	ProjectNotFoundFormat string = "Project '%v' not found"
 )
 
+// UIServer provides a web interface for Evergreen.
 type UIServer struct {
 	*render.Render
 
@@ -39,11 +40,14 @@ type UIServer struct {
 	plugin.PanelManager
 }
 
+// InitPlugins registers all installed plugins with the UI Server.
 func (uis *UIServer) InitPlugins() {
 	uis.PanelManager = &plugin.SimplePanelManager{}
 	uis.PanelManager.RegisterPlugins(plugin.Published)
 }
 
+// NewRouter sets up a request router for the UI, installing
+// hard-coded routes as well as those belonging to plugins.
 func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r := mux.NewRouter().StrictSlash(true)
 

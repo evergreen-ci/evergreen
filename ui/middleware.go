@@ -69,6 +69,8 @@ func GetProjectContext(r *http.Request) (projectContext, error) {
 	return projectContext{}, fmt.Errorf("No context loaded")
 }
 
+// MustHaveProjectContext gets the projectContext from the request,
+// or panics if it does not exist.
 func MustHaveProjectContext(r *http.Request) projectContext {
 	pc, err := GetProjectContext(r)
 	if err != nil {
@@ -77,6 +79,8 @@ func MustHaveProjectContext(r *http.Request) projectContext {
 	return pc
 }
 
+// MustHaveUser gets the user from the request or
+// panics if it does not exist.
 func MustHaveUser(r *http.Request) *user.DBUser {
 	u := GetUser(r)
 	if u == nil {
@@ -85,6 +89,7 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 	return u
 }
 
+// ToPluginContext creates a UIContext from the projectContext data.
 func (pc projectContext) ToPluginContext(settings evergreen.Settings, user *user.DBUser) plugin.UIContext {
 	return plugin.UIContext{
 		Settings:   settings,
@@ -98,6 +103,7 @@ func (pc projectContext) ToPluginContext(settings evergreen.Settings, user *user
 	}
 }
 
+// GetSettings returns the global evergreen settings.
 func (uis *UIServer) GetSettings() evergreen.Settings {
 	return uis.Settings
 }
@@ -138,8 +144,8 @@ func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// Forces a redirect to the login page. The redirect param is set on the query
-// so that the user will be returned to the original page after they login
+// RedirectToLogin forces a redirect to the login page. The redirect param is set on the query
+// so that the user will be returned to the original page after they login.
 func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	querySep := ""
 	if r.URL.RawQuery != "" {
@@ -274,7 +280,9 @@ func (pc *projectContext) populatePatch(patchId string) error {
 	return nil
 }
 
-// Builds a projectContext from vars in the URL.
+// LoadProjectContext builds a projectContext from vars in the request's URL.
+// This is done by reading in specific variables and inferring other required
+// context variables when necessary (e.g. loading a project based on the task).
 func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
 	user := GetUser(r)
 	vars := mux.Vars(r)
@@ -351,8 +359,8 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	return *proj, nil
 }
 
-// Middleware which checks for session tokens on the request, and looks up and attaches a user
-// for that token if one is found.
+// UserMiddleware is middleware which checks for session tokens on the Request
+// and looks up and attaches a user for that token if one is found.
 func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		token := ""

@@ -5,18 +5,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 )
 
-// Interface responsible for fetching the expected duration for a given set of
-// runnable tasks
+// TaskDurationEstimator is responsible for fetching the expected duration for a
+// given set of runnable tasks.
 type TaskDurationEstimator interface {
 	GetExpectedDurations(runnableTasks []model.Task) (
 		model.ProjectTaskDurations, error)
 }
 
-// Implementation that retrives the estimated duration of runnable tasks
+// DBTaskDurationEstimator retrives the estimated duration of runnable tasks.
+// Implements TaskDurationEstimator.
 type DBTaskDurationEstimator struct{}
 
-// GetExpectedDurations returns the expected duration of tasks -
-// by display name - on a project, buildvariant basis
+// GetExpectedDurations returns the expected duration of tasks
+// (by display name) on a project, buildvariant basis.
 func (self *DBTaskDurationEstimator) GetExpectedDurations(
 	runnableTasks []model.Task) (model.ProjectTaskDurations, error) {
 	durations := model.ProjectTaskDurations{}

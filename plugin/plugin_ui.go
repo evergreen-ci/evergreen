@@ -56,6 +56,8 @@ type pluginContext int
 
 const pluginContextKey pluginContext = 0
 
+// MustHaveContext loads a UIContext from the http.Request. It panics
+// if the context is not set.
 func MustHaveContext(request *http.Request) UIContext {
 	if c := context.Get(request, pluginContextKey); c != nil {
 		return c.(UIContext)
@@ -91,6 +93,7 @@ type UIPanel struct {
 	DataFunc UIDataFunction
 }
 
+// UIContext stores all relevant models for a plugin page.
 type UIContext struct {
 	Settings   evergreen.Settings
 	User       *user.DBUser
@@ -103,7 +106,7 @@ type UIContext struct {
 }
 
 // PanelLayout tells the view renderer what panel HTML data to inject and where
-// on the page to inject it
+// on the page to inject it.
 type PanelLayout struct {
 	Left   []template.HTML
 	Right  []template.HTML
@@ -111,7 +114,7 @@ type PanelLayout struct {
 }
 
 // PanelManager is the manager the UI server uses to register and load
-// plugin UI information efficiently
+// plugin UI information efficiently.
 type PanelManager interface {
 	RegisterPlugins([]Plugin) error
 	Includes(PageScope) ([]template.HTML, error)
@@ -151,7 +154,7 @@ func sortAndExtractHTML(pairs []pluginTemplatePair) []template.HTML {
 	return tplList
 }
 
-// SimplePanelManager is a basic implementation of a plugin panel manager
+// SimplePanelManager is a basic implementation of a plugin panel manager.
 type SimplePanelManager struct {
 	includes    map[PageScope][]template.HTML
 	panelHTML   map[PageScope]PanelLayout
@@ -159,7 +162,7 @@ type SimplePanelManager struct {
 }
 
 // RegisterPlugins takes an array of plugins and registers them with the
-// manager. After this step is done, the other manager functions may be used
+// manager. After this step is done, the other manager functions may be used.
 func (self *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
 	//initialize temporary maps
 	registered := map[string]bool{}
@@ -254,19 +257,19 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
 }
 
 // Includes returns a properly-ordered list of html tags to inject into the
-// head of the view for the given page
+// head of the view for the given page.
 func (self *SimplePanelManager) Includes(page PageScope) ([]template.HTML, error) {
 	return self.includes[page], nil
 }
 
 // Panels returns a PanelLayout for the view renderer to inject panels into
-// the given page
+// the given page.
 func (self *SimplePanelManager) Panels(page PageScope) (PanelLayout, error) {
 	return self.panelHTML[page], nil
 }
 
 // UIData returns a map of plugin name -> data for inclusion
-// in the view's javascript
+// in the view's javascript.
 func (self *SimplePanelManager) UIData(context UIContext, page PageScope) (map[string]interface{}, error) {
 	pluginUIData := map[string]interface{}{}
 	errs := &UIDataFunctionError{}
@@ -295,16 +298,16 @@ func (self *SimplePanelManager) UIData(context UIContext, page PageScope) (map[s
 }
 
 // UIDataFunctionError is a special error type for data function processing
-// which can record and aggregate multiple error messages
+// which can record and aggregate multiple error messages.
 type UIDataFunctionError []error
 
-// AppendError adds an error onto the array of data function errors
+// AppendError adds an error onto the array of data function errors.
 func (errs *UIDataFunctionError) AppendError(name string, err error) {
 	*errs = append(*errs, fmt.Errorf("{'%v': %v}", name, err))
 }
 
 // HasErrors returns a boolean representing if the UIDataFunctionError
-// contains any errors
+// contains any errors.
 func (errs *UIDataFunctionError) HasErrors() bool {
 	return len(*errs) > 0
 }
@@ -323,7 +326,7 @@ func (errs *UIDataFunctionError) Error() string {
 // very easy to establish a static root for a plugin, by simply
 // declaring:
 //  {StaticRoot: plugin.StaticWebRootFromSourceFile()}
-// in a plugin's PanelConfig definition
+// in a plugin's PanelConfig definition.
 func StaticWebRootFromSourceFile() string {
 	_, file, _, ok := runtime.Caller(1)
 	if !ok {

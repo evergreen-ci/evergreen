@@ -8,7 +8,7 @@ import (
 	"sort"
 )
 
-// Interface responsible for taking in a slice of tasks, and ordering them
+// TaskPrioritizer is responsible for taking in a slice of tasks, and ordering them
 // according to which should be run first.
 type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
@@ -18,7 +18,7 @@ type TaskPrioritizer interface {
 		[]model.Task, error)
 }
 
-// Implementation that runs the tasks through a slice of comparator functions
+// CmpBasedTaskPrioritizer runs the tasks through a slice of comparator functions
 // determining which is more important.
 type CmpBasedTaskPrioritizer struct {
 	tasks          []model.Task
@@ -34,7 +34,7 @@ type CmpBasedTaskPrioritizer struct {
 	similarFailingCount map[string]int
 }
 
-// Helper to return a new task prioritizer, using the default set of comparators
+// NewCmpBasedTaskPrioritizer returns a new task prioritizer, using the default set of comparators
 // as well as the setup functions necessary for those comparators.
 func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 	return &CmpBasedTaskPrioritizer{
@@ -53,7 +53,7 @@ func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 	}
 }
 
-// Prioritize the tasks to be run.  First splits the tasks into slices based on
+// PrioritizeTask prioritizes the tasks to run. First splits the tasks into slices based on
 // whether they are part of patch versions or automatically created versions.
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.

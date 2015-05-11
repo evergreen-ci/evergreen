@@ -1,13 +1,10 @@
 package db
 
 import (
-	"fmt"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"time"
 )
-
-var _ fmt.Stringer = nil
 
 const (
 	LockCollection = "lock"
@@ -15,6 +12,7 @@ const (
 	LockTimeout    = time.Minute * 3
 )
 
+// Lock represents a lock stored in the database, for synchronization.
 type Lock struct {
 	Id       string    `bson:"_id"`
 	Locked   bool      `bson:"locked"`
@@ -22,8 +20,7 @@ type Lock struct {
 	LockedAt time.Time `bson:"locked_at"`
 }
 
-// should be called once, at program initialization,
-// maybe by the repotracker (since it is the first to run of the cron job)
+// InitializeGlobalLock should be called once, at program initialization.
 func InitializeGlobalLock() error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -47,6 +44,9 @@ func InitializeGlobalLock() error {
 	return db.C(LockCollection).Insert(bson.M{"_id": GlobalLockId, "locked": false})
 }
 
+// WaitTillAcquireGlobalLock "spins" on acquiring the given database lock,
+// for the process id, until timeoutMS. Returns whether or not the lock was
+// acquired.
 func WaitTillAcquireGlobalLock(id string, timeoutMS time.Duration) (bool, error) {
 	startTime := time.Now()
 	for {
@@ -68,9 +68,6 @@ func WaitTillAcquireGlobalLock(id string, timeoutMS time.Duration) (bool, error)
 		// sleep
 		time.Sleep(1000 * time.Millisecond)
 	}
-
-	// won't get here, but go forces it
-	return false, nil
 }
 
 // attempt to acquire the global lock of no one has it
@@ -116,7 +113,9 @@ func setDocumentLocked(id string, upsert bool) (bool, error) {
 	return lock.Locked, nil
 }
 
-// attempt to acquire the global lock if no one has it or it's timed out
+// AcquireGlobalLock attempts to acquire the global lock if
+// no one has it or it's timed out. Returns a boolean indicating
+// whether the lock was acquired.
 func AcquireGlobalLock(id string) (bool, error) {
 	acquired, err := setDocumentLocked(id, false)
 
@@ -137,6 +136,7 @@ func AcquireGlobalLock(id string) (bool, error) {
 	return acquired, err
 }
 
+// ReleaseGlobalLock relinquishes the global lock for the given id.
 func ReleaseGlobalLock(id string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -145,5 +145,8 @@ func ReleaseGlobalLock(id string) error {
 	defer session.Close()
 
 	// will return mgo.ErrNotFound if the lock expired
-	return db.C(LockCollection).Update(bson.M{"_id": GlobalLockId, "locked_by": id}, bson.M{"$set": bson.M{"locked": false}})
+	return db.C(LockCollection).Update(
+		bson.M{"_id": GlobalLockId, "locked_by": id},
+		bson.M{"$set": bson.M{"locked": false}},
+	)
 }

@@ -4,12 +4,14 @@ import (
 	"time"
 )
 
-//RetriableError can be returned by any function called with Retry(),
-//to indicate that it should be retried again after a sleep interval.
+// RetriableError can be returned by any function called with Retry(),
+// to indicate that it should be retried again after a sleep interval.
 type RetriableError struct {
 	Failure error
 }
 
+// RetriableFunc is any function that takes no parameters and returns only
+// an error interface. These functions can be used with util.Retry.
 type RetriableFunc func() error
 
 func (retriable RetriableError) Error() string {
@@ -75,10 +77,10 @@ func doRetry(backoffCalc BackoffCalc, attemptFunc RetriableFunc, maxTries int,
 	}
 }
 
-//Retry will call attemptFunc up to maxTries until it returns nil,
-//sleeping the specified amount of time between each call.
-//The function can return an error to abort the retrying, or return
-//RetriableError to allow the function to be called again.
+// Retry will call attemptFunc up to maxTries until it returns nil,
+// sleeping the specified amount of time between each call.
+// The function can return an error to abort the retrying, or return
+// RetriableError to allow the function to be called again.
 func Retry(attemptFunc RetriableFunc, maxTries int,
 	sleep time.Duration) (bool, error) {
 	return doRetry(linearBackoffCalc, attemptFunc, maxTries, sleep)

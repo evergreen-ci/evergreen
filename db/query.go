@@ -9,6 +9,8 @@ type Q struct {
 	limit      int
 }
 
+// Query creates a db.Q for the given MongoDB query. The filter
+// can be a struct, bson.D, bson.M, nil, etc.
 func Query(filter interface{}) Q {
 	return Q{filter: filter}
 }

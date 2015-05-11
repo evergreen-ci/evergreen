@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 )
 
-// Interface responsible for taking a task queue for a particular distro
+// TaskQueuePersister is responsible for taking a task queue for a particular distro
 // and saving it.
 type TaskQueuePersister interface {
 	PersistTaskQueue(distro string, tasks []model.Task,
@@ -14,10 +14,10 @@ type TaskQueuePersister interface {
 		error)
 }
 
-// Implementation that saves to the database.
+// DBTaskQueuePersister saves a queue to the database.
 type DBTaskQueuePersister struct{}
 
-// Save the task queue to the database.
+// PersistTaskQueue saves the task queue to the database.
 // Returns an error if the db call returns an error.
 func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 	tasks []model.Task,

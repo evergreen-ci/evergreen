@@ -2,14 +2,14 @@ package util
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"runtime"
 	"testing"
 )
 
-var DEFAULT_LOG_PATH = filepath.Join(os.Getenv("mci_home"), "logs", "mongo_log.output")
-
+// HandleTestingErr catches errors that we do not want to treat
+// as relevant a goconvey statement. HandleTestingErr is used
+// to terminate unit tests that fail for reasons that are orthogonal to
+// the test (filesystem errors, database errors, etc).
 func HandleTestingErr(err error, t *testing.T, format string, a ...interface{}) {
 	if err != nil {
 		_, file, line, ok := runtime.Caller(1)

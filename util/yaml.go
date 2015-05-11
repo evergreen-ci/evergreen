@@ -19,9 +19,9 @@ func ReadYAMLInto(r io.ReadCloser, data interface{}) error {
 	return yaml.Unmarshal(bytes, data)
 }
 
-// Read in the specified file, and unmarshal it into the given interface.
-// Returns an error if one is encountered in reading the file or if the file
-// does not contain valid YAML.
+// UnmarshalYAMLFile reads in the specified file, and unmarshals it
+// into the given interface. Returns an error if one is encountered
+// in reading the file or if the file does not contain valid YAML.
 func UnmarshalYAMLFile(file string, data interface{}) error {
 	fileBytes, err := ioutil.ReadFile(file)
 	if err != nil {

@@ -7,16 +7,22 @@ const (
 	DefaultSSHPort = "22"
 )
 
+// StaticHostInfo stores the connection parameters for connecting to an SSH host.
 type StaticHostInfo struct {
 	User     string
 	Hostname string
 	Port     string
 }
 
-var USER_HOST_PORT_REGEX = regexp.MustCompile("(?:([\\w\\-_]+)@)?@?([\\w\\-_\\.]+)(?::(\\d+))?")
+var userHostPortRegex = regexp.MustCompile("(?:([\\w\\-_]+)@)?@?([\\w\\-_\\.]+)(?::(\\d+))?")
 
+// ParseSSHInfo reads in a hostname definition and reads the relevant
+// SSH connection information from it. For example,
+//  "admin@myhostaddress:24"
+// will return
+//  StaticHostInfo{User: "admin", Hostname:"myhostaddress", Port: 24}
 func ParseSSHInfo(fullHostname string) (*StaticHostInfo, error) {
-	matches := USER_HOST_PORT_REGEX.FindStringSubmatch(fullHostname)
+	matches := userHostPortRegex.FindStringSubmatch(fullHostname)
 	if len(matches) == 0 {
 		return nil, fmt.Errorf("Invalid hostname format: %v", fullHostname)
 	} else {

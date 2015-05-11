@@ -13,7 +13,10 @@ import (
 	"unicode/utf8"
 )
 
-// StreamLogger holds a number of stream-delineated loggers.
+// StreamLogger holds a set of stream-delineated loggers. Each logger is used
+// to communicate different kinds of logs to the API Server or local file system.
+// StreamLogger is used to distinguish logs of system statistics, shell output,
+// and internal agent logs.
 type StreamLogger struct {
 	// Local is used for file system logging on the host the agent is running on.
 	Local *slogger.Logger
@@ -23,10 +26,13 @@ type StreamLogger struct {
 	Task *slogger.Logger
 	// Execution is used for logging the agent's internal state.
 	Execution *slogger.Logger
+
 	// apiLogger is used to send data back to the API server.
 	apiLogger APILogger
 }
 
+// GetTaskLogWriter returns an io.Writer of the given level. Useful for
+// working with other libraries seamlessly.
 func (lgr *StreamLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 	return &evergreen.LoggingWriter{
 		Logger:   lgr.Task,
@@ -34,32 +40,49 @@ func (lgr *StreamLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 	}
 }
 
+// LogLocal logs a message to the agent logs on the machine's local file system.
+//
+// Anything logged by this method will not be sent to the server, so only use it
+// to log information that would only be useful when debugging locally.
 func (lgr *StreamLogger) LogLocal(level slogger.Level, messageFmt string, args ...interface{}) {
 	lgr.Local.Logf(level, messageFmt, args...)
 }
 
+// LogExecution logs a message related to the agent's internal workings.
+//
+// Internally this is used to log things like heartbeats and command internals that
+// would pollute the regular task test output.
 func (lgr *StreamLogger) LogExecution(level slogger.Level, messageFmt string, args ...interface{}) {
 	lgr.Execution.Logf(level, messageFmt, args...)
 }
 
+// LogTask logs a message to the task's logs.
+//
+// This log type is for main task input and output. LogTask should be used for logging
+// first-class information like test results and shell script output.
 func (lgr *StreamLogger) LogTask(level slogger.Level, messageFmt string, args ...interface{}) {
 	lgr.Task.Logf(level, messageFmt, args...)
 }
 
+// LogSystem logs passive system messages.
+//
+// Internally this is used for periodically logging process information and CPU usage.
 func (lgr *StreamLogger) LogSystem(level slogger.Level, messageFmt string, args ...interface{}) {
 	lgr.System.Logf(level, messageFmt, args...)
 }
 
+// Flush flushes the logs to the server. Returns immediately.
 func (lgr *StreamLogger) Flush() {
 	lgr.apiLogger.Flush()
 }
 
+// FlushAndWait flushes and blocks until the HTTP request to send the logs has completed.
+// This works in contrast with Flush, which triggers the flush asynchronously.
 func (lgr *StreamLogger) FlushAndWait() int {
 	return lgr.apiLogger.FlushAndWait()
 }
 
-// Wraps an Logger, with additional context about which command is
-// currently being run
+// Wraps an Logger, with additional context about which command is currently being run.
 type CommandLogger struct {
 	commandName string
 	logger      *StreamLogger
@@ -97,6 +120,8 @@ func (cmdLgr *CommandLogger) Flush() {
 	cmdLgr.logger.Flush()
 }
 
+// NewStreamLogger creates a StreamLogger wrapper for the apiLogger with a given timeoutWatcher.
+// Any logged messages on the StreamLogger will reset the TimeoutWatcher.
 func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile string) (*StreamLogger, error) {
 	localLogger := slogger.StdOutAppender()
 
@@ -186,6 +211,7 @@ type APILogger struct {
 	TaskCommunicator
 }
 
+// NewAPILogger creates an initialized logger around the given TaskCommunicator.
 func NewAPILogger(tc TaskCommunicator) *APILogger {
 	sendAfterDuration := 5 * time.Second
 	return &APILogger{
@@ -288,6 +314,8 @@ func levelToString(level slogger.Level) string {
 	return "UNKNOWN"
 }
 
+// NewTestLogger creates a logger for testing. This Logger
+// stores everything in memory.
 func NewTestLogger(appender slogger.Appender) *StreamLogger {
 	return &StreamLogger{
 		Local: &slogger.Logger{

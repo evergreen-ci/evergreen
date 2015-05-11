@@ -27,6 +27,7 @@ var (
 	SpawnLimitErr = errors.New("User is already running the max allowed # of spawn hosts")
 )
 
+// BadOptionsErr represents an in valid set of spawn options.
 type BadOptionsErr struct {
 	message string
 }
@@ -35,10 +36,12 @@ func (bsoe BadOptionsErr) Error() string {
 	return "Invalid spawn options:" + bsoe.message
 }
 
+// Spawn handles Spawning hosts for users.
 type Spawn struct {
 	settings *evergreen.Settings
 }
 
+// Options holds the required parameters for spawning a host.
 type Options struct {
 	Distro    string
 	UserName  string
@@ -46,11 +49,12 @@ type Options struct {
 	UserData  string
 }
 
+// New returns an initialized Spawn controller.
 func New(settings *evergreen.Settings) Spawn {
 	return Spawn{settings}
 }
 
-// Validate() returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
+// Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
 func (sm Spawn) Validate(so Options) error {
@@ -231,5 +235,4 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	}
 
 	return h, nil
-
 }

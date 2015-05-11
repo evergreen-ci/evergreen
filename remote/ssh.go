@@ -11,7 +11,7 @@ var (
 	ErrCmdTimedOut = fmt.Errorf("ssh command timed out")
 )
 
-// Abstraction of a single command to be run via ssh, on a remote machine.
+// SSHCommand abstracts a single command to be run via ssh, on a remote machine.
 type SSHCommand struct {
 	// the command to be run on the remote machine
 	Command string

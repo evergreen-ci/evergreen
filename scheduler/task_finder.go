@@ -6,19 +6,19 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 )
 
-// Interface responsible for finding all tasks that are ready to be run.
+// TaskFinder finds all tasks that are ready to be run.
 type TaskFinder interface {
 	// Returns a slice of tasks that are ready to be run, and an error if
 	// appropriate.
 	FindRunnableTasks() ([]model.Task, error)
 }
 
-// Implementation that fetches tasks from the database.
+// DBTaskFinder fetches tasks from the database. Implements TaskFinder.
 type DBTaskFinder struct{}
 
-// Find all tasks that are ready to be run.  Works by fetching all undispatched
-// tasks from the database, and filtering out any whose dependencies are not
-// met.
+// FindRunnableTasks finds all tasks that are ready to be run.
+// This works by fetching all undispatched tasks from the database,
+// and filtering out any whose dependencies are not met.
 func (self *DBTaskFinder) FindRunnableTasks() ([]model.Task, error) {
 
 	// find all of the undispatched tasks

@@ -6,12 +6,13 @@ import (
 )
 
 var (
+	// ErrTimedOut is returned by a function that timed out.
 	ErrTimedOut = errors.New("Function timed out")
 )
 
-// Runs a function, timing out after the specified time.  The error returned
-// will be the return value of the function if it completes, or ErrTimedOut
-// if it times out.
+// RunFunctionWithTimeout runs a function, timing out after the specified time.
+// The error returned will be the return value of the function if it completes,
+// or ErrTimedOut if it times out.
 func RunFunctionWithTimeout(f func() error, timeout time.Duration) error {
 
 	// the error channel that the function's return value will be sent on

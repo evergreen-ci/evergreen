@@ -3,6 +3,7 @@ package agent
 import "time"
 import "github.com/10gen-labs/slogger/v1"
 
+// HeartbeatTicker manages heartbeat communication with the API server
 type HeartbeatTicker struct {
 	// Number of consecutive failed heartbeats allowed before signaling a failure
 	MaxFailedHeartbeats int

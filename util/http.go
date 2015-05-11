@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// writes a json response with the supplied code on the given writer
+// WriteJSON writes a json response with the supplied code on the given writer.
 func WriteJSON(w *http.ResponseWriter, data interface{}, status int) {
 	// write the response
 	(*w).Header().Add("Content-Type", "application/json")
@@ -25,6 +25,7 @@ func WriteJSON(w *http.ResponseWriter, data interface{}, status int) {
 	(*w).Write([]byte(jsonBytes))
 }
 
+// MakeTlsConfig creates a TLS Config from a certificate and key.
 func MakeTlsConfig(cert string, key string) (*tls.Config, error) {
 	// Adapted from http.ListenAndServeTLS
 	tlsConfig := &tls.Config{}

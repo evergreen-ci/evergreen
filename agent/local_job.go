@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+// AgentCommand encapsulates a running local command and streams logs
+// back to the API server.
 type AgentCommand struct {
 	*StreamLogger
 	ScriptLine string
@@ -17,6 +19,8 @@ type AgentCommand struct {
 	KillChan   chan bool
 }
 
+// InterruptedCmdError is returned by commands that were stopped
+// before they could complete.
 var InterruptedCmdError = errors.New("Command interrupted")
 
 // Run will execute the command in workingDir, by applying the expansions to

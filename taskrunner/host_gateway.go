@@ -24,7 +24,7 @@ const (
 	agentFile         = "agent.log"
 )
 
-// Interface responsible for kicking off tasks on remote machines.
+// HostGateway responsible for kicking off tasks on remote machines.
 type HostGateway interface {
 	// determine if the agent needs be rebuilt
 	AgentNeedsBuild() (bool, error)

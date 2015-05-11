@@ -23,6 +23,9 @@ import (
 
 var HTTPConflictError = errors.New("Conflict")
 
+// HTTPCommunicator handles communication with the API server. An HTTPCommunicator
+// is scoped to a single task, and all communication performed by it is
+// only relevant to that running task.
 type HTTPCommunicator struct {
 	ServerURLRoot string
 	TaskId        string
@@ -35,6 +38,8 @@ type HTTPCommunicator struct {
 	httpClient    *http.Client
 }
 
+// NewHTTPCommunicator returns an initialized HTTPCommunicator.
+// The cert parameter may be blank if default system certificates are being used.
 func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
 	agentCommunicator := &HTTPCommunicator{
 		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, APIVersion),
@@ -60,23 +65,30 @@ func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan cha
 	return agentCommunicator, nil
 }
 
+// Heartbeat encapsulates heartbeat behavior (i.e., pinging the API server at regular
+// intervals to ensure that communication hasn't broken down).
 type Heartbeat interface {
 	Heartbeat() (bool, error)
 }
 
+// TaskJSONCommunicator handles plugin-specific JSON-encoded
+// communication with the API server.
 type TaskJSONCommunicator struct {
 	PluginName string
 	TaskCommunicator
 }
 
+// TaskPostJSON does an HTTP POST for the communicator's plugin + task.
 func (t *TaskJSONCommunicator) TaskPostJSON(endpoint string, data interface{}) (*http.Response, error) {
 	return t.tryPostJSON(fmt.Sprintf("%s/%s", t.PluginName, endpoint), data)
 }
 
+// TaskGetJSON does an HTTP GET for the communicator's plugin + task.
 func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response, error) {
 	return t.tryGet(fmt.Sprintf("%s/%s", t.PluginName, endpoint))
 }
 
+// TaskPostResults posts a set of test results for the communicator's task.
 func (t *TaskJSONCommunicator) TaskPostResults(results *model.TestResults) error {
 	retriableSendFile := util.RetriableFunc(
 		func() error {
@@ -108,7 +120,7 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *model.TestResults) error
 	return nil
 }
 
-// Used by PluginCommunicator interface for POST method for attaching task files
+// PostTaskFiles is used by the PluginCommunicator interface for attaching task files.
 func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error {
 	retriableSendFile := util.RetriableFunc(
 		func() error {
@@ -143,6 +155,7 @@ func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error 
 	return nil
 }
 
+// TaskPostTestLog posts a test log for a communicator's task.
 func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, error) {
 	var logId string
 	retriableSendFile := util.RetriableFunc(
@@ -184,6 +197,7 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 	return logId, nil
 }
 
+// Start marks the communicator's task as started.
 func (h *HTTPCommunicator) Start(pid string) error {
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pid}
 	resp, retryFail, err := h.postJSON("start", taskStartRequest)
@@ -204,6 +218,7 @@ func (h *HTTPCommunicator) Start(pid string) error {
 	return nil
 }
 
+// End marks the communicator's task as finished with the given status.
 func (h *HTTPCommunicator) End(status string,
 	details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error) {
 	taskEndReq := &apimodels.TaskEndRequest{Status: status}
@@ -247,6 +262,7 @@ func (h *HTTPCommunicator) End(status string,
 	return taskEndResp, err
 }
 
+// Log sends a batch of log messages for the task's logs to the API server.
 func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 	outgoingData := model.TaskLog{
 		TaskId:       h.TaskId,
@@ -265,8 +281,9 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 	return nil
 }
 
-// TODO log errors in this function
+// GetPatch loads the task's patch diff from the API server.
 func (h *HTTPCommunicator) GetPatch() (*patch.Patch, error) {
+	// TODO log errors in this function
 	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -302,8 +319,9 @@ func (h *HTTPCommunicator) GetPatch() (*patch.Patch, error) {
 	return patch, nil
 }
 
-// TODO log errors in this function
+// GetTask returns the communicator's task.
 func (h *HTTPCommunicator) GetTask() (*model.Task, error) {
+	// TODO log errors in this function
 	task := &model.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -340,6 +358,7 @@ func (h *HTTPCommunicator) GetTask() (*model.Task, error) {
 	return task, nil
 }
 
+// GetDistro returns the distro for the communicator's task.
 func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
@@ -377,6 +396,7 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	return d, nil
 }
 
+// GetProjectConfig loads the communicator's task's project from the API server.
 func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 	projectConfig := &model.Project{}
 	retriableGet := util.RetriableFunc(
@@ -424,6 +444,8 @@ func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 	return projectConfig, nil
 }
 
+// Heartbeat sends a heartbeat to the API server. The server can respond with
+// and "abort" response. This function returns true if the agent should abort.
 func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	h.Logger.Logf(slogger.INFO, "Sending heartbeat.")
 	resp, err := h.tryPostJSON("heartbeat", "heartbeat")
@@ -511,6 +533,7 @@ func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 	return resp, retryFail, err
 }
 
+// FetchExpansionVars loads expansions for a communicator's task from the API server.
 func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
 	resultVars := &apimodels.ExpansionVars{}
 	retriableGet := util.RetriableFunc(

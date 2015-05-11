@@ -8,6 +8,7 @@ const (
 	InitialSetupStage   = "initial-setup-stage"
 )
 
+// TimeoutWatcher tracks and handles command timeout within the agent.
 type TimeoutWatcher struct {
 	executionStage string
 	duration       time.Duration

@@ -6,9 +6,8 @@ import (
 	"strings"
 )
 
-// Given an instance of a struct, and the name of a field in the struct,
-// returns the value of the "bson" tag for that struct field, stripping any
-// tag modifiers such as "omitempty".
+// Tag returns the value of the "bson" tag for the given struct field name of
+// the "data" struct, stripping any tag modifiers such as "omitempty".
 // Returns the empty string if there is no tag, and an error if the field
 // does not exist in the struct.
 func Tag(data interface{}, fieldName string) (string, error) {
@@ -30,8 +29,8 @@ func Tag(data interface{}, fieldName string) (string, error) {
 	return tag, nil
 }
 
-// Get the bson tag for a field, panicking if either the field does not
-// exist or has no bson tag.
+// MustHaveTag gets the "bson" struct tag for a field, panicking if
+// either the field does not exist or has no "bson" tag.
 func MustHaveTag(data interface{}, fieldName string) string {
 	tagValue, err := Tag(data, fieldName)
 	if err != nil {

@@ -8,8 +8,8 @@ import (
 	"syscall"
 )
 
-//dumpStackOnSIGQUIT listens for a SIGQUIT signal and writes stack dump to the
-//given io.Writer when one is received. Blocks, so spawn it as a goroutine.
+// DumpStackOnSIGQUIT listens for a SIGQUIT signal and writes stack dump to the
+// given io.Writer when one is received. Blocks, so spawn it as a goroutine.
 func DumpStackOnSIGQUIT(stackOut io.Writer) {
 	in := make(chan os.Signal)
 	signal.Notify(in, syscall.SIGQUIT)

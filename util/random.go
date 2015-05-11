@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 )
 
+// RandomString returns a cryptographically random string.
 func RandomString() string {
 	b := make([]byte, 16)
 	rand.Read(b)

@@ -10,7 +10,8 @@ import (
 	"strings"
 )
 
-// Opens a file for appending. Will create file first if necessary.
+// GetAppendingFile opens a file for appending. The file will be created
+// if it does not already exist.
 func GetAppendingFile(path string) (*os.File, error) {
 	exists, err := FileExists(path)
 	if err != nil {
@@ -24,7 +25,7 @@ func GetAppendingFile(path string) (*os.File, error) {
 	return os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
 }
 
-// Return true if 'path' exists.
+// FileExists returns true if 'path' exists.
 func FileExists(elem ...string) (bool, error) {
 	path := filepath.Join(elem...)
 	_, err := os.Stat(path)
@@ -37,7 +38,8 @@ func FileExists(elem ...string) (bool, error) {
 	return false, err
 }
 
-// returns the current git hash of the git repo located at the specified directory
+// CurrentGitHash returns the current git hash of the git repository
+// located at the specified directory.
 func CurrentGitHash(repoDir string) (string, error) {
 
 	cmd := exec.Command("git", "rev-parse", "HEAD")
@@ -69,7 +71,7 @@ func CurrentGitHash(repoDir string) (string, error) {
 }
 
 // WriteToTempFile writes the given string to a temporary file and returns the
-// path to the file
+// path to the file.
 func WriteToTempFile(data string) (string, error) {
 	file, err := ioutil.TempFile("", "temp_file_")
 	if err != nil {

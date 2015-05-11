@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Runner runs the scheduler process.
 type Runner struct{}
 
 const (

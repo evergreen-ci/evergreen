@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// Runner executes the hostinit process.
 type Runner struct{}
 
 const (

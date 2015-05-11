@@ -12,11 +12,12 @@ import (
 )
 
 const (
-	// the number of waterfall versions to create, including rolled-up ones
+	// VersionItemsToCreate is the number of waterfall versions to create,
+	// including rolled-up ones.
 	VersionItemsToCreate = 5
 
-	// the string field for the skip value in the url (how many versions to
-	// skip)
+	// SkipQueryParam is the string field for the skip value in the URL
+	// (how many versions to skip).
 	SkipQueryParam = "skip"
 
 	InactiveStatus = "inactive"

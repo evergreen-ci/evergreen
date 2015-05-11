@@ -8,10 +8,11 @@ import (
 )
 
 const (
+	// DefaultConfFile is the default config file path for Evergreen.
 	DefaultConfFile = "/etc/mci_settings.yml"
 )
 
-// AuthUser is a struct containing the Username, DisplayName, Password and Email.
+// AuthUser configures a user for our Naive authentication setup.
 type AuthUser struct {
 	Username    string `yaml:"username"`
 	DisplayName string `yaml:"display_name"`
@@ -19,11 +20,12 @@ type AuthUser struct {
 	Email       string `yaml:"email"`
 }
 
-// NaiveAuthConfig is a struct with a list of AuthUsers.
+// NaiveAuthConfig contains a list of AuthUsers from the settings file.
 type NaiveAuthConfig struct {
 	Users []*AuthUser
 }
 
+// CrowdConfig holds settings for interacting with Atlassian Crowd.
 type CrowdConfig struct {
 	Username string
 	Password string
@@ -36,24 +38,22 @@ type AuthConfig struct {
 	Naive *NaiveAuthConfig `yaml:"naive"`
 }
 
+// RepoTrackerConfig holds settings for polling project repositories.
 type RepoTrackerConfig struct {
 	NumNewRepoRevisionsToFetch int
 	MaxRepoRevisionsToSearch   int
 	LogFile                    string
 }
 
-type Project struct {
-	Name        string
-	Credentials string
-}
-
-type ApiConfig struct {
+// APIConfig holds relevant encryption and log settings for the API server.
+type APIConfig struct {
 	LogFile         string
 	HttpListenAddr  string
 	HttpsListenAddr string
 	HttpsKey        string
 }
 
+// UIConfig holds relevant settings for the UI server.
 type UIConfig struct {
 	Url            string
 	HelpUrl        string
@@ -71,25 +71,30 @@ type UIConfig struct {
 	CacheTemplates bool
 }
 
+// MonitorConfig holds logging settings for the monitor process.
 type MonitorConfig struct {
 	LogFile string
 }
 
+// RunnerConfig holds logging and timing settings for the runner process.
 type RunnerConfig struct {
 	LogFile         string
 	IntervalSeconds int64
 }
 
+// HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
 	LogFile           string
 	SSHTimeoutSeconds int64
 }
 
+// NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
 	LogFile string
 	SMTP    *SMTPConfig `yaml:"smtp"`
 }
 
+// SMTPConfig holds SMTP email settings.
 type SMTPConfig struct {
 	Server     string   `yaml:"server"`
 	Port       int      `yaml:"port"`
@@ -100,38 +105,47 @@ type SMTPConfig struct {
 	AdminEmail []string `yaml:"admin_email"`
 }
 
+// SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
 	LogFile     string
 	MergeToggle int
 }
 
+// TaskRunnerConfig holds logging settings for the scheduler process.
 type TaskRunnerConfig struct {
 	LogFile string
 }
 
+// CloudProviders stores configuration settings for the supported cloud host providers.
+type CloudProviders struct {
+	AWS          AWSConfig          `yaml:"aws"`
+	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
+}
+
+// AWSConfig stores auth info for Amazon Web Services.
+type AWSConfig struct {
+	Secret string `yaml:"aws_secret"`
+	Id     string `yaml:"aws_id"`
+}
+
+// DigitalOceanConfig stores auth info for Digital Ocean.
+type DigitalOceanConfig struct {
+	ClientId string `yaml:"client_id"`
+	Key      string `yaml:"key"`
+}
+
+// JiraConfig stores auth info for interacting with Atlassian Jira.
 type JiraConfig struct {
 	Host     string
 	Username string
 	Password string
 }
 
-type CloudProviders struct {
-	AWS          AWSConfig          `yaml:"aws"`
-	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
-}
-
-type AWSConfig struct {
-	Secret string `yaml:"aws_secret"`
-	Id     string `yaml:"aws_id"`
-}
-
-type DigitalOceanConfig struct {
-	ClientId string `yaml:"client_id"`
-	Key      string `yaml:"key"`
-}
-
+// PluginConfig holds plugin-specific settings, which are handled.
+// manually by their respective plugins
 type PluginConfig map[string]map[string]interface{}
 
+// Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	DbUrl               string            `yaml:"dburl"`
 	Db                  string            `yaml:"db"`
@@ -158,6 +172,7 @@ type Settings struct {
 	IsProd              bool              `yaml:"isprod"`
 }
 
+// NewSettings builds an in-memory representation of the given settings file.
 func NewSettings(filename string) (*Settings, error) {
 	configData, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -168,12 +183,11 @@ func NewSettings(filename string) (*Settings, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return settings, nil
 }
 
-//Validate() checks the settings and returns nil if the config is valid,
-//or an error with a message explaining why otherwise.
+// Validate checks the settings and returns nil if the config is valid,
+// or an error with a message explaining why otherwise.
 func (settings *Settings) Validate(validators []ConfigValidator) error {
 	for _, validator := range validators {
 		err := validator(settings)
@@ -181,10 +195,10 @@ func (settings *Settings) Validate(validators []ConfigValidator) error {
 			return err
 		}
 	}
-
 	return nil
 }
 
+// MustConfigFile reads in a settings file and panics on errors.
 func MustConfigFile(settingsPath string) *Settings {
 	settings, err := NewSettings(settingsPath)
 	if err != nil {
@@ -197,14 +211,18 @@ func MustConfigFile(settingsPath string) *Settings {
 	return settings
 }
 
+// MustConfig returns Evergreen Settings or panics.
 func MustConfig() *Settings {
 	var configFilePath = flag.String("conf", DefaultConfFile, "path to config file")
 	flag.Parse()
 	return MustConfigFile(*configFilePath)
 }
 
+// ConfigValidator is a type of function that checks the settings
+// struct for any errors or missing required fields.
 type ConfigValidator func(settings *Settings) error
 
+// ConfigValidationRules is the set of all ConfigValidator functions.
 var ConfigValidationRules = []ConfigValidator{
 	func(settings *Settings) error {
 		if settings.DbUrl == "" || settings.Db == "" {

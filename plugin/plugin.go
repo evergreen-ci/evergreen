@@ -57,6 +57,9 @@ func (self *ErrUnknownCommand) Error() string {
 	return fmt.Sprintf("Unknown command: '%v'", self.CommandName)
 }
 
+// WriteJSON writes data encoded in JSON format (Content-type: "application/json")
+// to the ResponseWriter with the supplied HTTP status code. Writes a 500 error
+// if the data cannot be JSON-encoded.
 func WriteJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -73,14 +76,14 @@ type pluginTaskContext int
 
 const pluginTaskContextKey pluginTaskContext = 0
 
-//SetTask puts the task for an API request into the context of a request.
-//This task can be retrieved in a handler function by using "GetTask()"
+// SetTask puts the task for an API request into the context of a request.
+// This task can be retrieved in a handler function by using "GetTask()"
 func SetTask(request *http.Request, task *model.Task) {
 	context.Set(request, pluginTaskContextKey, task)
 }
 
-//GetTask returns the task object for a plugin API request at runtime,
-//it is a valuable helper function for API PluginRoute handlers.
+// GetTask returns the task object for a plugin API request at runtime,
+// it is a valuable helper function for API PluginRoute handlers.
 func GetTask(request *http.Request) *model.Task {
 	if rv := context.Get(request, pluginTaskContextKey); rv != nil {
 		return rv.(*model.Task)
@@ -104,9 +107,9 @@ type Registry interface {
 		funcs map[string]*model.YAMLCommandSet) ([]Command, error)
 }
 
-//Logger allows any plugin to log to the appropriate place with any
-//The agent (which provides each plugin execution with a Logger implementation)
-//handles sending log data to the remote server
+// Logger allows any plugin to log to the appropriate place with any
+// The agent (which provides each plugin execution with a Logger implementation)
+// handles sending log data to the remote server
 type Logger interface {
 	//Log a message locally. Will be persisted in the log file on the builder, but
 	//not appended to the log data sent to API server.
@@ -154,8 +157,8 @@ type PluginCommunicator interface {
 	PostTaskFiles(files []*artifact.File) error
 }
 
-//Plugin defines the interface that all evergreen plugins must implement in order
-//to register themselves with the agent and API/UI servers.
+// Plugin defines the interface that all evergreen plugins must implement in order
+// to register themselves with the agent and API/UI servers.
 type Plugin interface {
 	//Returns the name to identify this plugin when registered.
 	Name() string
@@ -178,13 +181,13 @@ type Plugin interface {
 	NewCommand(commandName string) (Command, error)
 }
 
-//SimpleRegistry is a simple, local, map-based implementation
-//of a plugin registry.
+// SimpleRegistry is a simple, local, map-based implementation
+// of a plugin registry.
 type SimpleRegistry struct {
 	pluginsMapping map[string]Plugin
 }
 
-//NewSimpleRegistry returns an initialized SimpleRegistry
+// NewSimpleRegistry returns an initialized SimpleRegistry
 func NewSimpleRegistry() *SimpleRegistry {
 	registry := &SimpleRegistry{
 		pluginsMapping: map[string]Plugin{},
@@ -192,9 +195,8 @@ func NewSimpleRegistry() *SimpleRegistry {
 	return registry
 }
 
-//Register makes a given plugin and its commands available to the agent code.
-//This function returns an error if a plugin of the same name is already
-//registered.
+// Register makes a given plugin and its commands available to the agent code.
+// This function returns an error if a plugin of the same name is already registered.
 func (self *SimpleRegistry) Register(p Plugin) error {
 	if _, hasKey := self.pluginsMapping[p.Name()]; hasKey {
 		return fmt.Errorf("Plugin with name '%v' has already been registered", p.Name())
@@ -203,9 +205,9 @@ func (self *SimpleRegistry) Register(p Plugin) error {
 	return nil
 }
 
-//GetCommands finds a registered plugin for the given plugin command config
-//Returns ErrUnknownPlugin if the cmd refers to a plugin that isn't registered,
-//or some other error if the plugin can't parse valid parameters from the conf.
+// GetCommands finds a registered plugin for the given plugin command config
+// Returns ErrUnknownPlugin if the cmd refers to a plugin that isn't registered,
+// or some other error if the plugin can't parse valid parameters from the conf.
 func (self *SimpleRegistry) GetCommands(cmd model.PluginCommandConf, funcs map[string]*model.YAMLCommandSet) ([]Command, error) {
 
 	var cmds []model.PluginCommandConf
@@ -253,9 +255,9 @@ func (self *SimpleRegistry) GetCommands(cmd model.PluginCommandConf, funcs map[s
 	return cmdsParsed, nil
 }
 
-//Command is an interface that defines a command for a plugin.
-//A Command takes parameters as a map, and is executed after
-//those parameters are parsed.
+// Command is an interface that defines a command for a plugin.
+// A Command takes parameters as a map, and is executed after
+// those parameters are parsed.
 type Command interface {
 	//ParseParams takes a map of fields to values extracted from
 	//the project config and passes them to the command. Any

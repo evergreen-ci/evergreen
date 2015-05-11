@@ -15,7 +15,7 @@ var (
 	NoLimit      = 0
 )
 
-// Insert the specified item into the specified collection.
+// Insert inserts the specified item into the specified collection.
 func Insert(collection string, item interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -26,7 +26,7 @@ func Insert(collection string, item interface{}) error {
 	return db.C(collection).Insert(item)
 }
 
-// Clear all documents from a specified collection.
+// Clear removes all documents from a specified collection.
 func Clear(collection string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -37,8 +37,8 @@ func Clear(collection string) error {
 	return err
 }
 
-//Clear all documents from all the specified collections, returning an error
-//immediately if clearning any one of them fails.
+// ClearCollections clears all documents from all the specified collections, returning an error
+// immediately if clearing any one of them fails.
 func ClearCollections(collections ...string) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -54,7 +54,7 @@ func ClearCollections(collections ...string) error {
 	return nil
 }
 
-// Remove one item matching the query from the specified collection.
+// Remove removes one item matching the query from the specified collection.
 func Remove(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -65,7 +65,7 @@ func Remove(collection string, query interface{}) error {
 	return db.C(collection).Remove(query)
 }
 
-// Remove all items matching the query from the specified collection.
+// RemoveAll removes all items matching the query from the specified collection.
 func RemoveAll(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
@@ -77,7 +77,7 @@ func RemoveAll(collection string, query interface{}) error {
 	return err
 }
 
-// Find one item from the specified collection and unmarshal it into the
+// FindOne finds one item from the specified collection and unmarshals it into the
 // provided interface, which must be a pointer.
 func FindOne(collection string, query interface{},
 	projection interface{}, sort []string, out interface{}) error {
@@ -97,7 +97,7 @@ func FindOne(collection string, query interface{},
 	return q.One(out)
 }
 
-// Find all items from the specified collection and unmarshal it into the
+// FindAll finds the items from the specified collection and unmarshals them into the
 // provided interface, which must be a slice.
 func FindAll(collection string, query interface{},
 	projection interface{}, sort []string, skip int, limit int,
@@ -118,7 +118,7 @@ func FindAll(collection string, query interface{},
 	return q.Skip(skip).Limit(limit).All(out)
 }
 
-// Update one matching doc in the collection.
+// Update updates one matching document in the collection.
 func Update(collection string, query interface{},
 	update interface{}) error {
 
@@ -133,7 +133,7 @@ func Update(collection string, query interface{},
 	return db.C(collection).Update(query, update)
 }
 
-// Update one _id matching doc in the collection.
+// UpdateId updates one _id-matching document in the collection.
 func UpdateId(collection string, id, update interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -147,7 +147,7 @@ func UpdateId(collection string, id, update interface{}) error {
 	return db.C(collection).UpdateId(id, update)
 }
 
-// Update all matching docs in the collection.
+// UpdateAll updates all matching documents in the collection.
 func UpdateAll(collection string, query interface{},
 	update interface{}) (*mgo.ChangeInfo, error) {
 
@@ -162,7 +162,7 @@ func UpdateAll(collection string, query interface{},
 	return db.C(collection).UpdateAll(query, update)
 }
 
-// Run the specified upsert against the collection.
+// Upsert run the specified update against the collection as an upsert operation.
 func Upsert(collection string, query interface{},
 	update interface{}) (*mgo.ChangeInfo, error) {
 
@@ -177,7 +177,7 @@ func Upsert(collection string, query interface{},
 	return db.C(collection).Upsert(query, update)
 }
 
-// Run the specified count against the collection.
+// Count run a count command with the specified query against the collection.
 func Count(collection string, query interface{}) (int, error) {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -191,7 +191,7 @@ func Count(collection string, query interface{}) (int, error) {
 	return db.C(collection).Find(query).Count()
 }
 
-// Run the specified find and modify against the collection,
+// FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
 func FindAndModify(collection string, query interface{},
 	change mgo.Change, out interface{}) (*mgo.ChangeInfo, error) {

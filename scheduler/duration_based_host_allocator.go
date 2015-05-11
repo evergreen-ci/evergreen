@@ -17,7 +17,6 @@ import (
 )
 
 const (
-
 	// maximum turnaround we want to maintain for all hosts for a given distro
 	MaxDurationPerDistroHost = time.Duration(1) * time.Hour
 
@@ -81,7 +80,7 @@ type ScheduledDistroTasksData struct {
 	currentDistroId string
 }
 
-// Implementation, that computes the total time to completion of tasks
+// DurationBasedHostAllocator computes the total time to completion of tasks
 // running - per distro - and then uses that as a heuristic in determining
 // how many new hosts to spin up
 type DurationBasedHostAllocator struct{}
@@ -92,9 +91,9 @@ type sortableDistroByNumStaticHost struct {
 	settings *evergreen.Settings
 }
 
-// Implementation of NewHostsNeeded.  Decides that new hosts are needed for a
+// NewHostsNeeded decides if new hosts are needed for a
 // distro while taking the duration of running/scheduled tasks into
-// consideration
+// consideration. Returns a map of distro to number of hosts to spawn.
 func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (newHostsNeeded map[string]int,
 	err error) {

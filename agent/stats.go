@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// StatsCollector samples machine statistics and logs them
+// back to the API server at regular intervals.
 type StatsCollector struct {
 	logger *slogger.Logger
 	Cmds   []string
@@ -17,6 +19,8 @@ type StatsCollector struct {
 	stop chan bool
 }
 
+// NewSimpleStatsCollector creates a StatsCollector that runs the given commands
+// at the given interval and sends the results to the given logger.
 func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration, cmds ...string) *StatsCollector {
 	return &StatsCollector{
 		logger:   logger,

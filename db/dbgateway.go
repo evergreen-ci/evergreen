@@ -13,6 +13,8 @@ var (
 	defaultSocketTimeout                  = 90 * time.Second
 )
 
+// SessionFactory contains information for connecting to Evergreen's
+// MongoDB instance. Implements SessionProvider.
 type SessionFactory struct {
 	url           string
 	db            string
@@ -22,14 +24,19 @@ type SessionFactory struct {
 	masterSession *mgo.Session
 }
 
+// SessionProvider returns mgo Sessions for database interaction.
 type SessionProvider interface {
 	GetSession() (*mgo.Session, *mgo.Database, error)
 }
 
+// SessionFactoryFromConfig creates a usable SessionFactory from
+// the Evergreen settings.
 func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
 	return NewSessionFactory(settings.DbUrl, settings.Db, defaultDialTimeout)
 }
 
+// NewSessionFactory returns a new session factory pointed at the given URL/DB combo,
+// with the supplied timeout.
 func NewSessionFactory(url, db string, dialTimeout time.Duration) *SessionFactory {
 	return &SessionFactory{
 		url:           url,
@@ -59,10 +66,12 @@ func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 	return sessionCopy, sessionCopy.DB(sf.db), nil
 }
 
+// SetGlobalSessionProvider sets the global session provider.
 func SetGlobalSessionProvider(sessionProvider SessionProvider) {
 	globalSessionProvider = sessionProvider
 }
 
+// GetGlobalSessionFactory returns the global session provider.
 func GetGlobalSessionFactory() SessionProvider {
 	if globalSessionProvider == nil {
 		panic("No global session provider has been set.")
