@@ -83,7 +83,7 @@ func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan struct{} {
 					loop = false
 				case <-processChan:
 					time.Sleep(time.Duration(runInterval) * time.Second)
-					proccessChan = runProcess(r, s)
+					processChan = runProcess(r, s)
 				}
 			}
 			evergreen.Logger.Logf(slogger.INFO, "Cleanly terminated %v", r.Name())
