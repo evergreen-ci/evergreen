@@ -42,16 +42,24 @@ func main() {
 	wg.Wait()
 }
 
-// runProcess runs a ProcessRunner with the given settings.
-func runProcess(r ProcessRunner, s *evergreen.Settings) {
-	if err := r.Run(s); err != nil {
-		subject := fmt.Sprintf("%v Failure", r.Name())
-		message := fmt.Sprintf("Error running %v: %v", r.Name(), err)
-		evergreen.Logger.Logf(slogger.ERROR, message)
-		if err = notify.NotifyAdmins(subject, message, s); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
+// runProcess runs a ProcessRunner with the given settings and
+// returns a channel on which the caller can listen for errors.
+func runProcess(r ProcessRunner, s *evergreen.Settings) chan error {
+	c := make(chan error)
+	go func(c chan error) {
+		err := r.Run(s)
+		if err != nil {
+			subject := fmt.Sprintf("%v Failure", r.Name())
+			message := fmt.Sprintf("Error running %v: %v", r.Name(), err)
+			evergreen.Logger.Logf(slogger.ERROR, message)
+			if err = notify.NotifyAdmins(subject, message, s); err != nil {
+				evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
+			}
 		}
-	}
+		c <- err
+		close(c)
+	}(c)
+	return c
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -62,20 +70,20 @@ func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan struct{} {
 		wg.Add(1)
 
 		// start each runner in its own goroutine
-		go func(r ProcessRunner, s *evergreen.Settings, c chan struct{}) {
+		go func(r ProcessRunner, s *evergreen.Settings, terminateChan chan struct{}) {
 			defer wg.Done()
-			ticker := time.NewTicker(time.Duration(runInterval) * time.Second)
 			evergreen.Logger.Logf(slogger.INFO, "Starting %v", r.Name())
 			// start the runner immediately
-			runProcess(r, s)
+			processChan := runProcess(r, s)
 
 			loop := true
 			for loop {
 				select {
-				case <-c:
+				case <-terminateChan:
 					loop = false
-				case <-ticker.C:
-					runProcess(r, s)
+				case <-processChan:
+					time.Sleep(time.Duration(runInterval) * time.Second)
+					proccessChan = runProcess(r, s)
 				}
 			}
 			evergreen.Logger.Logf(slogger.INFO, "Cleanly terminated %v", r.Name())
