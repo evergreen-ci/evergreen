@@ -54,7 +54,7 @@ func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version
 		return nil, fmt.Errorf("Could not decode github file at %v: %v", projectFileURL, err)
 	}
 
-	var project *model.Project
+	project := &model.Project{}
 
 	if err = model.LoadProjectInto(projectFileBytes, project); err != nil {
 		return nil, err
