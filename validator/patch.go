@@ -80,6 +80,12 @@ func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version
 			}
 			return nil, fmt.Errorf(message)
 		}
+	} else {
+		// overwrite project fields with the project ref to disallow tracking a
+		// different project or doing other crazy things via config patches
+		if err = angier.TransferByFieldNames(projectRef, project); err != nil {
+			return nil, fmt.Errorf("Could not merge project Ref ref into project: %v", err)
+		}
 	}
 	return model.FinalizePatch(p, gitCommit, settings, project)
 }
