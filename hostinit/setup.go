@@ -72,10 +72,10 @@ func (init *HostInit) setupReadyHosts() error {
 
 				// notify the mci team of the failure
 				subject := fmt.Sprintf("%v MCI provisioning failure on %v",
-					notify.ProvisionFailurePreface, h.Distro)
+					notify.ProvisionFailurePreface, h.Distro.Id)
 				hostLink := fmt.Sprintf("%v/host/%v", init.Settings.Ui.Url, h.Id)
 				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
-					h.Distro, h.Id, hostLink)
+					h.Distro.Id, h.Id, hostLink)
 				if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
 					evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
 				}
