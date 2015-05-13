@@ -9,12 +9,15 @@ import (
 
 var (
 	globalSessionProvider SessionProvider = nil
+	defaultDialTimeout                    = 5 * time.Second
+	defaultSocketTimeout                  = 90 * time.Second
 )
 
 type SessionFactory struct {
-	Url           string
-	DBName        string
-	DialTimeout   time.Duration
+	url           string
+	db            string
+	dialTimeout   time.Duration
+	socketTimeout time.Duration
 	dialLock      sync.Mutex
 	masterSession *mgo.Session
 }
@@ -23,35 +26,37 @@ type SessionProvider interface {
 	GetSession() (*mgo.Session, *mgo.Database, error)
 }
 
-func SessionFactoryFromConfig(appConf *evergreen.Settings) *SessionFactory {
-	return NewSessionFactory(appConf.DbUrl, appConf.Db, 5*time.Second)
+func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
+	return NewSessionFactory(settings.DbUrl, settings.Db, defaultDialTimeout)
 }
 
-func NewSessionFactory(Url string, DBName string, Timeout time.Duration) *SessionFactory {
+func NewSessionFactory(url, db string, dialTimeout time.Duration) *SessionFactory {
 	return &SessionFactory{
-		Url:         Url,
-		DBName:      DBName,
-		DialTimeout: Timeout,
+		url:           url,
+		db:            db,
+		dialTimeout:   dialTimeout,
+		socketTimeout: defaultSocketTimeout,
 	}
 }
 
-func (self *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
+func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 	// if the master session has not been initialized, do that for the first time
-	if self.masterSession == nil {
-		self.dialLock.Lock()
-		defer self.dialLock.Unlock()
-		if self.masterSession == nil { //check again in case someone else just set and unlocked it
+	if sf.masterSession == nil {
+		sf.dialLock.Lock()
+		defer sf.dialLock.Unlock()
+		if sf.masterSession == nil { //check again in case someone else just set and unlocked it
 			var err error
-			self.masterSession, err = mgo.DialWithTimeout(self.Url, self.DialTimeout)
+			sf.masterSession, err = mgo.DialWithTimeout(sf.url, sf.dialTimeout)
 			if err != nil {
 				return nil, nil, err
 			}
+			sf.masterSession.SetSocketTimeout(sf.socketTimeout)
 		}
 	}
 
 	// copy the master session
-	sessionCopy := self.masterSession.Copy()
-	return sessionCopy, sessionCopy.DB(self.DBName), nil
+	sessionCopy := sf.masterSession.Copy()
+	return sessionCopy, sessionCopy.DB(sf.db), nil
 }
 
 func SetGlobalSessionProvider(sessionProvider SessionProvider) {

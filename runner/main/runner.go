@@ -49,10 +49,9 @@ func runProcess(r ProcessRunner, s *evergreen.Settings) chan error {
 	go func(c chan error) {
 		err := r.Run(s)
 		if err != nil {
-			subject := fmt.Sprintf("%v Failure", r.Name())
-			message := fmt.Sprintf("Error running %v: %v", r.Name(), err)
-			evergreen.Logger.Logf(slogger.ERROR, message)
-			if err = notify.NotifyAdmins(subject, message, s); err != nil {
+			subject := fmt.Sprintf(`%v failure`, r.Name())
+			evergreen.Logger.Logf(slogger.ERROR, err.Error())
+			if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
 			}
 		}
