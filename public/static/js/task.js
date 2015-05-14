@@ -125,7 +125,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       // get a task id from it
       var anchorId = leastRecentRevision.task.id;
 
-      historyDrawerService.fetchHistory(
+      historyDrawerService.fetchTaskHistory(
         anchorId,
         'before',
         20, 
