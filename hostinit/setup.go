@@ -18,9 +18,14 @@ import (
 	"time"
 )
 
-// Error indicating another hostinit got to the setup first
+// Error indicating another hostinit got to the setup first.
 var (
 	ErrHostAlreadyInitializing = errors.New("Host already initializing")
+)
+
+// Longest duration allowed for running setup script.
+var (
+	SSHTimeoutSeconds = int64(300) // 5 minutes
 )
 
 // HostInit is responsible for running setup scripts on MCI hosts.
@@ -30,6 +35,12 @@ type HostInit struct {
 
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func (init *HostInit) setupReadyHosts() error {
+	// set SSH timeout duration
+	if timeoutSecs := init.Settings.HostInit.SSHTimeoutSeconds; timeoutSecs <= 0 {
+		evergreen.Logger.Logf(slogger.WARN, "SSH timeout set to %vs (<= 0s) using %vs instead", timeoutSecs, SSHTimeoutSeconds)
+	} else {
+		SSHTimeoutSeconds = timeoutSecs
+	}
 
 	// find all hosts in the uninitialized state
 	uninitializedHosts, err := host.Find(host.IsUninitialized)
@@ -236,7 +247,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		Host:    hostInfo.Hostname + ":" + hostInfo.Port,
 		User:    user,
 		Keyfile: keyfile,
-		Timeout: time.Minute * 30,
+		Timeout: time.Duration(SSHTimeoutSeconds) * time.Second,
 	}
 
 	// run the setup script

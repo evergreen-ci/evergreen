@@ -81,7 +81,8 @@ type RunnerConfig struct {
 }
 
 type HostInitConfig struct {
-	LogFile string
+	LogFile           string
+	SSHTimeoutSeconds int64
 }
 
 type NotifyConfig struct {
