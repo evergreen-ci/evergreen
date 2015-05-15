@@ -145,10 +145,19 @@ type JiraConfig struct {
 // manually by their respective plugins
 type PluginConfig map[string]map[string]interface{}
 
+type DBSafety struct {
+	W        int    `yaml:"w"`
+	WMode    string `yaml:"wmode"`
+	WTimeout int    `yaml:"wtimeout"`
+	FSync    bool   `yaml:"fsync"`
+	J        bool   `yaml:"j"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	DbUrl               string            `yaml:"dburl"`
 	Db                  string            `yaml:"db"`
+	DBSafety            DBSafety          `yaml:"db_safety"`
 	ConfigDir           string            `yaml:"configdir"`
 	Motu                string            `yaml:"motu"`
 	AgentExecutablesDir string            `yaml:"agentexecutablesdir"`

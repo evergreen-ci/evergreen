@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"labix.org/v2/mgo"
 	"sync"
@@ -20,6 +21,7 @@ type SessionFactory struct {
 	db            string
 	dialTimeout   time.Duration
 	socketTimeout time.Duration
+	safety        mgo.Safe
 	dialLock      sync.Mutex
 	masterSession *mgo.Session
 }
@@ -32,17 +34,25 @@ type SessionProvider interface {
 // SessionFactoryFromConfig creates a usable SessionFactory from
 // the Evergreen settings.
 func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
-	return NewSessionFactory(settings.DbUrl, settings.Db, defaultDialTimeout)
+	safety := mgo.Safe{}
+	safety.W = settings.DBSafety.W
+	safety.WMode = settings.DBSafety.WMode
+	safety.WTimeout = settings.DBSafety.WTimeout
+	safety.FSync = settings.DBSafety.FSync
+	safety.J = settings.DBSafety.J
+	fmt.Println("using safety", safety)
+	return NewSessionFactory(settings.DbUrl, settings.Db, safety, defaultDialTimeout)
 }
 
 // NewSessionFactory returns a new session factory pointed at the given URL/DB combo,
-// with the supplied timeout.
-func NewSessionFactory(url, db string, dialTimeout time.Duration) *SessionFactory {
+// with the supplied timeout and writeconcern settings.
+func NewSessionFactory(url, db string, safety mgo.Safe, dialTimeout time.Duration) *SessionFactory {
 	return &SessionFactory{
 		url:           url,
 		db:            db,
 		dialTimeout:   dialTimeout,
 		socketTimeout: defaultSocketTimeout,
+		safety:        safety,
 	}
 }
 
@@ -58,6 +68,7 @@ func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 				return nil, nil, err
 			}
 			sf.masterSession.SetSocketTimeout(sf.socketTimeout)
+			sf.masterSession.SetSafe(&sf.safety)
 		}
 	}
 
