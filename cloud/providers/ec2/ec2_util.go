@@ -205,7 +205,7 @@ func timeTilNextEC2Payment(host *host.Host) time.Duration {
 
 	// the next round number of hours the host will have been up - the time
 	// that the next payment will be due
-	nextPaymentTime := host.CreationTime.Add(hoursRoundedUp)
+	nextPaymentTime := host.CreationTime.Add(hoursRoundedUp * time.Hour)
 
 	return nextPaymentTime.Sub(now)
 

@@ -28,7 +28,7 @@ var (
 	SSHTimeoutSeconds = int64(300) // 5 minutes
 )
 
-// HostInit is responsible for running setup scripts on MCI hosts.
+// HostInit is responsible for running setup scripts on Evergreen hosts.
 type HostInit struct {
 	Settings *evergreen.Settings
 }
@@ -81,8 +81,8 @@ func (init *HostInit) setupReadyHosts() error {
 				evergreen.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
 					h.Id, err)
 
-				// notify the mci team of the failure
-				subject := fmt.Sprintf("%v MCI provisioning failure on %v",
+				// notify the admins of the failure
+				subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
 					notify.ProvisionFailurePreface, h.Distro.Id)
 				hostLink := fmt.Sprintf("%v/host/%v", init.Settings.Ui.Url, h.Id)
 				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",

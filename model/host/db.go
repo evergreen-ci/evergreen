@@ -94,15 +94,13 @@ var IsAvailableAndFree = db.Query(
 	},
 )
 
-// IsFree is a query that returns all working Evergreen hosts
-// without an assigned task.
+// IsFree is a query that returns all running
+// Evergreen hosts without an assigned task.
 var IsFree = db.Query(
 	bson.M{
 		"$or":        noRunningTask,
 		StartedByKey: evergreen.User,
-		StatusKey: bson.M{
-			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
-		},
+		StatusKey:    evergreen.HostRunning,
 	},
 )
 
