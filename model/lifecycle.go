@@ -417,11 +417,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	taskIdsByDisplayName := map[string]string{}
 	for _, task := range tasksToCreate {
 		taskId := util.CleanName(
-			fmt.Sprintf("%v_%v_%v_%v",
+			fmt.Sprintf("%v_%v_%v_%v_%v",
 				project.Identifier,
 				b.BuildVariant,
-				v.Revision,
 				task.Name,
+				v.Revision,
 				v.CreateTime.Format(build.IdTimeLayout)))
 		taskIdsByDisplayName[task.Name] = taskId
 	}
