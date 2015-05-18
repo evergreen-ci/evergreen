@@ -68,28 +68,8 @@ var options Options
 
 var parser = flags.NewParser(&options, flags.Default)
 
-type BAddCommand struct {
-	All bool `short:"a" long:"all" description:"Add all files"`
-}
-
-func (x *BAddCommand) Execute(args []string) error {
-	fmt.Printf("Adding (all=%v): %#v\n", x.All, args)
-	return nil
-}
-
-func init() {
-	fmt.Println("adding parser command")
-}
-
 func main() {
-	var baddCommand BAddCommand
-	parser.AddCommand("badd",
-		"bAdd a file",
-		"The badd command adds a file to the repository. Use -a to add all files.",
-		&baddCommand)
-	x, err := parser.Parse()
-	if err != nil {
+	if _, err := parser.Parse(); err != nil {
 		os.Exit(1)
 	}
-	fmt.Println(x)
 }

@@ -16,7 +16,6 @@ func (x *AddCommand) Execute(args []string) error {
 }
 
 func init() {
-	fmt.Println("adding parser command")
 	parser.AddCommand("add",
 		"Add a file",
 		"The add command adds a file to the repository. Use -a to add all files.",

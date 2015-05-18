@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -10,12 +11,20 @@ import (
 	"github.com/evergreen-ci/evergreen/ui"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/sessions"
+	"gopkg.in/tylerb/graceful.v1"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const UIPort = ":9090"
+
+var (
+	// requestTimeout is the duration to wait until killing
+	// active requests and stopping the server.
+	requestTimeout = 10 * time.Second
+)
 
 func main() {
 	settings := evergreen.MustConfig()
@@ -70,6 +79,6 @@ func main() {
 	n.Use(ui.NewLogger())
 	n.Use(negroni.HandlerFunc(ui.UserMiddleware(userManager)))
 	n.UseHandler(router)
-
-	n.Run(settings.Ui.HttpListenAddr)
+	graceful.Run(settings.Ui.HttpListenAddr, requestTimeout, n)
+	evergreen.Logger.Logf(slogger.INFO, "UI server cleanly terminated")
 }

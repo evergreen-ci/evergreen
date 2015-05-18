@@ -44,9 +44,9 @@ func IpForSsh(instance *Instance) (openIp string, e error) {
 	return "", nil
 }
 
-func waitForSsh(instance *Instance, duration time.Duration) (string, error) {
+func waitForSsh(instance *Instance, timeoutDuration time.Duration) (string, error) {
 	ticker := time.Tick(1 * time.Second)
-	timeout := time.After(duration)
+	timeout := time.After(timeoutDuration)
 	for {
 		select {
 		case <-ticker:

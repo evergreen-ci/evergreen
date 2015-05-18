@@ -1,18 +1,26 @@
 package main
 
 import (
-	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"gopkg.in/tylerb/graceful.v1"
+	"net"
+	"net/http"
 	"os"
+	"time"
+)
+
+var (
+	// requestTimeout is the duration to wait until killing
+	// active requests and stopping the server.
+	requestTimeout = 10 * time.Second
 )
 
 func main() {
-	var err error
 	settings := evergreen.MustConfig()
 	if settings.Api.LogFile != "" {
 		evergreen.SetLogger(settings.Api.LogFile)
@@ -20,50 +28,78 @@ func main() {
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	apis, err := apiserver.New(settings, plugin.Published)
-	if err != nil {
-		fmt.Println("Failed to create API server:", err)
-		os.Exit(1)
-	}
-
 	tlsConfig, err := util.MakeTlsConfig(settings.Expansions["api_httpscert"], settings.Api.HttpsKey)
 	if err != nil {
-		fmt.Println("Failed to make TLS config: ", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Failed to make TLS config: %v", err)
 		os.Exit(1)
 	}
 
-	nonssl, err := apiserver.GetListener(settings.Api.HttpListenAddr)
+	nonSSL, err := apiserver.GetListener(settings.Api.HttpListenAddr)
 	if err != nil {
-		fmt.Println("Failed to listen for HTTP: ", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Failed to get HTTP listener: %v", err)
 		os.Exit(1)
 	}
+
 	ssl, err := apiserver.GetTLSListener(settings.Api.HttpsListenAddr, tlsConfig)
 	if err != nil {
-		fmt.Println("Failed to listen for HTTPS: ", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Failed to get HTTPS listener: %v", err)
 		os.Exit(1)
 	}
-	// Start SSL and non-SSL servers in independent goroutines, but exit the process if either one fails
-	errChan := make(chan error)
 
-	handler, err := apis.Handler()
+	// Start SSL and non-SSL servers in independent goroutines, but exit
+	// the process if either one fails
+	as, err := apiserver.New(settings, plugin.Published)
 	if err != nil {
-		fmt.Println("Failed to listen for HTTPS: ", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Failed to create API server: %v", err)
 		os.Exit(1)
 	}
+
+	handler, err := as.Handler()
+	if err != nil {
+		evergreen.Logger.Logf(slogger.ERROR, "Failed to get API route handlers: %v", err)
+		os.Exit(1)
+	}
+
+	server := &http.Server{Handler: handler}
+
+	errChan := make(chan error, 2)
 
 	go func() {
-		evergreen.Logger.Logf(slogger.INFO, "Starting nonssl API server")
-		errChan <- apiserver.Serve(nonssl, handler)
+		evergreen.Logger.Logf(slogger.INFO, "Starting non-SSL API server")
+		err := graceful.Serve(server, nonSSL, requestTimeout)
+		if err != nil {
+			if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
+				evergreen.Logger.Logf(slogger.WARN, "non-SSL API server error: %v", err)
+			} else {
+				err = nil
+			}
+		}
+		evergreen.Logger.Logf(slogger.INFO, "non-SSL API server cleanly terminated")
+		errChan <- err
 	}()
 
 	go func() {
-		evergreen.Logger.Logf(slogger.INFO, "Starting ssl API server")
-		errChan <- apiserver.Serve(ssl, handler)
+		evergreen.Logger.Logf(slogger.INFO, "Starting SSL API server")
+		err := graceful.Serve(server, ssl, requestTimeout)
+		if err != nil {
+			if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
+				evergreen.Logger.Logf(slogger.WARN, "SSL API server error: %v", err)
+			} else {
+				err = nil
+			}
+		}
+		evergreen.Logger.Logf(slogger.INFO, "SSL API server cleanly terminated")
+		errChan <- err
 	}()
 
-	err = <-errChan
-	if err != nil {
-		fmt.Println("Error returned from API server: ", err)
-		os.Exit(1)
+	exitCode := 0
+
+	for i := 0; i < 2; i++ {
+		if err := <-errChan; err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error returned from API server: %v", err)
+			exitCode = 1
+		}
 	}
+
+	os.Exit(exitCode)
 }
