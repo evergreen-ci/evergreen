@@ -160,7 +160,7 @@ type Settings struct {
 	AuthConfig          AuthConfig        `yaml:"auth"`
 	RepoTracker         RepoTrackerConfig `yaml:"repotracker"`
 	Monitor             MonitorConfig     `yaml:"monitor"`
-	Api                 ApiConfig         `yaml:"api"`
+	Api                 APIConfig         `yaml:"api"`
 	Ui                  UIConfig          `yaml:"ui"`
 	HostInit            HostInitConfig    `yaml:"hostinit"`
 	Notify              NotifyConfig      `yaml:"notify"`
