@@ -13,6 +13,7 @@ const (
 	// event types
 	TaskCreated      = "TASK_CREATED"
 	TaskDispatched   = "TASK_DISPATCHED"
+	TaskUndispatched = "TASK_UNDISPATCHED"
 	TaskStarted      = "TASK_STARTED"
 	TaskFinished     = "TASK_FINISHED"
 	TaskRestarted    = "TASK_RESTARTED"
@@ -57,6 +58,10 @@ func LogTaskCreated(taskId string) {
 
 func LogTaskDispatched(taskId, hostId string) {
 	LogTaskEvent(taskId, TaskDispatched, TaskEventData{HostId: hostId})
+}
+
+func LogTaskUndispatched(taskId, hostId string) {
+	LogTaskEvent(taskId, TaskUndispatched, TaskEventData{HostId: hostId})
 }
 
 func LogTaskStarted(taskId string) {

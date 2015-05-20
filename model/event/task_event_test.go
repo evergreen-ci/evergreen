@@ -27,6 +27,8 @@ func TestLoggingTaskEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogTaskDispatched(taskId, hostId)
 			time.Sleep(1 * time.Millisecond)
+			LogTaskUndispatched(taskId, hostId)
+			time.Sleep(1 * time.Millisecond)
 			LogTaskStarted(taskId)
 			time.Sleep(1 * time.Millisecond)
 			LogTaskFinished(taskId, evergreen.TaskSucceeded)
@@ -59,6 +61,18 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 
 			event = eventsForTask[2]
+			So(TaskUndispatched, ShouldEqual, event.EventType)
+			So(taskId, ShouldEqual, event.ResourceId)
+
+			eventData, ok = event.Data.Data.(*TaskEventData)
+			So(ok, ShouldBeTrue)
+			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
+			So(eventData.HostId, ShouldEqual, hostId)
+			So(eventData.UserId, ShouldBeBlank)
+			So(eventData.Status, ShouldBeBlank)
+			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
+
+			event = eventsForTask[3]
 			So(TaskStarted, ShouldEqual, event.EventType)
 			So(taskId, ShouldEqual, event.ResourceId)
 
@@ -69,7 +83,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(eventData.Status, ShouldBeBlank)
 			So(eventData.Timestamp.IsZero(), ShouldBeTrue)
 
-			event = eventsForTask[3]
+			event = eventsForTask[4]
 			So(TaskFinished, ShouldEqual, event.EventType)
 			So(taskId, ShouldEqual, event.ResourceId)
 

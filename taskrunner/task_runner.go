@@ -109,6 +109,13 @@ func (self *TaskRunner) Run() error {
 				if err != nil {
 					evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
 						" on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
+
+					// record that the task as undispatched on the host
+					if err := nextTask.MarkAsUndispatched(&nextHost); err != nil {
+						evergreen.Logger.Logf(slogger.ERROR, "error marking task %v as undispatched "+
+							"on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
+					}
+					return
 				} else {
 					evergreen.Logger.Logf(slogger.INFO, "task %v successfully kicked"+
 						" off on host %v", dereferencedTask.Id, nextHost.Id)
@@ -119,7 +126,7 @@ func (self *TaskRunner) Run() error {
 				err = nextHost.SetRunningTask(dereferencedTask.Id,
 					agentRevision, time.Now())
 				if err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error updating running "+
+					evergreen.Logger.Logf(slogger.ERROR, "error updating running "+
 						"task %v on host %v: %v", dereferencedTask.Id,
 						nextHost.Id, err)
 				}

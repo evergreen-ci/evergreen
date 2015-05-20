@@ -689,7 +689,7 @@ func UpdateAllTasks(query interface{}, update interface{}) (*mgo.ChangeInfo, err
 	)
 }
 
-// Mark that the task has been dispatched onto a particular host.  Sets the
+// Mark that the task has been dispatched onto a particular host. Sets the
 // running task field on the host and the host id field on the task, as well
 // as updating the cache for the task in its build document in the db.
 // Returns an error if any of the database updates fail.
@@ -730,6 +730,48 @@ func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) erro
 	// update the cached version of the task in its related build document
 	if err = build.SetCachedTaskDispatched(self.BuildId, self.Id); err != nil {
 		return fmt.Errorf("error updating task cache in build %v: %v", self.BuildId, err)
+	}
+	return nil
+}
+
+// MarkAsUndispatched marks that the task has been undispatched from a
+// particular host. Unsets the running task field on the host and the
+// host id field on the task, as well as updating the cache for the task
+// in its build document in the db.
+// Returns an error if any of the database updates fail.
+func (task *Task) MarkAsUndispatched(host *host.Host) error {
+	// then, update the task document
+	task.Status = evergreen.TaskUndispatched
+	err := UpdateOneTask(
+		bson.M{
+			TaskIdKey: task.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				TaskStatusKey: evergreen.TaskUndispatched,
+			},
+			"$unset": bson.M{
+				TaskDispatchTimeKey:  ZeroTime,
+				TaskLastHeartbeatKey: ZeroTime,
+				TaskDistroIdKey:      "",
+				TaskHostIdKey:        "",
+				TaskAbortedKey:       "",
+				TaskTestResultsKey:   "",
+				TaskStatusDetailsKey: "",
+				TaskMinQueuePosKey:   "",
+			},
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("error updating task with id %v: %v", task.Id, err)
+	}
+
+	// the task was successfully dispatched, log the event
+	event.LogTaskUndispatched(task.Id, host.Id)
+
+	// update the cached version of the task in its related build document
+	if err = build.SetCachedTaskUndispatched(task.BuildId, task.Id); err != nil {
+		return fmt.Errorf("error updating task cache in build %v: %v", task.BuildId, err)
 	}
 	return nil
 }

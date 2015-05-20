@@ -48,6 +48,14 @@ func SetCachedTaskDispatched(buildId, taskId string) error {
 	})
 }
 
+// SetCachedTaskUndispatched sets the given task to "undispatched"
+// in the cache of the given build.
+func SetCachedTaskUndispatched(buildId, taskId string) error {
+	return updateOneTaskCache(buildId, taskId, bson.M{
+		"$set": bson.M{TasksKey + ".$." + TaskCacheStatusKey: evergreen.TaskUndispatched},
+	})
+}
+
 // SetCachedTaskStarted sets the given task to "started"
 // in the cache of the given build.
 func SetCachedTaskStarted(buildId, taskId string, startTime time.Time) error {
