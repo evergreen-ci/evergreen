@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -43,12 +44,12 @@ func NewAPIError(resp *http.Response) APIError {
 // doReq performs a request of the given method type against path.
 // If body is not nil, also includes it as a request body as url-encoded data with the
 // appropriate header
-func (ac *APIClient) doReq(method, path string, body io.Reader) (*http.Response, error) {
+func (ac *APIClient) doReq(method, path string, body io.Reader, urlEncoded bool) (*http.Response, error) {
 	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRoot, path), body)
 	if err != nil {
 		return nil, err
 	}
-	if body != nil {
+	if body != nil && urlEncoded {
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	}
 	resp, err := ac.httpClient.Do(req)
@@ -61,20 +62,20 @@ func (ac *APIClient) doReq(method, path string, body io.Reader) (*http.Response,
 	return resp, nil
 }
 
-func (ac *APIClient) get(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("GET", path, body)
+func (ac *APIClient) get(path string, body io.Reader, urlEncoded bool) (*http.Response, error) {
+	return ac.doReq("GET", path, body, urlEncoded)
 }
 
-func (ac *APIClient) delete(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("DELETE", path, body)
+func (ac *APIClient) delete(path string, body io.Reader, urlEncoded bool) (*http.Response, error) {
+	return ac.doReq("DELETE", path, body, urlEncoded)
 }
 
-func (ac *APIClient) put(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("PUT", path, body)
+func (ac *APIClient) put(path string, body io.Reader, urlEncoded bool) (*http.Response, error) {
+	return ac.doReq("PUT", path, body, urlEncoded)
 }
 
-func (ac *APIClient) post(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("POST", path, body)
+func (ac *APIClient) post(path string, body io.Reader, urlEncoded bool) (*http.Response, error) {
+	return ac.doReq("POST", path, body, urlEncoded)
 }
 
 func (ac *APIClient) modifyExisting(patchId, action string) error {
@@ -86,7 +87,7 @@ func (ac *APIClient) modifyExisting(patchId, action string) error {
 	data.Set("id_token", authToken)
 	data.Set("patchId", patchId)
 	data.Set("action", action)
-	resp, err := ac.post(fmt.Sprintf("patches/%s", patchId), bytes.NewBufferString(data.Encode()))
+	resp, err := ac.post(fmt.Sprintf("patches/%s", patchId), bytes.NewBufferString(data.Encode()), true)
 	if err != nil {
 		return err
 	}
@@ -94,6 +95,24 @@ func (ac *APIClient) modifyExisting(patchId, action string) error {
 		return NewAPIError(resp)
 	}
 	return nil
+}
+
+func (ac *APIClient) ValidateConfig(data []byte) ([]validator.ValidationError, error) {
+	resp, err := ac.post("validate", bytes.NewBuffer(data), false)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusBadRequest {
+		errors := []validator.ValidationError{}
+		err = util.ReadJSONInto(resp.Body, &errors)
+		if err != nil {
+			return nil, NewAPIError(resp)
+		}
+		return errors, nil
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	return nil, nil
 }
 
 func (ac *APIClient) CancelPatch(patchId string) error {
@@ -112,7 +131,7 @@ func (ac *APIClient) GetPatches() ([]patch.Patch, error) {
 		return nil, err
 	}
 	data.Set("id_token", authToken)
-	resp, err := ac.get(fmt.Sprintf("patches/mine?%v", data.Encode()), nil)
+	resp, err := ac.get(fmt.Sprintf("patches/mine?%v", data.Encode()), nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +147,7 @@ func (ac *APIClient) GetPatches() ([]patch.Patch, error) {
 
 // GetProjectRef requests project details from the API server for a given project ID.
 func (ac *APIClient) GetProjectRef(projectId string) (*model.ProjectRef, error) {
-	resp, err := ac.get(fmt.Sprintf("/ref/%s", projectId), nil)
+	resp, err := ac.get(fmt.Sprintf("/ref/%s", projectId), nil, true)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +184,7 @@ func (ac *APIClient) DeletePatchModule(patchId, module string) error {
 	}
 	data.Set("id_token", authToken)
 	data.Set("module", module)
-	resp, err := ac.delete(fmt.Sprintf("patches/%s/modules", patchId), bytes.NewBufferString(data.Encode()))
+	resp, err := ac.delete(fmt.Sprintf("patches/%s/modules", patchId), bytes.NewBufferString(data.Encode()), true)
 	if err != nil {
 		return err
 	}
@@ -186,7 +205,7 @@ func (ac *APIClient) UpdatePatchModule(patchId, module, patch, base string) erro
 	data.Set("module", module)
 	data.Set("patch", patch)
 	data.Set("githash", base)
-	resp, err := ac.post(fmt.Sprintf("patches/%s/modules", patchId), bytes.NewBufferString(data.Encode()))
+	resp, err := ac.post(fmt.Sprintf("patches/%s/modules", patchId), bytes.NewBufferString(data.Encode()), true)
 	if err != nil {
 		return err
 	}
@@ -194,6 +213,28 @@ func (ac *APIClient) UpdatePatchModule(patchId, module, patch, base string) erro
 		return NewAPIError(resp)
 	}
 	return nil
+}
+
+func (ac *APIClient) ListProjects() ([]model.ProjectRef, error) {
+	fmt.Println(ac.User, ac.APIKey)
+	authToken, err := generateTokenParam(ac.User, ac.APIKey)
+	if err != nil {
+		return nil, err
+	}
+	data := url.Values{}
+	data.Set("id_token", authToken)
+	resp, err := ac.get(fmt.Sprintf("projects?%v", data.Encode()), nil, true)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	projs := []model.ProjectRef{}
+	if err := util.ReadJSONInto(resp.Body, &projs); err != nil {
+		return nil, err
+	}
+	return projs, nil
 }
 
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
@@ -215,7 +256,7 @@ func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, erro
 	} else {
 		data.Set("buildvariants", "all")
 	}
-	resp, err := ac.put("patches/", bytes.NewBufferString(data.Encode()))
+	resp, err := ac.put("patches/", bytes.NewBufferString(data.Encode()), true)
 	if err != nil {
 		return nil, err
 	}

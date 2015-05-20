@@ -16,6 +16,8 @@ func main() {
 	parser.AddCommand("rm-module", "remove a module from an existing patch", "", &cli.RemoveModuleCommand{GlobalOpts: opts})
 	parser.AddCommand("cancel-patch", "cancel an existing patch", "", &cli.CancelPatchCommand{GlobalOpts: opts})
 	parser.AddCommand("finalize-patch", "finalize an existing patch", "", &cli.FinalizePatchCommand{GlobalOpts: opts})
+	parser.AddCommand("list-projects", "list all projects", "", &cli.ListProjectsCommand{GlobalOpts: opts})
+	parser.AddCommand("validate", "validate a config file", "", &cli.ValidateCommand{GlobalOpts: opts})
 	_, err := parser.Parse()
 	if err != nil {
 		os.Exit(1)

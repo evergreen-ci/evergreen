@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"io/ioutil"
 	"os/exec"
 	"strings"
 	"text/template"
@@ -48,6 +49,15 @@ type ListPatchesCommand struct {
 	Variants    []string `short:"v" long:"variants"`
 	PatchId     string   `short:"i" description:"show details for only the patch with this ID"`
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
+}
+
+type ListProjectsCommand struct {
+	GlobalOpts Options `no-flag:"true"`
+}
+
+// ValidateCommand is used to verify that a config file is valid.
+type ValidateCommand struct {
+	GlobalOpts Options `no-flag:"true"`
 }
 
 // CancelPatchCommand is used to cancel a patch.
@@ -144,6 +154,33 @@ func (rmc *RemoveModuleCommand) Execute(args []string) error {
 		return err
 	}
 	fmt.Println("Module removed.")
+	return nil
+}
+
+func (vc *ValidateCommand) Execute(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("must supply path to a file to validate.")
+	}
+	ac, _, err := getAPIClient(vc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	confFile, err := ioutil.ReadFile(args[0])
+	if err != nil {
+		return err
+	}
+	projErrors, err := ac.ValidateConfig(confFile)
+	if err != nil {
+		return nil
+	}
+	if len(projErrors) > 0 {
+		fmt.Println("Project has", len(projErrors), "error(s)")
+		for i, e := range projErrors {
+			fmt.Printf("%v) %v\n\n", i+1, e.Message)
+		}
+		return fmt.Errorf("Invalid project file!")
+	}
+	fmt.Println("Valid!")
 	return nil
 }
 
@@ -274,6 +311,26 @@ func (fpc *FinalizePatchCommand) Execute(args []string) error {
 	return nil
 }
 
+func (lp *ListProjectsCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(lp.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	projs, err := ac.ListProjects()
+	if err != nil {
+		return err
+	}
+	fmt.Println(len(projs), "projects:")
+	for _, proj := range projs {
+		fmt.Print("\t" + proj.Identifier)
+		if len(proj.DisplayName) > 0 && proj.DisplayName != proj.Identifier {
+			fmt.Printf("\t(%v)", proj.DisplayName)
+		}
+		fmt.Print("\n")
+	}
+	return nil
+}
+
 // loadGitData inspects the current git working directory and returns a patch and its summary.
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
@@ -286,7 +343,7 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 	if len(extraArgs) > 0 {
 		statArgs = append(statArgs, extraArgs...)
 	}
-	stat, err := gitDiff("", statArgs...)
+	stat, err := gitDiff(mergeBase, statArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting diff summary: %v", err)
 	}

@@ -784,6 +784,15 @@ func (as *APIServer) fetchProjectRef(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, projectRef)
 }
 
+func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
+	allProjs, err := model.FindAllTrackedProjectRefs()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	as.WriteJSON(w, http.StatusOK, allProjs)
+}
+
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
@@ -867,6 +876,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	// Project lookup and validation routes
 	apiRootOld.HandleFunc("/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
 	apiRootOld.HandleFunc("/validate", as.validateProjectConfig).Methods("POST")
+	apiRootOld.HandleFunc("/projects", requireUser(as.listProjects)).Methods("GET")
 
 	// User session routes
 	apiRootOld.HandleFunc("/token", as.getUserSession).Methods("POST")
