@@ -145,7 +145,7 @@ type JiraConfig struct {
 // manually by their respective plugins
 type PluginConfig map[string]map[string]interface{}
 
-type DBSafety struct {
+type WriteConcern struct {
 	W        int    `yaml:"w"`
 	WMode    string `yaml:"wmode"`
 	WTimeout int    `yaml:"wtimeout"`
@@ -157,7 +157,7 @@ type DBSafety struct {
 type Settings struct {
 	DbUrl               string            `yaml:"dburl"`
 	Db                  string            `yaml:"db"`
-	DBSafety            DBSafety          `yaml:"db_safety"`
+	WriteConcern        WriteConcern      `yaml:"write_concern"`
 	ConfigDir           string            `yaml:"configdir"`
 	Motu                string            `yaml:"motu"`
 	AgentExecutablesDir string            `yaml:"agentexecutablesdir"`

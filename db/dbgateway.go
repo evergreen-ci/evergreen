@@ -35,11 +35,11 @@ type SessionProvider interface {
 // the Evergreen settings.
 func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
 	safety := mgo.Safe{}
-	safety.W = settings.DBSafety.W
-	safety.WMode = settings.DBSafety.WMode
-	safety.WTimeout = settings.DBSafety.WTimeout
-	safety.FSync = settings.DBSafety.FSync
-	safety.J = settings.DBSafety.J
+	safety.W = settings.WriteConcern.W
+	safety.WMode = settings.WriteConcern.WMode
+	safety.WTimeout = settings.WriteConcern.WTimeout
+	safety.FSync = settings.WriteConcern.FSync
+	safety.J = settings.WriteConcern.J
 	fmt.Println("using safety", safety)
 	return NewSessionFactory(settings.DbUrl, settings.Db, safety, defaultDialTimeout)
 }
