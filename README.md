@@ -1,6 +1,5 @@
 # Evergreen
-<TODO-Image>
-Version pre-0.9.0 Alpha
+Version 0.9.0 Alpha
 
 Evergreen is a distributed continuous integration system built by MongoDB.
 It utilizes multi-platform cloud computing to run tasks as quickly as possible.
