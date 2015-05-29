@@ -180,7 +180,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchMetadata, err := apiRequest.Validate(as.Settings.Credentials[project.RepoKind])
+	patchMetadata, err := apiRequest.Validate(as.Settings.Credentials[projectRef.RepoKind])
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
 		return
@@ -196,10 +196,19 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			"module not allowed when creating new patches (must be added in a subsequent request)")
 		return
 	}
+	patchProjectRef, err := model.FindOneProjectRef(patchMetadata.Project.Identifier)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid projectRef: %v", err))
+		return
+	}
+	if patchProjectRef == nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Empty patch project Ref"))
+		return
+	}
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[project.RepoKind],
-		patchMetadata.Project.Owner,
-		patchMetadata.Project.Repo,
+	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[projectRef.RepoKind],
+		patchProjectRef.Owner,
+		patchProjectRef.Repo,
 		apiRequest.Githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -314,7 +323,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[project.RepoKind], repoOwner, repo, githash)
+	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[projectRef.RepoKind], repoOwner, repo, githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

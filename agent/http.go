@@ -444,6 +444,44 @@ func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 	return projectConfig, nil
 }
 
+// GetTask returns the communicator's task.
+func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
+	projectRef := &model.ProjectRef{}
+	retriableGet := util.RetriableFunc(
+		func() error {
+			resp, err := h.tryGet("project_ref")
+			if resp != nil {
+				defer resp.Body.Close()
+			}
+			if resp != nil && resp.StatusCode == http.StatusConflict {
+				// Something very wrong, fail now with no retry.
+				return fmt.Errorf("conflict - wrong secret!")
+			}
+			if err != nil {
+				// Some generic error trying to connect - try again
+				return util.RetriableError{err}
+			}
+			if resp == nil {
+				return util.RetriableError{fmt.Errorf("empty response")}
+			} else {
+				err = util.ReadJSONInto(resp.Body, projectRef)
+				if err != nil {
+					h.Logger.Errorf(slogger.ERROR, "error unmarshaling into projectRef: %v\n", err)
+					return util.RetriableError{err}
+				}
+				return nil
+			}
+		},
+	)
+
+	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
+	if retryFail {
+		return nil, fmt.Errorf("getting projectRef failed after %v tries: %v",
+			h.MaxAttempts, err)
+	}
+	return projectRef, nil
+}
+
 // Heartbeat sends a heartbeat to the API server. The server can respond with
 // and "abort" response. This function returns true if the agent should abort.
 func (h *HTTPCommunicator) Heartbeat() (bool, error) {

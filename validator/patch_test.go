@@ -43,6 +43,7 @@ func TestProjectRef(t *testing.T) {
 
 		projectRef, err := model.FindOneProjectRef("mci-test")
 		So(err, ShouldBeNil)
+		So(projectRef, ShouldNotBeNil)
 		So(projectRef.Identifier, ShouldEqual, "mci-test")
 	})
 }

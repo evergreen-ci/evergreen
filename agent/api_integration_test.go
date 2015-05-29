@@ -625,6 +625,18 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		"project/mongodb-mongo-master.yml")
 	util.HandleTestingErr(err, t, "failed to read project config")
 
+	projectRef := &model.ProjectRef{
+		Identifier: "mongodb-mongo-master",
+		Owner:      "deafgoat",
+		Repo:       "mci_test",
+		RepoKind:   "github",
+		Branch:     "master",
+		Enabled:    true,
+		BatchTime:  180,
+	}
+
+	util.HandleTestingErr(projectRef.Insert(), t, "failed to insert projectRef")
+
 	// unmarshall the project configuration into a struct
 	project := &model.Project{}
 	util.HandleTestingErr(yaml.Unmarshal(projectConfig, project), t,

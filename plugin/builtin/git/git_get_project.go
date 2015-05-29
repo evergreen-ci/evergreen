@@ -48,7 +48,8 @@ func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
-	location, err := conf.Project.Location()
+
+	location, err := conf.ProjectRef.Location()
 	if err != nil {
 		return err
 	}

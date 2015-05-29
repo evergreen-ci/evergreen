@@ -44,20 +44,24 @@ func (mc *MockCommunicator) End(status string,
 	return nil, nil
 }
 
-func (_ *MockCommunicator) GetTask() (*model.Task, error) {
+func (*MockCommunicator) GetTask() (*model.Task, error) {
 	return &model.Task{}, nil
 }
 
-func (_ *MockCommunicator) GetPatch() (*patch.Patch, error) {
+func (*MockCommunicator) GetPatch() (*patch.Patch, error) {
 	return &patch.Patch{}, nil
 }
 
-func (_ *MockCommunicator) GetDistro() (*distro.Distro, error) {
+func (*MockCommunicator) GetDistro() (*distro.Distro, error) {
 	return &distro.Distro{}, nil
 }
 
-func (_ *MockCommunicator) GetProjectConfig() (*model.Project, error) {
+func (*MockCommunicator) GetProjectConfig() (*model.Project, error) {
 	return &model.Project{}, nil
+}
+
+func (*MockCommunicator) GetProjectRef() (*model.ProjectRef, error) {
+	return &model.ProjectRef{}, nil
 }
 
 func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
