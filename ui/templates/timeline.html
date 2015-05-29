@@ -1,7 +1,7 @@
 {{define "scripts"}}
 <script type="text/javascript">
   window.userTz = '{{GetTimezone $.User}}';
-  window.project = '{{ .ProjectData.Project.Identifier }}';
+  window.project = '{{ .ProjectData.ProjectRef.Identifier }}';
 </script>
 <script type="text/javascript" src="/static/js/services/timeline_resource.js?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="{{Static "js" "timeline.js"}}?hash={{ StaticsMD5 }}"></script>

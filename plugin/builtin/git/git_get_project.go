@@ -48,7 +48,11 @@ func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
-	location := conf.ProjectRef.Location()
+	location, err := conf.ProjectRef.Location()
+
+	if err != nil {
+		return err
+	}
 
 	gitCommands := []string{
 		fmt.Sprintf("set -o errexit"),

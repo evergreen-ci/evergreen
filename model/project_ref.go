@@ -165,12 +165,26 @@ func (projectRef *ProjectRef) Upsert() error {
 	return err
 }
 
-// Generate the URL to the repo.
-func (projectRef *ProjectRef) Location() string {
-	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo)
-}
-
 // ProjectRef returns a string representation of a ProjectRef
 func (projectRef *ProjectRef) String() string {
 	return projectRef.Identifier
+}
+
+// GetBatchTime returns the Batch Time of the ProjectRef
+func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
+	if variant.BatchTime != nil {
+		return *variant.BatchTime
+	}
+	return p.BatchTime
+}
+
+// Location generates and returns the ssh hostname and path to the repo.
+func (projectRef *ProjectRef) Location() (string, error) {
+	if projectRef.Owner == "" {
+		return "", fmt.Errorf("No owner in project ref: %v", projectRef.Identifier)
+	}
+	if projectRef.Repo == "" {
+		return "", fmt.Errorf("No repo in project ref: %v", projectRef.Identifier)
+	}
+	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
 }

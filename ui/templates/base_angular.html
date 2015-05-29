@@ -46,10 +46,11 @@
           #footer{ font-size:.8em; color:#888; }
         </style>
         <script type="text/javascript">
+
         {{if .ProjectData}}
             {{if .ProjectData.Project}}
-                var project = {{.ProjectData.Project.Identifier}}
-                var projectName = {{.ProjectData.Project.DisplayName}} 
+                var project = {{.ProjectData.ProjectRef.Identifier}}
+                var projectName = {{.ProjectData.ProjectRef.DisplayName}} 
             {{end}}
                 var allProjects = {{.ProjectData.AllProjects}}
         {{end}}

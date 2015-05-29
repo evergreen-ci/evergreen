@@ -498,7 +498,7 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 			}
 
 			proj = &model.Project{}
-			err = model.LoadProjectInto([]byte(lastGood.Config), proj)
+			err = model.LoadProjectInto([]byte(lastGood.Config), projectRef.Identifier, proj)
 			if err != nil {
 				return nil, fmt.Errorf("Error loading project from version: %v", err)
 			}

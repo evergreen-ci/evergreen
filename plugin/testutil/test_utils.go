@@ -58,6 +58,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	util.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
+	util.HandleTestingErr(err, t, "failed to upsert project ref")
 
 	projectVars := &model.ProjectVars{
 		Id: "mongodb-mongo-master",
@@ -75,14 +76,15 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		Private:     false,
 		BatchTime:   0,
 		RemotePath:  "etc/evergreen.yml",
-		Identifier:  "sample",
-		DisplayName: "sample",
+		Identifier:  "mongodb-mongo-master",
+		DisplayName: "mongodb-mongo-master",
 	}
 	err = projectRef.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project ref")
 	projectRef.Upsert()
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
+
 	workDir, err := ioutil.TempDir("", "plugintest_")
 	util.HandleTestingErr(err, t, "failed to get working directory: %v")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}

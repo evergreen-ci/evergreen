@@ -125,16 +125,8 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 }
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled" bson:"enabled"`
-	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
-	BatchTime          int                        `yaml:"batchtime" bson:"batch_time"`
-	Owner              string                     `yaml:"owner" bson:"owner_name"`
-	Repo               string                     `yaml:"repo" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path" bson:"remote_path"`
-	RepoKind           string                     `yaml:"repokind" bson:"repo_kind"`
-	Branch             string                     `yaml:"branch" bson:"branch_name"`
 	Identifier         string                     `yaml:"identifier" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name" bson:"display_name"`
+	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
 	Pre                *YAMLCommandSet            `yaml:"pre" bson:"pre"`
 	Post               *YAMLCommandSet            `yaml:"post" bson:"post"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout" bson:"timeout"`
@@ -143,9 +135,6 @@ type Project struct {
 	Functions          map[string]*YAMLCommandSet `yaml:"functions" bson:"functions"`
 	Tasks              []ProjectTask              `yaml:"tasks" bson:"tasks"`
 	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix" bson:"build_variant_matrix"`
-
-	// Flag that indicates a project as requiring user authentication
-	Private bool `yaml:"private" bson:"private"`
 }
 
 // The information about a task's dependency
@@ -178,14 +167,7 @@ type TaskConfig struct {
 
 var (
 	// bson fields for the project struct
-	ProjectEnabledKey       = bsonutil.MustHaveTag(Project{}, "Enabled")
-	ProjectBatchTimeKey     = bsonutil.MustHaveTag(Project{}, "BatchTime")
-	ProjectOwnerNameKey     = bsonutil.MustHaveTag(Project{}, "Owner")
-	ProjectRepoKey          = bsonutil.MustHaveTag(Project{}, "Repo")
-	ProjectRepoKindKey      = bsonutil.MustHaveTag(Project{}, "RepoKind")
-	ProjectBranchKey        = bsonutil.MustHaveTag(Project{}, "Branch")
 	ProjectIdentifierKey    = bsonutil.MustHaveTag(Project{}, "Identifier")
-	ProjectDisplayNameKey   = bsonutil.MustHaveTag(Project{}, "DisplayName")
 	ProjectPreKey           = bsonutil.MustHaveTag(Project{}, "Pre")
 	ProjectPostKey          = bsonutil.MustHaveTag(Project{}, "Post")
 	ProjectModulesKey       = bsonutil.MustHaveTag(Project{}, "Modules")
@@ -197,15 +179,26 @@ var (
 )
 
 func NewTaskConfig(d *distro.Distro, p *Project, t *Task, r *ProjectRef) (*TaskConfig, error) {
+	// do a check on if the project is empty
+	if p == nil {
+		return nil, fmt.Errorf("project for task with branch %v is empty", t.Project)
+	}
+
+	// check on if the project ref is empty
+	if r == nil {
+		return nil, fmt.Errorf("Project ref with identifier: %v was empty", p.Identifier)
+	}
+
 	bv := p.FindBuildVariant(t.BuildVariant)
 	if bv == nil {
 		return nil, fmt.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
 	}
-	e := populateExpansions(d, p, bv, t)
+
+	e := populateExpansions(d, bv, t)
 	return &TaskConfig{d, r, p, t, bv, e, d.WorkDir}, nil
 }
 
-func populateExpansions(d *distro.Distro, p *Project, bv *BuildVariant, t *Task) *command.Expansions {
+func populateExpansions(d *distro.Distro, bv *BuildVariant, t *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("task_id", t.Id)
@@ -389,7 +382,7 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if projectRef == nil {
-		return nil, fmt.Errorf("invalid projectRef")
+		return nil, fmt.Errorf("projectRef given is nil")
 	}
 	if projectRef.Identifier == "" {
 		return nil, fmt.Errorf("Invalid project with blank identifier")
@@ -408,7 +401,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			// for new repositories, we don't want to error out when we don't have
 			// any versions stored in the database so we default to the skeletal
 			// information we already have from the project file on disk
-			err = LoadProjectInto([]byte(lastGoodVersion.Config), project)
+			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
 			if err != nil {
 				return nil, fmt.Errorf("Error loading project from "+
 					"last good version for project, %v: %v", lastGoodVersion.Project, err)
@@ -416,7 +409,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		} else {
 			// Check to see if there is a local configuration in the project ref
 			if projectRef.LocalConfig != "" {
-				err = LoadProjectInto([]byte(projectRef.LocalConfig), project)
+				err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
 				if err != nil {
 					return nil, fmt.Errorf("Error loading local config for project ref, %v : %v", projectRef.Identifier, err)
 				}
@@ -437,28 +430,20 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		}
 
 		project = &Project{}
-		if err = LoadProjectInto([]byte(version.Config), project); err != nil {
+		if err = LoadProjectInto([]byte(version.Config), projectRef.Identifier, project); err != nil {
 			return nil, fmt.Errorf("Error loading project from version: %v", err)
 		}
 	}
-
-	project.Identifier = projectRef.Identifier
-	project.Owner = projectRef.Owner
-	project.Repo = projectRef.Repo
-	project.Branch = projectRef.Branch
-	project.RepoKind = projectRef.RepoKind
-	project.Enabled = projectRef.Enabled
-	project.Private = projectRef.Private
-	project.BatchTime = projectRef.BatchTime
-	project.RemotePath = projectRef.RemotePath
-	project.DisplayName = projectRef.DisplayName
 	return project, nil
 }
 
-func LoadProjectInto(data []byte, project *Project) error {
+// LoadProjectInto loads the raw data from the config file into project
+// and sets the project's identifier field to identifier
+func LoadProjectInto(data []byte, identifier string, project *Project) error {
 	if err := yaml.Unmarshal(data, project); err != nil {
 		return fmt.Errorf("Parse error unmarshalling project: %v", err)
 	}
+	project.Identifier = identifier
 	return addMatrixVariants(project)
 }
 
@@ -469,13 +454,6 @@ func (p *Project) FindBuildVariant(build string) *BuildVariant {
 		}
 	}
 	return nil
-}
-
-func (p *Project) GetBatchTime(variant *BuildVariant) int {
-	if variant.BatchTime != nil {
-		return *variant.BatchTime
-	}
-	return p.BatchTime
 }
 
 func (p *Project) FindTestSuite(name string) *ProjectTask {
@@ -503,9 +481,4 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 		}
 	}
 	return nil, fmt.Errorf("No such module on this project.")
-}
-
-// Generate the URL to the repo.
-func (p *Project) Location() (string, error) {
-	return fmt.Sprintf("git@github.com:%v/%v.git", p.Owner, p.Repo), nil
 }

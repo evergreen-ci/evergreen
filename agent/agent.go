@@ -274,8 +274,13 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 		return nil, err
 	}
 
+	if ref == nil {
+		return nil, fmt.Errorf("Agent retrieved an empty project ref")
+	}
+
 	agt.logger.LogExecution(slogger.INFO, "Constructing TaskConfig...")
 	return model.NewTaskConfig(distro, project, task, ref)
+
 }
 
 // New creates a new agent to run a given task.

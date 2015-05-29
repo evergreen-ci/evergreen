@@ -55,7 +55,7 @@ func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version
 
 	project := &model.Project{}
 
-	if err = model.LoadProjectInto(projectFileBytes, project); err != nil {
+	if err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, err
 	}
 

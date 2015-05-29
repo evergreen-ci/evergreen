@@ -234,6 +234,7 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
 
 	p, err := model.FindOneProjectRef(task.Project)
+
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -318,8 +319,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectRef, err := model.FindOneProjectRef(task.Project)
+
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
+	if projectRef == nil {
+		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("empty projectRef for task"))
+		return
 	}
 	project, err := model.FindProject("", projectRef)
 	if err != nil {

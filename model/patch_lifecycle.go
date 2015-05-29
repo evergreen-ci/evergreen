@@ -201,7 +201,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 				err)
 		}
 		project := &Project{}
-		if err = LoadProjectInto(data, project); err != nil {
+		if err = LoadProjectInto(data, p.Project, project); err != nil {
 			return nil, err
 		}
 		return project, nil
