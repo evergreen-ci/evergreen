@@ -53,6 +53,14 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// User login and logout
 	r.HandleFunc("/login", uis.loginPage).Methods("GET")
 	r.HandleFunc("/login", uis.login).Methods("POST")
+
+	// User login with redirect to external site and redirect back
+	if uis.UserManager.GetLoginHandler != nil {
+		r.HandleFunc("/login/redirect", uis.UserManager.GetLoginHandler(uis.RootURL)).Methods("GET")
+	}
+	if uis.UserManager.GetLoginCallbackHandler != nil {
+		r.HandleFunc("/login/redirect/callback", uis.UserManager.GetLoginCallbackHandler()).Methods("GET")
+	}
 	r.HandleFunc("/logout", uis.logout)
 
 	// Waterfall pages

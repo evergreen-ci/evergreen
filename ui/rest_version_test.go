@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -30,9 +31,13 @@ func init() {
 
 func TestGetRecentVersions(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     versionTestConfig.Ui.Url,
+		Settings:    *versionTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -236,11 +241,14 @@ func TestGetRecentVersions(t *testing.T) {
 
 func TestGetVersionInfo(t *testing.T) {
 
-	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
-	}
+	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
 
+	uis := UIServer{
+		RootURL:     versionTestConfig.Ui.Url,
+		Settings:    *versionTestConfig,
+		UserManager: userManager,
+	}
 	home := evergreen.FindEvergreenHome()
 
 	uis.Render = render.New(render.Options{
@@ -337,9 +345,13 @@ func TestGetVersionInfo(t *testing.T) {
 
 func TestGetVersionInfoViaRevision(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     versionTestConfig.Ui.Url,
+		Settings:    *versionTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -433,9 +445,13 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 
 func TestActivateVersion(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     versionTestConfig.Ui.Url,
+		Settings:    *versionTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -546,9 +562,13 @@ func TestActivateVersion(t *testing.T) {
 
 func TestGetVersionStatus(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     versionTestConfig.Ui.Url,
+		Settings:    *versionTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()

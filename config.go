@@ -36,10 +36,21 @@ type CrowdConfig struct {
 	Urlroot  string
 }
 
+// GithubAuthConfig holds settings for interacting with Github Authentication including the
+// ClientID, ClientSecret and CallbackUri which are given when registering the application
+// Furthermore,
+type GithubAuthConfig struct {
+	ClientId     string   `yaml:"client_id"`
+	ClientSecret string   `yaml:"client_secret"`
+	Users        []string `yaml:"users"`
+	Organization string   `yaml:"organization"`
+}
+
 // AuthConfig has a pointer to either a CrowConfig or a NaiveAuthConfig.
 type AuthConfig struct {
-	Crowd *CrowdConfig     `yaml:"crowd"`
-	Naive *NaiveAuthConfig `yaml:"naive"`
+	Crowd  *CrowdConfig      `yaml:"crowd"`
+	Naive  *NaiveAuthConfig  `yaml:"naive"`
+	Github *GithubAuthConfig `yaml:"github"`
 }
 
 // RepoTrackerConfig holds settings for polling project repositories.
@@ -334,17 +345,21 @@ var ConfigValidationRules = []ConfigValidator{
 	},
 
 	func(settings *Settings) error {
-		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil {
+		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil && settings.AuthConfig.Github == nil {
 			return fmt.Errorf("You must specify one form of authentication")
 		}
 		if settings.AuthConfig.Naive != nil {
-
 			used := map[string]bool{}
 			for _, x := range settings.AuthConfig.Naive.Users {
 				if used[x.Username] {
 					return fmt.Errorf("Duplicate user in list")
 				}
 				used[x.Username] = true
+			}
+		}
+		if settings.AuthConfig.Github != nil {
+			if settings.AuthConfig.Github.Users == nil && settings.AuthConfig.Github.Organization == "" {
+				return fmt.Errorf("Must specify either a set of users or an organization for Github Authentication")
 			}
 		}
 		return nil

@@ -41,6 +41,9 @@ type (
 
 		// A list of all available projects. If user is logged in, will include private projects.
 		AllProjects []model.ProjectRef
+
+		// Determining whether or not to redirect during authentication
+		AuthRedirect bool
 	}
 )
 
@@ -152,8 +155,13 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" {
 		querySep = "?"
 	}
-	location := fmt.Sprintf("%v/login#?redirect=%v%v%v",
+	path := "login#?"
+	if uis.UserManager.IsRedirect() {
+		path = "login/redirect?"
+	}
+	location := fmt.Sprintf("%v%vredirect=%v%v%v",
 		uis.Settings.Ui.Url,
+		path,
 		url.QueryEscape(r.URL.Path),
 		querySep,
 		r.URL.RawQuery)
@@ -357,6 +365,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		return *proj, err
 	}
 
+	proj.AuthRedirect = uis.UserManager.IsRedirect()
 	return *proj, nil
 }
 

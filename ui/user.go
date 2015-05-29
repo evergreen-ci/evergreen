@@ -10,6 +10,9 @@ import (
 )
 
 func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
+	if uis.UserManager.IsRedirect() {
+		http.Redirect(w, r, "/login/redirect", http.StatusFound)
+	}
 	uis.WriteHTML(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
 }
 

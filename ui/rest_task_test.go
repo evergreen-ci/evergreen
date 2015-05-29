@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -12,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
+
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -30,9 +32,13 @@ func init() {
 
 func TestGetTaskInfo(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     taskTestConfig.Ui.Url,
+		Settings:    *taskTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -267,9 +273,13 @@ func TestGetTaskInfo(t *testing.T) {
 
 func TestGetTaskStatus(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     taskTestConfig.Ui.Url,
+		Settings:    *taskTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()

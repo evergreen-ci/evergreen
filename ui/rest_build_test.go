@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -28,9 +29,13 @@ func init() {
 
 func TestGetBuildInfo(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     buildTestConfig.Ui.Url,
+		Settings:    *buildTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -197,9 +202,13 @@ func TestGetBuildInfo(t *testing.T) {
 
 func TestGetBuildStatus(t *testing.T) {
 
+	userManager, err := auth.LoadUserManager(buildTestConfig.AuthConfig)
+	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
+
 	uis := UIServer{
-		RootURL:  buildTestConfig.Ui.Url,
-		Settings: *buildTestConfig,
+		RootURL:     buildTestConfig.Ui.Url,
+		Settings:    *buildTestConfig,
+		UserManager: userManager,
 	}
 
 	home := evergreen.FindEvergreenHome()

@@ -3,7 +3,6 @@ mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginR
   $scope.credentials = {};
   $scope.errorMessage = '';
   $scope.redirect = $location.search().redirect;
-
   $scope.authenticate = function() {
     mciLoginRestService.authenticate(
         $scope.credentials.username, 
@@ -11,7 +10,7 @@ mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginR
         {},
         {
           success: function(data) {
-            redirect = $scope.redirect || "/"; // If no redirect specified, default to root
+            redirect = $scope.redirect || "/";
             $window.location.href = decodeURIComponent(redirect);
           },
           error: function(jqXHR, status, errorThrown) {
@@ -22,14 +21,21 @@ mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginR
   };
 });
 
+
+
+
 mciModule.controller('LoginModalCtrl', function($scope, $window, mciLoginRestService, $controller) {
 
   // Inherit from LoginCtrl
   $controller('LoginCtrl', {$scope: $scope});
 
   $scope.openLoginModal = function() {
+    if ($window.redirect) {
+      $window.location.href = "/login/redirect";
+    } else {
     var modal = $('#login-modal').modal('show');
     $('#username-modal').focus();
+    }
   };
 });
 

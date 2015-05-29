@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
+	"net/http"
 )
 
 // NaiveUserManager implements the UserManager interface and has a list of AuthUsers{UserName, DisplayName, Password, Email string}
@@ -48,4 +49,16 @@ func (b *NaiveUserManager) CreateUserToken(username, password string) (string, e
 		}
 	}
 	return "", fmt.Errorf("No valid user for the given username and password")
+}
+
+func (*NaiveUserManager) GetLoginHandler(string) func(http.ResponseWriter, *http.Request) {
+	return nil
+}
+
+func (*NaiveUserManager) GetLoginCallbackHandler() func(http.ResponseWriter, *http.Request) {
+	return nil
+}
+
+func (*NaiveUserManager) IsRedirect() bool {
+	return false
 }

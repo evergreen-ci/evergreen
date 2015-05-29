@@ -690,7 +690,6 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error reading user credentials: %v", err))
 		return
 	}
-
 	userToken, err := as.UserManager.CreateUserToken(userCredentials.Username, userCredentials.Password)
 	if err != nil {
 		as.WriteJSON(w, http.StatusUnauthorized, err.Error())
@@ -706,6 +705,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	dataOut.User.Name = userCredentials.Username
 	dataOut.Token = userToken
 	as.WriteJSON(w, http.StatusOK, dataOut)
+
 }
 
 // Get the host with the id specified in the request

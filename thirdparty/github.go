@@ -1,10 +1,12 @@
 package thirdparty
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -16,8 +18,17 @@ const (
 	GithubBase          = "https://github.com"
 	NumGithubRetries    = 3
 	GithubSleepTimeSecs = 1
-	GithubAPIBase       = "https://api.github.com/repos"
+	GithubAPIBase       = "https://api.github.com"
 )
+
+type GithubUser struct {
+	Active       bool   `json:"active"`
+	DispName     string `json:"display-name"`
+	EmailAddress string `json:"email"`
+	FirstName    string `json:"first-name"`
+	LastName     string `json:"last-name"`
+	Name         string `json:"name"`
+}
 
 // GetGithubCommits returns a slice of GithubCommit objects from
 // the given commitsURL when provided a valid oauth token
@@ -110,7 +121,7 @@ func GetGithubFile(oauthToken, fileURL string) (
 
 func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	error) {
-	commitURL := fmt.Sprintf("%v/%v/%v/commits/%v",
+	commitURL := fmt.Sprintf("%v/repos/%v/%v/commits/%v",
 		GithubAPIBase,
 		repoOwner,
 		repo,
@@ -155,54 +166,113 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	return commitEvent, nil
 }
 
-// tryGithubGet wraps githubGet in a retry block
-func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
-	evergreen.Logger.Logf(slogger.ERROR, "Attempting API call at ‘%v’...", url)
-	for i := 1; i < NumGithubRetries; i++ {
-		resp, err = githubGet(oauthToken, url)
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Unable to make request for "+
-				"‘%v’: %v", url, err.Error())
-			continue
-		}
-		if resp != nil {
-			if resp.StatusCode == http.StatusOK {
-				break
-			}
-			evergreen.Logger.Logf(slogger.DEBUG, "Github gave a bad http response "+
-				"(%v) to url %#v - sleeping for %v", resp.Status,
-				url, time.Duration(GithubSleepTimeSecs*i)*time.Second)
-		} else {
-			evergreen.Logger.Logf(slogger.DEBUG, "Github returned a nil response at:",
-				url)
-		}
-		time.Sleep(time.Duration(GithubSleepTimeSecs*i) * time.Second)
-	}
-	if resp != nil {
-		header := resp.Header
-		rateMessage, loglevel := getGithubRateLimit(header)
-		evergreen.Logger.Logf(loglevel, "Github API response: %v. %v", resp.Status,
-			rateMessage)
-	}
-	return
-}
-
-// githubGet queries the Github api endpoint specified by url with the given
-// oauth token
-func githubGet(oauthToken string, url string) (*http.Response, error) {
-	if !strings.HasPrefix(oauthToken, "token ") {
-		return nil, fmt.Errorf("Invalid oauth token in config: %v", oauthToken)
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
+// githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth
+func githubRequest(method string, url string, oauthToken string, data interface{}) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// add request headers
-	req.Header.Add("Authorization", oauthToken)
+	// if there is data, add it to the body of the request
+	if data != nil {
+		jsonBytes, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+		req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+	}
+
+	// check if there is an oauth token, if there is make sure it is a valid oauthtoken
+	if len(oauthToken) > 0 {
+		if !strings.HasPrefix(oauthToken, "token ") {
+			return nil, fmt.Errorf("Invalid oauth token given")
+		}
+		req.Header.Add("Authorization", oauthToken)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
 	client := &http.Client{}
 	return client.Do(req)
+}
+
+func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
+	evergreen.Logger.Logf(slogger.INFO, "Attempting GitHub API call at ‘%v’", url)
+	retriableGet := util.RetriableFunc(
+		func() error {
+			resp, err = githubRequest("GET", url, oauthToken, nil)
+			if resp == nil {
+				err = fmt.Errorf("empty response on getting %v", url)
+			}
+			if err != nil {
+				evergreen.Logger.Logf(slogger.ERROR, "failed trying to call github GET on %v: %v", url, err)
+				return util.RetriableError{err}
+			}
+			if resp.StatusCode == http.StatusUnauthorized {
+				err = fmt.Errorf("Calling github GET on %v failed: got 'unauthorized' response", url)
+				evergreen.Logger.Logf(slogger.ERROR, err.Error())
+				return err
+			}
+			if resp.StatusCode != http.StatusOK {
+				err = fmt.Errorf("Calling github GET on %v got a bad response code: %v", url, resp.StatusCode)
+			}
+			// read the results
+			rateMessage, loglevel := getGithubRateLimit(resp.Header)
+			evergreen.Logger.Logf(loglevel, "Github API repsonse: %v. %v", resp.Status, rateMessage)
+			return nil
+		},
+	)
+
+	retryFail, err := util.Retry(retriableGet, NumGithubRetries, GithubSleepTimeSecs*time.Second)
+	if err != nil {
+		// couldn't get it
+		if retryFail {
+			evergreen.Logger.Logf(slogger.ERROR, "Github GET on %v used up all retries.", err)
+		}
+		return nil, err
+	}
+
+	return
+}
+
+// tryGithubPost posts the data to the Github api endpoint with the url given
+func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
+	evergreen.Logger.Logf(slogger.ERROR, "Attempting GitHub API POST at ‘%v’", url)
+	retriableGet := util.RetriableFunc(
+		func() (retryError error) {
+			resp, err = githubRequest("POST", url, oauthToken, data)
+			if resp == nil {
+				err = fmt.Errorf("empty response on getting %v", url)
+			}
+			if err != nil {
+				evergreen.Logger.Logf(slogger.ERROR, "failed trying to call github POST on %v: %v", url, err)
+				return util.RetriableError{err}
+			}
+			if resp.StatusCode == http.StatusUnauthorized {
+				err = fmt.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
+				evergreen.Logger.Logf(slogger.ERROR, err.Error())
+				return err
+			}
+			if resp.StatusCode != http.StatusOK {
+				err = fmt.Errorf("Calling github POST on %v got a bad response code: %v", url, resp.StatusCode)
+			}
+			// read the results
+			rateMessage, loglevel := getGithubRateLimit(resp.Header)
+			evergreen.Logger.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
+			return nil
+		},
+	)
+
+	retryFail, err := util.Retry(retriableGet, NumGithubRetries, GithubSleepTimeSecs*time.Second)
+	if err != nil {
+		// couldn't post it
+		if retryFail {
+			evergreen.Logger.Logf(slogger.ERROR, "Github POST on %v used up all retries.")
+		}
+		return nil, err
+	}
+
+	return
 }
 
 // GetGithubFileURL returns a URL that locates a github file given the owner,
@@ -280,5 +350,85 @@ func getGithubRateLimit(header http.Header) (message string,
 	// we're in trouble
 	message, loglevel = fmt.Sprintf("Throttling required - rate limit almost "+
 		"exhausted: %v/%v", rem, lim), slogger.ERROR
+	return
+}
+
+// GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
+// And returns the response which contains the accessToken associated with the user.
+func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *GithubAuthResponse, err error) {
+	accessUrl := "https://github.com/login/oauth/access_token"
+	authParameters := GithubAuthParameters{
+		ClientId:     clientId,
+		ClientSecret: clientSecret,
+		Code:         code,
+	}
+	resp, err := tryGithubPost(accessUrl, "", authParameters)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("could not authenticate for token %v", err.Error())
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("invalid github response")
+	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, ResponseReadError{err.Error()}
+	}
+	evergreen.Logger.Logf(slogger.DEBUG, "GitHub API response: %v. %v bytes",
+		resp.Status, len(respBody))
+
+	if err = json.Unmarshal(respBody, &githubResponse); err != nil {
+		return nil, APIUnmarshalError{string(respBody), err.Error()}
+	}
+	return
+}
+
+// GetGithubUser does a GET from GitHub for the user, email, and organizations information and
+// returns the GithubLoginUser and its associated GithubOrganizations after authentication
+func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizations []GithubOrganization, err error) {
+	userUrl := fmt.Sprintf("%v/user", GithubAPIBase)
+	orgUrl := fmt.Sprintf("%v/user/orgs", GithubAPIBase)
+	t := fmt.Sprintf("token %v", token)
+	// get the user
+	resp, err := tryGithubGet(t, userUrl)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, ResponseReadError{err.Error()}
+	}
+
+	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+		resp.Status, len(respBody))
+
+	if err = json.Unmarshal(respBody, &githubUser); err != nil {
+		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
+	}
+
+	// get the user's organizations
+	resp, err = tryGithubGet(t, orgUrl)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not get user from token: %v", err)
+	}
+	respBody, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, ResponseReadError{err.Error()}
+	}
+
+	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+		resp.Status, len(respBody))
+
+	if err = json.Unmarshal(respBody, &githubOrganizations); err != nil {
+		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
+	}
 	return
 }

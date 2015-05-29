@@ -2,6 +2,8 @@ package auth
 
 import (
 	"github.com/evergreen-ci/crowd"
+	"github.com/evergreen-ci/evergreen"
+	"net/http"
 )
 
 // CrowdUserManager handles authentication with Atlassian Crowd.
@@ -11,8 +13,8 @@ type CrowdUserManager struct {
 
 // NewCrowdUserManager creates a manager for the user and password combination that
 // connects to the crowd service at the given URL.
-func NewCrowdUserManager(user, pw, url string) (*CrowdUserManager, error) {
-	crowdClient, err := crowd.NewClient(user, pw, url)
+func NewCrowdUserManager(conf *evergreen.CrowdConfig) (*CrowdUserManager, error) {
+	crowdClient, err := crowd.NewClient(conf.Username, conf.Password, conf.Urlroot)
 	if err != nil {
 		return nil, err
 	}
@@ -40,4 +42,16 @@ func (c *CrowdUserManager) CreateUserToken(username, password string) (string, e
 		return "", err
 	}
 	return session.Token, nil
+}
+
+func (*CrowdUserManager) GetLoginHandler(string) func(http.ResponseWriter, *http.Request) {
+	return nil
+}
+
+func (*CrowdUserManager) GetLoginCallbackHandler() func(http.ResponseWriter, *http.Request) {
+	return nil
+}
+
+func (*CrowdUserManager) IsRedirect() bool {
+	return false
 }

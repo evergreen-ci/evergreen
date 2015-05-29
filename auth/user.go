@@ -1,5 +1,9 @@
 package auth
 
+import (
+	"net/http"
+)
+
 // User describes an Evergreen user and is returned by a UserManager.
 type User interface {
 	DisplayName() string
@@ -7,10 +11,19 @@ type User interface {
 	Username() string
 }
 
-// UserManager sets and gets user tokens for am implemented authentication mechanism.
+// UserManager sets and gets user tokens for implemented authentication mechanisms,
+// and provides the data that is sent by the api and ui server after authenticating
 type UserManager interface {
 	GetUserByToken(token string) (User, error)
 	CreateUserToken(username, password string) (string, error)
+	// GetLoginHandler returns the function that starts the login process for auth mechanisms
+	// that redirect to a thirdparty site for authentication
+	GetLoginHandler(url string) func(http.ResponseWriter, *http.Request)
+	// GetLoginRedirectHandler returns the function that does login for the
+	// user once it has been redirected from a thirdparty site.
+	GetLoginCallbackHandler() func(http.ResponseWriter, *http.Request)
+	// IsRedirect returns true if the user must be redirected to a thirdparty site to authenticate
+	IsRedirect() bool
 }
 
 type simpleUser struct {
