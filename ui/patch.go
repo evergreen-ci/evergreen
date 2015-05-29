@@ -22,8 +22,8 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Version != nil { // Patch is already finalized
 		versionAsUI = &uiVersion{
 			Version:   *projCtx.Version,
-			RepoOwner: projCtx.Project.Owner,
-			Repo:      projCtx.Project.Repo,
+			RepoOwner: projCtx.ProjectRef.Owner,
+			Repo:      projCtx.ProjectRef.Repo,
 		}
 	}
 

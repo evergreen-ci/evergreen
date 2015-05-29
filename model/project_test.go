@@ -32,7 +32,7 @@ func TestFindProject(t *testing.T) {
 		})
 
 		Convey("if the project file exists and is valid, the project spec within"+
-			" it should be unmarshalled and returned", func() {
+			"should be unmarshalled and returned", func() {
 			v := &version.Version{
 				Owner:      "fakeowner",
 				Repo:       "fakerepo",
@@ -48,13 +48,8 @@ func TestFindProject(t *testing.T) {
 				Branch:     "fakebranch",
 			}
 			util.HandleTestingErr(v.Insert(), t, "failed to insert test version: %v")
-			project, err := FindProject("", p)
+			_, err := FindProject("", p)
 			So(err, ShouldBeNil)
-
-			// check enough fields to make sure it was unmarshalled correctly
-			So(project.Owner, ShouldEqual, "fakeowner")
-			So(project.Repo, ShouldEqual, "fakerepo")
-			So(project.Branch, ShouldEqual, "fakebranch")
 
 		})
 
@@ -156,30 +151,6 @@ func TestGetVariantsWithTask(t *testing.T) {
 	})
 }
 
-func TestRepoUrl(t *testing.T) {
-
-	Convey("With a project", t, func() {
-
-		project := &Project{
-			Owner: "owner",
-			Repo:  "repo",
-		}
-
-		Convey("when getting the repo url", func() {
-
-			Convey("with a git repo, a correct git url should be built based"+
-				" on the owner and repo", func() {
-				project.RepoKind = GithubRepoType
-				location, err := project.Location()
-				So(location, ShouldEqual, "git@github.com:owner/repo.git")
-				So(err, ShouldBeNil)
-			})
-
-		})
-
-	})
-}
-
 func TestGetModuleRepoName(t *testing.T) {
 
 	Convey("With a module", t, func() {
@@ -241,8 +212,6 @@ func TestBuildVariantMatrix(t *testing.T) {
 		}
 
 		project := &Project{
-			Owner:              "owner",
-			Repo:               "repo",
 			BuildVariantMatrix: bvMatrix,
 		}
 
@@ -316,8 +285,6 @@ func TestBuildVariantMatrix(t *testing.T) {
 
 	Convey("should do nothing if there are no parameters", t, func() {
 		project := &Project{
-			Owner: "owner",
-			Repo:  "repo",
 
 			BuildVariants: []BuildVariant{
 				BuildVariant{

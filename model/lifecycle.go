@@ -283,8 +283,8 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
 	if buildVariant == nil {
-		return nil, fmt.Errorf("Could not find build %v in %v:%v project file",
-			b.BuildVariant, project.RepoKind, project.Identifier)
+		return nil, fmt.Errorf("Could not find build %v in %v project file",
+			b.BuildVariant, project.Identifier)
 	}
 
 	// create the new tasks for the build
@@ -326,7 +326,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, buildName stri
 	buildVariant := project.FindBuildVariant(buildName)
 	if buildVariant == nil {
 		return "", fmt.Errorf("could not find build %v in %v:%v project file",
-			buildName, project.RepoKind, project.Identifier)
+			buildName, project.Identifier)
 	}
 
 	// create a new build id
@@ -357,8 +357,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, buildName stri
 	buildNumber, err := db.GetNewBuildVariantBuildNumber(buildName)
 	if err != nil {
 		return "", fmt.Errorf("could not get build number for build variant"+
-			" %v in %v:%v project file: %v", buildName, project.RepoKind,
-			project.Identifier)
+			" %v in %v project file: %v", buildName, project.Identifier)
 	}
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 

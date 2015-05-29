@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo"
@@ -164,4 +165,23 @@ func (projectRef *ProjectRef) Upsert() error {
 // ProjectRef returns a string representation of a ProjectRef
 func (projectRef *ProjectRef) String() string {
 	return projectRef.Identifier
+}
+
+// GetBatchTime returns the Batch Time of the ProjectRef
+func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
+	if variant.BatchTime != nil {
+		return *variant.BatchTime
+	}
+	return p.BatchTime
+}
+
+// Location generates and returns the ssh hostname and path to the repo.
+func (p *ProjectRef) Location() (string, error) {
+	if p.Owner == "" {
+		return "", fmt.Errorf("No owner in project ref: %v", p.Identifier)
+	}
+	if p.Repo == "" {
+		return "", fmt.Errorf("No repo in project ref: %v", p.Identifier)
+	}
+	return fmt.Sprintf("git@github.com:%v/%v.git", p.Owner, p.Repo), nil
 }

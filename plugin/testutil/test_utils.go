@@ -59,6 +59,18 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	}
 	util.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
 
+	projectRef := &model.ProjectRef{
+		Identifier: "mongodb-mongo-master",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+		RepoKind:   "github",
+		Branch:     "master",
+		Enabled:    true,
+		BatchTime:  180,
+	}
+	err = projectRef.Upsert()
+	util.HandleTestingErr(err, t, "failed to upsert project ref")
+
 	projectVars := &model.ProjectVars{
 		Id: "mongodb-mongo-master",
 		Vars: map[string]string{
@@ -68,10 +80,11 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	}
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
+
 	workDir, err := ioutil.TempDir("", "plugintest_")
 	util.HandleTestingErr(err, t, "failed to get working directory: %v")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	return model.NewTaskConfig(testDistro, testProject, testTask)
+	return model.NewTaskConfig(testDistro, testProject, projectRef, testTask)
 }
 
 func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *agent.HTTPCommunicator {
