@@ -57,20 +57,20 @@ the binaries.
 * `distro`: A platform type (e.g. Windows or OSX) plus large-scale architectural details.  One of the targets that we produce executables for.
 * `host`: One of the machines used to run tasks on; typically an instance of a distro that does the actual work (see `task`). Equivalently, any machine in our system other than MOTU.
 * `revision`: A revision SHA; e.g. ad8a1d4678122bada9d4479b114cf68d39c27724.
-* `branch`: A branch in a given repository. e.g. master in the mongodb/mongo repository
-* `version`: (`branch` + `revision`).  A version of a `branch`.
+* `project`: A branch in a given repository. e.g. master in the mongodb/mongo repository
+* `version`: (`project` + `revision`).  A version of a `project`.
 * `buildvariant`: `build` specific information.
-* `build`: (`version` + `buildvariant`) = (`branch` + `revision` + `buildvariant`).
+* `build`: (`version` + `buildvariant`) = (`project` + `revision` + `buildvariant`).
 * `task`: “compile”, “test”, or “push”.  The kinds of things that we want to do on a `host`.
 
 ## Running Evergreen Processes
 A single configuration (settings) file drives most of how Evergreen works. Each Evergreen process must be supplied this settings file to run properly.
-For development, tweak the sample configuration fil  [here](). <TODO>
+For development, tweak the sample configuration file [here](https://github.com/evergreen-ci/evergreen/blob/master/docs/evg_example_config.yml).
 
 All Evergreen programs accept a configuration file with the `-conf` flag.
 
 ## How It Works
  * A MongoDB server must be already running on the port specified in the configuration file.
  * Both the API and UI server processes are started manually and listen for connections.
- * All other processes are run by the [runner process]() <TODO>
+ * All other processes are run by the runner process.
  * For detailed instructions, please see the [wiki](https://github.com/evergreen-ci/evergreen/wiki).
