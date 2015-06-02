@@ -1,0 +1,54 @@
+dburl: "mongodb://localhost:27017"
+db: "evg"
+configdir: "config_prod"
+providers:
+    aws:
+        aws_id: PASTE_AWS_ID
+        aws_secret: PASTE_AWS_SECRET
+
+motu: "http://localhost:8080"
+credentials:
+    github: "paste your token here"
+
+auth:
+    naive:
+        users:
+        - username: "admin"
+          password: "password"
+          display_name: "Admin"
+
+keys:
+    main: "/path/to/your/key.pem"
+
+runner:
+    intervalseconds: 120
+
+api:
+    httplistenaddr: ":8080"
+    httpslistenaddr: ":8443"
+    httpskey: |
+        -----BEGIN RSA PRIVATE KEY-----
+        ...generated RSA private HTTPS key...
+        -----END RSA PRIVATE KEY-----
+
+ui:
+    secret: "here is my secret"
+    cachetemplates: true
+    defaultproject: "default project"
+    url: "http://localhost"
+    httplistenaddr: ":9090"
+
+repotracker:
+    numnewreporevisionstofetch: 10
+    maxreporevisionstosearch: 50
+
+expansions: 
+    github_private_key: |-
+        -----BEGIN RSA PRIVATE KEY-----
+        private key
+        -----END RSA PRIVATE KEY-----
+    github_public_key: paste your private key here
+    api_httpscert: |
+            -----BEGIN CERTIFICATE-----
+            certificate
+            -----END CERTIFICATE-----
