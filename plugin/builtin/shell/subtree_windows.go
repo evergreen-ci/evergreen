@@ -83,6 +83,7 @@ func trackProcess(taskId string, pid int, log plugin.Logger) error {
 	if jobObj, hasKey := jobsMapping[taskId]; hasKey {
 		job = jobObj
 	} else {
+		log.LogSystem(slogger.INFO, "tracking process with pid %v", pid)
 		// Job object does not exist yet for this task, so we must create one
 		job, err = NewJob(taskId)
 		if err != nil {

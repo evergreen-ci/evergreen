@@ -111,6 +111,9 @@ func (cc *CleanupCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
+	defer func() {
+		trackedTask = ""
+	}()
 	if trackedTask == "" && trackedTask != conf.Task.Id {
 		pluginLogger.LogExecution(slogger.WARN, "Process tracking was not enabled for task, skipping cleanup.")
 		return nil
@@ -217,7 +220,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 			// Call the platform's process-tracking function. On some OSes this will be a noop,
 			// on others this may need to do some additional work to track the process so that
 			// it can be cleaned up later.
-			if trackedTask != "" {
+			if trackedTask != "" && trackedTask == conf.Task.Id {
 				trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
 			}
 
