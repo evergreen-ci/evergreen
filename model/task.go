@@ -20,6 +20,7 @@ import (
 const (
 	TasksCollection    = "tasks"
 	OldTasksCollection = "old_tasks"
+	TestLogPath        = "/test_log/"
 )
 
 var ZeroTime time.Time = time.Unix(0, 0)
@@ -1655,4 +1656,14 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 	}
 
 	return expDurations, nil
+}
+
+// getTestUrl returns the correct relative URL to a test log, given a
+// TestResult structure
+func getTestUrl(tr *TestResult) string {
+	// Return url if it exists. If there is no test, return empty string.
+	if tr.URL != "" || tr.LogId == "" { // If LogId is empty, URL must also be empty
+		return tr.URL
+	}
+	return TestLogPath + tr.LogId
 }
