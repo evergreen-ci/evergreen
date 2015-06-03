@@ -110,8 +110,8 @@ func StatusDiffTasks(original *Task, patch *Task) TaskStatusDiff {
 			TestStatusDiff{
 				Name:     testFile,
 				Diff:     StatusDiff{baseTest.Status, test.Status},
-				Original: baseTest.URL,
-				Patch:    test.URL,
+				Original: getTestUrl(&baseTest),
+				Patch:    getTestUrl(&test),
 			})
 	}
 	return diff
