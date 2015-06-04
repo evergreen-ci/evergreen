@@ -2,6 +2,15 @@ package artifact
 
 const Collection = "artifact_files"
 
+const (
+	// strings for setting visibility
+	Public  = "public"
+	Private = "private"
+	None    = "none"
+)
+
+var ValidVisibilities = []string{Public, Private, None, ""}
+
 // Entry stores groups of names and links (not content!) for
 // files uploaded to the api server by a running agent. These links could
 // be for build or task-relevant files (things like extra results,
@@ -24,13 +33,16 @@ type File struct {
 	Name string `json:"name" bson:"name"`
 	// Link is the link to the file, e.g. "http://fileserver/coverage.html"
 	Link string `json:"link" bson:"link"`
+	// Visibility determines who can see the file in the UI
+	Visibility string `json:"visibility" bson:"visibility"`
 }
 
-// Array turns the parameter map into an array of File structs
+// Array turns the parameter map into an array of File structs.
+// Deprecated.
 func (params Params) Array() []File {
 	var files []File
 	for name, link := range params {
-		files = append(files, File{name, link})
+		files = append(files, File{name, link, ""})
 	}
 	return files
 }

@@ -28,8 +28,8 @@ func TestEntryUpsert(t *testing.T) {
 			TaskDisplayName: "Task One",
 			BuildId:         "build1",
 			Files: []File{
-				{"cat_pix", "http://placekitten.com/800/600"},
-				{"fast_download", "https://fastdl.mongodb.org"},
+				{"cat_pix", "http://placekitten.com/800/600", ""},
+				{"fast_download", "https://fastdl.mongodb.org", ""},
 			},
 		}
 
@@ -53,8 +53,8 @@ func TestEntryUpsert(t *testing.T) {
 				// reusing test entry but overwriting files field --
 				// consider this as an additional update from the agent
 				testEntry.Files = []File{
-					{"cat_pix", "http://placekitten.com/300/400"},
-					{"the_value_of_four", "4"},
+					{"cat_pix", "http://placekitten.com/300/400", ""},
+					{"the_value_of_four", "4", ""},
 				}
 				So(testEntry.Upsert(), ShouldBeNil)
 				count, err := db.Count(Collection, bson.M{})

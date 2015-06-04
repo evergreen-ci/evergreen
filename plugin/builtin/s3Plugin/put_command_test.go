@@ -3,6 +3,7 @@ package s3Plugin
 import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -145,6 +146,24 @@ func TestS3PutValidateParams(t *testing.T) {
 
 			})
 
+			Convey("an invalid visibility type should cause an error", func() {
+
+				params := map[string]interface{}{
+					"aws_key":      "key",
+					"aws_secret":   "secret",
+					"local_file":   "local",
+					"remote_file":  "remote",
+					"bucket":       "bck",
+					"content_type": "application/x-tar",
+					"permissions":  "private",
+					"display_name": "test_file",
+					"visibility":   "ARGHGHGHGHGH",
+				}
+				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.validateParams(), ShouldNotBeNil)
+
+			})
+
 			Convey("a valid set of params should not cause an error", func() {
 
 				params := map[string]interface{}{
@@ -197,6 +216,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				cmd.Bucket = "${bucket}"
 				cmd.ContentType = "${content_type}"
 				cmd.DisplayName = "${display_name}"
+				cmd.Visibility = "${visibility}"
 
 				conf.Expansions.Update(
 					map[string]string{
@@ -206,6 +226,7 @@ func TestExpandS3PutParams(t *testing.T) {
 						"bucket":       "bck",
 						"content_type": "ct",
 						"display_name": "file",
+						"visibility":   artifact.Private,
 					},
 				)
 
@@ -216,6 +237,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				So(cmd.Bucket, ShouldEqual, "bck")
 				So(cmd.ContentType, ShouldEqual, "ct")
 				So(cmd.DisplayName, ShouldEqual, "file")
+				So(cmd.Visibility, ShouldEqual, "private")
 
 			})
 

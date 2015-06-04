@@ -3,6 +3,9 @@ package s3Plugin
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/testutils"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -12,6 +15,16 @@ import (
 	"strings"
 	"testing"
 )
+
+func init() {
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+}
+
+func reset(t *testing.T) {
+	util.HandleTestingErr(
+		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
+		"error clearing test collections")
+}
 
 func TestValidateS3BucketName(t *testing.T) {
 
@@ -57,6 +70,9 @@ func TestValidateS3BucketName(t *testing.T) {
 }
 
 func TestS3PutAndGet(t *testing.T) {
+	util.HandleTestingErr(
+		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
+		"error clearing test collections")
 
 	conf := evergreen.TestConfig()
 	testutils.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
@@ -94,11 +110,9 @@ func TestS3PutAndGet(t *testing.T) {
 		tarballSource := filepath.Join(testDataDir, "put_test.tgz")
 
 		// remove the untarred version
-		util.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing"+
-			" directories")
+		util.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing directories")
 
-		Convey("the file retrieved should be the exact same as the file"+
-			" put", func() {
+		Convey("the file retrieved should be the exact same as the file put", func() {
 
 			// load params into the put command
 			putCmd = &S3PutCommand{}
@@ -115,7 +129,7 @@ func TestS3PutAndGet(t *testing.T) {
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
 			So(putCmd.Put(), ShouldBeNil)
 
-			// first, get the file, untarring it
+			// next, get the file, untarring it
 			getCmd = &S3GetCommand{}
 			getParams := map[string]interface{}{
 				"aws_key":      conf.Providers.AWS.Id,

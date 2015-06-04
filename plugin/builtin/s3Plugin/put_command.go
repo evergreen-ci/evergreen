@@ -57,6 +57,14 @@ type S3PutCommand struct {
 
 	// DisplayName stores the name of the file that is linked
 	DisplayName string `mapstructure:"display_name" plugin:"expand"`
+
+	// Visibility determines who can see file links in the UI.
+	// Visibility can be set to either
+	//  "private", which allows logged-in users to see the file;
+	//  "public", which allows anyone to see the file; or
+	//  "none", which hides the file from the UI for everybody.
+	// If unset, the file will be public.
+	Visibility string `mapstructure:"visibility" plugin:"expand"`
 }
 
 func (self *S3PutCommand) Name() string {
@@ -79,6 +87,7 @@ func (self *S3PutCommand) ParseParams(params map[string]interface{}) error {
 	}
 
 	return nil
+
 }
 
 // Validate that all necessary params are set and valid.
@@ -97,6 +106,9 @@ func (self *S3PutCommand) validateParams() error {
 	}
 	if self.ContentType == "" {
 		return fmt.Errorf("content_type cannot be blank")
+	}
+	if !util.SliceContains(artifact.ValidVisibilities, self.Visibility) {
+		return fmt.Errorf("invalid visibility setting: %v", self.Visibility)
 	}
 
 	// make sure the bucket is valid
@@ -245,13 +257,13 @@ func (self *S3PutCommand) AttachTaskFiles(pluginLogger plugin.Logger,
 	if displayName == "" {
 		displayName = filepath.Base(self.LocalFile)
 	}
-	file := artifact.File{
-		Name: displayName,
-		Link: fileLink,
+	file := &artifact.File{
+		Name:       displayName,
+		Link:       fileLink,
+		Visibility: self.Visibility,
 	}
 
-	files := []*artifact.File{&file}
-	err := pluginCom.PostTaskFiles(files)
+	err := pluginCom.PostTaskFiles([]*artifact.File{file})
 	if err != nil {
 		return fmt.Errorf("Attach files failed: %v", err)
 	}

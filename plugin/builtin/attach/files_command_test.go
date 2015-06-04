@@ -168,17 +168,17 @@ func TestAttachTaskFilesPlugin(t *testing.T) {
 				}
 				Convey("- regular link", func() {
 					So(regular, ShouldResemble,
-						artifact.File{"file3", "http://kyle.diamonds"})
+						artifact.File{"file3", "http://kyle.diamonds", ""})
 				})
 
 				Convey("- link with expansion", func() {
 					So(expansion, ShouldResemble,
-						artifact.File{"file1", "i am a FILE!"})
+						artifact.File{"file1", "i am a FILE!", ""})
 				})
 
 				Convey("- link that is overwritten", func() {
 					So(overwritten, ShouldResemble,
-						artifact.File{"file2", "replaced!"})
+						artifact.File{"file2", "replaced!", ""})
 				})
 			})
 		})

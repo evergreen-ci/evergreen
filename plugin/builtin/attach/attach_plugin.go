@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"net/http"
@@ -56,6 +57,22 @@ func (self *AttachPlugin) Configure(map[string]interface{}) error {
 	return nil
 }
 
+// stripHiddenFiles is a helper for only showing users the files they are allowed to see.
+func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact.File {
+	publicFiles := []artifact.File{}
+	for _, file := range files {
+		switch {
+		case file.Visibility == artifact.None:
+			continue
+		case file.Visibility == artifact.Private && pluginUser == nil:
+			continue
+		default:
+			publicFiles = append(publicFiles, file)
+		}
+	}
+	return publicFiles
+}
+
 // GetPanelConfig returns a plugin.PanelConfig struct representing panels
 // that will be added to the Task and Build pages.
 func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
@@ -78,7 +95,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					if artifactEntry == nil {
 						return nil, nil
 					}
-					return artifactEntry.Files, nil
+					return stripHiddenFiles(artifactEntry.Files, context.User), nil
 				},
 			},
 			{
@@ -93,6 +110,10 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(context.Build.Id))
 					if err != nil {
 						return nil, fmt.Errorf("error finding artifact files for build: %v", err)
+					}
+					for i := range taskArtifactFiles {
+						// remove hidden files if the user isn't logged in
+						taskArtifactFiles[i].Files = stripHiddenFiles(taskArtifactFiles[i].Files, context.User)
 					}
 					return taskArtifactFiles, nil
 				},
