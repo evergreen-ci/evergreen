@@ -153,6 +153,11 @@ type WriteConcern struct {
 	J        bool   `yaml:"j"`
 }
 
+type AlertsConfig struct {
+	LogFile string
+	SMTP    *SMTPConfig `yaml:"smtp"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	DbUrl               string            `yaml:"dburl"`
@@ -170,6 +175,7 @@ type Settings struct {
 	RepoTracker         RepoTrackerConfig `yaml:"repotracker"`
 	Monitor             MonitorConfig     `yaml:"monitor"`
 	Api                 APIConfig         `yaml:"api"`
+	Alerts              AlertsConfig      `yaml:"alerts"`
 	Ui                  UIConfig          `yaml:"ui"`
 	HostInit            HostInitConfig    `yaml:"hostinit"`
 	Notify              NotifyConfig      `yaml:"notify"`

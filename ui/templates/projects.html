@@ -1,8 +1,10 @@
 {{define "scripts"}}
 <script>
 window.allTrackedProjects = {{.AllProjects}}
+window.availableTriggers = {{.AvailableTriggers}}
 </script>
 <script type="text/javascript" src="{{Static "js" "tablesorter.js"}}"></script>
+<script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="{{Static "js" "projects.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
 {{define "title"}}
@@ -62,21 +64,14 @@ Evergreen Projects
                     <label class="control-label"> 
                         <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong> 
                     </label> <br>
-                    <label class="muted col-lg-offset-1">Don't track any new commits until re-enabled.</label>
+                    <label class="muted col-lg-offset-1">Don&#39;t track any new commits until re-enabled.</label>
                 </div>
             </div>
         </div>
 
         <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Project Name: </label> 
-            </div>
-            <div class="col-lg-4 form-control-static">[[projectRef.identifier]] </div>
-        </div>
-
-        <div class="form-group">
-            <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Display Name: </label>
+                <label class="control-label"> Display Name</label>
             </div>
             <div class="col-lg-4">
                 <input class="form-control" type="text" ng-model="settingsFormData.display_name">
@@ -85,16 +80,16 @@ Evergreen Projects
 
         <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Config File: </label>
+                <label class="control-label"> Config File</label>
             </div>
             <div class="col-lg-4">
-                <input class="form-control" type="text" ng-model="settingsFormData.remote_path">
+                <input class="form-control" type="text" ng-model="settingsFormData.remote_path" placeholder=".evergreen.yml">
             </div>
         </div>
 
         <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Batch Time: </label>
+                <label class="control-label">Batch Time</label>
             </div>
             <div class="col-lg-4">
             <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
@@ -105,7 +100,7 @@ Evergreen Projects
         <div class="h3"> Repository Info </div>
         <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Owner: </label>
+                <label class="control-label">Owner</label>
             </div>
             <div class="col-lg-4">
                 <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
@@ -113,7 +108,7 @@ Evergreen Projects
         </div>
         <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Repo Name: </label>
+                <label class="control-label">Repo Name</label>
             </div>
             <div class="col-lg-4">
                 <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
@@ -121,17 +116,46 @@ Evergreen Projects
         </div>
         <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Branch Name: </label>
+                <label class="control-label">Branch Name</label>
             </div>
             <div class="col-lg-4">
-                <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name">
+                <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" placeholder="master">
             </div>
         </div>
         </div>
 
+        <div class="form-group">
+          <div class="col-lg-6">
+            <h3>Alerts</h3>
+            <ul class="notifications-list" ng-repeat="trigger in availableTriggers">
+              <li class="triggerinfo">
+                <div>
+                  <div class="trigger-display-wrapper">
+                    When <span class="trigger-description">[[trigger.display]]</span>&hellip;
+                    <div class="add-action pull-right"><a href="javascript:void(0)" ng-click="editing=true">add action</a></div>
+                  </div>
+                  <ul class="trigger-actions">
+                    <li ng-repeat="alertConfig in getProjectAlertConfig(trigger.id)" class="action-config">&nbsp;&bull;&nbsp;[[getAlertDisplay(alertConfig)]] <div class="btn btn-danger btn-xs pull-right" ng-click="removeAlert(trigger.id, $index)"><i class="icon-trash" style="font-size:1.3em;">&nbsp;</i></div><div class="clearfix"/></li>
+                    <!-- TODO only email for now. More providers can be supported by adding more options to this form. -->
+                    <div ng-show="editing==true" class="editalert-form">
+                        <label>Send alert to:</label>
+                        <input type="text" ng-model="email" ng-required/>
+                        <div class="btn btn-primary btn-xs" ng-click="addAlert(this, trigger)">Add</div>
+                        <div class="btn btn-default btn-xs" ng-click="editing=false">Cancel</div>
+                    </div>
+                    <div ng-show="getProjectAlertConfig(trigger.id).length==0 && !editing" class="do-nothing">do nothing.</div>
+                  </ul>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+
+
         <div class="variables">
             <div class="form-group">
-                <div class="col-header col-lg-4 form-control-static"> <h3> Project Variables </h3></div>
+                <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
             </div>
             <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
                 <div class="col-lg-2"> <label class="control-label"> [[name]] </label> </div>  

@@ -87,6 +87,7 @@ func GetNewRevisionOrderNumber(projectId string) (int, error) {
 		bson.M{
 			RepoProjectKey: projectId,
 		},
+		nil,
 		mgo.Change{
 			Update: bson.M{
 				"$inc": bson.M{

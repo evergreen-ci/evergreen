@@ -23,6 +23,22 @@ type ProjectRef struct {
 	LocalConfig string `bson:"local_config" json:"local_config" yaml:"local_config"`
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
+
+	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
+	// the set of alert deliveries to be processed for that trigger.
+	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config"`
+}
+
+type AlertConfig struct {
+	Provider string `bson:"provider" json:"provider"` //e.g. e-mail, flowdock, SMS
+
+	// Data contains provider-specific on how a notification should be delivered.
+	// Typed as bson.M so that the appropriate provider can parse out necessary details
+	Settings bson.M `bson:"settings" json:"settings"`
+}
+
+type EmailAlertData struct {
+	Recipients []string `bson:"recipients"`
 }
 
 var (
@@ -39,6 +55,7 @@ var (
 	ProjectRefRemotePathKey  = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
 	ProjectRefTrackedKey     = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
 	ProjectRefLocalConfig    = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
+	ProjectRefAlertsKey      = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
 )
 
 const (
@@ -137,6 +154,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefRemotePathKey:  projectRef.RemotePath,
 				ProjectRefTrackedKey:     projectRef.Tracked,
 				ProjectRefLocalConfig:    projectRef.LocalConfig,
+				ProjectRefAlertsKey:      projectRef.Alerts,
 			},
 		},
 	)

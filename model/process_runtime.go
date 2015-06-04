@@ -107,11 +107,14 @@ func UpsertOneProcessRuntime(query interface{}, update interface{}) error {
 		query,
 		update,
 	)
+	if err != nil {
+		return err
+	}
 	if info.UpsertedId != nil {
 		evergreen.Logger.Logf(slogger.INFO, "Added \"%s\" process to ProcessRuntime"+
 			" db", info.UpsertedId)
 	}
-	return err
+	return nil
 }
 
 // Updates a process runtime to set recent_success to the current time.

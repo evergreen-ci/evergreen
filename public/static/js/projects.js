@@ -1,5 +1,7 @@
 mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
+  $scope.availableTriggers = $window.availableTriggers
+
   $scope.refreshTrackedProjects = function(trackedProjects) { 
     $scope.trackedProjects = trackedProjects
     $scope.enabledProjects = _.filter($scope.trackedProjects, function(p){
@@ -22,7 +24,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
   $scope.modalTitle = 'New Project';
   $scope.modalOpen = false;
-  $scope.adminOptionVals = {};
   $scope.newProject = {};
   $scope.newProjectMessage="";
 
@@ -32,10 +33,32 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
     return !(project.length == 0);
   }
 
+  $scope.addAlert = function(obj, trigger){
+    if(!$scope.settingsFormData.alert_config) {
+      $scope.settingsFormData.alert_config = {}
+    } 
+    if(!$scope.settingsFormData.alert_config[trigger.id]){
+      $scope.settingsFormData.alert_config[trigger.id] = []
+    }
+    $scope.settingsFormData.alert_config[trigger.id].push(NewEmailAlert(obj.email))
+    obj.editing = false
+  }
+
+  $scope.getProjectAlertConfig = function(t){
+    if(!$scope.settingsFormData.alert_config || !$scope.settingsFormData.alert_config[t]){
+      return []
+    }
+    return $scope.settingsFormData.alert_config[t]
+  }
+
   $scope.findProject = function(identifier){
     return _.find($scope.trackedProjects, function(project){
       return project.identifier == identifier;
     })
+  }
+
+  $scope.openAlertModal = function(){
+    var modal = $('#alert-modal').modal('show');
   }
 
   $scope.openAdminModal = function(opt) {
@@ -100,6 +123,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
           owner_name: $scope.projectRef.owner_name,
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,
+          alert_config: $scope.projectRef.alert_config || {},
         };
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
@@ -150,6 +174,16 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
     } 
   });
 
+  $scope.getAlertDisplay =function(alertObj){
+    if(alertObj.provider=='email'){
+      return "Send an e-mail to " + alertObj.settings.recipient
+    }
+    return 'unknown'
+  }
+
+  $scope.removeAlert = function(triggerId, index){
+    $scope.settingsFormData.alert_config[triggerId].splice(index, 1)
+  }
 });
 
 mciModule.directive('adminNewProject', function() {
@@ -165,5 +199,26 @@ mciModule.directive('adminNewProject', function() {
         '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-click="addProject()">Create Project</button>' +
       '</div>' +
     '</div>'
+  };
+});
+
+mciModule.directive('adminNewAlert', function() {
+    return {
+      restrict: 'E',
+      templateUrl:'/static/partials/alert_modal_form.html',
+      link: function(scope, element, attrs){
+        scope.availableTriggers= [
+          {id:"task_failed", display:"Any task fails..."},
+          {id:"first_task_failed", display:"The first failure in a version occurs..."},
+          {id:"task_fail_transition", display:"A task that had passed in a previous run fails"},
+        ]
+        scope.availableActions= [
+          {id:"email", display:"Send an e-mail"},
+        ]
+        scope.setTrigger = function(index){
+          scope.currentTrigger = scope.availableTriggers[index]
+        }
+        scope.currentTrigger = scope.availableTriggers[0]
+      }
   };
 });

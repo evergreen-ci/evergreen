@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/command"
@@ -289,6 +290,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 		if output != nil {
 			setupLog = string(output)
 		}
+		alerts.RunHostProvisionFailTriggers(h)
 		event.LogProvisionFailed(h.Id, setupLog)
 
 		// setup script failed, mark the host's provisioning as failed

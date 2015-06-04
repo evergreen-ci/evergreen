@@ -2,10 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"labix.org/v2/mgo/bson"
 	"net/http"
 )
 
@@ -15,7 +17,6 @@ type projectSettings struct {
 }
 
 func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
-
 	_ = MustHaveUser(r)
 	projCtx := MustHaveProjectContext(r)
 	allProjects, err := model.FindAllProjectRefs()
@@ -25,11 +26,21 @@ func (uis *UIServer) projectsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// construct a json-marshaling friendly representation of our supported triggers
+	allTaskTriggers := []interface{}{}
+	for _, taskTrigger := range alerts.AvailableTaskFailTriggers {
+		allTaskTriggers = append(allTaskTriggers, struct {
+			Id      string `json:"id"`
+			Display string `json:"display"`
+		}{taskTrigger.Id(), taskTrigger.Display()})
+	}
+
 	data := struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		AllProjects []model.ProjectRef
-	}{projCtx, GetUser(r), allProjects}
+		ProjectData       projectContext
+		User              *user.DBUser
+		AllProjects       []model.ProjectRef
+		AvailableTriggers []interface{}
+	}{projCtx, GetUser(r), allProjects, allTaskTriggers}
 
 	uis.WriteHTML(w, http.StatusOK, data, "base", "projects.html", "base_angular.html", "menu.html")
 }
@@ -92,6 +103,10 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Enabled     bool              `json:"enabled"`
 		Owner       string            `json:"owner_name"`
 		Repo        string            `json:"repo_name"`
+		AlertConfig map[string][]struct {
+			Provider string                 `json:"provider"`
+			Settings map[string]interface{} `json:"settings"`
+		} `json:"alert_config"`
 	}{}
 
 	err = util.ReadJSONInto(r.Body, &responseRef)
@@ -108,13 +123,23 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Enabled = responseRef.Enabled
 	projectRef.Owner = responseRef.Owner
 	projectRef.Repo = responseRef.Repo
-
 	projectRef.Identifier = id
+
+	projectRef.Alerts = map[string][]model.AlertConfig{}
+	for triggerId, alerts := range responseRef.AlertConfig {
+		//TODO validate the triggerID, provider, and settings.
+		for _, alert := range alerts {
+			projectRef.Alerts[triggerId] = append(projectRef.Alerts[triggerId], model.AlertConfig{
+				Provider: alert.Provider,
+				Settings: bson.M(alert.Settings),
+			})
+		}
+	}
 
 	err = projectRef.Upsert()
 
 	if err != nil {
-		http.Error(w, "Error parsing request body", http.StatusInternalServerError)
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -130,7 +155,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	allProjects, err := model.FindAllProjectRefs()
 
 	if err != nil {
-		http.Error(w, "Error finding tracked projects", http.StatusInternalServerError)
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 	data := struct {

@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"time"
 )
 
 var (
@@ -103,8 +106,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	// run monitoring checks
 	errs = hostMonitor.RunMonitoringChecks(settings)
 	for _, err := range errs {
-		evergreen.Logger.Logf(slogger.ERROR, "Error running host monitoring"+
-			" checks: %v", err)
+		evergreen.Logger.Logf(slogger.ERROR, "Error running host monitoring checks: %v", err)
 	}
 
 	// initialize the notifier
@@ -116,6 +118,24 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	errs = notifier.Notify(settings)
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error sending notifications: %v", err)
+	}
+
+	// Do alerts for spawnhosts - collect all hosts expiring in the next 12 hours.
+	// The trigger logic will filter out any hosts that aren't in a notification window, or have
+	// already have alerts sent.
+	now := time.Now()
+	thresholdTime := now.Add(12 * time.Hour)
+	expiringSoonHosts, err := host.Find(host.ByExpiringBetween(now, thresholdTime))
+	if err != nil {
+		return err
+	}
+
+	for _, h := range expiringSoonHosts {
+		err := alerts.RunSpawnWarningTriggers(&h)
+
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error queueing alert: %v", err)
+		}
 	}
 
 	return nil

@@ -79,7 +79,7 @@ func (p *Patch) AddBuildVariants(bvs []string) error {
 		},
 		ReturnNew: true,
 	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, change, p)
+	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
 	return err
 }
 
@@ -92,7 +92,7 @@ func (p *Patch) AddTasks(tasks []string) error {
 		},
 		ReturnNew: true,
 	}
-	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, change, p)
+	_, err := db.FindAndModify(Collection, bson.M{IdKey: p.Id}, nil, change, p)
 	return err
 }
 

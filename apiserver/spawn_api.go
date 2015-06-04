@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -132,6 +133,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 			evergreen.Logger.Logf(slogger.ERROR, "Error marking host id %v as %v: %v", instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
+		alerts.RunHostProvisionFailTriggers(host)
 		if err = host.SetDecommissioned(); err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "Error marking host %v for user %v as decommissioned: %v", host.Host, host.StartedBy, err)
 		}

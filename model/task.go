@@ -1667,3 +1667,9 @@ func getTestUrl(tr *TestResult) string {
 	}
 	return TestLogPath + tr.LogId
 }
+
+func FindTasks(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(TasksCollection, query, &tasks)
+	return tasks, err
+}

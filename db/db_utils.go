@@ -193,7 +193,7 @@ func Count(collection string, query interface{}) (int, error) {
 
 // FindAndModify runs the specified query and change against the collection,
 // unmarshaling the result into the specified interface.
-func FindAndModify(collection string, query interface{},
+func FindAndModify(collection string, query interface{}, sort []string,
 	change mgo.Change, out interface{}) (*mgo.ChangeInfo, error) {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
@@ -204,7 +204,7 @@ func FindAndModify(collection string, query interface{},
 	}
 	defer session.Close()
 
-	return db.C(collection).Find(query).Apply(change, out)
+	return db.C(collection).Find(query).Sort(sort...).Apply(change, out)
 
 }
 

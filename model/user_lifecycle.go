@@ -46,7 +46,7 @@ func SetUserAPIKey(userId, newKey string) error {
 // that userId, inserts it along with the provided display name and email.
 func GetOrCreateUser(userId, displayName, email string) (*user.DBUser, error) {
 	u := &user.DBUser{}
-	_, err := db.FindAndModify(user.Collection, bson.M{user.IdKey: userId},
+	_, err := db.FindAndModify(user.Collection, bson.M{user.IdKey: userId}, nil,
 		mgo.Change{
 			Update: bson.M{
 				"$set": bson.M{

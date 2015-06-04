@@ -7,6 +7,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/bookkeeping"
@@ -317,6 +318,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if task.Requester == evergreen.PatchVersionRequester {
+		alerts.RunTaskFailureTriggers(task)
+	} else {
+		//TODO process patch-specific triggers
+	}
+
 	// if task was aborted, reset to inactive
 	if taskEndRequest.Status == evergreen.TaskUndispatched {
 		if err = model.SetTaskActivated(task.Id, "", false); err != nil {
@@ -339,8 +346,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// log the task as finished
-	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished",
-		task.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished", task.Id)
 
 	// construct and return the appropriate response for the agent
 	as.taskFinished(w, task, finishTime)

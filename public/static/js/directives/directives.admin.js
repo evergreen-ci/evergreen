@@ -9,3 +9,11 @@ directives.admin.directive('adminModal', function() {
         templateUrl: '/static/partials/admin_modal_base.html'
     }
 });
+
+directives.admin.directive('alertModal', function() {
+    return {
+        restrict: 'E',
+        transclude: true,
+        templateUrl: '/static/partials/alert_modal.html'
+    }
+});

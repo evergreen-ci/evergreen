@@ -132,6 +132,35 @@ post:
 
 tasks:
 
+- name: alerts
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export mci_home=`pwd`
+          cd alerts
+          mkfifo test_pipe
+          tee -a alerts.suite < test_pipe&
+          go test -v -coverprofile=coverage.out > test_pipe
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv alerts/coverage.out .
+    - func: "rewrite coverage report"
+    - func: "generate coverage html"
+    - func: "generate coverage txt"
+    - func: "upload coverage html report"
+    - func: "upload coverage txt report"
+
 - name: client
   commands:
     - func: "fetch source"
@@ -816,6 +845,7 @@ buildvariants:
       tasks:
       - name: client
       - name: agent
+      - name: alerts
       - name: db
       - name: evergreen
       - name: model
@@ -838,6 +868,7 @@ buildvariants:
       tasks:
       - name: client
       - name: agent
+      - name: alerts
       - name: db
       - name: evergreen
       - name: model

@@ -1,12 +1,8 @@
 package user
 
 import (
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
@@ -36,6 +32,10 @@ func ById(userId string) db.Q {
 	return db.Query(bson.M{IdKey: userId})
 }
 
+func ByIds(userIds ...string) db.Q {
+	return db.Query(bson.M{IdKey: bson.M{"$in": userIds}})
+}
+
 // Not yet implemented in the UI
 func (self *DBUser) RemovePublicKey(name string) error {
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
@@ -53,65 +53,6 @@ func (self *DBUser) RemovePublicKey(name string) error {
 		},
 	}
 	return db.C(Collection).Update(selector, update)
-}
-
-type DBUserManager struct{}
-
-func (self *DBUserManager) GetUserById(userId string) (auth.User, error) {
-	user, err := FindOne(ById(userId))
-	if err != nil {
-		return nil, err
-	} else if user == nil {
-		return nil, nil
-	} else {
-		return user, nil
-	}
-}
-
-//DBCachedCrowdUserManager is a usermanager that looks up users in the database
-//and fetches them from crowd if they are not there (and creates DB record)
-type DBCachedCrowdUserManager struct {
-	thirdparty.RESTCrowdService
-	DBUserManager
-}
-
-func (umgr *DBCachedCrowdUserManager) GetUserSession(username string,
-	password string) (*thirdparty.Session, error) {
-	return umgr.RESTCrowdService.CreateSession(username, password)
-}
-
-func (umgr *DBCachedCrowdUserManager) GetUserById(token string) (auth.User,
-	error) {
-
-	crowdUser, err := umgr.RESTCrowdService.GetUserFromToken(token)
-	if err != nil {
-		return nil, err
-	}
-
-	// Crowd user is valid. See if they exist in DB
-	user, err := umgr.DBUserManager.GetUserById(crowdUser.Name)
-	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error getting user obj from db: %v",
-			err)
-		return nil, err
-	}
-	if user != nil {
-		return user, nil
-	}
-
-	// User doesn't exist in DB. Create them and save them.
-	newUser := &DBUser{
-		Id:           crowdUser.Name,
-		FirstName:    crowdUser.FirstName,
-		LastName:     crowdUser.LastName,
-		DispName:     crowdUser.DispName,
-		EmailAddress: crowdUser.EmailAddress,
-	}
-	if err = newUser.Insert(); err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error inserting user obj: %v", err)
-		return nil, err
-	}
-	return newUser, nil
 }
 
 // FindOne gets one DBUser for the given query.

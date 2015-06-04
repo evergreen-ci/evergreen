@@ -1,0 +1,25 @@
+{{ define "content" }}
+<tr><td colspan="3" height="20"></td></tr>
+<tr>
+  <td width="20"></td>
+  <td align="left">
+    
+    <table cellpadding="0" cellspacing="0" width="100%">
+      
+      <tr><td colspan="2" height="30"></td></tr>
+      <tr>
+        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">HOST</span></td>
+        <td>&nbsp;</td>
+      </tr>
+      <tr>
+        <td width="90%">
+          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:36px;line-height:28px;color:#333333" class="task">
+            <a href="hostlink">{{.Host.Id}}</a>
+          </span>
+        </td>
+      </tr>
+    </table>
+  </td>
+  <td width="20"></td>
+</tr>
+{{ end }}

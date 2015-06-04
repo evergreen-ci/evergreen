@@ -5,6 +5,7 @@ package runner
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/monitor"
 	"github.com/evergreen-ci/evergreen/notify"
@@ -31,5 +32,6 @@ var (
 		&repotracker.Runner{},
 		&scheduler.Runner{},
 		&taskrunner.Runner{},
+		&alerts.QueueProcessor{},
 	}
 )
