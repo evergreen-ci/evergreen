@@ -22,8 +22,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 
 	versionAsUI := uiVersion{
 		Version:   *projCtx.Version,
-		RepoOwner: projCtx.ProjectRef.Owner,
-		Repo:      projCtx.ProjectRef.Repo,
+		RepoOwner: projCtx.Project.Owner,
+		Repo:      projCtx.Project.Repo,
 	}
 
 	if projCtx.Patch != nil {
@@ -147,14 +147,14 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		// Check whether the project associated with the particular version
 		// is accessible to this user. If not, we exclude it from the version
 		// history. This is done to hide the existence of the private project.
-		if projCtx.ProjectRef.Private && user == nil {
+		if projCtx.Project.Private && user == nil {
 			continue
 		}
 
 		versionAsUI := uiVersion{
 			Version:   version,
-			RepoOwner: projCtx.ProjectRef.Owner,
-			Repo:      projCtx.ProjectRef.Repo,
+			RepoOwner: projCtx.Project.Owner,
+			Repo:      projCtx.Project.Repo,
 		}
 		versions = append(versions, &versionAsUI)
 

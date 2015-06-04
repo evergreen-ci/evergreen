@@ -229,24 +229,6 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, v)
 }
 
-func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
-
-	// Get the version for this task, so we can get its config data
-	projRef, err := model.FindOneProjectRef(task.Project)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	if projRef == nil {
-		http.Error(w, "projectRef not found", http.StatusNotFound)
-		return
-	}
-
-	as.WriteJSON(w, http.StatusOK, projRef)
-}
-
 func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	if !getGlobalLock(APIServerLockTitle) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
@@ -318,13 +300,8 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	projectRef, err := model.FindOneProjectRef(task.Project)
-
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
-	}
-	if projectRef == nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("empty projectRef for task"))
-		return
 	}
 	project, err := model.FindProject("", projectRef)
 	if err != nil {
@@ -944,7 +921,6 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter.HandleFunc("/distro", as.checkTask(false, as.GetDistro)).Methods("GET") // nosecret check
 	taskRouter.HandleFunc("/", as.checkTask(true, as.FetchTask)).Methods("GET")
 	taskRouter.HandleFunc("/version", as.checkTask(false, as.GetVersion)).Methods("GET")
-	taskRouter.HandleFunc("/project_ref", as.checkTask(false, as.GetProjectRef)).Methods("GET")
 	taskRouter.HandleFunc("/fetch_vars", as.checkTask(true, as.FetchProjectVars)).Methods("GET")
 	taskRouter.HandleFunc("/files", as.checkTask(false, as.AttachFiles)).Methods("POST")
 

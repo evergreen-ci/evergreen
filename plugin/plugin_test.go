@@ -285,16 +285,6 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		return nil, err
 	}
 
-	testProjectRef := &model.ProjectRef{
-		Identifier: "mongodb-mongo-master",
-		Owner:      "mongodb",
-		Repo:       "mongo",
-		RepoKind:   "github",
-		Branch:     "master",
-		Enabled:    true,
-		BatchTime:  180,
-	}
-
 	workDir, err := ioutil.TempDir("", "plugintest_")
 	if err != nil {
 		return nil, err
@@ -324,7 +314,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	return model.NewTaskConfig(testDistro, testProject, testProjectRef, testTask)
+	return model.NewTaskConfig(testDistro, testProject, testTask)
 }
 
 func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {

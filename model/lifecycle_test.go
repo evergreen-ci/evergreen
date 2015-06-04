@@ -468,6 +468,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		// taskTwo - depends on taskOne
 		// taskThree - depends on taskOne and taskTwo
 		project := &Project{
+			Owner:    "branchOwner",
+			Repo:     "repo",
+			RepoKind: GithubRepoType,
+			Branch:   "project",
 			Tasks: []ProjectTask{
 				ProjectTask{
 					Name:      "taskA",
