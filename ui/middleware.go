@@ -126,8 +126,9 @@ func (uis *UIServer) requireUser(next http.HandlerFunc) http.HandlerFunc {
 // request will be redirected to the login page instead.
 func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if len(uis.Settings.SuperUsers) == 0 {
-			next(w, r)
+		if len(uis.Settings.SuperUsers) == 0 { // All users are superusers (default)
+			f := uis.requireUser(next) // Still must be user to proceed
+			f(w, r)
 			return
 		}
 
