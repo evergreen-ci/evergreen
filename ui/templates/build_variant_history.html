@@ -99,6 +99,9 @@ Evergreen - Build Variant History
           $('.' + columnClass).removeClass('highlight-column');
         });
       });
+
+      // Lock the header row to the top of the page, but without using position:fixed so that it can scroll horizontally
+      $(window).scroll(function(){$(".gridtable-small .top-header-row.locked").css({'position':'absolute','top':$(window).scrollTop()+80})});
     });
   </script>
 </div>

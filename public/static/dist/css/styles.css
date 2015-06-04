@@ -663,15 +663,12 @@ ul.tooltip-tasks li.tooltip-task {
   margin-top: 50px;
 }
 .gridtable-small .top-header-row.locked {
-  position: fixed;
   background-color: white;
   z-index: 100;
-  width: 800px;
   margin: 0px;
 }
 .gridtable-small .tablebody.locked {
   padding-top: 30px;
-  width: 800px;
   margin: 0px;
 }
 .gridtable-small .top-header-row {
