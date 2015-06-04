@@ -152,7 +152,7 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" {
 		querySep = "?"
 	}
-	location := fmt.Sprintf("%v/login?redirect=%v%v%v",
+	location := fmt.Sprintf("%v/login#?redirect=%v%v%v",
 		uis.Settings.Ui.Url,
 		url.QueryEscape(r.URL.Path),
 		querySep,

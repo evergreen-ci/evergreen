@@ -55,7 +55,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setLoginToken(token, w)
-	uis.WriteJSON(w, http.StatusOK, map[string]string{"redirect": getRedirectPath(r.Referer())})
+	uis.WriteJSON(w, http.StatusOK, map[string]string{})
 }
 
 func (uis *UIServer) logout(w http.ResponseWriter, r *http.Request) {

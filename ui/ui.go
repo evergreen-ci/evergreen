@@ -220,11 +220,3 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		http.Error(w, err.Error(), code)
 	}
 }
-
-func getRedirectPath(location string) string {
-	parsedURL, err := url.Parse(location)
-	if err != nil {
-		return ""
-	}
-	return parsedURL.RawQuery[strings.Index(parsedURL.RawQuery, "=")+1:]
-}
