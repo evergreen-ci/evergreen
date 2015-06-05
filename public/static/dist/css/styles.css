@@ -565,48 +565,6 @@ ul.inline li {
 .files-panel .panel-body {
   padding-top: 0;
 }
-#popover .popover {
-  max-width: 670px;
-}
-#popover h3.popover-title {
-  display: none;
-}
-.current-task-run {
-  font-size: 1.5em;
-}
-ul.tooltip-tasks {
-  list-style: none;
-  max-height: 300px;
-  overflow: scroll;
-  border: 1px solid #eee;
-}
-ul.tooltip-tasks .test-result {
-  width: 515px;
-  overflow: hidden;
-  white-space: nowrap;
-}
-ul.tooltip-tasks .test-result .gitspec {
-  font-family: monospace;
-  font-weight: bold;
-}
-ul.tooltip-tasks .commitmsg {
-  padding-left: 5px;
-  text-overflow: ellipsis;
-}
-ul.tooltip-tasks li.tooltip-task {
-  margin-top: 1px;
-}
-.tooltip-task-status {
-  width: 15px;
-  line-height: 12px;
-  display: inline-block;
-  border: 1px solid #888;
-  margin-right: 3px;
-}
-.tooltip-task-status.started {
-  background-color: #ccc;
-  background-image: url('/static/img/15.GIF');
-}
 .distro-label {
   padding-top: 20px;
 }
@@ -655,6 +613,61 @@ ul.tooltip-tasks li.tooltip-task {
 }
 .eventlog .event_details {
   float: left;
+}
+.test-failures {
+  padding-left: 10px;
+  margin-bottom: 0px;
+}
+.failure-list {
+  margin-left: 30px;
+}
+.failure-title {
+  font-size: 20px;
+}
+.failure-name {
+  margin-top: -6px;
+}
+#popover .popover {
+  max-width: 670px;
+}
+#popover h3.popover-title {
+  display: none;
+}
+.current-task-run {
+  font-size: 1.5em;
+}
+ul.tooltip-tasks {
+  list-style: none;
+  max-height: 300px;
+  overflow: scroll;
+  border: 1px solid #eee;
+}
+ul.tooltip-tasks .test-result {
+  width: 515px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+ul.tooltip-tasks .test-result .gitspec {
+  font-family: monospace;
+  font-weight: bold;
+}
+ul.tooltip-tasks .commitmsg {
+  padding-left: 5px;
+  text-overflow: ellipsis;
+}
+ul.tooltip-tasks li.tooltip-task {
+  margin-top: 1px;
+}
+.tooltip-task-status {
+  width: 15px;
+  line-height: 12px;
+  display: inline-block;
+  border: 1px solid #888;
+  margin-right: 3px;
+}
+.tooltip-task-status.started {
+  background-color: #ccc;
+  background-image: url('/static/img/15.GIF');
 }
 .gridtable-timeline {
   margin: 0 30px;
@@ -940,6 +953,40 @@ ul.tooltip-tasks li.tooltip-task {
 .patch-diff-panel .failed,
 .patch-diff-panel .fail {
   background-color: #d9534f !important;
+}
+.current-project {
+  font-weight: bold;
+  background-color: aliceblue;
+}
+.triggerinfo {
+  list-style: none;
+  border: 1px solid #ccc;
+  margin-top: -1px;
+}
+.trigger-display-wrapper {
+  padding: 5px;
+  font-size: 1.1em;
+}
+.trigger-actions {
+  background-color: #eee;
+}
+.trigger-description {
+  font-weight: bold;
+}
+.action-config {
+  list-style: none;
+  padding-top: 3px;
+}
+.add-action {
+  text-align: right;
+  list-style: none;
+}
+.do-nothing {
+  padding: 5px;
+  font-style: italic;
+}
+.editalert-form {
+  padding: 5px;
 }
 textarea {
   background-position: bottom right;
@@ -1709,39 +1756,5 @@ pre {
   #build-variant-col .waterfall-cell.build-variant-name {
     padding: 8px 10px 0 10px;
   }
-}
-.current-project {
-  font-weight: bold;
-  background-color: aliceblue;
-}
-.triggerinfo {
-  list-style: none;
-  border: 1px solid #ccc;
-  margin-top: -1px;
-}
-.trigger-display-wrapper {
-  padding: 5px;
-  font-size: 1.1em;
-}
-.trigger-actions {
-  background-color: #eee;
-}
-.trigger-description {
-  font-weight: bold;
-}
-.action-config {
-  list-style: none;
-  padding-top: 3px;
-}
-.add-action {
-  text-align: right;
-  list-style: none;
-}
-.do-nothing {
-  padding: 5px;
-  font-style: italic;
-}
-.editalert-form {
-  padding: 5px;
 }
 /*# sourceMappingURL=/static/dist/less.map */

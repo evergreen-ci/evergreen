@@ -233,7 +233,7 @@ var mciModule = angular.module('MCI', [
         return input;
       }
     }
-    return input.substring(lastSlash + 1)
+    return input.substring(lastSlash + 1);
   }
 }).factory('mciTime', [function() {
   var $time = {

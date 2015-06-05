@@ -1,7 +1,6 @@
 package db
 
 import (
-	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"labix.org/v2/mgo"
 	"sync"
@@ -40,7 +39,6 @@ func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
 	safety.WTimeout = settings.WriteConcern.WTimeout
 	safety.FSync = settings.WriteConcern.FSync
 	safety.J = settings.WriteConcern.J
-	fmt.Println("using safety", safety)
 	return NewSessionFactory(settings.DbUrl, settings.Db, safety, defaultDialTimeout)
 }
 

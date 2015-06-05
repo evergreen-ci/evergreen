@@ -67,10 +67,11 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/json/patches/project/{project_id}", uis.loadCtx(uis.patchTimelineJson))
 	r.HandleFunc("/json/patches/user/{user_id}", uis.loadCtx(uis.patchTimelineJson))
 
-	// Buildmaster page
-	r.HandleFunc("/buildmaster", uis.loadCtx(uis.buildmaster))
-	r.HandleFunc("/buildmaster/{project_id}", uis.loadCtx(uis.buildmaster))
-	r.HandleFunc("/buildmaster/{project_id}/{version_id}", uis.loadCtx(uis.buildmaster))
+	// Grid page
+	r.HandleFunc("/grid", uis.loadCtx(uis.grid))
+	r.HandleFunc("/grid/{project_id}", uis.loadCtx(uis.grid))
+	r.HandleFunc("/grid/{project_id}/{version_id}", uis.loadCtx(uis.grid))
+	r.HandleFunc("/grid/{project_id}/{version_id}/{depth}", uis.loadCtx(uis.grid))
 
 	// Task page (and related routes)
 	r.HandleFunc("/task/{task_id}", uis.loadCtx(uis.taskPage)).Methods("GET")

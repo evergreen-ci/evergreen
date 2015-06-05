@@ -3,13 +3,10 @@ package ui
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
 )
@@ -139,72 +136,4 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	}{versionsMap, uiPatches, pageNum}
 
 	uis.WriteJSON(w, http.StatusOK, data)
-}
-
-func (uis *UIServer) buildmaster(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-	if projCtx.Project == nil {
-		http.Error(w, "Project not found", http.StatusNotFound)
-	}
-
-	// If no version was specified in the URL, grab the latest version on the project
-	if projCtx.Version == nil {
-		versions, err := version.Find(version.ByMostRecentForRequester(projCtx.Project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error finding version: %v", err), http.StatusInternalServerError)
-			return
-		}
-		if len(versions) > 0 {
-			projCtx.Version = &versions[0]
-		}
-	}
-
-	var recentVersions []version.Version
-	var gitspecMap map[string]version.Version
-	var builds []build.Build
-	var buildmasterData []bson.M
-	var err error
-
-	if projCtx.Version != nil {
-		recentVersions, err = version.Find(
-			version.ByProjectId(projCtx.Version.Project).
-				WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey).
-				Sort([]string{"-" + version.RevisionOrderNumberKey}).
-				Limit(50))
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching versions: %v", err), http.StatusInternalServerError)
-			return
-		}
-		gitspecMap = make(map[string]version.Version)
-		for _, ver := range recentVersions {
-			gitspecMap[ver.Revision] = ver
-		}
-
-		//TODO make this return a non-bson map
-		buildmasterData, err = model.GetBuildmasterData(*projCtx.Version, 500)
-
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching builds: %v", err), http.StatusInternalServerError)
-			return
-		}
-
-		builds, err = build.Find(build.ByIds(projCtx.Version.BuildIds))
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching builds: %v", err), http.StatusInternalServerError)
-			return
-		}
-	} else {
-		recentVersions = make([]version.Version, 0)
-		gitspecMap = make(map[string]version.Version)
-		builds = make([]build.Build, 0)
-		buildmasterData = make([]bson.M, 0)
-	}
-
-	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData       projectContext
-		VersionsByGitspec map[string]version.Version
-		Builds            []build.Build
-		VersionHistory    []bson.M
-		User              *user.DBUser
-	}{projCtx, gitspecMap, builds, buildmasterData, GetUser(r)}, "base", "buildmaster.html", "base_angular.html", "menu.html")
 }

@@ -72,6 +72,17 @@ func ByProjectIdAndRevision(projectId, revision string) db.Q {
 		})
 }
 
+// ByProjectIdAndOrder finds non-patch versions for the given project with revision
+// order numbers less than or equal to revisionOrderNumber.
+func ByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q {
+	return db.Query(
+		bson.M{
+			ProjectKey:             projectId,
+			RevisionOrderNumberKey: bson.M{"$lte": revisionOrderNumber},
+			RequesterKey:           evergreen.RepotrackerVersionRequester,
+		})
+}
+
 // ByLastVariantActivation finds the most recent non-patch versions in a project that have
 // a particular variant activated.
 func ByLastVariantActivation(projectId, variant string) db.Q {
