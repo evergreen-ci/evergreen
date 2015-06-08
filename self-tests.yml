@@ -82,6 +82,7 @@ functions:
           ./mongod${extension} --dbpath ./db_files &
 
 pre:
+  - command: shell.track
   - command: shell.exec
     params:
       script: |
@@ -125,15 +126,13 @@ post:
   - command: gotest.parse_files
     params: 
       files: ["src/**/*.suite"]
-  - command: shell.exec
-    params:
-      script: |
-        pkill mongo; pkill -9 mongod; pkill -9 mongos; pkill -f buildlogger.py; pkill -f smoke.py
+  - command: shell.cleanup
 
 tasks:
 
 - name: alerts
   commands:
+    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec

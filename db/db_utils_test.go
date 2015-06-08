@@ -430,6 +430,7 @@ func TestDBUtils(t *testing.T) {
 				bson.M{
 					"field_one": in.FieldOne,
 				},
+				nil,
 				change,
 				out,
 			)
