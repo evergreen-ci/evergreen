@@ -318,7 +318,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if task.Requester == evergreen.PatchVersionRequester {
+	if task.Requester != evergreen.PatchVersionRequester {
 		alerts.RunTaskFailureTriggers(task)
 	} else {
 		//TODO process patch-specific triggers
