@@ -44,12 +44,17 @@ func RunLastRevisionNotFoundTrigger(proj *model.ProjectRef, v *version.Version) 
 	if !shouldExec {
 		return nil
 	}
-	return alert.EnqueueAlertRequest(&alert.AlertRequest{
+	err = alert.EnqueueAlertRequest(&alert.AlertRequest{
 		Id:        bson.NewObjectId(),
 		Trigger:   trigger.Id(),
 		VersionId: v.Id,
 		CreatedAt: time.Now(),
 	})
+
+	if err != nil {
+		return err
+	}
+	return storeTriggerBookkeeping(ctx, []Trigger{trigger})
 }
 
 // RunTaskTriggers queues alerts for any active triggers on the tasks's state change.
@@ -78,13 +83,17 @@ func RunTaskFailureTriggers(task *model.Task) error {
 		if err != nil {
 			return err
 		}
+		err = storeTriggerBookkeeping(*ctx, []Trigger{trigger})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func RunHostProvisionFailTriggers(h *host.Host) error {
 	ctx := triggerContext{host: h}
-	trigger := ProvisionFailed{}
+	trigger := &ProvisionFailed{}
 	// only one provision failure trigger to act on for now
 	shouldExec, err := trigger.ShouldExecute(ctx)
 	if err != nil {
@@ -93,12 +102,17 @@ func RunHostProvisionFailTriggers(h *host.Host) error {
 	if !shouldExec {
 		return nil
 	}
-	return alert.EnqueueAlertRequest(&alert.AlertRequest{
+
+	err = alert.EnqueueAlertRequest(&alert.AlertRequest{
 		Id:        bson.NewObjectId(),
 		Trigger:   trigger.Id(),
 		HostId:    h.Id,
 		CreatedAt: time.Now(),
 	})
+	if err != nil {
+		return err
+	}
+	return storeTriggerBookkeeping(ctx, []Trigger{trigger})
 }
 
 func RunSpawnWarningTriggers(host *host.Host) error {
@@ -115,6 +129,10 @@ func RunSpawnWarningTriggers(host *host.Host) error {
 				HostId:    host.Id,
 				CreatedAt: time.Now(),
 			})
+			if err != nil {
+				return err
+			}
+			err = storeTriggerBookkeeping(ctx, []Trigger{trigger})
 			if err != nil {
 				return err
 			}

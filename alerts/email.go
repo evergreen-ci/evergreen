@@ -37,6 +37,7 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	if !ok {
 		return fmt.Errorf("missing email address")
 	}
+	evergreen.Logger.Logf(slogger.INFO, "Sending email to %v", rcptRaw)
 
 	var rcpt string
 	if rcpt, ok = rcptRaw.(string); !ok {

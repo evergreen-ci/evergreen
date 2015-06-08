@@ -5,8 +5,10 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
 
 var (
@@ -147,5 +149,32 @@ func TestExistingFailedTaskTriggers(t *testing.T) {
 			So(len(triggers), ShouldEqual, 1)
 			So(triggers[0].Id(), ShouldEqual, TaskFailed{}.Id())
 		})
+	})
+}
+
+func TestSpawnExpireWarningTrigger(t *testing.T) {
+	Convey("With a spawnhost due to expire in two hours", t, func() {
+		db.Clear(host.Collection)
+		testHost := host.Host{
+			Id:             "testhost",
+			StartedBy:      "test_user",
+			Status:         "running",
+			ExpirationTime: time.Now().Add(1 * time.Hour),
+		}
+
+		trigger := SpawnTwoHourWarning{}
+		ctx := triggerContext{host: &testHost}
+		shouldExec, err := trigger.ShouldExecute(ctx)
+		So(err, ShouldBeNil)
+		So(shouldExec, ShouldBeTrue)
+
+		// run bookkeeping
+		err = storeTriggerBookkeeping(ctx, []Trigger{trigger})
+		So(err, ShouldBeNil)
+
+		// should exec should now return false
+		shouldExec, err = trigger.ShouldExecute(ctx)
+		So(err, ShouldBeNil)
+		So(shouldExec, ShouldBeFalse)
 	})
 }
