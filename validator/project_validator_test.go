@@ -863,9 +863,6 @@ func TestCheckProjectSyntax(t *testing.T) {
 
 			project, err := model.FindProject("", projectRef)
 			So(err, ShouldBeNil)
-			// TODO: fix this after MCI-1926 is completed so we can write a
-			// config we want to test against
-
 			So(CheckProjectSyntax(project), ShouldResemble, []ValidationError{})
 		})
 

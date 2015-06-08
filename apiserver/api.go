@@ -338,7 +338,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if task.Requester != evergreen.PatchVersionRequester {
 		alerts.RunTaskFailureTriggers(task)
 	} else {
-		//TODO process patch-specific triggers
+		//TODO(EVG-223) process patch-specific triggers
 	}
 
 	// if task was aborted, reset to inactive

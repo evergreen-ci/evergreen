@@ -56,8 +56,6 @@ func (self *TarGzUnpackCommand) Execute(pluginLogger plugin.Logger,
 	conf *model.TaskConfig,
 	stop chan bool) error {
 
-	// TODO: expand params?
-
 	errChan := make(chan error)
 	go func() {
 		errChan <- self.UnpackArchive()

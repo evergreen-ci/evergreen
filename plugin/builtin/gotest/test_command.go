@@ -241,7 +241,6 @@ func ToModelTestResults(task *model.Task, results []TestResult) model.TestResult
 	for _, res := range results {
 		// start and end are times that we don't know,
 		// represented as a 64bit floating point (epoch time fraction)
-		// ...TODO not sure why we use this schema...
 		var start float64 = float64(time.Now().Unix())
 		var end float64 = start + res.RunTime.Seconds()
 		var status string

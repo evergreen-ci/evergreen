@@ -156,9 +156,7 @@ func FindTaskLogsBeforeTime(taskId string, execution int, ts time.Time, limit in
 	}
 	defer session.Close()
 
-	// this "nil or 0" query is only for backwards compatability
-	// TODO Once we no longer care about or have logs without an execution number,
-	//      we can simplify this code
+	// TODO(EVG-227)
 	var query bson.M
 	if execution == 0 {
 		query = bson.M{"$and": []bson.M{
@@ -200,13 +198,11 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 
 	logObj := TaskLog{}
 
-	// TODO: arbitrary magic number. Unbuffered channel would be bad for
+	// 100 is an arbitrary magic number. Unbuffered channel would be bad for
 	// performance, so just picked a buffer size out of thin air.
 	channel := make(chan LogMessage, 100)
 
-	// this "nil or 0" query is only for backwards compatability
-	// TODO Once we no longer care about or have logs without an execution number,
-	//      we can simplify this code
+	// TODO(EVG-227)
 	var query bson.M
 	if execution == 0 {
 		query = bson.M{"$and": []bson.M{

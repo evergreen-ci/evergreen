@@ -62,8 +62,6 @@ mciModule.controller('TaskQueuesCtrl',
   };
 
   // watch dropdowns for a change.
-  // TODO: If we update angular, we can
-  // merge this into one $watchCollection command
   $scope.$watch('fields', function(newValue, oldValue) {
     if (newValue != oldValue)
       $scope.getTimeStats();

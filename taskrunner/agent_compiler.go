@@ -1,5 +1,7 @@
 package taskrunner
 
+//TODO(EVG-232) remove this logic
+
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
@@ -11,9 +13,6 @@ import (
 )
 
 func init() {
-	// find and store the path to the goxc executable.
-	// TODO: this shouldn't be necessary, goxc should be compiled,
-	// added to $PATH, and called directly rather than using 'go run'
 	evgHome := evergreen.FindEvergreenHome()
 	goxc = filepath.Join(evgHome, "src/github.com/laher/goxc/goxc.go")
 }
@@ -37,8 +36,6 @@ type GoxcAgentCompiler struct {
 	*evergreen.Settings
 }
 
-// TODO native gc cross-compiler for Go 1.5
-
 var (
 	// These variables determine what platforms and architectures we build the
 	// agent for.  They are passed as arguments to the goxc binary.
@@ -59,7 +56,7 @@ func (self *GoxcAgentCompiler) Compile(sourceDir string, destDir string) error {
 
 	buildAgentCmd := &command.LocalCommand{
 		CmdString:        buildAgentStr,
-		Stdout:           ioutil.Discard, // TODO: change to real logging
+		Stdout:           ioutil.Discard,
 		Stderr:           ioutil.Discard,
 		WorkingDirectory: sourceDir,
 	}

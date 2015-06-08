@@ -60,18 +60,6 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
 	$scope.currentBV = "";
 	$scope.currentTest = "";
 	$scope.variants = Object.keys(tableout).sort()
-	/*
-	function(a,b){
-		//Always prioritize variants with a push task
-		if('push' in tableout[a] && !('push' in tableout[b])){
-			return -1
-		}else if('push' in tableout[b] && !('push' in tableout[a])){
-			return 1
-		}
-		//if both (or neither) have push enabled, sort by whichever one
-		//has the most tasks
-		return buildNumCounts[b] - buildNumCounts[a]
-	})*/
 
 	$scope.testnames = Object.keys(testdisplaynames).sort(function(a,b){
 		//Always put compile first, push last.
@@ -104,7 +92,6 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
 	//This is hacky. It tries to figure out the gitspec based on a task's ID.
 	//Since the build's task cache doesn't actually contain the gitspec field, this will
 	//have to do for now.
-	//TODO make this not suck.
 	$scope.guessGitspec = function(task_id){
 		if(task_id){
 			parts = task_id.split('_')

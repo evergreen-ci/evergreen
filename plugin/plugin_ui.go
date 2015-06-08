@@ -143,11 +143,11 @@ func (a pairsByLexicographicalOrder) Less(i, j int) bool {
 }
 
 // sortAndExtractHTML takes a list of pairings of <plugin name, html data>,
-// sorts (stable) them by plugin name, and returns a list of the just
+// sorts them by plugin name, and returns a list of the just
 // the html data
 func sortAndExtractHTML(pairs []pluginTemplatePair) []template.HTML {
 	var tplList []template.HTML
-	sort.Sort(pairsByLexicographicalOrder(pairs)) //TODO replace "Sort" with "Stable" once we upgrade to 1.3
+	sort.Stable(pairsByLexicographicalOrder(pairs))
 	for _, pair := range pairs {
 		tplList = append(tplList, pair.Template)
 	}

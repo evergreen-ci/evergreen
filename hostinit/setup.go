@@ -128,7 +128,6 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	}
 
 	// set the host's dns name, if it is not set
-	// TODO: this code should be moved out of this function
 	if host.Host == "" {
 
 		// get the DNS name for the host

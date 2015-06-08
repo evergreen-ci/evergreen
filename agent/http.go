@@ -283,7 +283,6 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 
 // GetPatch loads the task's patch diff from the API server.
 func (h *HTTPCommunicator) GetPatch() (*patch.Patch, error) {
-	// TODO log errors in this function
 	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -321,7 +320,6 @@ func (h *HTTPCommunicator) GetPatch() (*patch.Patch, error) {
 
 // GetTask returns the communicator's task.
 func (h *HTTPCommunicator) GetTask() (*model.Task, error) {
-	// TODO log errors in this function
 	task := &model.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {

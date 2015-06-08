@@ -10,12 +10,6 @@ import (
 	"strings"
 )
 
-// TODO:
-//
-// 1.	validate buildvariant matrix
-//
-//
-
 type projectValidator func(*model.Project) []ValidationError
 
 type ValidationErrorLevel int64

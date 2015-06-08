@@ -61,17 +61,21 @@ func TestParserOnRealTests(t *testing.T) {
 	SkipConvey("With a parser", t, func() {
 		parser = &VanillaParser{}
 		Convey("and some real test output", func() {
-			// for a good time, remove the line below and have
-			// this test run itself forever and ever
+			// This test runs the parser on real test output from the 
+			// "github.com/evergreen-ci/evergreen/plugin" package. 
+			// It has to change the working directory of the test process 
+			// so that it can call that package instead of "plugin/gotest".
+			// This is admittedly pretty hacky, but the "go test" paradigm was not
+			// designed with running go test recursively in mind.
 			//
-			// TODO: these mid-test directory changes are quite vague and
-			// need to be cleaned up/documented properly
+			// For a good time, remove the line below and have
+			// this test run itself forever and ever.
 			util.HandleTestingErr(os.Chdir("../.."), t, "error changing directories %v")
 			Reset(func() {
-				// return to original working directory at the end
+				// return to original working directory at the end of the test
 				util.HandleTestingErr(os.Chdir(startDir), t, "error changing directories %v")
 			})
-			// runs tests on the "github.com/evergreen-ci/evergreen/plugin" package
+
 			cmd := exec.Command("go", "test", "-v")
 			stdout, err := cmd.StdoutPipe()
 			util.HandleTestingErr(err, t, "error getting stdout pipe %v")

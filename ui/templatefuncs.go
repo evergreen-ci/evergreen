@@ -136,7 +136,6 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (template.FuncMap, e
 		// HelpUrl returns the address of the Evergreen help page,
 		// if one is set.
 		"HelpUrl": func() string {
-			// TODO have this default to the github wiki once that exists
 			return fo.HelpHome
 		},
 	}

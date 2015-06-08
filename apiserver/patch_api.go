@@ -265,7 +265,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
-	//TODO log any instances of err != nil (internal server error)
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		as.WriteJSON(w, http.StatusBadRequest, err.Error())

@@ -69,8 +69,6 @@ func (self *TarGzPackCommand) Execute(pluginLogger plugin.Logger,
 	conf *model.TaskConfig,
 	stop chan bool) error {
 
-	// TODO: expand params?
-
 	// if the source dir is a relative path, join it to the working dir
 	if !filepath.IsAbs(self.SourceDir) {
 		self.SourceDir = filepath.Join(conf.WorkDir, self.SourceDir)

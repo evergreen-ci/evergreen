@@ -32,7 +32,6 @@ func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version
 			" doesn't exist?")
 	}
 
-	// TODO: MCI-1938
 	// get the remote file at the requested revision
 	projectFileURL := thirdparty.GetGithubFileURL(
 		projectRef.Owner,

@@ -110,9 +110,6 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	var lastVersion *version.Version
 
 	if len(revisions) > 0 {
-		// TODO: this is inefficient as we re-parse the project config each time.
-		// In the future it would be nice to hash the project config and see if it
-		// has changed before re-parsing it from scratch
 		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "error storing revisions for "+
@@ -356,9 +353,6 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 		// configuration file. At any rate, this is bad enough that we
 		// want to send a notification instead of just creating a stub
 		// version.
-		//
-		// Tentative TODO: MCI-1893 - send notification to project
-		// maintainer in addition to creating a stub version
 		var lastRevision string
 		repository, fErr := model.FindRepository(projectRef.Identifier)
 		if fErr != nil || repository == nil {

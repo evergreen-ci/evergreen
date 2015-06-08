@@ -482,7 +482,8 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 	can, err := cloudManager.CanSpawn()
 	if err != nil {
-		//TODO log the error here
+		evergreen.Logger.Logf(slogger.ERROR,
+			"Error checking if '%v' provider can spawn hosts: %v", distro.Provider, err)
 		return 0, nil
 	}
 	if !can {

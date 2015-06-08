@@ -32,11 +32,6 @@ func TestLocalCommands(t *testing.T) {
 
 		})
 
-		Convey("output should be passed appropriately to the stdout and stderr"+
-			" writers", func() {
-			// TODO: merge in Mike's local_job_test.go from agent project
-		})
-
 		Convey("the specified environment should be used", func() {
 
 			stdout := &CacheLastWritten{}

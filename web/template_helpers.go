@@ -248,30 +248,6 @@ func MakeCommonFunctionMap(settings *evergreen.Settings) (template.FuncMap,
 		return settings.IsProd
 	}
 
-	/* Generate a URL to github for the given repo, project, and gitspec. */
-	funcs["GithubUrl"] = func(orgRepoProject string, gitspec string) (string, error) {
-		//This is hacky. We are relying on the fact that the
-		// orgRepoProject contains a dash-delimited string containing the
-		// org, repo, and project name respectively. e.g,
-		// mongodb-mongo-master. This will break if any of those needs to contain a dash.
-
-		// TODO - make this take distinct org, repo, and project args separately.
-		splits := strings.Split(orgRepoProject, "-")
-		url := fmt.Sprintf("https://github.com/%s", splits[0])
-		if len(splits) > 1 {
-			url += "/" + splits[1]
-		}
-		if len(splits) > 2 {
-			if splits[2] != "master" {
-				url += fmt.Sprintf("/tree/%s", splits[2])
-			}
-			//we only append the gitspec if we have a full repo/branch, otherwise
-			// this would just generate a broken link.
-			url += fmt.Sprintf("/commit/%s", gitspec)
-		}
-		return url, nil
-	}
-
 	/* Unpleasant hack to make Go's templating language support assignments */
 	funcs["MutableVar"] = func() interface{} {
 		return &MutableVar{""}

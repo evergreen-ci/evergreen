@@ -96,5 +96,3 @@ func (self *TestLog) URL() string {
 		self.Name,
 	)
 }
-
-// TODO we might need an Append function at some point

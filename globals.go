@@ -141,7 +141,6 @@ func FindEvergreenHome() string {
 	if len(root) > 0 {
 		return root
 	}
-	// TODO: Legacy--remove once we're far from the name transition
 	root = os.Getenv("mci_home")
 	if len(root) > 0 {
 		Logger.Logf(slogger.WARN, "'mci_home' environment variable is deprecated; please use 'EVGHOME' instead")

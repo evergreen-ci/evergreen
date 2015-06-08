@@ -24,7 +24,7 @@ const (
 	agentFile         = "agent.log"
 )
 
-// HostGateway responsible for kicking off tasks on remote machines.
+// HostGateway is responsible for kicking off tasks on remote machines.
 type HostGateway interface {
 	// determine if the agent needs be rebuilt
 	AgentNeedsBuild() (bool, error)
@@ -202,8 +202,8 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	// first, create the necessary sandbox of directories on the remote machine
 	makeShellCmd := &command.RemoteCommand{
 		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir),
-		Stdout:         ioutil.Discard, // TODO: change to real logging
-		Stderr:         ioutil.Discard, // TODO: change to real logging
+		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
+		Stderr:         ioutil.Discard,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
@@ -229,8 +229,8 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	scpConfigsCmd := &command.ScpCommand{
 		Source:         filepath.Join(mciHome, settings.ConfigDir),
 		Dest:           hostObj.Distro.WorkDir,
-		Stdout:         ioutil.Discard, // TODO: change to real logging
-		Stderr:         ioutil.Discard, // TODO: change to real logging
+		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
+		Stderr:         ioutil.Discard,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options: append([]string{"-P", hostInfo.Port, "-r"},
@@ -261,7 +261,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	scpAgentCmd := &command.ScpCommand{
 		Source:         filepath.Join(self.ExecutablesDir, executableSubPath),
 		Dest:           hostObj.Distro.WorkDir,
-		Stdout:         ioutil.Discard, // TODO: change to real logging
+		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
 		Stderr:         &scpAgentCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,

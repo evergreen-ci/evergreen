@@ -46,7 +46,6 @@ func MakeTlsConfig(cert string, key string) (*tls.Config, error) {
 // MountHandler(r, "/bar/baz", newHandler)
 // Then a request to the router at /foo/bar/baz/hello will be handled by newHandler,
 // appearing with the path "/baz/hello"
-// TODO: Generalize this to work on any http.Handler as the root, not just a mux.Router.
 func MountHandler(r *mux.Router, prefix string, h http.Handler) http.Handler {
 	root := r.PathPrefix(prefix)
 	root.Handler(

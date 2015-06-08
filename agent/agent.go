@@ -52,7 +52,6 @@ const (
 	DefaultCmdTimeout = 2 * time.Hour
 	// DefaultIdleTimeout specifies the duration after which agent sends an
 	// IdleTimeout signal if a task produces no logs.
-	// TODO: some tasks might not be happy about this.
 	DefaultIdleTimeout = 15 * time.Minute
 	// DefaultHeartbeatInterval is interval after which agent sends a heartbeat
 	// to API server.

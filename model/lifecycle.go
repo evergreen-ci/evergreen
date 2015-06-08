@@ -121,7 +121,6 @@ func AbortVersion(versionId string) error {
 }
 
 func MarkVersionStarted(versionId string, startTime time.Time) error {
-	//TODO move these updates into the version package
 	return version.UpdateOne(
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{
@@ -152,7 +151,6 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 			status = evergreen.VersionFailed
 		}
 	}
-	//TODO move these updates into the version package
 	return version.UpdateOne(
 		bson.M{version.IdKey: versionId},
 		bson.M{"$set": bson.M{

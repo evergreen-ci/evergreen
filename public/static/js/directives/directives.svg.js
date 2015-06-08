@@ -39,8 +39,6 @@ directives.svg.directive('mciCanvas', function() {
 
 /* X-coordinate based attributes. Wraps these attributes in a call to the
  * corresponding X() function (see mciCanvas directive) in the element's scope.
- * TODO: 'R', circle radius, really shouldn't be here, but this hack will do
- *       for now.
  */
 _.each(['Width', 'X', 'X1', 'X2', 'R', 'Cx'], function(attr) {
   var directiveAttribute = 'mciAttr' + attr;

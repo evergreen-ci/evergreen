@@ -45,7 +45,6 @@ type Version struct {
 	Errors []string `bson:"errors,omitempty" json:"errors,omitempty"`
 }
 
-// TODO get rid of this.
 func TotalVersions(query interface{}) (int, error) {
 	return db.Count(Collection, query)
 }

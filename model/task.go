@@ -384,7 +384,7 @@ func FindUndispatchedTasks() ([]Task, error) {
 			TaskActivatedKey: true,
 			TaskStatusKey:    evergreen.TaskUndispatched,
 			//Filter out blacklisted tasks
-			//TODO eventually this $or should be removed as new tasks
+			//TODO(MCI-2245) eventually this $or should be removed as new tasks
 			//will not omit the priority key.
 			"$or": []bson.M{
 				{TaskPriorityKey: bson.M{"$exists": false}},
@@ -894,7 +894,6 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 	return build.SetCachedTaskActivated(task.BuildId, taskId, active)
 }
 
-// TODO: this takes in an aborted parameter but always aborts the task
 func (self *Task) Abort(caller string, aborted bool) error {
 	if !self.Abortable() {
 		return fmt.Errorf("Task '%v' is currently '%v' - cannot abort task"+

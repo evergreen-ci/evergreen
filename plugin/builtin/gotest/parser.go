@@ -107,7 +107,7 @@ func (self *VanillaParser) Parse(testOutput io.Reader) error {
 		logLine := testScanner.Text()
 		self.logs = append(self.logs, logLine)
 
-		// TODO this is gross, and could all go away with the resolution of
+		// This is gross, and could all go away with the resolution of
 		// https://code.google.com/p/go/issues/detail?id=2981
 		switch {
 		case startRegex.MatchString(logLine):

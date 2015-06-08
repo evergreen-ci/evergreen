@@ -47,7 +47,6 @@ type BuildVariant struct {
 	RunOn []string `yaml:"run_on" bson:"run_on"`
 
 	// all of the tasks to be run on the build variant, compile through tests.
-	// TODO: include push
 	Tasks                 []BuildVariantTask `yaml:"tasks" bson:"tasks"`
 	MatrixParameterValues map[string]string  `yaml:"matrix_parameter_values" bson:"matrix_parameter_values"`
 }
@@ -208,7 +207,6 @@ func NewTaskConfig(d *distro.Distro, p *Project, t *Task, r *ProjectRef) (*TaskC
 
 func populateExpansions(d *distro.Distro, p *Project, bv *BuildVariant, t *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
-	// TODO: Some of these expansions aren't strictly needed for Evergreen (MCI-1072)
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("task_id", t.Id)
 	expansions.Put("task_name", t.DisplayName)
@@ -352,7 +350,6 @@ func addMatrixVariants(project *Project) error {
 	return nil
 }
 
-//TODO: refactor this once we get better error handling into the waterfall
 func (self *Project) GetVariantMappings() map[string]string {
 	mappings := make(map[string]string)
 	for _, buildVariant := range self.BuildVariants {

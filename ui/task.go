@@ -517,8 +517,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//TODO: give this its own view instead of task_log.html
-	displayLogs := make(chan model.LogMessage) //[]model.LogMessage{}
+	displayLogs := make(chan model.LogMessage)
 	go func() {
 		for _, line := range testLog.Lines {
 			displayLogs <- model.LogMessage{

@@ -181,8 +181,6 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 func Extract(tarReader *tar.Reader, rootPath string) error {
 	for {
 		hdr, err := tarReader.Next()
-		//TODO checkin?
-
 		if err == io.EOF {
 			return nil //reached end of archive, we are done.
 		}
@@ -236,8 +234,6 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 		}
 	}
 }
-
-// TODO the functions below could just be inlined in the place that uses them.
 
 // TarGzReader returns a file, gzip reader, and tar reader for the given path.
 // The tar reader wraps the gzip reader, which wraps the file.

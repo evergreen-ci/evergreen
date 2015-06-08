@@ -59,7 +59,6 @@ func (cmd *SSHCommand) Run() ([]byte, error) {
 	session.Stdin = cmd.Stdin
 
 	// terminal modes for the pty we'll be using
-	// TODO: change speeds?
 	modes := ssh.TerminalModes{
 		ssh.ECHO:          0,     // disable echoing
 		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
@@ -67,7 +66,6 @@ func (cmd *SSHCommand) Run() ([]byte, error) {
 	}
 
 	// request a pseudo terminal
-	// TODO: size?
 	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
 		return nil, fmt.Errorf("error requesting pty: %v", err)
 	}

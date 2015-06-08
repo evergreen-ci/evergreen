@@ -185,11 +185,11 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 	var alertConfigs []model.AlertConfig
 	if ctx.ProjectRef != nil {
 		// Project-specific alert - use alert configs defined on the project
-		// TODO patch alerts should go to patch owner
+		// TODO(EVG-223) patch alerts should go to patch owner
 		alertConfigs = ctx.ProjectRef.Alerts[req.Trigger]
 	} else if ctx.Host != nil {
 		// Host-specific alert - use superuser alert configs for now
-		// TODO spawnhost alerts should go to spawnhost owner
+		// TODO(EVG-224) spawnhost alerts should go to spawnhost owner
 		alertConfigs = qp.superUsersConfigs
 	}
 
