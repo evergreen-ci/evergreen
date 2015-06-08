@@ -809,7 +809,8 @@ func (s3 *S3) run(req *request, resp interface{}) (*http.Response, error) {
 
 	client, err := getHttpClient(s3)
 	if err != nil {
-		return nil, err
+		// try to fall back to a default http client
+		client = http.DefaultClient
 	}
 
 	hresp, err := client.Do(&hreq)
