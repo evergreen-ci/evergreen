@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/shelman/angier"
 	"time"
 )
 
@@ -92,8 +93,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(
 	if err != nil {
 		return nil, thirdparty.YAMLFormatError{err.Error()}
 	}
-
-	return projectConfig, nil
+	return projectConfig, angier.TransferByFieldNames(projectRef, projectConfig)
 }
 
 // GetRevisionsSince fetches the all commits from the corresponding Github

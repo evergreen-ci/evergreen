@@ -118,11 +118,13 @@ func TestGetRemoteConfig(t *testing.T) {
 				util.HandleTestingErr(err, t, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
+				So(projectConfig.Owner, ShouldEqual, "deafgoat")
 				So(len(projectConfig.Tasks), ShouldEqual, 0)
 				projectConfig, err = self.GetRemoteConfig(secondRemoteConfigRef)
 				util.HandleTestingErr(err, t, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
+				So(projectConfig.Owner, ShouldEqual, "deafgoat")
 				So(len(projectConfig.Tasks), ShouldEqual, 1)
 			})
 			Convey("an invalid revision should return an error", func() {

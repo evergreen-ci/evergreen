@@ -70,11 +70,19 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName string)
 		return err
 	}
 
-	err = yaml.Unmarshal(data, projectRef)
+	project := &model.Project{}
+	err = yaml.Unmarshal(data, project)
 	if err != nil {
 		return err
 	}
-	projectRef.LocalConfig = string(data)
+
+	projectRef = &model.ProjectRef{
+		Identifier:  projectName,
+		Owner:       project.Owner,
+		Repo:        project.Repo,
+		Branch:      project.Branch,
+		Enabled:     project.Enabled,
+		LocalConfig: string(data)}
 
 	return projectRef.Upsert()
 }

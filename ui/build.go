@@ -30,8 +30,8 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
 		Elapsed:     time.Now().Sub(projCtx.Build.StartTime),
-		RepoOwner:   projCtx.ProjectRef.Owner,
-		Repo:        projCtx.ProjectRef.Repo,
+		RepoOwner:   projCtx.Project.Owner,
+		Repo:        projCtx.Project.Repo,
 		Version:     *projCtx.Version,
 	}
 

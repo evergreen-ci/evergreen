@@ -453,7 +453,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 			activateAt = time.Now()
 			activated = true
 		} else {
-			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
+			activateAt = lastActivation.Add(time.Minute * time.Duration(project.GetBatchTime(&buildvariant)))
 			evergreen.Logger.Logf(slogger.INFO, "Going to activate bv %v for project %v, version %v at %v",
 				buildvariant.Name, ref.Identifier, v.Id, activateAt)
 		}

@@ -136,7 +136,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 
 	Convey("When storing versions from repositories with remote configuration files...", t, func() {
 
-		project := createTestProject(nil, nil)
+		project := createTestProject(10, nil, nil)
 
 		revisions := []model.Revision{
 			*createTestRevision("foo", time.Now().Add(1*time.Minute)),
@@ -148,7 +148,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			testConfig,
 			&model.ProjectRef{
 				Identifier: "testproject",
-				BatchTime:  10,
 			},
 			poller,
 		}
@@ -239,7 +238,7 @@ func TestBatchTimes(t *testing.T) {
 
 		Convey("If the project's batch time has not elapsed, and no buildvariants "+
 			"have overriden their batch times, no variants should be activated", func() {
-			project := createTestProject(nil, nil)
+			project := createTestProject(1, nil, nil)
 			revisions := []model.Revision{
 				*createTestRevision("foo", time.Now()),
 			}
@@ -248,7 +247,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					BatchTime:  1,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -263,7 +261,7 @@ func TestBatchTimes(t *testing.T) {
 
 		Convey("If the project's batch time has elapsed, and no buildvariants "+
 			"have overridden their batch times, all variants should be activated", func() {
-			project := createTestProject(nil, nil)
+			project := createTestProject(0, nil, nil)
 			revisions := []model.Revision{
 				*createTestRevision("bar", time.Now().Add(time.Duration(-6*time.Minute))),
 			}
@@ -271,7 +269,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					BatchTime:  0,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -294,7 +291,7 @@ func TestBatchTimes(t *testing.T) {
 			twoforty := 240
 			onetwenty := 120
 
-			project := createTestProject(&twoforty, &onetwenty)
+			project := createTestProject(60, &twoforty, &onetwenty)
 
 			revisions := []model.Revision{
 				*createTestRevision("baz", time.Now()),
@@ -304,7 +301,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					BatchTime:  60,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -325,7 +321,7 @@ func TestBatchTimes(t *testing.T) {
 			", that variant should be activated", func() {
 			zero := 0
 
-			project := createTestProject(&zero, nil)
+			project := createTestProject(60, &zero, nil)
 
 			revisions := []model.Revision{
 				*createTestRevision("garply", time.Now()),
@@ -335,7 +331,6 @@ func TestBatchTimes(t *testing.T) {
 				testConfig,
 				&model.ProjectRef{
 					Identifier: "testproject",
-					BatchTime:  60,
 				},
 				NewMockRepoPoller(project, revisions),
 			}
@@ -387,8 +382,10 @@ func createTestRevision(revision string,
 	}
 }
 
-func createTestProject(override1, override2 *int) *model.Project {
+func createTestProject(projectBatchTime int, override1, override2 *int) *model.Project {
 	return &model.Project{
+		DisplayName: "Fake project",
+		BatchTime:   projectBatchTime,
 		BuildVariants: []model.BuildVariant{
 			model.BuildVariant{
 				Name:        "bv1",

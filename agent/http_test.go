@@ -80,39 +80,23 @@ func TestCommunicatorServerUp(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 
-		Convey("Calls to GetProjectConfig() should return the right config", func() {
-			v := &version.Version{
-				Config: "enabled: true\nbatchtime: 120",
-			}
-			// Mock project handler to answer the agent's request for a
-			// project's config
-			serveMux.HandleFunc("/task/mocktaskid/version",
-				func(w http.ResponseWriter, req *http.Request) {
-					util.WriteJSON(&w, v, http.StatusOK)
-				})
-			projectConfig, err := agentCommunicator.GetProjectConfig()
-			So(err, ShouldBeNil)
-			So(projectConfig.Stepback, ShouldBeFalse)
-		})
-		Convey("Calls to GetProjectRefConfig() should return the right config", func() {
-			v := &model.ProjectRef{
-				Identifier: "mock_identifier",
-				Enabled:    true,
-				BatchTime:  120,
-			}
-			// Mock project handler to answer the agent's request for a
-			// project's config
-			serveMux.HandleFunc("/task/mocktaskid/project_ref",
-				func(w http.ResponseWriter, req *http.Request) {
-					util.WriteJSON(&w, v, http.StatusOK)
-				})
-			projectConfig, err := agentCommunicator.GetProjectRef()
-			So(err, ShouldBeNil)
-
-			So(projectConfig.Identifier, ShouldEqual, "mock_identifier")
-			So(projectConfig.Enabled, ShouldBeTrue)
-			So(projectConfig.BatchTime, ShouldEqual, 120)
-		})
+		Convey("Calls to GetProjectConfig() should return the right config",
+			func() {
+				v := &version.Version{
+					Config: "enabled: true\nbatchtime: 120",
+				}
+				// Mock project handler to answer the agent's request for a
+				// project's config
+				serveMux.HandleFunc("/task/mocktaskid/version",
+					func(w http.ResponseWriter, req *http.Request) {
+						util.WriteJSON(&w, v, http.StatusOK)
+					})
+				projectConfig, err := agentCommunicator.GetProjectConfig()
+				So(err, ShouldBeNil)
+				So(projectConfig.Enabled, ShouldBeTrue)
+				So(projectConfig.Stepback, ShouldBeFalse)
+				So(projectConfig.BatchTime, ShouldEqual, 120)
+			})
 
 		Convey("Calling GetTask() should fetch the task successfully", func() {
 			testTask := &model.Task{Id: "mocktaskid"}
