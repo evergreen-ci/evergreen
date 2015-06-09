@@ -57,7 +57,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash) {
   ];
   $scope.timeDiff = $scope.timeDiffOptions[0];
   $scope.numTasks = 50;
-  $scope.numTasksOptions = [25, 50, 100, 200];
+  $scope.numTasksOptions = [25, 50, 100, 200, 500, 1000, 2000];
 
   $scope.recompute = function() {
     $scope.computedData = {
