@@ -85,7 +85,7 @@ type PatchCommand struct {
 // SetModuleCommand adds or updates a module in an existing patch.
 type SetModuleCommand struct {
 	GlobalOpts  Options `no-flag:"true"`
-	Module      string  `short:"m" long:"module" description:"name of the module to remove from patch"`
+	Module      string  `short:"m" long:"module" description:"name of the module to set patch for"`
 	PatchId     string  `short:"i" description:"id of the patch to modify" required:"true" `
 	SkipConfirm bool    `short:"y" long:"yes" description:"skip confirmation text"`
 }
