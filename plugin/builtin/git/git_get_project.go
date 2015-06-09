@@ -48,10 +48,7 @@ func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
-	location, err := conf.Project.Location()
-	if err != nil {
-		return err
-	}
+	location := conf.ProjectRef.Location()
 
 	gitCommands := []string{
 		fmt.Sprintf("set -o errexit"),
@@ -72,7 +69,7 @@ func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	}
 
 	pluginLogger.LogExecution(slogger.INFO, "Fetching source from git...")
-	if err = fetchSourceCmd.Run(); err != nil {
+	if err := fetchSourceCmd.Run(); err != nil {
 		return err
 	}
 	pluginLogger.Flush()

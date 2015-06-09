@@ -83,6 +83,7 @@ type TaskCommunicator interface {
 	Start(pid string) error
 	End(status string, details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error)
 	GetTask() (*model.Task, error)
+	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
 	GetProjectConfig() (*model.Project, error)
 	GetPatch() (*patch.Patch, error)
@@ -268,8 +269,14 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 		return nil, err
 	}
 
+	agt.logger.LogExecution(slogger.INFO, "Fetching project ref...")
+	ref, err := agt.GetProjectRef()
+	if err != nil {
+		return nil, err
+	}
+
 	agt.logger.LogExecution(slogger.INFO, "Constructing TaskConfig...")
-	return model.NewTaskConfig(distro, project, task)
+	return model.NewTaskConfig(distro, project, task, ref)
 }
 
 // New creates a new agent to run a given task.

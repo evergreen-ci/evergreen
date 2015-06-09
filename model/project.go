@@ -169,6 +169,7 @@ type ProjectTask struct {
 
 type TaskConfig struct {
 	Distro       *distro.Distro
+	ProjectRef   *ProjectRef
 	Project      *Project
 	Task         *Task
 	BuildVariant *BuildVariant
@@ -196,13 +197,13 @@ var (
 	ProjectBVMatrixKey      = bsonutil.MustHaveTag(Project{}, "BuildVariantMatrix")
 )
 
-func NewTaskConfig(d *distro.Distro, p *Project, t *Task) (*TaskConfig, error) {
+func NewTaskConfig(d *distro.Distro, p *Project, t *Task, r *ProjectRef) (*TaskConfig, error) {
 	bv := p.FindBuildVariant(t.BuildVariant)
 	if bv == nil {
 		return nil, fmt.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
 	}
 	e := populateExpansions(d, p, bv, t)
-	return &TaskConfig{d, p, t, bv, e, d.WorkDir}, nil
+	return &TaskConfig{d, r, p, t, bv, e, d.WorkDir}, nil
 }
 
 func populateExpansions(d *distro.Distro, p *Project, bv *BuildVariant, t *Task) *command.Expansions {

@@ -56,6 +56,10 @@ func (_ *MockCommunicator) GetDistro() (*distro.Distro, error) {
 	return &distro.Distro{}, nil
 }
 
+func (_ *MockCommunicator) GetProjectRef() (*model.ProjectRef, error) {
+	return &model.ProjectRef{}, nil
+}
+
 func (_ *MockCommunicator) GetProjectConfig() (*model.Project, error) {
 	return &model.Project{}, nil
 }

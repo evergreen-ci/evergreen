@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"labix.org/v2/mgo"
@@ -159,6 +160,11 @@ func (projectRef *ProjectRef) Upsert() error {
 		},
 	)
 	return err
+}
+
+// Generate the URL to the repo.
+func (projectRef *ProjectRef) Location() string {
+	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo)
 }
 
 // ProjectRef returns a string representation of a ProjectRef

@@ -397,6 +397,42 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 }
 
 // GetProjectConfig loads the communicator's task's project from the API server.
+func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
+	projectRef := &model.ProjectRef{}
+	retriableGet := util.RetriableFunc(
+		func() error {
+			resp, err := h.tryGet("project_ref")
+			if resp != nil {
+				defer resp.Body.Close()
+			}
+			if resp != nil && resp.StatusCode == http.StatusConflict {
+				// Something very wrong, fail now with no retry.
+				return fmt.Errorf("conflict - wrong secret!")
+			}
+			if err != nil {
+				// Some generic error trying to connect - try again
+				return util.RetriableError{err}
+			}
+			if resp == nil {
+				return util.RetriableError{fmt.Errorf("empty response")}
+			} else {
+				err = util.ReadJSONInto(resp.Body, projectRef)
+				if err != nil {
+					return util.RetriableError{err}
+				}
+				return nil
+			}
+		},
+	)
+
+	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
+	if retryFail {
+		return nil, fmt.Errorf("getting project ref failed after %v tries: %v", h.MaxAttempts, err)
+	}
+	return projectRef, nil
+}
+
+// GetProjectConfig loads the communicator's task's project from the API server.
 func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 	projectConfig := &model.Project{}
 	retriableGet := util.RetriableFunc(
