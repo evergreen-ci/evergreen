@@ -11,17 +11,18 @@ import (
 // The ProjectRef struct contains general information, independent of any
 // revision control system, needed to track a given project
 type ProjectRef struct {
-	Owner       string `bson:"owner_name" json:"owner_name" yaml:"owner"`
-	Repo        string `bson:"repo_name" json:"repo_name" yaml:"repo"`
-	Branch      string `bson:"branch_name" json:"branch_name" yaml:"branch"`
-	RepoKind    string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
-	Enabled     bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
-	Private     bool   `bson:"private" json:"private" yaml:"private"`
-	BatchTime   int    `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
-	RemotePath  string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
-	Identifier  string `bson:"identifier" json:"identifier" yaml:"identifier"`
-	DisplayName string `bson:"display_name" json:"display_name" yaml:"display_name"`
-	LocalConfig string `bson:"local_config" json:"local_config" yaml:"local_config"`
+	Owner              string `bson:"owner_name" json:"owner_name" yaml:"owner"`
+	Repo               string `bson:"repo_name" json:"repo_name" yaml:"repo"`
+	Branch             string `bson:"branch_name" json:"branch_name" yaml:"branch"`
+	RepoKind           string `bson:"repo_kind" json:"repo_kind" yaml:"repokind"`
+	Enabled            bool   `bson:"enabled" json:"enabled" yaml:"enabled"`
+	Private            bool   `bson:"private" json:"private" yaml:"private"`
+	BatchTime          int    `bson:"batch_time" json:"batch_time" yaml:"batchtime"`
+	RemotePath         string `bson:"remote_path" json:"remote_path" yaml:"remote_path"`
+	Identifier         string `bson:"identifier" json:"identifier" yaml:"identifier"`
+	DisplayName        string `bson:"display_name" json:"display_name" yaml:"display_name"`
+	LocalConfig        string `bson:"local_config" json:"local_config" yaml:"local_config"`
+	DeactivatePrevious bool   `bson:"deactivate_previous" json:"deactivate_previous" yaml:"deactivate_previous"`
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 
@@ -44,19 +45,20 @@ type EmailAlertData struct {
 
 var (
 	// bson fields for the ProjectRef struct
-	ProjectRefOwnerKey       = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
-	ProjectRefRepoKey        = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
-	ProjectRefBranchKey      = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
-	ProjectRefRepoKindKey    = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
-	ProjectRefEnabledKey     = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
-	ProjectRefPrivateKey     = bsonutil.MustHaveTag(ProjectRef{}, "Private")
-	ProjectRefBatchTimeKey   = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
-	ProjectRefIdentifierKey  = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
-	ProjectRefDisplayNameKey = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
-	ProjectRefRemotePathKey  = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
-	ProjectRefTrackedKey     = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
-	ProjectRefLocalConfig    = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
-	ProjectRefAlertsKey      = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
+	ProjectRefOwnerKey              = bsonutil.MustHaveTag(ProjectRef{}, "Owner")
+	ProjectRefRepoKey               = bsonutil.MustHaveTag(ProjectRef{}, "Repo")
+	ProjectRefBranchKey             = bsonutil.MustHaveTag(ProjectRef{}, "Branch")
+	ProjectRefRepoKindKey           = bsonutil.MustHaveTag(ProjectRef{}, "RepoKind")
+	ProjectRefEnabledKey            = bsonutil.MustHaveTag(ProjectRef{}, "Enabled")
+	ProjectRefPrivateKey            = bsonutil.MustHaveTag(ProjectRef{}, "Private")
+	ProjectRefBatchTimeKey          = bsonutil.MustHaveTag(ProjectRef{}, "BatchTime")
+	ProjectRefIdentifierKey         = bsonutil.MustHaveTag(ProjectRef{}, "Identifier")
+	ProjectRefDisplayNameKey        = bsonutil.MustHaveTag(ProjectRef{}, "DisplayName")
+	ProjectRefDeactivatePreviousKey = bsonutil.MustHaveTag(ProjectRef{}, "DeactivatePrevious")
+	ProjectRefRemotePathKey         = bsonutil.MustHaveTag(ProjectRef{}, "RemotePath")
+	ProjectRefTrackedKey            = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
+	ProjectRefLocalConfig           = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
+	ProjectRefAlertsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
 )
 
 const (
@@ -143,19 +145,20 @@ func (projectRef *ProjectRef) Upsert() error {
 		},
 		bson.M{
 			"$set": bson.M{
-				ProjectRefRepoKindKey:    projectRef.RepoKind,
-				ProjectRefEnabledKey:     projectRef.Enabled,
-				ProjectRefPrivateKey:     projectRef.Private,
-				ProjectRefBatchTimeKey:   projectRef.BatchTime,
-				ProjectRefOwnerKey:       projectRef.Owner,
-				ProjectRefRepoKey:        projectRef.Repo,
-				ProjectRefBranchKey:      projectRef.Branch,
-				ProjectRefDisplayNameKey: projectRef.DisplayName,
-				ProjectRefTrackedKey:     projectRef.Tracked,
-				ProjectRefRemotePathKey:  projectRef.RemotePath,
-				ProjectRefTrackedKey:     projectRef.Tracked,
-				ProjectRefLocalConfig:    projectRef.LocalConfig,
-				ProjectRefAlertsKey:      projectRef.Alerts,
+				ProjectRefRepoKindKey:           projectRef.RepoKind,
+				ProjectRefEnabledKey:            projectRef.Enabled,
+				ProjectRefPrivateKey:            projectRef.Private,
+				ProjectRefBatchTimeKey:          projectRef.BatchTime,
+				ProjectRefOwnerKey:              projectRef.Owner,
+				ProjectRefRepoKey:               projectRef.Repo,
+				ProjectRefBranchKey:             projectRef.Branch,
+				ProjectRefDisplayNameKey:        projectRef.DisplayName,
+				ProjectRefDeactivatePreviousKey: projectRef.DeactivatePrevious,
+				ProjectRefTrackedKey:            projectRef.Tracked,
+				ProjectRefRemotePathKey:         projectRef.RemotePath,
+				ProjectRefTrackedKey:            projectRef.Tracked,
+				ProjectRefLocalConfig:           projectRef.LocalConfig,
+				ProjectRefAlertsKey:             projectRef.Alerts,
 			},
 		},
 	)

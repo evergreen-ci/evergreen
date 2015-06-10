@@ -118,6 +118,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
           batch_time: $scope.projectRef.batch_time,
+          deactivate_previous: $scope.projectRef.deactivate_previous,
           relative_url: $scope.projectRef.relative_url,
           branch_name: $scope.projectRef.branch_name,
           owner_name: $scope.projectRef.owner_name,

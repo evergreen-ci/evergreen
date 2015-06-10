@@ -972,7 +972,7 @@ func (self *Task) TryReset(user, origin string, project *Project,
 			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
 				" (%v); marking as failed.", self.Id, evergreen.MaxTaskExecution)
 			if taskEndRequest != nil {
-				return self.MarkEnd(origin, time.Now(), taskEndRequest, project)
+				return self.MarkEnd(origin, time.Now(), taskEndRequest, project, false)
 			} else {
 				panic(fmt.Sprintf("TryReset called with nil TaskEndRequest "+
 					"by %v", origin))
@@ -1295,7 +1295,7 @@ func (self *Task) markEnd(caller string, finishTime time.Time,
 }
 
 func (self *Task) MarkEnd(caller string, finishTime time.Time,
-	taskEndRequest *apimodels.TaskEndRequest, project *Project) error {
+	taskEndRequest *apimodels.TaskEndRequest, project *Project, deactivatePrevious bool) error {
 	if self.Status == taskEndRequest.Status {
 		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice",
 			self.Id)
@@ -1348,13 +1348,12 @@ func (self *Task) MarkEnd(caller string, finishTime time.Time,
 					" failure: %v", self.Id)
 			}
 		}
-	} else {
+	} else if deactivatePrevious {
 		// if the task was successful, ignore running previous
 		// activated tasks for this buildvariant
 		err = self.DeactivatePreviousTasks(caller)
 		if err != nil {
-			return fmt.Errorf("Error deactivating previous task: %v",
-				err.Error())
+			return fmt.Errorf("Error deactivating previous task: %v", err.Error())
 		}
 	}
 

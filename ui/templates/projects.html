@@ -97,31 +97,43 @@ Evergreen Projects
         </div>
 
         <div id="github-info">
-        <div class="h3"> Repository Info </div>
-        <div class="form-group">
+          <div class="h3"> Repository Info </div>
+          <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label">Owner</label>
+              <label class="control-label">Owner</label>
             </div>
             <div class="col-lg-4">
-                <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
+              <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
             </div>
-        </div>
-        <div class="form-group">
+          </div>
+          <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label">Repo Name</label>
+              <label class="control-label">Repo Name</label>
             </div>
             <div class="col-lg-4">
-                <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
+              <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
             </div>
-        </div>
-        <div class="form-group">
+          </div>
+          <div class="form-group">
             <div class="col-lg-2 col-header"> 
-                <label class="control-label">Branch Name</label>
+              <label class="control-label">Branch Name</label>
             </div>
             <div class="col-lg-4">
-                <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" placeholder="master">
+              <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" placeholder="master">
             </div>
+          </div>
         </div>
+
+        <div id="scheduling-info">
+          <div class="h3">Scheduling Settings</div>
+          <div class="form-group">
+            <div class="col-lg-4 col-header"> 
+              <label class="control-label">Unschedule old tasks on success&nbsp;&nbsp;
+                <input type="checkbox" name="deactivate_previous" ng-model="settingsFormData.deactivate_previous"/>
+              </label>
+              <div class="muted small">When checked, tasks from previous revisions will be unscheduled when the equivalent task in a newer commit finishes successfully.</div>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">

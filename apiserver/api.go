@@ -328,7 +328,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// mark task as finished
-	err = task.MarkEnd(APIServerLockTitle, finishTime, taskEndRequest, project)
+	err = task.MarkEnd(APIServerLockTitle, finishTime, taskEndRequest, project, projectRef.DeactivatePrevious)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", task.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)

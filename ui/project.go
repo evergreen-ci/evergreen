@@ -94,16 +94,17 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseRef := struct {
-		Identifier  string            `json:"id"`
-		DisplayName string            `json:"display_name"`
-		RemotePath  string            `json:"remote_path"`
-		BatchTime   int               `json:"batch_time"`
-		Branch      string            `json:"branch_name"`
-		ProjVarsMap map[string]string `json:"project_vars"`
-		Enabled     bool              `json:"enabled"`
-		Owner       string            `json:"owner_name"`
-		Repo        string            `json:"repo_name"`
-		AlertConfig map[string][]struct {
+		Identifier         string            `json:"id"`
+		DisplayName        string            `json:"display_name"`
+		RemotePath         string            `json:"remote_path"`
+		BatchTime          int               `json:"batch_time"`
+		DeactivatePrevious bool              `json:"deactivate_previous"`
+		Branch             string            `json:"branch_name"`
+		ProjVarsMap        map[string]string `json:"project_vars"`
+		Enabled            bool              `json:"enabled"`
+		Owner              string            `json:"owner_name"`
+		Repo               string            `json:"repo_name"`
+		AlertConfig        map[string][]struct {
 			Provider string                 `json:"provider"`
 			Settings map[string]interface{} `json:"settings"`
 		} `json:"alert_config"`
@@ -122,6 +123,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = responseRef.Enabled
 	projectRef.Owner = responseRef.Owner
+	projectRef.DeactivatePrevious = responseRef.DeactivatePrevious
 	projectRef.Repo = responseRef.Repo
 	projectRef.Identifier = id
 
