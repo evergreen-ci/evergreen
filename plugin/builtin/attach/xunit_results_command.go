@@ -17,6 +17,9 @@ type AttachXUnitResultsCommand struct {
 	// FileLoc describes the relative path of the file to be sent.
 	// Note that this can also be described via expansions.
 	FileLoc string `mapstructure:"file_location" plugin:"expand"`
+	// FilePattern describes the relative path of any number of files
+	// that fit the pattern.
+	FilePattern string `mapstructure:"file_pattern" plugin:"expand"`
 }
 
 func (self *AttachXUnitResultsCommand) Name() string {
@@ -43,19 +46,31 @@ func (self *AttachXUnitResultsCommand) ParseParams(
 // validateParams is a helper function that ensures all
 // the fields necessary for attaching an xunit results are present
 func (self *AttachXUnitResultsCommand) validateParams() (err error) {
-	if self.FileLoc == "" {
-		return fmt.Errorf("file_location cannot be blank")
+	if (self.FileLoc == "" && self.FilePattern == "") ||
+		(self.FileLoc != "" && self.FilePattern != "") {
+		return fmt.Errorf("please specify file_location (X)OR file_pattern")
 	}
 	return nil
 }
 
-func (self *AttachXUnitResultsCommand) expandParams(
-	taskConfig *model.TaskConfig) (err error) {
-	self.FileLoc, err = taskConfig.Expansions.ExpandString(self.FileLoc)
+// Given any string, expand appropriately or error if not possible
+func expandParamString(fileString *string, taskConfig *model.TaskConfig) (
+	err error) {
+
+	*fileString, err = taskConfig.Expansions.ExpandString(*fileString)
 	if err != nil {
-		return fmt.Errorf("error expanding file_location '%v': %v", self.FileLoc, err)
+		return fmt.Errorf("error expanding path '%v': %v", *fileString, err)
 	}
 	return nil
+}
+
+// Expand the appropriate parameter
+func (self *AttachXUnitResultsCommand) expandParams(
+	taskConfig *model.TaskConfig) (err error) {
+	if self.FileLoc != "" {
+		return expandParamString(&self.FileLoc, taskConfig)
+	}
+	return expandParamString(&self.FilePattern, taskConfig)
 }
 
 // Execute carries out the AttachResultsCommand command - this is required
@@ -84,34 +99,54 @@ func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
 	}
 }
 
+// getFilePaths is a helper function that returns a slice of all absolute paths
+// which match the given file path parameters.
+func (self *AttachXUnitResultsCommand) getFilePaths(
+	taskConfig *model.TaskConfig) []string {
+
+	if self.FileLoc != "" {
+		return []string{filepath.Join(taskConfig.WorkDir, self.FileLoc)}
+	}
+
+	patternPath := filepath.Join(taskConfig.WorkDir, self.FilePattern)
+	paths, err := filepath.Glob(patternPath)
+	if err != nil {
+		fmt.Errorf("location_pattern specified an incorrect pattern: '%v'", err)
+	}
+	fmt.Printf("Paths: %v\n", paths)
+	return paths
+}
+
 func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 	taskConfig *model.TaskConfig, pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator) error {
 	tests := []model.TestResult{}
 	logs := []*model.TestLog{}
-
-	reportFileLoc := filepath.Join(taskConfig.WorkDir, self.FileLoc)
-	file, err := os.Open(reportFileLoc)
-	if err != nil {
-		return fmt.Errorf("couldn't open xunit file: '%v'", err)
-	}
-
-	testSuites, err := xunit.ParseXMLResults(file)
-	if err != nil {
-		return fmt.Errorf("error parsing xunit file: '%v'", err)
-	}
-
 	logIdxToTestIdx := []int{}
-	// go through all the tests
-	for _, suite := range testSuites {
-		for _, tc := range suite.TestCases {
-			// logs are only created when a test case does not succeed
-			test, log := tc.ToModelTestResultAndLog(taskConfig.Task)
-			if log != nil {
-				logs = append(logs, log)
-				logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
+
+	reportFilePaths := self.getFilePaths(taskConfig)
+	for _, reportFileLoc := range reportFilePaths {
+		file, err := os.Open(reportFileLoc)
+		if err != nil {
+			return fmt.Errorf("couldn't open xunit file: '%v'", err)
+		}
+
+		testSuites, err := xunit.ParseXMLResults(file)
+		if err != nil {
+			return fmt.Errorf("error parsing xunit file: '%v'", err)
+		}
+
+		// go through all the tests
+		for _, suite := range testSuites {
+			for _, tc := range suite.TestCases {
+				// logs are only created when a test case does not succeed
+				test, log := tc.ToModelTestResultAndLog(taskConfig.Task)
+				if log != nil {
+					logs = append(logs, log)
+					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))
+				}
+				tests = append(tests, test)
 			}
-			tests = append(tests, test)
 		}
 	}
 
