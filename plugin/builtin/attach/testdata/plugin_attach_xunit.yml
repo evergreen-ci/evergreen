@@ -4,6 +4,7 @@ tasks:
   - command: attach.xunit_results
     params:
       file_location: "xunit/testdata/junit_${file_num}.xml" #junit_3.xml
+      #file_pattern: "xunit/testdata/junit_*.xml" #Uncomment to run on all files that match this pattern. Must comment out file_location
 
 buildvariants:
 - name: linux-64

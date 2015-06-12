@@ -113,7 +113,6 @@ func (self *AttachXUnitResultsCommand) getFilePaths(
 	if err != nil {
 		fmt.Errorf("location_pattern specified an incorrect pattern: '%v'", err)
 	}
-	fmt.Printf("Paths: %v\n", paths)
 	return paths
 }
 
@@ -134,6 +133,11 @@ func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 		testSuites, err := xunit.ParseXMLResults(file)
 		if err != nil {
 			return fmt.Errorf("error parsing xunit file: '%v'", err)
+		}
+
+		err = file.Close()
+		if err != nil {
+			return fmt.Errorf("error closing xunit file: '%v'", err)
 		}
 
 		// go through all the tests
