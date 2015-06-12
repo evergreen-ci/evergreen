@@ -12,7 +12,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"net/http"
-	"net/url"
 	"strings"
 )
 
