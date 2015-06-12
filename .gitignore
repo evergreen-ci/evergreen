@@ -44,7 +44,3 @@ ui/node_modules/
 .godeps
 
 npm-debug.log
-
-# vagrant related
-.vagrant
-Vagrantfile
