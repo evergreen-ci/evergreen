@@ -121,7 +121,12 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 			},
 			model.TaskProjectKey:   current.Project,
 			model.TaskRequesterKey: evergreen.RepotrackerVersionRequester,
-			model.TaskStatusKey:    evergreen.TaskFailed,
+			model.TaskStatusKey: bson.M{
+				"$in": []string{
+					evergreen.TaskFailed,
+					evergreen.TaskSucceeded,
+				},
+			},
 		}},
 		// Stage 2: Sort the tasks by the most recently completed.
 		{"$sort": bson.M{
