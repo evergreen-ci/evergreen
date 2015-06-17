@@ -34,8 +34,8 @@ const ( // quantity comparisons
 const ( // collections
 	shouldHaveContained            = "Expected the container (%v) to contain: '%v' (but it didn't)!"
 	shouldNotHaveContained         = "Expected the container (%v) NOT to contain: '%v' (but it did)!"
-	shouldHaveBeenIn               = "Expected '%v' to be in the container (%v, but it wasn't)!"
-	shouldNotHaveBeenIn            = "Expected '%v' NOT to be in the container (%v, but it was)!"
+	shouldHaveBeenIn               = "Expected '%v' to be in the container (%v), but it wasn't!"
+	shouldNotHaveBeenIn            = "Expected '%v' NOT to be in the container (%v), but it was!"
 	shouldHaveBeenAValidCollection = "You must provide a valid container (was %v)!"
 	shouldHaveBeenEmpty            = "Expected %+v to be empty (but it wasn't)!"
 	shouldNotHaveBeenEmpty         = "Expected %+v to NOT be empty (but it was)!"

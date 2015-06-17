@@ -12,10 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo/bson"
 	"testing"
 	"time"
 )

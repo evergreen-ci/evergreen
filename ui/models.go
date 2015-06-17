@@ -13,8 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"gopkg.in/mgo.v2/bson"
 	"html/template"
-	"labix.org/v2/mgo/bson"
 	"sort"
 	"time"
 )

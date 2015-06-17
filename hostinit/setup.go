@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/remote"
 	"github.com/evergreen-ci/evergreen/util"
-	"labix.org/v2/mgo"
+	"gopkg.in/mgo.v2"
 	"sync"
 	"time"
 )

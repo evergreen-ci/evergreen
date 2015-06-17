@@ -38,8 +38,8 @@ func TestShouldBeIn(t *testing.T) {
 	pass(t, so(4, ShouldBeIn, container))
 	pass(t, so(4, ShouldBeIn, 1, 2, 3, 4))
 
-	fail(t, so(4, ShouldBeIn, 1, 2, 3), "Expected '4' to be in the container ([]interface {}, but it wasn't)!")
-	fail(t, so(4, ShouldBeIn, []int{1, 2, 3}), "Expected '4' to be in the container ([]int, but it wasn't)!")
+	fail(t, so(4, ShouldBeIn, 1, 2, 3), "Expected '4' to be in the container ([]interface {}), but it wasn't!")
+	fail(t, so(4, ShouldBeIn, []int{1, 2, 3}), "Expected '4' to be in the container ([]int), but it wasn't!")
 }
 
 func TestShouldNotBeIn(t *testing.T) {
@@ -49,8 +49,8 @@ func TestShouldNotBeIn(t *testing.T) {
 	pass(t, so(42, ShouldNotBeIn, container))
 	pass(t, so(42, ShouldNotBeIn, 1, 2, 3, 4))
 
-	fail(t, so(2, ShouldNotBeIn, 1, 2, 3), "Expected '2' NOT to be in the container ([]interface {}, but it was)!")
-	fail(t, so(2, ShouldNotBeIn, []int{1, 2, 3}), "Expected '2' NOT to be in the container ([]int, but it was)!")
+	fail(t, so(2, ShouldNotBeIn, 1, 2, 3), "Expected '2' NOT to be in the container ([]interface {}), but it was!")
+	fail(t, so(2, ShouldNotBeIn, []int{1, 2, 3}), "Expected '2' NOT to be in the container ([]int), but it was!")
 }
 
 func TestShouldBeEmpty(t *testing.T) {
