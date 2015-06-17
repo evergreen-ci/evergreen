@@ -16,21 +16,13 @@ import (
 
 const (
 	TotalResultCount = 676
+	SingleFileConfig = "testdata/plugin_attach_xunit.yml"
+	WildcardConfig   = "testdata/plugin_attach_xunit_wildcard.yml"
 )
 
-func TestAttachXUnitWildcardResults(t *testing.T) {
-	runTest(t, dBTestsWildcard)
-	return
-}
-
-func TestAttachXUnitResults(t *testing.T) {
-	runTest(t, dBTests)
-	return
-}
-
-// RunTest abstracts away common tests and setup between all attach xunit tests.
+// runTest abstracts away common tests and setup between all attach xunit tests.
 // It also takes as an argument a function which runs any additional tests desired.
-func runTest(t *testing.T, customTests func()) {
+func runTest(t *testing.T, configPath string, customTests func()) {
 	resetTasks(t)
 	Convey("With attachResults plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
@@ -41,8 +33,7 @@ func runTest(t *testing.T, customTests func()) {
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
 		util.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
-		configFile := "testdata/plugin_attach_xunit.yml"
-		taskConfig, err := testutil.CreateTestConfig(configFile, t)
+		taskConfig, err := testutil.CreateTestConfig(configPath, t)
 		util.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
@@ -67,10 +58,9 @@ func runTest(t *testing.T, customTests func()) {
 			Convey("and the tests should be present in the db", customTests)
 		})
 	})
-	return
 }
 
-// DBTests are the database verification tests for standard one file execution
+// dBTests are the database verification tests for standard one file execution
 func dBTests() {
 	task, err := model.FindTask("mocktaskid")
 	So(err, ShouldBeNil)
@@ -85,10 +75,9 @@ func dBTests() {
 		tl = dBFindOneTestLog("test.test_bson.TestBSON.test_basic_encode")
 		So(tl.Lines[0], ShouldContainSubstring, "AssertionError")
 	})
-	return
 }
 
-// DBTestsWildcard are the database verification tests for globbed file execution
+// dBTestsWildcard are the database verification tests for globbed file execution
 func dBTestsWildcard() {
 	task, err := model.FindTask("mocktaskid")
 	So(err, ShouldBeNil)
@@ -115,10 +104,9 @@ func dBTestsWildcard() {
 		tl = dBFindOneTestLog("test.test_bson.TestBSON.test_basic_encode")
 		So(tl.Lines[0], ShouldContainSubstring, "AssertionError")
 	})
-	return
 }
 
-// DBFindOneTestLog abstracts away some of the common attributes of database
+// dBFindOneTestLog abstracts away some of the common attributes of database
 // verification tests.
 func dBFindOneTestLog(name string) *model.TestLog {
 	ret, err := model.FindOneTestLog(
@@ -129,4 +117,12 @@ func dBFindOneTestLog(name string) *model.TestLog {
 	So(err, ShouldBeNil)
 	So(ret, ShouldNotBeNil)
 	return ret
+}
+
+func TestAttachXUnitResults(t *testing.T) {
+	runTest(t, SingleFileConfig, dBTests)
+}
+
+func TestAttachXUnitWildcardResults(t *testing.T) {
+	runTest(t, WildcardConfig, dBTestsWildcard)
 }

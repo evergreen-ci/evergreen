@@ -14,12 +14,9 @@ import (
 // AttachXUnitResultsCommand reads in an xml file of xunit
 // type results and converts them to a format MCI can use
 type AttachXUnitResultsCommand struct {
-	// FileLoc describes the relative path of the file to be sent.
+	// File describes the relative path of the file to be sent. Supports globbing.
 	// Note that this can also be described via expansions.
-	FileLoc string `mapstructure:"file_location" plugin:"expand"`
-	// FilePattern describes the relative path of any number of files
-	// that fit the pattern.
-	FilePattern string `mapstructure:"file_pattern" plugin:"expand"`
+	File string `mapstructure:"file" plugin:"expand"`
 }
 
 func (self *AttachXUnitResultsCommand) Name() string {
@@ -46,31 +43,23 @@ func (self *AttachXUnitResultsCommand) ParseParams(
 // validateParams is a helper function that ensures all
 // the fields necessary for attaching an xunit results are present
 func (self *AttachXUnitResultsCommand) validateParams() (err error) {
-	if (self.FileLoc == "" && self.FilePattern == "") ||
-		(self.FileLoc != "" && self.FilePattern != "") {
-		return fmt.Errorf("please specify file_location (X)OR file_pattern")
+	if self.File == "" {
+		return fmt.Errorf("file cannot be blank")
 	}
 	return nil
 }
 
-// Given any string, expand appropriately or error if not possible
-func expandParamString(fileString *string, taskConfig *model.TaskConfig) (
-	err error) {
-
-	*fileString, err = taskConfig.Expansions.ExpandString(*fileString)
-	if err != nil {
-		return fmt.Errorf("error expanding path '%v': %v", *fileString, err)
-	}
-	return nil
-}
-
-// Expand the appropriate parameter
+// Expand the parameter appropriately
 func (self *AttachXUnitResultsCommand) expandParams(
 	taskConfig *model.TaskConfig) (err error) {
-	if self.FileLoc != "" {
-		return expandParamString(&self.FileLoc, taskConfig)
+
+	fileString, err := taskConfig.Expansions.ExpandString(self.File)
+	if err != nil {
+		return fmt.Errorf("error expanding path '%v': %v", self.File, err)
 	}
-	return expandParamString(&self.FilePattern, taskConfig)
+	self.File = fileString
+
+	return nil
 }
 
 // Execute carries out the AttachResultsCommand command - this is required
@@ -104,11 +93,7 @@ func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
 func (self *AttachXUnitResultsCommand) getFilePaths(
 	taskConfig *model.TaskConfig) []string {
 
-	if self.FileLoc != "" {
-		return []string{filepath.Join(taskConfig.WorkDir, self.FileLoc)}
-	}
-
-	patternPath := filepath.Join(taskConfig.WorkDir, self.FilePattern)
+	patternPath := filepath.Join(taskConfig.WorkDir, self.File)
 	paths, err := filepath.Glob(patternPath)
 	if err != nil {
 		fmt.Errorf("location_pattern specified an incorrect pattern: '%v'", err)
