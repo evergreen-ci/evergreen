@@ -96,7 +96,7 @@ func (self *AttachXUnitResultsCommand) getFilePaths(
 	patternPath := filepath.Join(taskConfig.WorkDir, self.File)
 	paths, err := filepath.Glob(patternPath)
 	if err != nil {
-		fmt.Errorf("location_pattern specified an incorrect pattern: '%v'", err)
+		fmt.Errorf("file specified an incorrect pattern: '%v'", err)
 	}
 	return paths
 }
