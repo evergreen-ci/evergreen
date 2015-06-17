@@ -53,12 +53,10 @@ func (self *AttachXUnitResultsCommand) validateParams() (err error) {
 func (self *AttachXUnitResultsCommand) expandParams(
 	taskConfig *model.TaskConfig) (err error) {
 
-	fileString, err := taskConfig.Expansions.ExpandString(self.File)
+	self.File, err = taskConfig.Expansions.ExpandString(self.File)
 	if err != nil {
 		return fmt.Errorf("error expanding path '%v': %v", self.File, err)
 	}
-	self.File = fileString
-
 	return nil
 }
 
