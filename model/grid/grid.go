@@ -34,6 +34,11 @@ type Cell struct {
 // Grid is a slice of cells.
 type Grid []Cell
 
+type FailureId struct {
+	Test string `bson:"t" json:"test"`
+	Task string `bson:"d" json:"task"`
+}
+
 // VariantInfo holds information for each variant a test fails on.
 type VariantInfo struct {
 	Name   string `bson:"n" json:"name"`
@@ -43,8 +48,7 @@ type VariantInfo struct {
 // Failure contains data for a particular test failure - including
 // the test's task display name, and the variants its failing on.
 type Failure struct {
-	Test     string        `bson:"_id" json:"name"`
-	Task     string        `bson:"t" json:"task"`
+	Id       FailureId     `bson:"_id" json:"identifier"`
 	Variants []VariantInfo `bson:"a" json:"variants"`
 }
 
@@ -204,15 +208,15 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		// it's failing on (and the accompanying task id) and include task's
 		// display name.
 		{"$group": bson.M{
-			"_id": "$f",
+			"_id": bson.M{
+				"t": "$f",
+				"d": "$t",
+			},
 			"a": bson.M{
 				"$push": bson.M{
 					"n": "$v",
 					"i": "$tid",
 				},
-			},
-			"t": bson.M{
-				"$first": "$t",
 			},
 		}},
 	}

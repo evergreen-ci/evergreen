@@ -34,8 +34,8 @@ Evergreen - Grid
       <div class="gridtable-small">
         <h3 ng-show="!versionFailures.length">Hooray! There are no recent test failures</h3>
         <h3 ng-show="versionFailures.length">Recent test failures ([[numFailures]]):</h3>
-        <div ng-repeat="failure in versionFailures | orderBy:['-variants.length', 'name | endOfPath']" class="failure-name" ng-show="versionFailures.length">
-          <span class="failure-title"><a ng-href="/task_history/[[baseRef.identifier]]/[[failure.task]]?#[[failure.name | endOfPath]]=fail">[[failure.name | endOfPath]]</a></span> in <span class="failure-title">[[failure.task]] ([[failure.variants.length]])</span>
+        <div ng-repeat="failure in versionFailures | orderBy:['-variants.length', 'identifier.test | endOfPath']" class="failure-name" ng-show="versionFailures.length">
+          <span class="failure-title"><a ng-href="/task_history/[[baseRef.identifier]]/[[failure.identifier.task]]?#[[failure.identifier.test | endOfPath]]=fail">[[failure.identifier.test | endOfPath]]</a></span> in <span class="failure-title">[[failure.task]] ([[failure.variants.length]])</span>
           <p class="test-failures" ng-repeat="bv in failure.variants | orderBy:'name'" >
             &ndash;<a ng-href="/task/[[bv.task_id]]"> [[bv.name]]</a>
           </p>

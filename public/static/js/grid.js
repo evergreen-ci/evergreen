@@ -50,7 +50,7 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     $scope.revision = null;
   }
 
-  for(var i = 0; i < $scope.versionFailures.length; i++){
+  for (var i = 0; i < $scope.versionFailures.length; i++){
     $scope.numFailures += $scope.versionFailures[i].variants.length;
   }
 
