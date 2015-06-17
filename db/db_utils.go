@@ -219,6 +219,6 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	}
 	defer session.Close()
 
-	pipe := db.C(collection).Pipe(pipeline)
+	pipe := db.C(collection).Pipe(pipeline).AllowDiskUse()
 	return pipe.All(out)
 }
