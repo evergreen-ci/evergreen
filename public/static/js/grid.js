@@ -4,7 +4,7 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   $scope.allVersions = $window.allVersions;
   $scope.userTz = $window.userTz;
   $scope.baseRef = $window.baseRef;
-  $scope.versionFailures = $window.versionFailures;
+  var versionFailures = $window.versionFailures;
 
   // If a tab number is specified in the URL, parse it out and set the tab
   // number in the scope so that the correct tab is open when the page loads.
@@ -50,9 +50,34 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     $scope.revision = null;
   }
 
-  for (var i = 0; i < $scope.versionFailures.length; i++){
-    $scope.numFailures += $scope.versionFailures[i].variants.length;
+  $scope.versionFailures = [];
+  var identifiers = [];
+  for (var i = 0; i < versionFailures.length; i++) {
+    $scope.numFailures += versionFailures[i].variants.length;
+    var identifier = versionFailures[i].identifier.test + versionFailures[i].identifier.task;
+    if (!identifiers[identifier]) {
+      identifiers[identifier] = {
+        "test": versionFailures[i].identifier.test,
+        "task": versionFailures[i].identifier.task,
+        "variants": versionFailures[i].variants,
+      };
+    } else {
+      identifiers[identifier].variants.push.apply(
+        identifiers[identifier].variants,
+        versionFailures[i].variants
+      );
+    }
   }
+
+  Object.keys(identifiers).forEach(function(i) {
+    $scope.versionFailures.push({
+      "identifier": {
+        "test": identifiers[i].test,
+        "task": identifiers[i].task,
+      },
+      "variants": identifiers[i].variants,
+    });
+  });
 
   // create grid with map of buildvariant to its tasks
   for (var i = 0; i < gridCells.length; i++) {
