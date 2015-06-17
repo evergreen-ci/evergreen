@@ -12,19 +12,25 @@ const (
 )
 
 var (
-	// bson fields for the user struct
 	IdKey           = bsonutil.MustHaveTag(DBUser{}, "Id")
 	FirstNameKey    = bsonutil.MustHaveTag(DBUser{}, "FirstName")
 	LastNameKey     = bsonutil.MustHaveTag(DBUser{}, "LastName")
 	DispNameKey     = bsonutil.MustHaveTag(DBUser{}, "DispName")
 	EmailAddressKey = bsonutil.MustHaveTag(DBUser{}, "EmailAddress")
+	PatchNumberKey  = bsonutil.MustHaveTag(DBUser{}, "PatchNumber")
 	CreatedAtKey    = bsonutil.MustHaveTag(DBUser{}, "CreatedAt")
 	SettingsKey     = bsonutil.MustHaveTag(DBUser{}, "Settings")
 	APIKeyKey       = bsonutil.MustHaveTag(DBUser{}, "APIKey")
 	PubKeysKey      = bsonutil.MustHaveTag(DBUser{}, "PubKeys")
-	PubKeyNameKey   = bsonutil.MustHaveTag(PubKey{}, "Name")
+)
 
-	// bson fields for the user settings struct
+var (
+	PubKeyNameKey       = bsonutil.MustHaveTag(PubKey{}, "Name")
+	PubKeyKey           = bsonutil.MustHaveTag(PubKey{}, "Key")
+	PubKeyNCreatedAtKey = bsonutil.MustHaveTag(PubKey{}, "CreatedAt")
+)
+
+var (
 	SettingsTZKey = bsonutil.MustHaveTag(UserSettings{}, "Timezone")
 )
 
@@ -33,26 +39,11 @@ func ById(userId string) db.Q {
 }
 
 func ByIds(userIds ...string) db.Q {
-	return db.Query(bson.M{IdKey: bson.M{"$in": userIds}})
-}
-
-// Not yet implemented in the UI
-func (self *DBUser) RemovePublicKey(name string) error {
-	session, db, err := db.GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	selector := bson.M{
-		"_id": self.Id,
-	}
-	update := bson.M{
-		"$pull": bson.M{
-			"public_keys.name": name,
+	return db.Query(bson.M{
+		IdKey: bson.M{
+			"$in": userIds,
 		},
-	}
-	return db.C(Collection).Update(selector, update)
+	})
 }
 
 // FindOne gets one DBUser for the given query.

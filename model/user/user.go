@@ -3,6 +3,8 @@ package user
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/db"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"time"
 )
 
@@ -12,6 +14,7 @@ type DBUser struct {
 	LastName     string       `bson:"last_name"`
 	DispName     string       `bson:"display_name"`
 	EmailAddress string       `bson:"email"`
+	PatchNumber  int          `bson:"patch_number"`
 	PubKeys      []PubKey     `bson:"public_keys" json:"public_keys"`
 	CreatedAt    time.Time    `bson:"created_at"`
 	Settings     UserSettings `bson:"settings"`
@@ -59,4 +62,32 @@ func (u *DBUser) PublicKeys() []PubKey {
 func (u *DBUser) Insert() error {
 	u.CreatedAt = time.Now()
 	return db.Insert(Collection, u)
+}
+
+// IncPatchNumber increases the count for the user's patch submissions by one,
+// and then returns the new count.
+func (u *DBUser) IncPatchNumber() (int, error) {
+	dbUser := &DBUser{}
+	_, err := db.FindAndModify(
+		Collection,
+		bson.M{
+			IdKey: u.Id,
+		},
+		nil,
+		mgo.Change{
+			Update: bson.M{
+				"$inc": bson.M{
+					PatchNumberKey: 1,
+				},
+			},
+			Upsert:    true,
+			ReturnNew: true,
+		},
+		dbUser,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return dbUser.PatchNumber, nil
+
 }

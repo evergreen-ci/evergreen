@@ -216,7 +216,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
 	settings *evergreen.Settings, project *Project) (
 	patchVersion *version.Version, err error) {
-	// marshall the project YAML for storage
+	// marshal the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
 
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-//PatchAPIResponse is returned by all patch-related API calls
+// PatchAPIResponse is returned by all patch-related API calls
 type PatchAPIResponse struct {
 	Message string       `json:"message"`
 	Action  string       `json:"action"`
@@ -43,7 +43,6 @@ type PatchMetadata struct {
 // Validate checks an API request to see if it is safe and sane.
 // Returns the relevant patch metadata and any errors that occur.
 func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
-
 	var repoOwner, repo string
 	var module *model.Module
 	projectRef, err := model.FindOneProjectRef(pr.ProjectFileName)
@@ -144,12 +143,6 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	if !getGlobalLock(PatchLockTitle) {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Failed to get global lock"))
-		return
-	}
-	defer releaseGlobalLock(PatchLockTitle)
-
 	apiRequest := PatchAPIRequest{
 		ProjectFileName: r.FormValue("project"),
 		ModuleName:      r.FormValue("module"),
@@ -210,14 +203,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//Check if the user already has some patch on this same commit+project
-	_, err = patch.FindOne(
-		patch.ByUserProjectAndGitspec(user.Id, apiRequest.ProjectFileName, apiRequest.Githash))
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
 	createTime := time.Now()
 	patchDoc := &patch.Patch{
 		Id:            bson.NewObjectId(),
@@ -228,28 +213,27 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		CreateTime:    createTime,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: apiRequest.BuildVariants,
-		Tasks:         nil, // nil : ALL tasks. non-nil: compile + any tasks included in list.
+		Tasks:         nil,
 		Patches: []patch.ModulePatch{
 			patch.ModulePatch{
 				ModuleName: "",
 				Githash:    apiRequest.Githash,
 				PatchSet: patch.PatchSet{
 					Patch:   apiRequest.PatchContent,
-					Summary: patchMetadata.Summaries, // thirdparty.GetPatchSummary(apiRequest.PatchContent),
+					Summary: patchMetadata.Summaries,
 				},
 			},
 		},
 	}
 
 	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = patchDoc.ComputePatchNumber()
+	patchDoc.PatchNumber, err = user.IncPatchNumber()
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error computing patch num %v", err))
 		return
 	}
 
-	err = patchDoc.Insert()
-	if err != nil {
+	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))
 		return
 	}
@@ -318,18 +302,12 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+
 	if commitInfo == nil {
 		as.WriteJSON(w, http.StatusBadRequest, fmt.Errorf("commit hash doesn't seem to exist"))
 		return
 	}
 
-	if !getGlobalLock(PatchLockTitle) {
-		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
-		return
-	}
-	defer releaseGlobalLock(PatchLockTitle)
-
-	//Things look ok - go ahead and add/update the module patch
 	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
 		Githash:    githash,
@@ -338,8 +316,8 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			Summary: summaries, // thirdparty.GetPatchSummary(apiRequest.PatchContent),
 		},
 	}
-	err = p.UpdateModulePatch(modulePatch)
-	if err != nil {
+
+	if err = p.UpdateModulePatch(modulePatch); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -360,7 +338,6 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
-	// get patch from request
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -415,12 +392,6 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {
-	if !getGlobalLock(PatchLockTitle) {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("timed out taking global lock"))
-		return
-	}
-	defer releaseGlobalLock(PatchLockTitle)
-
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)

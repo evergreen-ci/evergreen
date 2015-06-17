@@ -133,16 +133,6 @@ func (p *Patch) Insert() error {
 	return db.Insert(Collection, p)
 }
 
-// ComputePatchNumber counts all patches in the db before the current patch's
-// creation time and returns that count + 1
-func (p *Patch) ComputePatchNumber() (int, error) {
-	count, err := Count(db.Query(bson.M{
-		CreateTimeKey: bson.M{"$lt": p.CreateTime},
-		AuthorKey:     p.Author,
-	}))
-	return count + 1, err
-}
-
 // ConfigChanged looks through the parts of the patch and returns true if the
 // passed in remotePath is in the the name of the changed files that are part
 // of the patch
