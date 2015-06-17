@@ -66,12 +66,27 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 			"123": "456",
 		},
 	}
+	projectRef := &model.ProjectRef{
+		Owner:       "mongodb",
+		Repo:        "mongo",
+		Branch:      "master",
+		RepoKind:    "github",
+		Enabled:     true,
+		Private:     false,
+		BatchTime:   0,
+		RemotePath:  "etc/evergreen.yml",
+		Identifier:  "sample",
+		DisplayName: "sample",
+	}
+	err = projectRef.Upsert()
+	util.HandleTestingErr(err, t, "failed to upsert project ref")
+	projectRef.Upsert()
 	_, err = projectVars.Upsert()
 	util.HandleTestingErr(err, t, "failed to upsert project vars")
 	workDir, err := ioutil.TempDir("", "plugintest_")
 	util.HandleTestingErr(err, t, "failed to get working directory: %v")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	return model.NewTaskConfig(testDistro, testProject, testTask)
+	return model.NewTaskConfig(testDistro, testProject, testTask, projectRef)
 }
 
 func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *agent.HTTPCommunicator {
