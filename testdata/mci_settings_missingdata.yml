@@ -4,7 +4,7 @@ configdir: "config_test"
 aws_secret: ""
 aws_id: "AWS ID VALUE"
 github_oauth: "token GITHUB OAUTH TOKEN"
-motu: "mci-motu.10gen.cc"
+api_url: "mci-motu.10gen.cc"
 
 keys:
     mci: "/data/home/etc/mci.pem"

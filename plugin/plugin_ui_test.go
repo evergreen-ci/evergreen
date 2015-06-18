@@ -447,7 +447,7 @@ func TestUIDataInjection(t *testing.T) {
 								Page:     plugin.TaskPage,
 								Position: plugin.PageCenter,
 								DataFunc: func(ctx plugin.UIContext) (interface{}, error) {
-									return fmt.Sprintf("%v.%v@%v", ctx.User.Email, ctx.Settings.Motu), nil
+									return fmt.Sprintf("%v.%v@%v", ctx.User.Email, ctx.Settings.ApiUrl), nil
 								},
 							},
 						},

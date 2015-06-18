@@ -7,7 +7,7 @@ credentials:  {
 
 agentexecutablesdir: "agent/testdata/executables"
 
-motu: "https://localhost:8443"
+api_url: "https://localhost:8443"
 
 providers:
     aws:

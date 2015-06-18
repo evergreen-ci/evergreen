@@ -165,7 +165,7 @@ type Settings struct {
 	Db                  string            `yaml:"db"`
 	WriteConcern        WriteConcern      `yaml:"write_concern"`
 	ConfigDir           string            `yaml:"configdir"`
-	Motu                string            `yaml:"motu"`
+	ApiUrl              string            `yaml:"api_url"`
 	AgentExecutablesDir string            `yaml:"agentexecutablesdir"`
 	SuperUsers          []string          `yaml:"superusers"`
 	Jira                JiraConfig        `yaml:"jira"`
@@ -262,7 +262,7 @@ var ConfigValidationRules = []ConfigValidator{
 	},
 
 	func(settings *Settings) error {
-		if settings.Motu == "" {
+		if settings.ApiUrl == "" {
 			return fmt.Errorf("API hostname must not be empty")
 		}
 		return nil

@@ -6,7 +6,7 @@ providers:
         aws_id: PASTE_AWS_ID
         aws_secret: PASTE_AWS_SECRET
 
-motu: "http://localhost:8080"
+api_url: "http://localhost:8080"
 credentials:
     github: "paste your token here"
 
