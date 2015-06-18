@@ -1,10 +1,9 @@
-mciModule.controller('VersionMatrixController', function($scope, $window, $location) {
+mciModule.controller('VersionMatrixController', function($scope, $window, $location, $filter) {
   $scope.baseVersion = $window.baseVersion;
   $scope.gridCells = $window.gridCells;
   $scope.allVersions = $window.allVersions;
   $scope.userTz = $window.userTz;
   $scope.baseRef = $window.baseRef;
-  var versionFailures = $window.versionFailures;
 
   // If a tab number is specified in the URL, parse it out and set the tab
   // number in the scope so that the correct tab is open when the page loads.
@@ -30,53 +29,49 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     }, 0)
   }
 
-  $scope.numFailures = 0;
   $scope.grid = {};
   $scope.taskNames = [];
   $scope.buildVariants = [];
-  $scope.numFailures = 0;
 
-  if ($scope.baseVersion) {
-    $scope.revision = {
-      message: $scope.baseVersion.message,
-      author: $scope.baseVersion.author,
-      author_email: $scope.baseVersion.author_email,
-      push_time: $scope.baseVersion.create_time,
-      gitspec: $scope.baseVersion.revision,
-      repo_owner: $scope.baseRef.owner_name,
-      repo_name: $scope.baseRef.repo_name,
-    };
-  } else {
-    $scope.revision = null;
-  }
-
-  $scope.versionFailures = [];
-  var identifiers = [];
-  for (var i = 0; i < versionFailures.length; i++) {
-    $scope.numFailures += versionFailures[i].variants.length;
-    var identifier = versionFailures[i].identifier.test + versionFailures[i].identifier.task;
-    if (!identifiers[identifier]) {
-      identifiers[identifier] = {
-        "test": versionFailures[i].identifier.test,
-        "task": versionFailures[i].identifier.task,
-        "variants": versionFailures[i].variants,
-      };
+  // group the failures by task and test
+  var failures = {};
+  $scope.numTestFailures = 0;
+  for (var i = 0; i < $window.failures.length; i++) {
+    var failure = $window.failures[i];
+    var identifier = failure.identifier;
+    identifier.test = $filter('endOfPath')(identifier.test);
+    if (!failures[identifier.task]) {
+      failures[identifier.task] = {};
+      failures[identifier.task][identifier.test] = [].concat(failure.variants);
+      $scope.numTestFailures += 1;
     } else {
-      identifiers[identifier].variants.push.apply(
-        identifiers[identifier].variants,
-        versionFailures[i].variants
-      );
+      if (!failures[identifier.task][identifier.test]) {
+        failures[identifier.task][identifier.test] = [];
+      }
+      var variants = failures[identifier.task][identifier.test];
+      failures[identifier.task][identifier.test] = variants.concat(failure.variants);
+      $scope.numTestFailures += 1;
     }
   }
 
-  Object.keys(identifiers).forEach(function(i) {
-    $scope.versionFailures.push({
-      "identifier": {
-        "test": identifiers[i].test,
-        "task": identifiers[i].task,
-      },
-      "variants": identifiers[i].variants,
+  // sort failures by number of failing tests
+  $scope.failures = [];
+  Object.keys(failures).forEach(function(t) {
+    $scope.failures.push({"task": t, "variants": failures[t]});
+  });
+
+  $scope.failures.sort(function(a, b) {
+    var numA = 0;
+    var numB = 0;
+    Object.keys(a.variants).forEach(function(v) {
+      numA += a.variants[v].length;
     });
+    Object.keys(b.variants).forEach(function(v) {
+      numB += b.variants[v].length;
+    });
+    if (numB == numA)
+      return a.task > b.task;
+    return numB > numA;
   });
 
   // create grid with map of buildvariant to its tasks

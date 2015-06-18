@@ -5,7 +5,7 @@
   var baseRef = {{.ProjectData.ProjectRef}};
   var gridCells = {{.GridCells}};
   var allVersions = {{.Versions}};
-  var versionFailures = {{.Failures}}
+  var failures = {{.Failures}}
   var userTz = {{GetTimezone $.User}};
 </script>
 {{end}}
@@ -14,55 +14,47 @@ Evergreen - Grid
 {{end}}
 {{define "content"}}
 <div id="content" class="container-fluid" ng-controller="VersionMatrixController">
-  <div class="container" style="margin-top:20px;">
-    <div class="row">
-      {{if .ProjectData.Version}}
-      <div class="col-lg-8 col-lg-offset-1">
-        <github-commit-panel commit="revision" timezone="{{GetTimezone .User}}">
-        </github-commit-panel>
-      </div>
-      {{else}}
-      <p class="text-center">There are no builds of this project</p>
-      {{end}}
+  <header class="clearfix">
+    <h1>Summary</h1>
+  </header>
+  <div class="row">
+    {{if not .ProjectData.Version}}
+    <p class="text-center">There are no builds of this project</p>
+    {{end}}
+  </div>
+  <ul class="nav nav-tabs">
+  <li ng-class="{active:tab == 0}"><a href="#" ng-click="setTab(0)">Grid</a></li>
+  <li ng-class="{active:tab == 1}"><a href="#" ng-click="setTab(1)">Recent Failures</a></li>
+  <div class="row summary" ng-hide="tab != 1">
+    <div class="gridtable-small">
+      <h3 ng-show="!failures">Hooray! There are no recent test failures.</h3>
+      <ul ng-repeat="failure in failures" ng-show="failures">
+        <div class="failure-task">[[failure.task]]</div>
+        <li class="failure-tab failure-test strong" ng-repeat="(name, variants) in failure.variants | orderBy:['-variants.length', 'name']">
+          <a ng-href="/task_history/[[baseRef.identifier]]/[[failure.task]]?#[[name]]=fail">[[name]]</a></span>&nbsp;on&nbsp;<span ng-repeat="variant in variants | orderBy:'name'"><a ng-href="/task/[[variant.task_id]]">[[variant.name]]</a>[[$last ? '' : ',&nbsp;']]</span>
+        </li>
+      </ul>
     </div>
   </div>
-  <div class="mci-pod failure-list">
-    <ul class="nav nav-tabs">
-    <li ng-class="{active:tab == 0}"><a href="#" ng-click="setTab(0)">Grid</a></li>
-    <li ng-class="{active:tab == 1}"><a href="#" ng-click="setTab(1)">Failures</a></li>
-    <div class="row" ng-hide="tab != 1 ">
+  <div class="row" ng-hide="tab != 0">
+    <div class="row"></div>
+      <div id="popover"></div>
       <div class="gridtable-small">
-        <h3 ng-show="!versionFailures.length">Hooray! There are no recent test failures</h3>
-        <h3 ng-show="versionFailures.length">Recent test failures ([[numFailures]]):</h3>
-        <div ng-repeat="failure in versionFailures | orderBy:['-variants.length', 'identifier.test | endOfPath']" class="failure-name" ng-show="versionFailures.length">
-          <span class="failure-title"><a ng-href="/task_history/[[baseRef.identifier]]/[[failure.identifier.task]]?#[[failure.identifier.test | endOfPath]]=fail">[[failure.identifier.test | endOfPath]]</a></span> in <span class="failure-title">[[failure.identifier.task]] ([[failure.variants.length]])</span>
-          <p class="test-failures" ng-repeat="bv in failure.variants | orderBy:'name'" >
-            &ndash;<a ng-href="/task/[[bv.task_id]]"> [[bv.name]]</a>
-          </p>
-        </div>
-      </div>
-    </div>
-    <div class="row" ng-hide="tab != 0">
-      <div class="col-lg-offset-1">
-        <div id="popover"></div>
-        <div class="gridtable-small">
-          <div class="top-header-row">
-            <div class="header-cell" ng-repeat="task in taskNames" id="[['buildVariant' + $index]]">
-              <span class="header-text">
-              <a ng-href="/task_history/[[project]]/[[task]]">[[task]]</a>
-              </span>
-            </div>
-          </div>
-          <div class="tablerow" ng-repeat="buildVariant in buildVariants">
-            <div class="header">
-              <div class="taskNames" id="[['task' + $index]]">[[buildVariant]]</div>
-            </div>
-            <div class="cells">
-              <div ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(buildVariant, task)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(buildVariant, task, $event.target);">&nbsp;</div>
-            </div>
+        <div class="top-header-row">
+          <div class="header-cell" ng-repeat="task in taskNames" id="[['buildVariant' + $index]]">
+            <span class="header-text">
+            <a ng-href="/task_history/[[project]]/[[task]]">[[task]]</a>
+            </span>
           </div>
         </div>
-      </div>
+        <div class="tablerow" ng-repeat="buildVariant in buildVariants">
+          <div class="header">
+            <div class="taskNames" id="[['task' + $index]]">[[buildVariant]]</div>
+          </div>
+          <div class="cells">
+            <div ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(buildVariant, task)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(buildVariant, task, $event.target);">&nbsp;</div>
+          </div>
+        </div>
     </div>
   </div>
 </div>
