@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"os"
 )
 
 const (
@@ -213,24 +214,31 @@ func (settings *Settings) Validate(validators []ConfigValidator) error {
 	return nil
 }
 
-// MustConfigFile reads in a settings file and panics on errors.
-func MustConfigFile(settingsPath string) *Settings {
-	settings, err := NewSettings(settingsPath)
+// GetSettingsOrExit loads the evergreen settings file,
+// or exits with a non-0 code if any errors occur.
+func GetSettingsOrExit() *Settings {
+	settings, err := GetSettings()
 	if err != nil {
-		panic(err)
-	}
-	err = settings.Validate(ConfigValidationRules)
-	if err != nil {
-		panic(err)
+		// don't use the logger here, since it needs settings to initialize
+		fmt.Fprintf(os.Stderr, "Error reading config file: %v", err)
+		os.Exit(1)
 	}
 	return settings
 }
 
-// MustConfig returns Evergreen Settings or panics.
-func MustConfig() *Settings {
-	var configFilePath = flag.String("conf", DefaultConfFile, "path to config file")
+// GetSettings returns Evergreen Settings or an error.
+func GetSettings() (*Settings, error) {
+	var settingsPath = flag.String("conf", DefaultConfFile, "path to config file")
 	flag.Parse()
-	return MustConfigFile(*configFilePath)
+	settings, err := NewSettings(*settingsPath)
+	if err != nil {
+		return nil, err
+	}
+	err = settings.Validate(ConfigValidationRules)
+	if err != nil {
+		return nil, err
+	}
+	return settings, nil
 }
 
 // ConfigValidator is a type of function that checks the settings

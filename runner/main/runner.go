@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
@@ -20,9 +21,21 @@ var (
 )
 
 func main() {
-	settings := evergreen.MustConfig()
+	settings := evergreen.GetSettingsOrExit()
 	if settings.Runner.LogFile != "" {
 		evergreen.SetLogger(settings.Runner.LogFile)
+	}
+
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
+
+	// just run one process if an argument was passed in
+	if flag.Arg(0) != "" {
+		err := runProcessByName(flag.Arg(0), settings)
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error: %v", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	if settings.Runner.IntervalSeconds <= 0 {
@@ -31,8 +44,6 @@ func main() {
 	} else {
 		runInterval = settings.Runner.IntervalSeconds
 	}
-
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	// start and schedule runners
 	wg := &sync.WaitGroup{}
@@ -51,7 +62,7 @@ func runProcess(r ProcessRunner, s *evergreen.Settings) chan struct{} {
 		err := r.Run(s)
 		if err != nil {
 			subject := fmt.Sprintf(`%v failure`, r.Name())
-			evergreen.Logger.Logf(slogger.ERROR, err.Error())
+			evergreen.Logger.Logf(slogger.ERROR, "%v", err)
 			if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
 			}
@@ -102,4 +113,19 @@ func listenForSIGTERM(ch chan struct{}) {
 	<-sigChan
 	evergreen.Logger.Logf(slogger.INFO, "Terminating %v processes", len(Runners))
 	close(ch)
+}
+
+// runProcessByName runs a single process given its name and evergreen Settings.
+// Returns an error if the process does not exist.
+func runProcessByName(name string, settings *evergreen.Settings) error {
+	for _, r := range Runners {
+		if r.Name() == name {
+			evergreen.Logger.Logf(slogger.INFO, "Running standalone %v process", name)
+			if err := r.Run(settings); err != nil {
+				evergreen.Logger.Logf(slogger.ERROR, "Error: %v", err)
+			}
+			return nil
+		}
+	}
+	return fmt.Errorf("process name '%v' does not exist", name)
 }

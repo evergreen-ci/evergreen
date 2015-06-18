@@ -27,7 +27,7 @@ var (
 )
 
 func main() {
-	settings := evergreen.MustConfig()
+	settings := evergreen.GetSettingsOrExit()
 	if settings.Ui.LogFile != "" {
 		evergreen.SetLogger(settings.Ui.LogFile)
 	}
