@@ -89,14 +89,14 @@ func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
 // getFilePaths is a helper function that returns a slice of all absolute paths
 // which match the given file path parameters.
 func (self *AttachXUnitResultsCommand) getFilePaths(
-	taskConfig *model.TaskConfig) []string {
+	workDir string) ([]string, error) {
 
-	patternPath := filepath.Join(taskConfig.WorkDir, self.File)
+	patternPath := filepath.Join(workDir, self.File)
 	paths, err := filepath.Glob(patternPath)
 	if err != nil {
-		fmt.Errorf("file specified an incorrect pattern: '%v'", err)
+		return nil, fmt.Errorf("file specified an incorrect pattern: '%v'", err)
 	}
-	return paths
+	return paths, nil
 }
 
 func (self *AttachXUnitResultsCommand) parseAndUploadResults(
@@ -106,7 +106,11 @@ func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 	logs := []*model.TestLog{}
 	logIdxToTestIdx := []int{}
 
-	reportFilePaths := self.getFilePaths(taskConfig)
+	reportFilePaths, err := self.getFilePaths(taskConfig.WorkDir)
+	if err != nil {
+		return err
+	}
+
 	for _, reportFileLoc := range reportFilePaths {
 		file, err := os.Open(reportFileLoc)
 		if err != nil {
