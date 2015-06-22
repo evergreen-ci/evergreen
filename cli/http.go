@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
@@ -216,7 +217,6 @@ func (ac *APIClient) UpdatePatchModule(patchId, module, patch, base string) erro
 }
 
 func (ac *APIClient) ListProjects() ([]model.ProjectRef, error) {
-	fmt.Println(ac.User, ac.APIKey)
 	authToken, err := generateTokenParam(ac.User, ac.APIKey)
 	if err != nil {
 		return nil, err
@@ -273,4 +273,22 @@ func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, erro
 		return nil, err
 	}
 	return reply.Patch, nil
+}
+
+// CheckUpdates fetches information about available updates to client binaries from the server.
+func (ac *APIClient) CheckUpdates() (*evergreen.ClientConfig, error) {
+	resp, err := ac.get("update", nil, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+
+	reply := &evergreen.ClientConfig{}
+	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
+		return nil, err
+	}
+	return reply, nil
 }

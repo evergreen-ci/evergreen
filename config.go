@@ -8,6 +8,9 @@ import (
 	"os"
 )
 
+// Should be specified with -ldflags at build time
+var BuildRevision = ""
+
 const (
 	// DefaultConfFile is the default config file path for Evergreen.
 	DefaultConfFile = "/etc/mci_settings.yml"
@@ -46,8 +49,20 @@ type RepoTrackerConfig struct {
 	LogFile                    string
 }
 
+type ClientBinary struct {
+	Arch string `yaml:"arch"`
+	OS   string `yaml:"os"`
+	URL  string `yaml:"url"`
+}
+
+type ClientConfig struct {
+	ClientBinaries []ClientBinary `yaml:"client_binaries"`
+	LatestRevision string         `yaml:"latest_revision"`
+}
+
 // APIConfig holds relevant encryption and log settings for the API server.
 type APIConfig struct {
+	Clients         ClientConfig `yaml:"clients"`
 	LogFile         string
 	HttpListenAddr  string
 	HttpsListenAddr string

@@ -12,9 +12,9 @@ rm -rf vendor/pkg
 mkdir -p bin
 export GOBIN=bin
 
-for i in apiserver ui runner; do
+for i in apiserver ui runner cli; do
 	echo "Building ${i}..."
-	go install "$i/main/$i.go"
+	go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`" "$i/main/$i.go" 
 done
 
 # rename API/UI servers and Evergreen runner

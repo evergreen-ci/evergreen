@@ -46,7 +46,7 @@ type patchSubmission struct {
 // ListPatchesCommand is used to list a user's existing patches.
 type ListPatchesCommand struct {
 	GlobalOpts  Options  `no-flag:"true"`
-	Variants    []string `short:"v" long:"variants"`
+	Variants    []string `short:"v" long:"variants" description:"variants to run the patch on. may be specified multiple times, or use the value 'all'"`
 	PatchId     string   `short:"i" description:"show details for only the patch with this ID"`
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
 }
@@ -113,6 +113,8 @@ func (lpc *ListPatchesCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	patches, err := ac.GetPatches()
 	if err != nil {
 		return err
@@ -149,6 +151,8 @@ func (rmc *RemoveModuleCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	err = ac.DeletePatchModule(rmc.PatchId, rmc.Module)
 	if err != nil {
 		return err
@@ -165,6 +169,8 @@ func (vc *ValidateCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	confFile, err := ioutil.ReadFile(args[0])
 	if err != nil {
 		return err
@@ -189,6 +195,8 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	diffData, err := loadGitData("master", args...) // modules always diff relative to master. this is not great.
 	if err != nil {
 		return err
@@ -213,6 +221,7 @@ func (pc *PatchCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
 
 	if pc.Project == "" {
 		pc.Project = settings.FindDefaultProject()
@@ -290,6 +299,8 @@ func (cpc *CancelPatchCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	err = ac.CancelPatch(cpc.PatchId)
 	if err != nil {
 		return err
@@ -303,6 +314,8 @@ func (fpc *FinalizePatchCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	err = ac.FinalizePatch(fpc.PatchId)
 	if err != nil {
 		return err
@@ -316,6 +329,8 @@ func (lp *ListProjectsCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+	notifyUserUpdate(ac)
+
 	projs, err := ac.ListProjects()
 	if err != nil {
 		return err

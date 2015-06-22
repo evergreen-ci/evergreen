@@ -894,6 +894,17 @@ func requireUser(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// Returns information about available updates for client binaries.
+// Replies 404 if this data is not configured.
+func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
+	if len(as.Settings.Api.Clients.LatestRevision) == 0 {
+		// auto-update is not configured
+		as.WriteJSON(w, http.StatusNotFound, "{}")
+		return
+	}
+	as.WriteJSON(w, http.StatusOK, as.Settings.Api.Clients)
+}
+
 // Handler returns the root handler for all APIServer endpoints.
 func (as *APIServer) Handler() (http.Handler, error) {
 	root := mux.NewRouter()
@@ -906,6 +917,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	apiRootOld.HandleFunc("/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
 	apiRootOld.HandleFunc("/validate", as.validateProjectConfig).Methods("POST")
 	apiRootOld.HandleFunc("/projects", requireUser(as.listProjects)).Methods("GET")
+	apiRootOld.HandleFunc("/update", as.getUpdate).Methods("GET")
 
 	// User session routes
 	apiRootOld.HandleFunc("/token", as.getUserSession).Methods("POST")

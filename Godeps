@@ -25,4 +25,5 @@ github.com/codegangsta/negroni                  1dd3ab0ff59e13f5b73dcbf70703710a
 github.com/evergreen-ci/render                  c9e0e54c798fc15217c09d382e207644402bf004
 github.com/evergreen-ci/crowd                   dd8ffe015fd8950a70330076037c3d979b7ff548
 github.com/jessevdk/go-flags                    5e118789801496c93ba210d34ef1f2ce5a9173bd
+github.com/kardianos/osext                      6e7f843663477789fac7c02def0d0909e969b4e5
 gopkg.in/tylerb/graceful.v1						49b853e77ab58c31be0d3ee87db62909b90ac93e
