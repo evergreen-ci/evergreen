@@ -181,7 +181,7 @@ tasks:
             export GOBIN=`pwd`/bin
           fi
           echo "using GOBIN $GOBIN"
-          go install cli/main/cli.go
+          go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`" cli/main/cli.go
     - command: s3.put
       params:
         aws_key: ${aws_key}

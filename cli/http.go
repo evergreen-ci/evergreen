@@ -286,9 +286,9 @@ func (ac *APIClient) CheckUpdates() (*evergreen.ClientConfig, error) {
 		return nil, NewAPIError(resp)
 	}
 
-	reply := &evergreen.ClientConfig{}
+	reply := evergreen.ClientConfig{}
 	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
 		return nil, err
 	}
-	return reply, nil
+	return &reply, nil
 }

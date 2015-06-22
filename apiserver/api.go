@@ -917,6 +917,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	apiRootOld.HandleFunc("/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
 	apiRootOld.HandleFunc("/validate", as.validateProjectConfig).Methods("POST")
 	apiRootOld.HandleFunc("/projects", requireUser(as.listProjects)).Methods("GET")
+
+	// Client auto-update routes
 	apiRootOld.HandleFunc("/update", as.getUpdate).Methods("GET")
 
 	// User session routes

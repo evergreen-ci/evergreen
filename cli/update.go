@@ -19,7 +19,7 @@ import (
 // the current one.
 type UpdateCommand struct {
 	GlobalOpts Options `no-flag:"true"`
-	NoInstall  bool    `long:"no-overwrite" description:"only download updated binary, and don't overwrite the old one"`
+	NoInstall  bool    `long:"no-install" description:"only download updated binary, and don't overwrite the old one"`
 }
 
 // VersionCommand prints the revision that the CLI binary was built with.
@@ -42,7 +42,7 @@ func findClientUpdate(clients evergreen.ClientConfig) *evergreen.ClientBinary {
 	return nil
 }
 
-// prepareUpdate fetches the update at the given url, writes it to a temporary file, and returns
+// prepareUpdate fetches the update at the given URL, writes it to a temporary file, and returns
 // the path to the temporary file.
 func prepareUpdate(url, newVersion string) (string, error) {
 	tempFile, err := ioutil.TempFile("", "")
@@ -57,7 +57,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	}
 
 	if response == nil {
-		return "", fmt.Errorf("empty response from url: %v", url)
+		return "", fmt.Errorf("empty response from URL: %v", url)
 	}
 
 	defer response.Body.Close()
@@ -73,7 +73,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	//chmod the binary so that it is executable
 	os.Chmod(tempPath, 0755)
 
-	fmt.Println("Upgraded binary downloaded to ", tempPath, " - verifying")
+	fmt.Println("Upgraded binary downloaded to", tempPath, "- verifying")
 
 	// Run the new binary's "version" command to verify that it is in fact the correct upgraded
 	// version
@@ -93,12 +93,18 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	return tempPath, nil
 }
 
+type updateStatus struct {
+	binary      *evergreen.ClientBinary
+	needsUpdate bool
+	newVersion  string
+}
+
 // checkUpdate checks if an update is available and logs its activity. If "silent" is true, logging
 // is suppressed.
 // Returns the info on the new binary to be downloaded (nil if none was found), a boolean
 // indicating if the binary needs an update (version on client and server don't match), the new version if found,
 // and an error if relevant.
-func checkUpdate(ac *APIClient, silent bool) (*evergreen.ClientBinary, bool, string, error) {
+func checkUpdate(ac *APIClient, silent bool) (updateStatus, error) {
 	var outLog io.Writer = os.Stdout
 	if silent {
 		outLog = ioutil.Discard
@@ -109,30 +115,30 @@ func checkUpdate(ac *APIClient, silent bool) (*evergreen.ClientBinary, bool, str
 	clients, err := ac.CheckUpdates()
 	if err != nil {
 		fmt.Fprintf(outLog, "Failed checking for updates: %v\n", err)
-		return nil, false, "", err
+		return updateStatus{nil, false, ""}, err
 	}
 
 	// No update needed
 	if clients.LatestRevision == evergreen.BuildRevision {
 		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.BuildRevision)
-		return nil, false, clients.LatestRevision, nil
+		return updateStatus{nil, false, clients.LatestRevision}, nil
 	}
 
 	binarySource := findClientUpdate(*clients)
 	if binarySource == nil {
 		// Client is out of date but no update available
 		fmt.Fprintf(outLog, "Client is out of date (version %v) but update is unavailable.\n", evergreen.BuildRevision)
-		return nil, true, clients.LatestRevision, nil
+		return updateStatus{nil, true, clients.LatestRevision}, nil
 	}
 
 	fmt.Fprintf(outLog, "Update to version %v found at %v\n", evergreen.BuildRevision, binarySource.URL)
-	return binarySource, true, clients.LatestRevision, nil
+	return updateStatus{binarySource, true, clients.LatestRevision}, nil
 }
 
 // Silently check if an update is available, and print a notification message if it is.
 func notifyUserUpdate(ac *APIClient) {
-	_, needsUpdate, _, err := checkUpdate(ac, true)
-	if needsUpdate && err == nil {
+	update, err := checkUpdate(ac, true)
+	if update.needsUpdate && err == nil {
 		fmt.Println("A new version is available. Run 'evergreen update' to get it.")
 	}
 }
@@ -143,16 +149,16 @@ func (uc *UpdateCommand) Execute(args []string) error {
 		return err
 	}
 
-	binarySource, needsUpdate, newVersion, err := checkUpdate(ac, false)
+	update, err := checkUpdate(ac, false)
 	if err != nil {
 		return err
 	}
-	if needsUpdate == false || binarySource == nil {
+	if update.needsUpdate == false || update.binary == nil {
 		return nil
 	}
 
-	fmt.Println("Fetching update from", binarySource.URL)
-	updatedBin, err := prepareUpdate(binarySource.URL, newVersion)
+	fmt.Println("Fetching update from", update.binary.URL)
+	updatedBin, err := prepareUpdate(update.binary.URL, update.newVersion)
 	if err != nil {
 		return err
 	}
