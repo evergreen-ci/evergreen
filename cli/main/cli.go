@@ -10,7 +10,7 @@ func main() {
 	opts := cli.Options{}
 
 	var parser = flags.NewParser(&opts, flags.Default)
-	parser.AddCommand("update", "fetch the latest version of this binary", "", &cli.UpdateCommand{GlobalOpts: opts})
+	parser.AddCommand("get-update", "fetch the latest version of this binary", "", &cli.GetUpdateCommand{GlobalOpts: opts})
 	parser.AddCommand("version", "display version information", "", &cli.VersionCommand{})
 	parser.AddCommand("set-module", "update or add module to an existing patch", "", &cli.SetModuleCommand{GlobalOpts: opts})
 	parser.AddCommand("patch", "submit a patch", "", &cli.PatchCommand{GlobalOpts: opts})

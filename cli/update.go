@@ -15,11 +15,11 @@ import (
 	"strings"
 )
 
-// UpdateCommand attempts to fetch the latest version of the client binary and install it over
+// GetUpdateCommand attempts to fetch the latest version of the client binary and install it over
 // the current one.
-type UpdateCommand struct {
+type GetUpdateCommand struct {
 	GlobalOpts Options `no-flag:"true"`
-	NoInstall  bool    `long:"no-install" description:"only download updated binary, and don't overwrite the old one"`
+	Install    bool    `long:"install" description:"after downloading update, overwrite old binary with new one"`
 }
 
 // VersionCommand prints the revision that the CLI binary was built with.
@@ -139,11 +139,15 @@ func checkUpdate(ac *APIClient, silent bool) (updateStatus, error) {
 func notifyUserUpdate(ac *APIClient) {
 	update, err := checkUpdate(ac, true)
 	if update.needsUpdate && err == nil {
-		fmt.Println("A new version is available. Run 'evergreen update' to get it.")
+		if runtime.GOOS == "windows" {
+			fmt.Println("A new version is available. Run 'evergreen get-update' to fetch it.")
+		} else {
+			fmt.Println("A new version is available. Run 'evergreen get-update --install' to download and install it.")
+		}
 	}
 }
 
-func (uc *UpdateCommand) Execute(args []string) error {
+func (uc *GetUpdateCommand) Execute(args []string) error {
 	ac, _, err := getAPIClient(uc.GlobalOpts)
 	if err != nil {
 		return err
@@ -163,7 +167,7 @@ func (uc *UpdateCommand) Execute(args []string) error {
 		return err
 	}
 
-	if !uc.NoInstall {
+	if uc.Install {
 		fmt.Println("Upgraded binary successfully downloaded to temporary file:", updatedBin)
 
 		binaryDest, err := osext.Executable()
