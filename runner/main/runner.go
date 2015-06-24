@@ -52,49 +52,37 @@ func main() {
 
 	// wait for all the processes to exit
 	wg.Wait()
-}
-
-// runProcess runs a ProcessRunner with the given settings and
-// returns a channel on which the caller can listen for process completion.
-func runProcess(r ProcessRunner, s *evergreen.Settings) chan struct{} {
-	c := make(chan struct{})
-	go func(doneChan chan struct{}) {
-		err := r.Run(s)
-		if err != nil {
-			subject := fmt.Sprintf(`%v failure`, r.Name())
-			evergreen.Logger.Logf(slogger.ERROR, "%v", err)
-			if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
-			}
-		}
-		// close the channel to indicate the process is finished
-		close(doneChan)
-	}(c)
-	return c
+	evergreen.Logger.Logf(slogger.INFO, "Cleanly terminated all %v processes", len(Runners))
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
 // returns a channel on which all runners listen on, for when to terminate.
-func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan struct{} {
-	c := make(chan struct{}, 1)
+func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan bool {
+	c := make(chan bool)
+	duration := time.Duration(runInterval) * time.Second
+
 	for _, r := range Runners {
 		wg.Add(1)
 
 		// start each runner in its own goroutine
-		go func(r ProcessRunner, s *evergreen.Settings, terminateChan chan struct{}) {
+		go func(r ProcessRunner, s *evergreen.Settings, terminateChan chan bool) {
 			defer wg.Done()
+
 			evergreen.Logger.Logf(slogger.INFO, "Starting %v", r.Name())
-			// start the runner immediately
-			processChan := runProcess(r, s)
 
 			loop := true
+
 			for loop {
+				if err := r.Run(s); err != nil {
+					subject := fmt.Sprintf("%v failure", r.Name())
+					evergreen.Logger.Logf(slogger.ERROR, "%v", err)
+					if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
+						evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
+					}
+				}
 				select {
-				case <-terminateChan:
-					loop = false
-				case <-processChan:
-					time.Sleep(time.Duration(runInterval) * time.Second)
-					processChan = runProcess(r, s)
+				case <-time.NewTimer(duration).C:
+				case loop = <-terminateChan:
 				}
 			}
 			evergreen.Logger.Logf(slogger.INFO, "Cleanly terminated %v", r.Name())
@@ -106,7 +94,7 @@ func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan struct{} {
 // listenForSIGTERM listens for the SIGTERM signal and closes the
 // channel on which each runner is listening as soon as the signal
 // is received.
-func listenForSIGTERM(ch chan struct{}) {
+func listenForSIGTERM(ch chan bool) {
 	sigChan := make(chan os.Signal)
 	// notify us when SIGTERM is received
 	signal.Notify(sigChan, syscall.SIGTERM)
@@ -127,5 +115,5 @@ func runProcessByName(name string, settings *evergreen.Settings) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("process name '%v' does not exist", name)
+	return fmt.Errorf("process '%v' does not exist", name)
 }

@@ -317,6 +317,7 @@ var ConfigValidationRules = []ConfigValidator{
 
 		return nil
 	},
+
 	func(settings *Settings) error {
 		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil {
 			return fmt.Errorf("You must specify one form of authentication")
