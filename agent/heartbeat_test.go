@@ -36,8 +36,7 @@ func (mc *MockCommunicator) Start(pid string) error {
 	return nil
 }
 
-func (mc *MockCommunicator) End(status string,
-	details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error) {
+func (mc *MockCommunicator) End(details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error) {
 	if mc.shouldFailEnd {
 		return nil, fmt.Errorf("failed to end!")
 	}

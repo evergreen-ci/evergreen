@@ -13,6 +13,42 @@ import (
 	"strings"
 )
 
+const (
+	TestCommandType  = "test"
+	SetupCommandType = "setup"
+)
+
+const (
+	// DefaultCommandType is a system configuration option that is used to
+	// differentiate between setup related commands and actual testing commands.
+	DefaultCommandType = TestCommandType
+)
+
+type Project struct {
+	Enabled            bool                       `yaml:"enabled" bson:"enabled"`
+	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
+	BatchTime          int                        `yaml:"batchtime" bson:"batch_time"`
+	Owner              string                     `yaml:"owner" bson:"owner_name"`
+	Repo               string                     `yaml:"repo" bson:"repo_name"`
+	RemotePath         string                     `yaml:"remote_path" bson:"remote_path"`
+	RepoKind           string                     `yaml:"repokind" bson:"repo_kind"`
+	Branch             string                     `yaml:"branch" bson:"branch_name"`
+	Identifier         string                     `yaml:"identifier" bson:"identifier"`
+	DisplayName        string                     `yaml:"display_name" bson:"display_name"`
+	CommandType        string                     `yaml:"command_type" bson:"command_type"`
+	Pre                *YAMLCommandSet            `yaml:"pre" bson:"pre"`
+	Post               *YAMLCommandSet            `yaml:"post" bson:"post"`
+	Timeout            *YAMLCommandSet            `yaml:"timeout" bson:"timeout"`
+	Modules            []Module                   `yaml:"modules" bson:"modules"`
+	BuildVariants      []BuildVariant             `yaml:"buildvariants" bson:"build_variants"`
+	Functions          map[string]*YAMLCommandSet `yaml:"functions" bson:"functions"`
+	Tasks              []ProjectTask              `yaml:"tasks" bson:"tasks"`
+	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix" bson:"build_variant_matrix"`
+
+	// Flag that indicates a project as requiring user authentication
+	Private bool `yaml:"private" bson:"private"`
+}
+
 // Unmarshalled from the "tasks" list in an individual build variant
 type BuildVariantTask struct {
 	// this name HAS to match the name field of one of the tasks specified at
@@ -64,13 +100,33 @@ type TestSuite struct {
 }
 
 type PluginCommandConf struct {
-	Function       string                 `yaml:"func" bson:"func"`
-	Command        string                 `yaml:"command" bson:"command"`
-	Variants       []string               `yaml:"variants" bson:"variants"`
-	TimeoutSecs    int                    `yaml:"timeout_secs" bson:"timeout_secs"`
-	ResetOnTimeout bool                   `yaml:"reset_on_timeout" bson:"reset_on_timeout"`
-	Params         map[string]interface{} `yaml:"params" bson:"params"`
-	Vars           map[string]string      `yaml:"vars" bson:"vars"`
+	Function string `yaml:"func" bson:"func"`
+	// Type is used to differentiate between setup related commands and actual
+	// testing commands.
+	Type string `yaml:"type" bson:"type"`
+
+	// DisplayName is a human readable description of the function of a given
+	// command.
+	DisplayName string `yaml:"display_name" bson:"display_name"`
+
+	// Command is a unique identifier for the command configuration. It consists of a
+	// plugin name and a command name.
+	Command string `yaml:"command" bson:"command"`
+
+	// Variants is used to enumerate the particular sets of buildvariants to run
+	// this command configuration on. If it is empty, it is run on all defined
+	// variants.
+	Variants []string `yaml:"variants" bson:"variants"`
+
+	// TimeoutSecs indicates the maximum duration the command is allowed to run
+	// for. If undefined, it is unbounded.
+	TimeoutSecs int `yaml:"timeout_secs" bson:"timeout_secs"`
+
+	// Params are used to supply configuratiion specific information.
+	Params map[string]interface{} `yaml:"params" bson:"params"`
+
+	// Vars defines variables that can be used within commands.
+	Vars map[string]string `yaml:"vars" bson:"vars"`
 }
 
 type ArtifactInstructions struct {
@@ -122,19 +178,6 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 		return nil
 	}
 	return err1
-}
-
-type Project struct {
-	Identifier         string                     `yaml:"identifier" bson:"identifier"`
-	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
-	Pre                *YAMLCommandSet            `yaml:"pre" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout" bson:"timeout"`
-	Modules            []Module                   `yaml:"modules" bson:"modules"`
-	BuildVariants      []BuildVariant             `yaml:"buildvariants" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions" bson:"functions"`
-	Tasks              []ProjectTask              `yaml:"tasks" bson:"tasks"`
-	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix" bson:"build_variant_matrix"`
 }
 
 // The information about a task's dependency
@@ -366,6 +409,28 @@ func (self *Project) GetVariantsWithTask(taskName string) []string {
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || util.SliceContains(p.Variants, variant)
+}
+
+// GetDisplayName returns the  display name of the plugin command. If none is
+// defined, it returns the command's identifier.
+func (p PluginCommandConf) GetDisplayName() string {
+	if p.DisplayName != "" {
+		return p.DisplayName
+	}
+	return p.Command
+}
+
+// GetType returns the type of this command if one is explicitly specified. If
+// no type is specified, it checks the default command type of the project. If
+// one is specified, it returns that, if not, it returns the DefaultCommandType.
+func (p PluginCommandConf) GetType(prj *Project) string {
+	if p.Type != "" {
+		return p.Type
+	}
+	if prj.CommandType != "" {
+		return prj.CommandType
+	}
+	return DefaultCommandType
 }
 
 func (m *Module) GetRepoOwnerAndName() (string, string) {

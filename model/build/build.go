@@ -2,6 +2,7 @@ package build
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -14,12 +15,13 @@ const IdTimeLayout = "06_01_02_15_04_05"
 // TaskCache represents some duped information about tasks,
 // mainly for ui purposes.
 type TaskCache struct {
-	Id          string        `bson:"id" json:"id"`
-	DisplayName string        `bson:"d" json:"display_name"`
-	Status      string        `bson:"s" json:"status"`
-	StartTime   time.Time     `bson:"st" json:"start_time"`
-	TimeTaken   time.Duration `bson:"tt" json:"time_taken"`
-	Activated   bool          `bson:"a" json:"activated"`
+	Id            string                   `bson:"id" json:"id"`
+	DisplayName   string                   `bson:"d" json:"display_name"`
+	Status        string                   `bson:"s" json:"status"`
+	StatusDetails apimodels.TaskEndDetails `bson:"ed" json:"details"`
+	StartTime     time.Time                `bson:"st" json:"start_time"`
+	TimeTaken     time.Duration            `bson:"tt" json:"time_taken"`
+	Activated     bool                     `bson:"a" json:"activated"`
 }
 
 // Build represents a set of tasks on one variant of a Project

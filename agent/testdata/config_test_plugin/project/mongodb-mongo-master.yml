@@ -188,6 +188,8 @@ tasks:
   - name: compile
   commands:
     - command: shell.exec
+      display_name: "failing shell command"
+      type: "setup"
       params:
         working_dir: src
         script: |
