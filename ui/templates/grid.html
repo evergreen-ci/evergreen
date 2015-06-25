@@ -27,8 +27,8 @@ Evergreen - Grid
   <li ng-class="{active:tab == 1}"><a href="#" ng-click="setTab(1)">Recent Failures</a></li>
   <div class="row summary" ng-hide="tab != 1">
     <div class="gridtable-small">
-      <h3 ng-show="!failures">Hooray! There are no recent test failures.</h3>
-      <ul ng-repeat="failure in failures" ng-show="failures">
+      <h3 ng-show="failures.length == 0">Hooray! There are no recent test failures.</h3>
+      <ul ng-repeat="failure in failures" ng-show="failures.length != 0">
         <div class="failure-task">[[failure.task]]</div>
         <li class="failure-tab failure-test strong" ng-repeat="(name, variants) in failure.variants | orderBy:['-variants.length', 'name']">
           <a ng-href="/task_history/[[baseRef.identifier]]/[[failure.task]]?#[[name]]=fail">[[name]]</a></span>&nbsp;on&nbsp;<span ng-repeat="variant in variants | orderBy:'name'"><a ng-href="/task/[[variant.task_id]]">[[variant.name]]</a>[[$last ? '' : ',&nbsp;']]</span>
