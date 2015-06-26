@@ -389,6 +389,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	}
 
 	project := &Project{}
+	project.Identifier = projectRef.Identifier
 	// when the revision is empty we find the last known good configuration from the versions
 	// If the last known good configuration does not exist,
 	// load the configuration from the local config in the project ref.
