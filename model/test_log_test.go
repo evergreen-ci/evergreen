@@ -2,7 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -10,7 +10,7 @@ import (
 func TestTestLogInsertAndFind(t *testing.T) {
 	Convey("With a test log", t, func() {
 
-		util.HandleTestingErr(
+		testutil.HandleTestingErr(
 			db.Clear(TestLogCollection), t,
 			"error clearing test log collection")
 

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
@@ -12,11 +13,11 @@ func TestWriteToTempFile(t *testing.T) {
 		Convey("ensure the exact contents passed are written", func() {
 			fileData := "data"
 			filePath, err := WriteToTempFile(fileData)
-			HandleTestingErr(err, t, "error writing to temp file %v")
+			testutil.HandleTestingErr(err, t, "error writing to temp file %v")
 			fileBytes, err := ioutil.ReadFile(filePath)
-			HandleTestingErr(err, t, "error reading from temp file %v")
+			testutil.HandleTestingErr(err, t, "error reading from temp file %v")
 			So(string(fileBytes), ShouldEqual, fileData)
-			HandleTestingErr(os.Remove(filePath), t,
+			testutil.HandleTestingErr(os.Remove(filePath), t,
 				"error removing to temp file %v")
 		})
 	})
@@ -25,9 +26,9 @@ func TestWriteToTempFile(t *testing.T) {
 func TestFileExists(t *testing.T) {
 
 	_, err := os.Create("testFile1")
-	HandleTestingErr(err, t, "error creating test file")
+	testutil.HandleTestingErr(err, t, "error creating test file")
 	defer func() {
-		HandleTestingErr(os.Remove("testFile1"), t, "error removing test file")
+		testutil.HandleTestingErr(os.Remove("testFile1"), t, "error removing test file")
 	}()
 
 	Convey("When testing that a file exists", t, func() {

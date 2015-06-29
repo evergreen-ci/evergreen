@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -21,9 +21,9 @@ func TestCleanupTask(t *testing.T) {
 	Convey("When cleaning up a task", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.TasksCollection),
+		testutil.HandleTestingErr(db.ClearCollections(model.TasksCollection),
 			t, "error clearing tasks collection")
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("an error should be thrown if the passed-in projects slice"+
@@ -72,15 +72,15 @@ func TestCleanupTask(t *testing.T) {
 		Convey("if the task's heartbeat timed out", func() {
 
 			// reset the db
-			util.HandleTestingErr(db.ClearCollections(model.TasksCollection),
+			testutil.HandleTestingErr(db.ClearCollections(model.TasksCollection),
 				t, "error clearing tasks collection")
-			util.HandleTestingErr(db.ClearCollections(host.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
-			util.HandleTestingErr(db.ClearCollections(build.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(build.Collection),
 				t, "error clearing builds collection")
-			util.HandleTestingErr(db.ClearCollections(model.OldTasksCollection),
+			testutil.HandleTestingErr(db.ClearCollections(model.OldTasksCollection),
 				t, "error clearing old tasks collection")
-			util.HandleTestingErr(db.ClearCollections(version.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(version.Collection),
 				t, "error clearing versions collection")
 
 			Convey("the task should be reset", func() {
@@ -93,7 +93,7 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				util.HandleTestingErr(task.Insert(), t, "error inserting task")
+				testutil.HandleTestingErr(task.Insert(), t, "error inserting task")
 
 				wrapper := doomedTaskWrapper{
 					reason: HeartbeatTimeout,
@@ -147,7 +147,7 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				util.HandleTestingErr(task.Insert(), t, "error inserting task")
+				testutil.HandleTestingErr(task.Insert(), t, "error inserting task")
 
 				wrapper := doomedTaskWrapper{
 					reason: HeartbeatTimeout,

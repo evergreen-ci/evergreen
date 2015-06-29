@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
@@ -21,7 +21,7 @@ func init() {
 }
 
 func reset(t *testing.T) {
-	util.HandleTestingErr(
+	testutil.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
 		"error clearing test collections")
 }
@@ -70,12 +70,12 @@ func TestValidateS3BucketName(t *testing.T) {
 }
 
 func TestS3PutAndGet(t *testing.T) {
-	util.HandleTestingErr(
+	testutil.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
 		"error clearing test collections")
 
 	conf := evergreen.TestConfig()
-	testutils.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
+	testutil.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
 
 	Convey("When putting to and retrieving from an s3 bucket", t, func() {
 
@@ -92,9 +92,9 @@ func TestS3PutAndGet(t *testing.T) {
 		// create the local directory to be tarred
 		localDirToTar := filepath.Join(testDataDir, "put_test")
 		localFileToTar := filepath.Join(localDirToTar, "put_test_file.txt")
-		util.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing"+
+		testutil.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing"+
 			" directory")
-		util.HandleTestingErr(os.MkdirAll(localDirToTar, 0755), t,
+		testutil.HandleTestingErr(os.MkdirAll(localDirToTar, 0755), t,
 			"Error creating directory")
 		randStr := util.RandomString()
 		So(ioutil.WriteFile(localFileToTar, []byte(randStr), 0755), ShouldBeNil)
@@ -106,11 +106,11 @@ func TestS3PutAndGet(t *testing.T) {
 			Stdout:           ioutil.Discard,
 			Stderr:           ioutil.Discard,
 		}
-		util.HandleTestingErr(tarCmd.Run(), t, "Error tarring directories")
+		testutil.HandleTestingErr(tarCmd.Run(), t, "Error tarring directories")
 		tarballSource := filepath.Join(testDataDir, "put_test.tgz")
 
 		// remove the untarred version
-		util.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing directories")
+		testutil.HandleTestingErr(os.RemoveAll(localDirToTar), t, "Error removing directories")
 
 		Convey("the file retrieved should be the exact same as the file put", func() {
 

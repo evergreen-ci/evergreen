@@ -11,9 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/s3Plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/s3copy"
-	"github.com/evergreen-ci/evergreen/plugin/testutil"
-	"github.com/evergreen-ci/evergreen/testutils"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -23,14 +22,14 @@ func TestS3CopyPluginExecution(t *testing.T) {
 	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")
 
 	Convey("With a SimpleRegistry and test project file", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		s3CopyPlugin := &S3CopyPlugin{}
-		util.HandleTestingErr(registry.Register(s3CopyPlugin), t, "failed to register s3Copy plugin")
-		util.HandleTestingErr(registry.Register(&s3Plugin.S3Plugin{}), t, "failed to register S3 plugin")
-		util.HandleTestingErr(
+		testutil.HandleTestingErr(registry.Register(s3CopyPlugin), t, "failed to register s3Copy plugin")
+		testutil.HandleTestingErr(registry.Register(&s3Plugin.S3Plugin{}), t, "failed to register S3 plugin")
+		testutil.HandleTestingErr(
 			db.ClearCollections(model.PushlogCollection, version.Collection), t,
 			"error clearing test collections")
 		version := &version.Version{
@@ -38,14 +37,14 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		}
 		So(version.Insert(), ShouldBeNil)
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
-		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
 		//server.InstallPlugin(s3CopyPlugin)
 
-		taskConfig, err := testutil.CreateTestConfig("testdata/plugin_s3_copy.yml", t)
-		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
+		taskConfig, err := plugintest.CreateTestConfig("testdata/plugin_s3_copy.yml", t)
+		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
@@ -60,7 +59,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin "+
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin "+
 						"command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)

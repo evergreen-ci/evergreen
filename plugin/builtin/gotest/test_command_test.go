@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
@@ -32,7 +32,7 @@ func TestRunAndParseTests(t *testing.T) {
 
 			Convey("execution should run correctly", func() {
 				originalDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 
 				passed, err := RunAndParseTests(config, parser, logger, make(chan bool))
 				So(passed, ShouldEqual, true)
@@ -40,7 +40,7 @@ func TestRunAndParseTests(t *testing.T) {
 				So(len(parser.Results()), ShouldBeGreaterThan, 0)
 
 				curDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 				So(originalDir, ShouldEqual, curDir)
 			})
 		})
@@ -54,7 +54,7 @@ func TestRunAndParseTests(t *testing.T) {
 
 			Convey("execution should run correctly", func() {
 				originalDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 
 				passed, err := RunAndParseTests(config, parser, logger, make(chan bool))
 				So(passed, ShouldEqual, true)
@@ -62,7 +62,7 @@ func TestRunAndParseTests(t *testing.T) {
 				So(len(parser.Results()), ShouldBeGreaterThan, 0)
 
 				curDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 				So(originalDir, ShouldEqual, curDir)
 			})
 		})
@@ -72,7 +72,7 @@ func TestRunAndParseTests(t *testing.T) {
 
 			Convey("execution should fail", func() {
 				originalDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 
 				passed, err := RunAndParseTests(config, parser, logger, make(chan bool))
 				So(passed, ShouldEqual, false)
@@ -81,7 +81,7 @@ func TestRunAndParseTests(t *testing.T) {
 				So(len(parser.Results()), ShouldEqual, 0)
 
 				curDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 				So(originalDir, ShouldEqual, curDir)
 			})
 		})
@@ -91,7 +91,7 @@ func TestRunAndParseTests(t *testing.T) {
 
 			Convey("execution should fail", func() {
 				originalDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 
 				passed, err := RunAndParseTests(config, parser, logger, make(chan bool))
 				So(passed, ShouldEqual, false)
@@ -99,7 +99,7 @@ func TestRunAndParseTests(t *testing.T) {
 				So(len(parser.Results()), ShouldEqual, 0)
 
 				curDir, err := os.Getwd()
-				util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+				testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
 				So(originalDir, ShouldEqual, curDir)
 			})
 		})

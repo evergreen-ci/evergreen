@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -21,7 +21,7 @@ func TestFindPushLogAfter(t *testing.T) {
 
 	Convey("When checking for duplicate pushes", t, func() {
 
-		util.HandleTestingErr(db.Clear(PushlogCollection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(PushlogCollection), t, "Error clearing"+
 			" '%v' collection", PushlogCollection)
 
 		fileLoc := "s3://test/location"

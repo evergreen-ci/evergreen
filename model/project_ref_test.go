@@ -2,14 +2,14 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestFindOneProjectRef(t *testing.T) {
 	Convey("With an existing repository ref", t, func() {
-		util.HandleTestingErr(db.Clear(ProjectRefCollection), t,
+		testutil.HandleTestingErr(db.Clear(ProjectRefCollection), t,
 			"Error clearing collection")
 		projectRef := &ProjectRef{
 			Owner:      "mongodb",

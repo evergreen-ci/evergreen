@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -29,7 +29,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
 			"Error clearing test collection")
 
 		b := &build.Build{
@@ -74,7 +74,7 @@ func TestBuildSetPriority(t *testing.T) {
 func TestBuildRestart(t *testing.T) {
 	Convey("Restarting a build", t, func() {
 
-		util.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
 			"Error clearing test collection")
 		b := &build.Build{
 			Id: "build",
@@ -179,7 +179,7 @@ func TestBuildRestart(t *testing.T) {
 func TestBuildMarkAborted(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection, version.Collection), t,
 			"Error clearing test collection")
 
 		v := &version.Version{
@@ -272,7 +272,7 @@ func TestBuildMarkAborted(t *testing.T) {
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
 			"Error clearing test collection")
 
 		Convey("when changing the activated status of the build", func() {
@@ -386,7 +386,7 @@ func TestBuildMarkStarted(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.Clear(build.Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(build.Collection), t, "Error clearing"+
 			" '%v' collection", build.Collection)
 
 		b := &build.Build{
@@ -415,7 +415,7 @@ func TestBuildMarkFinished(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.Clear(build.Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(build.Collection), t, "Error clearing"+
 			" '%v' collection", build.Collection)
 
 		startTime := time.Now()
@@ -451,7 +451,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 	Convey("When creating a build from a version", t, func() {
 
-		util.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
 			"Error clearing test collection")
 
 		// the mock build variant we'll be using. runs all three tasks
@@ -864,7 +864,7 @@ func TestDeletingBuild(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		util.HandleTestingErr(db.Clear(build.Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(build.Collection), t, "Error clearing"+
 			" '%v' collection", build.Collection)
 
 		b := &build.Build{
@@ -875,7 +875,7 @@ func TestDeletingBuild(t *testing.T) {
 		Convey("deleting it should remove it and all its associated"+
 			" tasks from the database", func() {
 
-			util.HandleTestingErr(db.ClearCollections(TasksCollection), t, "Error"+
+			testutil.HandleTestingErr(db.ClearCollections(TasksCollection), t, "Error"+
 				" clearing '%v' collection", TasksCollection)
 
 			// insert two tasks that are part of the build, and one that isn't

@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -15,7 +15,7 @@ func TestHostFindNextTask(t *testing.T) {
 
 		Convey("when finding the next task to be run on the host", func() {
 
-			util.HandleTestingErr(db.ClearCollections(host.Collection,
+			testutil.HandleTestingErr(db.ClearCollections(host.Collection,
 				TasksCollection, TaskQueuesCollection), t,
 				"Error clearing test collections")
 

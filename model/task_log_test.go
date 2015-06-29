@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -32,7 +32,7 @@ func TestFindMostRecentTaskLogs(t *testing.T) {
 
 	Convey("When finding the most recent task logs", t, func() {
 
-		util.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
 			" database")
 
 		Convey("the ones with the most recent timestamp should be retrieved,"+
@@ -70,7 +70,7 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 
 	Convey("When finding task logs before a specified time", t, func() {
 
-		util.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
 			" database")
 
 		Convey("the specified number of task logs should be returned, in"+
@@ -116,7 +116,7 @@ func TestAddLogMessage(t *testing.T) {
 
 	Convey("When adding a log message to a task log", t, func() {
 
-		util.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
 			" database")
 
 		Convey("both the in-memory and database copies of the task log should"+
@@ -166,7 +166,7 @@ func TestInsertLogMessage(t *testing.T) {
 
 	Convey("When inserting a log message", t, func() {
 
-		util.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
 			" database")
 
 		Convey("the log message should be added to the most recent task log"+
@@ -202,7 +202,7 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 
 	Convey("When finding the most recent log messages", t, func() {
 
-		util.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
+		testutil.HandleTestingErr(cleanUpLogDB(), t, "Error cleaning up task log"+
 			" database")
 
 		Convey("the specified number of log messages should be retrieved,"+

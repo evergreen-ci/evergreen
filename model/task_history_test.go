@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -30,7 +30,7 @@ func TestTaskHistory(t *testing.T) {
 
 		Convey("when finding task history items", func() {
 
-			util.HandleTestingErr(db.ClearCollections(version.Collection, TasksCollection),
+			testutil.HandleTestingErr(db.ClearCollections(version.Collection, TasksCollection),
 				t, "Error clearing test collections")
 
 			for i := 10; i < 20; i++ {
@@ -48,7 +48,7 @@ func TestTaskHistory(t *testing.T) {
 					Project:             projectToUse,
 				}
 
-				util.HandleTestingErr(ver.Insert(), t,
+				testutil.HandleTestingErr(ver.Insert(), t,
 					"Error inserting version")
 				for j := 0; j < 3; j++ {
 					task := &Task{
@@ -60,7 +60,7 @@ func TestTaskHistory(t *testing.T) {
 						Requester:           evergreen.RepotrackerVersionRequester,
 						Project:             projectToUse,
 					}
-					util.HandleTestingErr(task.Insert(), t,
+					testutil.HandleTestingErr(task.Insert(), t,
 						"Error inserting task")
 				}
 

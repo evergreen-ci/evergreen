@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
-	"github.com/evergreen-ci/evergreen/plugin/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -28,13 +28,13 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 		registry := plugin.NewSimpleRegistry()
 		attachPlugin := &AttachPlugin{}
 		err := registry.Register(attachPlugin)
-		util.HandleTestingErr(err, t, "Couldn't register plugin: %v")
+		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
-		taskConfig, err := testutil.CreateTestConfig(configPath, t)
-		util.HandleTestingErr(err, t, "failed to create test config: %v")
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+		taskConfig, err := plugintest.CreateTestConfig(configPath, t)
+		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
@@ -44,14 +44,14 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
 					task, err := model.FindTask(httpCom.TaskId)
-					util.HandleTestingErr(err, t, "Couldn't find task")
+					testutil.HandleTestingErr(err, t, "Couldn't find task")
 					So(task, ShouldNotBeNil)
 				}
 			}

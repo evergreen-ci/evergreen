@@ -3,7 +3,7 @@ package host
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -12,7 +12,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 
 	Convey("When decommissioning unused static hosts", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("if a nil slice is passed in, no host(s) should"+

@@ -9,9 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
@@ -38,7 +37,7 @@ func init() {
 
 func TestProjectRef(t *testing.T) {
 	Convey("When inserting a project ref", t, func() {
-		err := testutils.CreateTestLocalConfig(patchTestConfig, "mci-test")
+		err := testutil.CreateTestLocalConfig(patchTestConfig, "mci-test")
 		So(err, ShouldBeNil)
 
 		projectRef, err := model.FindOneProjectRef("mci-test")
@@ -49,11 +48,11 @@ func TestProjectRef(t *testing.T) {
 }
 
 func TestFinalize(t *testing.T) {
-	testutils.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalize")
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalize")
 
 	Convey("With calling ValidateAndFinalize with a config and remote configuration "+
 		"path", t, func() {
-		util.HandleTestingErr(db.ClearCollections(
+		testutil.HandleTestingErr(db.ClearCollections(
 			model.ProjectRefCollection,
 			patch.Collection,
 			version.Collection,
@@ -81,7 +80,7 @@ func TestFinalize(t *testing.T) {
 				Branch:     patchBranch,
 			}
 			err := projectRef.Insert()
-			util.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
+			testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
 				"%v", err)
 			fileBytes, err := ioutil.ReadFile(patchFile)
 			So(err, ShouldBeNil)
@@ -115,7 +114,7 @@ func TestFinalize(t *testing.T) {
 				},
 			}
 			err = configPatch.Insert()
-			util.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
+			testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
 			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
@@ -145,7 +144,7 @@ func TestFinalize(t *testing.T) {
 				Branch:     patchBranch,
 			}
 			err := projectRef.Insert()
-			util.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
+			testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
 				"%v", err)
 			patchedConfigFile := "fakeInPatchSoNotPatched"
 			fileBytes, err := ioutil.ReadFile(patchFile)
@@ -190,7 +189,7 @@ func TestFinalize(t *testing.T) {
 				},
 			}
 			err = configPatch.Insert()
-			util.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
+			testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
 			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)

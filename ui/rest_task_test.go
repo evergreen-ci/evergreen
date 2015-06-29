@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
@@ -44,10 +44,10 @@ func TestGetTaskInfo(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular task", t, func() {
-		util.HandleTestingErr(db.Clear(model.TasksCollection), t,
+		testutil.HandleTestingErr(db.Clear(model.TasksCollection), t,
 			"Error clearing '%v' collection", model.TasksCollection)
 
 		taskId := "my-task"
@@ -281,10 +281,10 @@ func TestGetTaskStatus(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular task", t, func() {
-		util.HandleTestingErr(db.Clear(model.TasksCollection), t,
+		testutil.HandleTestingErr(db.Clear(model.TasksCollection), t,
 			"Error clearing '%v' collection", model.TasksCollection)
 
 		taskId := "my-task"

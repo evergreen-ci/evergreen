@@ -7,8 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/testutils"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/goamz/s3"
 	. "github.com/smartystreets/goconvey/convey"
@@ -21,19 +20,19 @@ func TestPushTask(t *testing.T) {
 	testConfig := evergreen.TestConfig()
 	setupTlsConfigs(t)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestPushTask")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPushTask")
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a push task "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, evergreen.PushStage,
 						"linux-64", false, t)
-					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
-					util.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
+					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
+					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
-					util.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
-					util.HandleTestingErr(err, t, "Error making test agent: %v", err)
+					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)
 
 					// actually run the task.
 					// this function won't return until the whole thing is done.
@@ -73,7 +72,7 @@ func TestPushTask(t *testing.T) {
 						})
 
 						testTask, err = model.FindTask(testTask.Id)
-						util.HandleTestingErr(err, t, "Error finding test task: %v", err)
+						testutil.HandleTestingErr(err, t, "Error finding test task: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
 						// Check the file written to s3 is what we expected
@@ -84,13 +83,13 @@ func TestPushTask(t *testing.T) {
 
 						// check the staging location first
 						filebytes, err := getS3FileBytes(auth, "build-push-testing", "/pushtest-stage/unittest-testTaskId-DISTRO_EXP-BUILDVAR_EXP-FILE_EXP.txt")
-						util.HandleTestingErr(err, t, "Failed to get file from s3: %v", err)
+						testutil.HandleTestingErr(err, t, "Failed to get file from s3: %v", err)
 						So(string(filebytes), ShouldEqual, newDate+"\n")
 
 						// now check remote location (after copy)
 						filebytes, err = getS3FileBytes(auth, "build-push-testing", "/pushtest/unittest-DISTRO_EXP-BUILDVAR_EXP-FILE_EXP-latest.txt")
 
-						util.HandleTestingErr(err, t, "Failed to get remote file from s3: %v", err)
+						testutil.HandleTestingErr(err, t, "Failed to get remote file from s3: %v", err)
 						So(string(filebytes), ShouldEqual, newDate+"\n")
 					})
 				})

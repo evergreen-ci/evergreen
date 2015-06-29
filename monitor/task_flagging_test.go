@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -19,7 +19,7 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 	Convey("When flagging tasks whose heartbeat has timed out", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(model.TasksCollection),
+		testutil.HandleTestingErr(db.ClearCollections(model.TasksCollection),
 			t, "error clearing tasks collection")
 
 		Convey("tasks that are not running should be ignored", func() {
@@ -29,14 +29,14 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 				Status:        evergreen.TaskUndispatched,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(task1.Insert(), t, "error inserting task")
+			testutil.HandleTestingErr(task1.Insert(), t, "error inserting task")
 
 			task2 := &model.Task{
 				Id:            "t2",
 				Status:        evergreen.TaskSucceeded,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(task2.Insert(), t, "error inserting task")
+			testutil.HandleTestingErr(task2.Insert(), t, "error inserting task")
 
 			timedOut, err := flagTimedOutHeartbeats()
 			So(err, ShouldBeNil)
@@ -52,7 +52,7 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 				Status:        evergreen.TaskStarted,
 				LastHeartbeat: time.Now().Add(-time.Minute * 5),
 			}
-			util.HandleTestingErr(task1.Insert(), t, "error inserting task")
+			testutil.HandleTestingErr(task1.Insert(), t, "error inserting task")
 
 			timedOut, err := flagTimedOutHeartbeats()
 			So(err, ShouldBeNil)
@@ -68,14 +68,14 @@ func TestFlaggingTimedOutHeartbeats(t *testing.T) {
 				Status:        evergreen.TaskStarted,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(task1.Insert(), t, "error inserting task")
+			testutil.HandleTestingErr(task1.Insert(), t, "error inserting task")
 
 			task2 := &model.Task{
 				Id:            "t2",
 				Status:        evergreen.TaskDispatched,
 				LastHeartbeat: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(task2.Insert(), t, "error inserting task")
+			testutil.HandleTestingErr(task2.Insert(), t, "error inserting task")
 
 			timedOut, err := flagTimedOutHeartbeats()
 			So(err, ShouldBeNil)

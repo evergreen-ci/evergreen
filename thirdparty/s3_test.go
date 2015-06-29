@@ -1,7 +1,7 @@
 package thirdparty
 
 import (
-	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/goamz/aws"
 	. "github.com/smartystreets/goconvey/convey"
@@ -20,7 +20,7 @@ var (
 )
 
 func TestS3ParseUrl(t *testing.T) {
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestS3ParseUrl")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3ParseUrl")
 	Convey("When given an S3 location to parse...", t, func() {
 		Convey("the bucket and path should be parsed correctly", func() {
 			bucket, path, err := GetS3Location(testURL)
@@ -32,7 +32,7 @@ func TestS3ParseUrl(t *testing.T) {
 }
 
 func TestPutS3File(t *testing.T) {
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestPutS3File")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPutS3File")
 	Convey("When given a file to copy to S3...", t, func() {
 		Convey("a valid source file with a long key should return an error ", func() {
 			//Make a test file with some random content.
@@ -73,7 +73,7 @@ func TestPutS3File(t *testing.T) {
 }
 
 func TestS3Copy(t *testing.T) {
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestS3Copy")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3Copy")
 	Convey("When given a source and  destination URL to copy from/to...", t, func() {
 		Convey("a valid source file should be copied to the valid destination", func() {
 			//Make a test file with some random content.

@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -29,7 +29,7 @@ func TestGenericHostFinding(t *testing.T) {
 
 	Convey("When finding hosts", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("when finding one host", func() {
@@ -132,7 +132,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -173,7 +173,7 @@ func TestSetHostTerminated(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -203,7 +203,7 @@ func TestHostSetDNSName(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -238,7 +238,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -268,7 +268,7 @@ func TestHostSetRunningTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -304,7 +304,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		initialExpirationTime := time.Now()
@@ -355,7 +355,7 @@ func TestFindRunningSpawnedHosts(t *testing.T) {
 	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+	testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 		" clearing '%v' collection", Collection)
 
 	Convey("With calling FindRunningSpawnedHosts...", t, func() {
@@ -373,10 +373,10 @@ func TestFindRunningSpawnedHosts(t *testing.T) {
 			host.Id = "spawned-1"
 			host.Status = "running"
 			host.StartedBy = "user1"
-			util.HandleTestingErr(host.Insert(), t, "error from "+
+			testutil.HandleTestingErr(host.Insert(), t, "error from "+
 				"FindRunningSpawnedHosts")
 			spawnedHosts, err := Find(IsRunningAndSpawned)
-			util.HandleTestingErr(err, t, "error from "+
+			testutil.HandleTestingErr(err, t, "error from "+
 				"FindRunningSpawnedHosts: %v", err)
 			// make sure we only returned no document
 			So(len(spawnedHosts), ShouldEqual, 1)
@@ -388,7 +388,7 @@ func TestSetExpirationNotification(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		notifications := make(map[string]bool)
@@ -427,7 +427,7 @@ func TestHostClearRunningTask(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
@@ -487,7 +487,7 @@ func TestUpsert(t *testing.T) {
 
 	Convey("With a host", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
 		host := &Host{

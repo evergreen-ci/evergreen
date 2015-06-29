@@ -3,7 +3,7 @@ package artifact
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -14,7 +14,7 @@ func init() {
 }
 
 func reset(t *testing.T) {
-	util.HandleTestingErr(
+	testutil.HandleTestingErr(
 		db.Clear(Collection),
 		t, "Error clearing collection")
 }

@@ -9,8 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/testutils"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
@@ -45,21 +44,21 @@ func TestGetRecentVersions(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
-	err = testutils.CreateTestLocalConfig(buildTestConfig, "mci-test")
-	util.HandleTestingErr(err, t, "Error loading local config mci-test")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
+	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutils.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
-	util.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+	testutil.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
 
 	Convey("When finding recent versions", t, func() {
-		util.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
 			"Error clearing '%v' collection", version.Collection)
 
 		projectName := "project_test"
 
-		err = testutils.CreateTestLocalConfig(buildTestConfig, projectName)
+		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName)
 		So(err, ShouldBeNil)
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
@@ -251,22 +250,22 @@ func TestGetVersionInfo(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
-	err = testutils.CreateTestLocalConfig(buildTestConfig, "mci-test")
-	util.HandleTestingErr(err, t, "Error loading local config mci-test")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
+	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutils.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
-	util.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+	testutil.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
 
 	Convey("When finding info on a particular version", t, func() {
-		util.HandleTestingErr(db.Clear(version.Collection), t,
+		testutil.HandleTestingErr(db.Clear(version.Collection), t,
 			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
 		projectName := "project_test"
 
-		err = testutils.CreateTestLocalConfig(buildTestConfig, projectName)
+		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName)
 		So(err, ShouldBeNil)
 
 		v := &version.Version{
@@ -352,12 +351,12 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	projectName := "project_test"
 
 	Convey("When finding info on a particular version by its revision", t, func() {
-		util.HandleTestingErr(db.Clear(version.Collection), t,
+		testutil.HandleTestingErr(db.Clear(version.Collection), t,
 			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
@@ -448,10 +447,10 @@ func TestActivateVersion(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When marking a particular version as active", t, func() {
-		util.HandleTestingErr(db.Clear(version.Collection), t,
+		testutil.HandleTestingErr(db.Clear(version.Collection), t,
 			"Error clearing '%v' collection", version.Collection)
 
 		versionId := "my-version"
@@ -561,10 +560,10 @@ func TestGetVersionStatus(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular version", t, func() {
-		util.HandleTestingErr(db.Clear(build.Collection), t,
+		testutil.HandleTestingErr(db.Clear(build.Collection), t,
 			"Error clearing '%v' collection", build.Collection)
 
 		versionId := "my-version"

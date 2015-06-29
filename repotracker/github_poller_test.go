@@ -4,9 +4,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -42,9 +41,9 @@ func init() {
 
 func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	util.HandleTestingErr(err, t, "Error opening database session")
+	testutil.HandleTestingErr(err, t, "Error opening database session")
 	defer session.Close()
-	util.HandleTestingErr(session.DB(testConfig.Db).DropDatabase(), t, "Error "+
+	testutil.HandleTestingErr(session.DB(testConfig.Db).DropDatabase(), t, "Error "+
 		"dropping test database")
 }
 
@@ -52,7 +51,7 @@ func TestGetRevisionsSince(t *testing.T) {
 	dropTestDB(t)
 	var self GithubRepositoryPoller
 
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestGetRevisionsSince")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRevisionsSince")
 
 	Convey("When fetching github revisions (by commit) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
@@ -65,7 +64,7 @@ func TestGetRevisionsSince(t *testing.T) {
 				// 99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32 being the first
 				// revision
 				revisions, err := self.GetRevisionsSince(firstRevision, 10)
-				util.HandleTestingErr(err, t, "Error fetching github revisions")
+				testutil.HandleTestingErr(err, t, "Error fetching github revisions")
 				So(len(revisions), ShouldEqual, 2)
 			})
 
@@ -73,7 +72,7 @@ func TestGetRevisionsSince(t *testing.T) {
 			// The test repository contains only 3 revisions with revision
 			// d0d878e81b303fd2abbf09331e54af41d6cd0c7d being the last revision
 			revisions, err := self.GetRevisionsSince(lastRevision, 10)
-			util.HandleTestingErr(err, t, "Error fetching github revisions")
+			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 0)
 		})
 
@@ -92,7 +91,7 @@ func TestGetRemoteConfig(t *testing.T) {
 	dropTestDB(t)
 	var self GithubRepositoryPoller
 
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestGetRemoteConfig")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetRemoteConfig")
 
 	Convey("When fetching a specific github revision configuration...",
 		t, func() {
@@ -115,12 +114,12 @@ func TestGetRemoteConfig(t *testing.T) {
 			Convey("The config file at the requested revision should be "+
 				"exactly what is returned", func() {
 				projectConfig, err := self.GetRemoteConfig(firstRemoteConfigRef)
-				util.HandleTestingErr(err, t, "Error fetching github "+
+				testutil.HandleTestingErr(err, t, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
 				So(len(projectConfig.Tasks), ShouldEqual, 0)
 				projectConfig, err = self.GetRemoteConfig(secondRemoteConfigRef)
-				util.HandleTestingErr(err, t, "Error fetching github "+
+				testutil.HandleTestingErr(err, t, "Error fetching github "+
 					"configuration file")
 				So(projectConfig, ShouldNotBeNil)
 				So(len(projectConfig.Tasks), ShouldEqual, 1)
@@ -140,7 +139,7 @@ func TestGetAllRevisions(t *testing.T) {
 	dropTestDB(t)
 	var self GithubRepositoryPoller
 
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestGetAllRevisions")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetAllRevisions")
 
 	Convey("When fetching recent github revisions (by count) - from a repo "+
 		"containing 3 commits - given a valid Oauth token...", t, func() {
@@ -153,7 +152,7 @@ func TestGetAllRevisions(t *testing.T) {
 		Convey("There should be only three revisions even if you request more "+
 			"than 3", func() {
 			revisions, err := self.GetRecentRevisions(123)
-			util.HandleTestingErr(err, t, "Error fetching github revisions")
+			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 3)
 		})
 
@@ -161,7 +160,7 @@ func TestGetAllRevisions(t *testing.T) {
 		Convey("There should be only be one if you request 1 and it should be "+
 			"the latest", func() {
 			revisions, err := self.GetRecentRevisions(1)
-			util.HandleTestingErr(err, t, "Error fetching github revisions")
+			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 1)
 			So(revisions[0].Revision, ShouldEqual, lastRevision)
 		})
@@ -169,7 +168,7 @@ func TestGetAllRevisions(t *testing.T) {
 		// Get no recent revisions
 		Convey("There should be no revisions if you request 0", func() {
 			revisions, err := self.GetRecentRevisions(0)
-			util.HandleTestingErr(err, t, "Error fetching github revisions")
+			testutil.HandleTestingErr(err, t, "Error fetching github revisions")
 			So(len(revisions), ShouldEqual, 0)
 		})
 	})

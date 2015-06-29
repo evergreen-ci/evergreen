@@ -3,6 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -47,7 +48,7 @@ func TestFindProject(t *testing.T) {
 				Repo:       "fakerepo",
 				Branch:     "fakebranch",
 			}
-			util.HandleTestingErr(v.Insert(), t, "failed to insert test version: %v")
+			testutil.HandleTestingErr(v.Insert(), t, "failed to insert test version: %v", v)
 			_, err := FindProject("", p)
 			So(err, ShouldBeNil)
 

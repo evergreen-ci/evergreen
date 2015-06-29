@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -22,7 +22,7 @@ func TestGenericNotificationFinding(t *testing.T) {
 
 	Convey("When finding notifications", t, func() {
 
-		util.HandleTestingErr(db.Clear(NotifyHistoryCollection),
+		testutil.HandleTestingErr(db.Clear(NotifyHistoryCollection),
 			t, "Error clearing '%v' collection", NotifyHistoryCollection)
 
 		Convey("when finding one notification", func() {
@@ -68,7 +68,7 @@ func TestUpdatingNotifications(t *testing.T) {
 
 	Convey("When updating notifications", t, func() {
 
-		util.HandleTestingErr(db.Clear(NotifyHistoryCollection),
+		testutil.HandleTestingErr(db.Clear(NotifyHistoryCollection),
 			t, "Error clearing '%v' collection", NotifyHistoryCollection)
 
 		Convey("updating one notification should update the specified"+

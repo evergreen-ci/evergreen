@@ -16,7 +16,7 @@ import (
 type DeficitBasedHostAllocator struct{}
 
 // NewHostsNeeded decides host many new hosts are needed for a distro by seeing if
-// the number of tasks that need to be run for the distro is greater than the number 
+// the number of tasks that need to be run for the distro is greater than the number
 // of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
 func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (map[string]int, error) {

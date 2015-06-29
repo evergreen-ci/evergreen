@@ -7,8 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/testutils"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 	"math/rand"
@@ -43,23 +42,23 @@ func TestGetBuildInfo(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular build", t, func() {
-		util.HandleTestingErr(db.Clear(build.Collection), t,
+		testutil.HandleTestingErr(db.Clear(build.Collection), t,
 			"Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"
 		versionId := "my-version"
 		projectName := "mci-test"
 
-		err := testutils.CreateTestLocalConfig(buildTestConfig, "mci-test")
+		err := testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
 		So(err, ShouldBeNil)
 
-		err = testutils.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+		err = testutil.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
 		So(err, ShouldBeNil)
 
-		err = testutils.CreateTestLocalConfig(buildTestConfig, "project_test")
+		err = testutil.CreateTestLocalConfig(buildTestConfig, "project_test")
 
 		task := build.TaskCache{
 			Id:          "some-task-id",
@@ -212,10 +211,10 @@ func TestGetBuildStatus(t *testing.T) {
 	})
 
 	router, err := uis.NewRouter()
-	util.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular build", t, func() {
-		util.HandleTestingErr(db.Clear(build.Collection), t,
+		testutil.HandleTestingErr(db.Clear(build.Collection), t,
 			"Error clearing '%v' collection", build.Collection)
 
 		buildId := "my-build"

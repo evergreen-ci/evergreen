@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -20,7 +20,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 		" soon", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("any hosts not expiring within a threshold should not trigger"+
@@ -32,7 +32,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 				Id:             "h1",
 				ExpirationTime: time.Now().Add(time.Hour * 15),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := spawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -51,7 +51,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 					"720": true, // the first threshold in minutes
 				},
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := spawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -67,7 +67,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 				Id:             "h1",
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := spawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -90,7 +90,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 				Status:         evergreen.HostQuarantined,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// terminated host
 			host2 := &host.Host{
@@ -98,7 +98,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 				Status:         evergreen.HostTerminated,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			// past the expiration. no warning needs to be sent since this host
 			// is theoretically about to be terminated, at which time a
@@ -107,7 +107,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 				Id:             "h3",
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(host3.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 			warnings, err := spawnHostExpirationWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -129,7 +129,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 		" provision", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts that have not hit the threshold should not trigger a"+
@@ -140,7 +140,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-10 * time.Minute),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := slowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -159,7 +159,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 					slowProvisioningWarning: true,
 				},
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := slowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -175,7 +175,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				Status:       evergreen.HostTerminated,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := slowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)
@@ -191,7 +191,7 @@ func TestWarnSlowProvisioningHosts(t *testing.T) {
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-1 * time.Hour),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			warnings, err := slowProvisioningWarnings(testConfig)
 			So(err, ShouldBeNil)

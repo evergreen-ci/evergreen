@@ -3,7 +3,7 @@ package event
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -16,7 +16,7 @@ func init() {
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t,
+		testutil.HandleTestingErr(db.Clear(Collection), t,
 			"Error clearing '%v' collection", Collection)
 
 		Convey("All task events should be logged correctly", func() {

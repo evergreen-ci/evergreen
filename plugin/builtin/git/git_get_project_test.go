@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
-	"github.com/evergreen-ci/evergreen/plugin/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
@@ -24,14 +24,14 @@ func TestGitPlugin(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
-		util.HandleTestingErr(err, t, "Couldn't register plugin: %v")
+		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
-		taskConfig, err := testutil.CreateTestConfig("testdata/plugin_clone.yml", t)
-		util.HandleTestingErr(err, t, "failed to create test config")
+		taskConfig, err := plugintest.CreateTestConfig("testdata/plugin_clone.yml", t)
+		testutil.HandleTestingErr(err, t, "failed to create test config")
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
 
@@ -40,7 +40,7 @@ func TestGitPlugin(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
@@ -49,7 +49,7 @@ func TestGitPlugin(t *testing.T) {
 				}
 			}
 			err = os.RemoveAll(taskConfig.WorkDir)
-			util.HandleTestingErr(err, t, "Couldn't clean up test temp dir")
+			testutil.HandleTestingErr(err, t, "Couldn't clean up test temp dir")
 		})
 	})
 }

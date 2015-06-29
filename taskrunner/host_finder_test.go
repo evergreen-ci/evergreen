@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -50,12 +50,12 @@ func TestDBHostFinder(t *testing.T) {
 			" be returned", func() {
 			hosts[2].StartedBy = users[0]
 			for _, host := range hosts {
-				util.HandleTestingErr(host.Insert(), t, "Error inserting"+
+				testutil.HandleTestingErr(host.Insert(), t, "Error inserting"+
 					" host into database")
 			}
 
 			availableHosts, err := hostFinder.FindAvailableHosts()
-			util.HandleTestingErr(err, t, "Error finding available hosts")
+			testutil.HandleTestingErr(err, t, "Error finding available hosts")
 			So(len(availableHosts), ShouldEqual, 2)
 			So(availableHosts[0].Id, ShouldEqual, hosts[0].Id)
 			So(availableHosts[1].Id, ShouldEqual, hosts[1].Id)
@@ -65,12 +65,12 @@ func TestDBHostFinder(t *testing.T) {
 			func() {
 				hosts[2].RunningTask = taskIds[0]
 				for _, host := range hosts {
-					util.HandleTestingErr(host.Insert(), t, "Error inserting"+
+					testutil.HandleTestingErr(host.Insert(), t, "Error inserting"+
 						" host into database")
 				}
 
 				availableHosts, err := hostFinder.FindAvailableHosts()
-				util.HandleTestingErr(err, t, "Error finding available hosts")
+				testutil.HandleTestingErr(err, t, "Error finding available hosts")
 				So(len(availableHosts), ShouldEqual, 2)
 				So(availableHosts[0].Id, ShouldEqual, hosts[0].Id)
 				So(availableHosts[1].Id, ShouldEqual, hosts[1].Id)
@@ -80,12 +80,12 @@ func TestDBHostFinder(t *testing.T) {
 			" returned", func() {
 			hosts[2].Status = evergreen.HostUninitialized
 			for _, host := range hosts {
-				util.HandleTestingErr(host.Insert(), t, "Error inserting host"+
+				testutil.HandleTestingErr(host.Insert(), t, "Error inserting host"+
 					" into database")
 			}
 
 			availableHosts, err := hostFinder.FindAvailableHosts()
-			util.HandleTestingErr(err, t, "Error finding available hosts")
+			testutil.HandleTestingErr(err, t, "Error finding available hosts")
 			So(len(availableHosts), ShouldEqual, 2)
 			So(availableHosts[0].Id, ShouldEqual, hosts[0].Id)
 			So(availableHosts[1].Id, ShouldEqual, hosts[1].Id)

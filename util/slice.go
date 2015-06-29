@@ -21,4 +21,3 @@ func SliceContains(slice, elt interface{}) bool {
 	}
 	return false
 }
-

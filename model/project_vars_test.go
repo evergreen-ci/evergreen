@@ -2,14 +2,14 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
 
 func TestFindOneProjectVar(t *testing.T) {
 	Convey("With an existing repository var", t, func() {
-		util.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
+		testutil.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
 			"Error clearing collection")
 		vars := map[string]string{
 			"a": "b",

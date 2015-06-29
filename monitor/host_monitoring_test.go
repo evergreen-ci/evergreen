@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -20,7 +20,7 @@ func TestMonitorReachability(t *testing.T) {
 	Convey("When checking the reachability of hosts", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts that have been checked up on recently should"+
@@ -35,7 +35,7 @@ func TestMonitorReachability(t *testing.T) {
 				Status:                evergreen.HostUnreachable,
 				Provider:              mock.ProviderName,
 			}
-			util.HandleTestingErr(h.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(h.Insert(), t, "error inserting host")
 
 			So(monitorReachability(nil), ShouldBeNil)
 
@@ -56,7 +56,7 @@ func TestMonitorReachability(t *testing.T) {
 				Status:                evergreen.HostUnreachable,
 				Provider:              mock.ProviderName,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// this host should not be picked up, since it is quarantined
 			host2 := &host.Host{
@@ -65,7 +65,7 @@ func TestMonitorReachability(t *testing.T) {
 				Status:                evergreen.HostQuarantined,
 				Provider:              mock.ProviderName,
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			So(monitorReachability(nil), ShouldBeNil)
 

@@ -2,6 +2,7 @@ package archive
 
 import (
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
@@ -23,10 +24,10 @@ func TestArchiveExtract(t *testing.T) {
 
 		//Remove the test output dir, in case it was left over from prior test
 		err := os.RemoveAll("testdata/artifacts_test")
-		util.HandleTestingErr(err, t, "Couldn't remove test dir")
+		testutil.HandleTestingErr(err, t, "Couldn't remove test dir")
 
 		f, gz, tarReader, err := TarGzReader("testdata/artifacts.tar.gz")
-		util.HandleTestingErr(err, t, "Couldn't open test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
 		defer f.Close()
 		defer gz.Close()
 
@@ -47,10 +48,10 @@ func TestArchiveExtract(t *testing.T) {
 func TestMakeArchive(t *testing.T) {
 	Convey("Making an archive should not return an error", t, func() {
 		err := os.RemoveAll("testdata/artifacts_out.tar.gz")
-		util.HandleTestingErr(err, t, "Couldn't delete test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't delete test tarball")
 
 		f, gz, tarWriter, err := TarGzWriter("testdata/artifacts_out.tar.gz")
-		util.HandleTestingErr(err, t, "Couldn't open test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
 		defer f.Close()
 		defer gz.Close()
 		defer tarWriter.Close()
@@ -64,13 +65,13 @@ func TestMakeArchive(t *testing.T) {
 func TestArchiveRoundTrip(t *testing.T) {
 	Convey("After building archive with include/exclude filters", t, func() {
 		err := os.RemoveAll("testdata/artifacts_out.tar.gz")
-		util.HandleTestingErr(err, t, "Couldn't remove test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't remove test tarball")
 
 		err = os.RemoveAll("testdata/artifacts_out")
-		util.HandleTestingErr(err, t, "Couldn't remove test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't remove test tarball")
 
 		f, gz, tarWriter, err := TarGzWriter("testdata/artifacts_out.tar.gz")
-		util.HandleTestingErr(err, t, "Couldn't open test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
 		includes := []string{"dir1/**"}
 		excludes := []string{"*.pdb"}
 		err = BuildArchive(tarWriter, "testdata/artifacts_in", includes, excludes, logger)
@@ -80,7 +81,7 @@ func TestArchiveRoundTrip(t *testing.T) {
 		f.Close()
 
 		f2, gz2, tarReader, err := TarGzReader("testdata/artifacts_out.tar.gz")
-		util.HandleTestingErr(err, t, "Couldn't open test tarball")
+		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
 		err = Extract(tarReader, "testdata/artifacts_out")
 		defer f2.Close()
 		defer gz2.Close()

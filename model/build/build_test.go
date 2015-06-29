@@ -3,7 +3,7 @@ package build
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -30,7 +30,7 @@ func buildIdInSlice(builds []Build, id string) bool {
 func TestGenericBuildFinding(t *testing.T) {
 
 	Convey("When finding builds", t, func() {
-		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("when finding one build", func() {
@@ -75,7 +75,7 @@ func TestFindIntermediateBuilds(t *testing.T) {
 
 	Convey("When finding intermediate builds", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		// the two builds to use as endpoints
@@ -247,7 +247,7 @@ func TestFindPreviousActivatedBuild(t *testing.T) {
 
 	Convey("When finding the previous activated build", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		currBuild := &Build{
@@ -353,7 +353,7 @@ func TestRecentlyFinishedBuilds(t *testing.T) {
 
 	Convey("When finding all recently finished builds", t, func() {
 
-		util.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("all builds returned should be finished", func() {
@@ -493,7 +493,7 @@ func TestGenericBuildUpdating(t *testing.T) {
 	Convey("When updating builds", t, func() {
 
 		Reset(func() {
-			util.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
 		})
 
 		Convey("updating a single build should update the specified build"+
@@ -519,7 +519,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 	Convey("With a build", t, func() {
 
 		Reset(func() {
-			util.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
 		})
 
 		build := &Build{Id: "build"}

@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -39,7 +39,7 @@ func TestSetupFuncs(t *testing.T) {
 			model.Task{Id: taskIds[2]},
 		}
 
-		util.HandleTestingErr(
+		testutil.HandleTestingErr(
 			db.ClearCollections(build.Collection, model.TasksCollection),
 			t, "Failed to clear test collections")
 

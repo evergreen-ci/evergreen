@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
-	"github.com/evergreen-ci/evergreen/plugin/testutil"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
@@ -18,7 +18,7 @@ import (
 
 func reset(t *testing.T) {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
-	util.HandleTestingErr(
+	testutil.HandleTestingErr(
 		db.ClearCollections(model.TasksCollection, model.TestLogCollection), t,
 		"error clearing test collections")
 }
@@ -30,32 +30,32 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
-		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
+		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := testutil.CreateTestConfig("testdata/bad.yml", t)
+			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+			taskConfig, err := plugintest.CreateTestConfig("testdata/bad.yml", t)
 			// manually override working dirctory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
 			// to a temporary directory
-			util.HandleTestingErr(err, t, "Couldn't set up test config %v")
+			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			task, _, err := testutil.SetupAPITestData("testTask", false, t)
-			util.HandleTestingErr(err, t, "Couldn't set up test documents")
+			task, _, err := plugintest.SetupAPITestData("testTask", false, t)
+			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
@@ -95,32 +95,32 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
-		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
+		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
-			util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := testutil.CreateTestConfig("testdata/good.yml", t)
+			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+			taskConfig, err := plugintest.CreateTestConfig("testdata/good.yml", t)
 			// manually override working directory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
 			// to a temporary directory
-			util.HandleTestingErr(err, t, "Couldn't set up test config %v")
+			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			task, _, err := testutil.SetupAPITestData("testTask", false, t)
-			util.HandleTestingErr(err, t, "Couldn't set up test documents")
+			task, _, err := plugintest.SetupAPITestData("testTask", false, t)
+			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
@@ -163,32 +163,32 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
-		util.HandleTestingErr(err, t, "Couldn't register plugin %v")
+		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
 		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := testutil.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("test command should get a copy of custom environment variables", func() {
 			curWD, err := os.Getwd()
-			util.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := testutil.CreateTestConfig("testdata/env.yml", t)
+			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
+			taskConfig, err := plugintest.CreateTestConfig("testdata/env.yml", t)
 			// manually override working directory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
 			// to a temporary directory
-			util.HandleTestingErr(err, t, "Couldn't set up test config %v")
+			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			_, _, err = testutil.SetupAPITestData("testTask", false, t)
-			util.HandleTestingErr(err, t, "Couldn't set up test documents")
+			_, _, err = plugintest.SetupAPITestData("testTask", false, t)
+			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}

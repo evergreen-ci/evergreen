@@ -3,7 +3,7 @@ package xunit
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
@@ -13,7 +13,7 @@ func TestXMLParsing(t *testing.T) {
 	Convey("With some test xml files", t, func() {
 		Convey("with a basic test junit file", func() {
 			file, err := os.Open("testdata/junit_1.xml")
-			util.HandleTestingErr(err, t, "Error reading file")
+			testutil.HandleTestingErr(err, t, "Error reading file")
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -34,7 +34,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey("with a more complex test junit file", func() {
 			file, err := os.Open("testdata/junit_2.xml")
-			util.HandleTestingErr(err, t, "Error reading file")
+			testutil.HandleTestingErr(err, t, "Error reading file")
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -59,7 +59,7 @@ func TestXMLParsing(t *testing.T) {
 
 		Convey(`with a "real" pymongo xunit file`, func() {
 			file, err := os.Open("testdata/junit_3.xml")
-			util.HandleTestingErr(err, t, "Error reading file")
+			testutil.HandleTestingErr(err, t, "Error reading file")
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -89,7 +89,7 @@ func TestXMLParsing(t *testing.T) {
 func TestXMLToModelConversion(t *testing.T) {
 	Convey("With a parsed XML file and a task", t, func() {
 		file, err := os.Open("testdata/junit_3.xml")
-		util.HandleTestingErr(err, t, "Error reading file")
+		testutil.HandleTestingErr(err, t, "Error reading file")
 		res, err := ParseXMLResults(file)
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)

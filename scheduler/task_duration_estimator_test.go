@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -77,7 +77,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -138,7 +138,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							" insert task")
 					}
 
@@ -205,7 +205,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -268,7 +268,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -341,7 +341,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -406,7 +406,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -548,13 +548,13 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 
 					// insert all the test tasks
 					for _, task := range runnableTasks {
-						util.HandleTestingErr(task.Insert(), t, "failed to "+
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
 					taskDurations, err := taskDurationEstimator.
 						GetExpectedDurations(runnableTasks)
-					util.HandleTestingErr(err, t, "failed to get task "+
+					testutil.HandleTestingErr(err, t, "failed to get task "+
 						"durations")
 					projectDurations := taskDurations.
 						TaskDurationByProject

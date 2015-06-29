@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -83,7 +83,7 @@ func TestDependenciesMet(t *testing.T) {
 			func() {
 				task.DependsOn = depTaskIds
 				for _, depTaskId := range depTaskIds {
-					util.HandleTestingErr(UpdateOneTask(
+					testutil.HandleTestingErr(UpdateOneTask(
 						bson.M{"_id": depTaskId},
 						bson.M{
 							"$set": bson.M{
@@ -250,7 +250,7 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		util.HandleTestingErr(db.Clear(TasksCollection), t, "Error clearing"+
+		testutil.HandleTestingErr(db.Clear(TasksCollection), t, "Error clearing"+
 			" '%v' collection", TasksCollection)
 
 		task := &Task{
@@ -411,7 +411,7 @@ func TestSetTaskActivated(t *testing.T) {
 
 	Convey("With a task and build", t, func() {
 
-		util.HandleTestingErr(
+		testutil.HandleTestingErr(
 			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
 			t, "Error clearing test collections")
 
@@ -509,7 +509,7 @@ func TestMarkAsDispatched(t *testing.T) {
 			},
 		}
 
-		util.HandleTestingErr(
+		testutil.HandleTestingErr(
 			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
 			t, "Error clearing test collections")
 

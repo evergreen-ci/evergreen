@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
@@ -146,11 +147,11 @@ func TestRegistry(t *testing.T) {
 		Convey("Registering a plugin twice should return err", func() {
 			registry := plugin.NewSimpleRegistry()
 			err := registry.Register(&MockPlugin{})
-			util.HandleTestingErr(err, t, "Couldn't register plugin")
+			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 			err = registry.Register(&shell.ShellPlugin{})
-			util.HandleTestingErr(err, t, "Couldn't register plugin")
+			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 			err = registry.Register(&expansions.ExpansionsPlugin{})
-			util.HandleTestingErr(err, t, "Couldn't register plugin")
+			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 		})
 		Convey("with a project file containing references to a valid plugin", func() {
 			registry := plugin.NewSimpleRegistry()
@@ -158,14 +159,14 @@ func TestRegistry(t *testing.T) {
 			registry.Register(&shell.ShellPlugin{})
 			registry.Register(&expansions.ExpansionsPlugin{})
 			data, err := ioutil.ReadFile("testdata/plugin_project.yml")
-			util.HandleTestingErr(err, t, "failed to load test yaml file")
+			testutil.HandleTestingErr(err, t, "failed to load test yaml file")
 			project := &model.Project{}
 			err = yaml.Unmarshal(data, project)
 			Convey("all commands in project file should load parse successfully", func() {
 				for _, task := range project.Tasks {
 					for _, command := range task.Commands {
 						pluginCmds, err := registry.GetCommands(command, project.Functions)
-						util.HandleTestingErr(err, t, "Got error getting plugin commands: %v")
+						testutil.HandleTestingErr(err, t, "Got error getting plugin commands: %v")
 						So(pluginCmds, ShouldNotBeNil)
 						So(err, ShouldBeNil)
 					}
@@ -180,21 +181,21 @@ func TestPluginFunctions(t *testing.T) {
 		Convey("with a project file containing functions", func() {
 			registry := plugin.NewSimpleRegistry()
 			err := registry.Register(&shell.ShellPlugin{})
-			util.HandleTestingErr(err, t, "Couldn't register plugin")
+			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 			err = registry.Register(&expansions.ExpansionsPlugin{})
-			util.HandleTestingErr(err, t, "Couldn't register plugin")
+			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 
 			testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
-			util.HandleTestingErr(err, t, "Couldn't set up testing server")
+			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 			taskConfig, err := createTestConfig("testdata/plugin_project_functions.yml", t)
-			util.HandleTestingErr(err, t, "failed to create test config: %v", err)
+			testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
 			Convey("all commands in project file should parse successfully", func() {
 				for _, task := range taskConfig.Project.Tasks {
 					for _, command := range task.Commands {
 						pluginCmd, err := registry.GetCommands(command, taskConfig.Project.Functions)
-						util.HandleTestingErr(err, t, "Got error getting plugin command: %v")
+						testutil.HandleTestingErr(err, t, "Got error getting plugin command: %v")
 						So(pluginCmd, ShouldNotBeNil)
 						So(err, ShouldBeNil)
 					}
@@ -212,7 +213,7 @@ func TestPluginFunctions(t *testing.T) {
 					So(len(task.Commands), ShouldNotEqual, 0)
 					for _, command := range task.Commands {
 						pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-						util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+						testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 						So(pluginCmds, ShouldNotBeNil)
 						So(err, ShouldBeNil)
 						So(len(pluginCmds), ShouldEqual, 1)
@@ -234,18 +235,18 @@ func TestPluginExecution(t *testing.T) {
 		plugins := []plugin.Plugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}, &shell.ShellPlugin{}}
 		for _, p := range plugins {
 			err := registry.Register(p)
-			util.HandleTestingErr(err, t, "failed to register plugin")
+			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
 
 		testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugins, false)
-		util.HandleTestingErr(err, t, "Couldn't set up testing server")
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
 
 		taskConfig, err := createTestConfig("testdata/plugin_project.yml", t)
-		util.HandleTestingErr(err, t, "failed to create test config: %v", err)
+		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
 
@@ -254,7 +255,7 @@ func TestPluginExecution(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					util.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					for _, c := range pluginCmds {
@@ -270,7 +271,7 @@ func TestPluginExecution(t *testing.T) {
 
 func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) {
 	clearDataMsg := "Failed to clear test data collection"
-	util.HandleTestingErr(
+	testutil.HandleTestingErr(
 		db.ClearCollections(
 			model.TasksCollection, model.ProjectVarsCollection),
 		t, clearDataMsg)
@@ -312,7 +313,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		Revision:     "d0c52298b222f4973c48e9834a57966c448547de",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
-	util.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
+	testutil.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
 
 	projectVars := &model.ProjectVars{
 		Id: "mongodb-mongo-master",
@@ -322,7 +323,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		},
 	}
 	_, err = projectVars.Upsert()
-	util.HandleTestingErr(err, t, "failed to upsert project vars")
+	testutil.HandleTestingErr(err, t, "failed to upsert project vars")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
 	return model.NewTaskConfig(testDistro, testProject, testTask, testProjectRef)
 }
@@ -331,7 +332,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 
-	util.HandleTestingErr(
+	testutil.HandleTestingErr(
 		db.ClearCollections(
 			model.TasksCollection, build.Collection, host.Collection,
 			version.Collection, patch.Collection),
@@ -343,7 +344,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		RunningTask: "testTaskId",
 		StartedBy:   evergreen.User,
 	}
-	util.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
+	testutil.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 
 	task := &model.Task{
 		Id:           "testTaskId",
@@ -362,18 +363,18 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		task.Requester = evergreen.PatchVersionRequester
 	}
 
-	util.HandleTestingErr(task.Insert(), t, "failed to insert task")
+	testutil.HandleTestingErr(task.Insert(), t, "failed to insert task")
 
 	v := &version.Version{
 		Id:       "testVersionId",
 		BuildIds: []string{task.BuildId},
 	}
-	util.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
+	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
 	if isPatch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
-		util.HandleTestingErr(err, t, "failed to read test patch file %v")
+		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
 		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
-		util.HandleTestingErr(err, t, "failed to read test module patch file %v")
+		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
 		p := &patch.Patch{
 			Status:  evergreen.PatchCreated,
@@ -392,16 +393,16 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 			},
 		}
 
-		util.HandleTestingErr(p.Insert(), t, "failed to insert version %v")
+		testutil.HandleTestingErr(p.Insert(), t, "failed to insert version %v")
 
 	}
 
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	util.HandleTestingErr(err, t, "couldn't get db session!")
+	testutil.HandleTestingErr(err, t, "couldn't get db session!")
 
 	//Remove any logs for our test task from previous runs.
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": task.Id})
-	util.HandleTestingErr(err, t, "failed to remove logs")
+	testutil.HandleTestingErr(err, t, "failed to remove logs")
 
 	build := &build.Build{
 		Id: "testBuildId",
@@ -411,7 +412,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		Version: "testVersionId",
 	}
 
-	util.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
+	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
 	return task, build, nil
 }
 

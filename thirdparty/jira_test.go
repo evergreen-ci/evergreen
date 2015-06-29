@@ -2,7 +2,7 @@ package thirdparty
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"net/http"
 	"testing"
@@ -56,7 +56,7 @@ func (self *JiraTestSuite) TestIntegration(t *testing.T) {
 
 		Convey("the request for a ticket should return a valid ticket response", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")
-			util.HandleTestingErr(err, t, "Failed to get ticket from JIRA")
+			testutil.HandleTestingErr(err, t, "Failed to get ticket from JIRA")
 			So(ticket.Key, ShouldEqual, "BF-1")
 			So(ticket.Fields.Project.Name, ShouldEqual, "Build Failures")
 		})

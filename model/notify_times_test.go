@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -22,7 +22,7 @@ func TestSetLastNotificationsEventTime(t *testing.T) {
 
 	Convey("When setting the last notification event time", t, func() {
 
-		util.HandleTestingErr(db.Clear(NotifyTimesCollection),
+		testutil.HandleTestingErr(db.Clear(NotifyTimesCollection),
 			t, "Error clearing '%v' collection", NotifyTimesCollection)
 
 		Convey("the last notification time for only the specified project"+
@@ -69,7 +69,7 @@ func TestLastNotificationsEventTime(t *testing.T) {
 	Convey("When checking the last notifications event time for a"+
 		" project", t, func() {
 
-		util.HandleTestingErr(db.Clear(NotifyTimesCollection),
+		testutil.HandleTestingErr(db.Clear(NotifyTimesCollection),
 			t, "Error clearing '%v' collection", NotifyTimesCollection)
 
 		Convey("if there are no times stored, the earliest date to consider"+

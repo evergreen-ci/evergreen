@@ -6,8 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/testutils"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -18,15 +17,15 @@ func TestPatchTask(t *testing.T) {
 	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	testutils.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a patched 'compile'"+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, "compile", "linux-64", true, t)
-					util.HandleTestingErr(err, t, "Error setting up test data: %v", err)
+					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
-					util.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 
 					// actually run the task.
@@ -51,7 +50,7 @@ func TestPatchTask(t *testing.T) {
 						So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
 
 						testTask, err = model.FindTask(testTask.Id)
-						util.HandleTestingErr(err, t, "Error finding test task: %v", err)
+						testutil.HandleTestingErr(err, t, "Error finding test task: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 					})
 				})

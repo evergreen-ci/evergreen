@@ -3,7 +3,8 @@ package archive_test
 import (
 	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
-	"github.com/evergreen-ci/evergreen/plugin/testutil"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
@@ -93,9 +94,9 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				target := filepath.Join(testDataDir, "target.tgz")
 				outputDir := filepath.Join(testDataDir, "output")
 
-				util.HandleTestingErr(os.RemoveAll(target), t,
+				testutil.HandleTestingErr(os.RemoveAll(target), t,
 					"Error removing tgz file")
-				util.HandleTestingErr(os.RemoveAll(outputDir), t,
+				testutil.HandleTestingErr(os.RemoveAll(outputDir), t,
 					"Error removing output dir")
 
 				params := map[string]interface{}{
@@ -106,7 +107,7 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.BuildArchive("", &testutil.MockLogger{}), ShouldBeNil)
+				So(cmd.BuildArchive("", &plugintest.MockLogger{}), ShouldBeNil)
 
 				exists, err := util.FileExists(target)
 				So(err, ShouldBeNil)

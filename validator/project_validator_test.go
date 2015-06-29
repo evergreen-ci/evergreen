@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
-	"github.com/evergreen-ci/evergreen/testutils"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -851,7 +851,7 @@ func TestCheckProjectSyntax(t *testing.T) {
 				distro.Distro{Id: "test-distro-two"},
 			}
 
-			err := testutils.CreateTestLocalConfig(projectValidatorConf, "project_test")
+			err := testutil.CreateTestLocalConfig(projectValidatorConf, "project_test")
 			So(err, ShouldBeNil)
 
 			projectRef, err := model.FindOneProjectRef("project_test")

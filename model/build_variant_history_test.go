@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -13,9 +13,9 @@ import (
 
 func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	util.HandleTestingErr(err, t, "Error opening database session")
+	testutil.HandleTestingErr(err, t, "Error opening database session")
 	defer session.Close()
-	util.HandleTestingErr(session.DB(testConfig.Db).DropDatabase(), t, "Error dropping test database")
+	testutil.HandleTestingErr(session.DB(testConfig.Db).DropDatabase(), t, "Error dropping test database")
 }
 
 func createVersion(order int, project string, buildVariants []string) error {

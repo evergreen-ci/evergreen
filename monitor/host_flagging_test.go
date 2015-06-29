@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -24,7 +25,7 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 			" should be returned", func() {
 
 			// reset the db
-			util.HandleTestingErr(db.ClearCollections(host.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
 
 			// insert hosts with different statuses
@@ -33,31 +34,31 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 				Id:     "h1",
 				Status: evergreen.HostRunning,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:     "h2",
 				Status: evergreen.HostTerminated,
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			host3 := &host.Host{
 				Id:     "h3",
 				Status: evergreen.HostDecommissioned,
 			}
-			util.HandleTestingErr(host3.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 			host4 := &host.Host{
 				Id:     "h4",
 				Status: evergreen.HostDecommissioned,
 			}
-			util.HandleTestingErr(host4.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 			host5 := &host.Host{
 				Id:     "h5",
 				Status: evergreen.HostQuarantined,
 			}
-			util.HandleTestingErr(host5.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
 			// flag the decommissioned hosts - there should be 2 of them
 			decommissioned, err := flagDecommissionedHosts(nil, testConfig)
@@ -84,7 +85,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 	Convey("When flagging idle hosts to be terminated", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts currently running a task should never be"+
@@ -100,7 +101,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Status:       evergreen.HostRunning,
 				StartedBy:    evergreen.User,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// finding idle hosts should not return the host
 			idle, err := flagIdleHosts(nil, nil)
@@ -124,7 +125,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := host.Host{
 				Id:                    "h2",
@@ -134,7 +135,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			// finding idle hosts should only return the first host
 			idle, err := flagIdleHosts(nil, nil)
@@ -159,7 +160,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 		Convey("with two separate distros containing hosts", func() {
 
 			// reset the db
-			util.HandleTestingErr(db.ClearCollections(host.Collection),
+			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
 
 			// mock up the distros
@@ -186,7 +187,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 				host2 := &host.Host{
 					Id:        "h2",
@@ -195,7 +196,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 				// flag the excess hosts - there should not be any
 				excess, err := flagExcessHosts(distros, nil)
@@ -217,7 +218,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 				host2 := &host.Host{
 					Id:        "h2",
@@ -226,7 +227,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 				host3 := &host.Host{
 					Id:        "h3",
@@ -235,7 +236,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 				host4 := &host.Host{
 					Id:        "h4",
@@ -244,7 +245,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host4.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 				// flag the excess hosts - there should be 2, both from
 				// the second distro
@@ -269,7 +270,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 				host2 := &host.Host{
 					Id:        "h2",
@@ -278,7 +279,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 				host3 := &host.Host{
 					Id:        "h3",
@@ -287,7 +288,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 				host4 := &host.Host{
 					Id:        "h4",
@@ -296,7 +297,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host4.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 				host5 := &host.Host{
 					Id:        "h5",
@@ -305,7 +306,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host5.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host5.Insert(), t, "error inserting host")
 
 				host6 := &host.Host{
 					Id:        "h6",
@@ -314,7 +315,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					StartedBy: evergreen.User,
 					Provider:  mock.ProviderName,
 				}
-				util.HandleTestingErr(host6.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host6.Insert(), t, "error inserting host")
 
 				// find the excess hosts - there should be one for the first
 				// distro and two for the second
@@ -349,7 +350,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					RunningTask: "t1",
 					Provider:    mock.ProviderName,
 				}
-				util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 				host2 := &host.Host{
 					Id:          "h2",
@@ -359,7 +360,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					RunningTask: "t2",
 					Provider:    mock.ProviderName,
 				}
-				util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 				host3 := &host.Host{
 					Id:          "h3",
@@ -369,7 +370,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					RunningTask: "t3",
 					Provider:    mock.ProviderName,
 				}
-				util.HandleTestingErr(host3.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 				host4 := &host.Host{
 					Id:          "h4",
@@ -379,7 +380,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 					RunningTask: "t4",
 					Provider:    mock.ProviderName,
 				}
-				util.HandleTestingErr(host4.Insert(), t, "error inserting host")
+				testutil.HandleTestingErr(host4.Insert(), t, "error inserting host")
 
 				// find the excess hosts - there should be none, since all of
 				// the hosts are running tasks and cannot safely be terminated
@@ -404,7 +405,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 	Convey("When flagging unprovisioned hosts to be terminated", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts that have not hit the provisioning limit should"+
@@ -415,7 +416,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -431,7 +432,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				CreationTime: time.Now().Add(-time.Minute * 40),
 				Status:       evergreen.HostTerminated,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -447,7 +448,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				CreationTime: time.Now().Add(-time.Minute * 40),
 				Provisioned:  true,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -463,7 +464,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 				StartedBy:    evergreen.User,
 				CreationTime: time.Now().Add(-time.Minute * 40),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			unprovisioned, err := flagUnprovisionedHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -484,7 +485,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 	Convey("When flagging hosts whose provisioning failed", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("only hosts whose provisioning failed should be"+
@@ -494,19 +495,19 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 				Id:     "h1",
 				Status: evergreen.HostRunning,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:     "h2",
 				Status: evergreen.HostUninitialized,
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			host3 := &host.Host{
 				Id:     "h3",
 				Status: evergreen.HostProvisionFailed,
 			}
-			util.HandleTestingErr(host3.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host3.Insert(), t, "error inserting host")
 
 			unprovisioned, err := flagProvisioningFailedHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -527,7 +528,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 	Convey("When flagging expired hosts to be terminated", t, func() {
 
 		// reset the db
-		util.HandleTestingErr(db.ClearCollections(host.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
 
 		Convey("hosts started by the default user should be filtered"+
@@ -538,7 +539,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Status:    evergreen.HostRunning,
 				StartedBy: evergreen.User,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			expired, err := flagExpiredHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -553,13 +554,13 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Id:     "h1",
 				Status: evergreen.HostQuarantined,
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := &host.Host{
 				Id:     "h2",
 				Status: evergreen.HostTerminated,
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			expired, err := flagExpiredHosts(nil, nil)
 			So(err, ShouldBeNil)
@@ -576,7 +577,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Status:         evergreen.HostRunning,
 				ExpirationTime: time.Now().Add(time.Minute * 10),
 			}
-			util.HandleTestingErr(host1.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			// expired
 			host2 := &host.Host{
@@ -584,7 +585,7 @@ func TestFlaggingExpiredHosts(t *testing.T) {
 				Status:         evergreen.HostRunning,
 				ExpirationTime: time.Now().Add(-time.Minute * 10),
 			}
-			util.HandleTestingErr(host2.Insert(), t, "error inserting host")
+			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
 			expired, err := flagExpiredHosts(nil, nil)
 			So(err, ShouldBeNil)

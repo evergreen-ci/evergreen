@@ -12,7 +12,7 @@ import (
 )
 
 // TODO(MCI-2245):
-//	This is a temporary package for storing host-related interactions that involve multiple models. 
+//	This is a temporary package for storing host-related interactions that involve multiple models.
 
 // NextTaskForHost the next task that should be run on the host.
 func NextTaskForHost(h *host.Host) (*Task, error) {
