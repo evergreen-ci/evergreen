@@ -15,7 +15,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	resourceId := mux.Vars(r)["resource_id"]
 
 	projCtx := MustHaveProjectContext(r)
-
 	var eventQuery db.Q
 	switch resourceType {
 	case event.ResourceTypeTask:

@@ -5,7 +5,7 @@ Events
 {{end}}
 {{define "scripts"}}
 <script type="text/javascript">
-  var events = {{.Data}}
+  var events = {{.Data}}.reverse()
   var host = {{.Data}}
   var userTz = {{GetTimezone $.User}}
   var LogController = function($scope, $window){
@@ -18,10 +18,10 @@ Events
 {{define "content"}}
 <div id="content" class="container" ng-controller="LogController">
     <div ng-repeat="event in events">
-        <div ng-show="event.data.EventData.resource_type == 'HOST'">
+        <div ng-show="event.data.resource_type == 'HOST'">
           <hostevent  event="event" tz="userTz"></hostevent>
         </div>
-        <div ng-show="event.data.EventData.resource_type == 'TASK'">
+        <div ng-show="event.data.resource_type == 'TASK'">
           <taskevent  event="event" tz="userTz"></taskevent>
         </div>
     </div>

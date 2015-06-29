@@ -5,7 +5,7 @@
 {{end}}
 <script type="text/javascript">
   var host = {{.Host}}
-  var events = {{.Events}}
+  var events = {{.Events}}.reverse()
   var userTz = {{GetTimezone $.User}}
 </script>
 {{end}}

@@ -58,12 +58,6 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lenEvents := len(events)
-	reversed := make([]event.Event, lenEvents)
-	for idx, e := range events {
-		reversed[lenEvents-idx-1] = e
-	}
-
 	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Flashes     []interface{}
@@ -71,7 +65,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		Host        *host.Host
 		User        *user.DBUser
 		ProjectData projectContext
-	}{flashes, reversed, h, GetUser(r), projCtx},
+	}{flashes, events, h, GetUser(r), projCtx},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
