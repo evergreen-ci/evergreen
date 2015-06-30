@@ -34,13 +34,12 @@ var (
 	RequesterKey           = bsonutil.MustHaveTag(Build{}, "Requester")
 
 	// bson fields for the task caches
-	TaskCacheIdKey            = bsonutil.MustHaveTag(TaskCache{}, "Id")
-	TaskCacheDisplayNameKey   = bsonutil.MustHaveTag(TaskCache{}, "DisplayName")
-	TaskCacheStatusKey        = bsonutil.MustHaveTag(TaskCache{}, "Status")
-	TaskCacheStatusDetailsKey = bsonutil.MustHaveTag(TaskCache{}, "StatusDetails")
-	TaskCacheStartTimeKey     = bsonutil.MustHaveTag(TaskCache{}, "StartTime")
-	TaskCacheTimeTakenKey     = bsonutil.MustHaveTag(TaskCache{}, "TimeTaken")
-	TaskCacheActivatedKey     = bsonutil.MustHaveTag(TaskCache{}, "Activated")
+	TaskCacheIdKey          = bsonutil.MustHaveTag(TaskCache{}, "Id")
+	TaskCacheDisplayNameKey = bsonutil.MustHaveTag(TaskCache{}, "DisplayName")
+	TaskCacheStatusKey      = bsonutil.MustHaveTag(TaskCache{}, "Status")
+	TaskCacheStartTimeKey   = bsonutil.MustHaveTag(TaskCache{}, "StartTime")
+	TaskCacheTimeTakenKey   = bsonutil.MustHaveTag(TaskCache{}, "TimeTaken")
+	TaskCacheActivatedKey   = bsonutil.MustHaveTag(TaskCache{}, "Activated")
 )
 
 // Queries

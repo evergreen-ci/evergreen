@@ -2,7 +2,6 @@ package build
 
 import (
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2/bson"
 	"time"
@@ -70,12 +69,11 @@ func SetCachedTaskStarted(buildId, taskId string, startTime time.Time) error {
 
 // SetCachedTaskFinished sets the given task to "finished"
 // along with a time taken in the cache of the given build.
-func SetCachedTaskFinished(buildId, taskId string, details apimodels.TaskEndDetails, timeTaken time.Duration) error {
+func SetCachedTaskFinished(buildId, taskId, status string, timeTaken time.Duration) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
 		"$set": bson.M{
-			TasksKey + ".$." + TaskCacheTimeTakenKey:     timeTaken,
-			TasksKey + ".$." + TaskCacheStatusKey:        details.Status,
-			TasksKey + ".$." + TaskCacheStatusDetailsKey: details,
+			TasksKey + ".$." + TaskCacheStatusKey:    status,
+			TasksKey + ".$." + TaskCacheTimeTakenKey: timeTaken,
 		},
 	})
 }

@@ -23,10 +23,7 @@ const (
 	TestLogPath        = "/test_log/"
 )
 
-var (
-	ZeroTime       = time.Unix(0, 0)
-	AgentHeartbeat = "heartbeat"
-)
+var ZeroTime time.Time = time.Unix(0, 0)
 
 type Task struct {
 	Id     string `bson:"_id" json:"id"`
@@ -117,7 +114,7 @@ type TestResult struct {
 }
 
 var (
-	// BSON fields for the task struct
+	// bson fields for the task struct
 	TaskIdKey                  = bsonutil.MustHaveTag(Task{}, "Id")
 	TaskSecretKey              = bsonutil.MustHaveTag(Task{}, "Secret")
 	TaskCreateTimeKey          = bsonutil.MustHaveTag(Task{}, "CreateTime")
@@ -152,26 +149,22 @@ var (
 	TaskPriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	TaskMinQueuePosKey         = bsonutil.MustHaveTag(Task{}, "MinQueuePos")
 
-	// BSON fields for the test result struct
+	// bson fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
 	TestResultTestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
 	TestResultURLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
 	TestResultExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
 	TestResultStartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
 	TestResultEndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")
+
+	// bson fields for task status details struct
+	TaskStatusDetailsTimeoutStage = bsonutil.MustHaveTag(apimodels.TaskEndDetails{}, "TimeoutStage")
+	TaskStatusDetailsTimedOut     = bsonutil.MustHaveTag(apimodels.TaskEndDetails{}, "TimedOut")
 )
 
-var (
-	// BSON fields for task status details struct
-	TaskEndDetailsStatus      = bsonutil.MustHaveTag(apimodels.TaskEndDetails{}, "Status")
-	TaskEndDetailsTimedOut    = bsonutil.MustHaveTag(apimodels.TaskEndDetails{}, "TimedOut")
-	TaskEndDetailsType        = bsonutil.MustHaveTag(apimodels.TaskEndDetails{}, "Type")
-	TaskEndDetailsDescription = bsonutil.MustHaveTag(apimodels.TaskEndDetails{}, "Description")
-)
-
-func (t *Task) Abortable() bool {
-	return t.Status == evergreen.TaskStarted ||
-		t.Status == evergreen.TaskDispatched
+func (self *Task) Abortable() bool {
+	return self.Status == evergreen.TaskStarted ||
+		self.Status == evergreen.TaskDispatched
 }
 
 func (task Task) IsStarted() bool {
@@ -188,16 +181,16 @@ func (task Task) IsFinished() bool {
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
 // used to check rather than fetching from the database.
-func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
+func (self *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 
-	if len(t.DependsOn) == 0 {
+	if len(self.DependsOn) == 0 {
 		return true, nil
 	}
 
-	deps := make([]Task, 0, len(t.DependsOn))
+	deps := make([]Task, 0, len(self.DependsOn))
 
-	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
-	for _, depId := range t.DependsOn {
+	depIdsToQueryFor := make([]string, 0, len(self.DependsOn))
+	for _, depId := range self.DependsOn {
 		if cachedDep, ok := depCaches[depId]; !ok {
 			depIdsToQueryFor = append(depIdsToQueryFor, depId)
 		} else {
@@ -371,14 +364,14 @@ func FindTasksByIds(ids []string) (tasks []Task, err error) {
 	)
 }
 
-func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
+func (self *Task) FindTaskOnBaseCommit() (*Task, error) {
 	return FindOneTask(
 		bson.M{
-			TaskRevisionKey:     t.Revision,
+			TaskRevisionKey:     self.Revision,
 			TaskRequesterKey:    evergreen.RepotrackerVersionRequester,
-			TaskBuildVariantKey: t.BuildVariant,
-			TaskDisplayNameKey:  t.DisplayName,
-			TaskProjectKey:      t.Project,
+			TaskBuildVariantKey: self.BuildVariant,
+			TaskDisplayNameKey:  self.DisplayName,
+			TaskProjectKey:      self.Project,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -701,16 +694,16 @@ func UpdateAllTasks(query interface{}, update interface{}) (*mgo.ChangeInfo, err
 // running task field on the host and the host id field on the task, as well
 // as updating the cache for the task in its build document in the db.
 // Returns an error if any of the database updates fail.
-func (t *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) error {
+func (self *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) error {
 	// then, update the task document
-	t.DispatchTime = dispatchTime
-	t.Status = evergreen.TaskDispatched
-	t.HostId = host.Id
-	t.LastHeartbeat = dispatchTime
-	t.DistroId = host.Distro.Id
+	self.DispatchTime = dispatchTime
+	self.Status = evergreen.TaskDispatched
+	self.HostId = host.Id
+	self.LastHeartbeat = dispatchTime
+	self.DistroId = host.Distro.Id
 	err := UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -729,15 +722,15 @@ func (t *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error updating task with id %v: %v", t.Id, err)
+		return fmt.Errorf("error updating task with id %v: %v", self.Id, err)
 	}
 
 	// the task was successfully dispatched, log the event
-	event.LogTaskDispatched(t.Id, host.Id)
+	event.LogTaskDispatched(self.Id, host.Id)
 
 	// update the cached version of the task in its related build document
-	if err = build.SetCachedTaskDispatched(t.BuildId, t.Id); err != nil {
-		return fmt.Errorf("error updating task cache in build %v: %v", t.BuildId, err)
+	if err = build.SetCachedTaskDispatched(self.BuildId, self.Id); err != nil {
+		return fmt.Errorf("error updating task cache in build %v: %v", self.BuildId, err)
 	}
 	return nil
 }
@@ -901,22 +894,22 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 	return build.SetCachedTaskActivated(task.BuildId, taskId, active)
 }
 
-func (t *Task) Abort(caller string, aborted bool) error {
-	if !t.Abortable() {
+func (self *Task) Abort(caller string, aborted bool) error {
+	if !self.Abortable() {
 		return fmt.Errorf("Task '%v' is currently '%v' - cannot abort task"+
-			" in this status", t.Id, t.Status)
+			" in this status", self.Id, self.Status)
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Setting abort=%v for task %v", aborted, t.Id)
+	evergreen.Logger.Logf(slogger.DEBUG, "Setting abort=%v for task %v", aborted, self.Id)
 
-	err := SetTaskActivated(t.Id, caller, false)
+	err := SetTaskActivated(self.Id, caller, false)
 	if err != nil {
 		return err
 	}
 
 	err = UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -928,16 +921,16 @@ func (t *Task) Abort(caller string, aborted bool) error {
 		return err
 	}
 
-	event.LogTaskAbortRequest(t.Id, caller)
+	event.LogTaskAbortRequest(self.Id, caller)
 
-	t.Aborted = aborted
+	self.Aborted = aborted
 	return nil
 }
 
-func (t *Task) UpdateHeartbeat() error {
+func (self *Task) UpdateHeartbeat() error {
 	return UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -947,8 +940,8 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-func (t *Task) SetPriority(priority int) error {
-	t.Priority = priority
+func (self *Task) SetPriority(priority int) error {
+	self.Priority = priority
 	modifier := bson.M{TaskPriorityKey: priority}
 
 	//blacklisted - this task should never run, so unschedule it now
@@ -958,27 +951,27 @@ func (t *Task) SetPriority(priority int) error {
 
 	return UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{"$set": modifier},
 	)
 }
 
-func (t *Task) TryReset(user, origin string, project *Project,
+func (self *Task) TryReset(user, origin string, project *Project,
 	taskEndRequest *apimodels.TaskEndRequest) (err error) {
 	// if we've reached the max # of executions
 	// for this task, mark it as finished and failed
-	if t.Execution >= evergreen.MaxTaskExecution {
+	if self.Execution >= evergreen.MaxTaskExecution {
 		// restarting from the ui bypassed the restart cap
 		if origin == evergreen.UIPackage {
 			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
-				" (%v); Allowing exception for %v", t.Id,
+				" (%v); Allowing exception for %v", self.Id,
 				evergreen.MaxTaskExecution, user)
 		} else {
 			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
-				" (%v); marking as failed.", t.Id, evergreen.MaxTaskExecution)
+				" (%v); marking as failed.", self.Id, evergreen.MaxTaskExecution)
 			if taskEndRequest != nil {
-				return t.MarkEnd(origin, time.Now(), taskEndRequest, project, false)
+				return self.MarkEnd(origin, time.Now(), taskEndRequest, project, false)
 			} else {
 				panic(fmt.Sprintf("TryReset called with nil TaskEndRequest "+
 					"by %v", origin))
@@ -987,36 +980,36 @@ func (t *Task) TryReset(user, origin string, project *Project,
 	}
 
 	// only allow re-execution for failed, cancelled or successful tasks
-	if !t.IsFinished() {
+	if !self.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage {
 			evergreen.Logger.Logf(slogger.DEBUG, "Will not satisfy '%v' requested"+
-				" reset for '%v' - current status is '%v'", user, t.Id,
-				t.Status)
+				" reset for '%v' - current status is '%v'", user, self.Id,
+				self.Status)
 			return fmt.Errorf("Task '%v' is currently '%v' - can not reset"+
-				" task in this status", t.Id, t.Status)
+				" task in this status", self.Id, self.Status)
 		}
 	}
 
 	if taskEndRequest != nil {
-		err = t.markEnd(origin, time.Now(), taskEndRequest)
+		err = self.markEnd(origin, time.Now(), taskEndRequest)
 		if err != nil {
 			return fmt.Errorf("Error marking task as ended: %v", err)
 		}
 	}
 
-	if err = t.reset(); err == nil {
+	if err = self.reset(); err == nil {
 		if origin == evergreen.UIPackage {
-			event.LogTaskRestarted(t.Id, user)
+			event.LogTaskRestarted(self.Id, user)
 		} else {
-			event.LogTaskRestarted(t.Id, origin)
+			event.LogTaskRestarted(self.Id, origin)
 		}
 	}
 	return err
 }
 
-func (t *Task) reset() error {
-	if err := t.Archive(); err != nil {
+func (self *Task) reset() error {
+	if err := self.Archive(); err != nil {
 		return fmt.Errorf("Can't restart task because it can't be archived: %v", err)
 	}
 
@@ -1037,7 +1030,7 @@ func (t *Task) reset() error {
 
 	err := UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		reset,
 	)
@@ -1046,21 +1039,21 @@ func (t *Task) reset() error {
 	}
 
 	// update the cached version of the task, in its build document
-	if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
+	if err = build.ResetCachedTask(self.BuildId, self.Id); err != nil {
 		return err
 	}
 
-	return t.UpdateBuildStatus()
+	return self.UpdateBuildStatus()
 }
 
-func (t *Task) MarkStart() error {
+func (self *Task) MarkStart() error {
 	// record the start time in the in-memory task
 	startTime := time.Now()
-	t.StartTime = startTime
-	t.Status = evergreen.TaskStarted
+	self.StartTime = startTime
+	self.Status = evergreen.TaskStarted
 	err := UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1073,33 +1066,33 @@ func (t *Task) MarkStart() error {
 		return err
 	}
 
-	event.LogTaskStarted(t.Id)
+	event.LogTaskStarted(self.Id)
 
 	// ensure the appropriate build is marked as started if necessary
-	if err = build.TryMarkStarted(t.BuildId, startTime); err != nil {
+	if err = build.TryMarkStarted(self.BuildId, startTime); err != nil {
 		return err
 	}
 
 	// ensure the appropriate version is marked as started if necessary
-	if err = MarkVersionStarted(t.Version, startTime); err != nil {
+	if err = MarkVersionStarted(self.Version, startTime); err != nil {
 		return err
 	}
 
 	// if it's a patch, mark the patch as started if necessary
-	if t.Requester == evergreen.PatchVersionRequester {
-		if err = patch.TryMarkStarted(t.Version, startTime); err != nil {
+	if self.Requester == evergreen.PatchVersionRequester {
+		if err = patch.TryMarkStarted(self.Version, startTime); err != nil {
 			return err
 		}
 	}
 
 	// update the cached version of the task, in its build document
-	return build.SetCachedTaskStarted(t.BuildId, t.Id, startTime)
+	return build.SetCachedTaskStarted(self.BuildId, self.Id, startTime)
 }
 
-func (t *Task) UpdateBuildStatus() error {
+func (self *Task) UpdateBuildStatus() error {
 	finishTime := time.Now()
 	// get all of the tasks in the same build
-	b, err := build.FindOne(build.ById(t.BuildId))
+	b, err := build.FindOne(build.ById(self.BuildId))
 	if err != nil {
 		return err
 	}
@@ -1247,9 +1240,9 @@ func (t *Task) UpdateBuildStatus() error {
 
 // Returns true if the task should stepback upon failure, and false
 // otherwise. Note that the setting is obtained from the top-level
-// project, if not explicitly set on the task itt.
-func (t *Task) getStepback(project *Project) bool {
-	projectTask := project.FindProjectTask(t.DisplayName)
+// project, if not explicitly set on the task itself.
+func (self *Task) getStepback(project *Project) bool {
+	projectTask := project.FindProjectTask(self.DisplayName)
 
 	// Check if the task overrides the stepback policy specified by the project
 	if projectTask != nil && projectTask.Stepback != nil {
@@ -1258,7 +1251,7 @@ func (t *Task) getStepback(project *Project) bool {
 
 	// Check if the build variant overrides the stepback policy specified by the project
 	for _, buildVariant := range project.BuildVariants {
-		if t.BuildVariant == buildVariant.Name {
+		if self.BuildVariant == buildVariant.Name {
 			if buildVariant.Stepback != nil {
 				return *buildVariant.Stepback
 			}
@@ -1269,24 +1262,24 @@ func (t *Task) getStepback(project *Project) bool {
 	return project.Stepback
 }
 
-func (t *Task) markEnd(caller string, finishTime time.Time,
+func (self *Task) markEnd(caller string, finishTime time.Time,
 	taskEndRequest *apimodels.TaskEndRequest) error {
 	// record that the task has finished, in memory and in the db
-	t.Status = taskEndRequest.Details.Status
-	t.FinishTime = finishTime
-	t.TimeTaken = finishTime.Sub(t.StartTime)
-	t.StatusDetails = taskEndRequest.Details
+	self.Status = taskEndRequest.Status
+	self.FinishTime = finishTime
+	self.TimeTaken = finishTime.Sub(self.StartTime)
+	self.StatusDetails = taskEndRequest.StatusDetails
 
 	err := UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
 				TaskFinishTimeKey:    finishTime,
-				TaskStatusKey:        taskEndRequest.Details.Status,
-				TaskTimeTakenKey:     t.TimeTaken,
-				TaskStatusDetailsKey: taskEndRequest.Details,
+				TaskStatusKey:        taskEndRequest.Status,
+				TaskTimeTakenKey:     self.TimeTaken,
+				TaskStatusDetailsKey: taskEndRequest.StatusDetails,
 			},
 			"$unset": bson.M{
 				TaskAbortedKey: "",
@@ -1296,33 +1289,31 @@ func (t *Task) markEnd(caller string, finishTime time.Time,
 	if err != nil {
 		return fmt.Errorf("error updating task: %v", err.Error())
 	}
-	event.LogTaskFinished(t.Id, taskEndRequest.Details.Status)
+	event.LogTaskFinished(self.Id, taskEndRequest.Status)
 	return nil
 }
 
-func (t *Task) MarkEnd(caller string, finishTime time.Time,
+func (self *Task) MarkEnd(caller string, finishTime time.Time,
 	taskEndRequest *apimodels.TaskEndRequest, project *Project, deactivatePrevious bool) error {
-	if t.Status == taskEndRequest.Details.Status {
-		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice", t.Id)
+	if self.Status == taskEndRequest.Status {
+		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice",
+			self.Id)
 		return nil
 	}
-
-	t.StatusDetails = taskEndRequest.Details
-
-	err := t.markEnd(caller, finishTime, taskEndRequest)
+	err := self.markEnd(caller, finishTime, taskEndRequest)
 	if err != nil {
 		return err
 	}
 
 	// update the cached version of the task, in its build document
-	err = build.SetCachedTaskFinished(t.BuildId, t.Id, t.StatusDetails, t.TimeTaken)
+	err = build.SetCachedTaskFinished(self.BuildId, self.Id, self.Status, self.TimeTaken)
 	if err != nil {
 		return fmt.Errorf("error updating build: %v", err.Error())
 	}
 
 	// no need to activate/deactivate other task if this is a patch request's task
-	if t.Requester == evergreen.PatchVersionRequester {
-		err = t.UpdateBuildStatus()
+	if self.Requester == evergreen.PatchVersionRequester {
+		err = self.UpdateBuildStatus()
 		if err != nil {
 			return fmt.Errorf("Error updating build status (1): %v", err.Error())
 		}
@@ -1331,11 +1322,11 @@ func (t *Task) MarkEnd(caller string, finishTime time.Time,
 
 	// Do stepback
 	if taskEndRequest.Status == evergreen.TaskFailed {
-		if shouldStepBack := t.getStepback(project); shouldStepBack {
+		if shouldStepBack := self.getStepback(project); shouldStepBack {
 			//See if there is a prior success for this particular task.
 			//If there isn't, we should not activate the previous task because
 			//it could trigger stepping backwards ad infinitum.
-			_, err := PreviousCompletedTask(t, t.Project, []string{evergreen.TaskSucceeded})
+			_, err := PreviousCompletedTask(self, self.Project, []string{evergreen.TaskSucceeded})
 			if err != nil {
 				if err == mgo.ErrNotFound {
 					shouldStepBack = false
@@ -1347,19 +1338,19 @@ func (t *Task) MarkEnd(caller string, finishTime time.Time,
 
 			if shouldStepBack {
 				// activate the previous task to pinpoint regression
-				err = t.ActivatePreviousTask(caller)
+				err = self.ActivatePreviousTask(caller)
 				if err != nil {
 					return fmt.Errorf("Error activating previous task: %v", err)
 				}
 			} else {
 				evergreen.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task"+
-					" failure: %v", t.Id)
+					" failure: %v", self.Id)
 			}
 		}
 	} else if deactivatePrevious {
 		// if the task was successful, ignore running previous
 		// activated tasks for this buildvariant
-		err = t.DeactivatePreviousTasks(caller)
+		err = self.DeactivatePreviousTasks(caller)
 		if err != nil {
 			return fmt.Errorf("Error deactivating previous task: %v", err.Error())
 		}
@@ -1367,17 +1358,17 @@ func (t *Task) MarkEnd(caller string, finishTime time.Time,
 
 	// update the build
 
-	if err := t.UpdateBuildStatus(); err != nil {
+	if err := self.UpdateBuildStatus(); err != nil {
 		return fmt.Errorf("Error updating build status (2): %v", err.Error())
 	}
 
 	return nil
 }
 
-func (t *Task) SetResults(results []TestResult) error {
+func (self *Task) SetResults(results []TestResult) error {
 	return UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1387,10 +1378,10 @@ func (t *Task) SetResults(results []TestResult) error {
 	)
 }
 
-func (t *Task) MarkUnscheduled() error {
+func (self *Task) MarkUnscheduled() error {
 	return UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1401,10 +1392,10 @@ func (t *Task) MarkUnscheduled() error {
 
 }
 
-func (t *Task) ClearResults() error {
+func (self *Task) ClearResults() error {
 	return UpdateOneTask(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey: self.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -1414,9 +1405,9 @@ func (t *Task) ClearResults() error {
 	)
 }
 
-func (t *Task) ActivatePreviousTask(caller string) (err error) {
+func (self *Task) ActivatePreviousTask(caller string) (err error) {
 	// find previous tasks limiting to just the last one
-	tasks, err := t.FindPreviousTasks(1)
+	tasks, err := self.FindPreviousTasks(1)
 	if err != nil {
 		return
 	}
@@ -1444,19 +1435,19 @@ func (t *Task) ActivatePreviousTask(caller string) (err error) {
 // Deactivate any previously activated but undispatched
 // tasks for the same build variant + display name + project combination
 // as the task.
-func (t *Task) DeactivatePreviousTasks(caller string) (err error) {
+func (self *Task) DeactivatePreviousTasks(caller string) (err error) {
 	priorRevisions := bson.M{
-		"$lt": t.RevisionOrderNumber,
+		"$lt": self.RevisionOrderNumber,
 	}
 
 	query := bson.M{
-		TaskBuildVariantKey:        t.BuildVariant,
-		TaskDisplayNameKey:         t.DisplayName,
+		TaskBuildVariantKey:        self.BuildVariant,
+		TaskDisplayNameKey:         self.DisplayName,
 		TaskRevisionOrderNumberKey: priorRevisions,
 		TaskStatusKey:              evergreen.TaskUndispatched,
 		TaskRequesterKey:           evergreen.RepotrackerVersionRequester,
 		TaskActivatedKey:           true,
-		TaskProjectKey:             t.Project,
+		TaskProjectKey:             self.Project,
 	}
 
 	allTasks, err := FindAllTasks(
@@ -1486,18 +1477,18 @@ Create
 
 // Inserts the task into the tasks collection, and logs an event that the task
 // was created.
-func (t *Task) Insert() error {
-	event.LogTaskCreated(t.Id)
-	return db.Insert(TasksCollection, t)
+func (self *Task) Insert() error {
+	event.LogTaskCreated(self.Id)
+	return db.Insert(TasksCollection, self)
 }
 
 // Inserts the task into the old_tasks collection
-func (t *Task) Archive() error {
+func (self *Task) Archive() error {
 	var update bson.M
 	// only increment restarts if have a current restarts
 	// this way restarts will never be set for new tasks but will be
 	// maintained for old ones
-	if t.Restarts > 0 {
+	if self.Restarts > 0 {
 		update = bson.M{"$inc": bson.M{
 			TaskExecutionKey: 1,
 			TaskRestartsKey:  1,
@@ -1508,14 +1499,14 @@ func (t *Task) Archive() error {
 		}
 	}
 	err := UpdateOneTask(
-		bson.M{TaskIdKey: t.Id},
+		bson.M{TaskIdKey: self.Id},
 		update)
 	if err != nil {
 		return fmt.Errorf("task.Archive() failed: %v", err)
 	}
-	archive_task := *t
-	archive_task.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
-	archive_task.OldTaskId = t.Id
+	archive_task := *self
+	archive_task.Id = fmt.Sprintf("%v_%v", self.Id, self.Execution)
+	archive_task.OldTaskId = self.Id
 	archive_task.Archived = true
 	err = db.Insert(OldTasksCollection, &archive_task)
 	if err != nil {
@@ -1619,7 +1610,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 				TaskStatusKey: bson.M{
 					"$in": []string{evergreen.TaskSucceeded, evergreen.TaskFailed},
 				},
-				TaskStatusDetailsKey + "." + TaskEndDetailsTimedOut: bson.M{
+				TaskStatusDetailsKey + "." + TaskStatusDetailsTimedOut: bson.M{
 					"$ne": true,
 				},
 				TaskFinishTimeKey: bson.M{

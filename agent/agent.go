@@ -31,16 +31,14 @@ const APIVersion = 2
 
 // Recognized agent signals.
 const (
-	// HeartbeatMaxFailed indicates that repeated attempts to send heartbeat to
-	// the API server fails.
+	// HeartbeatMaxFailed indicates that repeated attempts to send heartbeat to the API server fails.
 	HeartbeatMaxFailed Signal = iota
 	// IncorrectSecret indicates that the secret for the task the agent is running
 	// does not match the task secret held by API server.
 	IncorrectSecret
 	// AbortedByUser indicates a user decided to prematurely end the task.
 	AbortedByUser
-	// IdleTimeout indicates the task appears to be idle - e.g. no logs produced
-	// for the duration indicated by DefaultIdleTimeout.
+	// IdleTimeout indicates the task appears to be idle - e.g. no logs produced for a while.
 	IdleTimeout
 	// CompletedSuccess indicates task successfully ran to completion and passed.
 	CompletedSuccess
@@ -63,38 +61,26 @@ const (
 	DefaultStatsInterval = 60 * time.Second
 )
 
-var (
-	// InitialSetupTimeout indicates the time allowed for the agent to collect
-	// relevant information - for running a task - from the API server.
-	InitialSetupTimeout = 5 * time.Minute
-	// InitialSetupCommand is a placeholder command for the period during which
-	// the agent requests information for running a task
-	InitialSetupCommand = model.PluginCommandConf{
-		DisplayName: "initial task setup",
-		Type:        model.SetupCommandType,
-	}
-)
-
 // TerminateHandler is an interface which defines how the agent should respond
 // to signals resulting in the end of the task (heartbeat fail, timeout, etc)
 type TerminateHandler interface {
 	HandleSignals(*Agent, chan FinalTaskFunc)
 }
 
-// ExecTracker exposes functions to update and get the current execution stage
+// ExecTracker exposes function to update and get the current execution stage
 // of the agent.
 type ExecTracker interface {
-	// Returns the current command being executed.
-	CurrentCommand() *model.PluginCommandConf
-	// Sets the current command being executed as well as a timeout for the command.
-	CheckIn(command model.PluginCommandConf, timeout time.Duration)
+	// Returns the current execution stage.
+	GetCurrentStage() string
+	// Sets the current execution stage as well as a timeout for the stage.
+	CheckIn(stage string, timeout time.Duration)
 }
 
 // TaskCommunicator is an interface that handles the remote procedure calls
 // between an agent and the remote server.
 type TaskCommunicator interface {
 	Start(pid string) error
-	End(details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error)
+	End(status string, details *apimodels.TaskEndDetails) (*apimodels.TaskEndResponse, error)
 	GetTask() (*model.Task, error)
 	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
@@ -159,8 +145,8 @@ type Agent struct {
 	// to the API server.
 	APILogger *APILogger
 
-	// Holds the current command being executed by the agent.
-	currentCommand model.PluginCommandConf
+	// Holds the current execution stage of the agent.
+	currentStage string
 
 	// taskConfig holds the project, distro and task objects for the agent's
 	// assigned task.
@@ -190,19 +176,6 @@ func (agt *Agent) finishAndAwaitCleanup(status Signal, completed chan FinalTaskF
 	return ret, err
 }
 
-// getTaskEndDetails returns a default TaskEndDetails struct based on the current
-// command being run (or just completed).
-func (agt *Agent) getTaskEndDetails() *apimodels.TaskEndDetails {
-	cmd := agt.GetCurrentCommand()
-	prj := agt.taskConfig.Project
-
-	return &apimodels.TaskEndDetails{
-		Type:        cmd.GetType(prj),
-		Status:      evergreen.TaskFailed,
-		Description: cmd.GetDisplayName(),
-	}
-}
-
 // HandleSignals listens on its signal channel and properly handles any signal received.
 func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc) {
 	receivedSignal := <-sh.signalChan
@@ -210,20 +183,27 @@ func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc)
 	// Stop any running commands.
 	close(sh.KillChan)
 
-	endDetails := agt.getTaskEndDetails()
+	var finalStatus string
+	var endDetails *apimodels.TaskEndDetails
 
 	switch receivedSignal {
 	case IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
 		os.Exit(1)
 	case HeartbeatMaxFailed:
+		finalStatus = evergreen.TaskFailed
 		agt.logger.LogExecution(slogger.ERROR, "Max heartbeats failed - stopping.")
 	case AbortedByUser:
-		endDetails.Status = evergreen.TaskUndispatched
+		finalStatus = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
 	case IdleTimeout:
-		agt.logger.LogTask(slogger.ERROR, "Task timed out: '%v'", endDetails.Description)
-		endDetails.TimedOut = true
+		currentStage := agt.GetCurrentStage()
+		agt.logger.LogTask(slogger.ERROR, "Task timed out during: %v", currentStage)
+		finalStatus = evergreen.TaskFailed
+		endDetails = &apimodels.TaskEndDetails{
+			TimeoutStage: currentStage,
+			TimedOut:     true,
+		}
 		if sh.Timeout != nil {
 			agt.logger.LogTask(slogger.INFO, "Executing task-timeout commands...")
 			err := agt.RunCommands(sh.Timeout.List(), false, nil)
@@ -232,9 +212,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc)
 			}
 		}
 	case CompletedSuccess:
-		endDetails.Status = evergreen.TaskSucceeded
+		finalStatus = evergreen.TaskSucceeded
 		agt.logger.LogTask(slogger.INFO, "Task completed - SUCCESS.")
 	case CompletedFailure:
+		finalStatus = evergreen.TaskFailed
 		agt.logger.LogTask(slogger.INFO, "Task completed - FAILURE.")
 	}
 
@@ -245,27 +226,26 @@ func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc)
 			agt.logger.LogExecution(slogger.ERROR, "Error running post-run command: %v", err)
 		}
 	}
-	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", endDetails.Status)
+	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", finalStatus)
 
 	// make the API call to end the task
 	completed <- func() (*apimodels.TaskEndResponse, error) {
-		return agt.End(endDetails)
+		return agt.End(finalStatus, endDetails)
 	}
 }
 
-// GetCurrentCommand returns the current command being executed
-// by the agent.
-func (agt *Agent) GetCurrentCommand() model.PluginCommandConf {
-	return agt.currentCommand
+// GetCurrentStage returns the current execution stage of the agent
+func (agt *Agent) GetCurrentStage() string {
+	return agt.currentStage
 }
 
 // CheckIn updates the agent's execution stage and current timeout duration,
-// and resets its timer back to zero.
-func (agt *Agent) CheckIn(command model.PluginCommandConf, duration time.Duration) {
-	agt.currentCommand = command
+// and resets its timer back to zero
+func (agt *Agent) CheckIn(stageName string, duration time.Duration) {
+	agt.currentStage = stageName
 	agt.timeoutWatcher.SetDuration(duration)
 	agt.timeoutWatcher.CheckIn()
-	agt.logger.LogExecution(slogger.INFO, "Beginning to execute '%v'", command.GetDisplayName())
+	agt.logger.LogExecution(slogger.INFO, "Beginning to execute stage %v", stageName)
 }
 
 // GetTaskConfig fetches task configuration data required to run the task from the API server.
@@ -358,7 +338,7 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert string) (*Agent, error)
 // RunTask manages the process of running a task. It returns a response
 // indicating the end result of the task.
 func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
-	agt.CheckIn(InitialSetupCommand, InitialSetupTimeout)
+	agt.CheckIn(InitialSetupStage, InitialSetupTimeout)
 
 	agt.logger.LogLocal(slogger.INFO, "Local logger initialized.")
 	agt.logger.LogTask(slogger.INFO, "Task logger initialized.")
@@ -461,12 +441,6 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 		for _, cmd := range cmds {
 			fullCommandName := cmd.Plugin() + "." + cmd.Name()
 
-			if commandInfo.Function != "" {
-				fullCommandName = fmt.Sprintf("(%v) %v", commandInfo.Function, fullCommandName)
-			} else if commandInfo.DisplayName != "" {
-				fullCommandName = fmt.Sprintf("%v (%v)", commandInfo.DisplayName, fullCommandName)
-			}
-
 			// TODO: add validation for this once new config's in place/use
 			if !commandInfo.RunOnVariant(agt.taskConfig.BuildVariant.Name) {
 				agt.logger.LogTask(slogger.INFO, "Skipping command %v on variant %v (step %v of %v)",
@@ -500,9 +474,9 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 
 			pluginCom := &TaskJSONCommunicator{cmd.Plugin(), agt.TaskCommunicator}
 
-			agt.logger.LogExecution(slogger.INFO, "Starting %v...", fullCommandName)
+			agt.CheckIn(fullCommandName, timeoutPeriod)
 
-			agt.CheckIn(commandInfo, timeoutPeriod)
+			agt.logger.LogExecution(slogger.INFO, "Starting %v...", fullCommandName)
 
 			start := time.Now()
 			err = cmd.Execute(commandLogger, pluginCom, agt.taskConfig, stop)

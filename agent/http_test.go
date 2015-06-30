@@ -76,8 +76,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 				})
 
 			So(agentCommunicator.Start("1"), ShouldBeNil)
-			details := &apimodels.TaskEndDetails{Status: evergreen.TaskFailed}
-			_, err := agentCommunicator.End(details)
+			_, err := agentCommunicator.End(evergreen.TaskFailed, nil)
 			So(err, ShouldBeNil)
 		})
 
@@ -167,8 +166,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 					}
 				})
 			So(agentCommunicator.Start("1"), ShouldBeNil)
-			details := &apimodels.TaskEndDetails{Status: evergreen.TaskFailed}
-			_, err := agentCommunicator.End(details)
+			_, err := agentCommunicator.End(evergreen.TaskFailed, nil)
 			So(err, ShouldBeNil)
 		})
 

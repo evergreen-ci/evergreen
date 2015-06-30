@@ -129,21 +129,19 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host.Host) error {
 	// mock up the failure details of the task
 	taskEndRequest := &apimodels.TaskEndRequest{
-		Status: evergreen.TaskFailed,
-		Details: apimodels.TaskEndDetails{
-			Description: model.AgentHeartbeat,
-			TimedOut:    true,
-			Status:      evergreen.TaskFailed,
-		},
+		Status:        evergreen.TaskFailed,
+		StatusDetails: apimodels.TaskEndDetails{"heartbeat", true},
 	}
 
 	// try to reset the task
-	if err := task.TryReset("", RunnerName, &project, taskEndRequest); err != nil {
+	if err := task.TryReset("", RunnerName, &project,
+		taskEndRequest); err != nil {
 		return fmt.Errorf("error trying to reset task %v: %v", task.Id, err)
 	}
 
 	// clear out the host's running task
-	if err := host.UpdateRunningTask(task.Id, "", time.Now()); err != nil {
+	if err := host.UpdateRunningTask(task.Id, "",
+		time.Now()); err != nil {
 		return fmt.Errorf("error clearing running task %v from host %v: %v",
 			task.Id, host.Id, err)
 	}

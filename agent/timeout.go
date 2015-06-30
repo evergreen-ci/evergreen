@@ -1,15 +1,20 @@
 package agent
 
-import (
-	"time"
+import "time"
+
+const (
+	// execution timeouts
+	InitialSetupTimeout = time.Minute * 5
+	InitialSetupStage   = "initial-setup-stage"
 )
 
 // TimeoutWatcher tracks and handles command timeout within the agent.
 type TimeoutWatcher struct {
-	duration time.Duration
-	timer    *time.Timer
-	stop     chan bool
-	disabled bool
+	executionStage string
+	duration       time.Duration
+	timer          *time.Timer
+	stop           chan bool
+	disabled       bool
 }
 
 // SetDuration sets the duration after which a timeout is triggered.

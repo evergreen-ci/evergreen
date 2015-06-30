@@ -295,6 +295,11 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	finishTime := time.Now()
 	taskEndResponse := &apimodels.TaskEndResponse{}
+	if !getGlobalLock(APIServerLockTitle) {
+		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
+		return
+	}
+	defer releaseGlobalLock(APIServerLockTitle)
 
 	task := MustHaveTask(r)
 
@@ -308,33 +313,25 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if taskEndRequest.Status != evergreen.TaskSucceeded &&
 		taskEndRequest.Status != evergreen.TaskFailed &&
 		taskEndRequest.Status != evergreen.TaskUndispatched {
+
 		msg := fmt.Errorf("Invalid end status '%v' for task %v", taskEndRequest.Status, task.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
 	}
-
 	projectRef, err := model.FindOneProjectRef(task.Project)
 
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
-
 	if projectRef == nil {
 		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("empty projectRef for task"))
 		return
 	}
-
 	project, err := model.FindProject("", projectRef)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
-	if !getGlobalLock(APIServerLockTitle) {
-		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
-		return
-	}
-	defer releaseGlobalLock(APIServerLockTitle)
 
 	// mark task as finished
 	err = task.MarkEnd(APIServerLockTitle, finishTime, taskEndRequest, project, projectRef.DeactivatePrevious)

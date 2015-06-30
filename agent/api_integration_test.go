@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/command"
 	dbutil "github.com/evergreen-ci/evergreen/db"
@@ -151,22 +150,11 @@ func TestBasicEndpoints(t *testing.T) {
 			})
 
 			Convey("calling end() should update task status properly", func() {
-				commandType := model.SetupCommandType
-				description := "random"
-				details := &apimodels.TaskEndDetails{
-					Description: description,
-					Type:        commandType,
-					TimedOut:    true,
-					Status:      evergreen.TaskSucceeded,
-				}
-				testAgent.End(details)
+				testAgent.End(evergreen.TaskSucceeded, nil)
 				time.Sleep(100 * time.Millisecond)
 				taskUpdate, err := model.FindTask(testTask.Id)
 				So(err, ShouldBeNil)
 				So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
-				So(taskUpdate.StatusDetails.Description, ShouldEqual, description)
-				So(taskUpdate.StatusDetails.Type, ShouldEqual, commandType)
-				So(taskUpdate.StatusDetails.TimedOut, ShouldEqual, true)
 			})
 
 			Convey("no checkins should trigger timeout signal", func() {
@@ -382,10 +370,6 @@ func TestTaskFailures(t *testing.T) {
 							testTask, err = model.FindTask(testTask.Id)
 							util.HandleTestingErr(err, t, "Failed to find test task")
 							So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
-							So(testTask.StatusDetails.Status, ShouldEqual, evergreen.TaskFailed)
-							So(testTask.StatusDetails.Description, ShouldEqual, "failing shell command")
-							So(testTask.StatusDetails.TimedOut, ShouldBeFalse)
-							So(testTask.StatusDetails.Type, ShouldEqual, model.SetupCommandType)
 						})
 					})
 				})
@@ -494,8 +478,7 @@ func TestTaskEndEndpoint(t *testing.T) {
 			Convey("calling end() should update task's/host's status properly "+
 				"and start running the next task", func() {
 				subsequentTaskId := testTask.Id + "Two"
-				details := &apimodels.TaskEndDetails{Status: evergreen.TaskSucceeded}
-				taskEndResp, err := testAgent.End(details)
+				taskEndResp, err := testAgent.End(evergreen.TaskSucceeded, nil)
 				time.Sleep(1 * time.Second)
 				So(err, ShouldBeNil)
 

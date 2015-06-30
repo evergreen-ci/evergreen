@@ -58,8 +58,8 @@ type task struct {
 }
 
 type taskStatusDetails struct {
-	TimedOut    bool   `json:"timed_out"`
-	Description string `json:"timeout_stage"`
+	TimedOut     bool   `json:"timed_out"`
+	TimeoutStage string `json:"timeout_stage"`
 }
 
 type taskTestResult struct {
@@ -114,7 +114,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 	// Copy over the status details
 	destTask.StatusDetails.TimedOut = srcTask.StatusDetails.TimedOut
-	destTask.StatusDetails.Description = srcTask.StatusDetails.Description
+	destTask.StatusDetails.TimeoutStage = srcTask.StatusDetails.TimeoutStage
 
 	// Copy over the test results
 	destTask.TestResults = make(taskTestResultsByName, len(srcTask.TestResults))
@@ -180,7 +180,7 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Copy over the status details
 	result.Details.TimedOut = task.StatusDetails.TimedOut
-	result.Details.Description = task.StatusDetails.Description
+	result.Details.TimeoutStage = task.StatusDetails.TimeoutStage
 
 	// Copy over the test results
 	result.Tests = make(taskStatusByTest, len(task.TestResults))
