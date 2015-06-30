@@ -185,7 +185,7 @@ func (self *Client) CreateSession(username, password string) (*Session, error) {
 	if resp.StatusCode != http.StatusCreated {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err == nil {
-			evergreen.Logger.Logf(slogger.ERROR, "trying to log in %v got bad status with body %v '%v' ", self.crowdUsername, username, string(body))
+			evergreen.Logger.Logf(slogger.ERROR, "trying to log in %v got bad status with body '%v' '%v' '%v' ", self.crowdUsername, username, password, string(body))
 		}
 		return nil, fmt.Errorf("(%v) received unexpected status code from crowd", resp.StatusCode)
 	}
