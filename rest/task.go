@@ -13,11 +13,11 @@ import (
 )
 
 type taskStatusContent struct {
-	Id      string            `json:"task_id"`
-	Name    string            `json:"task_name"`
-	Status  string            `json:"status"`
-	Details taskStatusDetails `json:"status_details"`
-	Tests   taskStatusByTest  `json:"tests"`
+	Id            string            `json:"task_id"`
+	Name          string            `json:"task_name"`
+	Status        string            `json:"status"`
+	StatusDetails taskStatusDetails `json:"status_details"`
+	Tests         taskStatusByTest  `json:"tests"`
 }
 
 type task struct {
@@ -179,8 +179,8 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over the status details
-	result.Details.TimedOut = task.StatusDetails.TimedOut
-	result.Details.TimeoutStage = task.StatusDetails.TimeoutStage
+	result.StatusDetails.TimedOut = task.StatusDetails.TimedOut
+	result.StatusDetails.TimeoutStage = task.StatusDetails.TimeoutStage
 
 	// Copy over the test results
 	result.Tests = make(taskStatusByTest, len(task.TestResults))

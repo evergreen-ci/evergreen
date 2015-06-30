@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/command"
 	dbutil "github.com/evergreen-ci/evergreen/db"
@@ -93,7 +94,7 @@ func createAgent(testServer *apiserver.TestServer, testTask *model.Task) (*Agent
 func TestBasicEndpoints(t *testing.T) {
 	setupTlsConfigs(t)
 
-	err := testutil.CreateTestLocalConfig(testConfig, "mongodb-mongo-master")
+	err := testutil.CreateTestLocalConfig(testConfig, "render")
 	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
@@ -149,11 +150,22 @@ func TestBasicEndpoints(t *testing.T) {
 			})
 
 			Convey("calling end() should update task status properly", func() {
-				testAgent.End(evergreen.TaskSucceeded, nil)
+				commandType := model.SetupCommandType
+				description := "random"
+				details := &apimodels.TaskEndDetail{
+					Description: description,
+					Type:        commandType,
+					TimedOut:    true,
+					Status:      evergreen.TaskSucceeded,
+				}
+				testAgent.End(details)
 				time.Sleep(100 * time.Millisecond)
 				taskUpdate, err := model.FindTask(testTask.Id)
 				So(err, ShouldBeNil)
 				So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
+				So(taskUpdate.Details.Description, ShouldEqual, description)
+				So(taskUpdate.Details.Type, ShouldEqual, commandType)
+				So(taskUpdate.Details.TimedOut, ShouldEqual, true)
 			})
 
 			Convey("no checkins should trigger timeout signal", func() {
@@ -224,8 +236,9 @@ func TestSecrets(t *testing.T) {
 
 func TestTaskSuccess(t *testing.T) {
 	setupTlsConfigs(t)
+
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskSuccess")
-	err := testutil.CreateTestLocalConfig(testConfig, "mongodb-mongo-master")
+	err := testutil.CreateTestLocalConfig(testConfig, "render")
 	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
@@ -253,7 +266,7 @@ func TestTaskSuccess(t *testing.T) {
 						printLogsForTask(testTask.Id)
 
 						Convey("all scripts in task should have been run successfully", func() {
-							So(scanLogsForTask(testTask.Id, "[shell.exec] Executing script: echo \"predefined command!\""), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "Executing script: echo \"predefined command!\""), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "predefined command!"), ShouldBeTrue)
@@ -263,7 +276,7 @@ func TestTaskSuccess(t *testing.T) {
 								ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "i am compiling!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "Skipping command git.apply_patch on variant"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "Skipping command 'git.apply_patch' on variant"), ShouldBeTrue)
 
 							// Check that functions with args are working correctly
 							So(scanLogsForTask(testTask.Id, "arg1 is FOO"), ShouldBeTrue)
@@ -335,8 +348,9 @@ func TestTaskFailures(t *testing.T) {
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskFailures")
 
-	err := testutil.CreateTestLocalConfig(testConfig, "mongodb-mongo-master")
+	err := testutil.CreateTestLocalConfig(testConfig, "render")
 	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
+
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
@@ -369,6 +383,10 @@ func TestTaskFailures(t *testing.T) {
 							testTask, err = model.FindTask(testTask.Id)
 							testutil.HandleTestingErr(err, t, "Failed to find test task")
 							So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
+							So(testTask.Details.Status, ShouldEqual, evergreen.TaskFailed)
+							So(testTask.Details.Description, ShouldEqual, "failing shell command")
+							So(testTask.Details.TimedOut, ShouldBeFalse)
+							So(testTask.Details.Type, ShouldEqual, model.SetupCommandType)
 						})
 					})
 				})
@@ -452,7 +470,7 @@ func TestTaskTimeout(t *testing.T) {
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = model.FindTask(testTask.Id)
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
-					So(testTask.StatusDetails.TimedOut, ShouldBeTrue)
+					So(testTask.Details.TimedOut, ShouldBeTrue)
 				})
 			})
 		})
@@ -477,7 +495,8 @@ func TestTaskEndEndpoint(t *testing.T) {
 			Convey("calling end() should update task's/host's status properly "+
 				"and start running the next task", func() {
 				subsequentTaskId := testTask.Id + "Two"
-				taskEndResp, err := testAgent.End(evergreen.TaskSucceeded, nil)
+				details := &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}
+				taskEndResp, err := testAgent.End(details)
 				time.Sleep(1 * time.Second)
 				So(err, ShouldBeNil)
 
@@ -545,7 +564,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	}
 	testutil.HandleTestingErr(dbutil.ClearCollections(testCollections...), t, clearDataMsg)
 	projectVars := &model.ProjectVars{
-		Id: "mongodb-mongo-master",
+		Id: "evergreen-ci-render",
 		Vars: map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,
 			"aws_secret": testConfig.Providers.AWS.Secret,
@@ -560,7 +579,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
 		BuildVariant: variant,
-		Project:      "mongodb-mongo-master",
+		Project:      "evergreen-ci-render",
 		DisplayName:  taskDisplayName,
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",
@@ -574,7 +593,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
 		BuildVariant: variant,
-		Project:      "mongodb-mongo-master",
+		Project:      "evergreen-ci-render",
 		DisplayName:  taskDisplayName,
 		HostId:       "",
 		Secret:       "testTaskSecret",
@@ -620,14 +639,14 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	testutil.HandleTestingErr(host.Insert(), t, "failed to insert host")
 
 	// read in the project configuration
-	projectConfig, err := ioutil.ReadFile("testdata/config_test_plugin/" +
-		"project/mongodb-mongo-master.yml")
+	projectFile := "testdata/config_test_plugin/project/evergreen-ci-render.yml"
+	projectConfig, err := ioutil.ReadFile(projectFile)
 	testutil.HandleTestingErr(err, t, "failed to read project config")
 
 	projectRef := &model.ProjectRef{
-		Identifier: "mongodb-mongo-master",
-		Owner:      "deafgoat",
-		Repo:       "mci_test",
+		Identifier: "evergreen-ci-render",
+		Owner:      "evergreen-ci",
+		Repo:       "render",
 		RepoKind:   "github",
 		Branch:     "master",
 		Enabled:    true,
@@ -638,8 +657,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 
 	// unmarshall the project configuration into a struct
 	project := &model.Project{}
-	testutil.HandleTestingErr(yaml.Unmarshal(projectConfig, project), t,
-		"failed to unmarshall project config")
+	testutil.HandleTestingErr(yaml.Unmarshal(projectConfig, project), t, "failed to unmarshal project config")
 
 	// now then marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
@@ -665,12 +683,12 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 			Patches: []patch.ModulePatch{
 				{
 					ModuleName: "",
-					Githash:    "d0c52298b222f4973c48e9834a57966c448547de",
+					Githash:    "1e5232709595db427893826ce19289461cba3f75",
 					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
 				},
 				{
-					ModuleName: "enterprise",
-					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",
+					ModuleName: "recursive",
+					Githash:    "1e5232709595db427893826ce19289461cba3f75",
 					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
 				},
 			},

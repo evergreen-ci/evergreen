@@ -234,6 +234,80 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 	return errs
 }
 
+// Ensures that the basic fields that are required by any project are present
+func EnsureHasNecessaryProjectFields(project *model.Project) []ValidationError {
+	errs := []ValidationError{}
+
+	if project.Identifier == "" {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project identifier must be set"),
+			},
+		)
+	}
+	if project.Owner == "" {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' must have an "+
+					"'owner' set", project.Identifier),
+			},
+		)
+	}
+	if project.Repo == "" {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' must have a "+
+					"'repo' set", project.Identifier),
+			},
+		)
+	}
+	if project.Branch == "" {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' must have a "+
+					"'branch' set", project.Identifier),
+			},
+		)
+	}
+	if project.RepoKind == "" {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' must have a "+
+					"'repo_kind' set", project.Identifier),
+			},
+		)
+	} else if !util.SliceContains(model.ValidRepoTypes, project.RepoKind) {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' has a 'repokind' "+
+					"of '%v' which is not supported; valid values include %v",
+					project.Identifier, project.RepoKind, strings.Join(
+						model.ValidRepoTypes, ", ")),
+			},
+		)
+	}
+	if project.BatchTime < 0 {
+		errs = append(errs,
+			ValidationError{
+				Message: fmt.Sprintf("project '%v' must have a "+
+					"'batchtime' set", project.Identifier),
+			},
+		)
+	}
+	if project.CommandType != "" {
+		if project.CommandType != model.SetupCommandType &&
+			project.CommandType != model.TestCommandType {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf("project '%v' contains an invalid "+
+						"command type: %v", project.Identifier, project.CommandType),
+				},
+			)
+		}
+	}
+	return errs
+}
+
 // Ensures that:
 // 1. a referenced task within a buildvariant task object exists in
 // the set of project tasks
@@ -367,13 +441,20 @@ func validateCommands(section string, project *model.Project, registry plugin.Re
 	commands []model.PluginCommandConf) []ValidationError {
 	errs := []ValidationError{}
 	for _, cmd := range commands {
+		command := fmt.Sprintf("'%v' command", cmd.Command)
 		_, err := registry.GetCommands(cmd, project.Functions)
 		if err != nil {
-			command := fmt.Sprintf("'%v' command", cmd.Command)
 			if cmd.Function != "" {
 				command = fmt.Sprintf("'%v' function", cmd.Function)
 			}
 			errs = append(errs, ValidationError{Message: fmt.Sprintf("%v section in %v: %v", section, command, err)})
+		}
+		if cmd.Type != "" {
+			if cmd.Type != model.SetupCommandType &&
+				cmd.Type != model.TestCommandType {
+				msg := fmt.Sprintf("%v section in '%v': invalid command type: '%v'", section, command, cmd.Type)
+				errs = append(errs, ValidationError{Message: msg})
+			}
 		}
 	}
 	return errs

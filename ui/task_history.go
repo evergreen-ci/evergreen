@@ -544,8 +544,8 @@ func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []t
 		}
 
 		// modify the status if the task is timed out or inactive
-		if task.StatusDetails.TimedOut {
-			if task.StatusDetails.TimeoutStage == "heartbeat" {
+		if task.Details.TimedOut {
+			if task.Details.Description == model.AgentHeartbeat {
 				blurb.Status = "heartbeat_timeout"
 			} else {
 				blurb.Status = "timed_out"

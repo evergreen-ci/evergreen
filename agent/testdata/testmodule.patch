@@ -1,10 +1,10 @@
-diff --git a/README b/README
-index 6ffeb12..45eeec4 100644
---- a/README
-+++ b/README
-@@ -1,4 +1,5 @@
- these are enterprise only modules for mongodb
+diff --git a/doc.go b/doc.go
+index 1255cc3..43ed991 100644
+--- a/doc.go
++++ b/doc.go
+@@ -1,3 +1,4 @@
+ /*
+  */
+ package render
 +i am a patched module
- 
- in mongo repository directory
-    mkdir src/mongo/db/modules/
+\ No newline at end of file

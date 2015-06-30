@@ -1,5 +1,5 @@
-owner: deafgoat
-repo: mci_test
+owner: evergreen-ci
+repo: render
 repokind: github
 branch: master
 enabled: true
@@ -99,8 +99,7 @@ tasks:
             echo ${fetch_key}
             printf "this should be on the same line..."
             printf "as this.\n"
-            cat README.md
-            cat src/mongo/db/modules/enterprise/README
+            cat doc.go recursive/clone/recursive/doc.go
     - command: git.apply_patch
       variants: ["random"]
       params:
@@ -188,6 +187,8 @@ tasks:
   - name: compile
   commands:
     - command: shell.exec
+      display_name: "failing shell command"
+      type: "setup"
       params:
         working_dir: src
         script: |
@@ -210,8 +211,6 @@ tasks:
             echo "starting slow task!"
             sleep 10000
             echo "done with slow" "task!"
-
-
 - name: push
   depends_on:
   - name: "*"
@@ -262,10 +261,10 @@ tasks:
           date +"%m-%d-%y" > "unittest-${distro_exp}-${buildvar_exp}.txt"
           echo "file_exp: FILE_EXP" > compile_expansions.yml
 modules:
-- name: enterprise
-  repo: git@github.com:10gen/mongo-enterprise-modules.git
-  prefix: src/mongo/db/modules
-  branch: v2.6
+- name: recursive
+  repo: git@github.com:evergreen-ci/render.git
+  prefix: recursive/clone
+  branch: master
 
 #######################################
 # Buildvariants
@@ -280,7 +279,7 @@ buildvariants:
 - name: linux-64
   display_name: Linux 64-bit
   modules:
-    - enterprise
+  - recursive
   run_on:
   - rhel55
   expansions:
@@ -305,7 +304,7 @@ build_variant_matrix:
     name: windows${version}
     display_name: Windows ${version}
     modules:
-    - enterprise
+    - recursive
     run_on:
     - rhel55
     expansions:

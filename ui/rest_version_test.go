@@ -49,8 +49,8 @@ func TestGetRecentVersions(t *testing.T) {
 	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
-	testutil.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "render")
+	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(version.Collection, build.Collection), t,
@@ -255,8 +255,8 @@ func TestGetVersionInfo(t *testing.T) {
 	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
-	testutil.HandleTestingErr(err, t, "Error loading local config mongodb-mongo-master")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "render")
+	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
 		testutil.HandleTestingErr(db.Clear(version.Collection), t,

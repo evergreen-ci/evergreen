@@ -70,13 +70,14 @@ func TestCommunicatorServerUp(t *testing.T) {
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskStartRequest{}, http.StatusOK)
 				})
-			serveMux.HandleFunc("/task/mocktaskid/end",
+			serveMux.HandleFunc("/task/mocktaskid/end2",
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusOK)
 				})
 
 			So(agentCommunicator.Start("1"), ShouldBeNil)
-			_, err := agentCommunicator.End(evergreen.TaskFailed, nil)
+			details := &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}
+			_, err := agentCommunicator.End(details)
 			So(err, ShouldBeNil)
 		})
 
@@ -156,7 +157,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 						util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusInternalServerError)
 					}
 				})
-			serveMux.HandleFunc("/task/mocktaskid/end",
+			serveMux.HandleFunc("/task/mocktaskid/end2",
 				func(w http.ResponseWriter, req *http.Request) {
 					endCount++
 					if endCount == 3 {
@@ -166,7 +167,8 @@ func TestCommunicatorServerUp(t *testing.T) {
 					}
 				})
 			So(agentCommunicator.Start("1"), ShouldBeNil)
-			_, err := agentCommunicator.End(evergreen.TaskFailed, nil)
+			details := &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}
+			_, err := agentCommunicator.End(details)
 			So(err, ShouldBeNil)
 		})
 

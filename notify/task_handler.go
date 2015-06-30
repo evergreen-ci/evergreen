@@ -105,9 +105,9 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	testFailureMessage := ""
 	switch len(taskNotification.FailedTests) {
 	case 0:
-		if current.StatusDetails.TimedOut {
+		if current.Details.TimedOut {
 			testFailureMessage = TimeOutMessage
-			if current.StatusDetails.TimeoutStage == "heartbeat" {
+			if current.Details.Description == model.AgentHeartbeat {
 				testFailureMessage = UnresponsiveMessage
 			}
 		} else {

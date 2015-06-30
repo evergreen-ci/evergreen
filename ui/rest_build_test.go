@@ -55,7 +55,7 @@ func TestGetBuildInfo(t *testing.T) {
 		err := testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
 		So(err, ShouldBeNil)
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, "mongodb-mongo-master")
+		err = testutil.CreateTestLocalConfig(buildTestConfig, "render")
 		So(err, ShouldBeNil)
 
 		err = testutil.CreateTestLocalConfig(buildTestConfig, "project_test")
