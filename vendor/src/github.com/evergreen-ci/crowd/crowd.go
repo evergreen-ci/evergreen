@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -183,11 +181,8 @@ func (self *Client) CreateSession(username, password string) (*Session, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err == nil {
-			evergreen.Logger.Logf(slogger.ERROR, "trying to log in %v got bad status with body '%v' '%v' '%v' ", self.crowdUsername, username, password, string(body))
-		}
-		return nil, fmt.Errorf("(%v) received unexpected status code from crowd", resp.StatusCode)
+		return nil, fmt.Errorf("(%v) received unexpected status code from crowd",
+			resp.StatusCode)
 	}
 	session := &Session{}
 	body, err := ioutil.ReadAll(resp.Body)
