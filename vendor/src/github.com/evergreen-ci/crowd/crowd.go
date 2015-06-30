@@ -181,8 +181,11 @@ func (self *Client) CreateSession(username, password string) (*Session, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("(%v) received unexpected status code from crowd",
-			resp.StatusCode)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("trying to log in ", self.crowdUsername, "got bad status with body", string(body))
+		}
+		return nil, fmt.Errorf("(%v) received unexpected status code from crowd", resp.StatusCode)
 	}
 	session := &Session{}
 	body, err := ioutil.ReadAll(resp.Body)
