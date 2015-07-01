@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 )
 
 // GetUpdateCommand attempts to fetch the latest version of the client binary and install it over
@@ -49,7 +50,6 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer tempFile.Close()
 
 	response, err := http.Get(url)
 	if err != nil {
@@ -65,13 +65,21 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	err = tempFile.Close()
+	if err != nil {
+		return "", err
+	}
+
 	tempPath, err := filepath.Abs(tempFile.Name())
 	if err != nil {
 		return "", err
 	}
 
 	//chmod the binary so that it is executable
-	os.Chmod(tempPath, 0755)
+	err = os.Chmod(tempPath, 0755)
+	if err != nil {
+		return "", err
+	}
 
 	fmt.Println("Upgraded binary downloaded to", tempPath, "- verifying")
 
@@ -174,8 +182,20 @@ func (uc *GetUpdateCommand) Execute(args []string) error {
 		if err != nil {
 			return fmt.Errorf("Failed to get installation path: %v", err)
 		}
-		fmt.Println("Copying upgraded binary to:", binaryDest)
+
+		fmt.Println("Unlinking existing binary at", binaryDest)
+		err = syscall.Unlink(binaryDest)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Copying upgraded binary to: ", binaryDest)
 		err = copyFile(binaryDest, updatedBin)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Setting binary permissions...")
+		err = os.Chmod(binaryDest, 0755)
 		if err != nil {
 			return err
 		}
@@ -183,6 +203,20 @@ func (uc *GetUpdateCommand) Execute(args []string) error {
 		return nil
 	}
 	fmt.Println("New binary downloaded (but not installed) to path: ", updatedBin)
+
+	// Attempt to generate a command that the user can copy/paste to complete the install.
+	binaryDest, err := osext.Executable()
+	if err != nil {
+		// osext not working on this platform so we can't generate command, give up (but ignore err)
+		return nil
+	}
+	installCommand := fmt.Sprintf("\tmv %v %v", updatedBin, binaryDest)
+	if runtime.GOOS == "windows" {
+		installCommand = fmt.Sprintf("\tmove %v %v", updatedBin, binaryDest)
+	}
+	fmt.Println("\nTo complete the install, run the following command:\n")
+	fmt.Println(installCommand)
+
 	return nil
 }
 
