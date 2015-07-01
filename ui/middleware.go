@@ -366,6 +366,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 	return func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 		token := ""
 		var err error
+		// Grab token auth from cookies
 		for _, cookie := range r.Cookies() {
 			if cookie.Name == evergreen.AuthTokenCookie {
 				if token, err = url.QueryUnescape(cookie.Value); err == nil {
@@ -373,6 +374,17 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				}
 			}
 		}
+
+		// Grab API auth details from header
+		var authDataAPIKey, authDataName string
+
+		if len(r.Header["API-Key"]) > 0 {
+			authDataAPIKey = r.Header["API-Key"][0]
+		}
+		if len(r.Header["Auth-Username"]) > 0 {
+			authDataName = r.Header["Auth-Username"][0]
+		}
+
 		if len(token) > 0 {
 			user, err := um.GetUserByToken(token)
 			if err != nil {
@@ -386,8 +398,18 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 					context.Set(r, myUserKey, dbUser)
 				}
 			}
+		} else if len(authDataAPIKey) > 0 {
+			dbUser, err := user.FindOne(user.ById(authDataName))
+			if dbUser != nil && err == nil {
+				if dbUser.APIKey != authDataAPIKey {
+					http.Error(rw, "Unauthorized - invalid API key", http.StatusUnauthorized)
+					return
+				}
+				context.Set(r, myUserKey, dbUser)
+			} else {
+				evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
+			}
 		}
-
 		next(rw, r)
 	}
 }

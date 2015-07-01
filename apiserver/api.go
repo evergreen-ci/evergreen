@@ -104,10 +104,6 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 			return
 		}
 
-		if len(authData.Token) == 0 && len(authData.APIKey) == 0 {
-			next(w, r)
-			return
-		}
 		if len(authData.Token) > 0 { // legacy auth - token lookup
 			authedUser, err := um.GetUserByToken(authData.Token)
 			if err != nil {
