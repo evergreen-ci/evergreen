@@ -188,6 +188,7 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		Identifier: id,
 		Enabled:    true,
 		Tracked:    true,
+		RepoKind:   "github",
 	}
 
 	err = newProject.Insert()
