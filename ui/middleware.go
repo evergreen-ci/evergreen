@@ -386,9 +386,8 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 
 		// Grab API auth details from header
 		var authDataAPIKey, authDataName string
-
-		if len(r.Header["API-Key"]) > 0 {
-			authDataAPIKey = r.Header["API-Key"][0]
+		if len(r.Header["Api-Key"]) > 0 {
+			authDataAPIKey = r.Header["Api-Key"][0]
 		}
 		if len(r.Header["Auth-Username"]) > 0 {
 			authDataName = r.Header["Auth-Username"][0]
