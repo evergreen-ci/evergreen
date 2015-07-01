@@ -1,15 +1,13 @@
 <h3 class="section-heading"><i class="icon-file-alt"></i> Files</h3>
-<div class="mci-pod files-panel">
-  <table class="table table-new">
-    <tr ng-repeat="file in files | orderBy:'name'">
-      <td class="file-name">
-        <strong> [[file.name]] </strong>
-      </td>
-      <td>
-        <span class="file-link" ng-bind-html="file.link | linkify">
-        </span>
-      </td>
-    </tr>
-  </table>
+<div class="col-lg-4">
+  <div class="mci-pod files-panel">
+    <div class="row">
+      <div class="col-lg-1">
+        <div ng-repeat="file in files | orderBy:'name'">
+          <strong><a ng-href="[[file.link]]">[[file.name]]</a></strong>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
