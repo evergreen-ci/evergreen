@@ -70,18 +70,7 @@ func SetCachedTaskStarted(buildId, taskId string, startTime time.Time) error {
 
 // SetCachedTaskFinished sets the given task to "finished"
 // along with a time taken in the cache of the given build.
-func SetCachedTaskFinished(buildId, taskId, status string, timeTaken time.Duration) error {
-	return updateOneTaskCache(buildId, taskId, bson.M{
-		"$set": bson.M{
-			TasksKey + ".$." + TaskCacheStatusKey:    status,
-			TasksKey + ".$." + TaskCacheTimeTakenKey: timeTaken,
-		},
-	})
-}
-
-// SetCachedTaskFinished sets the given task to "finished"
-// along with a time taken in the cache of the given build.
-func SetCachedTaskFinished2(buildId, taskId string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
+func SetCachedTaskFinished(buildId, taskId string, detail *apimodels.TaskEndDetail, timeTaken time.Duration) error {
 	return updateOneTaskCache(buildId, taskId, bson.M{
 		"$set": bson.M{
 			TasksKey + ".$." + TaskCacheTimeTakenKey:     timeTaken,

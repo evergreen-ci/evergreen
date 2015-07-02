@@ -820,10 +820,18 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 	}
 	info, err := UpdateAllTasks(
 		bson.M{
-			TaskIdKey:            bson.M{"$in": ids},
-			TaskScheduledTimeKey: bson.M{"$lte": ZeroTime},
+			TaskIdKey: bson.M{
+				"$in": ids,
+			},
+			TaskScheduledTimeKey: bson.M{
+				"$lte": ZeroTime,
+			},
 		},
-		bson.M{"$set": bson.M{TaskScheduledTimeKey: scheduledTime}},
+		bson.M{
+			"$set": bson.M{
+				TaskScheduledTimeKey: scheduledTime,
+			},
+		},
 	)
 
 	if err != nil {
@@ -966,43 +974,34 @@ func (t *Task) SetPriority(priority int) error {
 	)
 }
 
-func (t *Task) TryReset(user, origin string, project *Project,
-	taskEndRequest *apimodels.TaskEndRequest) (err error) {
-	// if we've reached the max # of executions
-	// for this task, mark it as finished and failed
+func (t *Task) TryReset(user, origin string, p *Project, detail *apimodels.TaskEndDetail) (err error) {
+	// if we've reached the max number of executions for this task, mark it as finished and failed
 	if t.Execution >= evergreen.MaxTaskExecution {
-		// restarting from the ui bypassed the restart cap
+		// restarting from the UI bypasses the restart cap
+		message := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
 		if origin == evergreen.UIPackage {
-			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
-				" (%v); Allowing exception for %v", t.Id,
-				evergreen.MaxTaskExecution, user)
+			evergreen.Logger.Logf(slogger.DEBUG, "%v allowing exception for %v", message, user)
 		} else {
-			evergreen.Logger.Logf(slogger.DEBUG, "Task '%v' reached max execution"+
-				" (%v); marking as failed.", t.Id, evergreen.MaxTaskExecution)
-			if taskEndRequest != nil {
-				return t.MarkEnd(origin, time.Now(), taskEndRequest, project, false)
+			evergreen.Logger.Logf(slogger.DEBUG, "%v marking as failed", message)
+			if detail != nil {
+				return t.MarkEnd(origin, time.Now(), detail, p, false)
 			} else {
-				panic(fmt.Sprintf("TryReset called with nil TaskEndRequest "+
-					"by %v", origin))
+				panic(fmt.Sprintf("TryReset called with nil TaskEndDetail by %v", origin))
 			}
 		}
 	}
 
-	// only allow re-execution for failed, cancelled or successful tasks
+	// only allow re-execution for failed or successful tasks
 	if !t.IsFinished() {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage {
-			evergreen.Logger.Logf(slogger.DEBUG, "Will not satisfy '%v' requested"+
-				" reset for '%v' - current status is '%v'", user, t.Id,
-				t.Status)
-			return fmt.Errorf("Task '%v' is currently '%v' - can not reset"+
-				" task in this status", t.Id, t.Status)
+			evergreen.Logger.Logf(slogger.DEBUG, "Unsatisfiable '%v' reset request on '%v' (status: '%v')", user, t.Id, t.Status)
+			return fmt.Errorf("Task '%v' is currently '%v' - can not reset task in this status", t.Id, t.Status)
 		}
 	}
 
-	if taskEndRequest != nil {
-		err = t.markEnd(origin, time.Now(), taskEndRequest)
-		if err != nil {
+	if detail != nil {
+		if err = t.markEnd(origin, time.Now(), detail); err != nil {
 			return fmt.Errorf("Error marking task as ended: %v", err)
 		}
 	}
@@ -1034,6 +1033,7 @@ func (t *Task) reset() error {
 			TaskTestResultsKey:   []TestResult{}},
 		"$unset": bson.M{
 			TaskStatusDetailsKey: "",
+			TaskDetailsKey:       "",
 		},
 	}
 
@@ -1271,8 +1271,7 @@ func (t *Task) getStepback(project *Project) bool {
 	return project.Stepback
 }
 
-func (t *Task) markEnd2(caller string, finishTime time.Time,
-	detail *apimodels.TaskEndDetail) error {
+func (t *Task) markEnd(caller string, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
@@ -1306,25 +1305,25 @@ func (t *Task) markEnd2(caller string, finishTime time.Time,
 	return nil
 }
 
-func (t *Task) MarkEnd2(caller string, finishTime time.Time,
-	detail *apimodels.TaskEndDetail, project *Project, deactivatePrevious bool) error {
+func (t *Task) MarkEnd(caller string, finishTime time.Time, detail *apimodels.TaskEndDetail, p *Project, deactivatePrevious bool) error {
 	if t.Status == detail.Status {
 		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice", t.Id)
 		return nil
 	}
 
 	t.Details = *detail
+
 	// legacy
 	t.StatusDetails.TimedOut = detail.TimedOut
 	t.StatusDetails.TimeoutStage = detail.Description
 
-	err := t.markEnd2(caller, finishTime, detail)
+	err := t.markEnd(caller, finishTime, detail)
 	if err != nil {
 		return err
 	}
 
 	// update the cached version of the task, in its build document
-	err = build.SetCachedTaskFinished2(t.BuildId, t.Id, detail, t.TimeTaken)
+	err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, t.TimeTaken)
 	if err != nil {
 		return fmt.Errorf("error updating build: %v", err.Error())
 	}
@@ -1340,7 +1339,7 @@ func (t *Task) MarkEnd2(caller string, finishTime time.Time,
 
 	// Do stepback
 	if detail.Status == evergreen.TaskFailed {
-		if shouldStepBack := t.getStepback(project); shouldStepBack {
+		if shouldStepBack := t.getStepback(p); shouldStepBack {
 			//See if there is a prior success for this particular task.
 			//If there isn't, we should not activate the previous task because
 			//it could trigger stepping backwards ad infinitum.
@@ -1361,8 +1360,7 @@ func (t *Task) MarkEnd2(caller string, finishTime time.Time,
 					return fmt.Errorf("Error activating previous task: %v", err)
 				}
 			} else {
-				evergreen.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task"+
-					" failure: %v", t.Id)
+				evergreen.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task failure: %v", t.Id)
 			}
 		}
 	} else if deactivatePrevious {
@@ -1376,109 +1374,6 @@ func (t *Task) MarkEnd2(caller string, finishTime time.Time,
 
 	// update the build
 	if err := t.UpdateBuildStatus(); err != nil {
-		return fmt.Errorf("Error updating build status (2): %v", err.Error())
-	}
-
-	return nil
-}
-
-func (self *Task) markEnd(caller string, finishTime time.Time,
-	taskEndRequest *apimodels.TaskEndRequest) error {
-	// record that the task has finished, in memory and in the db
-	self.Status = taskEndRequest.Status
-	self.FinishTime = finishTime
-	self.TimeTaken = finishTime.Sub(self.StartTime)
-	self.StatusDetails = taskEndRequest.StatusDetails
-
-	err := UpdateOneTask(
-		bson.M{
-			TaskIdKey: self.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				TaskFinishTimeKey:    finishTime,
-				TaskStatusKey:        taskEndRequest.Status,
-				TaskTimeTakenKey:     self.TimeTaken,
-				TaskStatusDetailsKey: taskEndRequest.StatusDetails,
-			},
-			"$unset": bson.M{
-				TaskAbortedKey: "",
-			},
-		})
-
-	if err != nil {
-		return fmt.Errorf("error updating task: %v", err.Error())
-	}
-	event.LogTaskFinished(self.Id, taskEndRequest.Status)
-	return nil
-}
-
-func (self *Task) MarkEnd(caller string, finishTime time.Time,
-	taskEndRequest *apimodels.TaskEndRequest, project *Project, deactivatePrevious bool) error {
-	if self.Status == taskEndRequest.Status {
-		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice",
-			self.Id)
-		return nil
-	}
-	err := self.markEnd(caller, finishTime, taskEndRequest)
-	if err != nil {
-		return err
-	}
-
-	// update the cached version of the task, in its build document
-	err = build.SetCachedTaskFinished(self.BuildId, self.Id, self.Status, self.TimeTaken)
-	if err != nil {
-		return fmt.Errorf("error updating build: %v", err.Error())
-	}
-
-	// no need to activate/deactivate other task if this is a patch request's task
-	if self.Requester == evergreen.PatchVersionRequester {
-		err = self.UpdateBuildStatus()
-		if err != nil {
-			return fmt.Errorf("Error updating build status (1): %v", err.Error())
-		}
-		return nil
-	}
-
-	// Do stepback
-	if taskEndRequest.Status == evergreen.TaskFailed {
-		if shouldStepBack := self.getStepback(project); shouldStepBack {
-			//See if there is a prior success for this particular task.
-			//If there isn't, we should not activate the previous task because
-			//it could trigger stepping backwards ad infinitum.
-			_, err := PreviousCompletedTask(self, self.Project, []string{evergreen.TaskSucceeded})
-			if err != nil {
-				if err == mgo.ErrNotFound {
-					shouldStepBack = false
-				} else {
-					return fmt.Errorf("Error locating previous successful task: %v",
-						err)
-				}
-			}
-
-			if shouldStepBack {
-				// activate the previous task to pinpoint regression
-				err = self.ActivatePreviousTask(caller)
-				if err != nil {
-					return fmt.Errorf("Error activating previous task: %v", err)
-				}
-			} else {
-				evergreen.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task"+
-					" failure: %v", self.Id)
-			}
-		}
-	} else if deactivatePrevious {
-		// if the task was successful, ignore running previous
-		// activated tasks for this buildvariant
-		err = self.DeactivatePreviousTasks(caller)
-		if err != nil {
-			return fmt.Errorf("Error deactivating previous task: %v", err.Error())
-		}
-	}
-
-	// update the build
-
-	if err := self.UpdateBuildStatus(); err != nil {
 		return fmt.Errorf("Error updating build status (2): %v", err.Error())
 	}
 
@@ -1690,9 +1585,12 @@ func AverageTaskTimeDifference(field1 string, field2 string,
 			field2: bson.M{"$gt": cutoff}}},
 		{"$group": bson.M{
 			"_id": "$" + groupByField,
-			"avg_time": bson.M{"$avg": bson.M{
-				"$subtract": []string{"$" + field2, "$" + field1},
-			}}}},
+			"avg_time": bson.M{
+				"$avg": bson.M{
+					"$subtract": []string{"$" + field2, "$" + field1},
+				},
+			},
+		}},
 	}
 
 	// anonymous struct for unmarshalling result bson
@@ -1704,9 +1602,7 @@ func AverageTaskTimeDifference(field1 string, field2 string,
 
 	err := db.Aggregate(TasksCollection, pipeline, &results)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR,
-			"Error aggregating task times by [%v, %v]: %v",
-			field1, field2, err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error aggregating task times by [%v, %v]: %v", field1, field2, err)
 		return nil, err
 	}
 
@@ -1763,8 +1659,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 
 	err := db.Aggregate(TasksCollection, pipeline, &results)
 	if err != nil {
-		return nil, fmt.Errorf("error aggregating task average duration: %v",
-			err)
+		return nil, fmt.Errorf("error aggregating task average duration: %v", err)
 	}
 
 	expDurations := make(map[string]time.Duration)

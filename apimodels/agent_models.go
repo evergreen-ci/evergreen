@@ -12,6 +12,8 @@ type HeartbeatResponse struct {
 	Abort bool `json:"abort,omitempty"`
 }
 
+// TaskEndDetail contains data sent from the agent to the
+// API server after each task run.
 type TaskEndDetail struct {
 	Status      string `bson:"status,omitempty" json:"status,omitempty"`
 	Type        string `bson:"type,omitempty" json:"type,omitempty"`
@@ -19,18 +21,13 @@ type TaskEndDetail struct {
 	TimedOut    bool   `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 }
 
-// Legacy agent
-type TaskEndRequest struct {
-	Status        string         `bson:"status,omitempty" json:"status,omitempty"`
-	StatusDetails TaskEndDetails `bson:"status_details,omitempty" json:"status_details,omitempty"`
-}
 type TaskEndDetails struct {
 	TimeoutStage string `bson:"timeout_stage,omitempty" json:"timeout_stage,omitempty"`
 	TimedOut     bool   `bson:"timed_out,omitempty" json:"timed_out,omitempty"`
 }
 
 // TaskEndResponse contains data sent by the API server to the agent - in
-// response to a TaskEndRequest.
+// response to a request with TaskEndDetail.
 type TaskEndResponse struct {
 	TaskId     string `json:"task_id,omitempty"`
 	TaskSecret string `json:"task_secret,omitempty"`

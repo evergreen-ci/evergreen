@@ -70,7 +70,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskStartRequest{}, http.StatusOK)
 				})
-			serveMux.HandleFunc("/task/mocktaskid/end2",
+			serveMux.HandleFunc("/task/mocktaskid/end",
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusOK)
 				})
@@ -157,7 +157,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 						util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusInternalServerError)
 					}
 				})
-			serveMux.HandleFunc("/task/mocktaskid/end2",
+			serveMux.HandleFunc("/task/mocktaskid/end",
 				func(w http.ResponseWriter, req *http.Request) {
 					endCount++
 					if endCount == 3 {

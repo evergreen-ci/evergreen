@@ -128,16 +128,13 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 // clean up a task whose heartbeat has timed out
 func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host.Host) error {
 	// mock up the failure details of the task
-	taskEndRequest := &apimodels.TaskEndRequest{
-		Status: evergreen.TaskFailed,
-		StatusDetails: apimodels.TaskEndDetails{
-			TimeoutStage: model.AgentHeartbeat,
-			TimedOut:     true,
-		},
+	detail := &apimodels.TaskEndDetail{
+		Description: model.AgentHeartbeat,
+		TimedOut:    true,
 	}
 
 	// try to reset the task
-	if err := task.TryReset("", RunnerName, &project, taskEndRequest); err != nil {
+	if err := task.TryReset("", RunnerName, &project, detail); err != nil {
 		return fmt.Errorf("error trying to reset task %v: %v", task.Id, err)
 	}
 

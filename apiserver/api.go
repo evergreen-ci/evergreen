@@ -295,89 +295,6 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	finishTime := time.Now()
 	taskEndResponse := &apimodels.TaskEndResponse{}
-	if !getGlobalLock(APIServerLockTitle) {
-		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
-		return
-	}
-	defer releaseGlobalLock(APIServerLockTitle)
-
-	task := MustHaveTask(r)
-
-	taskEndRequest := &apimodels.TaskEndRequest{}
-	if err := util.ReadJSONInto(r.Body, taskEndRequest); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Check that finishing status is a valid constant
-	if taskEndRequest.Status != evergreen.TaskSucceeded &&
-		taskEndRequest.Status != evergreen.TaskFailed &&
-		taskEndRequest.Status != evergreen.TaskUndispatched {
-
-		msg := fmt.Errorf("Invalid end status '%v' for task %v", taskEndRequest.Status, task.Id)
-		as.LoggedError(w, r, http.StatusBadRequest, msg)
-		return
-	}
-	projectRef, err := model.FindOneProjectRef(task.Project)
-
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-	}
-	if projectRef == nil {
-		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("empty projectRef for task"))
-		return
-	}
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	// mark task as finished
-	err = task.MarkEnd(APIServerLockTitle, finishTime, taskEndRequest, project, projectRef.DeactivatePrevious)
-	if err != nil {
-		message := fmt.Errorf("Error calling mark finish on task %v : %v", task.Id, err)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
-		return
-	}
-
-	if task.Requester != evergreen.PatchVersionRequester {
-		alerts.RunTaskFailureTriggers(task)
-	} else {
-		//TODO(EVG-223) process patch-specific triggers
-	}
-
-	// if task was aborted, reset to inactive
-	if taskEndRequest.Status == evergreen.TaskUndispatched {
-		if err = model.SetTaskActivated(task.Id, "", false); err != nil {
-			message := fmt.Sprintf("Error deactivating task after abort: %v", err)
-			evergreen.Logger.Logf(slogger.ERROR, message)
-			taskEndResponse.Message = message
-			as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
-			return
-		}
-
-		as.taskFinished(w, task, finishTime)
-		return
-	}
-
-	// update the bookkeeping entry for the task
-	err = bookkeeping.UpdateExpectedDuration(task, task.TimeTaken)
-	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error updating expected duration: %v",
-			err)
-	}
-
-	// log the task as finished
-	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished", task.Id)
-
-	// construct and return the appropriate response for the agent
-	as.taskFinished(w, task, finishTime)
-}
-
-func (as *APIServer) EndTask2(w http.ResponseWriter, r *http.Request) {
-	finishTime := time.Now()
-	taskEndResponse := &apimodels.TaskEndResponse{}
 
 	task := MustHaveTask(r)
 
@@ -420,7 +337,7 @@ func (as *APIServer) EndTask2(w http.ResponseWriter, r *http.Request) {
 	defer releaseGlobalLock(APIServerLockTitle)
 
 	// mark task as finished
-	err = task.MarkEnd2(APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
+	err = task.MarkEnd(APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
 	if err != nil {
 		message := fmt.Errorf("Error calling mark finish on task %v : %v", task.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
@@ -1041,7 +958,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	taskRouter := r.PathPrefix("/task/{taskId:[\\w_\\.]+}").Subrouter()
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.StartTask)).Methods("POST")
-	taskRouter.HandleFunc("/end2", as.checkTask(true, as.EndTask2)).Methods("POST")
+	taskRouter.HandleFunc("/end2", as.checkTask(true, as.EndTask)).Methods("POST")
 	taskRouter.HandleFunc("/end", as.checkTask(true, as.EndTask)).Methods("POST")
 	taskRouter.HandleFunc("/log", as.checkTask(true, as.AppendTaskLog)).Methods("POST")
 	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.Heartbeat)).Methods("POST")

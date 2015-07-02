@@ -461,7 +461,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 			fullCommandName := cmd.Plugin() + "." + cmd.Name()
 
 			if commandInfo.Function != "" {
-				fullCommandName = fmt.Sprintf(`("%v") %v`, commandInfo.Function, fullCommandName)
+				fullCommandName = fmt.Sprintf(`'%v' in "%v"`, fullCommandName, commandInfo.Function)
 			} else if commandInfo.DisplayName != "" {
 				fullCommandName = fmt.Sprintf(`("%v") %v`, commandInfo.DisplayName, fullCommandName)
 			}

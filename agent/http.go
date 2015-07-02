@@ -219,9 +219,9 @@ func (h *HTTPCommunicator) Start(pid string) error {
 }
 
 // End marks the communicator's task as finished with the given status.
-func (h *HTTPCommunicator) End(details *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error) {
+func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error) {
 	taskEndResp := &apimodels.TaskEndResponse{}
-	resp, retryFail, err := h.postJSON("end2", details)
+	resp, retryFail, err := h.postJSON("end", detail)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
