@@ -267,10 +267,12 @@ func TestTaskSuccess(t *testing.T) {
 
 						Convey("all scripts in task should have been run successfully", func() {
 							So(scanLogsForTask(testTask.Id, "Executing script: echo \"predefined command!\""), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "predefined command!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "this should not end up in the logs"), ShouldBeFalse)
+							So(scanLogsForTask(testTask.Id, "Command timeout set to 21m40s"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "Command timeout set to 43m20s"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "Cloning into") || // git 1.8
 								scanLogsForTask(testTask.Id, "Initialized empty Git repository"), // git 1.7
 								ShouldBeTrue)
@@ -295,6 +297,12 @@ func TestTaskSuccess(t *testing.T) {
 							testTask, err = model.FindTask(testTask.Id)
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
 							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
+
+							// use function display name as description when none is specified in command
+							So(testTask.Details.Status, ShouldEqual, evergreen.TaskSucceeded)
+							So(testTask.Details.Description, ShouldEqual, `'shell.exec' in "silent shell test"`)
+							So(testTask.Details.TimedOut, ShouldBeFalse)
+							So(testTask.Details.Type, ShouldEqual, model.SetupCommandType)
 						})
 					})
 
@@ -314,7 +322,7 @@ func TestTaskSuccess(t *testing.T) {
 						testAgent.APILogger.FlushAndWait()
 
 						Convey("all scripts in task should have been run successfully", func() {
-							So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 
 							So(scanLogsForTask(testTask.Id, "starting normal_task!"), ShouldBeTrue)
@@ -371,7 +379,7 @@ func TestTaskFailures(t *testing.T) {
 					printLogsForTask(testTask.Id)
 
 					Convey("the pre and post-run scripts should have run", func() {
-						So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 						So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 
 						Convey("the task should have run up until its first failure", func() {
@@ -429,7 +437,7 @@ func TestTaskAbortion(t *testing.T) {
 						printLogsForTask(testTask.Id)
 
 						Convey("the pre and post-run scripts should have run", func() {
-							So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "Received abort signal - stopping."), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "done with very_slow_task!"), ShouldBeFalse)
@@ -465,7 +473,7 @@ func TestTaskTimeout(t *testing.T) {
 				time.Sleep(5 * time.Second)
 				printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
-					So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = model.FindTask(testTask.Id)

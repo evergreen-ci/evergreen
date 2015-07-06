@@ -440,6 +440,7 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 func validateCommands(section string, project *model.Project, registry plugin.Registry,
 	commands []model.PluginCommandConf) []ValidationError {
 	errs := []ValidationError{}
+
 	for _, cmd := range commands {
 		command := fmt.Sprintf("'%v' command", cmd.Command)
 		_, err := registry.GetCommands(cmd, project.Functions)
@@ -477,6 +478,8 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 		}
 	}
 
+	seen := make(map[string]bool, 0)
+
 	// validate each function definition
 	for funcName, commands := range project.Functions {
 		valErrs := validateCommands("functions", project, pluginRegistry, commands.List())
@@ -488,6 +491,29 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 				},
 			)
 		}
+
+		for _, c := range commands.List() {
+			if c.Function != "" {
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("can not reference a function within a "+
+							"function: '%v' referenced within '%v'", c.Function, funcName),
+					},
+				)
+
+			}
+		}
+
+		// this checks for duplicate function definitions in the project.
+		if seen[funcName] {
+			errs = append(errs,
+				ValidationError{
+					Message: fmt.Sprintf(`project '%v' has duplicate definition of "%v"`,
+						project.Identifier, funcName),
+				},
+			)
+		}
+		seen[funcName] = true
 	}
 
 	if project.Pre != nil {

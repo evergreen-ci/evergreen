@@ -7,7 +7,7 @@ batch_time: 180
 stepback: true
 
 functions:
-  "list of commands func":
+  "list of commands":
      - command: shell.exec
        params:
          script: |
@@ -35,6 +35,7 @@ functions:
         END_OF_HEREDOC
   "function with arg test" :
      command: shell.exec
+     timeout_secs: 1300
      params:
        script: |
          echo "arg1 is ${arg1}"
@@ -46,7 +47,7 @@ pre:
   - command: shell.exec
     params:
       script: |
-        echo "executing the pre-run script!"
+        echo "executing the pre-run script"
 
 post:
   - command: attach.results
@@ -75,7 +76,8 @@ tasks:
         arg2: "BAR"
         arg3: "Expanded: ${expandme}"
         arg4: "Default: ${empty|default_value}"
-    - func: "list of commands func"
+    - func: "list of commands"
+      timeout_secs: 2600
     - command: git.get_project
       params:
         directory: src
@@ -137,6 +139,8 @@ tasks:
         permissions: public-read-write
         content_type: application/tar
         display_name: mongodb_binaries
+    - func: "silent shell test"
+      type: "setup"
 
 - name: normal_task
   depends_on:

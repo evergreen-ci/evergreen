@@ -478,7 +478,7 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("an error should be thrown if a referenced function command is invalid", func() {
+		Convey("an error should be thrown if a referenced function command is invalid (invalid params)", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": &model.YAMLCommandSet{
@@ -491,27 +491,6 @@ func TestValidatePluginCommands(t *testing.T) {
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
-		})
-		Convey("an error should be thrown if a function plugin command is invalid", func() {
-			project := &model.Project{
-				Functions: map[string]*model.YAMLCommandSet{
-					"funcOne": &model.YAMLCommandSet{
-						SingleCommand: &model.PluginCommandConf{
-							Command: "gotest.run",
-							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
-							},
-						},
-					},
-				},
-			}
-			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
 		Convey("no error should be thrown if a function plugin command is valid", func() {
 			project := &model.Project{
@@ -535,13 +514,27 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldResemble, []ValidationError{})
 		})
 		Convey("an error should be thrown if a function 'a' references "+
-			"another function 'b' that does not exists", func() {
+			"any another function", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
-					"funcOne": &model.YAMLCommandSet{
+					"a": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
-							Function: "anything",
+							Function: "b",
 							Command:  "gotest.run",
+							Params: map[string]interface{}{
+								"working_dir": "key",
+								"tests": []interface{}{
+									map[string]interface{}{
+										"dir":  "key",
+										"args": "sec",
+									},
+								},
+							},
+						},
+					},
+					"b": &model.YAMLCommandSet{
+						SingleCommand: &model.PluginCommandConf{
+							Command: "gotest.run",
 							Params: map[string]interface{}{
 								"working_dir": "key",
 								"tests": []interface{}{
@@ -558,13 +551,13 @@ func TestValidatePluginCommands(t *testing.T) {
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
 			So(len(validatePluginCommands(project)), ShouldEqual, 1)
 		})
-		Convey("an error should be thrown if a function 'a' references "+
-			"another function 'b' even if 'b' exists", func() {
+		Convey("errors should be thrown if a function 'a' references "+
+			"another function, 'b', which that does not exist", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
-					"funcOne": &model.YAMLCommandSet{
+					"a": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
-							Function: "funcOne",
+							Function: "b",
 							Command:  "gotest.run",
 							Params: map[string]interface{}{
 								"working_dir": "key",
@@ -580,8 +573,9 @@ func TestValidatePluginCommands(t *testing.T) {
 				},
 			}
 			So(validatePluginCommands(project), ShouldNotResemble, []ValidationError{})
-			So(len(validatePluginCommands(project)), ShouldEqual, 1)
+			So(len(validatePluginCommands(project)), ShouldEqual, 2)
 		})
+
 		Convey("an error should be thrown if a referenced pre plugin command is invalid", func() {
 			project := &model.Project{
 				Pre: &model.YAMLCommandSet{

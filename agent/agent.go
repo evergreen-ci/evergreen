@@ -225,11 +225,13 @@ func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc)
 		agt.logger.LogTask(slogger.ERROR, "Task timed out: '%v'", detail.Description)
 		detail.TimedOut = true
 		if sh.Timeout != nil {
-			agt.logger.LogTask(slogger.INFO, "Executing task-timeout commands...")
+			agt.logger.LogTask(slogger.INFO, "Running task-timeout commands.")
+			start := time.Now()
 			err := agt.RunCommands(sh.Timeout.List(), false, nil)
 			if err != nil {
 				agt.logger.LogExecution(slogger.ERROR, "Error running task-timeout command: %v", err)
 			}
+			agt.logger.LogTask(slogger.INFO, "Finished running task-timeout commands in %v.", time.Since(start).String())
 		}
 	case CompletedSuccess:
 		detail.Status = evergreen.TaskSucceeded
@@ -239,11 +241,13 @@ func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc)
 	}
 
 	if sh.Post != nil {
-		agt.logger.LogTask(slogger.INFO, "Executing post-task commands...")
+		agt.logger.LogTask(slogger.INFO, "Running post-task commands.")
+		start := time.Now()
 		err := agt.RunCommands(sh.Post.List(), false, nil)
 		if err != nil {
-			agt.logger.LogExecution(slogger.ERROR, "Error running post-run command: %v", err)
+			agt.logger.LogExecution(slogger.ERROR, "Error running post-task command: %v", err)
 		}
+		agt.logger.LogTask(slogger.INFO, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 
@@ -265,29 +269,30 @@ func (agt *Agent) CheckIn(command model.PluginCommandConf, duration time.Duratio
 	agt.currentCommand = command
 	agt.timeoutWatcher.SetDuration(duration)
 	agt.timeoutWatcher.CheckIn()
+	agt.logger.LogExecution(slogger.INFO, "Command timeout set to %v", duration.String())
 }
 
 // GetTaskConfig fetches task configuration data required to run the task from the API server.
 func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
-	agt.logger.LogExecution(slogger.INFO, "Fetching distro configuration...")
+	agt.logger.LogExecution(slogger.INFO, "Fetching distro configuration.")
 	distro, err := agt.GetDistro()
 	if err != nil {
 		return nil, err
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching project configuration...")
+	agt.logger.LogExecution(slogger.INFO, "Fetching project configuration.")
 	project, err := agt.GetProjectConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration...")
+	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration.")
 	task, err := agt.GetTask()
 	if err != nil {
 		return nil, err
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching project ref...")
+	agt.logger.LogExecution(slogger.INFO, "Fetching project ref.")
 	ref, err := agt.GetProjectRef()
 	if err != nil {
 		return nil, err
@@ -297,7 +302,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 		return nil, fmt.Errorf("Agent retrieved an empty project ref")
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Constructing TaskConfig...")
+	agt.logger.LogExecution(slogger.INFO, "Constructing TaskConfig.")
 	return model.NewTaskConfig(distro, project, task, ref)
 
 }
@@ -366,10 +371,10 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	httpAgentComm, ok := agt.TaskCommunicator.(*HTTPCommunicator)
 	if ok && len(httpAgentComm.HttpsCert) == 0 {
-		agt.logger.LogTask(slogger.WARN, "Running agent without a https certificate...")
+		agt.logger.LogTask(slogger.WARN, "Running agent without a https certificate.")
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration...")
+	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration.")
 
 	taskConfig, err := agt.GetTaskConfig()
 	if err != nil {
@@ -377,7 +382,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 		return nil, err
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching expansions for project %v...", taskConfig.Task.Project)
+	agt.logger.LogExecution(slogger.INFO, "Fetching expansions for project %v.", taskConfig.Task.Project)
 
 	expVars, err := agt.FetchExpansionVars()
 	if err != nil {
@@ -410,18 +415,19 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 	}
 
 	// notify API server that the task has been started.
-	agt.logger.LogExecution(slogger.INFO, "Reporting task started...")
+	agt.logger.LogExecution(slogger.INFO, "Reporting task started.")
 	if err = agt.Start(strconv.Itoa(os.Getpid())); err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "error marking task started: %v", err)
 		return agt.finishAndAwaitCleanup(CompletedFailure, completed)
 	}
 
 	if agt.taskConfig.Project.Pre != nil {
-		agt.logger.LogExecution(slogger.INFO, "Running pre-task commands")
+		agt.logger.LogExecution(slogger.INFO, "Running pre-task commands.")
 		err = agt.RunCommands(agt.taskConfig.Project.Pre.List(), false, nil)
 		if err != nil {
 			agt.logger.LogExecution(slogger.ERROR, "Running pre-task script failed: %v", err)
 		}
+		agt.logger.LogExecution(slogger.INFO, "Finished running pre-task commands.")
 	}
 	return agt.RunTaskCommands(completed)
 }
@@ -435,7 +441,12 @@ func (agt *Agent) RunTaskCommands(completed chan FinalTaskFunc) (*apimodels.Task
 		return agt.finishAndAwaitCleanup(CompletedFailure, completed)
 	}
 
-	if err := agt.RunCommands(task.Commands, true, agt.signalHandler.KillChan); err != nil {
+	agt.logger.LogExecution(slogger.INFO, "Running task commands.")
+	start := time.Now()
+	err := agt.RunCommands(task.Commands, true, agt.signalHandler.KillChan)
+	agt.logger.LogExecution(slogger.INFO, "Finished running task commands in %v.", time.Since(start).String())
+
+	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Task failed: %v", err)
 		return agt.finishAndAwaitCleanup(CompletedFailure, completed)
 	}
@@ -447,7 +458,16 @@ func (agt *Agent) RunTaskCommands(completed chan FinalTaskFunc) (*apimodels.Task
 // All plugins listen on the stop channel and must terminate immediately when a
 // value is received.
 func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError bool, stop chan bool) error {
-	for index, commandInfo := range commands {
+	for i, commandInfo := range commands {
+		parsedCommands, err := agt.Registry.ParseCommandConf(commandInfo, agt.taskConfig.Project.Functions)
+		if err != nil {
+			agt.logger.LogTask(slogger.ERROR, "Couldn't parse plugin command '%v': %v", commandInfo.Command, err)
+			if returnOnError {
+				return err
+			}
+			continue
+		}
+
 		cmds, err := agt.Registry.GetCommands(commandInfo, agt.taskConfig.Project.Functions)
 		if err != nil {
 			agt.logger.LogTask(slogger.ERROR, "Don't know how to run plugin action %s: %v", commandInfo.Command, err)
@@ -457,28 +477,41 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 			continue
 		}
 
-		for _, cmd := range cmds {
+		for j, cmd := range cmds {
 			fullCommandName := cmd.Plugin() + "." + cmd.Name()
+
+			parsedCommand := parsedCommands[j]
 
 			if commandInfo.Function != "" {
 				fullCommandName = fmt.Sprintf(`'%v' in "%v"`, fullCommandName, commandInfo.Function)
-			} else if commandInfo.DisplayName != "" {
-				fullCommandName = fmt.Sprintf(`("%v") %v`, commandInfo.DisplayName, fullCommandName)
+			} else if parsedCommand.DisplayName != "" {
+				fullCommandName = fmt.Sprintf(`("%v") %v`, parsedCommand.DisplayName, fullCommandName)
+			} else {
+				fullCommandName = fmt.Sprintf("'%v'", fullCommandName)
 			}
 
 			// TODO: add validation for this once new config's in place/use
 			if !commandInfo.RunOnVariant(agt.taskConfig.BuildVariant.Name) {
-				agt.logger.LogTask(slogger.INFO, "Skipping command '%v' on variant %v (step %v of %v)",
-					fullCommandName, agt.taskConfig.BuildVariant.Name, index+1, len(commands))
+				agt.logger.LogTask(slogger.INFO, "Skipping command %v on variant %v (step %v of %v)",
+					fullCommandName, agt.taskConfig.BuildVariant.Name, i+1, len(commands))
 				continue
 			}
 
-			agt.logger.LogTask(slogger.INFO, "Running command %v (step %v of %v)",
-				fullCommandName, index+1, len(commands))
+			if len(cmds) == 1 {
+				agt.logger.LogTask(slogger.INFO, "Running command %v (step %v of %v)", fullCommandName, i+1, len(commands))
+			} else {
+				// for functions with more than one command
+				agt.logger.LogTask(slogger.INFO, "Running command %v (step %v.%v of %v)", fullCommandName, i+1, j+1, len(commands))
+			}
 
 			var timeoutPeriod = DefaultCmdTimeout
 			if commandInfo.TimeoutSecs > 0 {
 				timeoutPeriod = time.Duration(commandInfo.TimeoutSecs) * time.Second
+			}
+
+			// override function timeout with command specific timeout
+			if parsedCommand.TimeoutSecs > 0 {
+				timeoutPeriod = time.Duration(parsedCommand.TimeoutSecs) * time.Second
 			}
 
 			// create a new command logger to wrap the agent logger
@@ -499,13 +532,12 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 
 			pluginCom := &TaskJSONCommunicator{cmd.Plugin(), agt.TaskCommunicator}
 
-			agt.CheckIn(commandInfo, timeoutPeriod)
+			agt.CheckIn(parsedCommand, timeoutPeriod)
 
 			start := time.Now()
 			err = cmd.Execute(commandLogger, pluginCom, agt.taskConfig, stop)
-			end := time.Now()
 
-			agt.logger.LogExecution(slogger.INFO, "Finished %v in %v", fullCommandName, (end.Sub(start)).String())
+			agt.logger.LogExecution(slogger.INFO, "Finished %v in %v", fullCommandName, time.Since(start).String())
 
 			if err != nil {
 				agt.logger.LogTask(slogger.ERROR, "Command failed: %v", err)
