@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
@@ -19,6 +21,15 @@ var (
 	// active requests and stopping the server.
 	requestTimeout = 10 * time.Second
 )
+
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s handles communication with running tasks and command line tools.\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage:\n  %s [flags]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Supported flags are:\n")
+		flag.PrintDefaults()
+	}
+}
 
 func main() {
 	settings := evergreen.GetSettingsOrExit()

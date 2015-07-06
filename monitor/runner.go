@@ -11,11 +11,16 @@ import (
 type Runner struct{}
 
 const (
-	RunnerName = "monitor"
+	RunnerName  = "monitor"
+	Description = "track and clean up expired hosts and tasks"
 )
 
 func (r *Runner) Name() string {
 	return RunnerName
+}
+
+func (r *Runner) Description() string {
+	return Description
 }
 
 func (r *Runner) Run(config *evergreen.Settings) error {

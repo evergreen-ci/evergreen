@@ -11,11 +11,16 @@ import (
 type Runner struct{}
 
 const (
-	RunnerName = "repotracker"
+	RunnerName  = "repotracker"
+	Description = "poll version control for new commits"
 )
 
 func (r *Runner) Name() string {
 	return RunnerName
+}
+
+func (r *Runner) Description() string {
+	return Description
 }
 
 func (r *Runner) Run(config *evergreen.Settings) error {

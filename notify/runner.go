@@ -10,11 +10,16 @@ import (
 type Runner struct{}
 
 const (
-	RunnerName = "notify"
+	RunnerName  = "notify"
+	Description = "send notifications for failed tasks and system issues"
 )
 
 func (r *Runner) Name() string {
 	return RunnerName
+}
+
+func (r *Runner) Description() string {
+	return Description
 }
 
 func (r *Runner) Run(config *evergreen.Settings) error {

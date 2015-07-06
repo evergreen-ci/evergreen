@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -13,8 +14,41 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"text/template"
 	"time"
 )
+
+func init() {
+	usageTemplate := template.Must(template.New("usage").Parse(
+		`{{.Program}} runs the Evergreen processes at regular intervals.
+
+Usage:
+  {{.Program}} [flags] [process name]
+
+Supported flags are:
+{{.FlagDefaults}}
+Supported proccesses are:{{range .Runners}}
+  {{.Name}}: {{.Description}}{{end}}
+
+Pass a single process name to run that process once,
+or leave [process name] blank to run all processes
+at regular intervals.
+`))
+
+	flag.Usage = func() {
+		// capture the default flag output for use in the template
+		flagDefaults := &bytes.Buffer{}
+		flag.CommandLine.SetOutput(flagDefaults)
+		flag.CommandLine.PrintDefaults()
+
+		// execute the usage template
+		usageTemplate.Execute(os.Stderr, struct {
+			Program      string
+			FlagDefaults string
+			Runners      []ProcessRunner
+		}{os.Args[0], flagDefaults.String(), Runners})
+	}
+}
 
 var (
 	runInterval = int64(30)

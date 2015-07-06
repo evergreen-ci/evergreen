@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
@@ -25,6 +26,15 @@ var (
 	// active requests and stopping the server.
 	requestTimeout = 10 * time.Second
 )
+
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s serves Evergreen's web interface.\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage:\n  %s [flags]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Supported flags are:\n")
+		flag.PrintDefaults()
+	}
+}
 
 func main() {
 	settings := evergreen.GetSettingsOrExit()

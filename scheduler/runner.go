@@ -12,11 +12,16 @@ import (
 type Runner struct{}
 
 const (
-	RunnerName = "scheduler"
+	RunnerName  = "scheduler"
+	Description = "queue tasks for execution and allocate hosts"
 )
 
 func (r *Runner) Name() string {
 	return RunnerName
+}
+
+func (r *Runner) Description() string {
+	return Description
 }
 
 func (r *Runner) Run(config *evergreen.Settings) error {

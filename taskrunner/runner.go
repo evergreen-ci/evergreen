@@ -11,11 +11,16 @@ import (
 type Runner struct{}
 
 const (
-	RunnerName = "taskrunner"
+	RunnerName  = "taskrunner"
+	Description = "run queued tasks on available hosts"
 )
 
 func (r *Runner) Name() string {
 	return RunnerName
+}
+
+func (r *Runner) Description() string {
+	return Description
 }
 
 func (r *Runner) Run(config *evergreen.Settings) error {

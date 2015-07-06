@@ -9,6 +9,16 @@ import (
 	"os"
 )
 
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s pulls tasks from the API server and runs them.\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "This program is designed to be started by the Evergreen taskrunner, not manually.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage:\n  %s [flags]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Supported flags are:\n")
+		flag.PrintDefaults()
+	}
+}
+
 func main() {
 	// Get the basic info needed to run the agent from command line flags.
 	taskId := flag.String("task_id", "", "id of task to run")

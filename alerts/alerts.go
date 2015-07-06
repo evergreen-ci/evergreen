@@ -49,6 +49,10 @@ func (qp *QueueProcessor) Name() string {
 	return "alerter"
 }
 
+func (qp *QueueProcessor) Description() string {
+	return "build and enqueue failure notifications"
+}
+
 // loadAlertContext fetches details from the database for all documents that are associated with the
 // AlertRequest. For example, it populates the task/build/version/project using the
 // task/build/version/project ids in the alert request document..

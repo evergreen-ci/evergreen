@@ -19,6 +19,8 @@ import (
 type ProcessRunner interface {
 	// Name returns the id of the process runner.
 	Name() string
+	// Description returns a description of the runner for use in -help text.
+	Description() string
 	// Run executes the process runner with the supplied configuration.
 	Run(*evergreen.Settings) error
 }
