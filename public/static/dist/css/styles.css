@@ -699,7 +699,7 @@ ul.tooltip-tasks li.tooltip-task {
 }
 .gridtable-small .top-header-row {
   padding-top: 60px;
-  padding-left: 268px;
+  padding-left: 303px;
   white-space: nowrap;
 }
 .gridtable-small .top-header-row .header-cell {
@@ -1279,7 +1279,7 @@ textarea {
 }
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;
-  padding-left: 23px;
+  padding-left: 58px;
   width: 590px;
 }
 .task-history-gridtable .tablerow .header .revision-date {
