@@ -699,7 +699,7 @@ ul.tooltip-tasks li.tooltip-task {
 }
 .gridtable-small .top-header-row {
   padding-top: 60px;
-  padding-left: 233px;
+  padding-left: 268px;
   white-space: nowrap;
 }
 .gridtable-small .top-header-row .header-cell {
@@ -742,7 +742,7 @@ ul.tooltip-tasks li.tooltip-task {
   white-space: nowrap;
   overflow: hidden;
   display: inline-block;
-  width: 210px;
+  width: 245px;
 }
 .gridtable-small .tablerow .header .commit-msg {
   float: right;
@@ -1278,7 +1278,7 @@ textarea {
   white-space: nowrap;
 }
 .task-history-gridtable .top-header-row.locked {
-  margin-left: 210px;
+  margin-left: 250px;
   padding-left: 23px;
   width: 590px;
 }
