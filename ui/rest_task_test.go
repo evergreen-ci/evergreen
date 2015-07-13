@@ -84,7 +84,7 @@ func TestGetTaskInfo(t *testing.T) {
 			BuildId:             "some-build-id",
 			DistroId:            "some-distro-id",
 			BuildVariant:        "some-build-variant",
-			DependsOn:           []string{"some-other-task"},
+			DependsOn:           []model.Dependency{{"some-other-task", ""}},
 			DisplayName:         "My task",
 			HostId:              "some-host-id",
 			Restarts:            0,
@@ -132,6 +132,7 @@ func TestGetTaskInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
+			Println(string(response.Body.Bytes()))
 
 			var rawJsonBody map[string]*json.RawMessage
 			err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
@@ -184,7 +185,8 @@ func TestGetTaskInfo(t *testing.T) {
 			So(jsonBody["distro"], ShouldEqual, task.DistroId)
 			So(jsonBody["build_variant"], ShouldEqual, task.BuildVariant)
 
-			var dependsOn []string
+			var dependsOn []model.Dependency
+			So(rawJsonBody["depends_on"], ShouldNotBeNil)
 			err = json.Unmarshal(*rawJsonBody["depends_on"], &dependsOn)
 			So(err, ShouldBeNil)
 			So(dependsOn, ShouldResemble, task.DependsOn)

@@ -56,11 +56,11 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated    bool     `bson:"activated" json:"activated"`
-	BuildId      string   `bson:"build_id" json:"build_id"`
-	DistroId     string   `bson:"distro" json:"distro"`
-	BuildVariant string   `bson:"build_variant" json:"build_variant"`
-	DependsOn    []string `bson:"depends_on" json:"depends_on"`
+	Activated    bool         `bson:"activated" json:"activated"`
+	BuildId      string       `bson:"build_id" json:"build_id"`
+	DistroId     string       `bson:"distro" json:"distro"`
+	BuildVariant string       `bson:"build_variant" json:"build_variant"`
+	DependsOn    []Dependency `bson:"depends_on" json:"depends_on"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -98,6 +98,43 @@ type Task struct {
 
 	// position in queue for the queue where it's closest to the top
 	MinQueuePos int `bson:"min_queue_pos" json:"min_queue_pos,omitempty"`
+}
+
+// Dependency represents a task that must be completed before the owning
+// task can be scheduled.
+type Dependency struct {
+	TaskId string `bson:"_id" json:"id"`
+	Status string `bson:"status" json:"status"`
+}
+
+// SetBSON allows us to use dependency representation of both
+// just task Ids and of true Dependency structs.
+//  TODO eventually drop all of this switching
+func (d *Dependency) SetBSON(raw bson.Raw) error {
+	// copy the Dependency type to remove this SetBSON method but preserve bson struct tags
+	type nakedDep Dependency
+	var depCopy nakedDep
+	if err := raw.Unmarshal(&depCopy); err == nil {
+		if depCopy.TaskId != "" {
+			*d = Dependency(depCopy)
+			return nil
+		}
+	}
+
+	// hack to support the legacy depends_on, since we can't just unmarshal a string
+	strBytes, _ := bson.Marshal(bson.RawD{{"str", raw}})
+	var strStruct struct {
+		String string `bson:"str"`
+	}
+	if err := bson.Unmarshal(strBytes, &strStruct); err == nil {
+		if strStruct.String != "" {
+			d.TaskId = strStruct.String
+			d.Status = evergreen.TaskSucceeded
+			return nil
+		}
+	}
+
+	return bson.SetZero
 }
 
 // TestResults is only used when transferring data from agent to api.
@@ -185,9 +222,29 @@ func (task Task) IsFinished() bool {
 		(task.Status == evergreen.TaskUndispatched && task.DispatchTime != ZeroTime)
 }
 
+// satisfiesDependency checks a task the receiver task depends on
+// to see if its status satisfies a dependency. If the "Status" field is
+// unset, default to checking that is succeeded.
+func (t *Task) satisfiesDependency(depTask *Task) bool {
+	for _, dep := range t.DependsOn {
+		if dep.TaskId == depTask.Id {
+			switch dep.Status {
+			case evergreen.TaskSucceeded, "":
+				return depTask.Status == evergreen.TaskSucceeded
+			case evergreen.TaskFailed:
+				return depTask.Status == evergreen.TaskFailed
+			case AllStatuses:
+				return depTask.Status == evergreen.TaskFailed || depTask.Status == evergreen.TaskSucceeded
+			}
+		}
+	}
+	return false
+}
+
 // Checks whether the dependencies for the task have all completed successfully.
 // If any of the dependencies exist in the map that is passed in, they are
-// used to check rather than fetching from the database.
+// used to check rather than fetching from the database. All queries
+// are cached back into the map for later use.
 func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 
 	if len(t.DependsOn) == 0 {
@@ -197,9 +254,9 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	deps := make([]Task, 0, len(t.DependsOn))
 
 	depIdsToQueryFor := make([]string, 0, len(t.DependsOn))
-	for _, depId := range t.DependsOn {
-		if cachedDep, ok := depCaches[depId]; !ok {
-			depIdsToQueryFor = append(depIdsToQueryFor, depId)
+	for _, dep := range t.DependsOn {
+		if cachedDep, ok := depCaches[dep.TaskId]; !ok {
+			depIdsToQueryFor = append(depIdsToQueryFor, dep.TaskId)
 		} else {
 			deps = append(deps, cachedDep)
 		}
@@ -222,6 +279,8 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+
+		// add queried dependencies to the cache
 		for _, newDep := range newDeps {
 			deps = append(deps, newDep)
 			depCaches[newDep.Id] = newDep
@@ -229,7 +288,7 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	}
 
 	for _, depTask := range deps {
-		if depTask.Status != evergreen.TaskSucceeded {
+		if !t.satisfiesDependency(&depTask) {
 			return false, nil
 		}
 	}
@@ -854,10 +913,10 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 
 		// if the task is being activated, make sure to activate all of the task's
 		// dependencies as well
-		for _, depId := range task.DependsOn {
-			if err = SetTaskActivated(depId, caller, true); err != nil {
+		for _, dep := range task.DependsOn {
+			if err = SetTaskActivated(dep.TaskId, caller, true); err != nil {
 				return fmt.Errorf("error activating dependency for %v with id %v: %v",
-					taskId, depId, err)
+					taskId, dep.TaskId, err)
 			}
 		}
 

@@ -287,15 +287,21 @@ func (uis *UIServer) taskDependencies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	depIds := []string{}
+	for _, dep := range projCtx.Task.DependsOn {
+		depIds = append(depIds, dep.TaskId)
+	}
 	dependencies, err := model.FindAllTasks(
 		bson.M{
-			"_id": bson.M{"$in": projCtx.Task.DependsOn},
+			"_id": bson.M{"$in": depIds},
 		},
 		bson.M{
-			"display_name": 1,
-			"status":       1,
-			"activated":    1,
-			"details":      1,
+			"display_name":     1,
+			"status":           1,
+			"activated":        1,
+			"status_details":   1,
+			"build_variant":    1,
+			"task_end_details": 1,
 		}, []string{}, 0, 0)
 
 	if err != nil {
@@ -303,7 +309,33 @@ func (uis *UIServer) taskDependencies(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uis.WriteJSON(w, http.StatusOK, dependencies)
+	type uiDep struct {
+		Id             string                  `json:"id"`
+		Name           string                  `json:"display_name"`
+		Status         string                  `json:"status"`
+		RequiredStatus string                  `json:"required"`
+		Activated      bool                    `json:"activated"`
+		BuildVariant   string                  `json:"build_variant"`
+		Details        apimodels.TaskEndDetail `json:"task_end_details"`
+	}
+	uiDeps := []uiDep{}
+	// match each task with its dependency requirements
+	for _, depTask := range dependencies {
+		for _, dep := range projCtx.Task.DependsOn {
+			if dep.TaskId == depTask.Id {
+				uiDeps = append(uiDeps, uiDep{
+					Id:             depTask.Id,
+					Name:           depTask.DisplayName,
+					Status:         depTask.Status,
+					RequiredStatus: dep.Status,
+					Activated:      depTask.Activated,
+					BuildVariant:   depTask.BuildVariant,
+					Details:        depTask.Details,
+				})
+			}
+		}
+	}
+	uis.WriteJSON(w, http.StatusOK, uiDeps)
 }
 
 // async handler for polling the task log

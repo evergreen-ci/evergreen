@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -128,7 +129,7 @@ func checkAllDependenciesSpec(project *model.Project) []ValidationError {
 	return errs
 }
 
-// Makes sure that the dependencies for the tasks in the project forms a
+// Makes sure that the dependencies for the tasks in the project form a
 // valid dependency graph (no cycles).
 func checkDependencyGraph(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
@@ -139,14 +140,25 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 		tasksByName[task.Name] = task
 	}
 
-	// run through the tasks, checking their dependency graphs for cycles
-	for _, task := range project.Tasks {
+	// generate task nodes for every task and variant combination
+	visited := map[model.TVPair]bool{}
+	allNodes := []model.TVPair{}
+	for _, bv := range project.BuildVariants {
+		for _, t := range bv.Tasks {
+			node := model.TVPair{bv.Name, t.Name}
+			visited[node] = false
+			allNodes = append(allNodes, node)
+		}
+	}
+
+	// run through the task nodes, checking their dependency graphs for cycles
+	for _, node := range allNodes {
 		// the visited nodes
-		if dependencyCycleExists(task, map[string]bool{}, tasksByName) {
+		if err := dependencyCycleExists(node, visited, tasksByName); err != nil {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("a cycle exists in the dependency "+
-						"graph for task %v", task.Name),
+					Message: fmt.Sprintf(
+						"dependency error for '%v' task: %v", node.TaskName, err),
 				},
 			)
 		}
@@ -156,28 +168,58 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 }
 
 // Helper for checking the dependency graph for cycles.
-func dependencyCycleExists(task model.ProjectTask, visited map[string]bool,
-	tasksByName map[string]model.ProjectTask) bool {
+func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
+	tasksByName map[string]model.ProjectTask) error {
 
-	// if the task has already been visited, then a cycle certainly exists
-	if visited[task.Name] {
-		return true
+	v, ok := visited[node]
+	// if the node does not exist, the deps are broken
+	if !ok {
+		return fmt.Errorf("dependency %v is not present in the project config", node)
 	}
-	visited[task.Name] = true
+	// if the task has already been visited, then a cycle certainly exists
+	if v {
+		return fmt.Errorf("dependency %v is part of a dependency cycle", node)
+	}
 
-	// for each of the task's dependencies, make a recursive call
+	visited[node] = true
+
+	task := tasksByName[node.TaskName]
+	depNodes := []model.TVPair{}
+	// build a list of all possible dependency nodes for the task
 	for _, dep := range task.DependsOn {
-		if dependencyCycleExists(tasksByName[dep.Name], visited, tasksByName) {
-			return true
+		if dep.Variant != "*" {
+			// handle regular dependencies
+			dn := model.TVPair{TaskName: dep.Name}
+			if dep.Variant == "" {
+				// use the current variant if none is specified
+				dn.Variant = node.Variant
+			} else {
+				dn.Variant = dep.Variant
+			}
+			depNodes = append(depNodes, dn)
+		} else {
+			// handle the all-variants case by adding all nodes that are
+			// of the same task (but not the current node)
+			for n, _ := range visited {
+				if n.TaskName == dep.Name && (n != node) {
+					depNodes = append(depNodes, n)
+				}
+			}
 		}
 	}
 
-	// remove the task from the visited map so that higher-level calls do not
-	// see it
-	visited[task.Name] = false
+	// for each of the task's dependencies, make a recursive call
+	for _, dn := range depNodes {
+		if err := dependencyCycleExists(dn, visited, tasksByName); err != nil {
+			return err
+		}
+	}
+
+	// remove the task from the visited map so that higher-level calls do not see it
+	visited[node] = false
 
 	// no cycle found
-	return false
+	return nil
 }
 
 // Ensures that the project has at least one buildvariant and also that all the
@@ -583,6 +625,17 @@ func verifyTaskDependencies(project *model.Project) []ValidationError {
 				)
 			}
 			depNames[dep.Name] = true
+
+			// check that the status is valid
+			switch dep.Status {
+			case evergreen.TaskSucceeded, evergreen.TaskFailed, model.AllStatuses, "":
+				// these are all valid
+			default:
+				errs = append(errs,
+					ValidationError{
+						Message: fmt.Sprintf("project '%v' contains an invalid dependency status for task '%v': %v",
+							project.Identifier, task.Name, dep.Status)})
+			}
 
 			// check that name of the dependency task is valid
 			if dep.Name != model.AllDependencies && !taskNames[dep.Name] {

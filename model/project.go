@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
@@ -182,7 +183,9 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 
 // The information about a task's dependency
 type TaskDependency struct {
-	Name string `yaml:"name" bson:"name"`
+	Name    string `yaml:"name" bson:"name"`
+	Variant string `yaml:"variant" bson:"variant,omitempty"`
+	Status  string `yaml:"status" bson:"status,omitempty"`
 }
 
 // Unmarshalled from the "tasks" list in the project file
@@ -207,6 +210,64 @@ type TaskConfig struct {
 	BuildVariant *BuildVariant
 	Expansions   *command.Expansions
 	WorkDir      string
+}
+
+// TaskIdTable is a map of [variant, task display name]->[task id].
+type TaskIdTable map[TVPair]string
+
+// TVPair is a helper type for mapping bv/task pairs to ids.
+type TVPair struct {
+	Variant  string
+	TaskName string
+}
+
+// String returns the pair's name in a readible form.
+func (p TVPair) String() string {
+	return fmt.Sprintf("%v/%v", p.Variant, p.TaskName)
+}
+
+// AddId adds the Id for the task/variant combination to the table.
+func (tt TaskIdTable) AddId(variant, taskName, id string) {
+	tt[TVPair{variant, taskName}] = id
+}
+
+// GetId returns the Id for the given task on the given variant.
+// Returns the empty string if the task/variant does not exist.
+func (tt TaskIdTable) GetId(variant, taskName string) string {
+	return tt[TVPair{variant, taskName}]
+}
+
+// GetIdsForAllVariants returns all task Ids for taskName on all variants != currentVariant.
+// The current variant must be passed in to avoid cycle generation.
+func (tt TaskIdTable) GetIdsForAllVariants(currentVariant, taskName string) []string {
+	ids := []string{}
+	for pair, _ := range tt {
+		if pair.TaskName == taskName && pair.Variant != currentVariant {
+			if id := tt[pair]; id != "" {
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids
+}
+
+// TaskIdTable builds a TaskIdTable for the given version and project
+func BuildTaskIdTable(p *Project, v *version.Version) TaskIdTable {
+	// init the variant map
+	table := TaskIdTable{}
+	for _, bv := range p.BuildVariants {
+		if bv.Disabled {
+			continue
+		}
+		for _, t := range bv.Tasks {
+			// create a unique Id for each task
+			taskId := util.CleanName(
+				fmt.Sprintf("%v_%v_%v_%v_%v",
+					p.Identifier, bv.Name, t.Name, v.Revision, v.CreateTime.Format(build.IdTimeLayout)))
+			table[TVPair{bv.Name, t.Name}] = taskId
+		}
+	}
+	return table
 }
 
 var (

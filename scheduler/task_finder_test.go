@@ -33,14 +33,10 @@ func TestDBTaskFinder(t *testing.T) {
 
 		taskIds = []string{"t1", "t2", "t3", "t4"}
 		tasks = []*model.Task{
-			&model.Task{Id: taskIds[0], DependsOn: []string{},
-				Status: evergreen.TaskUndispatched, Activated: true},
-			&model.Task{Id: taskIds[1], DependsOn: []string{},
-				Status: evergreen.TaskUndispatched, Activated: true},
-			&model.Task{Id: taskIds[2], DependsOn: []string{},
-				Status: evergreen.TaskUndispatched, Activated: true},
-			&model.Task{Id: taskIds[3], DependsOn: []string{},
-				Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
+			&model.Task{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
+			&model.Task{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true},
+			&model.Task{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true},
+			&model.Task{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
 		}
 
 		depTaskIds = []string{"td1", "td2"}
@@ -86,9 +82,9 @@ func TestDBTaskFinder(t *testing.T) {
 			// insert the tasks, setting one to have unmet dependencies, one to
 			// have no dependencies, and one to have successfully met
 			// dependencies
-			tasks[0].DependsOn = []string{}
-			tasks[1].DependsOn = []string{depTasks[0].Id}
-			tasks[2].DependsOn = []string{depTasks[1].Id}
+			tasks[0].DependsOn = []model.Dependency{}
+			tasks[1].DependsOn = []model.Dependency{{depTasks[0].Id, evergreen.TaskSucceeded}}
+			tasks[2].DependsOn = []model.Dependency{{depTasks[1].Id, evergreen.TaskSucceeded}}
 			for _, task := range tasks {
 				So(task.Insert(), ShouldBeNil)
 			}

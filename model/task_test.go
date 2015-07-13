@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -14,9 +13,8 @@ import (
 )
 
 var (
-	_     fmt.Stringer = nil
-	conf               = evergreen.TestConfig()
-	oneMs              = time.Millisecond
+	conf  = evergreen.TestConfig()
+	oneMs = time.Millisecond
 )
 
 func init() {
@@ -24,28 +22,52 @@ func init() {
 	evergreen.SetLogger("/tmp/task_test.log")
 }
 
+var depTaskIds = []Dependency{
+	{"td1", evergreen.TaskSucceeded},
+	{"td2", evergreen.TaskSucceeded},
+	{"td3", ""}, // Default == "success"
+	{"td4", evergreen.TaskFailed},
+	{"td5", AllStatuses},
+}
+
+// update statuses of test tasks in the db
+func updateTestDepTasks(t *testing.T) {
+	// cases for success/default
+	for _, depTaskId := range depTaskIds[:3] {
+		testutil.HandleTestingErr(UpdateOneTask(
+			bson.M{"_id": depTaskId.TaskId},
+			bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}},
+		), t, "Error setting task status")
+	}
+	// cases for * and failure
+	for _, depTaskId := range depTaskIds[3:] {
+		testutil.HandleTestingErr(UpdateOneTask(
+			bson.M{"_id": depTaskId.TaskId},
+			bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
+		), t, "Error setting task status")
+	}
+}
+
 func TestDependenciesMet(t *testing.T) {
 
 	var taskId string
-	var depTaskIds []string
 	var task *Task
 	var depTasks []*Task
 
 	Convey("With a task", t, func() {
 
 		taskId = "t1"
-		depTaskIds = []string{"td1", "td2", "td3", "td4", "td5"}
 
 		task = &Task{
 			Id: taskId,
 		}
 
 		depTasks = []*Task{
-			&Task{Id: depTaskIds[0], Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[1], Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[2], Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[3], Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[4], Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[2].TaskId, Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[3].TaskId, Status: evergreen.TaskUndispatched},
+			&Task{Id: depTaskIds[4].TaskId, Status: evergreen.TaskUndispatched},
 		}
 
 		So(db.Clear(TasksCollection), ShouldBeNil)
@@ -55,7 +77,7 @@ func TestDependenciesMet(t *testing.T) {
 
 		Convey("if the task has no dependencies its dependencies should"+
 			" be met by default", func() {
-			task.DependsOn = []string{}
+			task.DependsOn = []Dependency{}
 			met, err := task.DependenciesMet(map[string]Task{})
 			So(err, ShouldBeNil)
 			So(met, ShouldBeTrue)
@@ -66,7 +88,7 @@ func TestDependenciesMet(t *testing.T) {
 			func() {
 				task.DependsOn = depTaskIds
 				So(UpdateOneTask(
-					bson.M{"_id": depTaskIds[0]},
+					bson.M{"_id": depTaskIds[0].TaskId},
 					bson.M{
 						"$set": bson.M{
 							"status": evergreen.TaskSucceeded,
@@ -78,49 +100,32 @@ func TestDependenciesMet(t *testing.T) {
 				So(met, ShouldBeFalse)
 			})
 
-		Convey("if all of the tasks dependencies are finished successfully, it"+
-			" should correctly believe its dependencies are met",
-			func() {
-				task.DependsOn = depTaskIds
-				for _, depTaskId := range depTaskIds {
-					testutil.HandleTestingErr(UpdateOneTask(
-						bson.M{"_id": depTaskId},
-						bson.M{
-							"$set": bson.M{
-								"status": evergreen.TaskSucceeded,
-							},
-						},
-					), t, "Error setting task status")
-				}
-				met, err := task.DependenciesMet(map[string]Task{})
-				So(err, ShouldBeNil)
-				So(met, ShouldBeTrue)
-			})
+		Convey("if all of the tasks dependencies are finished properly, it"+
+			" should correctly believe its dependencies are met", func() {
+			task.DependsOn = depTaskIds
+			updateTestDepTasks(t)
+			met, err := task.DependenciesMet(map[string]Task{})
+			So(err, ShouldBeNil)
+			So(met, ShouldBeTrue)
+		})
 
 		Convey("tasks not in the dependency cache should be pulled into the"+
 			" cache during dependency checking", func() {
 			dependencyCache := make(map[string]Task)
 			task.DependsOn = depTaskIds
+			updateTestDepTasks(t)
 			met, err := task.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
-			So(met, ShouldBeFalse)
-			for _, depTaskId := range depTaskIds {
-				So(dependencyCache[depTaskId].Id, ShouldEqual, depTaskId)
+			So(met, ShouldBeTrue)
+			for _, depTaskId := range depTaskIds[:4] {
+				So(dependencyCache[depTaskId.TaskId].Id, ShouldEqual, depTaskId.TaskId)
 			}
+			So(dependencyCache["td5"].Id, ShouldEqual, "td5")
 		})
 
 		Convey("cached dependencies should be used rather than fetching them"+
 			" from the database", func() {
-			for _, depTaskId := range depTaskIds {
-				So(UpdateOneTask(
-					bson.M{"_id": depTaskId},
-					bson.M{
-						"$set": bson.M{
-							"status": evergreen.TaskSucceeded,
-						},
-					},
-				), ShouldBeNil)
-			}
+			updateTestDepTasks(t)
 			dependencyCache := make(map[string]Task)
 			task.DependsOn = depTaskIds
 			met, err := task.DependenciesMet(dependencyCache)
@@ -129,10 +134,10 @@ func TestDependenciesMet(t *testing.T) {
 
 			// alter the dependency cache so that it should seem as if the
 			// dependencies are not met
-			cachedTask := dependencyCache[depTaskIds[0]]
+			cachedTask := dependencyCache[depTaskIds[0].TaskId]
 			So(cachedTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 			cachedTask.Status = evergreen.TaskFailed
-			dependencyCache[depTaskIds[0]] = cachedTask
+			dependencyCache[depTaskIds[0].TaskId] = cachedTask
 			met, err = task.DependenciesMet(dependencyCache)
 			So(err, ShouldBeNil)
 			So(met, ShouldBeFalse)
@@ -142,7 +147,7 @@ func TestDependenciesMet(t *testing.T) {
 		Convey("extraneous tasks in the dependency cache should be ignored",
 			func() {
 				So(UpdateOneTask(
-					bson.M{"_id": depTaskIds[0]},
+					bson.M{"_id": depTaskIds[0].TaskId},
 					bson.M{
 						"$set": bson.M{
 							"status": evergreen.TaskSucceeded,
@@ -150,7 +155,7 @@ func TestDependenciesMet(t *testing.T) {
 					},
 				), ShouldBeNil)
 				So(UpdateOneTask(
-					bson.M{"_id": depTaskIds[1]},
+					bson.M{"_id": depTaskIds[1].TaskId},
 					bson.M{
 						"$set": bson.M{
 							"status": evergreen.TaskSucceeded,
@@ -158,7 +163,7 @@ func TestDependenciesMet(t *testing.T) {
 					},
 				), ShouldBeNil)
 				So(UpdateOneTask(
-					bson.M{"_id": depTaskIds[2]},
+					bson.M{"_id": depTaskIds[2].TaskId},
 					bson.M{
 						"$set": bson.M{
 							"status": evergreen.TaskFailed,
@@ -167,7 +172,7 @@ func TestDependenciesMet(t *testing.T) {
 				), ShouldBeNil)
 
 				dependencyCache := make(map[string]Task)
-				task.DependsOn = []string{depTaskIds[0], depTaskIds[1],
+				task.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1],
 					depTaskIds[2]}
 				met, err := task.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
@@ -175,11 +180,10 @@ func TestDependenciesMet(t *testing.T) {
 
 				// remove the failed task from the dependencies (but not from
 				// the cache).  it should be ignored in the next pass
-				task.DependsOn = []string{depTaskIds[0], depTaskIds[1]}
+				task.DependsOn = []Dependency{depTaskIds[0], depTaskIds[1]}
 				met, err = task.DependenciesMet(dependencyCache)
 				So(err, ShouldBeNil)
 				So(met, ShouldBeTrue)
-
 			})
 	})
 }
@@ -423,7 +427,10 @@ func TestSetTaskActivated(t *testing.T) {
 			Id:            taskId,
 			ScheduledTime: testTime,
 			BuildId:       buildId,
-			DependsOn:     []string{"t2", "t3"},
+			DependsOn: []Dependency{
+				{"t2", evergreen.TaskSucceeded},
+				{"t3", evergreen.TaskSucceeded},
+			},
 		}
 
 		b := &build.Build{

@@ -17,6 +17,8 @@ import (
 
 const (
 	AllDependencies = "*"
+	AllVariants     = "*"
+	AllStatuses     = "*"
 )
 
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
@@ -286,7 +288,8 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	}
 
 	// create the new tasks for the build
-	tasks, err := createTasksForBuild(project, buildVariant, b, v, taskNames)
+	tasks, err := createTasksForBuild(
+		project, buildVariant, b, v, BuildTaskIdTable(project, v), taskNames)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tasks for build %v: %v",
 			b.Id, err)
@@ -315,8 +318,8 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 // CreateBuildFromVersion creates a build given all of the necessary information
 // from the corresponding version and project and a list of tasks.
-func CreateBuildFromVersion(project *Project, v *version.Version, buildName string,
-	activated bool, taskNames []string) (string, error) {
+func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable,
+	buildName string, activated bool, taskNames []string) (string, error) {
 
 	evergreen.Logger.Logf(slogger.DEBUG, "Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
@@ -359,7 +362,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, buildName stri
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
 
 	// create all of the necessary tasks for the build
-	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, taskNames)
+	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, tt, taskNames)
 	if err != nil {
 		return "", fmt.Errorf("error creating tasks for build %v: %v", b.Id, err)
 	}
@@ -391,7 +394,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, buildName stri
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant,
-	b *build.Build, v *version.Version, taskNames []string) ([]*Task, error) {
+	b *build.Build, v *version.Version, tt TaskIdTable, taskNames []string) ([]*Task, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -407,25 +410,10 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		}
 	}
 
-	// create a map of display name -> task id for all of the tasks we are
-	// going to create.  we do this ahead of time so we can access it for the
-	// dependency lists.
-	taskIdsByDisplayName := map[string]string{}
-	for _, task := range tasksToCreate {
-		taskId := util.CleanName(
-			fmt.Sprintf("%v_%v_%v_%v_%v",
-				project.Identifier,
-				b.BuildVariant,
-				task.Name,
-				v.Revision,
-				v.CreateTime.Format(build.IdTimeLayout)))
-		taskIdsByDisplayName[task.Name] = taskId
-	}
-
-	// if any tasks already exist in the build, add them to the map
+	// if any tasks already exist in the build, add them to the id table
 	// so they can be used as dependencies
 	for _, task := range b.Tasks {
-		taskIdsByDisplayName[task.DisplayName] = task.Id
+		tt.AddId(b.BuildVariant, task.DisplayName, task.Id)
 	}
 
 	// create and insert all of the actual tasks
@@ -449,29 +437,62 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 				v.Id)
 		}
 
-		newTask := createOneTask(taskIdsByDisplayName[task.Name], task, project, buildVariant, b, v)
+		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
 
 		// set the new task's dependencies
+		// TODO encapsulate better
 		if len(taskSpec.DependsOn) == 1 &&
-			taskSpec.DependsOn[0].Name == AllDependencies {
+			taskSpec.DependsOn[0].Name == AllDependencies &&
+			taskSpec.DependsOn[0].Variant != AllVariants {
 			// the task depends on all of the other tasks in the build
-			newTask.DependsOn = make([]string, 0, len(tasksToCreate)-1)
+			newTask.DependsOn = make([]Dependency, 0, len(tasksToCreate)-1)
 			for _, dep := range tasksToCreate {
+				status := evergreen.TaskSucceeded
+				if taskSpec.DependsOn[0].Status != "" {
+					status = taskSpec.DependsOn[0].Status
+				}
+				newDep := Dependency{
+					TaskId: tt.GetId(b.BuildVariant, dep.Name),
+					Status: status,
+				}
 				if dep.Name != newTask.DisplayName {
-					newTask.DependsOn = append(newTask.DependsOn,
-						taskIdsByDisplayName[dep.Name])
+					newTask.DependsOn = append(newTask.DependsOn, newDep)
 				}
 			}
-
 		} else {
 			// the task has specific dependencies
-			newTask.DependsOn = make([]string, 0, len(taskSpec.DependsOn))
+			newTask.DependsOn = make([]Dependency, 0, len(taskSpec.DependsOn))
 			for _, dep := range taskSpec.DependsOn {
-				// only add as a dependency if the dependency is being created
-				if taskIdsByDisplayName[dep.Name] != "" {
-					newTask.DependsOn = append(newTask.DependsOn,
-						taskIdsByDisplayName[dep.Name])
+				// only add as a dependency if the dependency is valid/exists
+				status := evergreen.TaskSucceeded
+				if dep.Status != "" {
+					status = dep.Status
 				}
+				bv := b.BuildVariant
+				if dep.Variant != "" {
+					bv = dep.Variant
+				}
+
+				newDeps := []Dependency{}
+
+				if dep.Variant == AllVariants {
+					// for * case, we need to add all variants of the task
+					ids := tt.GetIdsForAllVariants(b.BuildVariant, dep.Name)
+					for _, id := range ids {
+						newDeps = append(newDeps, Dependency{TaskId: id, Status: status})
+					}
+				} else {
+					// general case
+					newDep := Dependency{
+						TaskId: tt.GetId(bv, dep.Name),
+						Status: status,
+					}
+					if newDep.TaskId != "" {
+						newDeps = []Dependency{newDep}
+					}
+				}
+
+				newTask.DependsOn = append(newTask.DependsOn, newDeps...)
 			}
 		}
 

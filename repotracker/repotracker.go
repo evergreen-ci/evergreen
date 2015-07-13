@@ -415,11 +415,15 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 // createVersionItems populates and stores all the tasks and builds for a version according to
 // the given project config.
 func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
+	// generate all task Ids so that we can easily reference them for dependencies
+	taskIdTable := model.BuildTaskIdTable(project, v)
+
+	// create all builds for the version
 	for _, buildvariant := range project.BuildVariants {
 		if buildvariant.Disabled {
 			continue
 		}
-		buildId, err := model.CreateBuildFromVersion(project, v, buildvariant.Name, false, nil)
+		buildId, err := model.CreateBuildFromVersion(project, v, taskIdTable, buildvariant.Name, false, nil)
 		if err != nil {
 			return err
 		}

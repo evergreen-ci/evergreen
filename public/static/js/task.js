@@ -298,6 +298,18 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
       alert('Error getting task dependencies: ' + JSON.stringify(data));
     });
 
+    $scope.isMet = function(dependency) {
+      // check if a dependency is met, unmet, or in progress
+      if (dependency.status != "failed" && dependency.status != "success") {
+        // if we didn't succeed or fail, don't report anything
+        return "";
+      }
+      if (dependency.status == dependency.required || dependency.required == "*") {
+        return "met";
+      }
+      return "unmet";
+    };
+
     $scope.timeTaken = $scope.task.time_taken
 
     if ($scope.task.status === 'started' || $scope.task.status === 'dispatched') {
