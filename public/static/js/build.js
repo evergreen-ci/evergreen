@@ -1,4 +1,4 @@
-function BuildVariantHistoryController($scope, $http, $timeout, $window) {
+function BuildVariantHistoryController($scope, $http, $filter, $timeout, $window) {
   $scope.userTz = $window.userTz;
   $scope.builds = [];
   $scope.buildId = "";
@@ -10,7 +10,7 @@ function BuildVariantHistoryController($scope, $http, $timeout, $window) {
   };
 
   $scope.checkTaskHidden = function(task) {
-      return !task.activated;
+    return !task.activated;
   };
 
   var computeBuildResults = function(buildData) {
@@ -23,9 +23,9 @@ function BuildVariantHistoryController($scope, $http, $timeout, $window) {
       }
 
       $scope.buildResults[build._id].push({
-        "class" : build.tasks[j].status,
-        "tooltip" : build.tasks[j].display_name + " - " + build.tasks[j].status,
-        "link" : '/task/' + build.tasks[j].id
+        "class": $filter('statusFilter')(build.tasks[j]),
+        "tooltip": build.tasks[j].display_name + " - " + $filter('statusLabel')(build.tasks[j]),
+        "link": '/task/' + build.tasks[j].id
       });
     }
   };
@@ -54,12 +54,12 @@ function BuildVariantHistoryController($scope, $http, $timeout, $window) {
 
   $scope.loadHistory = function() {
     $http.get('/json/build_history/' + $scope.buildId)
-    .success(function(data) {
-      $scope.setBuilds(data);
-    })
-    .error(function(data) {
-      console.log("Error getting build history: " + data);
-    });
+      .success(function(data) {
+        $scope.setBuilds(data);
+      })
+      .error(function(data) {
+        console.log("Error getting build history: " + data);
+      });
   };
 
 
@@ -83,13 +83,13 @@ function BuildViewController($scope, $http, $timeout, mciTime, $window) {
   $scope.setBuild = function(build) {
     $scope.build = build;
     $scope.commit = {
-      message : $scope.build.Version.message,
-      author : $scope.build.Version.author,
-      author_email : $scope.build.Version.author_email,
-      push_time : $scope.build.Version.create_time,
-      gitspec : $scope.build.Build.gitspec,
-      repo_owner : $scope.build.repo_owner,
-      repo_name : $scope.build.repo_name
+      message: $scope.build.Version.message,
+      author: $scope.build.Version.author,
+      author_email: $scope.build.Version.author_email,
+      push_time: $scope.build.Version.create_time,
+      gitspec: $scope.build.Build.gitspec,
+      repo_owner: $scope.build.repo_owner,
+      repo_name: $scope.build.repo_name
     };
 
     $scope.computed = {};
@@ -104,12 +104,12 @@ function BuildViewController($scope, $http, $timeout, mciTime, $window) {
 
     if ($scope.build.PatchInfo) {
       $scope.showBaseCommitLink = $scope.build.PatchInfo.BaseBuildId !== '';
-    }   
+    }
 
     // Initialize to 1 so we avoid divide-by-zero errors
     $scope.computed.maxTaskTime = 1;
     for (var i = 0; i < build.Tasks.length; ++i) {
-      if (build.Tasks[i].Task.status === 'started' || build.Tasks[i].Task.status === 'dispatched') { 
+      if (build.Tasks[i].Task.status === 'started' || build.Tasks[i].Task.status === 'dispatched') {
         var d = new Date(build.Tasks[i].Task.start_time).getTime();
         if (build.CurrentTime && d) {
           build.Tasks[i].Task.time_taken = (build.CurrentTime - d) * 1000 * 1000;

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -43,10 +44,11 @@ type waterfallData struct {
 
 // Waterfall-specific representation of a single task
 type waterfallTask struct {
-	Id          string        `json:"id"`
-	Status      string        `json:"status"`
-	DisplayName string        `json:"display_name"`
-	TimeTaken   time.Duration `json:"time_taken"`
+	Id            string                  `json:"id"`
+	Status        string                  `json:"status"`
+	StatusDetails apimodels.TaskEndDetail `json:"task_end_details"`
+	DisplayName   string                  `json:"display_name"`
+	TimeTaken     time.Duration           `json:"time_taken"`
 }
 
 // Waterfall-specific representation of a single build
@@ -213,10 +215,11 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 				// add the tasks to the build
 				for _, task := range build.Tasks {
 					taskForWaterfall := waterfallTask{
-						Id:          task.Id,
-						Status:      task.Status,
-						DisplayName: task.DisplayName,
-						TimeTaken:   task.TimeTaken,
+						Id:            task.Id,
+						Status:        task.Status,
+						StatusDetails: task.StatusDetails,
+						DisplayName:   task.DisplayName,
+						TimeTaken:     task.TimeTaken,
 					}
 
 					// if the task is inactive, set its status to inactive
@@ -224,8 +227,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 						taskForWaterfall.Status = InactiveStatus
 					}
 
-					buildForWaterfall.Tasks = append(buildForWaterfall.Tasks,
-						taskForWaterfall)
+					buildForWaterfall.Tasks = append(buildForWaterfall.Tasks, taskForWaterfall)
 				}
 
 				activeVersion.Builds =

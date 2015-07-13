@@ -47,7 +47,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Variants    map[string]model.BuildVariant
 		Tasks       []interface{}
 	}{projCtx, GetUser(r), versionAsUI, variantMappings, tasksList}, "base",
-		"patch_new.html", "base_angular.html", "menu.html")
+		"patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {

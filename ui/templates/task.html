@@ -47,7 +47,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
         <div ng-repeat="revision in revisionsForDate.revisions" 
             class="drawer-item"
-            ng-class="{ 'drawer-item-highlighted': isCurrent(revision), }">
+            ng-class="{ 'drawer-item-highlighted': isCurrent(revision) }">
             <revision-blurb linktype="'task'" linkid="revision.task.id" revision="revision" task="task"><revision-blurb>
         </div>
       </div>
@@ -84,19 +84,11 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       [[task.display_name]]
     </li>
   </ol>
-
   <div class="row">
     <div class="col-lg-7">
       <header class="clearfix">
         <h1 class="one-liner">
-          <span class="label status-label started" ng-show="task.status == 'started'">Started</span>
-          <span class="label status-label unstarted" ng-show="task.status == 'undispatched' && task.activated">Scheduled</span>
-          <span class="label status-label unstarted" ng-show="task.status == 'undispatched' && !task.activated && task.dispatch_time == 0">Not Scheduled</span>
-          <span class="label status-label unstarted" ng-show="task.status == 'undispatched' && !task.activated && task.dispatch_time != 0">Aborted</span>
-          <span class="label status-label failed" ng-show="task.status == 'failed' && !task.task_end_details.timed_out">Failed</span>
-          <span class="label status-label failed" ng-show="task.status == 'failed' && task.task_end_details.timed_out && task.task_end_details.timeout_stage != 'heartbeat'">Timed Out</span>
-          <span class="label status-label failed" ng-show="task.status == 'failed' && task.task_end_details.timed_out && task.task_end_details.timeout_stage == 'heartbeat'">Unresponsive</span>
-          <span class="label status-label success" ng-show="task.status == 'success'">Success</span>
+          <span class="label status-label" ng-class="task | statusFilter">[[task | statusLabel]]</span>
           [[task.display_name]] <span class="text-muted">on</span> [[task.build_variant_display]]
         </h1>
 
@@ -214,14 +206,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
           
           <div class="mci-pod">
             <div ng-repeat="dependency in dependencies">
-              <span class="label started" ng-show="dependency.status == 'started'">Started</span>
-              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && dependency.activated">Scheduled</span>
-              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.activated && task.dispatch_time == 0">Not Scheduled</span>
-              <span class="label unstarted" ng-show="dependency.status == 'undispatched' && !dependency.activated && task.dispatch_time != 0">Aborted</span>
-              <span class="label failed" ng-show="dependency.status == 'failed' && !dependency.status_details.timed_out">Failed</span>
-              <span class="label failed" ng-show="dependency.status == 'failed' && dependency.status_details.timed_out">Timed Out</span>
-              <span class="label success" ng-show="dependency.status == 'success'">Success</span>
-              <span class="label canceled" ng-show="dependency.status == 'canceled'">Canceled</span>
+              <span class="label [[dependency | statusFilter]]">[[dependency | statusLabel]]</span>
               <span style="margin-left: 20px">
                 <a ng-href="/task/[[dependency.id]]">[[dependency.display_name]]</a>
               </span>

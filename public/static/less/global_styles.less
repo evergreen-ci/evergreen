@@ -22,6 +22,7 @@
 // Other Colors (from MMS)
 @red: #ed271c;
 @lightRed: #ffeaea;
+@purple: #800080;
 @yellow: #ffb618;
 @pw: #fff;
 @cautionOrange: #ffbc91;
@@ -49,6 +50,7 @@
 // Styling for execution results
 @success-text: #0ED400;
 @failed-text: #F24738;
+@system-failed-text: @purple;
 @cancelled-text: #F10FF2;
 @started-text: #F29200;
 @not-started-text: #808080;
@@ -66,6 +68,7 @@
 
 @default-bg-color: @gray5;
 @started-bg-color: @yellow;
+@sys-failure-bg-color: @purple;
 
 @default-text-color: #888;
 
@@ -300,6 +303,12 @@ h3.section-heading {
 .progress-bar-success {
     background-color: @successGreen;
 }
+.progress-bar-system-failed {
+    background-color: @purple;
+}
+.progress-bar-failed {
+    background-color: @errorRed;
+}
 
 // for wrapping a status label
 .status-label {
@@ -384,10 +393,10 @@ h3.section-heading {
     border: 1px solid @failed-text;
 }
 
-.block-status-cancelled {
+.block-status-system-failed {
     color: black;
-    background-color: @cancelled-text;
-    border: 1px solid @cancelled-text;
+    background-color: @system-failed-text;
+    border: 1px solid @system-failed-text;
 }
 
 .block-status-started {
@@ -418,6 +427,9 @@ h3.section-heading {
 }
 .started {
     background-color: @started-bg-color;
+}
+.system-failed {
+    background-color: @sys-failure-bg-color;
 }
 .unstarted {
     background-color: @default-bg-color;
@@ -454,7 +466,6 @@ h3.section-heading {
 .result-slice {
     height: 23px;
     float: left;
-    background-color: @gray5;
     border-left: 1px solid rgba(255,255,255,0.75);
 
     &.success {
@@ -462,6 +473,10 @@ h3.section-heading {
     }
     &.failed {
         background-color: @errorRed;
+        color: white;
+    }
+    &.system-failed {
+        background-color: @sys-failure-bg-color;
         color: white;
     }
     &.started {

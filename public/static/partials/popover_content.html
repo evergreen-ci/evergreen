@@ -1,7 +1,7 @@
 <div>
   <h6><strong>[[currentTaskName]]</strong> on <strong>[[currentBuildVariant]]</strong></h6>
   <div class="current-task-run">
-    <span class="tooltip-task-status" ng-class="getTooltipClass(currentCell.current.status)">&nbsp;</span>
+    <span class="tooltip-task-status" ng-class="currentCell.current | statusFilter">&nbsp;</span>
     <a href="/task/[[currentCell.current.id]]" class="gitspec">[[currentCell.current.revision.substr(0,5)]]</a>
     <span>[[getRevisionMessage(currentCell.current.revision)]]</span>
   </div>
@@ -9,7 +9,7 @@
   <ul class="tooltip-tasks">
     <li class="tooltip-task" ng-repeat="task in currentCell.prevTasks">
       <div class="test-result">
-        <span class="tooltip-task-status" ng-class="getTooltipClass(task.status)">&nbsp;</span>
+        <span class="tooltip-task-status" ng-class="task | statusFilter">&nbsp;</span>
         <span class="gitspec"><a href="/task/[[task.id]]">[[task.revision.substr(0,5)]]</a></span><span class="commitmsg">[[getRevisionMessage(task.revision)]]</span>
       </div>
     </li>

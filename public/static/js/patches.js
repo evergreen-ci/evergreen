@@ -1,4 +1,4 @@
-mciModule.controller('PatchesController', function($scope, $http, $window,
+mciModule.controller('PatchesController', function($scope, $filter, $http, $window,
   $location, $rootScope) {
   $scope.userTz = $window.userTz;
 
@@ -22,30 +22,34 @@ mciModule.controller('PatchesController', function($scope, $http, $window,
     $scope.uiPatches = [];
     $scope.patchesError = null;
 
-    var params = { params: { page: $scope.currentPage } };
+    var params = {
+      params: {
+        page: $scope.currentPage
+      }
+    };
     $http.get(endpoint, params).
-      success(function(data) {
-        $scope.loading = false;
-        $scope.versionsMap = data['VersionsMap'];
-        $scope.uiPatches = data['UIPatches'];
+    success(function(data) {
+      $scope.loading = false;
+      $scope.versionsMap = data['VersionsMap'];
+      $scope.uiPatches = data['UIPatches'];
 
-        _.each($scope.versionsMap, function(version) {
-          _.each(version.Builds, function(build) {
-            build.taskResults = [];
-            _.each(build.Tasks, function(task) {
-              build.taskResults.push({
-                link: '/task/' + task.Task.id,
-                tooltip: task.Task.display_name,
-                'class': task.Task.status
-              });
+      _.each($scope.versionsMap, function(version) {
+        _.each(version.Builds, function(build) {
+          build.taskResults = [];
+          _.each(build.Tasks, function(task) {
+            build.taskResults.push({
+              link: '/task/' + task.Task.id,
+              tooltip: task.Task.display_name,
+              'class': $filter('statusFilter')(task.Task),
             });
           });
         });
-      }).
-      error(function(err) {
-        $scope.loading = false;
-        $scope.patchesError = err;
       });
+    }).
+    error(function(err) {
+      $scope.loading = false;
+      $scope.patchesError = err;
+    });
   };
 
   $rootScope.$on('$locationChangeStart', function() {
@@ -64,4 +68,3 @@ mciModule.controller('PatchesController', function($scope, $http, $window,
   $scope.currentPage = $location.search()['page'] || 0;
   $scope.loadCurrentPage();
 });
-

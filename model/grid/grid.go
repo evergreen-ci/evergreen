@@ -2,6 +2,7 @@ package grid
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -19,9 +20,10 @@ type CellId struct {
 // CellHistory holds historical data for each cell on the
 // Grid page.
 type CellHistory struct {
-	Id       string `bson:"d" json:"id"`
-	Revision string `bson:"v" json:"revision"`
-	Status   string `bson:"s" json:"status"`
+	Id            string                  `bson:"d" json:"id"`
+	Revision      string                  `bson:"v" json:"revision"`
+	Status        string                  `bson:"s" json:"status"`
+	StatusDetails apimodels.TaskEndDetail `bson:"e" json:"task_end_details"`
 }
 
 // Cell contains information for each cell on the Grid page.
@@ -90,6 +92,7 @@ func FetchCells(current version.Version, depth int) (Grid, error) {
 			"r":   "$" + build.RevisionKey,
 			"d":   "$" + build.TasksKey + "." + build.TaskCacheDisplayNameKey,
 			"st":  "$" + build.TasksKey + "." + build.TaskCacheStatusKey,
+			"ed":  "$" + build.TasksKey + "." + build.TaskCacheStatusDetailsKey,
 			"id":  "$" + build.TasksKey + "." + build.TaskCacheIdKey,
 		}},
 		// Stage 6: Group the tasks by variant and display name. For each group,
@@ -103,6 +106,7 @@ func FetchCells(current version.Version, depth int) (Grid, error) {
 			"h": bson.M{
 				"$push": bson.M{
 					"s": "$st",
+					"e": "$ed",
 					"d": "$id",
 					"v": "$r",
 				},

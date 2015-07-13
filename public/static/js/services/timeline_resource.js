@@ -1,4 +1,4 @@
-mciModule.factory('$timeline', function($http) {
+mciModule.factory('$timeline', function($http, $filter) {
   var data = {
     Versions: []
   };
@@ -11,15 +11,17 @@ mciModule.factory('$timeline', function($http) {
     };
 
     $http.
-      get(endpoint, { params: params }).
-      success(function(result) {
-        data.TotalVersions = result.TotalVersions;
-        data.Versions =
-          data.Versions.concat(result.Versions);
-      }).
-      error(function(error) {
-        data.error = error.message;
-      });
+    get(endpoint, {
+      params: params
+    }).
+    success(function(result) {
+      data.TotalVersions = result.TotalVersions;
+      data.Versions =
+        data.Versions.concat(result.Versions);
+    }).
+    error(function(error) {
+      data.error = error.message;
+    });
   };
 
   data.loadPage = function(project, limit, skip) {
@@ -30,27 +32,29 @@ mciModule.factory('$timeline', function($http) {
 
     data.Versions = [];
     $http.
-      get(endpoint, { params: params }).
-      success(function(result) {
-        data.TotalVersions = result.TotalVersions;
-        data.Versions = result.Versions;
+    get(endpoint, {
+      params: params
+    }).
+    success(function(result) {
+      data.TotalVersions = result.TotalVersions;
+      data.Versions = result.Versions;
 
-        _.each(data.Versions, function(version) {
-          _.each(version.Builds, function(build) {
-            build.taskResults = [];
-            _.each(build.Build.tasks, function(task) {
-              build.taskResults.push({
-                link: '/task/' + task.id,
-                tooltip: task.display_name,
-                'class': task.status
-              });
+      _.each(data.Versions, function(version) {
+        _.each(version.Builds, function(build) {
+          build.taskResults = [];
+          _.each(build.Build.tasks, function(task) {
+            build.taskResults.push({
+              link: '/task/' + task.id,
+              tooltip: task.display_name,
+              'class': $filter('statusFilter')(task),
             });
           });
         });
-      }).
-      error(function(error) {
-        data.error = error.message;
       });
+    }).
+    error(function(error) {
+      data.error = error.message;
+    });
   };
 
   return data;

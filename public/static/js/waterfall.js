@@ -1,5 +1,5 @@
 mciModule
-  // top-level controller for the waterfall
+// top-level controller for the waterfall
   .controller('WaterfallCtrl', function($scope, $window, $location, $locationHash) {
 
     // load in the build variants, sorting 
@@ -20,7 +20,7 @@ mciModule
         for (var i = 0; i < $scope.buildVariants.length; i++) {
           version.builds.push({
             build_variant: $scope.buildVariants[i]
-          })   
+          })
         }
         return;
       }
@@ -39,13 +39,15 @@ mciModule
       // missing a build for the variant, insert a blank one
       for (var i = 0, l = $scope.buildVariants.length; i < l; i++) {
         var buildVariantName = $scope.buildVariants[i];
-        if (!version.rolled_up && 
-            (!version.builds[i] ||  
-             version.builds[i].build_variant !== buildVariantName)) {
-          version.builds.splice(i, 0, { build_variant: buildVariantName });
+        if (!version.rolled_up &&
+          (!version.builds[i] ||
+            version.builds[i].build_variant !== buildVariantName)) {
+          version.builds.splice(i, 0, {
+            build_variant: buildVariantName
+          });
         }
       }
-      
+
 
     });
 
@@ -84,11 +86,11 @@ mciModule
 
     // refs for the next and previous page of the waterfall
     $scope.previousPage = function() {
-      return getUrl() + '?skip=' + previousSkip + '#/filter/' + $scope.filter.variant + 
+      return getUrl() + '?skip=' + previousSkip + '#/filter/' + $scope.filter.variant +
         '/' + $scope.filter.task;
     };
     $scope.nextPage = function() {
-      return getUrl() + '?skip=' + nextSkip + '#/filter/' + $scope.filter.variant + 
+      return getUrl() + '?skip=' + nextSkip + '#/filter/' + $scope.filter.variant +
         '/' + $scope.filter.task;
     };
 
@@ -117,10 +119,10 @@ mciModule
         errorIcon = '<span><i class="icon-warning-sign" style="color:red" data-element-tooltip="body">&nbsp;</i></span>';
       }
       return '<div class="commit-meta"><div class="commit-date">' + (create_time ? create_time : '') + '</div>' +
-            '<a href="/version/' + id +'">' + errorIcon +
-            '<span class="monospace">' + revision.substring(0, 10) + '</span></a>' +
-            ' - ' + '<strong>' + author + '</strong></div>' +
-            '<p>' + message + '</p>';
+        '<a href="/version/' + id + '">' + errorIcon +
+        '<span class="monospace">' + revision.substring(0, 10) + '</span></a>' +
+        ' - ' + '<strong>' + author + '</strong></div>' +
+        '<p>' + message + '</p>';
     }
 
     return {
@@ -133,8 +135,8 @@ mciModule
         var popoverContent = '<ul class="githash-popover list-unstyled">';
         for (var i = 0; i < scope.version.messages.length; i++) {
           popoverContent += '<li>';
-          popoverContent += createPopoverInfo(scope.version.ids[i], 
-            scope.version.revisions[i], scope.version.authors[i], 
+          popoverContent += createPopoverInfo(scope.version.ids[i],
+            scope.version.revisions[i], scope.version.authors[i],
             scope.version.messages[i], $filter('date')(scope.version.create_times[i], 'short'),
             scope.version.errors[i]);
           popoverContent += '</li>';
@@ -169,11 +171,10 @@ mciModule
       restrict: 'E',
       scope: false,
       transclude: true, // so the task result directives can be put in the template
-      link: function(scope, element, attrs) {
-      },
+      link: function(scope, element, attrs) {},
       replace: true,
       template: '<div ng-transclude class="build-result"></div>'
-    }; 
+    };
   })
   // directive for a slice of a waterfall cell representing the result of a task
   .directive('taskResult', function($filter) {
@@ -183,10 +184,10 @@ mciModule
       link: function(scope, element, attrs) {
 
         // create the tooltip title
-        var title = scope.task.display_name + ' - ' + scope.task.status;
-        if (scope.task.status == 'success' || 
+        var title = scope.task.display_name + ' - ' + $filter('statusLabel')(scope.task);
+        if (scope.task.status == 'success' ||
           scope.task.status == 'failed') {
-            title += ' - ' + $filter('stringifyNanoseconds')(scope.task.time_taken);
+          title += ' - ' + $filter('stringifyNanoseconds')(scope.task.time_taken);
         }
 
         // init the element's tooltip
@@ -199,8 +200,8 @@ mciModule
 
       },
       replace: true,
-      template: '<a href="/task/[[task.id]]"'+
-          ' class="task-result [[task.status]]"></a>'
+      template: '<a href="/task/[[task.id]]"' +
+        ' class="task-result [[task | statusFilter]]"></a>'
     }
   })
   // directive for a smaller, mobile-friendly waterfall cell representing a build 
@@ -213,20 +214,20 @@ mciModule
       link: function(scope, element, attrs) {
         scope.failed = 0;
         scope.succeeded = 0;
-        if (scope.build.tasks) { 
-          scope.build.tasks.sort(function(a,b){
-            if(a.display_name=="compile"){
-              return -1
-            }else if(a.display_name=="push"){
-              return 1
-            }else if(b.display_name=="compile"){
-              return 1
-            }else if(b.display_name=="push"){
-              return -1
-            }
-            return a.display_name.localeCompare(b.display_name)
-          })
-          // compute the number of failed and succeeded tasks
+        if (scope.build.tasks) {
+          scope.build.tasks.sort(function(a, b) {
+              if (a.display_name == "compile") {
+                return -1
+              } else if (a.display_name == "push") {
+                return 1
+              } else if (b.display_name == "compile") {
+                return 1
+              } else if (b.display_name == "push") {
+                return -1
+              }
+              return a.display_name.localeCompare(b.display_name)
+            })
+            // compute the number of failed and succeeded tasks
           for (var i = 0; i < scope.build.tasks.length; i++) {
             switch (scope.build.tasks[i].status) {
               case "failed":
@@ -240,13 +241,13 @@ mciModule
 
           // don't display zero values 
           ['failed', 'succeeded'].
-            forEach(function(status) {
-              if (!scope[status]) {
-                scope[status] = '';
-              }      
-            });
+          forEach(function(status) {
+            if (!scope[status]) {
+              scope[status] = '';
+            }
+          });
         }
       },
       templateUrl: '/static/partials/build_summary.html'
-    };    
+    };
   });

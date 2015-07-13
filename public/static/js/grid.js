@@ -57,7 +57,10 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   // sort failures by number of failing tests
   $scope.failures = [];
   Object.keys(failures).forEach(function(t) {
-    $scope.failures.push({"task": t, "variants": failures[t]});
+    $scope.failures.push({
+      "task": t,
+      "variants": failures[t]
+    });
   });
 
   $scope.failures.sort(function(a, b) {
@@ -98,21 +101,9 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   $scope.buildVariants.sort();
 
   $scope.currentTask = null;
-  $scope.currentCell = "";
-  $scope.currentBuildVariant = "";
-  $scope.currentTaskName = "";
-
-  $scope.getTooltipClass = function(status) {
-    if (status == "undispatched") {
-      return "undispatched";
-    } else if (status == "success") {
-      return "success";
-    } else if (status == "failed") {
-      return "failed";
-    } else if (status == "started" || status == "dispatched") {
-      return "started";
-    }
-  };
+  $scope.currentCell = '';
+  $scope.currentBuildVariant = '';
+  $scope.currentTaskName = '';
 
   $scope.getRevisionMessage = function(revision) {
     return $scope.allVersions[revision].message;
@@ -131,13 +122,20 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
 
   function cellStatus(history) {
     for (var i = 0; i < history.length; i++) {
-      if (history[i].status == "success") {
+      if (history[i].status == 'success') {
         return history[i].status;
-      } else if (history[i].status == "failed") {
-        return "failure";
+      } else if (history[i].status == 'failed') {
+        if ('task_end_details' in history[i]) {
+          if ('type' in history[i].task_end_details) {
+            if (history[i].task_end_details.type == 'system') {
+              return 'system-failed';
+            }
+          }
+        }
+        return 'failure';
       }
     }
-    return "undispatched";
+    return 'undispatched';
   }
 
   $scope.highlightHeader = function(row, col) {
@@ -148,20 +146,27 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   };
 
   $scope.getGridClass = function(variant, task) {
-    var cellClass = "";
+    var cellClass = '';
     if (!$scope.grid[variant])
-      return "skipped";
+      return 'skipped';
     var cell = $scope.grid[variant][task];
-    if (!cell) return "skipped";
+    if (!cell) return 'skipped';
     if (cell.current) {
-      if (cell.current.status == "undispatched") {
-        cellClass = "was-" + cell.prevStatus;
-      } else if (cell.current.status == "failed") {
-        cellClass = "failure";
-      } else if (cell.current.status == "success") {
-        cellClass = "success";
-      } else if (cell.current.status == "started" || cell.current.status == "dispatched") {
-        cellClass = "was-" + cell.prevStatus + " started";
+      if (cell.current.status == 'undispatched') {
+        cellClass = 'was-' + cell.prevStatus;
+      } else if (cell.current.status == 'failed') {
+        cellClass = 'failure';
+        if ('task_end_details' in cell.current) {
+          if ('type' in cell.current.task_end_details) {
+            if (cell.current.task_end_details.type == 'system') {
+              cellClass = 'system-failed';
+            }
+          }
+        }
+      } else if (cell.current.status == 'success') {
+        cellClass = 'success';
+      } else if (cell.current.status == 'started' || cell.current.status == 'dispatched') {
+        cellClass = 'was-' + cell.prevStatus + ' started';
       }
       return cellClass;
     } else {

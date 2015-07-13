@@ -170,7 +170,14 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 		//Use the build's task cache, instead of querying for each individual task.
 		uiTasks := make([]uiTask, len(build.Tasks))
 		for taskIdx, task := range build.Tasks {
-			uiTasks[taskIdx] = uiTask{Task: model.Task{Id: task.Id, Status: task.Status, DisplayName: task.DisplayName}}
+			uiTasks[taskIdx] = uiTask{
+				Task: model.Task{
+					Id:          task.Id,
+					Status:      task.Status,
+					Details:     task.StatusDetails,
+					DisplayName: task.DisplayName,
+				},
+			}
 		}
 		uiTasks = sortUiTasks(uiTasks)
 

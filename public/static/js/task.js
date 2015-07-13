@@ -15,35 +15,34 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
   // grouped by date, for front-end display
   function groupHistory(history) {
 
-      // group the revisions by date, ordered backwards by date
-      var groupedRevisions = [];
-      var datesSeen = {}; // to avoid double-entering dates
-      history.forEach(function(revision) {
-        var date = revision.push_time.substring(0, 10);
+    // group the revisions by date, ordered backwards by date
+    var groupedRevisions = [];
+    var datesSeen = {}; // to avoid double-entering dates
+    history.forEach(function(revision) {
+      var date = revision.push_time.substring(0, 10);
 
-        // if we haven't seen the date, add a new entry for it
-        if (!datesSeen[date]) {
-          groupedRevisions.push({
-            date: date,
-            revisions: [],
-          }); 
-          datesSeen[date] = true;
-        }
+      // if we haven't seen the date, add a new entry for it
+      if (!datesSeen[date]) {
+        groupedRevisions.push({
+          date: date,
+          revisions: [],
+        });
+        datesSeen[date] = true;
+      }
 
-        // push the revision onto its appropriate date group (always the
-        // last in the list)
-        groupedRevisions[groupedRevisions.length - 1].revisions.push(revision);
-      });
+      // push the revision onto its appropriate date group (always the
+      // last in the list)
+      groupedRevisions[groupedRevisions.length - 1].revisions.push(revision);
+    });
 
-      return groupedRevisions;
+    return groupedRevisions;
 
   }
 
   // make a backend call to get the drawer contents
   function fetchHistory() {
-    historyDrawerService.fetchTaskHistory($scope.task.id, 'surround', 20,
-      {
-        success: function(data) {
+    historyDrawerService.fetchTaskHistory($scope.task.id, 'surround', 20, {
+      success: function(data) {
 
         // save the revisions as a list
         $scope.revisions = data.revisions;
@@ -53,7 +52,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
         // scroll to the relevant element
         $timeout(
-          function() { 
+          function() {
             var currentRevisionDomEl = $('.drawer-item-highlighted')[0];
             if (!currentRevisionDomEl) {
               return;
@@ -61,14 +60,14 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
             var offsetTop = $(currentRevisionDomEl).position().top;
             var drawerContentsHeight = drawerContentsEl.height();
             if (offsetTop >= drawerContentsHeight) {
-              drawerContentsEl.scrollTop(offsetTop); 
+              drawerContentsEl.scrollTop(offsetTop);
             }
           }, 500)
-        },
-        error: function(data) {
-          console.log('error fetching history: ' + data);
-        }
-      });
+      },
+      error: function(data) {
+        console.log('error fetching history: ' + data);
+      }
+    });
 
   }
 
@@ -87,35 +86,34 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       // get a task id from it 
       var anchorId = mostRecentRevision.task.id;
 
-      historyDrawerService.fetchTaskHistory(anchorId, 'after', 20,
-        {
-          success: function(data) {
-           // no computation necessary
-           if (!data) {
-             return
-           }
-
-           // place on the beginning of the stored revisions
-           $scope.revisions = data.revisions.concat($scope.revisions);
-
-           // regroup
-           $scope.groupedRevisions = groupHistory($scope.revisions);
-
-          },
-          error: function(data) {
-            console.log('error fetching later revisions: ' + data);
+      historyDrawerService.fetchTaskHistory(anchorId, 'after', 20, {
+        success: function(data) {
+          // no computation necessary
+          if (!data) {
+            return
           }
-        })
+
+          // place on the beginning of the stored revisions
+          $scope.revisions = data.revisions.concat($scope.revisions);
+
+          // regroup
+          $scope.groupedRevisions = groupHistory($scope.revisions);
+
+        },
+        error: function(data) {
+          console.log('error fetching later revisions: ' + data);
+        }
+      })
     }, 500, true);
 
   // function fired when scrolling down hits the bottom of the frame,
   // loads more revisions asynchronously
   var fetchEarlierRevisions = _.debounce(
-      
+
     function() {
       // get the least recent revision in the history  
-      var leastRecentRevision = ($scope.revisions && 
-          $scope.revisions[$scope.revisions.length-1]);
+      var leastRecentRevision = ($scope.revisions &&
+        $scope.revisions[$scope.revisions.length - 1]);
 
       // no history
       if (!leastRecentRevision) {
@@ -128,8 +126,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       historyDrawerService.fetchTaskHistory(
         anchorId,
         'before',
-        20, 
-        {
+        20, {
           success: function(data) {
             // no computation necessary
             if (!data) {
@@ -172,7 +169,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       var evt = window.event || e;
       if (evt.wheelDelta) {
         if (evt.wheelDelta < 0) {
-          fetchEarlierRevisions();    
+          fetchEarlierRevisions();
         } else {
           fetchLaterRevisions();
         }
@@ -208,8 +205,8 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
       // we hit the top of the drawer
       fetchLaterRevisions();
 
-    } else if (drawerContentsEl.scrollTop() + 10 >= 
-        drawerContentsEl[0].scrollHeight - drawerContentsEl.height()) {
+    } else if (drawerContentsEl.scrollTop() + 10 >=
+      drawerContentsEl[0].scrollHeight - drawerContentsEl.height()) {
 
       // we hit the bottom of the drawer
       fetchEarlierRevisions();
@@ -222,7 +219,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
   var eopFilter = $filter('endOfPath');
   $scope.failuresTooltip = function(failures) {
-    return _.map(failures, function(failure) { 
+    return _.map(failures, function(failure) {
       return eopFilter(failure);
     }).join('\n');
   }
@@ -256,12 +253,23 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
     $scope.md5 = md5;
     $scope.maxTests = 1;
 
-    $scope.sortOrders = [
-      { name : "Status",      by : "status",        reverse : false },
-      { name : "Name",        by : "display_name",  reverse : false },
-      { name : "Time Taken",  by : "time_taken",    reverse : true  },
-      { name : "Sequence",    by : "",              reverse : true  }
-    ];
+    $scope.sortOrders = [{
+      name: 'Status',
+      by: 'status',
+      reverse: false
+    }, {
+      name: 'Name',
+      by: 'display_name',
+      reverse: false
+    }, {
+      name: 'Time Taken',
+      by: 'time_taken',
+      reverse: true
+    }, {
+      name: 'Sequence',
+      by: '',
+      reverse: true
+    }];
     (task.test_results || []).forEach(function(testResult) {
       testResult.time_taken = testResult.end - testResult.start;
       testResult.display_name = $filter('endOfPath')(testResult.test_file);
@@ -274,21 +282,21 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
       }
     }
     if (task.execution > 0) {
-        $scope.pastExecutions = [ ]
-        for (var i = 0; i < task.execution; i++) {
-            $scope.pastExecutions.push(i);
-        }
+      $scope.pastExecutions = []
+      for (var i = 0; i < task.execution; i++) {
+        $scope.pastExecutions.push(i);
+      }
     }
 
     $scope.sortBy = $scope.sortOrders[0];
     $scope.dependencies = [];
-    $http.get('/task/dependencies/' + task.id + '/' + task.execution ).
-        success(function(data) {
-          $scope.dependencies = data;
-        }).
-        error(function(data) {
-          alert("Error getting task dependencies: " + JSON.stringify(data));
-        });
+    $http.get('/task/dependencies/' + task.id + '/' + task.execution).
+    success(function(data) {
+      $scope.dependencies = data;
+    }).
+    error(function(data) {
+      alert('Error getting task dependencies: ' + JSON.stringify(data));
+    });
 
     $scope.timeTaken = $scope.task.time_taken
 
@@ -298,7 +306,7 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
         $scope.timeTaken = $scope.task.current_time - $scope.task.start_time;
         $scope.timeToCompletion = $scope.task.expected_duration - ($scope.task.current_time - $scope.task.start_time);
         if ($scope.timeToCompletion < 0) {
-          $scope.timeToCompletion = "unknown";
+          $scope.timeToCompletion = 'unknown';
         }
       }
       updateFunc();
@@ -318,10 +326,10 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
       return '#';
     }
     var projectComponents = $scope.task.project.split('-');
-    if (projectComponents[projectComponents.length-1] === 'master') {
-      projectComponents = projectComponents.slice(0, projectComponents.length-1);
+    if (projectComponents[projectComponents.length - 1] === 'master') {
+      projectComponents = projectComponents.slice(0, projectComponents.length - 1);
     }
-    return '//github.com/' + projectComponents.join('/') + '/commit/' + $scope.task.gitspec; 
+    return '//github.com/' + projectComponents.join('/') + '/commit/' + $scope.task.gitspec;
   };
 
   // Returns URL to task history page with a filter on the particular test
@@ -348,12 +356,12 @@ mciModule.directive('testsResultsBar', function($filter) {
           var successTimeTaken = 0;
           var failureTimeTaken = 0;
           _.each(testResults, function(result) {
-            switch(result.status) {
-              case "pass":
+            switch (result.status) {
+              case 'pass':
                 numSuccess++;
                 successTimeTaken += (result.end - result.start);
                 break;
-              case "fail":
+              case 'fail':
                 numFailed++;
                 failureTimeTaken += (result.end - result.start);
                 break;
@@ -362,10 +370,10 @@ mciModule.directive('testsResultsBar', function($filter) {
 
           successTimeTaken = $filter('nanoToSeconds')(successTimeTaken)
           failureTimeTaken = $filter('nanoToSeconds')(failureTimeTaken)
-          var successTitle = numSuccess + " test" + (numSuccess == 1 ? "" : "s") + " succeeded in " + $filter('stringifyNanoseconds')(successTimeTaken);
-          var failedTitle = numFailed + " test" + (numFailed == 1 ? "" : "s") + " failed in " + $filter('stringifyNanoseconds')(failureTimeTaken);
-          element.html( '<div class="progress-bar progress-bar-success" role="progressbar" style="width: ' + (numSuccess / testResults.length * 100) + '%" data-animation="" data-toggle="tooltip" title="' + successTitle + '"></div>' +
-                        '<div class="progress-bar progress-bar-danger" role="progressbar" style="width: ' + (numFailed / testResults.length * 100) + '%"  data-animation="" data-toggle="tooltip" title="' + failedTitle + '"></div>')
+          var successTitle = numSuccess + ' test' + (numSuccess == 1 ? '' : 's') + ' succeeded in ' + $filter('stringifyNanoseconds')(successTimeTaken);
+          var failedTitle = numFailed + ' test' + (numFailed == 1 ? '' : 's') + ' failed in ' + $filter('stringifyNanoseconds')(failureTimeTaken);
+          element.html('<div class="progress-bar progress-bar-success" role="progressbar" style="width: ' + (numSuccess / testResults.length * 100) + '%" data-animation="" data-toggle="tooltip" title="' + successTitle + '"></div>' +
+            '<div class="progress-bar progress-bar-danger" role="progressbar" style="width: ' + (numFailed / testResults.length * 100) + '%"  data-animation="" data-toggle="tooltip" title="' + failedTitle + '"></div>')
 
           $(element.children('*[data-toggle="tooltip"]')).each(function(i, el) {
             $(el).tooltip();
@@ -406,14 +414,14 @@ mciModule.directive('testResultBar', function($filter) {
         scope.timeTaken = timeTaken;
 
         switch (testResult.status) {
-          case "pass":
-            scope.progressBarClass = "progress-bar-success";
+          case 'pass':
+            scope.progressBarClass = 'progress-bar-success';
             break;
-          case "fail":
-            scope.progressBarClass = "progress-bar-danger";
+          case 'fail':
+            scope.progressBarClass = 'progress-bar-danger';
             break;
           default:
-            scope.progressBarClass = "progress-bar-default"
+            scope.progressBarClass = 'progress-bar-default';
         }
 
         var timeInNano = scope.timeTaken * 1000 * 1000 * 1000;
@@ -424,7 +432,7 @@ mciModule.directive('testResultBar', function($filter) {
       });
 
       scope.$watch('maxTestTime', function(maxTestTime) {
-        scope.barWidth =  scope.timeTaken / maxTestTime * 90;
+        scope.barWidth = scope.timeTaken / maxTestTime * 90;
         if (scope.barWidth < 5) {
           scope.barWidth = 5;
         }
@@ -469,25 +477,30 @@ mciModule.controller('TaskLogCtrl', function($scope, $timeout, $http, $location,
 
   $scope.getLogs = function() {
     $http.get('/json/task_log/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs).
-      success(function(data, status) {
-        if($scope.currentLogs == $scope.eventLogs){
-          $scope.eventLogData = data.reverse()
-        } else{
-          if (data && data.LogMessages) {
-            //read the log messages out, and reverse their order (since they are returned backwards)
-            $scope.logs = _.map(data.LogMessages, function(entry) {
-              var msg = entry.m.replace(/&#34;/g, '"');
-              var date = new Date(entry.ts);
-              return { message: msg, severity: entry.s, timestamp: date, version: entry.v };
-            });
-          } else {
-            $scope.logs = [];
-          }
+    success(function(data, status) {
+      if ($scope.currentLogs == $scope.eventLogs) {
+        $scope.eventLogData = data.reverse()
+      } else {
+        if (data && data.LogMessages) {
+          //read the log messages out, and reverse their order (since they are returned backwards)
+          $scope.logs = _.map(data.LogMessages, function(entry) {
+            var msg = entry.m.replace(/&#34;/g, '"');
+            var date = new Date(entry.ts);
+            return {
+              message: msg,
+              severity: entry.s,
+              timestamp: date,
+              version: entry.v
+            };
+          });
+        } else {
+          $scope.logs = [];
         }
-      }).
-      error(function(jqXHR, status, errorThrown) {
-        //alert('Error retrieving logs: ' + jqXHR);
-      });
+      }
+    }).
+    error(function(jqXHR, status, errorThrown) {
+      //alert('Error retrieving logs: ' + jqXHR);
+    });
 
     // If we already have an outstanding timeout, cancel it
     if ($scope.getLogsTimeout) {

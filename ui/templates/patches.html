@@ -80,7 +80,7 @@ Evergreen - Patches
     <ul ng-if="patch.Patch.Version">
       <li ng-repeat="build in versionsMap[patch.Patch.Version].Builds"
           class="timeline-build">
-        <a  id="[[build.Build._id]]"
+        <a id="[[build.Build._id]]"
             class="build-link status-[[build.Build.status]] block-status-[[build.Build.status]]"
             ng-href="/build/[[build.Build._id]]">
           [[build.Build.display_name]]

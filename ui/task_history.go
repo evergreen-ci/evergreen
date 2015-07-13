@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -43,10 +44,11 @@ type versionDrawerItem struct {
 // Represents a small amount of information about a task - used as part of the
 // task history to display a visual blurb.
 type taskBlurb struct {
-	Id       string   `json:"id"`
-	Variant  string   `json:"variant"`
-	Status   string   `json:"status"`
-	Failures []string `json:"failures"`
+	Id       string                  `json:"id"`
+	Variant  string                  `json:"variant"`
+	Status   string                  `json:"status"`
+	Details  apimodels.TaskEndDetail `json:"task_end_details"`
+	Failures []string                `json:"failures"`
 }
 
 // Serves the task history page itself.
@@ -541,18 +543,7 @@ func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []t
 			Id:      task.Id,
 			Variant: task.BuildVariant,
 			Status:  task.Status,
-		}
-
-		// modify the status if the task is timed out or inactive
-		if task.Details.TimedOut {
-			if task.Details.Description == model.AgentHeartbeat {
-				blurb.Status = "heartbeat_timeout"
-			} else {
-				blurb.Status = "timed_out"
-			}
-		}
-		if !task.Activated {
-			blurb.Status = "inactive"
+			Details: task.Details,
 		}
 
 		for _, result := range task.TestResults {

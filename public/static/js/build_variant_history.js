@@ -1,5 +1,5 @@
-mciModule.controller('BuildVariantHistoryController', function($scope, $window,
-    mciBuildVariantHistoryRestService) {
+mciModule.controller('BuildVariantHistoryController', function($scope, $filter, $window,
+  mciBuildVariantHistoryRestService) {
   $scope.buildVariant = $window.buildVariant;
   $scope.project = $window.project;
   $scope.taskNames = $window.taskNames;
@@ -14,7 +14,7 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $window,
       $scope.versionsByRevision[version.revision] = version;
     });
   };
-  
+
   var buildTasksByTaskNameCommitMap = function(tasksByCommit) {
     _.each(tasksByCommit, function(revisionToTasks) {
       var taskNameTaskMap = {};
@@ -23,7 +23,7 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $window,
       });
 
       $scope.tasksByTaskNameByCommit.push({
-        _id : revisionToTasks._id,
+        _id: revisionToTasks._id,
         tasksByTaskName: taskNameTaskMap
       });
     });
@@ -40,21 +40,19 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $window,
 
   $scope.getGridClass = function(cell) {
     if (cell) {
-      return cell.status;
+      return $filter('statusFilter')(cell);
     }
 
-    return "skipped"; 
+    return "skipped";
   };
 
   $scope.loadMore = function() {
     mciBuildVariantHistoryRestService.getBuildVariantHistory(
       $scope.project,
-      $scope.buildVariant,
-      {
+      $scope.buildVariant, {
         format: 'json',
         before: $scope.lastVersionId,
-      },
-      {
+      }, {
         success: function(data, status) {
           if (data.Versions) {
             buildVersionsByRevisionMap(data.Versions);

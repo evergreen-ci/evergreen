@@ -117,7 +117,7 @@ func (self *TaskRunner) Run() error {
 					}
 					return
 				} else {
-					evergreen.Logger.Logf(slogger.INFO, "task %v successfully kicked"+
+					evergreen.Logger.Logf(slogger.INFO, "Task %v successfully kicked"+
 						" off on host %v", dereferencedTask.Id, nextHost.Id)
 				}
 

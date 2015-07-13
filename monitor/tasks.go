@@ -131,6 +131,7 @@ func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host
 	detail := &apimodels.TaskEndDetail{
 		Description: model.AgentHeartbeat,
 		TimedOut:    true,
+		Status:      evergreen.TaskFailed,
 	}
 
 	// try to reset the task

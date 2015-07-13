@@ -26,7 +26,7 @@ type TaskNotificationHandler struct {
 type TaskNotificationForTemplate struct {
 	Notification *TriggeredTaskNotification
 	LogsUrl      string
-	Details      apimodels.TaskEndDetails
+	Details      apimodels.TaskEndDetail
 	FailedTests  []model.TestResult
 	Subject      string
 }
@@ -95,7 +95,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	displayName := getDisplayName(current.BuildId)
 
 	// add the task end status details
-	taskNotification.Details = current.StatusDetails
+	taskNotification.Details = current.Details
 
 	// add change information to notification
 	notification.Info = changeInfo

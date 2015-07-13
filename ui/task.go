@@ -34,28 +34,28 @@ const (
 var NumTestsToSearchForTestNames = 100
 
 type uiTaskData struct {
-	Id               string                   `json:"id"`
-	DisplayName      string                   `json:"display_name"`
-	Revision         string                   `json:"gitspec"`
-	BuildVariant     string                   `json:"build_variant"`
-	Distro           string                   `json:"distro"`
-	BuildId          string                   `json:"build_id"`
-	Status           string                   `json:"status"`
-	Activated        bool                     `json:"activated"`
-	Restarts         int                      `json:"restarts"`
-	Execution        int                      `json:"execution"`
-	StartTime        int64                    `json:"start_time"`
-	DispatchTime     int64                    `json:"dispatch_time"`
-	FinishTime       int64                    `json:"finish_time"`
-	Requester        string                   `json:"r"`
-	ExpectedDuration time.Duration            `json:"expected_duration"`
-	Priority         int                      `json:"priority"`
-	PushTime         time.Time                `json:"push_time"`
-	TimeTaken        time.Duration            `json:"time_taken"`
-	TaskEndDetails   apimodels.TaskEndDetails `json:"task_end_details"`
-	TestResults      []model.TestResult       `json:"test_results"`
-	Aborted          bool                     `json:"abort"`
-	MinQueuePos      int                      `json:"min_queue_pos"`
+	Id               string                  `json:"id"`
+	DisplayName      string                  `json:"display_name"`
+	Revision         string                  `json:"gitspec"`
+	BuildVariant     string                  `json:"build_variant"`
+	Distro           string                  `json:"distro"`
+	BuildId          string                  `json:"build_id"`
+	Status           string                  `json:"status"`
+	Activated        bool                    `json:"activated"`
+	Restarts         int                     `json:"restarts"`
+	Execution        int                     `json:"execution"`
+	StartTime        int64                   `json:"start_time"`
+	DispatchTime     int64                   `json:"dispatch_time"`
+	FinishTime       int64                   `json:"finish_time"`
+	Requester        string                  `json:"r"`
+	ExpectedDuration time.Duration           `json:"expected_duration"`
+	Priority         int                     `json:"priority"`
+	PushTime         time.Time               `json:"push_time"`
+	TimeTaken        time.Duration           `json:"time_taken"`
+	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
+	TestResults      []model.TestResult      `json:"test_results"`
+	Aborted          bool                    `json:"abort"`
+	MinQueuePos      int                     `json:"min_queue_pos"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -160,7 +160,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		DisplayName:         projCtx.Task.DisplayName,
 		Revision:            projCtx.Task.Revision,
 		Status:              projCtx.Task.Status,
-		TaskEndDetails:      projCtx.Task.StatusDetails,
+		TaskEndDetails:      projCtx.Task.Details,
 		Distro:              projCtx.Task.DistroId,
 		BuildVariant:        projCtx.Task.BuildVariant,
 		BuildId:             projCtx.Task.BuildId,
@@ -292,10 +292,10 @@ func (uis *UIServer) taskDependencies(w http.ResponseWriter, r *http.Request) {
 			"_id": bson.M{"$in": projCtx.Task.DependsOn},
 		},
 		bson.M{
-			"display_name":   1,
-			"status":         1,
-			"activated":      1,
-			"status_details": 1,
+			"display_name": 1,
+			"status":       1,
+			"activated":    1,
+			"details":      1,
 		}, []string{}, 0, 0)
 
 	if err != nil {

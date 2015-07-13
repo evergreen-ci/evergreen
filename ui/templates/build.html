@@ -195,7 +195,7 @@ Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName
                 <a ng-href="/task/[[task.Task.id]]">[[task.Task.display_name]]</a>
               </td>
               <td class="col-lg-8">
-                <div class="progress" progress-bar="task.Task.time_taken" progress-bar-max="computed.maxTaskTime" progress-bar-class="task.Task.status" progress-bar-title="task.Task.time_taken | stringifyNanoseconds"></div>
+                <div class="progress" progress-bar="task.Task.time_taken" progress-bar-max="computed.maxTaskTime" progress-bar-class="task.Task" progress-bar-title="task.Task.time_taken | stringifyNanoseconds"></div>
               </td>
             </tr>
           </tbody>

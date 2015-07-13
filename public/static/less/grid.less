@@ -1,5 +1,7 @@
-@wassuccess_green:#01DF01;
-@wasfail_red:#F5A9A9;
+@was-success:#01DF01;
+@was-fail:#F5A9A9;
+@was-system-fail:#9370DB;
+@system-failure:#800080;
 @undispatched_grey:#ccc;
 @started_grey:#ccc;
 @success_green: #4AC948;
@@ -190,7 +192,6 @@ ul.tooltip-tasks{
 .gridtable-timeline {
     margin: 0 30px;
 }
-
 .gridtable-small {
     .gridtable(2px, 20px, 265px, 60px);
     margin-top: 50px;
@@ -204,12 +205,19 @@ ul.tooltip-tasks{
 .cell.failed {
     background-color: @fail_red;
 }
+.cell.system-failed {
+    background-color: @system-failure;
+}
+.cell.unstarted {
+    background-color: @undispatched_grey;
+    border: 1px solid #ccc;
+}
 .cell.skipped {
     background-color: #fafafa;
     pointer-events: none;
 }
 .cell.failure {
-    background-color:@fail_red;
+    background-color: @fail_red;
 }
 .cell.undispatched {
     background-color: @undispatched_grey;
@@ -224,11 +232,14 @@ ul.tooltip-tasks{
     border: 1px solid #ccc;
 }
 .cell.was-success {
-    background-color: @wassuccess_green;
+    background-color: @was-success;
     opacity: 0.3;
 }
 .cell.was-failure {
-    background-color: @wasfail_red;
+    background-color: @was-fail;
+}
+.cell.was-system-failed {
+    background-color: @was-system-fail;
 }
 .cell.started {
     background-image: url('/static/img/15.GIF');

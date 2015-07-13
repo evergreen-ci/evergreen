@@ -113,8 +113,8 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over the status details
-	destTask.StatusDetails.TimedOut = srcTask.StatusDetails.TimedOut
-	destTask.StatusDetails.TimeoutStage = srcTask.StatusDetails.TimeoutStage
+	destTask.StatusDetails.TimedOut = srcTask.Details.TimedOut
+	destTask.StatusDetails.TimeoutStage = srcTask.Details.Description
 
 	// Copy over the test results
 	destTask.TestResults = make(taskTestResultsByName, len(srcTask.TestResults))
@@ -179,8 +179,8 @@ func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over the status details
-	result.StatusDetails.TimedOut = task.StatusDetails.TimedOut
-	result.StatusDetails.TimeoutStage = task.StatusDetails.TimeoutStage
+	result.StatusDetails.TimedOut = task.Details.TimedOut
+	result.StatusDetails.TimeoutStage = task.Details.Description
 
 	// Copy over the test results
 	result.Tests = make(taskStatusByTest, len(task.TestResults))

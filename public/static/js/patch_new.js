@@ -31,8 +31,8 @@ function PatchController($scope, $filter, $window) {
     var allVariantsModelsOriginal = [];
     for (var variantId in allVariants) {
       var variant = {
-        "name" : allVariants[variantId].DisplayName,
-        "id" : variantId,
+        "name": allVariants[variantId].DisplayName,
+        "id": variantId,
         "tasks": _.map(allVariants[variantId].Tasks, function(task) {
           return task.Name;
         })
@@ -51,7 +51,7 @@ function PatchController($scope, $filter, $window) {
         $scope.buildVariantsForTask[task] =
           $scope.buildVariantsForTask[task] || [];
         if (variant.id &&
-            $scope.buildVariantsForTask[task].indexOf(variant.id) == -1) {
+          $scope.buildVariantsForTask[task].indexOf(variant.id) == -1) {
           $scope.buildVariantsForTask[task].push(variant.id);
         }
       });
@@ -65,7 +65,7 @@ function PatchController($scope, $filter, $window) {
       if (task.Name === "unit_tests" || task.Name === "push") {
         continue;
       }
-      if(task.Name === "compile" || $.inArray(task.Name, patch.Tasks) >= 0){
+      if (task.Name === "compile" || $.inArray(task.Name, patch.Tasks) >= 0) {
         task.checked = true;
       }
       allTasksModels.push(task);
@@ -79,7 +79,7 @@ function PatchController($scope, $filter, $window) {
     $scope.$watch('allVariants', function(allVariants) {
       $scope.variantsCount = 0;
       _.forEach(allVariants, function(item) {
-        if(item.checked){
+        if (item.checked) {
           $scope.variantsCount += 1;
         }
       });
@@ -88,7 +88,7 @@ function PatchController($scope, $filter, $window) {
     $scope.$watch('allTasks', function(allTasks) {
       $scope.taskCount = 0;
       _.forEach(allTasks, function(item) {
-        if(item.checked){
+        if (item.checked) {
           $scope.taskCount += 1;
         }
       });
@@ -97,11 +97,15 @@ function PatchController($scope, $filter, $window) {
   $scope.setPatchInfo();
 
   $scope.selectedVariants = function() {
-    return $filter('filter')($scope.allVariants, {checked: true});
+    return $filter('filter')($scope.allVariants, {
+      checked: true
+    });
   };
 
   $scope.selectedTasks = function() {
-    return $filter('filter')($scope.allTasks, {checked: true});
+    return $filter('filter')($scope.allTasks, {
+      checked: true
+    });
   };
 
   $scope.toggleCheck = function(x) {
@@ -119,11 +123,11 @@ function PatchController($scope, $filter, $window) {
   };
 }
 
-function PatchUpdateController($scope, $http){
-  $scope.scheduleBuilds = function(form){
+function PatchUpdateController($scope, $http) {
+  $scope.scheduleBuilds = function(form) {
     var data = {
-      variants:[],
-      tasks:[],
+      variants: [],
+      tasks: [],
       description: $scope.patch.Description
     };
     var selectedVariants = $scope.selectedVariants();
@@ -138,12 +142,12 @@ function PatchUpdateController($scope, $http){
     }
 
     $http.post('/patch/' + $scope.patch.Id, data).
-      success(function(data, status) {
-        window.location.replace("/version/" + data.version);
-      }).
-      error(function(data, status, errorThrown) {
-        alert("Failed to save changes: `" + data + "`");
-      });
+    success(function(data, status) {
+      window.location.replace("/version/" + data.version);
+    }).
+    error(function(data, status, errorThrown) {
+      alert("Failed to save changes: `" + data + "`");
+    });
   };
 
   $scope.select = function(models, state) {
@@ -152,4 +156,3 @@ function PatchUpdateController($scope, $http){
     }
   };
 }
-

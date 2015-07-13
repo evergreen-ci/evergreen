@@ -164,7 +164,7 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 			{"$project": bson.M{
 				TaskIdKey:                  1,
 				TaskStatusKey:              1,
-				TaskStatusDetailsKey:       1,
+				TaskDetailsKey:             1,
 				TaskActivatedKey:           1,
 				TaskTimeTakenKey:           1,
 				TaskBuildVariantKey:        1,
@@ -176,12 +176,12 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 				"order": bson.M{"$first": fmt.Sprintf("$%v", TaskRevisionOrderNumberKey)},
 				"tasks": bson.M{
 					"$push": bson.M{
-						TaskIdKey:            fmt.Sprintf("$%v", TaskIdKey),
-						TaskStatusKey:        fmt.Sprintf("$%v", TaskStatusKey),
-						TaskStatusDetailsKey: fmt.Sprintf("$%v", TaskStatusDetailsKey),
-						TaskActivatedKey:     fmt.Sprintf("$%v", TaskActivatedKey),
-						TaskTimeTakenKey:     fmt.Sprintf("$%v", TaskTimeTakenKey),
-						TaskBuildVariantKey:  fmt.Sprintf("$%v", TaskBuildVariantKey),
+						TaskIdKey:           fmt.Sprintf("$%v", TaskIdKey),
+						TaskStatusKey:       fmt.Sprintf("$%v", TaskStatusKey),
+						TaskDetailsKey:      fmt.Sprintf("$%v", TaskDetailsKey),
+						TaskActivatedKey:    fmt.Sprintf("$%v", TaskActivatedKey),
+						TaskTimeTakenKey:    fmt.Sprintf("$%v", TaskTimeTakenKey),
+						TaskBuildVariantKey: fmt.Sprintf("$%v", TaskBuildVariantKey),
 					},
 				},
 			}},

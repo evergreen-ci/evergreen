@@ -170,6 +170,12 @@ h3.section-heading {
 .progress-bar-success {
   background-color: #5cb85c;
 }
+.progress-bar-system-failed {
+  background-color: #800080;
+}
+.progress-bar-failed {
+  background-color: #d9534f;
+}
 .status-label {
   width: 100%;
   font-size: 18px;
@@ -241,10 +247,10 @@ h3.section-heading {
   background-color: #f24738;
   border: 1px solid #f24738;
 }
-.block-status-cancelled {
+.block-status-system-failed {
   color: black;
-  background-color: #f10ff2;
-  border: 1px solid #f10ff2;
+  background-color: #800080;
+  border: 1px solid #800080;
 }
 .block-status-started {
   color: black;
@@ -271,6 +277,9 @@ h3.section-heading {
 }
 .started {
   background-color: #ffb618;
+}
+.system-failed {
+  background-color: #800080;
 }
 .unstarted {
   background-color: #bfbfbe;
@@ -304,7 +313,6 @@ h3.section-heading {
 .result-slice {
   height: 23px;
   float: left;
-  background-color: #bfbfbe;
   border-left: 1px solid rgba(255, 255, 255, 0.75);
 }
 .result-slice.success {
@@ -312,6 +320,10 @@ h3.section-heading {
 }
 .result-slice.failed {
   background-color: #d9534f;
+  color: white;
+}
+.result-slice.system-failed {
+  background-color: #800080;
   color: white;
 }
 .result-slice.started {
@@ -778,6 +790,13 @@ ul.tooltip-tasks li.tooltip-task {
 .cell.failed {
   background-color: #ff4040;
 }
+.cell.system-failed {
+  background-color: #800080;
+}
+.cell.unstarted {
+  background-color: #cccccc;
+  border: 1px solid #ccc;
+}
 .cell.skipped {
   background-color: #fafafa;
   pointer-events: none;
@@ -803,6 +822,9 @@ ul.tooltip-tasks li.tooltip-task {
 }
 .cell.was-failure {
   background-color: #f5a9a9;
+}
+.cell.was-system-failed {
+  background-color: #9370db;
 }
 .cell.started {
   background-image: url('/static/img/15.GIF');
@@ -1556,9 +1578,6 @@ pre {
 }
 .task.block-status-failed {
   background-color: #d9534f;
-}
-.task.block-status-cancelled {
-  background-color: #313030;
 }
 .task.block-status-started {
   background-color: #ffb618;

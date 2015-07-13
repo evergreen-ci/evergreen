@@ -25,7 +25,7 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
     };
 
     ['delete', 'get', 'post', 'put'].forEach(function(method) {
-        service[method+'Resource'] = function(resource, idents, config, callbacks) {
+        service[method + 'Resource'] = function(resource, idents, config, callbacks) {
             httpCall(method, resource, idents, config, callbacks);
         };
     });
@@ -33,28 +33,30 @@ mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
     return service;
 }]);
 
-mciServices.rest.factory('historyDrawerService', 
-    [ 'mciBaseRestService', 
-      function(baseSvc) {
+mciServices.rest.factory('historyDrawerService', ['mciBaseRestService',
+    function(baseSvc) {
         var resource = 'history';
         var service = {};
         var defaultRadius = 10;
-      
+
         // modelType could be either "tasks" or "versions"
-        var historyFetcher = function(modelType){
-          return function(modelId, historyType, radius, callbacks){
-            var config = { params: { radius: radius || defaultRadius } };
-            baseSvc.getResource(resource, [modelType, modelId, historyType], config, callbacks);
-          }
+        var historyFetcher = function(modelType) {
+            return function(modelId, historyType, radius, callbacks) {
+                var config = {
+                    params: {
+                        radius: radius || defaultRadius
+                    }
+                };
+                baseSvc.getResource(resource, [modelType, modelId, historyType], config, callbacks);
+            }
         }
 
         service.fetchVersionHistory = historyFetcher("versions");
         service.fetchTaskHistory = historyFetcher("tasks");
 
         return service;
-      }
-    ]
-);
+    }
+]);
 
 mciServices.rest.factory('mciTasksRestService', ['mciBaseRestService', function(baseSvc) {
     var resource = 'tasks';
@@ -66,7 +68,9 @@ mciServices.rest.factory('mciTasksRestService', ['mciBaseRestService', function(
     };
 
     service.takeActionOnTask = function(taskId, action, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         baseSvc.putResource(resource, [taskId], config, callbacks);
     };
@@ -84,7 +88,9 @@ mciServices.rest.factory('mciBuildsRestService', ['mciBaseRestService', function
     var service = {};
 
     service.takeActionOnBuild = function(buildId, action, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         baseSvc.putResource(resource, [buildId], config, callbacks);
     };
@@ -98,7 +104,9 @@ mciServices.rest.factory('mciHostRestService', ['mciBaseRestService', function(b
     var service = {};
 
     service.updateStatus = function(hostId, action, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         baseSvc.putResource(resource, [hostId], config, callbacks);
     };
@@ -112,7 +120,9 @@ mciServices.rest.factory('mciHostsRestService', ['mciBaseRestService', function(
     var service = {};
 
     service.updateStatus = function(hostIds, action, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         config.data['host_ids'] = hostIds;
         baseSvc.putResource(resource, [], config, callbacks);
@@ -127,7 +137,9 @@ mciServices.rest.factory('mciVersionsRestService', ['mciBaseRestService', functi
     var service = {};
 
     service.takeActionOnVersion = function(versionId, action, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         baseSvc.putResource(resource, [versionId], config, callbacks);
     };
@@ -144,7 +156,9 @@ mciServices.rest.factory('mciBuildVariantHistoryRestService', ['mciBaseRestServi
         var _project = encodeURIComponent(project);
         var _buildVariant = encodeURIComponent(buildVariant);
 
-        var config = { params: params };
+        var config = {
+            params: params
+        };
         baseSvc.getResource(resource, [_project, _buildVariant], config, callbacks);
     };
 
@@ -160,7 +174,9 @@ mciServices.rest.factory('mciTaskHistoryRestService', ['mciBaseRestService', fun
         var _project = encodeURIComponent(project);
         var _taskName = encodeURIComponent(taskName);
 
-        var config = { params: params };
+        var config = {
+            params: params
+        };
         baseSvc.getResource(resource, [_project, _taskName], config, callbacks);
     };
 
@@ -173,7 +189,9 @@ mciServices.rest.factory('mciLoginRestService', ['mciBaseRestService', function(
     var service = {};
 
     service.authenticate = function(username, password, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['username'] = username;
         config.data['password'] = password;
         baseSvc.postResource(resource, [], config, callbacks);
@@ -192,17 +210,23 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
     }
 
     service.getSpawnableDistros = function(action, params, callbacks) {
-        var config = { params: params };
+        var config = {
+            params: params
+        };
         baseSvc.getResource(resource, action, config, callbacks);
     };
 
     service.getUserKeys = function(action, params, callbacks) {
-        var config = { params: params };
+        var config = {
+            params: params
+        };
         baseSvc.getResource(resource, action, config, callbacks);
     };
 
     service.spawnHost = function(spawnInfo, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['distro'] = spawnInfo.distroId;
         config.data['save_key'] = spawnInfo.saveKey;
         config.data['key_name'] = spawnInfo.spawnKey.name;
@@ -212,14 +236,18 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
     };
 
     service.terminateHost = function(action, hostId, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         config.data['host_id'] = hostId;
         baseSvc.postResource(resource, [], config, callbacks);
     };
 
     service.updateRDPPassword = function(action, hostId, rdpPassword, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         config.data['host_id'] = hostId;
         config.data['rdp_pwd'] = rdpPassword;
@@ -227,7 +255,9 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
     };
 
     service.extendHostExpiration = function(action, hostId, addHours, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         config.data['action'] = action;
         config.data['host_id'] = hostId;
         config.data['add_hours'] = addHours;
@@ -238,14 +268,14 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
 }]);
 
 mciServices.rest.factory('mciTaskStatisticsRestService', ['mciBaseRestService', function(baseSvc) {
-  var resource = 'task_stats';
-  var service = {};
+    var resource = 'task_stats';
+    var service = {};
 
-  service.getTimeStatistics = function getTimeStatistics(field1, field2, groupByField, days, callbacks) {
-    baseSvc.getResource(resource, [field1, field2, groupByField, days], {}, callbacks);
-  };
+    service.getTimeStatistics = function getTimeStatistics(field1, field2, groupByField, days, callbacks) {
+        baseSvc.getResource(resource, [field1, field2, groupByField, days], {}, callbacks);
+    };
 
-  return service;
+    return service;
 }]);
 
 
@@ -256,12 +286,16 @@ mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function
     var service = {};
 
     service.addDistro = function(data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         baseSvc.putResource(resource, [], config, callbacks);
     }
 
     service.modifyDistro = function(distroId, data, callbacks) {
-        var config = { data: data };
+        var config = {
+            data: data
+        };
         baseSvc.postResource(resource, [distroId], config, callbacks);
     }
 

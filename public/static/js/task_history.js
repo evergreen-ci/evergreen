@@ -3,7 +3,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
 
   /* Getter/setter wrapper around the URL hash */
   ret.locationHash = {
-    get : function() {
+    get: function() {
       var hash = $window.location.hash.substr(1); // Get rid of leading '#'
       if (hash.charAt(0) == '/') {
         hash = hash.substr(1);
@@ -11,7 +11,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
 
       return hash;
     },
-    set : function(v) {
+    set: function(v) {
       $window.location.hash = v;
     }
   };
@@ -20,7 +20,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
    * hash. */
   var filterSerializer = {
     // Converts `ret.filter` into a readable string
-    serialize : function() {
+    serialize: function() {
       var str = '';
       _.each(ret.filter.tests, function(testResult, testName) {
         if (str.length > 0) {
@@ -44,7 +44,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
     },
     /* The inverse of `serialize`. Takes a string, parses it, and sets
      * `ret.filter` to the parsed value. */
-    deserialize : function(str) {
+    deserialize: function(str) {
       ret.filter = ret.filter || {};
       ret.filter.tests = {};
       ret.filter.buildVariants = [];
@@ -85,14 +85,14 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       '/' +
       encodeURIComponent(ret.taskName) +
       '/test_names'
-    ).success(function (testNames) {
+    ).success(function(testNames) {
       ret.testNames = [];
       var testNamesMap = {};
-      _.each(testNames, function (name) {
+      _.each(testNames, function(name) {
         testNamesMap[$filter('endOfPath')(name)] = true;
       });
 
-      _.each(testNamesMap, function (value, key) {
+      _.each(testNamesMap, function(value, key) {
         ret.testNames.push(key);
       });
     }).error(function(data, status, headers, config) {
@@ -234,11 +234,11 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       "&high=" + ret.constraints.high +
       "&only_matching_tasks=true" +
       "&filter=" + uriFilterStr
-    ).success(function (tasks) {
+    ).success(function(tasks) {
       ret.testsLoading = false;
       ret.taskMatchesFilter = {};
       if (tasks.length) {
-        tasks.forEach(function (task) {
+        tasks.forEach(function(task) {
           ret.taskMatchesFilter[task.id] = true;
         });
       }
@@ -395,7 +395,7 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
       }
 
       return false;
-  };
+    };
 
   var isTaskGroupInactive = function(variants, taskGroup) {
     for (var i = 0; i < variants.length; ++i) {
@@ -419,53 +419,53 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
   $scope.getTaskTooltip = function(testGroup, buildvariant) {
     var task = testGroup.tasksByVariant[buildvariant];
     var tooltip = '';
-    if(!task){
-      return 
+    if (!task) {
+      return
     }
 
     switch (task.status) {
-    case 'failed':
-      if ('status_details' in task && 'timed_out' in task.status_details && task.status_details.timed_out) {
-        tooltip += 'Timed out (' + task.status_details.timeout_stage + ') in ' +
-          $filter('stringifyNanoseconds')(task.time_taken);
-      } else if (task._id in $scope.failedTestsByTaskId &&
-        $scope.failedTestsByTaskId[task._id].length > 0) {
-        var failedTests = $scope.failedTestsByTaskId[task._id];
-        var failedTestLimit = 3;
-        var displayedTests = [];
-        for (var i = 0; i < failedTests.length; i++) {
-          if (i < failedTestLimit) {
-            displayedTests.push($filter('endOfPath')(failedTests[i].test_file));
+      case 'failed':
+        if ('task_end_details' in task && 'timed_out' in task.task_end_details && task.task_end_details.timed_out) {
+          tooltip += 'Timed out (' + task.task_end_details.desc + ') in ' +
+            $filter('stringifyNanoseconds')(task.time_taken);
+        } else if (task._id in $scope.failedTestsByTaskId &&
+          $scope.failedTestsByTaskId[task._id].length > 0) {
+          var failedTests = $scope.failedTestsByTaskId[task._id];
+          var failedTestLimit = 3;
+          var displayedTests = [];
+          for (var i = 0; i < failedTests.length; i++) {
+            if (i < failedTestLimit) {
+              displayedTests.push($filter('endOfPath')(failedTests[i].test_file));
+            }
           }
+          tooltip += failedTests.length + ' ' + $filter('pluralize')(failedTests.length, 'test') +
+            ' failed (' + $filter('stringifyNanoseconds')(task.time_taken) + ')\n';
+          _.each(displayedTests, function(displayedTest) {
+            tooltip += '- ' + displayedTest + '\n';
+          });
+        } else {
+          tooltip = $filter('capitalize')(task.status) + ' (' +
+            $filter('stringifyNanoseconds')(task.time_taken) + ')';
         }
-        tooltip += failedTests.length + ' ' + $filter('pluralize')(failedTests.length, 'test') +
-          ' failed (' + $filter('stringifyNanoseconds')(task.time_taken) + ')\n';
-        _.each(displayedTests, function (displayedTest) {
-          tooltip += '- ' + displayedTest + '\n';
-        });
-      } else {
+        break;
+      case 'success':
         tooltip = $filter('capitalize')(task.status) + ' (' +
           $filter('stringifyNanoseconds')(task.time_taken) + ')';
-      }
-      break;
-    case 'success':
-      tooltip = $filter('capitalize')(task.status) + ' (' +
-        $filter('stringifyNanoseconds')(task.time_taken) + ')';
-      break;
-    default:
+        break;
+      default:
     }
     return tooltip;
   }
 
   $scope.getGridClass = function(cell) {
     if (cell) {
-      if(cell.status == "undispatched"){
-        return "undispatched " + (cell.activated ? "active" : "inactive")
+      if (cell.status == 'undispatched') {
+        return 'undispatched ' + (cell.activated ? 'active' : 'inactive')
       }
-      return cell.status;
+      cell.task_end_details = cell.details;
+      return $filter('statusFilter')(cell);
     }
-
-    return "skipped";
+    return 'skipped';
   };
 
 
@@ -477,13 +477,11 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
 
     mciTaskHistoryRestService.getTaskHistory(
       $scope.project,
-      $scope.taskName,
-      {
+      $scope.taskName, {
         format: 'json',
         revision: revision,
         before: before,
-      },
-      {
+      }, {
         success: function(data, status) {
           if (data.Versions) {
             buildVersionsByRevisionMap(data.Versions, before);
@@ -506,7 +504,9 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
 
           // add column highlighting to the new elements. use a $timeout to
           // let the new elements get created before the handlers are registered
-          $timeout(function() { $window.addColumnHighlighting(true); }, 0);
+          $timeout(function() {
+            $window.addColumnHighlighting(true);
+          }, 0);
         },
 
         error: function(jqXHR, status, errorThrown) {

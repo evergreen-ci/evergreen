@@ -1,8 +1,8 @@
 <a ng-href="/[[ linkType ]]/[[ linkId ]]#[[$parent.$parent.tab]]"
    class="history-status-marker"
-   ng-class="showStatus ? classFromStatus(revision.exec.status) : ''" > </a>
+   ng-class="showStatus ? revision.exec : ''" > </a>
 
-<div class="history-status-marker" ng-class="classFromStatus(revision.exec.status)" ng-if="!!revision.exec.status && linkType=='task'"></div>
+<div class="history-status-marker" ng-class="revision.exec | statusFilter" ng-if="!!revision.exec.status && linkType=='task'"></div>
 <div class="row">
   <div class="col-lg-12 drawer-message-wrapper">
     <a ng-href="/[[linkType]]/[[linkId]]#[[$parent.$parent.tab]]" ng-if="revision.exec.status" class="history-item-info">

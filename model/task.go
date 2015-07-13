@@ -83,10 +83,9 @@ type Task struct {
 	Requester string `bson:"r" json:"r"`
 
 	// this represents the various stages the task could be in
-	Status        string                   `bson:"status" json:"status"`
-	StatusDetails apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
-	Details       apimodels.TaskEndDetail  `bson:"details" json:"details"`
-	Aborted       bool                     `bson:"abort,omitempty" json:"abort"`
+	Status  string                  `bson:"status" json:"status"`
+	Details apimodels.TaskEndDetail `bson:"details" json:"task_end_details"`
+	Aborted bool                    `bson:"abort,omitempty" json:"abort"`
 
 	// how long the task took to execute.  meaningless if the task is not finished
 	TimeTaken time.Duration `bson:"time_taken" json:"time_taken"`
@@ -145,7 +144,6 @@ var (
 	TaskRevisionOrderNumberKey = bsonutil.MustHaveTag(Task{}, "RevisionOrderNumber")
 	TaskRequesterKey           = bsonutil.MustHaveTag(Task{}, "Requester")
 	TaskStatusKey              = bsonutil.MustHaveTag(Task{}, "Status")
-	TaskStatusDetailsKey       = bsonutil.MustHaveTag(Task{}, "StatusDetails")
 	TaskDetailsKey             = bsonutil.MustHaveTag(Task{}, "Details")
 	TaskAbortedKey             = bsonutil.MustHaveTag(Task{}, "Aborted")
 	TaskTimeTakenKey           = bsonutil.MustHaveTag(Task{}, "TimeTaken")
@@ -723,10 +721,10 @@ func (t *Task) MarkAsDispatched(host *host.Host, dispatchTime time.Time) error {
 				TaskDistroIdKey:      host.Distro.Id,
 			},
 			"$unset": bson.M{
-				TaskAbortedKey:       "",
-				TaskTestResultsKey:   "",
-				TaskStatusDetailsKey: "",
-				TaskMinQueuePosKey:   "",
+				TaskAbortedKey:     "",
+				TaskTestResultsKey: "",
+				TaskDetailsKey:     "",
+				TaskMinQueuePosKey: "",
 			},
 		},
 	)
@@ -767,7 +765,7 @@ func (task *Task) MarkAsUndispatched(host *host.Host) error {
 				TaskHostIdKey:        "",
 				TaskAbortedKey:       "",
 				TaskTestResultsKey:   "",
-				TaskStatusDetailsKey: "",
+				TaskDetailsKey:       "",
 				TaskMinQueuePosKey:   "",
 			},
 		},
@@ -1032,8 +1030,7 @@ func (t *Task) reset() error {
 			TaskFinishTimeKey:    ZeroTime,
 			TaskTestResultsKey:   []TestResult{}},
 		"$unset": bson.M{
-			TaskStatusDetailsKey: "",
-			TaskDetailsKey:       "",
+			TaskDetailsKey: "",
 		},
 	}
 
@@ -1277,21 +1274,16 @@ func (t *Task) markEnd(caller string, finishTime time.Time, detail *apimodels.Ta
 	t.FinishTime = finishTime
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
-	// legacy
-	t.StatusDetails.TimedOut = detail.TimedOut
-	t.StatusDetails.TimeoutStage = detail.Description
-
 	err := UpdateOneTask(
 		bson.M{
 			TaskIdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				TaskFinishTimeKey:    finishTime,
-				TaskStatusKey:        detail.Status,
-				TaskTimeTakenKey:     t.TimeTaken,
-				TaskStatusDetailsKey: t.StatusDetails,
-				TaskDetailsKey:       t.Details,
+				TaskFinishTimeKey: finishTime,
+				TaskStatusKey:     detail.Status,
+				TaskTimeTakenKey:  t.TimeTaken,
+				TaskDetailsKey:    t.Details,
 			},
 			"$unset": bson.M{
 				TaskAbortedKey: "",
@@ -1312,10 +1304,6 @@ func (t *Task) MarkEnd(caller string, finishTime time.Time, detail *apimodels.Ta
 	}
 
 	t.Details = *detail
-
-	// legacy
-	t.StatusDetails.TimedOut = detail.TimedOut
-	t.StatusDetails.TimeoutStage = detail.Description
 
 	err := t.markEnd(caller, finishTime, detail)
 	if err != nil {
@@ -1626,7 +1614,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 				TaskStatusKey: bson.M{
 					"$in": []string{evergreen.TaskSucceeded, evergreen.TaskFailed},
 				},
-				TaskStatusDetailsKey + "." + TaskEndDetailTimedOut: bson.M{
+				TaskDetailsKey + "." + TaskEndDetailTimedOut: bson.M{
 					"$ne": true,
 				},
 				TaskFinishTimeKey: bson.M{

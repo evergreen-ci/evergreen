@@ -69,7 +69,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		for _, task := range build.Tasks {
 			uiTasks = append(uiTasks,
 				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated,
-					Status: task.Status, DisplayName: task.DisplayName}})
+					Status: task.Status, Details: task.StatusDetails, DisplayName: task.DisplayName}})
 			if task.Activated {
 				versionAsUI.ActiveTasks++
 			}

@@ -18,7 +18,7 @@ type TaskCache struct {
 	Id            string                  `bson:"id" json:"id"`
 	DisplayName   string                  `bson:"d" json:"display_name"`
 	Status        string                  `bson:"s" json:"status"`
-	StatusDetails apimodels.TaskEndDetail `bson:"ed" json:"details"`
+	StatusDetails apimodels.TaskEndDetail `bson:"ed" json:"task_end_details"`
 	StartTime     time.Time               `bson:"st" json:"start_time"`
 	TimeTaken     time.Duration           `bson:"tt" json:"time_taken"`
 	Activated     bool                    `bson:"a" json:"activated"`
