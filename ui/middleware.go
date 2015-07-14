@@ -155,7 +155,7 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 	if r.URL.RawQuery != "" {
 		querySep = "?"
 	}
-	path := "login#?"
+	path := "/login#?"
 	if uis.UserManager.IsRedirect() {
 		path = "login/redirect?"
 	}
