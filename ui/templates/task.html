@@ -56,14 +56,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 </div>
 
 <div id="page-content" class="container-fluid">
-{{template "flash" . }}
-
 {{ else }}
-
 <div id="content" class="container-fluid">
-{{template "flash" . }}
-
 {{ end }}
+{{template "flash" . }}
 <div ng-controller="TaskCtrl">
   <ol class="breadcrumb">
     <li>
