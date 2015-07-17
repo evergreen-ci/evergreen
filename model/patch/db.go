@@ -29,6 +29,7 @@ var (
 	TasksKey         = bsonutil.MustHaveTag(Patch{}, "Tasks")
 	PatchesKey       = bsonutil.MustHaveTag(Patch{}, "Patches")
 	ActivatedKey     = bsonutil.MustHaveTag(Patch{}, "Activated")
+	PatchedConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")
 
 	// BSON fields for the module patch struct
 	ModulePatchNameKey    = bsonutil.MustHaveTag(ModulePatch{}, "ModuleName")

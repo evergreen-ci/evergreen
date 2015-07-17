@@ -217,8 +217,8 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 				err = fmt.Errorf("Calling github GET on %v got a bad response code: %v", url, resp.StatusCode)
 			}
 			// read the results
-			rateMessage, loglevel := getGithubRateLimit(resp.Header)
-			evergreen.Logger.Logf(loglevel, "Github API repsonse: %v. %v", resp.Status, rateMessage)
+			rateMessage, _ := getGithubRateLimit(resp.Header)
+			evergreen.Logger.Logf(slogger.DEBUG, "Github API repsonse: %v. %v", resp.Status, rateMessage)
 			return nil
 		},
 	)
@@ -424,7 +424,7 @@ func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizatio
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+	evergreen.Logger.Logf(slogger.DEBUG, "Github API response: %v. %v bytes",
 		resp.Status, len(respBody))
 
 	if err = json.Unmarshal(respBody, &githubOrganizations); err != nil {

@@ -6,30 +6,18 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/shelman/angier"
 )
 
-func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version.Version, error) {
+// GetPatchedProject creates and validates a project created by fetching latest commit information from GitHub
+// and applying the patch to the latest remote configuration. The error returned can be a validation error.
+func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Project, error) {
 	if p.Version != "" {
 		return nil, fmt.Errorf("Patch %v already finalized", p.Version)
 	}
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
 		return nil, err
-	}
-
-	gitCommit, err := thirdparty.GetCommitEvent(
-		settings.Credentials["github"],
-		projectRef.Owner, projectRef.Repo, p.Githash,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("Couldn't fetch commit information: %v", err)
-	}
-	if gitCommit == nil {
-		return nil, fmt.Errorf("Couldn't fetch commit information: git commit" +
-			" doesn't exist?")
 	}
 
 	// get the remote file at the requested revision
@@ -58,19 +46,14 @@ func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version
 	if err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, err
 	}
-
 	// apply remote configuration patch if needed
 	if p.ConfigChanged(projectRef.RemotePath) {
 		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, fmt.Errorf("Could not patch remote configuration file: %v", err)
 		}
-
 		// overwrite project fields with the project ref to disallow tracking a
 		// different project or doing other crazy things via config patches
-		if err = angier.TransferByFieldNames(projectRef, project); err != nil {
-			return nil, fmt.Errorf("Could not merge project Ref ref into project: %v", err)
-		}
 		errs := CheckProjectSyntax(project)
 		if len(errs) != 0 {
 			var message string
@@ -79,12 +62,6 @@ func ValidateAndFinalize(p *patch.Patch, settings *evergreen.Settings) (*version
 			}
 			return nil, fmt.Errorf(message)
 		}
-	} else {
-		// overwrite project fields with the project ref to disallow tracking a
-		// different project or doing other crazy things via config patches
-		if err = angier.TransferByFieldNames(projectRef, project); err != nil {
-			return nil, fmt.Errorf("Could not merge project Ref ref into project: %v", err)
-		}
 	}
-	return model.FinalizePatch(p, gitCommit, settings, project)
+	return project, nil
 }

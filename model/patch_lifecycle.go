@@ -130,7 +130,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version,
 	return patchVersion, nil
 }
 
-// MakePatchedConfig takes in the path to a remote configuration a strigified version
+// MakePatchedConfig takes in the path to a remote configuration a stringified version
 // of the current project and returns an unmarshalled version of the project
 // with the patch applied
 func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
@@ -193,6 +193,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			Stderr:           evergreen.NewErrorLoggingWriter(&evergreen.Logger),
 			ScriptMode:       true,
 		}
+
 		if err = patchCmd.Run(); err != nil {
 			return nil, fmt.Errorf("could not run patch command: %v", err)
 		}
@@ -215,16 +216,32 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
-	settings *evergreen.Settings, project *Project) (
+func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (
 	patchVersion *version.Version, err error) {
-	// marshal the project YAML for storage
-	projectYamlBytes, err := yaml.Marshal(project)
-
+	// unmarshal the project YAML for storage
+	project := &Project{}
+	err = yaml.Unmarshal([]byte(p.PatchedConfig), project)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Error marshalling patched project config from repository revision “%v”: %v",
 			p.Githash, err)
+	}
+
+	projectRef, err := FindOneProjectRef(p.Project)
+	if err != nil {
+		return
+	}
+
+	gitCommit, err := thirdparty.GetCommitEvent(
+		settings.Credentials["github"],
+		projectRef.Owner, projectRef.Repo, p.Githash,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't fetch commit information: %v", err)
+	}
+	if gitCommit == nil {
+		return nil, fmt.Errorf("Couldn't fetch commit information: git commit" +
+			" doesn't exist?")
 	}
 
 	patchVersion = &version.Version{
@@ -237,7 +254,7 @@ func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
 		Message:       gitCommit.Commit.Message,
 		BuildIds:      []string{},
 		BuildVariants: []version.BuildStatus{},
-		Config:        string(projectYamlBytes),
+		Config:        string(p.PatchedConfig),
 		Status:        evergreen.PatchCreated,
 		Requester:     evergreen.PatchVersionRequester,
 	}
@@ -252,7 +269,6 @@ func FinalizePatch(p *patch.Patch, gitCommit *thirdparty.CommitEvent,
 			buildVariants = append(buildVariants, buildVariant.Name)
 		}
 	}
-
 	tt := BuildTaskIdTable(project, patchVersion)
 	for _, buildvariant := range buildVariants {
 		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, buildvariant, true, p.Tasks)

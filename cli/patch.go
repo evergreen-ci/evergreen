@@ -175,7 +175,7 @@ func (vc *ValidateCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	projErrors, err := ac.ValidateConfig(confFile)
+	projErrors, err := ac.ValidateLocalConfig(confFile)
 	if err != nil {
 		return nil
 	}
@@ -289,6 +289,7 @@ func (pc *PatchCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+
 	fmt.Println("Patch successfully created.")
 	fmt.Print(patchDisp)
 	return nil

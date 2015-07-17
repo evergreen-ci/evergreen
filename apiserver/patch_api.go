@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 	"net/http"
 	"strings"
 	"time"
@@ -242,16 +243,30 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get and validate patched config and add it to the patch document
+	patchedProject, err := validator.GetPatchedProject(patchDoc, &as.Settings)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("invalid patched config: %v", err))
+		return
+	}
+	projectYamlBytes, err := yaml.Marshal(patchedProject)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error marshalling patched config: %v", err))
+		return
+	}
+	patchDoc.PatchedConfig = string(projectYamlBytes)
+
 	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))
 		return
 	}
 
 	if strings.ToLower(r.FormValue("finalize")) == "true" {
-		if _, err = validator.ValidateAndFinalize(patchDoc, &as.Settings); err != nil {
+		if _, err = model.FinalizePatch(patchDoc, &as.Settings); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+
 	}
 
 	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
@@ -373,11 +388,23 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}
-		_, err = validator.ValidateAndFinalize(p, &as.Settings)
+		patchedProject, err := validator.GetPatchedProject(p, &as.Settings)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		projectYamlBytes, err := yaml.Marshal(patchedProject)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error marshalling patched config: %v", err))
+			return
+		}
+		p.PatchedConfig = string(projectYamlBytes)
+		_, err = model.FinalizePatch(p, &as.Settings)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+
 		as.WriteJSON(w, http.StatusOK, "patch finalized")
 	case "cancel":
 		err = model.CancelPatch(p)

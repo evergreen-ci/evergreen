@@ -6,13 +6,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/evergreen/validator"
+	"gopkg.in/yaml.v2"
 	"net/http"
 )
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
 	if projCtx.Patch == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -27,6 +26,22 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// get the new patch document with the patched configuration
+	var err error
+	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error loading patch: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
+	project := model.Project{}
+	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), &project); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+	}
+	projCtx.Project = &project
+
+	// retrieve tasks and variant mappings' names
 	variantMappings := make(map[string]model.BuildVariant)
 	for _, variant := range projCtx.Project.BuildVariants {
 		variantMappings[variant.Name] = variant
@@ -77,7 +92,6 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	if projCtx.Patch.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
 		if projCtx.Version == nil {
@@ -122,12 +136,19 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				fmt.Errorf("Error setting description: %v", err))
 			return
 		}
-		ver, err := validator.ValidateAndFinalize(projCtx.Patch, &uis.Settings)
+
+		// Unmarshal the project config and set it in the project context
+		project := model.Project{}
+		if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), &project); err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+		}
+		projCtx.Project = &project
+
+		ver, err := model.FinalizePatch(projCtx.Patch, &uis.Settings)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finalizing patch: %v", err))
 			return
 		}
-
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))
 		uis.WriteJSON(w, http.StatusOK, struct {
 			VersionId string `json:"version"`

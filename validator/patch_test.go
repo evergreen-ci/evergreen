@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
 )
@@ -35,11 +36,81 @@ func init() {
 		db.SessionFactoryFromConfig(patchTestConfig))
 }
 
+// resetPatchSetup clears the ProjectRef, Patch, Version, Build, and Task Collections
+// and creates a patch from the test path given.
+func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
+	testutil.HandleTestingErr(db.ClearCollections(
+		model.ProjectRefCollection,
+		patch.Collection,
+		version.Collection,
+		build.Collection,
+		model.TasksCollection,
+		distro.Collection),
+		t, "Error clearing test collection")
+
+	projectRef := &model.ProjectRef{
+		Identifier: patchedProject,
+		RemotePath: configFilePath,
+		Owner:      patchOwner,
+		Repo:       patchRepo,
+		Branch:     patchBranch,
+	}
+	// insert distros to be used
+	distros := []distro.Distro{
+		distro.Distro{Id: "d1"},
+		distro.Distro{Id: "d2"},
+	}
+	for _, d := range distros {
+		err := d.Insert()
+		testutil.HandleTestingErr(err, t, "Couldn't insert test distro: "+
+			"%v", err)
+	}
+
+	err := projectRef.Insert()
+	testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
+		"%v", err)
+
+	fileBytes, err := ioutil.ReadFile(patchFile)
+	testutil.HandleTestingErr(err, t, "Couldn't read patch file: "+
+		"%v", err)
+
+	// this patch adds a new task to the existing build
+	configPatch := &patch.Patch{
+		Id:            "52549c143122",
+		Project:       patchedProject,
+		BuildVariants: []string{"all"},
+		Githash:       patchedRevision,
+		Patches: []patch.ModulePatch{
+			patch.ModulePatch{
+				Githash: "revision",
+				PatchSet: patch.PatchSet{
+					Patch: fmt.Sprintf(string(fileBytes), testPath,
+						testPath, testPath, testPath),
+					Summary: []thirdparty.Summary{
+						thirdparty.Summary{
+							Name:      configFilePath,
+							Additions: 4,
+							Deletions: 80,
+						},
+						thirdparty.Summary{
+							Name:      "random.txt",
+							Additions: 6,
+							Deletions: 0,
+						},
+					},
+				},
+			},
+		},
+	}
+	err = configPatch.Insert()
+	testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
+	return configPatch
+}
+
 func TestProjectRef(t *testing.T) {
 	Convey("When inserting a project ref", t, func() {
 		err := testutil.CreateTestLocalConfig(patchTestConfig, "mci-test")
 		So(err, ShouldBeNil)
-
 		projectRef, err := model.FindOneProjectRef("mci-test")
 		So(err, ShouldBeNil)
 		So(projectRef, ShouldNotBeNil)
@@ -47,75 +118,35 @@ func TestProjectRef(t *testing.T) {
 	})
 }
 
-func TestFinalize(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalize")
+func TestGetPatchedProject(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestConfigurePatch")
+	Convey("With calling GetPatchedProject with a config and remote configuration path",
+		t, func() {
+			configPatch := resetPatchSetup(t, configFilePath)
+			Convey("Calling GetPatchedProject returns a valid project given a patch and settings", func() {
+				project, err := GetPatchedProject(configPatch, patchTestConfig)
+				So(err, ShouldBeNil)
+				So(project, ShouldNotBeNil)
+			})
+			Reset(func() {
+				db.Clear(distro.Collection)
+			})
+		})
+}
 
-	Convey("With calling ValidateAndFinalize with a config and remote configuration "+
+func TestFinalizePatch(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, patchTestConfig, "TestFinalizePatch")
+
+	Convey("With FinalizePatch on a project and commit event generated from GetPatchedProject "+
 		"path", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(
-			model.ProjectRefCollection,
-			patch.Collection,
-			version.Collection,
-			build.Collection,
-			model.TasksCollection),
-			t, "Error clearing test collection")
-
+		configPatch := resetPatchSetup(t, configFilePath)
 		Convey("a patched config should drive version creation", func() {
-			configFilePath := "testing/mci.yml"
-			// insert distros to be used
-			distros := []distro.Distro{
-				distro.Distro{Id: "d1"},
-				distro.Distro{Id: "d2"},
-			}
-
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
-
-			projectRef := &model.ProjectRef{
-				Identifier: patchedProject,
-				RemotePath: configFilePath,
-				Owner:      patchOwner,
-				Repo:       patchRepo,
-				Branch:     patchBranch,
-			}
-			err := projectRef.Insert()
-			testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
-				"%v", err)
-			fileBytes, err := ioutil.ReadFile(patchFile)
+			project, err := GetPatchedProject(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
-
-			// this patch adds a new task to the existing build
-			configPatch := &patch.Patch{
-				Id:            "52549c143122",
-				Project:       patchedProject,
-				BuildVariants: []string{"all"},
-				Githash:       patchedRevision,
-				Patches: []patch.ModulePatch{
-					patch.ModulePatch{
-						Githash: "revision",
-						PatchSet: patch.PatchSet{
-							Patch: fmt.Sprintf(string(fileBytes), configFilePath,
-								configFilePath, configFilePath, configFilePath),
-							Summary: []thirdparty.Summary{
-								thirdparty.Summary{
-									Name:      configFilePath,
-									Additions: 4,
-									Deletions: 80,
-								},
-								thirdparty.Summary{
-									Name:      "random.txt",
-									Additions: 6,
-									Deletions: 0,
-								},
-							},
-						},
-					},
-				},
-			}
-			err = configPatch.Insert()
-			testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
-			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
+			yamlBytes, err := yaml.Marshal(project)
+			So(err, ShouldBeNil)
+			configPatch.PatchedConfig = string(yamlBytes)
+			version, err := model.FinalizePatch(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 			// ensure the relevant builds/tasks were created
@@ -135,62 +166,16 @@ func TestFinalize(t *testing.T) {
 
 		Convey("a patch that does not include the remote config should not "+
 			"drive version creation", func() {
-			configFilePath := "testing/mci.yml"
-			projectRef := &model.ProjectRef{
-				Identifier: patchedProject,
-				RemotePath: configFilePath,
-				Owner:      patchOwner,
-				Repo:       patchRepo,
-				Branch:     patchBranch,
-			}
-			err := projectRef.Insert()
-			testutil.HandleTestingErr(err, t, "Couldn't insert test project ref: "+
-				"%v", err)
 			patchedConfigFile := "fakeInPatchSoNotPatched"
-			fileBytes, err := ioutil.ReadFile(patchFile)
+			configPatch := resetPatchSetup(t, patchedConfigFile)
+			project, err := GetPatchedProject(configPatch, patchTestConfig)
 			So(err, ShouldBeNil)
-
-			// insert distros to be used
-			distros := []distro.Distro{
-				distro.Distro{Id: "d1"},
-				distro.Distro{Id: "d2"},
-			}
-
-			for _, d := range distros {
-				So(d.Insert(), ShouldBeNil)
-			}
-
-			// this patch adds a new task to the existing build
-			configPatch := &patch.Patch{
-				Id:            "52549c143122",
-				Project:       patchedProject,
-				BuildVariants: []string{"all"},
-				Githash:       patchedRevision,
-				Patches: []patch.ModulePatch{
-					patch.ModulePatch{
-						Githash: "revision",
-						PatchSet: patch.PatchSet{
-							Patch: fmt.Sprintf(string(fileBytes), patchedConfigFile,
-								patchedConfigFile, patchedConfigFile, patchedConfigFile),
-							Summary: []thirdparty.Summary{
-								thirdparty.Summary{
-									Name:      configFilePath,
-									Additions: 4,
-									Deletions: 80,
-								},
-								thirdparty.Summary{
-									Name:      patchedProject,
-									Additions: 6,
-									Deletions: 0,
-								},
-							},
-						},
-					},
-				},
-			}
-			err = configPatch.Insert()
-			testutil.HandleTestingErr(err, t, "Couldn't insert test patch: %v", err)
-			version, err := ValidateAndFinalize(configPatch, patchTestConfig)
+			yamlBytes, err := yaml.Marshal(project)
+			So(err, ShouldBeNil)
+			configPatch.PatchedConfig = string(yamlBytes)
+			version, err := model.FinalizePatch(configPatch, patchTestConfig)
+			So(err, ShouldBeNil)
+			So(version, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(version, ShouldNotBeNil)
 

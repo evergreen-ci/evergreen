@@ -98,7 +98,8 @@ func (ac *APIClient) modifyExisting(patchId, action string) error {
 	return nil
 }
 
-func (ac *APIClient) ValidateConfig(data []byte) ([]validator.ValidationError, error) {
+// ValidateLocalConfig validates the local project config with the server
+func (ac *APIClient) ValidateLocalConfig(data []byte) ([]validator.ValidationError, error) {
 	resp, err := ac.post("validate", bytes.NewBuffer(data), false)
 	if err != nil {
 		return nil, err
@@ -272,6 +273,7 @@ func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, erro
 	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
 		return nil, err
 	}
+
 	return reply.Patch, nil
 }
 
