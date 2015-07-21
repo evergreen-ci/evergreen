@@ -13,7 +13,7 @@ export GOBIN=bin
 GOXC="`pwd`/vendor/src/github.com/laher/goxc/goxc.go"
 NONTASKS="go-vet,go-test,archive,rmbin"
 DESTDIR="`pwd`/executables"
-OSTARGETS="windows darwin linux solaris"
+OSTARGETS="windows darwin linux solaris freebsd"
 ARCHTARGETS="amd64 386"
 
 # cd into the agent directory, and cross compile
