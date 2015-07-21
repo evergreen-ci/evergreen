@@ -219,6 +219,7 @@ func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	}
 	defer session.Close()
 
+	session.SetSocketTimeout(0)
 	pipe := db.C(collection).Pipe(pipeline).AllowDiskUse()
 	return pipe.All(out)
 }
