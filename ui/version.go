@@ -26,14 +26,39 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		Repo:      projCtx.ProjectRef.Repo,
 	}
 
-	if projCtx.Patch != nil {
-		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
-	}
-
 	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if projCtx.Patch != nil {
+		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
+		// diff builds for each build in the version
+		baseBuilds, err := build.Find(build.ByRevision(projCtx.Version.Revision))
+		if err != nil {
+			http.Error(w,
+				fmt.Sprintf("error loading base builds for patch: %v", err),
+				http.StatusInternalServerError)
+			return
+		}
+		baseBuildsByVariant := map[string]*build.Build{}
+		for i := range baseBuilds {
+			baseBuildsByVariant[baseBuilds[i].BuildVariant] = &baseBuilds[i]
+		}
+		// diff all patch builds with their original build
+		diffs := []model.TaskStatusDiff{}
+		for i := range dbBuilds {
+			diff := model.StatusDiffBuilds(
+				baseBuildsByVariant[dbBuilds[i].BuildVariant],
+				&dbBuilds[i],
+			)
+			if diff.Name != "" {
+				// append the tasks instead of the build for better usability
+				diffs = append(diffs, diff.Tasks...)
+			}
+		}
+		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
 	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))

@@ -88,6 +88,14 @@ func ByRevisionAndVariant(revision, variant string) db.Q {
 	})
 }
 
+// ByRevision creates a query that returns all builds for a revision.
+func ByRevision(revision string) db.Q {
+	return db.Query(bson.M{
+		RevisionKey:  revision,
+		RequesterKey: evergreen.RepotrackerVersionRequester,
+	})
+}
+
 // ByRecentlyActivatedForProjectAndVariant builds a query that returns all
 // builds before a given revision that were activated for a project + variant.
 // Builds are sorted from most to least recent.

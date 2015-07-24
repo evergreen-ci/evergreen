@@ -12,7 +12,7 @@
         <th>Patch</th>
       </tr>
     </thead>
-    <tr ng-repeat="diff in diffs | orderBy:['displayInfo.type', 'diff.patch', 'Name']">
+    <tr ng-repeat="diff in diffs | orderBy:['displayInfo.type', 'diff.patch', 'name', 'build_variant']">
       <td class="text-center">
         <i ng-class="diff.displayInfo.icon"></i>
       </td>

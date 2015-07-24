@@ -3,7 +3,6 @@ package version
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
-	//"gopkg.in/yaml.v1"
 	"gopkg.in/mgo.v2/bson"
 	"time"
 )
