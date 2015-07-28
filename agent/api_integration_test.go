@@ -169,8 +169,8 @@ func TestBasicEndpoints(t *testing.T) {
 			})
 
 			Convey("no checkins should trigger timeout signal", func() {
-				testAgent.timeoutWatcher.SetDuration(2 * time.Second)
-				testAgent.timeoutWatcher.CheckIn()
+				testAgent.idleTimeoutWatcher.SetDuration(2 * time.Second)
+				testAgent.idleTimeoutWatcher.CheckIn()
 				// sleep long enough for the timeout watcher to time out
 				time.Sleep(3 * time.Second)
 				timeoutSignal, ok := <-testAgent.signalChan
@@ -474,6 +474,39 @@ func TestTaskTimeout(t *testing.T) {
 				printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
 					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					testTask, err = model.FindTask(testTask.Id)
+					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
+					So(testTask.Details.TimedOut, ShouldBeTrue)
+				})
+			})
+		})
+	}
+}
+
+func TestTaskExecTimeout(t *testing.T) {
+	setupTlsConfigs(t)
+	for tlsString, tlsConfig := range tlsConfigs {
+		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
+			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64",
+				false, t)
+			testutil.HandleTestingErr(err, t, "Failed to find test task")
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			So(err, ShouldBeNil)
+			So(testAgent, ShouldNotBeNil)
+
+			Convey("after the slow test runs beyond the timeout threshold", func() {
+				// actually run the task.
+				// this function won't return until the whole thing is done.
+				testAgent.RunTask()
+				testAgent.APILogger.Flush()
+				time.Sleep(5 * time.Second)
+				printLogsForTask(testTask.Id)
+				Convey("the test should be marked as failed and timed out", func() {
+					So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = model.FindTask(testTask.Id)

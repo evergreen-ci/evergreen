@@ -215,6 +215,25 @@ tasks:
             echo "starting slow task!"
             sleep 10000
             echo "done with slow" "task!"
+
+- name: exec_timeout_task
+  depends_on:
+  - name: compile
+  exec_timeout: 3
+  commands:
+    - command: shell.exec
+      params:
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "starting slow task with output!"
+            for i in {1..100} 
+            do 
+                sleep 100
+                echo $i
+            done
+            echo "done with slow" "task with output!"
+
 - name: push
   depends_on:
   - name: "*"

@@ -187,9 +187,10 @@ type TaskDependency struct {
 
 // Unmarshalled from the "tasks" list in the project file
 type ProjectTask struct {
-	Name      string              `yaml:"name" bson:"name"`
-	DependsOn []TaskDependency    `yaml:"depends_on" bson:"depends_on"`
-	Commands  []PluginCommandConf `yaml:"commands" bson:"commands"`
+	Name        string              `yaml:"name" bson:"name"`
+	ExecTimeout int                 `yaml:"exec_timeout" bson:"exec_timeout"`
+	DependsOn   []TaskDependency    `yaml:"depends_on" bson:"depends_on"`
+	Commands    []PluginCommandConf `yaml:"commands" bson:"commands"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)

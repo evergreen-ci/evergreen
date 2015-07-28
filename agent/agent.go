@@ -151,9 +151,13 @@ type Agent struct {
 	// by appending log messages for each type to the correct stream.
 	logger *StreamLogger
 
-	// timeoutWatcher maintains a timer, and raises a signal if the timer exceeds
-	// its current threshold duration.
-	timeoutWatcher *TimeoutWatcher
+	// timeoutWatcher maintains a timer, and raises a signal if the running task
+	// does not produce output within a given time frame.
+	idleTimeoutWatcher *TimeoutWatcher
+
+	// maxExecTimeoutWatcher maintains a timer, and raises a signal if the running task
+	// does not return within a given time frame.
+	maxExecTimeoutWatcher *TimeoutWatcher
 
 	// APILogger is a slogger.Appender which sends log messages
 	// to the API server.
@@ -180,8 +184,11 @@ func (agt *Agent) finishAndAwaitCleanup(status Signal, completed chan FinalTaskF
 	if agt.statsCollector.stop != nil {
 		agt.statsCollector.stop <- true
 	}
-	if agt.timeoutWatcher.stop != nil {
-		agt.timeoutWatcher.stop <- true
+	if agt.idleTimeoutWatcher.stop != nil {
+		agt.idleTimeoutWatcher.stop <- true
+	}
+	if agt.maxExecTimeoutWatcher != nil && agt.maxExecTimeoutWatcher.stop != nil {
+		agt.maxExecTimeoutWatcher.stop <- true
 	}
 	agt.APILogger.FlushAndWait()
 	taskFinishFunc := <-completed // waiting for HandleSignals() to finish
@@ -267,9 +274,8 @@ func (agt *Agent) GetCurrentCommand() model.PluginCommandConf {
 // and resets its timer back to zero.
 func (agt *Agent) CheckIn(command model.PluginCommandConf, duration time.Duration) {
 	agt.currentCommand = command
-	agt.timeoutWatcher.SetDuration(duration)
-	agt.timeoutWatcher.CheckIn()
-	agt.logger.LogExecution(slogger.INFO, "Command timeout set to %v", duration.String())
+	agt.idleTimeoutWatcher.SetDuration(duration)
+	agt.idleTimeoutWatcher.CheckIn()
 }
 
 // GetTaskConfig fetches task configuration data required to run the task from the API server.
@@ -319,10 +325,10 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert string) (*Agent, error)
 
 	// set up logger to API server
 	apiLogger := NewAPILogger(httpCommunicator)
-	timeoutWatcher := &TimeoutWatcher{duration: DefaultIdleTimeout}
+	idleTimeoutWatcher := &TimeoutWatcher{duration: DefaultIdleTimeout}
 
 	// set up timeout logger, local and API logger streams
-	streamLogger, err := NewStreamLogger(timeoutWatcher, apiLogger, logFile)
+	streamLogger, err := NewStreamLogger(idleTimeoutWatcher, apiLogger, logFile)
 	if err != nil {
 		return nil, err
 	}
@@ -346,14 +352,14 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert string) (*Agent, error)
 	)
 
 	agt := &Agent{
-		logger:           streamLogger,
-		TaskCommunicator: httpCommunicator,
-		heartbeater:      hbTicker,
-		statsCollector:   statsCollector,
-		timeoutWatcher:   timeoutWatcher,
-		APILogger:        apiLogger,
-		signalChan:       sigChan,
-		Registry:         plugin.NewSimpleRegistry(),
+		logger:             streamLogger,
+		TaskCommunicator:   httpCommunicator,
+		heartbeater:        hbTicker,
+		statsCollector:     statsCollector,
+		idleTimeoutWatcher: idleTimeoutWatcher,
+		APILogger:          apiLogger,
+		signalChan:         sigChan,
+		Registry:           plugin.NewSimpleRegistry(),
 	}
 
 	return agt, nil
@@ -382,7 +388,15 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 		return nil, err
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching expansions for project %v.", taskConfig.Task.Project)
+	name := taskConfig.Task.DisplayName
+	pt := taskConfig.Project.FindProjectTask(name)
+	execTimeout := time.Duration(pt.ExecTimeout) * time.Second
+	// Set master task timeout, only if included in the taskConfig
+	if execTimeout != 0 {
+		agt.maxExecTimeoutWatcher = &TimeoutWatcher{duration: execTimeout}
+	}
+
+	agt.logger.LogExecution(slogger.INFO, "Fetching expansions for project %v...", taskConfig.Task.Project)
 
 	expVars, err := agt.FetchExpansionVars()
 	if err != nil {
@@ -568,7 +582,12 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) chan Fi
 	completed := make(chan FinalTaskFunc)
 	agt.heartbeater.StartHeartbeating()
 	agt.statsCollector.LogStats(agt.taskConfig.Expansions)
-	agt.timeoutWatcher.NotifyTimeouts(agt.signalChan)
+	agt.idleTimeoutWatcher.NotifyTimeouts(agt.signalChan)
+
+	// Default action is not to include a master timeout
+	if agt.maxExecTimeoutWatcher != nil {
+		agt.maxExecTimeoutWatcher.NotifyTimeouts(agt.signalChan)
+	}
 	go signalHandler.HandleSignals(agt, completed)
 
 	// listen for SIGQUIT and dump a stack trace to system logs if received.
