@@ -140,7 +140,7 @@ tasks:
         content_type: application/tar
         display_name: mongodb_binaries
     - func: "silent shell test"
-      type: "setup"
+      type: "system"
 
 - name: normal_task
   depends_on:
@@ -192,7 +192,7 @@ tasks:
   commands:
     - command: shell.exec
       display_name: "failing shell command"
-      type: "setup"
+      type: "system"
       params:
         working_dir: src
         script: |
