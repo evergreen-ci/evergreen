@@ -81,7 +81,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 		Panels: []plugin.UIPanel{
 			{
 				Page:     plugin.TaskPage,
-				Position: plugin.PageCenter,
+				Position: plugin.PageLeft,
 				PanelHTML: "<div ng-include=\"'/plugin/attach/static/partials/task_files_panel.html'\" " +
 					"ng-init='files=plugins.attach' ng-show='plugins.attach.length'></div>",
 				DataFunc: func(context plugin.UIContext) (interface{}, error) {
