@@ -173,7 +173,7 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 
 	v, ok := visited[node]
 	// if the node does not exist, the deps are broken
-	if !ok {
+	if !ok && node.TaskName != model.AllDependencies {
 		return fmt.Errorf("dependency %v is not present in the project config", node)
 	}
 	// if the task has already been visited, then a cycle certainly exists
