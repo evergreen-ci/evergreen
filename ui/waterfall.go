@@ -49,6 +49,7 @@ type waterfallTask struct {
 	StatusDetails apimodels.TaskEndDetail `json:"task_end_details"`
 	DisplayName   string                  `json:"display_name"`
 	TimeTaken     time.Duration           `json:"time_taken"`
+	Activated     bool                    `json:"activated"`
 }
 
 // Waterfall-specific representation of a single build
@@ -219,6 +220,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 						Status:        task.Status,
 						StatusDetails: task.StatusDetails,
 						DisplayName:   task.DisplayName,
+						Activated:     task.Activated,
 						TimeTaken:     task.TimeTaken,
 					}
 

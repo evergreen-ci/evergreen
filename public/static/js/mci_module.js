@@ -261,17 +261,13 @@ var mciModule = angular.module('MCI', [
     } else if (task.status == 'failed') {
       if ('task_end_details' in task) {
         if ('timed_out' in task.task_end_details) {
-          if (task.task_end_details.timed_out) {
-            if ('desc' in task.task_end_details) {
-              if (task.task_end_details.desc == 'heartbeat') {
-                return 'unresponsive';
-              }
-            }
+          if (task.task_end_details.timed_out && 'desc' in task.task_end_details && task.task_end_details.desc == 'heartbeat') {
+            return 'unresponsive';
           }
+          return 'timed out';
         }
-        return 'timed out';
+        return 'failed';
       }
-      return 'failed';
     }
     return task.status;
   }
