@@ -37,6 +37,7 @@ var projectSyntaxValidators = []projectValidator{
 	ensureHasNecessaryBVFields,
 	checkDependencyGraph,
 	validatePluginCommands,
+	ensureHasNecessaryProjectFields,
 	verifyTaskDependencies,
 	validateBVNames,
 	validateBVTaskNames,
@@ -276,66 +277,19 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 	return errs
 }
 
-// Ensures that the basic fields that are required by any project are present
-func EnsureHasNecessaryProjectFields(project *model.Project) []ValidationError {
+// Checks that the basic fields that are required by any project are present.
+func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 
-	if project.Identifier == "" {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project identifier must be set"),
-			},
-		)
-	}
-	if project.Owner == "" {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project '%v' must have an "+
-					"'owner' set", project.Identifier),
-			},
-		)
-	}
-	if project.Repo == "" {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project '%v' must have a "+
-					"'repo' set", project.Identifier),
-			},
-		)
-	}
-	if project.Branch == "" {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project '%v' must have a "+
-					"'branch' set", project.Identifier),
-			},
-		)
-	}
-	if project.RepoKind == "" {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project '%v' must have a "+
-					"'repo_kind' set", project.Identifier),
-			},
-		)
-	} else if !util.SliceContains(model.ValidRepoTypes, project.RepoKind) {
-		errs = append(errs,
-			ValidationError{
-				Message: fmt.Sprintf("project '%v' has a 'repokind' "+
-					"of '%v' which is not supported; valid values include %v",
-					project.Identifier, project.RepoKind, strings.Join(
-						model.ValidRepoTypes, ", ")),
-			},
-		)
-	}
 	if project.BatchTime < 0 {
 		errs = append(errs,
 			ValidationError{
 				Message: fmt.Sprintf("project '%v' must have a "+
-					"'batchtime' set", project.Identifier),
+					"non-negative 'batchtime' set", project.Identifier),
 			},
 		)
 	}
+
 	if project.CommandType != "" {
 		if project.CommandType != model.SystemCommandType &&
 			project.CommandType != model.TestCommandType {

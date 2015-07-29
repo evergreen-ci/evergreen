@@ -1080,105 +1080,8 @@ func TestCheckProjectSemantics(t *testing.T) {
 func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 	Convey("When ensuring necessary project fields are set, ensure that",
 		t, func() {
-			Convey("projects with none of the necessary fields set should "+
-				"throw errors", func() {
-				project := &model.Project{
-					Enabled: true,
-				}
-				So(len(EnsureHasNecessaryProjectFields(project)), ShouldEqual, 5)
-			})
 			Convey("projects validate all necessary fields exist", func() {
-				Convey("an error should be thrown if the identifier field is "+
-					"not set", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Owner:       "owner",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "github",
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the owner field is "+
-					"not set", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "github",
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the repo field is "+
-					"not set", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "github",
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the branch field is "+
-					"not set", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Repo:        "repo",
-						DisplayName: "test",
-						RepoKind:    "github",
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the repokind field is "+
-					"not set", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the repokind field is "+
-					"set to an invalid value", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "superversion",
-					}
-					So(EnsureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
+
 				Convey("an error should be thrown if the batch_time field is "+
 					"set to a negative value", func() {
 					project := &model.Project{
@@ -1191,27 +1094,20 @@ func TestEnsureHasNecessaryProjectFields(t *testing.T) {
 						RepoKind:    "github",
 						BatchTime:   -10,
 					}
-					So(EnsureHasNecessaryProjectFields(project),
+					So(ensureHasNecessaryProjectFields(project),
 						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
+					So(len(ensureHasNecessaryProjectFields(project)),
 						ShouldEqual, 1)
 				})
 				Convey("an error should be thrown if the command type "+
 					"field is invalid", func() {
 					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "github",
 						BatchTime:   10,
 						CommandType: "random",
 					}
-					So(EnsureHasNecessaryProjectFields(project),
+					So(ensureHasNecessaryProjectFields(project),
 						ShouldNotResemble, []ValidationError{})
-					So(len(EnsureHasNecessaryProjectFields(project)),
+					So(len(ensureHasNecessaryProjectFields(project)),
 						ShouldEqual, 1)
 				})
 			})
