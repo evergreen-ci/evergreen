@@ -150,7 +150,7 @@ func TestBasicEndpoints(t *testing.T) {
 			})
 
 			Convey("calling end() should update task status properly", func() {
-				commandType := model.SetupCommandType
+				commandType := model.SystemCommandType
 				description := "random"
 				details := &apimodels.TaskEndDetail{
 					Description: description,
@@ -302,7 +302,7 @@ func TestTaskSuccess(t *testing.T) {
 							So(testTask.Details.Status, ShouldEqual, evergreen.TaskSucceeded)
 							So(testTask.Details.Description, ShouldEqual, `'shell.exec' in "silent shell test"`)
 							So(testTask.Details.TimedOut, ShouldBeFalse)
-							So(testTask.Details.Type, ShouldEqual, model.SetupCommandType)
+							So(testTask.Details.Type, ShouldEqual, model.SystemCommandType)
 						})
 					})
 
@@ -394,7 +394,7 @@ func TestTaskFailures(t *testing.T) {
 							So(testTask.Details.Status, ShouldEqual, evergreen.TaskFailed)
 							So(testTask.Details.Description, ShouldEqual, "failing shell command")
 							So(testTask.Details.TimedOut, ShouldBeFalse)
-							So(testTask.Details.Type, ShouldEqual, model.SetupCommandType)
+							So(testTask.Details.Type, ShouldEqual, model.SystemCommandType)
 						})
 					})
 				})

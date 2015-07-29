@@ -93,9 +93,9 @@ func TestGetTaskInfo(t *testing.T) {
 			RevisionOrderNumber: 42,
 			Requester:           evergreen.RepotrackerVersionRequester,
 			Status:              "success",
-			StatusDetails: apimodels.TaskEndDetails{
-				TimedOut:     false,
-				TimeoutStage: "some-stage",
+			Details: apimodels.TaskEndDetail{
+				TimedOut:    false,
+				Description: "some-stage",
 			},
 			Aborted:          false,
 			TimeTaken:        time.Duration(100 * time.Millisecond),
@@ -203,8 +203,8 @@ func TestGetTaskInfo(t *testing.T) {
 			jsonStatusDetails, ok := _jsonStatusDetails.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonStatusDetails["timed_out"], ShouldEqual, task.StatusDetails.TimedOut)
-			So(jsonStatusDetails["timeout_stage"], ShouldEqual, task.StatusDetails.TimeoutStage)
+			So(jsonStatusDetails["timed_out"], ShouldEqual, task.Details.TimedOut)
+			So(jsonStatusDetails["timeout_stage"], ShouldEqual, task.Details.Description)
 
 			So(jsonBody["aborted"], ShouldEqual, task.Aborted)
 			So(jsonBody["time_taken"], ShouldEqual, task.TimeTaken)
@@ -310,9 +310,9 @@ func TestGetTaskStatus(t *testing.T) {
 			Id:          taskId,
 			DisplayName: "My task",
 			Status:      "success",
-			StatusDetails: apimodels.TaskEndDetails{
-				TimedOut:     false,
-				TimeoutStage: "some-stage",
+			Details: apimodels.TaskEndDetail{
+				TimedOut:    false,
+				Description: "some-stage",
 			},
 			TestResults: []model.TestResult{testResult},
 		}
@@ -349,8 +349,8 @@ func TestGetTaskStatus(t *testing.T) {
 			jsonStatusDetails, ok := _jsonStatusDetails.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonStatusDetails["timed_out"], ShouldEqual, task.StatusDetails.TimedOut)
-			So(jsonStatusDetails["timeout_stage"], ShouldEqual, task.StatusDetails.TimeoutStage)
+			So(jsonStatusDetails["timed_out"], ShouldEqual, task.Details.TimedOut)
+			So(jsonStatusDetails["timeout_stage"], ShouldEqual, task.Details.Description)
 
 			_jsonTestResults, ok := jsonBody["tests"]
 			So(ok, ShouldBeTrue)

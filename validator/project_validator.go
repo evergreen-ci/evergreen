@@ -295,7 +295,7 @@ func EnsureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 		)
 	}
 	if project.CommandType != "" {
-		if project.CommandType != model.SetupCommandType &&
+		if project.CommandType != model.SystemCommandType &&
 			project.CommandType != model.TestCommandType {
 			errs = append(errs,
 				ValidationError{
@@ -451,7 +451,7 @@ func validateCommands(section string, project *model.Project, registry plugin.Re
 			errs = append(errs, ValidationError{Message: fmt.Sprintf("%v section in %v: %v", section, command, err)})
 		}
 		if cmd.Type != "" {
-			if cmd.Type != model.SetupCommandType &&
+			if cmd.Type != model.SystemCommandType &&
 				cmd.Type != model.TestCommandType {
 				msg := fmt.Sprintf("%v section in '%v': invalid command type: '%v'", section, command, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})

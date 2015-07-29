@@ -71,7 +71,7 @@ var (
 	// the agent requests information for running a task
 	InitialSetupCommand = model.PluginCommandConf{
 		DisplayName: "initial task setup",
-		Type:        model.SetupCommandType,
+		Type:        model.SystemCommandType,
 	}
 )
 
