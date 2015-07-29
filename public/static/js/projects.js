@@ -33,6 +33,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
     return !(project.length == 0);
   }
 
+  $scope.isBatchTimeValid = function(t){
+    if(t==''){
+      return true
+    }
+    return !isNaN(Number(t)) && Number(t) >= 0
+  }
+
   $scope.addAlert = function(obj, trigger){
     if(!$scope.settingsFormData.alert_config) {
       $scope.settingsFormData.alert_config = {}
@@ -117,7 +124,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
           project_vars: $scope.projectVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
-          batch_time: $scope.projectRef.batch_time,
+          batch_time: parseInt($scope.projectRef.batch_time),
           deactivate_previous: $scope.projectRef.deactivate_previous,
           relative_url: $scope.projectRef.relative_url,
           branch_name: $scope.projectRef.branch_name,
@@ -143,6 +150,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
   }
  
   $scope.saveProject = function() {
+    $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time)
     $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).
       success(function(data, status) {
         $scope.saveMessage = "Settings Saved.";

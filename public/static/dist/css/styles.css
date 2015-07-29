@@ -993,6 +993,12 @@ ul.tooltip-tasks li.tooltip-task {
   font-weight: bold;
   background-color: aliceblue;
 }
+.project-error {
+  color: red;
+  font-size: 12px;
+  margin-top: 10px;
+  font-weight: bold;
+}
 .triggerinfo {
   list-style: none;
   border: 1px solid #ccc;

@@ -93,6 +93,7 @@ Evergreen Projects
             </div>
             <div class="col-lg-4">
             <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
+            <label class="icon icon-warning-sign project-error" ng-show="!isBatchTimeValid(settingsFormData.batch_time)">&nbsp;Batch time must be a number, &gt;=0.</label>
             </div>
         </div>
 
@@ -200,7 +201,7 @@ Evergreen Projects
             <label>[[saveMessage]]</label>
         </div>
         <div class="col-lg-4">
-            <input class="btn btn-primary" input ng-disabled="!isDirty" type="submit" value="Save Changes">
+            <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
         </div>
         </div>
         <confirm-on-exit confirm-on-exit="isDirty"
