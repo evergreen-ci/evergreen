@@ -68,6 +68,8 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
   $scope.filter = {
     hosts : filterOpts[2] || ''
   };
+  $scope.selectAll = false;
+  $scope.filteredHosts = $scope.hosts;
 
   $scope.$watch('filter.hosts', function() {
     $location.path('filter/' + $scope.filter.hosts);
@@ -104,7 +106,7 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
       // 'start_time' is set to epochTime by default we use
       // the <= comparison to allow for conversion imprecision
       if (startTime <= epochTime) {
-        host.start_time = hostObj.RunningTask.dispatch_time
+        host.start_time = hostObj.RunningTask.dispatch_time;
         startTime = hostObj.RunningTask.dispatch_time;
         dispatchTimeDiffedPrefix = "*";
       }
@@ -124,6 +126,22 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
 
   $scope.toggleHostCheck = function(host) {
     host.checked = !host.checked;
+  };
+
+  $scope.toggleSelectAll = function() {
+    $scope.selectAll = !$scope.selectAll;
+    $scope.setCheckBoxes($scope.selectAll);
+  };
+    
+  $scope.clearSelectAll = function() {
+    $scope.selectAll = false;
+    $scope.setCheckBoxes($scope.selectAll);
+  };
+
+  $scope.setCheckBoxes = function(val) {
+    for (idx in $scope.filteredHosts) {
+        $scope.filteredHosts[idx].checked = val;
+    }
   };
 
   $scope.$watch('hosts', function(hosts) {
