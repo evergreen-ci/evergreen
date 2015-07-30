@@ -275,7 +275,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if host == nil {
-		message := fmt.Errorf("No host found running task %v: %v", task.Id, err)
+		message := fmt.Errorf("No host found running task %v", task.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -408,8 +408,8 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 		return
 	}
 	if host == nil {
-		message := fmt.Sprintf("Error finding host running for task %v - set to %v: %v", task.Id,
-			task.HostId, err)
+		message := fmt.Sprintf("Error finding host running for task %v - set to %v", task.Id,
+			task.HostId)
 		evergreen.Logger.Logf(slogger.ERROR, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
@@ -635,6 +635,12 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 	h, err := host.FindOne(host.ByRunningTaskId(task.Id))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	if h == nil {
+		message := fmt.Errorf("No host found running task %v", task.Id)
+		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
