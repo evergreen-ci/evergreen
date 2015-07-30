@@ -14,6 +14,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
   }, {
     'id': 'digitalocean',
     'display': 'Digital Ocean'
+  }, {
+    'id': 'docker',
+    'display': 'Docker'
   }];
 
   $scope.architectures = [{
@@ -237,6 +240,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
         }
       }
     });
+  }
+
+  $scope.checkPortRange = function(min, max) {
+    if ($scope.form.portRange.minPort.$invalid || $scope.form.portRange.maxPort.$invalid) {
+        return false
+    } 
+    return (!min && !max) || (min >= 0 && min <= max);
   }
 
   // scroll to top of window on page reload

@@ -51,7 +51,7 @@ func (self *RemoteCommand) Start() error {
 	// set to the background, if necessary
 	cmdString := self.CmdString
 	if self.Background {
-		cmdString = fmt.Sprintf("nohup %v >& /tmp/start &", cmdString)
+		cmdString = fmt.Sprintf("nohup %v > /tmp/start 2>&1 &", cmdString)
 	}
 	cmdArray = append(cmdArray, cmdString)
 

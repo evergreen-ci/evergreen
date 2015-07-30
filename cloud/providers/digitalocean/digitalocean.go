@@ -231,7 +231,7 @@ func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 	}
 	response, err := digoMgr.account.DestroyDroplet(hostIdAsInt)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': %v", err)
+		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': %v", host.Id, err)
 	}
 
 	if response.Status != "OK" {

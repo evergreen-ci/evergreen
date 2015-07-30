@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers/digitalocean"
+	"github.com/evergreen-ci/evergreen/cloud/providers/docker"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
@@ -27,6 +28,8 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.C
 		provider = &ec2.EC2Manager{}
 	case ec2.SpotProviderName:
 		provider = &ec2.EC2SpotManager{}
+	case docker.ProviderName:
+		provider = &docker.DockerManager{}
 	default:
 		return nil, fmt.Errorf("No known provider for '%v'", providerName)
 	}

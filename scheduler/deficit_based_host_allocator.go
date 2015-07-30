@@ -15,7 +15,7 @@ import (
 // hosts need to be spun up
 type DeficitBasedHostAllocator struct{}
 
-// NewHostsNeeded decides host many new hosts are needed for a distro by seeing if
+// NewHostsNeeded decides how many new hosts are needed for a distro by seeing if
 // the number of tasks that need to be run for the distro is greater than the number
 // of hosts currently free to run a task. Returns a map of distro-># of hosts to spawn.
 func (self *DeficitBasedHostAllocator) NewHostsNeeded(
@@ -67,8 +67,7 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 	}
 
 	existingDistroHosts := hostAllocatorData.existingDistroHosts[distro.Id]
-	runnableDistroTasks := hostAllocatorData.
-		taskQueueItems[distro.Id]
+	runnableDistroTasks := hostAllocatorData.taskQueueItems[distro.Id]
 
 	freeHosts := make([]host.Host, 0, len(existingDistroHosts))
 	for _, existingDistroHost := range existingDistroHosts {
