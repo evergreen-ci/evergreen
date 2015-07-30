@@ -205,12 +205,29 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
           <h3 class="section-heading"><i class="icon-exchange"></i> Depends On</h3>
           
           <div class="mci-pod">
-            <div ng-repeat="dependency in dependencies">
-              <span class="label [[dependency | statusFilter]]">[[dependency | statusLabel]]</span>
-              <span style="margin-left: 20px">
-                <a ng-href="/task/[[dependency.id]]">[[dependency.display_name]]</a>
-              </span>
-            </div>
+            <table class="table table-condensed dep-table">
+              <tbody>
+                <tr ng-repeat="dependency in dependencies | orderBy:dependency.build_variant:dependency.display_name">
+                  <td class="dep-status">
+                    <i ng-show="isMet(dependency) == 'met'" class="icon-ok"></i>
+                    <i ng-show="isMet(dependency) == 'unmet'" class="icon-ban-circle"></i>
+                  </td>
+                  <td>
+                    <a ng-href="/task/[[dependency.id]]">[[dependency.display_name]]</a>
+                    <span ng-href="/task/[[dependency.id]]" ng-show="dependency.build_variant != task.build_variant">
+                      in <span class="cross-variant">[[dependency.build_variant]]</span>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="label label-primary" ng-show="dependency.required == 'failed'"> must fail </span>
+                    <span class="label label-primary" ng-show="dependency.required == '*'"> must finish </span>
+                  </td>
+                  <td class="dep-task-status">
+                    <span class="label [[dependency | statusFilter]]">[[dependency | statusLabel]]</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

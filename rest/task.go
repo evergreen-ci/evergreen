@@ -37,7 +37,7 @@ type task struct {
 	BuildId             string                `json:"build_id"`
 	DistroId            string                `json:"distro"`
 	BuildVariant        string                `json:"build_variant"`
-	DependsOn           []string              `json:"depends_on"`
+	DependsOn           []model.Dependency    `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`
 	HostId              string                `json:"host_id"`
 	Restarts            int                   `json:"restarts"`

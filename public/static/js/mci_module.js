@@ -229,7 +229,11 @@ var mciModule = angular.module('MCI', [
   return function(task) {
     var cls = task.status;
     if (task.status == 'undispatched') {
-      cls = 'unstarted';
+      if (!task.activated) {
+        cls = 'inactive';
+      } else {
+        cls = 'unstarted';
+      }
     } else if (task.status == 'started') {
       cls = 'started';
     } else if (task.status == 'success') {
@@ -252,9 +256,9 @@ var mciModule = angular.module('MCI', [
       return 'started';
     } else if (task.status == 'undispatched' && task.activated) {
       return 'scheduled';
-    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time == 0) {
+    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time == "0001-01-01T00:00:00Z") {
       return 'not scheduled';
-    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time != 0) {
+    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time != "0001-01-01T00:00:00Z") {
       return 'aborted';
     } else if (task.status == 'success') {
       return 'success';

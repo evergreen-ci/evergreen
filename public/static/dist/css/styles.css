@@ -1305,6 +1305,21 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.dep-status {
+  width: 22px;
+}
+.dep-status i {
+  vertical-align: middle;
+}
+.dep-task-status span {
+  vertical-align: middle;
+}
+.dep-table {
+  margin-bottom: 0;
+}
+.dep-table .cross-variant {
+  font-weight: bold;
+}
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;
   padding-left: 58px;
