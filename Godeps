@@ -7,7 +7,6 @@ github.com/10gen/goamz/ec2						0808914066fb8e77c0d085a128c6b7c81f07f331 github.
 github.com/10gen/goamz/aws						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/aws
 github.com/10gen-labs/slogger/v1                c972902347f8b08b39dac87b43955d01caedb63a
 github.com/codegangsta/inject                   37d7f8432a3e684eef9b2edece76bdfa6ac85b39
-github.com/fsouza/go-dockerclient               b4c54554c99a08bf55cfd1d5c7a623a5b00f0983
 github.com/gorilla/context                      50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
 github.com/gorilla/mux                          0ef595e787efa95d68151570ead5c85dc2e05f91
 github.com/gorilla/securecookie                 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b

@@ -81,48 +81,6 @@ Evergreen - Distros
               </ul>
               <div class="icon icon-warning-sign distro-error" ng-show="form.providerForm.$dirty && form.providerForm.$error.required">&nbsp;Distro provider is required</div>
             </div>
-            <div ng-show="activeDistro.provider == 'docker'">
-              <div>
-                <label class="distro-label">Host:</label>
-                <input type="text" ng-required="activeDistro.provider == 'docker'" name="hostIP" class="form-control" ng-model="activeDistro.settings.host_ip" placeholder="Machine DNS name">
-                <div class="icon icon-warning-sign distro-error" ng-show="form.hostIP.$dirty && form.hostIP.$error.required || form.hostIP.$invalid">&nbsp;Host DNS is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Image ID:</label>
-                <input type="text" ng-required="activeDistro.provider == 'docker'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name">
-                <div class="icon icon-warning-sign distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">&nbsp;Image ID is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Docker Client Port:</label>
-                <input ng-required="activeDistro.provider == 'docker'" name="clientPort" class="form-control" type="number" ng-model="activeDistro.settings.client_port" placeholder="Port for connecting to docker client, e.g. 2376">
-                <div class="icon icon-warning-sign distro-error" ng-show="form.clientPort.$dirty && form.clientPort.$error.required || form.clientPort.$invalid || form.clientPort.$modelValue < 0">&nbsp;Non-negative numeric Client Port is required</div>
-              </div>
-              <div id="port-table" class="distro-table-scroll">
-                <label class="distro-label">Container Port Range:</label>
-                <table style="margin-left: -8px;" ng-form name="portRange" class="table distro-table" ng-init="form.devName=''; form.devSize=''">
-                  <tr>
-                    <td style="padding-left: 10px;"><input ng-required="activeDistro.settings.port_range.max_port" name="minPort" type="number" ng-model="activeDistro.settings.port_range.min_port" class="col-md-10" placeholder="Min Port"></td>
-                    <td><input  ng-required="activeDistro.settings.port_range.min_port" name="maxPort" type="number" ng-model="activeDistro.settings.port_range.max_port" class="col-md-10" placeholder="Max Port"></td>
-                  </tr>
-                </table>
-                <div class="icon icon-warning-sign distro-error" ng-show="!checkPortRange(form.portRange.minPort.$modelValue, form.portRange.maxPort.$modelValue)">&nbsp;A non-negative, increasing port range is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Cert.pem:</label>
-                <textarea ng-required="activeDistro.provider == 'docker'" name="cert" type="text" wrap="off" class="form-control" rows="5" ng-model="activeDistro.settings.auth.cert" style="margin-left: 0px;" placeholder="Paste your (PEM formatted) certificate here"></textarea>
-                <div class="icon icon-warning-sign distro-error" ng-show="form.cert.$dirty && form.cert.$error.required || form.cert.$invalid">&nbsp;Valid certificate is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Key.pem:</label>
-                <textarea ng-required="activeDistro.provider == 'docker'" name="key" type="text" wrap="off" class="form-control" rows="5" ng-model="activeDistro.settings.auth.key" style="margin-left: 0px;" placeholder="Paste your (PEM formatted) private key here"></textarea>
-                <div class="icon icon-warning-sign distro-error" ng-show="form.key.$dirty && form.key.$error.required || form.key.$invalid">&nbsp;Valid key is required</div>
-              </div>
-              <div>
-                <label class="distro-label">Ca.pem:</label>
-                <textarea ng-required="activeDistro.provider == 'docker'" name="ca" type="text" wrap="off" class="form-control" rows="5" ng-model="activeDistro.settings.auth.ca" style="margin-left: 0px;" placeholder="Paste your (PEM formatted) certificate authority here"></textarea>
-                <div class="icon icon-warning-sign distro-error" ng-show="form.ca.$dirty && form.ca.$error.required || form.ca.$invalid">&nbsp;Valid certificate authority is required</div>
-              </div>
-            </div>
             <div ng-show="activeDistro.provider == 'digitalocean'">
               <div>
                 <label class="distro-label">Image ID:</label>
