@@ -45,6 +45,7 @@ type auth struct {
 
 type Settings struct {
 	HostIp     string     `mapstructure:"host_ip" json:"host_ip" bson:"host_ip"`
+	BindIp     string     `mapstructure:"bind_ip" json:"bind_ip" bson:"bind_ip"`
 	ImageId    string     `mapstructure:"image_name" json:"image_name" bson:"image_name"`
 	ClientPort int        `mapstructure:"client_port" json:"client_port" bson:"client_port"`
 	PortRange  *portRange `mapstructure:"port_range" json:"port_range" bson:"port_range"`
@@ -54,6 +55,7 @@ type Settings struct {
 var (
 	// bson fields for the Settings struct
 	HostIp     = bsonutil.MustHaveTag(Settings{}, "HostIp")
+	BindIp     = bsonutil.MustHaveTag(Settings{}, "BindIp")
 	ImageId    = bsonutil.MustHaveTag(Settings{}, "ImageId")
 	ClientPort = bsonutil.MustHaveTag(Settings{}, "ClientPort")
 	PortRange  = bsonutil.MustHaveTag(Settings{}, "PortRange")
@@ -135,7 +137,7 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 		if !reservedPorts[i] {
 			hostConfig.PortBindings[SSHDPort] = []docker.PortBinding{
 				docker.PortBinding{
-					HostIP:   settings.HostIp,
+					HostIP:   settings.BindIp,
 					HostPort: fmt.Sprintf("%v", i),
 				},
 			}
@@ -277,7 +279,7 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, owner string, us
 		evergreen.Logger.Logf(slogger.ERROR, "Error with docker container '%v': %v", newContainer.ID, err)
 		return nil, err
 	}
-	hostStr := fmt.Sprintf("%s:%s", settings.HostIp, hostPort)
+	hostStr := fmt.Sprintf("%s:%s", settings.BindIp, hostPort)
 
 	// Add host info to db
 	instanceName := "container-" +
