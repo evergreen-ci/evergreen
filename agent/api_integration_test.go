@@ -506,7 +506,7 @@ func TestTaskExecTimeout(t *testing.T) {
 				time.Sleep(5 * time.Second)
 				printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
-					So(scanLogsForTask(testTask.Id, "executing the pre-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = model.FindTask(testTask.Id)
