@@ -1,7 +1,6 @@
 golang.org/x/crypto/ssh							e3f150b4372fce47109dbd8fef5f03cd2af08700
 github.com/pkg/sftp                             506297c9013d2893d5c5daaa9155e7333a1c58de
 github.com/vaughan0/go-ini                      a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
-github.com/shelman/angier                       9ac2ede2d6cfe6bfcb8483960c124bdf7a96de5b
 github.com/10gen/goamz/s3						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/s3
 github.com/10gen/goamz/ec2						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/ec2
 github.com/10gen/goamz/aws						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/aws

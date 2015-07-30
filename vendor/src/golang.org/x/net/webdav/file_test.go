@@ -5,7 +5,6 @@
 package webdav
 
 import (
-	"encoding/xml"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,10 +12,13 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
+
+	"golang.org/x/net/webdav/internal/xml"
 )
 
 func TestSlashClean(t *testing.T) {
@@ -505,6 +507,10 @@ func testFS(t *testing.T, fs FileSystem) {
 }
 
 func TestDir(t *testing.T) {
+	if runtime.GOOS == "plan9" {
+		t.Skip("see golang.org/issue/11453")
+	}
+
 	td, err := ioutil.TempDir("", "webdav-test")
 	if err != nil {
 		t.Fatal(err)

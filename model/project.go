@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/shelman/angier"
 	"gopkg.in/yaml.v2"
 	"reflect"
 	"strings"
@@ -341,11 +340,7 @@ func populateExpansions(d *distro.Distro, bv *BuildVariant, t *Task) *command.Ex
 func expandBuildVariantMatrixParameters(project *Project, current BuildVariant,
 	matrixParameterValues []MatrixParameterValue) (*BuildVariant, error) {
 	// Create a new build variant with the same parameters
-	newBv := BuildVariant{}
-	err := angier.TransferByFieldNames(&current, &newBv)
-	if err != nil {
-		return nil, err
-	}
+	newBv := current
 	newBv.Expansions = make(map[string]string)
 
 	// Make sure to copy over expansions

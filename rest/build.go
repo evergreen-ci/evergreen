@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/gorilla/mux"
-	"github.com/shelman/angier"
 	"net/http"
 	"time"
 )
@@ -67,15 +66,24 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	destBuild := &restBuild{}
-	// Copy the contents from the database into our local build type
-	err = angier.TransferByFieldNames(srcBuild, destBuild)
-	if err != nil {
-		msg := fmt.Sprintf("Error finding build '%v'", buildId)
-		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
-		return
 
-	}
+	destBuild.Id = srcBuild.Id
+	destBuild.CreateTime = srcBuild.CreateTime
+	destBuild.StartTime = srcBuild.StartTime
+	destBuild.FinishTime = srcBuild.FinishTime
+	destBuild.PushTime = srcBuild.PushTime
+	destBuild.Version = srcBuild.Version
+	destBuild.Project = srcBuild.Project
+	destBuild.Revision = srcBuild.Revision
+	destBuild.BuildVariant = srcBuild.BuildVariant
+	destBuild.BuildNumber = srcBuild.BuildNumber
+	destBuild.Status = srcBuild.Status
+	destBuild.Activated = srcBuild.Activated
+	destBuild.ActivatedTime = srcBuild.ActivatedTime
+	destBuild.RevisionOrderNumber = srcBuild.RevisionOrderNumber
+	destBuild.TimeTaken = srcBuild.TimeTaken
+	destBuild.DisplayName = srcBuild.DisplayName
+	destBuild.Requester = srcBuild.Requester
 
 	destBuild.Tasks = make(buildStatusByTask, len(srcBuild.Tasks))
 	for _, task := range srcBuild.Tasks {

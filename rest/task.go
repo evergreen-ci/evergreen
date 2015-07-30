@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/gorilla/mux"
-	"github.com/shelman/angier"
 	"net/http"
 	"time"
 )
@@ -102,15 +101,35 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	destTask := &task{}
-	// Copy the contents from the database into our local task type
-	err = angier.TransferByFieldNames(srcTask, destTask)
-	if err != nil {
-		msg := fmt.Sprintf("Error finding task '%v'", taskId)
-		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
-		return
-
-	}
+	destTask.Id = srcTask.Id
+	destTask.CreateTime = srcTask.CreateTime
+	destTask.ScheduledTime = srcTask.ScheduledTime
+	destTask.DispatchTime = srcTask.DispatchTime
+	destTask.StartTime = srcTask.StartTime
+	destTask.FinishTime = srcTask.FinishTime
+	destTask.PushTime = srcTask.PushTime
+	destTask.Version = srcTask.Version
+	destTask.Project = srcTask.Project
+	destTask.Revision = srcTask.Revision
+	destTask.Priority = srcTask.Priority
+	destTask.LastHeartbeat = srcTask.LastHeartbeat
+	destTask.Activated = srcTask.Activated
+	destTask.BuildId = srcTask.BuildId
+	destTask.DistroId = srcTask.DistroId
+	destTask.BuildVariant = srcTask.BuildVariant
+	destTask.DependsOn = srcTask.DependsOn
+	destTask.DisplayName = srcTask.DisplayName
+	destTask.HostId = srcTask.HostId
+	destTask.Restarts = srcTask.Restarts
+	destTask.Execution = srcTask.Execution
+	destTask.Archived = srcTask.Archived
+	destTask.RevisionOrderNumber = srcTask.RevisionOrderNumber
+	destTask.Requester = srcTask.Requester
+	destTask.Status = srcTask.Status
+	destTask.Aborted = srcTask.Aborted
+	destTask.TimeTaken = srcTask.TimeTaken
+	destTask.ExpectedDuration = srcTask.ExpectedDuration
+	destTask.MinQueuePos = srcTask.MinQueuePos
 
 	// Copy over the status details
 	destTask.StatusDetails.TimedOut = srcTask.Details.TimedOut

@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
-	"github.com/shelman/angier"
 	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"time"
@@ -86,6 +85,30 @@ type versionByBuildByTask map[string]versionStatus
 type versionStatusByTask map[string]versionStatus
 
 type versionStatusByBuild map[string]versionStatus
+
+// copyVersion copies the fields of a Version struct into a restVersion struct
+func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
+	destVersion.Id = srcVersion.Id
+	destVersion.CreateTime = srcVersion.CreateTime
+	destVersion.StartTime = srcVersion.StartTime
+	destVersion.FinishTime = srcVersion.FinishTime
+	destVersion.Project = srcVersion.Project
+	destVersion.Revision = srcVersion.Revision
+	destVersion.Author = srcVersion.Author
+	destVersion.AuthorEmail = srcVersion.AuthorEmail
+	destVersion.Message = srcVersion.Message
+	destVersion.Status = srcVersion.Status
+	destVersion.BuildIds = srcVersion.BuildIds
+	destVersion.RevisionOrderNumber = srcVersion.RevisionOrderNumber
+	destVersion.Owner = srcVersion.Owner
+	destVersion.Repo = srcVersion.Repo
+	destVersion.Branch = srcVersion.Branch
+	destVersion.RepoKind = srcVersion.RepoKind
+	destVersion.Identifier = srcVersion.Identifier
+	destVersion.Remote = srcVersion.Remote
+	destVersion.RemotePath = srcVersion.RemotePath
+	destVersion.Requester = srcVersion.Requester
+}
 
 // Returns a JSON response of an array with the NumRecentVersions
 // most recent versions (sorted on commit order number descending).
@@ -182,14 +205,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	destVersion := &restVersion{}
-	// Copy the contents from the database into our local version type
-	err = angier.TransferByFieldNames(srcVersion, destVersion)
-	if err != nil {
-		msg := fmt.Sprintf("Error finding version '%v'", versionId)
-		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
-		return
-	}
+	copyVersion(srcVersion, destVersion)
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
 		evergreen.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
@@ -222,15 +238,8 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	}
 
 	destVersion := &restVersion{}
-	// Copy the contents from the database into our local version type
-	err = angier.TransferByFieldNames(srcVersion, destVersion)
-	if err != nil {
-		msg := fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectId)
-		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
-		return
+	copyVersion(srcVersion, destVersion)
 
-	}
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
 		evergreen.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
