@@ -174,7 +174,7 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 
 	v, ok := visited[node]
 	// if the node does not exist, the deps are broken
-	if !ok && node.TaskName != model.AllDependencies {
+	if !ok {
 		return fmt.Errorf("dependency %v is not present in the project config", node)
 	}
 	// if the task has already been visited, then a cycle certainly exists
@@ -188,7 +188,7 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 	depNodes := []model.TVPair{}
 	// build a list of all possible dependency nodes for the task
 	for _, dep := range task.DependsOn {
-		if dep.Variant != "*" {
+		if dep.Variant != model.AllVariants {
 			// handle regular dependencies
 			dn := model.TVPair{TaskName: dep.Name}
 			if dep.Variant == "" {
@@ -197,13 +197,32 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 			} else {
 				dn.Variant = dep.Variant
 			}
-			depNodes = append(depNodes, dn)
+			// handle * case by grabbing all the variant's tasks that aren't the current one
+			if dn.TaskName == model.AllDependencies {
+				for n, _ := range visited {
+					if n.TaskName != node.TaskName && n.Variant == dn.Variant {
+						depNodes = append(depNodes, n)
+					}
+				}
+			} else {
+				// normal case: just append the variant
+				depNodes = append(depNodes, dn)
+			}
 		} else {
 			// handle the all-variants case by adding all nodes that are
 			// of the same task (but not the current node)
-			for n, _ := range visited {
-				if n.TaskName == dep.Name && (n != node) {
-					depNodes = append(depNodes, n)
+			if dep.Name != model.AllDependencies {
+				for n, _ := range visited {
+					if n.TaskName == dep.Name && (n != node) {
+						depNodes = append(depNodes, n)
+					}
+				}
+			} else {
+				// edge case where variant and task name are both *
+				for n, _ := range visited {
+					if n != node {
+						depNodes = append(depNodes, n)
+					}
 				}
 			}
 		}

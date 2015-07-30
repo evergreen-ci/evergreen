@@ -251,6 +251,20 @@ func (tt TaskIdTable) GetIdsForAllVariants(currentVariant, taskName string) []st
 	return ids
 }
 
+// GetIdsForTasks returns all task Ids for tasks on all variants != the current task.
+// The current variant and task must be passed in to avoid cycle generation.
+func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []string {
+	ids := []string{}
+	for pair, _ := range tt {
+		if !(pair.TaskName == taskName && pair.Variant == currentVariant) {
+			if id := tt[pair]; id != "" {
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids
+}
+
 // TaskIdTable builds a TaskIdTable for the given version and project
 func BuildTaskIdTable(p *Project, v *version.Version) TaskIdTable {
 	// init the variant map

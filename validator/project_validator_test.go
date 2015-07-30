@@ -145,7 +145,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 					{
 						Name:      "testTwo",
-						DependsOn: []model.TaskDependency{{Name: "*"}},
+						DependsOn: []model.TaskDependency{{Name: model.AllDependencies}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
@@ -229,7 +229,7 @@ func TestCheckDependencyGraph(t *testing.T) {
 					},
 					{
 						Name:      "testSpecial",
-						DependsOn: []model.TaskDependency{{Name: "testOne", Variant: "*"}},
+						DependsOn: []model.TaskDependency{{Name: "testOne", Variant: model.AllVariants}},
 					},
 				},
 				BuildVariants: []model.BuildVariant{
@@ -257,6 +257,42 @@ func TestCheckDependencyGraph(t *testing.T) {
 			}
 			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 4)
+		})
+
+		Convey("cycles in a ** dependency graph should return an error", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "compile"},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskDependency{
+							{Name: "compile", Variant: model.AllVariants},
+							{Name: "testTwo"},
+						},
+					},
+					{
+						Name: "testTwo",
+						DependsOn: []model.TaskDependency{
+							{Name: model.AllDependencies, Variant: model.AllVariants},
+						},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv1",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile"}, {Name: "testOne"}},
+					},
+					{
+						Name: "bv2",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+					},
+				},
+			}
+
+			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(len(checkDependencyGraph(project)), ShouldEqual, 3)
 		})
 
 		Convey("if any task has itself as a dependency, an error should be"+
@@ -352,6 +388,71 @@ func TestCheckDependencyGraph(t *testing.T) {
 
 			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
 		})
+
+		Convey("if there is no cycle in the * dependency graph, no error should be returned", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "compile"},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskDependency{
+							{Name: "compile", Variant: model.AllVariants},
+						},
+					},
+					{
+						Name:      "testTwo",
+						DependsOn: []model.TaskDependency{{Name: model.AllDependencies}},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv1",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile"}, {Name: "testOne"}},
+					},
+					{
+						Name: "bv2",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile"}, {Name: "testTwo"}},
+					},
+				},
+			}
+
+			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
+		})
+
+		Convey("if there is no cycle in the ** dependency graph, no error should be returned", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "compile"},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskDependency{
+							{Name: "compile", Variant: model.AllVariants},
+						},
+					},
+					{
+						Name:      "testTwo",
+						DependsOn: []model.TaskDependency{{Name: model.AllDependencies, Variant: model.AllVariants}},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv1",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile"}, {Name: "testOne"}},
+					},
+					{
+						Name: "bv2",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile"}, {Name: "testOne"}, {Name: "testTwo"}},
+					},
+				},
+			}
+
+			So(checkDependencyGraph(project), ShouldResemble, []ValidationError{})
+		})
+
 	})
 }
 
@@ -461,7 +562,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 						{
 							Name: "compile",
 							DependsOn: []model.TaskDependency{
-								{Name: "*"},
+								{Name: model.AllDependencies},
 								{Name: "testOne"},
 							},
 						},
@@ -478,7 +579,7 @@ func TestCheckAllDependenciesSpec(t *testing.T) {
 					{
 						Name: "compile",
 						DependsOn: []model.TaskDependency{
-							{Name: "*"},
+							{Name: model.AllDependencies},
 						},
 					},
 				},

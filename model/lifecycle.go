@@ -477,7 +477,13 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 
 				if dep.Variant == AllVariants {
 					// for * case, we need to add all variants of the task
-					ids := tt.GetIdsForAllVariants(b.BuildVariant, dep.Name)
+					var ids []string
+					if dep.Name != AllDependencies {
+						ids = tt.GetIdsForAllVariants(b.BuildVariant, dep.Name)
+					} else {
+						// edge case where variant and task are both *
+						ids = tt.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
+					}
 					for _, id := range ids {
 						newDeps = append(newDeps, Dependency{TaskId: id, Status: status})
 					}

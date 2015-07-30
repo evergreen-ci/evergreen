@@ -466,44 +466,37 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Name:        "buildVar2",
 			DisplayName: "Build Variant 2",
 			Tasks: []BuildVariantTask{
-				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"},
+				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
 
-		// the mock project we'll be using.  the mock tasks are:
-		// taskOne - no dependencies
-		// taskTwo - depends on taskOne
-		// taskThree - depends on taskOne and taskTwo
 		project := &Project{
 			Tasks: []ProjectTask{
-				ProjectTask{
+				{
 					Name:      "taskA",
 					DependsOn: []TaskDependency{},
 				},
-				ProjectTask{
-					Name: "taskB",
-					DependsOn: []TaskDependency{
-						TaskDependency{
-							Name: "taskA", Variant: "buildVar",
-						},
-					},
+				{
+					Name:      "taskB",
+					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
-				ProjectTask{
+				{
 					Name: "taskC",
 					DependsOn: []TaskDependency{
-						TaskDependency{
-							Name: "taskA",
-						},
-						TaskDependency{
-							Name: "taskB",
-						},
+						{Name: "taskA"},
+						{Name: "taskB"},
 					},
 				},
-				ProjectTask{
-					Name: "taskD",
+				{
+					Name:      "taskD",
+					DependsOn: []TaskDependency{{Name: AllDependencies}},
+				},
+				{
+					Name: "taskE",
 					DependsOn: []TaskDependency{
-						TaskDependency{
-							Name: AllDependencies,
+						{
+							Name:    AllDependencies,
+							Variant: AllVariants,
 						},
 					},
 				},
@@ -540,9 +533,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tt.GetId("buildVar2", "taskA"), ShouldNotEqual, "")
 			So(tt.GetId("buildVar2", "taskB"), ShouldNotEqual, "")
 			So(tt.GetId("buildVar2", "taskC"), ShouldNotEqual, "")
+			So(tt.GetId("buildVar2", "taskE"), ShouldNotEqual, "")
 
 			Convey(`and incorrect GetId() calls should return ""`, func() {
-				So(tt.GetId("buildVar", "taskE"), ShouldEqual, "")
+				So(tt.GetId("buildVar", "taskF"), ShouldEqual, "")
 				So(tt.GetId("buildVar2", "taskD"), ShouldEqual, "")
 				So(tt.GetId("buildVar3", "taskA"), ShouldEqual, "")
 			})
@@ -575,7 +569,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				db.NoLimit,
 			)
 			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 7)
+			So(len(tasks), ShouldEqual, 8)
 
 		})
 
@@ -659,7 +653,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				db.NoLimit,
 			)
 			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 7)
+			So(len(tasks), ShouldEqual, 8)
 
 			// taskA
 			So(len(tasks[0].DependsOn), ShouldEqual, 0)
@@ -668,7 +662,6 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// taskB
 			So(tasks[2].DependsOn, ShouldResemble,
 				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
-			Println(tasks[3].Id, tasks[3])
 			So(tasks[3].DependsOn, ShouldResemble,
 				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}}) //cross-variant
 
@@ -686,6 +679,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					{tasks[0].Id, evergreen.TaskSucceeded},
 					{tasks[2].Id, evergreen.TaskSucceeded},
 					{tasks[4].Id, evergreen.TaskSucceeded}})
+			So(tasks[7].DisplayName, ShouldEqual, "taskE")
+			So(len(tasks[7].DependsOn), ShouldEqual, 7)
+
 		})
 
 		Convey("all of the build's essential fields should be set"+
