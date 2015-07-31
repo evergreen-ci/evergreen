@@ -24,12 +24,12 @@
       </td>
       <td>
         <a ng-href="[[diff.originalLink]]">
-          <span ng-class="['diffbox', diff.diff.original]"></span>
+          <span class="diffbox" ng-class="diff.diff.original | statusFilter"></span>
         </a>
       </td>
       <td>
         <a ng-href="[[diff.patchLink]]">
-          <span ng-class="['diffbox', diff.diff.patch]"></span>
+          <span class="diffbox" ng-class="diff.diff.patch | statusFilter"></span>
         </a>
       </td>
     </tr>

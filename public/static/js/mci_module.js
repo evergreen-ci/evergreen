@@ -227,6 +227,10 @@ var mciModule = angular.module('MCI', [
   };
 }).filter('statusFilter', function() {
   return function(task) {
+    // for task test results, return the status passed in
+    if (task !== Object(task)) {
+      return task;
+    }
     var cls = task.status;
     if (task.status == 'undispatched') {
       if (!task.activated) {

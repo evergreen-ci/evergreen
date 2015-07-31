@@ -75,10 +75,13 @@
     background-color: @default-bg-color;
   }
   .success, .pass {
-    background-color: #5cb85c !important;
+    background-color: @successGreen !important;
   }
   .failed, .fail {
-    background-color: #d9534f !important;
+    background-color: @errorRed !important;
+  }
+  .system-failed {
+    background-color: @sys-failure-bg-color !important;
   }
 
 }
