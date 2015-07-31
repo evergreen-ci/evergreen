@@ -267,25 +267,34 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	host, err := host.FindOne(host.ByRunningTaskId(task.Id))
+	h, err := host.FindOne(host.ByRunningTaskId(task.Id))
 	if err != nil {
 		message := fmt.Errorf("Error finding host running task %v: %v", task.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
-	if host == nil {
+	// Fall back to checking host field on task doc
+	if h == nil && len(task.HostId) > 0 {
+		h, err = host.FindOne(host.ById(task.HostId))
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	if h == nil {
 		message := fmt.Errorf("No host found running task %v", task.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
-	if err := host.SetTaskPid(taskStartInfo.Pid); err != nil {
+	if err := h.SetTaskPid(taskStartInfo.Pid); err != nil {
 		message := fmt.Errorf("Error calling set pid on task %v : %v", task.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Task %v started on host %v", task.Id, host.Id))
+	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Task %v started on host %v", task.Id, h.Id))
 }
 
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
@@ -398,7 +407,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 
 	// a. fetch the host this task just completed on to see if it's
 	// now decommissioned
-	host, err := host.FindOne(host.ByRunningTaskId(task.Id))
+	host, err := host.FindOne(host.ById(task.HostId))
 	if err != nil {
 		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", task.Id,
 			task.HostId, err)
