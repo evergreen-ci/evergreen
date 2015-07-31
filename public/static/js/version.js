@@ -42,6 +42,33 @@ function VersionController($scope, $location, $http, $filter, $now, $window) {
     $scope.taskStatuses = {};
     var taskNames = {};
     $scope.taskGrid = {};
+
+
+    if (version.Version.PatchInfo) {
+      // setup diff data to use statusFilter
+      for (var i = 0; i < version.PatchInfo.StatusDiffs.length; ++i) {
+        var original = version.PatchInfo.StatusDiffs[i].diff.original;
+
+        // in case the base task has not yet run
+        if (_.size(original) !== 0) {
+          version.PatchInfo.StatusDiffs[i].diff.original = {
+            'task_end_details': original,
+            'status': original.status,
+          };
+        }
+
+        var patch = version.PatchInfo.StatusDiffs[i].diff.patch;
+
+        // in case the patch task has not yet run
+        if (_.size(patch) !== 0) {
+          version.PatchInfo.StatusDiffs[i].diff.patch = {
+            'task_end_details': patch,
+            'status': patch.status,
+          };
+        }
+      }
+    }
+
     for (var i = 0; i < version.Builds.length; ++i) {
       row = {}
       $scope.taskStatuses[version.Builds[i].Build._id] = [];

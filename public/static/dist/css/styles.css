@@ -989,6 +989,9 @@ ul.tooltip-tasks li.tooltip-task {
 .patch-diff-panel .fail {
   background-color: #d9534f !important;
 }
+.patch-diff-panel .system-failed {
+  background-color: #800080 !important;
+}
 .current-project {
   font-weight: bold;
   background-color: aliceblue;
