@@ -647,15 +647,6 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fall back to checking host field on task doc
-	if h == nil && len(task.HostId) > 0 {
-		h, err = host.FindOne(host.ById(task.HostId))
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
 	if h == nil {
 		message := fmt.Errorf("No host found running task %v", task.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
