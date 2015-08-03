@@ -5,6 +5,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
+	"strings"
 	"testing"
 )
 
@@ -77,6 +79,19 @@ func TestDBUtils(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 0)
 
+		})
+
+		Convey("after writing a gridfs file, reading it back should match the contents", func() {
+
+			So(Clear("testfiles.chunks"), ShouldBeNil)
+			So(Clear("testfiles.files"), ShouldBeNil)
+			id := bson.NewObjectId().Hex()
+			So(WriteGridFile("testfiles", id, strings.NewReader(id)), ShouldBeNil)
+			file, err := GetGridFile("testfiles", id)
+			So(err, ShouldBeNil)
+			raw, err := ioutil.ReadAll(file)
+			So(err, ShouldBeNil)
+			So(string(raw), ShouldEqual, id)
 		})
 
 		Convey("removing an item from a collection should remove it and leave"+

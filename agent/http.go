@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
@@ -273,43 +272,6 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 		return err
 	}
 	return nil
-}
-
-// GetPatch loads the task's patch diff from the API server.
-func (h *HTTPCommunicator) GetPatch() (*patch.Patch, error) {
-	patch := &patch.Patch{}
-	retriableGet := util.RetriableFunc(
-		func() error {
-			resp, err := h.tryGet("patch")
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if resp != nil && resp.StatusCode == http.StatusConflict {
-				// Something very wrong, fail now with no retry.
-				return fmt.Errorf("conflict - wrong secret!")
-			}
-			if err != nil {
-				// Some generic error trying to connect - try again
-				return util.RetriableError{err}
-			}
-			if resp == nil {
-				return util.RetriableError{fmt.Errorf("empty response")}
-			} else {
-				err = util.ReadJSONInto(resp.Body, patch)
-				if err != nil {
-					return util.RetriableError{err}
-				}
-				return nil
-			}
-		},
-	)
-
-	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
-	if retryFail {
-		return nil, fmt.Errorf("getting patch failed after %v tries: %v",
-			h.MaxAttempts, err)
-	}
-	return patch, nil
 }
 
 // GetTask returns the communicator's task.

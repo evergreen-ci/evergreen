@@ -3,9 +3,11 @@ package apiserver
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
@@ -144,16 +146,46 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 
 func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	apiRequest := PatchAPIRequest{
-		ProjectFileName: r.FormValue("project"),
-		ModuleName:      r.FormValue("module"),
-		Githash:         r.FormValue("githash"),
-		PatchContent:    r.FormValue("patch"),
-		BuildVariants:   strings.Split(r.FormValue("buildvariants"), ","),
+	var apiRequest PatchAPIRequest
+	var projId, description string
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		apiRequest = PatchAPIRequest{
+			ProjectFileName: r.FormValue("project"),
+			ModuleName:      r.FormValue("module"),
+			Githash:         r.FormValue("githash"),
+			PatchContent:    r.FormValue("patch"),
+			BuildVariants:   strings.Split(r.FormValue("buildvariants"), ","),
+		}
+		projId = r.FormValue("project")
+		description = r.FormValue("desc")
+	} else {
+		data := struct {
+			Description string `json:"desc"`
+			Project     string `json:"project"`
+			Patch       string `json:"patch"`
+			Githash     string `json:"githash"`
+			Variants    string `json:"buildvariants"`
+			Finalize    bool   `json:"finalize"`
+		}{}
+		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		if len(data.Patch) > patch.SizeLimit {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Patch is too large."))
+		}
+		description = data.Description
+		projId = data.Project
+
+		apiRequest = PatchAPIRequest{
+			ProjectFileName: data.Project,
+			ModuleName:      r.FormValue("module"),
+			Githash:         data.Githash,
+			PatchContent:    data.Patch,
+			BuildVariants:   strings.Split(data.Variants, ","),
+		}
 	}
 
-	description := r.FormValue("desc")
-	projId := r.FormValue("project")
 	projectRef, err := model.FindOneProjectRef(projId)
 	if err != nil {
 		message := fmt.Errorf("Error locating project ref '%v': %v",
@@ -174,7 +206,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	patchMetadata, err := apiRequest.Validate(as.Settings.Credentials[projectRef.RepoKind])
+	patchMetadata, err := apiRequest.Validate(as.Settings.Credentials["github"])
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
 		return
@@ -200,7 +232,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[projectRef.RepoKind],
+	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials["github"],
 		patchProjectRef.Owner,
 		patchProjectRef.Repo,
 		apiRequest.Githash)
@@ -214,6 +246,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	createTime := time.Now()
+
+	// create a new object ID to use as reference for the patch data
+	patchFileId := bson.NewObjectId().Hex()
+
 	patchDoc := &patch.Patch{
 		Id:            bson.NewObjectId(),
 		Description:   description,
@@ -229,17 +265,17 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 				ModuleName: "",
 				Githash:    apiRequest.Githash,
 				PatchSet: patch.PatchSet{
-					Patch:   apiRequest.PatchContent,
-					Summary: patchMetadata.Summaries,
+					PatchFileId: patchFileId,
+					Summary:     patchMetadata.Summaries,
 				},
 			},
 		},
 	}
 
-	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = user.IncPatchNumber()
+	// write the patch content into a GridFS file under a new ObjectId.
+	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(apiRequest.PatchContent))
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error computing patch num %v", err))
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("failed to write patch file to db: %v", err))
 		return
 	}
 
@@ -249,12 +285,21 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("invalid patched config: %v", err))
 		return
 	}
+
 	projectYamlBytes, err := yaml.Marshal(patchedProject)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error marshalling patched config: %v", err))
 		return
 	}
+
+	// set the patch number based on patch author
+	patchDoc.PatchNumber, err = user.IncPatchNumber()
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error computing patch num %v", err))
+		return
+	}
 	patchDoc.PatchedConfig = string(projectYamlBytes)
+	patchDoc.ClearPatchData()
 
 	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))
@@ -266,7 +311,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-
 	}
 
 	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
@@ -278,9 +322,23 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		as.WriteJSON(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	moduleName := r.FormValue("module")
-	patchContent := r.FormValue("patch")
-	githash := r.FormValue("githash")
+
+	var moduleName, patchContent, githash string
+
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		moduleName, patchContent, githash = r.FormValue("module"), r.FormValue("patch"), r.FormValue("githash")
+	} else {
+		data := struct {
+			Module  string `json:"module"`
+			Patch   string `json:"patch"`
+			Githash string `json:"githash"`
+		}{}
+		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		moduleName, patchContent, githash = data.Module, data.Patch, data.Githash
+	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
@@ -299,7 +357,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	module, err := project.GetModuleByName(moduleName)
 	if err != nil || module == nil {
-		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("No such module"))
+		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("No such module", moduleName))
 		return
 	}
 
@@ -321,7 +379,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
-	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials[projectRef.RepoKind], repoOwner, repo, githash)
+	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials["github"], repoOwner, repo, githash)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -332,12 +390,20 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// write the patch content into a GridFS file under a new ObjectId.
+	patchFileId := bson.NewObjectId().Hex()
+	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(patchContent))
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("failed to write patch file to db: %v", err))
+		return
+	}
+
 	modulePatch := patch.ModulePatch{
 		ModuleName: moduleName,
 		Githash:    githash,
 		PatchSet: patch.PatchSet{
-			Patch:   patchContent,
-			Summary: summaries, // thirdparty.GetPatchSummary(apiRequest.PatchContent),
+			PatchFileId: patchFileId,
+			Summary:     summaries,
 		},
 	}
 
@@ -374,11 +440,26 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	}
 	defer releaseGlobalLock(r.RemoteAddr, p.Id.String())
 
+	var action, desc string
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		action = r.FormValue("action")
+	} else {
+		data := struct {
+			PatchId     string `json:"patch_id"`
+			Action      string `json:"action"`
+			Description string `json:"description"`
+		}{}
+		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		action, desc = data.Action, data.Description
+	}
+
 	// dispatch to handlers based on specified action
-	switch r.FormValue("action") {
+	switch action {
 	case "update":
-		name := r.FormValue("desc")
-		err := p.SetDescription(name)
+		err := p.SetDescription(desc)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -415,7 +496,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		as.WriteJSON(w, http.StatusOK, "patch deleted")
 	default:
-		http.Error(w, fmt.Sprintf("Unrecognized action: %v", r.FormValue("action")), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Unrecognized action: %v", action), http.StatusBadRequest)
 	}
 }
 

@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	Collection = "patches"
+	Collection   = "patches"
+	GridFSPrefix = "patchfiles"
 )
 
 // BSON fields for the patches

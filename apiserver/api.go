@@ -82,52 +82,69 @@ func New(settings *evergreen.Settings, plugins []plugin.Plugin) (*APIServer, err
 // for that token if one is found.
 func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	return func(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-		err := r.ParseForm()
-		if err != nil {
-			http.Error(w, "can't parse form?", http.StatusBadRequest)
-			return
-		}
-		// Note: at this point the "token" is actually a json object in string form,
-		// containing both the username and token.
-		token := r.FormValue("id_token")
-		if len(token) == 0 {
-			next(w, r)
-			return
-		}
-		authData := struct {
-			Name   string `json:"auth_user"`
-			Token  string `json:"auth_token"`
-			APIKey string `json:"api_key"`
-		}{}
-		if err := util.ReadJSONInto(ioutil.NopCloser(strings.NewReader(token)), &authData); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if len(authData.Token) > 0 { // legacy auth - token lookup
-			authedUser, err := um.GetUserByToken(authData.Token)
+		if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+			err := r.ParseForm()
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
-			} else {
-				// Get the user's full details from the DB or create them if they don't exists
-				dbUser, err := model.GetOrCreateUser(authedUser.Username(),
-					authedUser.DisplayName(), authedUser.Email())
+				http.Error(w, "can't parse form?", http.StatusBadRequest)
+				return
+			}
+
+			// Note: at this point the "token" is actually a json object in string form,
+			// containing both the username and token.
+			token := r.FormValue("id_token")
+			if len(token) == 0 {
+				next(w, r)
+				return
+			}
+			authData := struct {
+				Name   string `json:"auth_user"`
+				Token  string `json:"auth_token"`
+				APIKey string `json:"api_key"`
+			}{}
+			if err := util.ReadJSONInto(ioutil.NopCloser(strings.NewReader(token)), &authData); err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			if len(authData.Token) > 0 { // legacy auth - token lookup
+				authedUser, err := um.GetUserByToken(authData.Token)
 				if err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "Error looking up user %v: %v", authedUser.Username(), err)
+					evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 				} else {
+					// Get the user's full details from the DB or create them if they don't exists
+					dbUser, err := model.GetOrCreateUser(authedUser.Username(),
+						authedUser.DisplayName(), authedUser.Email())
+					if err != nil {
+						evergreen.Logger.Logf(slogger.ERROR, "Error looking up user %v: %v", authedUser.Username(), err)
+					} else {
+						context.Set(r, apiUserKey, dbUser)
+					}
+				}
+			} else if len(authData.APIKey) > 0 {
+				dbUser, err := user.FindOne(user.ById(authData.Name))
+				if dbUser != nil && err == nil {
+					if dbUser.APIKey != authData.APIKey {
+						http.Error(w, "Unauthorized - invalid API key", http.StatusUnauthorized)
+						return
+					}
 					context.Set(r, apiUserKey, dbUser)
+				} else {
+					evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 				}
 			}
-		} else if len(authData.APIKey) > 0 {
-			dbUser, err := user.FindOne(user.ById(authData.Name))
-			if dbUser != nil && err == nil {
-				if dbUser.APIKey != authData.APIKey {
-					http.Error(w, "Unauthorized - invalid API key", http.StatusUnauthorized)
-					return
+		} else {
+			key, username := r.Header.Get("Api-Key"), r.Header.Get("Api-User")
+			if len(key) > 0 && len(username) > 0 {
+				dbUser, err := user.FindOne(user.ById(username))
+				if dbUser != nil && err == nil {
+					if dbUser.APIKey != key {
+						http.Error(w, "Unauthorized - invalid API key", http.StatusUnauthorized)
+						return
+					}
+					context.Set(r, apiUserKey, dbUser)
+				} else {
+					evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 				}
-				context.Set(r, apiUserKey, dbUser)
-			} else {
-				evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
 			}
 		}
 		next(w, r)
@@ -614,23 +631,6 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, "Logs added")
 }
 
-// GetPatch loads the task's patch data from the database and sends
-// it to the requester.
-func (as *APIServer) GetPatch(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
-
-	patch, err := task.FetchPatch()
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if patch == nil {
-		http.Error(w, "patch not found", http.StatusNotFound)
-		return
-	}
-	as.WriteJSON(w, http.StatusOK, patch)
-}
-
 // FetchTask loads the task from the database and sends it to the requester.
 func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	task := MustHaveTask(r)
@@ -984,7 +984,6 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.Heartbeat)).Methods("POST")
 	taskRouter.HandleFunc("/results", as.checkTask(true, as.AttachResults)).Methods("POST")
 	taskRouter.HandleFunc("/test_logs", as.checkTask(true, as.AttachTestLog)).Methods("POST")
-	taskRouter.HandleFunc("/patch", as.checkTask(true, as.GetPatch)).Methods("GET")
 	taskRouter.HandleFunc("/distro", as.checkTask(false, as.GetDistro)).Methods("GET") // nosecret check
 	taskRouter.HandleFunc("/", as.checkTask(true, as.FetchTask)).Methods("GET")
 	taskRouter.HandleFunc("/version", as.checkTask(false, as.GetVersion)).Methods("GET")

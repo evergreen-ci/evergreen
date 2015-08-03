@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/util"
@@ -99,7 +98,6 @@ type TaskCommunicator interface {
 	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
 	GetProjectConfig() (*model.Project, error)
-	GetPatch() (*patch.Patch, error)
 	Log([]model.LogMessage) error
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)

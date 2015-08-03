@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"io"
 )
 
 var (
@@ -203,9 +204,46 @@ func FindAndModify(collection string, query interface{}, sort []string,
 		return nil, err
 	}
 	defer session.Close()
-
 	return db.C(collection).Find(query).Sort(sort...).Apply(change, out)
+}
 
+// WriteGridFile writes the data in the source Reader to a GridFS collection with
+// the given prefix and filename.
+func WriteGridFile(fsPrefix, name string, source io.Reader) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	file, err := db.GridFS(fsPrefix).Create(name)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = io.Copy(file, source)
+	return err
+}
+
+type sessionBackedGridFile struct {
+	*mgo.GridFile
+	session *mgo.Session
+}
+
+func (sbgf *sessionBackedGridFile) Close() error {
+	err := sbgf.GridFile.Close()
+	sbgf.session.Close()
+	return err
+}
+
+// GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
+func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	file, err := db.GridFS(fsPrefix).Open(name)
+	if err != nil {
+		return nil, err
+	}
+	return &sessionBackedGridFile{file, session}, nil
 }
 
 // Aggregate runs an aggregation pipeline on a collection and unmarshals

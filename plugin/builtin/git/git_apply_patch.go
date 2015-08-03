@@ -5,10 +5,12 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"io/ioutil"
@@ -28,42 +30,48 @@ type GitApplyPatchCommand struct {
 	Directory string
 }
 
-func (self *GitApplyPatchCommand) Name() string {
+func (gapc *GitApplyPatchCommand) Name() string {
 	return ApplyPatchCmdName
 }
 
-func (self *GitApplyPatchCommand) Plugin() string {
+func (gapc *GitApplyPatchCommand) Plugin() string {
 	return GitPluginName
 }
 
 // ParseParams reads the command's configuration and returns any errors that occur.
-func (self *GitApplyPatchCommand) ParseParams(params map[string]interface{}) error {
-	err := mapstructure.Decode(params, self)
+func (gapc *GitApplyPatchCommand) ParseParams(params map[string]interface{}) error {
+	err := mapstructure.Decode(params, gapc)
 	if err != nil {
 		return err
 	}
 
-	if self.Directory == "" {
+	if gapc.Directory == "" {
 		return fmt.Errorf("error parsing '%v' params: value for directory "+
-			"must not be blank", self.Name())
+			"must not be blank", gapc.Name())
 	}
 	return nil
 }
 
 // Execute pulls the task's patch and then applies it
-func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
+func (gapc *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 
 	//Apply patches only if necessary
 	if conf.Task.Requester == evergreen.PatchVersionRequester {
 		pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
-		patch, err := self.GetPatch(conf, pluginCom, pluginLogger)
+		patch, err := gapc.GetPatch(conf, pluginCom, pluginLogger)
 		if err != nil {
 			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
 			return fmt.Errorf("Failed to get patch: %v", err)
 		}
 
-		err = self.applyPatch(conf, patch, pluginLogger)
+		err = gapc.getPatchContents(conf, pluginCom, pluginLogger, patch)
+		if err != nil {
+			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
+			return fmt.Errorf("Failed to get patch contents: %v", err)
+		}
+
+		err = gapc.applyPatch(conf, patch, pluginLogger)
 		if err != nil {
 			pluginLogger.LogExecution(slogger.INFO, "Failed to apply patch: %v", err)
 			return fmt.Errorf("Failed to apply patch: %v", err)
@@ -75,7 +83,7 @@ func (self *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 // GetPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure.
-func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
+func (gapc GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
 	pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*patch.Patch, error) {
 	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
@@ -86,8 +94,7 @@ func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
 			}
 			if err != nil {
 				//Some generic error trying to connect - try again
-				pluginLogger.LogExecution(slogger.WARN,
-					"Error connecting to API server: %v", err)
+				pluginLogger.LogExecution(slogger.WARN, "Error connecting to API server: %v", err)
 				return util.RetriableError{err}
 			}
 			if resp != nil && resp.StatusCode == http.StatusNotFound {
@@ -147,9 +154,55 @@ func (self GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
 	return patch, nil
 }
 
+// getPatchContents() dereferences any patch files that are stored externally, fetching them from
+// the API server, and setting them into the patch object.
+func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com plugin.PluginCommunicator, log plugin.Logger, p *patch.Patch) error {
+	for i, patchPart := range p.Patches {
+		// If the patch isn't stored externally, no need to do anything.
+		if patchPart.PatchSet.PatchFileId == "" {
+			continue
+		}
+		// otherwise, fetch the contents and load it into the patch object
+		log.LogExecution(slogger.INFO, "Fetching patch contents for %v", patchPart.PatchSet.PatchFileId)
+		var result io.ReadCloser
+		retriableGet := util.RetriableFunc(
+			func() error {
+				resp, err := com.TaskGetJSON(fmt.Sprintf("%s/%s", GitPatchFilePath, patchPart.PatchSet.PatchFileId))
+				if err != nil {
+					if resp != nil {
+						resp.Body.Close()
+					}
+					//Some generic error trying to connect - try again
+					log.LogExecution(slogger.WARN, "Error connecting to API server: %v", err)
+					return util.RetriableError{err}
+				}
+				if resp != nil && resp.StatusCode != http.StatusOK {
+					log.LogExecution(slogger.WARN, "Unexpected status code %v, retrying", resp.StatusCode)
+					resp.Body.Close()
+					return util.RetriableError{fmt.Errorf("Unexpected status code %v", resp.StatusCode)}
+				}
+				result = resp.Body
+				return nil
+			})
+
+		_, err := util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
+		if err != nil {
+			return err
+		}
+		defer result.Close()
+		raw, err := ioutil.ReadAll(result)
+		if err != nil {
+			return err
+		}
+		p.Patches[i].PatchSet.Patch = string(raw)
+		log.LogExecution(slogger.INFO, "Got result for %v", patchPart.PatchSet.Patch)
+	}
+	return nil
+}
+
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
-func (self *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
+func (gapc *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
 	patch *patch.Patch, pluginLogger plugin.Logger) error {
 
 	// patch sets and contain multiple patches, some of them for modules
@@ -157,7 +210,7 @@ func (self *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
 		var dir string
 		if patchPart.ModuleName == "" {
 			// if patch is not part of a module, just apply patch against src root
-			dir = self.Directory
+			dir = gapc.Directory
 			pluginLogger.LogExecution(slogger.INFO, "Applying patch with git...")
 		} else {
 			// if patch is part of a module, apply patch in module root
@@ -177,7 +230,7 @@ func (self *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
 				continue
 			}
 
-			dir = filepath.Join(self.Directory, module.Prefix, module.Name)
+			dir = filepath.Join(gapc.Directory, module.Prefix, module.Name)
 			pluginLogger.LogExecution(slogger.INFO, "Applying module patch with git...")
 		}
 
@@ -241,4 +294,16 @@ func servePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, patch)
+}
+
+// servePatchFile is the API hook for returning raw patch contents
+func servePatchFile(w http.ResponseWriter, r *http.Request) {
+	fileId := mux.Vars(r)["patchfile_id"]
+	data, err := db.GetGridFile(patch.GridFSPrefix, fileId)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error reading file from db: %v", err), http.StatusInternalServerError)
+		return
+	}
+	defer data.Close()
+	io.Copy(w, data)
 }

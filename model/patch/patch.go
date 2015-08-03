@@ -6,8 +6,12 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
 	"time"
 )
+
+// Hard limit on patch size.
+const SizeLimit = 1024 * 1024 * 100
 
 // Stores all details related to a patch request
 type Patch struct {
@@ -38,8 +42,9 @@ type ModulePatch struct {
 
 // this stores information about the actual patch
 type PatchSet struct {
-	Patch   string               `bson:"patch"`
-	Summary []thirdparty.Summary `bson:"summary"`
+	Patch       string               `bson:"patch,omitempty"`
+	PatchFileId string               `bson:"patch_file_id,omitempty"`
+	Summary     []thirdparty.Summary `bson:"summary"`
 }
 
 func (p *Patch) SetDescription(desc string) error {
@@ -52,6 +57,40 @@ func (p *Patch) SetDescription(desc string) error {
 			},
 		},
 	)
+}
+
+// ClearPatchData removes any inline patch data stored in this patch object for patches that have
+// an associated id in gridfs, so that it can be stored properly.
+func (p *Patch) ClearPatchData() {
+	for i, patchPart := range p.Patches {
+		// If the patch isn't stored externally, no need to do anything.
+		if patchPart.PatchSet.PatchFileId != "" {
+			p.Patches[i].PatchSet.Patch = ""
+		}
+	}
+}
+
+// FetchPatchFiles dereferences externally-stored patch diffs by fetching them from gridfs
+// and placing their contents into the patch object.
+func (p *Patch) FetchPatchFiles() error {
+	for i, patchPart := range p.Patches {
+		// If the patch isn't stored externally, no need to do anything.
+		if patchPart.PatchSet.PatchFileId == "" {
+			continue
+		}
+
+		file, err := db.GetGridFile(GridFSPrefix, patchPart.PatchSet.PatchFileId)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		raw, err := ioutil.ReadAll(file)
+		if err != nil {
+			return err
+		}
+		p.Patches[i].PatchSet.Patch = string(raw)
+	}
+	return nil
 }
 
 func (p *Patch) SetVariantsAndTasks(variants []string,

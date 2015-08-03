@@ -164,11 +164,29 @@ tasks:
     - func: "upload coverage html report"
     - func: "upload coverage txt report"
 
-- name: client
+- name: client-integration
   commands:
     - func: "fetch source"
     - func: "apply patches"
     - func: "setup creds"
+    - func: "start mongod"
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export EVGHOME=${EVGHOME_cmd}
+          cd cli
+          go test -v -evergreen.all -evergreen.settingsOverride=../creds.yml 
+
+- name: client
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -854,6 +872,7 @@ buildvariants:
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
       tasks:
       - name: client
+      - name: client-integration
       - name: agent
       - name: alerts
       - name: db

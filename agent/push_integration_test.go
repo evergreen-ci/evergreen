@@ -26,7 +26,7 @@ func TestPushTask(t *testing.T) {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a push task "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, evergreen.PushStage,
-						"linux-64", false, t)
+						"linux-64", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)

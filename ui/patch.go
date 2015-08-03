@@ -171,6 +171,7 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
+	fullPatch.FetchPatchFiles()
 	uis.WriteHTML(w, http.StatusOK, fullPatch, "base", "diff.html")
 }
 
@@ -186,6 +187,7 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
+	fullPatch.FetchPatchFiles()
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Data        patch.Patch
 		FileName    string

@@ -1,7 +1,10 @@
 package git
 
-import "net/http"
-import "github.com/evergreen-ci/evergreen/plugin"
+import (
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/gorilla/mux"
+	"net/http"
+)
 
 func init() {
 	plugin.Publish(&GitPlugin{})
@@ -12,7 +15,8 @@ const (
 	ApplyPatchCmdName = "apply_patch"
 	GitPluginName     = "git"
 
-	GitPatchPath = "patch"
+	GitPatchPath     = "patch"
+	GitPatchFilePath = "patchfile"
 )
 
 // GitPlugin handles fetching source code and applying patches
@@ -25,7 +29,8 @@ func (self *GitPlugin) Name() string {
 }
 
 func (self *GitPlugin) GetAPIHandler() http.Handler {
-	r := http.NewServeMux()
+	r := mux.NewRouter()
+	r.Path("/" + GitPatchFilePath + "/{patchfile_id}").Methods("GET").HandlerFunc(servePatchFile)
 	r.HandleFunc("/"+GitPatchPath, servePatch) // GET
 	r.HandleFunc("/", http.NotFound)
 	return r

@@ -53,6 +53,26 @@ type testConfigPath struct {
 	configPath string
 }
 
+type patchTestMode int
+
+const (
+	NoPatch patchTestMode = iota
+	InlinePatch
+	ExternalPatch
+)
+
+func (ptm patchTestMode) String() string {
+	switch ptm {
+	case NoPatch:
+		return "none"
+	case InlinePatch:
+		return "inline"
+	case ExternalPatch:
+		return "external"
+	}
+	return "unknown"
+}
+
 func init() {
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(testConfig))
 }
@@ -98,7 +118,7 @@ func TestBasicEndpoints(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", false, t)
+		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -185,7 +205,7 @@ func TestHeartbeatSignals(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 
-		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", false, t)
+		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -209,8 +229,7 @@ func TestHeartbeatSignals(t *testing.T) {
 
 func TestSecrets(t *testing.T) {
 	setupTlsConfigs(t)
-	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage,
-		"linux-64", false, t)
+	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", NoPatch, t)
 	testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
@@ -247,7 +266,7 @@ func TestTaskSuccess(t *testing.T) {
 				Convey(testSetup.testSpec, t, func() {
 					Convey("With agent running 'compile' step and live API server over "+
 						tlsString+" with variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, "compile", variant, false, t)
+						testTask, _, err := setupAPITestData(testConfig, "compile", variant, NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test task: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -308,7 +327,7 @@ func TestTaskSuccess(t *testing.T) {
 
 					Convey("With agent running a regular test and live API server over "+
 						tlsString+" on variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, false, t)
+						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -364,7 +383,7 @@ func TestTaskFailures(t *testing.T) {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a failing test and live API server over "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, "failing_task",
-						"linux-64", false, t)
+						"linux-64", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -411,7 +430,7 @@ func TestTaskAbortion(t *testing.T) {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a slow test and live API server over "+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", false, t)
+					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Failed to find test task")
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -456,8 +475,7 @@ func TestTaskTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64",
-				false, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -489,8 +507,7 @@ func TestTaskExecTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64",
-				false, t)
+			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -521,7 +538,7 @@ func TestTaskExecTimeout(t *testing.T) {
 func TestTaskEndEndpoint(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, "random", "linux-64", false, t)
+		testTask, _, err := setupAPITestData(testConfig, "random", "linux-64", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -595,7 +612,7 @@ func printLogsForTask(taskId string) {
 }
 
 func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
-	variant string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
+	variant string, patchMode patchTestMode, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
@@ -644,7 +661,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 
-	if isPatch {
+	if patchMode != NoPatch {
 		taskOne.Requester = evergreen.PatchVersionRequester
 	}
 
@@ -712,16 +729,18 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	}
 
 	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version")
-	if isPatch {
+	if patchMode != NoPatch {
 		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
 		testutil.HandleTestingErr(err, t, "failed to read test patch file")
 		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
 		testutil.HandleTestingErr(err, t, "failed to read test module patch file")
 
-		patch := &patch.Patch{
+		ptch := &patch.Patch{
 			Status:  evergreen.PatchCreated,
 			Version: v.Id,
-			Patches: []patch.ModulePatch{
+		}
+		if patchMode == InlinePatch {
+			ptch.Patches = []patch.ModulePatch{
 				{
 					ModuleName: "",
 					Githash:    "1e5232709595db427893826ce19289461cba3f75",
@@ -732,9 +751,25 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 					Githash:    "1e5232709595db427893826ce19289461cba3f75",
 					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
 				},
-			},
+			}
+		} else {
+			p1Id, p2Id := bson.NewObjectId().Hex(), bson.NewObjectId().Hex()
+			So(dbutil.WriteGridFile(patch.GridFSPrefix, p1Id, strings.NewReader(string(mainPatchContent))), ShouldBeNil)
+			So(dbutil.WriteGridFile(patch.GridFSPrefix, p2Id, strings.NewReader(string(modulePatchContent))), ShouldBeNil)
+			ptch.Patches = []patch.ModulePatch{
+				{
+					ModuleName: "",
+					Githash:    "1e5232709595db427893826ce19289461cba3f75",
+					PatchSet:   patch.PatchSet{PatchFileId: p1Id},
+				},
+				{
+					ModuleName: "recursive",
+					Githash:    "1e5232709595db427893826ce19289461cba3f75",
+					PatchSet:   patch.PatchSet{PatchFileId: p2Id},
+				},
+			}
 		}
-		testutil.HandleTestingErr(patch.Insert(), t, "failed to insert patch")
+		testutil.HandleTestingErr(ptch.Insert(), t, "failed to insert patch")
 	}
 
 	session, _, err := dbutil.GetGlobalSessionFactory().GetSession()

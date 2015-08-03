@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// Above this size, the user must explicitly use --large to submit the patch (or confirm)
+const largePatchThreshold = 1024 * 1024 * 16
+
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
              ID : {{.Patch.Id.Hex}}
@@ -80,6 +83,7 @@ type PatchCommand struct {
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
+	Large       bool     `long:"large" description:"enable submitting larger patches (>16MB)"`
 }
 
 // SetModuleCommand adds or updates a module in an existing patch.
@@ -88,6 +92,7 @@ type SetModuleCommand struct {
 	Module      string  `short:"m" long:"module" description:"name of the module to set patch for"`
 	PatchId     string  `short:"i" description:"id of the patch to modify" required:"true" `
 	SkipConfirm bool    `short:"y" long:"yes" description:"skip confirmation text"`
+	Large       bool    `long:"large" description:"enable submitting larger patches (>16MB)"`
 }
 
 // RemoveModuleCommand removes module information from an existing patch.
@@ -201,6 +206,11 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	if err := validatePatchSize(diffData, smc.Large); err != nil {
+		return err
+	}
+
 	if !smc.SkipConfirm {
 		fmt.Println(diffData.patchSummary)
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
@@ -266,6 +276,10 @@ func (pc *PatchCommand) Execute(args []string) error {
 	}
 	diffData, err := loadGitData(ref.Branch, args...)
 	if err != nil {
+		return err
+	}
+
+	if err := validatePatchSize(diffData, pc.Large); err != nil {
 		return err
 	}
 	if !pc.SkipConfirm {
@@ -344,6 +358,21 @@ func (lp *ListProjectsCommand) Execute(args []string) error {
 		}
 		fmt.Print("\n")
 	}
+	return nil
+}
+
+// Returns an error if the diff is greater than the system limit, or if it's above the large
+// patch threhsold and allowLarge is not set.
+func validatePatchSize(diff *localDiff, allowLarge bool) error {
+	patchLen := len(diff.fullPatch)
+	if patchLen > patch.SizeLimit {
+		return fmt.Errorf("Patch is greater than the system limit (%v > %v bytes).", patchLen, patch.SizeLimit)
+	} else if patchLen > largePatchThreshold && !allowLarge {
+		return fmt.Errorf("Patch is larger than the default threshold (%v > %v bytes).\n"+
+			"To allow submitting this patch, use the --large flag.", patchLen, largePatchThreshold)
+	}
+
+	// Patch is small enough and/or allowLarge is true, so no error
 	return nil
 }
 
