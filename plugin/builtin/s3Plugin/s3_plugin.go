@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/goamz/goamz/s3"
 	"net/http"
 	"regexp"
 	"strings"

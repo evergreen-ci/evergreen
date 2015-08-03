@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/ec2"
+	"github.com/goamz/goamz/aws"
+	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"time"
 )

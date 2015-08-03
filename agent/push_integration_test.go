@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/goamz/goamz/aws"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"testing"
@@ -99,7 +99,7 @@ func TestPushTask(t *testing.T) {
 }
 
 func getS3FileBytes(auth *aws.Auth, bucket string, path string) ([]byte, error) {
-	session := s3.New(*auth, aws.USEast)
+	session := thirdparty.NewS3Session(auth, aws.USEast)
 	s3bucket := session.Bucket(bucket)
 	reader, err := s3bucket.GetReader(path)
 	if err != nil {

@@ -7,8 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/ec2"
+	"github.com/goamz/goamz/aws"
+	"github.com/goamz/goamz/ec2"
 	"math"
 	"math/rand"
 	"os"
@@ -104,8 +104,7 @@ func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
 //getInstanceInfo returns the full ec2 instance info for the given instance ID.
 //Note that this is the *instance* id, not the spot request ID, which is different.
 func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, error) {
-	amis := []string{instanceId}
-	resp, err := ec2Handle.Instances(amis, nil)
+	resp, err := ec2Handle.DescribeInstances([]string{instanceId}, nil)
 	if err != nil {
 		return nil, err
 	}
