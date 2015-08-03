@@ -1,3 +1,5 @@
+# default command type
+command_type: system
 stepback: true
 functions:
 
@@ -136,6 +138,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -166,6 +169,7 @@ tasks:
     - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -200,6 +204,7 @@ tasks:
     - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -230,6 +235,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -260,6 +266,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -290,6 +297,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -313,6 +321,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -359,6 +368,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -389,6 +399,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -420,6 +431,7 @@ tasks:
     - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -465,6 +477,7 @@ tasks:
           go test -v -evergreen.all -evergreen.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
 
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -657,6 +670,7 @@ tasks:
     - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -687,6 +701,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -718,6 +733,7 @@ tasks:
     - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -748,6 +764,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -778,6 +795,7 @@ tasks:
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
@@ -809,6 +827,7 @@ tasks:
     - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
+      type: test
       params:
         working_dir: src
         script: |
