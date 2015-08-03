@@ -1,44 +1,36 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"path"
 	"strings"
 )
 
 // StatusDiff stores a pairing of status strings
-// for easy visualization/aggregation later.
+// for easy visualization/aggregation later
 type StatusDiff struct {
 	Original string `json:"original"`
 	Patch    string `json:"patch"`
 }
 
-// StatusDetailsDiff stores a pairing of status details
-// for easy visualization/aggregation later.
-type StatusDetailsDiff struct {
-	Original apimodels.TaskEndDetail `json:"original"`
-	Patch    apimodels.TaskEndDetail `json:"patch"`
-}
-
-// BuildStatusDiff stores a diff of two build statuses.
+// Stores a diff of two build statuses
 type BuildStatusDiff struct {
 	Name  string           `json:"name"`
 	Diff  StatusDiff       `json:"diff"`
 	Tasks []TaskStatusDiff `json:"tasks"`
 }
 
-// TaskStatusDiff stores a diff of two task statuses.
+// Stores a diff of two task statuses
 type TaskStatusDiff struct {
-	Name         string            `json:"name"`
-	Diff         StatusDetailsDiff `json:"diff"`
-	Tests        []TestStatusDiff  `json:"tests"`
-	Original     string            `json:"original"`
-	Patch        string            `json:"patch"`
-	BuildVariant string            `json:"build_variant"`
+	Name         string           `json:"name"`
+	Diff         StatusDiff       `json:"diff"`
+	Tests        []TestStatusDiff `json:"tests"`
+	Original     string           `json:"original"`
+	Patch        string           `json:"patch"`
+	BuildVariant string           `json:"build_variant"`
 }
 
-// TestStatusDiff stores a diff of two test results.
+// Stores a diff of two test results
 type TestStatusDiff struct {
 	Name     string     `json:"name"`
 	Diff     StatusDiff `json:"diff"`
@@ -46,8 +38,8 @@ type TestStatusDiff struct {
 	Patch    string     `json:"patch"`
 }
 
-// StatusDiffBuilds takes two builds and returns a diff of their results
-// for easy comparison and analysis.
+// Takes two builds and returns a diff of their results
+// for easy comparison and analysis
 func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 	// return an empty diff if one of builds is nonexistant
 	// this is likely to occur after adding a new buildvariant or task
@@ -73,7 +65,7 @@ func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 		diff.Tasks = append(diff.Tasks,
 			TaskStatusDiff{
 				Name:         task.DisplayName,
-				Diff:         StatusDetailsDiff{baseTask.StatusDetails, task.StatusDetails},
+				Diff:         StatusDiff{baseTask.Status, task.Status},
 				Original:     baseTask.Id,
 				Patch:        task.Id,
 				BuildVariant: diff.Name,
@@ -82,8 +74,8 @@ func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 	return diff
 }
 
-// StatusDiffTasks takes two tasks and returns a diff of their results
-// for easy comparison and analysis.
+// Takes two tasks and returns a diff of their results
+// for easy comparison and analysis
 func StatusDiffTasks(original *Task, patch *Task) TaskStatusDiff {
 	// return an empty diff if one of tasks is nonexistant
 	// this is likely to occur after adding a new buildvariant or task
@@ -95,7 +87,7 @@ func StatusDiffTasks(original *Task, patch *Task) TaskStatusDiff {
 		Name:     original.DisplayName,
 		Original: original.Id,
 		Patch:    patch.Id,
-		Diff:     StatusDetailsDiff{original.Details, patch.Details},
+		Diff:     StatusDiff{original.Status, patch.Status},
 	}
 
 	if original.TestResults == nil || patch.TestResults == nil {
