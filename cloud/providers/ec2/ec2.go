@@ -9,8 +9,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/mitchellh/goamz/aws"
-	"github.com/mitchellh/goamz/ec2"
+	"github.com/goamz/goamz/aws"
+	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"time"
 )
@@ -159,7 +159,7 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, owner string, us
 		"for distro “%v” to signal cloud instance spawn intent", instanceName,
 		d.Id)
 
-	options := ec2.RunInstances{
+	options := ec2.RunInstancesOptions{
 		MinCount:       1,
 		MaxCount:       1,
 		ImageId:        ec2Settings.AMI,
@@ -275,7 +275,7 @@ func (cloudManager *EC2Manager) TimeTilNextPayment(host *host.Host) time.Duratio
 	return timeTilNextEC2Payment(host)
 }
 
-func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstances,
+func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 	intentHost *host.Host) (*host.Host, *ec2.RunInstancesResp, error) {
 	// start the instance
 	resp, err := ec2Handle.RunInstances(options)
@@ -327,12 +327,11 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstances,
 			err)
 	}
 
-	var infoResp *ec2.InstancesResp
+	var infoResp *ec2.DescribeInstancesResp
 	instanceInfoRetryCount := 0
 	instanceInfoMaxRetries := 5
-
 	for {
-		infoResp, err = ec2Handle.Instances([]string{instance.InstanceId}, nil)
+		infoResp, err = ec2Handle.DescribeInstances([]string{instance.InstanceId}, nil)
 		if err != nil {
 			instanceInfoRetryCount++
 			if instanceInfoRetryCount == instanceInfoMaxRetries {

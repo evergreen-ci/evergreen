@@ -40,10 +40,9 @@ buildvariants:
   - name: compile
     distros:
     - rhel55
-  - name: aggregation
+  - name: push
   expansions:
     push_name: linux
-    push_arch: 64-test
     push_source_bucket: build-push-testing
     push_destination_bucket: mciuploads
     push_path: s3CopyFolder
@@ -56,11 +55,13 @@ buildvariants:
   - name: compile
     distros:
     - rhel55
-  - name: aggregation
+  - name: push
   expansions:
     push_name: linux
-    push_arch: 64-test
     push_source_bucket: source-bucket
     push_destination_bucket: mciuploads
     push_path: s3CopyFolder
   push: true
+
+
+
