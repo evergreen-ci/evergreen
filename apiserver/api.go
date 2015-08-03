@@ -681,9 +681,7 @@ func GetUser(r *http.Request) *user.DBUser {
 // GetTask loads the task attached to a request.
 func GetTask(r *http.Request) *model.Task {
 	if rv := context.Get(r, apiTaskKey); rv != nil {
-		t := rv.(*model.Task)
-		t.DependsOn = nil // EVG-385 hack for safe deployment (TODO)
-		return t
+		return rv.(*model.Task)
 	}
 	return nil
 }
