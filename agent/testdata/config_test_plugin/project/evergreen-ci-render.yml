@@ -66,6 +66,8 @@ timeout:
         sleep 5 #for testing callback timeouts
 
 tasks:
+- name: aggregation
+  commands: ~ 
 - name: compile
   depends_on: []
   commands:

@@ -29,7 +29,7 @@ import (
 
 // Set this to "true" to see the full log output for all tests.
 // If something is failing, try turning this on to see all the details
-var Verbose = true
+var Verbose = testing.Verbose()
 
 var testConfig = evergreen.TestConfig()
 
