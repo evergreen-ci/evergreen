@@ -256,9 +256,9 @@ var mciModule = angular.module('MCI', [
       return 'started';
     } else if (task.status == 'undispatched' && task.activated) {
       return 'scheduled';
-    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time == "0001-01-01T00:00:00Z") {
+    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time == "0") {
       return 'not scheduled';
-    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time != "0001-01-01T00:00:00Z") {
+    } else if (task.status == 'undispatched' && !task.activated && task.dispatch_time != "0") {
       return 'aborted';
     } else if (task.status == 'success') {
       return 'success';
