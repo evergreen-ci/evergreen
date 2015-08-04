@@ -67,7 +67,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	}
 
 	// Set the sender
-	from := mail.Address{"MCI Notifications", self.From}
+	from := mail.Address{"Evergreen Alerts", self.From}
 	err = c.Mail(self.From)
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail sender (%v): %v", self.From, err)

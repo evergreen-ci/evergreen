@@ -19,7 +19,13 @@
               {{ .TestFile }}
             </span>
           </td>
-          <td style="padding:0 10px;background-color:#ed1c24;"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">FAILED</span></td>
+          {{ if eq $.Task.Details.Type "system" }}
+          <td style="padding:0 10px;background-color:#800080;">
+          {{ else }}
+          <td style="padding:0 10px;background-color:#ed1c24;">
+          {{ end }}
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">FAILED</span>
+          </td>
         </tr>
         <tr><td colspan="2" height="10"></td></tr>
         <tr>
@@ -32,7 +38,7 @@
 
       <tr><td colspan="2" height="30"></td></tr>
       <tr>
-        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">BRANCH</span></td>
+        <td width="90%"><span style="font-family:Arial,sans-serif;font-weight:bold;font-size:10px;color:#999999" class="label">PROJECT</span></td>
         <td>&nbsp;</td>
       </tr>
       <tr>
@@ -54,11 +60,15 @@
           </span>
         </td>
         {{ if .Task.Details.TimedOut }}
-        <td style="padding:0 10px;background-color:#ed1c24;">
-          <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">
-            TIMED OUT
-          </span>
-        </td>
+          {{ if eq .Task.Details.Type "system" }}
+          <td style="padding:0 10px;background-color:#800080;">
+          {{ else }}
+          <td style="padding:0 10px;background-color:#ed1c24;">
+          {{ end }}
+            <span style="font-family:Arial,sans-serif;font-weight:bold;font-size:18px;color:#ffffff" class="status">
+              TIMED OUT
+            </span>
+          </td>
         {{ else }}
           <td>&nbsp;</td>
         {{ end }}

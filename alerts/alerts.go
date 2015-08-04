@@ -55,7 +55,7 @@ func (qp *QueueProcessor) Description() string {
 
 // loadAlertContext fetches details from the database for all documents that are associated with the
 // AlertRequest. For example, it populates the task/build/version/project using the
-// task/build/version/project ids in the alert request document..
+// task/build/version/project ids in the alert request document.
 func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext, error) {
 	aCtx := &AlertContext{AlertRequest: a}
 	aCtx.Settings = qp.config
