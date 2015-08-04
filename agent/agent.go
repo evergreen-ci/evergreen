@@ -276,6 +276,7 @@ func (agt *Agent) CheckIn(command model.PluginCommandConf, duration time.Duratio
 	agt.currentCommand = command
 	agt.idleTimeoutWatcher.SetDuration(duration)
 	agt.idleTimeoutWatcher.CheckIn()
+	agt.logger.LogExecution(slogger.INFO, "Command timeout set to %v", duration.String())
 }
 
 // GetTaskConfig fetches task configuration data required to run the task from the API server.
