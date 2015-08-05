@@ -91,7 +91,7 @@ func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames [
 	v, err := version.FindOne(
 		db.Query(bson.M{
 			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
-			version.ProjectKey:             project.Identifier,
+			version.IdentifierKey:          project.Identifier,
 			version.RevisionOrderNumberKey: result[0]["_id"],
 		}))
 	if err != nil {

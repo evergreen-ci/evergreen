@@ -373,7 +373,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}
 
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Project,
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Identifier,
 		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
@@ -402,7 +402,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Project,
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Identifier,
 		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
@@ -473,7 +473,7 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 	// fetch the versions
 	return version.Find(
 		db.Query(bson.M{
-			version.ProjectKey:             projectId,
+			version.IdentifierKey:          projectId,
 			version.RevisionOrderNumberKey: ronQuery,
 		}).WithFields(
 			version.RevisionOrderNumberKey,

@@ -302,10 +302,10 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 
 	siblingVersions, err := version.Find(db.Query(
 		bson.M{
-			"order":  v.RevisionOrderNumber,
-			"r":      evergreen.RepotrackerVersionRequester,
-			"branch": v.Project,
-		}).WithoutFields(version.ConfigKey).Sort([]string{"order"}).Limit(2*N + 1))
+			version.RevisionOrderNumberKey: v.RevisionOrderNumber,
+			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
+			version.IdentifierKey:          v.Identifier,
+		}).WithoutFields(version.ConfigKey).Sort([]string{version.RevisionOrderNumberKey}).Limit(2*N + 1))
 	if err != nil {
 		return nil, err
 	}
@@ -326,10 +326,10 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 		subsequentVersions, err := version.Find(
 			//TODO encapsulate this query in version pkg
 			db.Query(bson.M{
-				"order":  bson.M{"$gt": v.RevisionOrderNumber},
-				"r":      evergreen.RepotrackerVersionRequester,
-				"branch": v.Project,
-			}).WithoutFields(version.ConfigKey).Sort([]string{"order"}).Limit(N - versionIndex))
+				version.RevisionOrderNumberKey: bson.M{"$gt": v.RevisionOrderNumber},
+				version.RequesterKey:           evergreen.RepotrackerVersionRequester,
+				version.IdentifierKey:          v.Identifier,
+			}).WithoutFields(version.ConfigKey).Sort([]string{version.RevisionOrderNumberKey}).Limit(N - versionIndex))
 		if err != nil {
 			return nil, err
 		}
@@ -344,10 +344,10 @@ func getVersionHistory(versionId string, N int) ([]version.Version, error) {
 
 	if numSiblings-versionIndex < N {
 		previousVersions, err := version.Find(db.Query(bson.M{
-			"order":  bson.M{"$lt": v.RevisionOrderNumber},
-			"r":      evergreen.RepotrackerVersionRequester,
-			"branch": v.Project,
-		}).WithoutFields(version.ConfigKey).Sort([]string{"-order"}).Limit(N))
+			version.RevisionOrderNumberKey: bson.M{"$lt": v.RevisionOrderNumber},
+			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
+			version.IdentifierKey:          v.Identifier,
+		}).WithoutFields(version.ConfigKey).Sort([]string{fmt.Sprintf("-%v", version.RevisionOrderNumberKey)}).Limit(N))
 		if err != nil {
 			return nil, err
 		}

@@ -57,7 +57,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 
 	if projCtx.Version != nil {
 		recentVersions, err := version.Find(version.
-			ByProjectIdAndOrder(projCtx.Version.Project, projCtx.Version.RevisionOrderNumber).
+			ByProjectIdAndOrder(projCtx.Version.Identifier, projCtx.Version.RevisionOrderNumber).
 			WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey).
 			Sort([]string{"-" + version.RevisionOrderNumberKey}).
 			Limit(depth + 1))

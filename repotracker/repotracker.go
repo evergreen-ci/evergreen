@@ -116,7 +116,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 				"repository %v: %v", projectRef, err)
 			return err
 		}
-		err = model.UpdateLastRevision(lastVersion.Project, lastVersion.Revision)
+		err = model.UpdateLastRevision(lastVersion.Identifier, lastVersion.Revision)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "error updating last revision for "+
 				"repository %v: %v", projectRef, err)
@@ -400,7 +400,6 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 		Identifier:          ref.Identifier,
 		Message:             rev.RevisionMessage,
 		Owner:               ref.Owner,
-		Project:             ref.Identifier,
 		RemotePath:          ref.RemotePath,
 		Repo:                ref.Repo,
 		RepoKind:            ref.RepoKind,

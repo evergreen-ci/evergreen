@@ -92,7 +92,7 @@ func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
 	destVersion.CreateTime = srcVersion.CreateTime
 	destVersion.StartTime = srcVersion.StartTime
 	destVersion.FinishTime = srcVersion.FinishTime
-	destVersion.Project = srcVersion.Project
+	destVersion.Project = srcVersion.Identifier
 	destVersion.Revision = srcVersion.Revision
 	destVersion.Author = srcVersion.Author
 	destVersion.AuthorEmail = srcVersion.AuthorEmail

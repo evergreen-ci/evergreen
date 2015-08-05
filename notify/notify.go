@@ -520,7 +520,7 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 	changeInfo = &ChangeInfo{}
 	switch notification.NotificationRequester {
 	case evergreen.RepotrackerVersionRequester:
-		changeInfo.Project = v.Project
+		changeInfo.Project = v.Identifier
 		changeInfo.Author = v.Author
 		changeInfo.Message = v.Message
 		changeInfo.Revision = v.Revision

@@ -54,8 +54,8 @@ func NewTaskHistoryIterator(name string, buildVariants []string, projectName str
 
 func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevisions int, before, include bool) ([]version.Version, bool, error) {
 	versionQuery := bson.M{
-		version.RequesterKey: evergreen.RepotrackerVersionRequester,
-		version.ProjectKey:   iter.ProjectName,
+		version.RequesterKey:  evergreen.RepotrackerVersionRequester,
+		version.IdentifierKey: iter.ProjectName,
 	}
 
 	// If including the specified version in the result, then should

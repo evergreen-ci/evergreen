@@ -541,7 +541,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
 			if err != nil {
 				return nil, fmt.Errorf("Error loading project from "+
-					"last good version for project, %v: %v", lastGoodVersion.Project, err)
+					"last good version for project, %v: %v", lastGoodVersion.Identifier, err)
 			}
 		} else {
 			// Check to see if there is a local configuration in the project ref

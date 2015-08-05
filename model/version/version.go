@@ -12,7 +12,6 @@ type Version struct {
 	CreateTime          time.Time     `bson:"create_time" json:"create_time,omitempty"`
 	StartTime           time.Time     `bson:"start_time" json:"start_time,omitempty"`
 	FinishTime          time.Time     `bson:"finish_time" json:"finish_time,omitempty"`
-	Project             string        `bson:"branch" json:"branch,omitempty"`
 	Revision            string        `bson:"gitspec" json:"revision,omitempty"`
 	Author              string        `bson:"author" json:"author,omitempty"`
 	AuthorEmail         string        `bson:"author_email" json:"author_email,omitempty"`
@@ -22,7 +21,7 @@ type Version struct {
 	Config              string        `bson:"config" json:"config,omitempty"`
 	Owner               string        `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string        `bson:"repo_name" json:"repo_name,omitempty"`
-	Branch              string        `bson:"branch_name" json:"branch_name,omitempty"`
+	Branch              string        `bson:"branch_name" json:"branch_name, omitempty"`
 	RepoKind            string        `bson:"repo_kind" json:"repo_kind,omitempty"`
 	BuildVariants       []BuildStatus `bson:"build_variants_status,omitempty" json:"build_variants_status,omitempty"`
 

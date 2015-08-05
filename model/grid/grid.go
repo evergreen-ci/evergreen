@@ -71,7 +71,7 @@ func FetchCells(current version.Version, depth int) (Grid, error) {
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
 			},
-			build.ProjectKey: current.Project,
+			build.ProjectKey: current.Identifier,
 		}},
 		// Stage 2: Sort the builds by the most recently completed.
 		{"$sort": bson.M{
@@ -127,7 +127,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
 			},
-			model.TaskProjectKey:   current.Project,
+			model.TaskProjectKey:   current.Identifier,
 			model.TaskRequesterKey: evergreen.RepotrackerVersionRequester,
 			model.TaskStatusKey: bson.M{
 				"$in": []string{

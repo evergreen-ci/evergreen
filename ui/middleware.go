@@ -232,7 +232,7 @@ func (pc *projectContext) populateTaskBuildVersion(taskId, buildId, versionId st
 			return "", err
 		}
 		if pc.Version != nil {
-			projectId = pc.Version.Project
+			projectId = pc.Version.Identifier
 		}
 	}
 	return projectId, nil

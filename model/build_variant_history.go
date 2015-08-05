@@ -39,7 +39,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 		versionQuery = db.Query(bson.M{
 			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
 			version.RevisionOrderNumberKey: bson.M{"$lt": beforeCommit.RevisionOrderNumber},
-			version.ProjectKey:             self.ProjectName,
+			version.IdentifierKey:          self.ProjectName,
 			version.BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
 					version.BuildStatusVariantKey: self.BuildVariantInVersion,
@@ -48,8 +48,8 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 		})
 	} else {
 		versionQuery = db.Query(bson.M{
-			version.RequesterKey: evergreen.RepotrackerVersionRequester,
-			version.ProjectKey:   self.ProjectName,
+			version.RequesterKey:  evergreen.RepotrackerVersionRequester,
+			version.IdentifierKey: self.ProjectName,
 			version.BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
 					version.BuildStatusVariantKey: self.BuildVariantInVersion,

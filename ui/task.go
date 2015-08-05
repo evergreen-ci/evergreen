@@ -180,7 +180,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		CurrentTime:         time.Now().UnixNano(),
 		BuildVariantDisplay: projCtx.Build.DisplayName,
 		Message:             projCtx.Version.Message,
-		Project:             projCtx.Version.Project,
+		Project:             projCtx.Version.Identifier,
 		Author:              projCtx.Version.Author,
 		AuthorEmail:         projCtx.Version.AuthorEmail,
 		VersionId:           projCtx.Version.Id,

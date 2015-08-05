@@ -18,7 +18,6 @@ var (
 	CreateTimeKey          = bsonutil.MustHaveTag(Version{}, "CreateTime")
 	StartTimeKey           = bsonutil.MustHaveTag(Version{}, "StartTime")
 	FinishTimeKey          = bsonutil.MustHaveTag(Version{}, "FinishTime")
-	ProjectKey             = bsonutil.MustHaveTag(Version{}, "Project")
 	RevisionKey            = bsonutil.MustHaveTag(Version{}, "Revision")
 	AuthorKey              = bsonutil.MustHaveTag(Version{}, "Author")
 	AuthorEmailKey         = bsonutil.MustHaveTag(Version{}, "AuthorEmail")
@@ -66,9 +65,9 @@ func ByLastKnownGoodConfig(projectId string) db.Q {
 func ByProjectIdAndRevision(projectId, revision string) db.Q {
 	return db.Query(
 		bson.M{
-			ProjectKey:   projectId,
-			RevisionKey:  revision,
-			RequesterKey: evergreen.RepotrackerVersionRequester,
+			IdentifierKey: projectId,
+			RevisionKey:   revision,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
 		})
 }
 
@@ -77,7 +76,7 @@ func ByProjectIdAndRevision(projectId, revision string) db.Q {
 func ByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q {
 	return db.Query(
 		bson.M{
-			ProjectKey:             projectId,
+			IdentifierKey:          projectId,
 			RevisionOrderNumberKey: bson.M{"$lte": revisionOrderNumber},
 			RequesterKey:           evergreen.RepotrackerVersionRequester,
 		})
@@ -88,8 +87,8 @@ func ByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q {
 func ByLastVariantActivation(projectId, variant string) db.Q {
 	return db.Query(
 		bson.M{
-			ProjectKey:   projectId,
-			RequesterKey: evergreen.RepotrackerVersionRequester,
+			IdentifierKey: projectId,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
 			BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
 					BuildStatusActivatedKey: true,
@@ -104,8 +103,8 @@ func ByLastVariantActivation(projectId, variant string) db.Q {
 func ByProjectId(projectId string) db.Q {
 	return db.Query(
 		bson.M{
-			ProjectKey:   projectId,
-			RequesterKey: evergreen.RepotrackerVersionRequester,
+			IdentifierKey: projectId,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
 		})
 }
 
@@ -114,8 +113,8 @@ func ByProjectId(projectId string) db.Q {
 func ByMostRecentForRequester(projectId, requester string) db.Q {
 	return db.Query(
 		bson.M{
-			RequesterKey: requester,
-			ProjectKey:   projectId,
+			RequesterKey:  requester,
+			IdentifierKey: projectId,
 		},
 	).Sort([]string{"-" + RevisionOrderNumberKey})
 }

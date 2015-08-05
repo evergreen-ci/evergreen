@@ -113,7 +113,7 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 			return nil, err
 		}
 		if aCtx.Version != nil {
-			projectId = aCtx.Version.Project
+			projectId = aCtx.Version.Identifier
 		}
 	}
 
