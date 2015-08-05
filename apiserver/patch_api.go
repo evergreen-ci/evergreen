@@ -368,11 +368,12 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if !getGlobalLock(PatchLockTitle) {
+	if !getGlobalLock(r.RemoteAddr, p.Id.String()) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(PatchLockTitle)
+	defer releaseGlobalLock(r.RemoteAddr, p.Id.String())
+
 	// dispatch to handlers based on specified action
 	switch r.FormValue("action") {
 	case "update":

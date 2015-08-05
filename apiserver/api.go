@@ -245,13 +245,13 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
-	if !getGlobalLock(APIServerLockTitle) {
+	task := MustHaveTask(r)
+
+	if !getGlobalLock(r.RemoteAddr, task.Id) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(APIServerLockTitle)
-
-	task := MustHaveTask(r)
+	defer releaseGlobalLock(r.RemoteAddr, task.Id)
 
 	evergreen.Logger.Logf(slogger.INFO, "Marking task started: %v", task.Id)
 
@@ -326,11 +326,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !getGlobalLock(APIServerLockTitle) {
+	if !getGlobalLock(r.RemoteAddr, task.Id) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(APIServerLockTitle)
+	defer releaseGlobalLock(r.RemoteAddr, task.Id)
 
 	// mark task as finished
 	err = task.MarkEnd(APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
@@ -847,31 +847,29 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 }
 
 // helper function for grabbing the global lock
-func getGlobalLock(requester string) bool {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v", requester)
-	lockAcquired, err := db.WaitTillAcquireGlobalLock(requester, db.LockTimeout)
+func getGlobalLock(client, taskId string) bool {
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v (%v)", client, taskId)
+	lockAcquired, err := db.WaitTillAcquireGlobalLock(client, db.LockTimeout)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock for %v (%v): %v", client, taskId, err)
 		return false
 	}
 	if !lockAcquired {
-		evergreen.Logger.Errorf(slogger.ERROR, "Cannot proceed with %v api method because the global lock could not be taken", requester)
+		evergreen.Logger.Errorf(slogger.ERROR, "Timed out attempting to acquire global lock for %v (%v)", client, taskId)
 		return false
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v", requester)
+	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v (%v)", client, taskId)
 	return true
 }
 
 // helper function for releasing the global lock
-func releaseGlobalLock(requester string) {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to release global lock from %v", requester)
-
-	err := db.ReleaseGlobalLock(requester)
-	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock from %v - this is really bad: %v", requester, err)
+func releaseGlobalLock(client, taskId string) {
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to release global lock for task %v (%v)", client, taskId)
+	if err := db.ReleaseGlobalLock(client); err != nil {
+		evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock from %v (%v) - this is really bad: %v", client, taskId, err)
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "Released global lock from %v", requester)
+	evergreen.Logger.Logf(slogger.DEBUG, "Released global lock from %v (%v)", client, taskId)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
