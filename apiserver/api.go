@@ -848,28 +848,29 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 // helper function for grabbing the global lock
 func getGlobalLock(client, taskId string) bool {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v (%v)", client, taskId)
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v (remote addr: %v)", taskId, client)
+
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(client, db.LockTimeout)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock for %v (%v): %v", client, taskId, err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock for %v (remote addr: %v): %v", taskId, client, err)
 		return false
 	}
 	if !lockAcquired {
-		evergreen.Logger.Errorf(slogger.ERROR, "Timed out attempting to acquire global lock for %v (%v)", client, taskId)
+		evergreen.Logger.Errorf(slogger.ERROR, "Timed out attempting to acquire global lock for %v (remote addr: %v)", taskId, client)
 		return false
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v (%v)", client, taskId)
+	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v (remote addr: %v)", taskId, client)
 	return true
 }
 
 // helper function for releasing the global lock
 func releaseGlobalLock(client, taskId string) {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to release global lock for task %v (%v)", client, taskId)
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to release global lock for %v (remote addr: %v)", taskId, client)
 	if err := db.ReleaseGlobalLock(client); err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock from %v (%v) - this is really bad: %v", client, taskId, err)
+		evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock for %v (remote addr: %v) - this is really bad: %v", taskId, client, err)
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "Released global lock from %v (%v)", client, taskId)
+	evergreen.Logger.Logf(slogger.DEBUG, "Released global lock for %v (remote addr: %v)", taskId, client)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
