@@ -43,8 +43,7 @@ function VersionController($scope, $location, $http, $filter, $now, $window) {
     var taskNames = {};
     $scope.taskGrid = {};
 
-
-    if (version.Version.PatchInfo) {
+    if (version.PatchInfo) {
       // setup diff data to use statusFilter
       for (var i = 0; i < version.PatchInfo.StatusDiffs.length; ++i) {
         var original = version.PatchInfo.StatusDiffs[i].diff.original;
