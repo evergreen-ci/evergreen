@@ -1087,7 +1087,8 @@ func (t *Task) reset() error {
 			TaskStartTimeKey:     ZeroTime,
 			TaskScheduledTimeKey: ZeroTime,
 			TaskFinishTimeKey:    ZeroTime,
-			TaskTestResultsKey:   []TestResult{}},
+			TaskTestResultsKey:   []TestResult{},
+		},
 		"$unset": bson.M{
 			TaskDetailsKey: "",
 		},

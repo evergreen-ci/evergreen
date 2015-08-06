@@ -24,12 +24,13 @@ const (
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
 func cacheFromTask(t *Task) build.TaskCache {
 	return build.TaskCache{
-		Id:          t.Id,
-		DisplayName: t.DisplayName,
-		Status:      t.Status,
-		StartTime:   t.StartTime,
-		TimeTaken:   t.TimeTaken,
-		Activated:   t.Activated,
+		Id:            t.Id,
+		DisplayName:   t.DisplayName,
+		Status:        t.Status,
+		StatusDetails: t.Details,
+		StartTime:     t.StartTime,
+		TimeTaken:     t.TimeTaken,
+		Activated:     t.Activated,
 	}
 }
 
@@ -257,6 +258,7 @@ func RefreshTasksCache(buildId string) error {
 			TaskIdKey:          1,
 			TaskDisplayNameKey: 1,
 			TaskStatusKey:      1,
+			TaskDetailsKey:     1,
 			TaskStartTimeKey:   1,
 			TaskTimeTakenKey:   1,
 			TaskActivatedKey:   1,
