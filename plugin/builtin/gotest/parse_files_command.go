@@ -151,7 +151,6 @@ func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 
 	// now, open all the files, and parse the test results
 	for _, outputFile := range outputFiles {
-
 		// kill the execution if API server requests
 		select {
 		case <-stop:
@@ -192,13 +191,11 @@ func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 			TaskExecution: taskConfig.Task.Execution,
 			Lines:         logLines,
 		}
-
 		// save the results
 		results = append(results, parser.Results())
 		logs = append(logs, testLog)
 
 	}
-
 	return logs, results, nil
 
 }

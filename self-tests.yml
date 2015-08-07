@@ -2,7 +2,6 @@
 command_type: system
 stepback: true
 functions:
-
   "fetch source" :
     command: git.get_project
     params:
@@ -129,7 +128,7 @@ pre:
 post:
   - command: gotest.parse_files
     params: 
-      files: ["src/**/*.suite"]
+      files: ["src/*.suite", "src/**/*.suite"]
   - command: shell.cleanup
 
 tasks:
@@ -443,41 +442,32 @@ tasks:
           . ./set_gopath.sh
           export EVGHOME=${EVGHOME_cmd}
 
+          export WORK_DIR=$(pwd)
           cd plugin
           mkfifo test_pipe
-          tee -a plugin.suite < test_pipe&
+          tee -a $WORK_DIR/plugin.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
+          if [ $? -ne 0 ]; then
+            echo "plugin suite failed, will exit with error on finish"
+            export exitcode=1
+          fi
 
-          cd builtin/attach
-          mkfifo test_pipe
-          tee -a attach.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
-
-          cd ../expansions
-          mkfifo test_pipe
-          tee -a expansions.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
-
-          cd ../git
-          mkfifo test_pipe
-          tee -a git.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
-
-          cd ../gotest
-          mkfifo test_pipe
-          tee -a gotest.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
-
-          cd ../s3Plugin
-          mkfifo test_pipe
-          tee -a s3Plugin.suite < test_pipe&
-          go test -v -evergreen.all -evergreen.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
-
-          cd ../s3copy
-          mkfifo test_pipe
-          tee -a s3copy.suite < test_pipe&
-          go test -v -evergreen.all -evergreen.settingsOverride="../../../creds.yml" -coverprofile=coverage.out > test_pipe
-
+          cd builtin
+          #TODO coverage reports for other model packages
+          for i in attach expansions git gotest s3Plugin s3copy; do 
+            echo "running $i suite"
+            cd $i
+            mkfifo $i.pipe
+            tee -a $WORK_DIR/$i.suite < $i.pipe& 
+            go test -v > $i.pipe
+            if [ $? -ne 0 ]; then
+                echo "$i suite failed, will exit with error on finish"
+                export exitcode=1
+            fi
+            cd ..
+          done
+          exit $exitcode
+        
     - command: shell.exec
       type: test
       params:
