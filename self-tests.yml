@@ -848,7 +848,7 @@ buildvariants:
     - name: ubuntu
       display_name: Ubuntu
       run_on:
-      - ubuntu1404-docker
+      - ubuntu1404-test
       expansions:
         EVGHOME_cmd: "`pwd`"
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
