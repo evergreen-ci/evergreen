@@ -250,7 +250,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	scpSetupCmd := &command.ScpCommand{
 		Source:         file.Name(),
 		Dest:           fileName,
-		Stdout:         &scpSetupCmdStderr,
+		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
 		Stderr:         &scpSetupCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
@@ -275,8 +275,8 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	var sshSetupCmdStderr bytes.Buffer
 	runSetupCmd := &command.RemoteCommand{
 		CmdString:      sudoStr + "sh " + fileName,
-		Stdout:         &sshSetupCmdStderr,
-		Stderr:         &sshSetupCmdStderr,
+		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
+		Stderr:         ioutil.Discard,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
