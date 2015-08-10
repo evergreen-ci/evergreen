@@ -93,6 +93,12 @@ Evergreen - Distros
                 <div class="icon icon-warning-sign distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">&nbsp;Image ID is required</div>
               </div>
               <div>
+                <label class="distro-label">Bind Address:</label>
+                <input type="text" ng-required="activeDistro.provider == 'docker'" name="bindIP" class="form-control" ng-model="activeDistro.settings.bind_ip" placeholder="e.g. localhost">
+                <div class="icon icon-warning-sign distro-error" ng-show="form.bindIP.$dirty && form.bindIP.$error.required || form.bindIP.$invalid">&nbsp;An address for the container to bind a port to is required</div>
+              </div>
+
+              <div>
                 <label class="distro-label">Docker Client Port:</label>
                 <input ng-required="activeDistro.provider == 'docker'" name="clientPort" class="form-control" type="number" ng-model="activeDistro.settings.client_port" placeholder="Port for connecting to docker client, e.g. 2376">
                 <div class="icon icon-warning-sign distro-error" ng-show="form.clientPort.$dirty && form.clientPort.$error.required || form.clientPort.$invalid || form.clientPort.$modelValue < 0">&nbsp;Non-negative numeric Client Port is required</div>
