@@ -1,9 +1,9 @@
 golang.org/x/crypto/ssh							            e3f150b4372fce47109dbd8fef5f03cd2af08700
 github.com/pkg/sftp                             506297c9013d2893d5c5daaa9155e7333a1c58de
 github.com/vaughan0/go-ini                      a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
-github.com/goamz/goamz/s3						            786b544d40e6765311390f1759a6652f31c818b2
-github.com/goamz/goamz/ec2						          786b544d40e6765311390f1759a6652f31c818b2
-github.com/goamz/goamz/aws						          786b544d40e6765311390f1759a6652f31c818b2 
+github.com/10gen/goamz/s3						            fd18ac632eb1ce1a721c5fd2a58d982252e09cdd github.com/goamz/goamz/s3
+github.com/10gen/goamz/ec2						          fd18ac632eb1ce1a721c5fd2a58d982252e09cdd github.com/goamz/goamz/ec2
+github.com/10gen/goamz/aws						          fd18ac632eb1ce1a721c5fd2a58d982252e09cdd github.com/goamz/goamz/aws
 github.com/10gen-labs/slogger/v1                c972902347f8b08b39dac87b43955d01caedb63a
 github.com/codegangsta/inject                   37d7f8432a3e684eef9b2edece76bdfa6ac85b39
 github.com/fsouza/go-dockerclient               933433faa3e1c0bbc825b251143f8e77affbf797

@@ -43,6 +43,12 @@ var s3ParamsToSign = map[string]bool{
 	"response-content-encoding":    true,
 }
 
+const (
+	S3ConnectTimeout = 2 * time.Minute
+	S3ReadTimeout    = 2 * time.Minute
+	S3WriteTimeout   = 2 * time.Minute
+)
+
 // For our S3 copy operations, S3 either returns an CopyObjectResult or
 // a CopyObjectError body. In order to determine what kind of response
 // was returned we read the body returned from the API call
@@ -339,25 +345,34 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 // supplied s3's region.
 
 func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
+	var s3Session *s3.S3
 	cert := x509.Certificate{}
-
 	// go's systemVerify panics with no verify options set
 	// TODO: EVG-483
 	if runtime.GOOS == "windows" {
-		return s3.New(*auth, region)
+		s3Session = s3.New(*auth, region)
+		s3Session.ReadTimeout = S3ReadTimeout
+		s3Session.WriteTimeout = S3WriteTimeout
+		s3Session.ConnectTimeout = S3ConnectTimeout
+		return s3Session
 	}
-
 	// no verify options so system root ca will be used
 	_, err := cert.Verify(x509.VerifyOptions{})
 	rootsError := x509.SystemRootsError{}
 	if err != nil && err.Error() == rootsError.Error() {
-		// create a Transport which includes our TLS config
+		// create a Transport which includes our TLSConfig with InsecureSkipVerify
+		// and client timeouts.
 		tlsConfig := tls.Config{InsecureSkipVerify: true}
-		tr := http.Transport{TLSClientConfig: &tlsConfig}
+		tr := http.Transport{
+			TLSClientConfig: &tlsConfig}
 		// add the Transport to our http client
 		client := &http.Client{Transport: &tr}
-		return s3.New(*auth, region, client)
+		s3Session = s3.New(*auth, region, client)
+	} else {
+		s3Session = s3.New(*auth, region)
 	}
-	return s3.New(*auth, region)
-
+	s3Session.ReadTimeout = S3ReadTimeout
+	s3Session.WriteTimeout = S3WriteTimeout
+	s3Session.ConnectTimeout = S3ConnectTimeout
+	return s3Session
 }

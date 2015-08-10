@@ -356,6 +356,8 @@ func (m *Multi) Complete(parts []Part) error {
 	if err != nil {
 		return err
 	}
+
+	// Setting Content-Length prevents breakage on DreamObjects
 	for attempt := m.Bucket.S3.AttemptStrategy.Start(); attempt.Next(); {
 		req := &request{
 			method:  "POST",
@@ -363,7 +365,11 @@ func (m *Multi) Complete(parts []Part) error {
 			path:    m.Key,
 			params:  params,
 			payload: bytes.NewReader(data),
+			headers: map[string][]string{
+				"Content-Length": []string{strconv.Itoa(len(data))},
+			},
 		}
+
 		err := m.Bucket.S3.query(req, nil)
 		if shouldRetry(err) && attempt.HasNext() {
 			continue

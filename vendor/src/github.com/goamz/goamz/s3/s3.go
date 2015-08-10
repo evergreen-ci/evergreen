@@ -983,32 +983,44 @@ func (s3 *S3) run(req *request, resp interface{}) (*http.Response, error) {
 		hreq.Body = ioutil.NopCloser(req.payload)
 	}
 
+	// modified from original to support client timeouts
+
+	// function to set up timeouts
+	dial := func(netw, addr string) (c net.Conn, err error) {
+		c, err = net.DialTimeout(netw, addr, s3.ConnectTimeout)
+		if err != nil {
+			return
+		}
+
+		var deadline time.Time
+		if s3.RequestTimeout > 0 {
+			deadline = time.Now().Add(s3.RequestTimeout)
+			c.SetDeadline(deadline)
+		}
+
+		if s3.ReadTimeout > 0 || s3.WriteTimeout > 0 {
+			c = &ioTimeoutConn{
+				TCPConn:         c.(*net.TCPConn),
+				readTimeout:     s3.ReadTimeout,
+				writeTimeout:    s3.WriteTimeout,
+				requestDeadline: deadline,
+			}
+		}
+		return
+	}
+
 	if s3.client == nil {
-		s3.client = &http.Client{
-			Transport: &http.Transport{
-				Dial: func(netw, addr string) (c net.Conn, err error) {
-					c, err = net.DialTimeout(netw, addr, s3.ConnectTimeout)
-					if err != nil {
-						return
-					}
-
-					var deadline time.Time
-					if s3.RequestTimeout > 0 {
-						deadline = time.Now().Add(s3.RequestTimeout)
-						c.SetDeadline(deadline)
-					}
-
-					if s3.ReadTimeout > 0 || s3.WriteTimeout > 0 {
-						c = &ioTimeoutConn{
-							TCPConn:         c.(*net.TCPConn),
-							readTimeout:     s3.ReadTimeout,
-							writeTimeout:    s3.WriteTimeout,
-							requestDeadline: deadline,
-						}
-					}
-					return
-				},
-			},
+		s3.client = &http.Client{Transport: &http.Transport{Dial: dial}}
+	} else {
+		if s3.client.Transport == nil {
+			s3.client.Transport = &http.Transport{Dial: dial}
+		} else {
+			// check that the Transport is of type &http.Transport
+			transport, ok := s3.client.Transport.(*http.Transport)
+			// if its a http.Transport, add the timeout, otherwise timeouts will not work
+			if ok {
+				transport.Dial = dial
+			}
 		}
 	}
 
@@ -1101,7 +1113,7 @@ func shouldRetry(err error) bool {
 		}
 	case *Error:
 		switch e.Code {
-		case "InternalError", "NoSuchUpload", "NoSuchBucket":
+		case "InternalError", "NoSuchUpload", "NoSuchBucket", "RequestTimeout":
 			return true
 		}
 	// let's handle tls handshake timeout issues and similar temporary errors
