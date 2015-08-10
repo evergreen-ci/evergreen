@@ -331,10 +331,11 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 	}
 
 	// run the command to kick off the agent remotely
+	var startAgentLog bytes.Buffer
 	startAgentCmd := &command.RemoteCommand{
 		CmdString:      remoteCmd,
-		Stdout:         ioutil.Discard,
-		Stderr:         ioutil.Discard,
+		Stdout:         &startAgentLog,
+		Stderr:         &startAgentLog,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
@@ -351,7 +352,7 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 			startAgentCmd.Stop()
 			return fmt.Errorf("starting agent timed out")
 		}
-		return fmt.Errorf("error starting agent on host %v: %v", hostObj.Id, err)
+		return fmt.Errorf("error starting agent on host %v (%v): %v", hostObj.Id, err, startAgentLog)
 	}
 
 	return nil
