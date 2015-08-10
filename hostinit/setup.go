@@ -1,7 +1,6 @@
 package hostinit
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
@@ -13,16 +12,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/remote"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
-	"io/ioutil"
-	"os"
 	"sync"
 	"time"
-)
-
-const (
-	SCPTimeout = time.Minute
 )
 
 // Error indicating another hostinit got to the setup first.
@@ -198,6 +192,9 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		evergreen.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", targetHost.Id, err)
 	}
 
+	// get the local path to the SSH keyfile, if not specified
+	keyfile := init.Settings.Keys[targetHost.Distro.SSHKey]
+
 	// run the remote setup script as sudo, if appropriate
 	sudoStr := ""
 	if targetHost.Distro.SetupAsSudo {
@@ -214,16 +211,24 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		user = hostInfo.User
 	}
 
-	// create a temp file for the setup script
-	fileName := "setup.sh"
-	file, err := ioutil.TempFile("", fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error creating setup script: %v", err)
+	// initialize a gateway for creating the script on the remote machine
+	gateway := &remote.SFTPGateway{
+		Host:    hostInfo.Hostname + ":" + hostInfo.Port,
+		User:    user,
+		Keyfile: keyfile,
 	}
-	defer func() {
-		file.Close()
-		os.Remove(file.Name())
-	}()
+	if err := gateway.Init(); err != nil {
+		return nil, fmt.Errorf("error connecting via sftp: %v", err)
+	}
+	defer gateway.Close()
+
+	// create the remote file
+	remoteFileName := "setup.sh"
+	file, err := gateway.Client.Create(remoteFileName)
+	if err != nil {
+		return nil, fmt.Errorf("error creating remote setup script: %v", err)
+	}
+	defer file.Close()
 
 	// build the setup script
 	setup, err := init.buildSetupScript(targetHost)
@@ -236,60 +241,18 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		return nil, fmt.Errorf("error writing remote setup script: %v", err)
 	}
 
-	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get cloud host for %v: %v", targetHost.Id, err)
-	}
-	sshOptions, err := cloudHost.GetSSHOptions()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting ssh options for host %v: %v", targetHost.Id, err)
-	}
-
-	// copy setup script over to the remote machine
-	var scpSetupCmdStderr bytes.Buffer
-	scpSetupCmd := &command.ScpCommand{
-		Source:         file.Name(),
-		Dest:           fileName,
-		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
-		Stderr:         &scpSetupCmdStderr,
-		RemoteHostName: hostInfo.Hostname,
-		User:           user,
-		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
+	// set up remote running of the script
+	script := &remote.SSHCommand{
+		Command: sudoStr + "sh " + remoteFileName,
+		Host:    hostInfo.Hostname + ":" + hostInfo.Port,
+		User:    user,
+		Keyfile: keyfile,
+		Timeout: time.Duration(SSHTimeoutSeconds) * time.Second,
 	}
 
-	// run the command to scp the setup script with a timeout
-	err = util.RunFunctionWithTimeout(
-		scpSetupCmd.Run,
-		SCPTimeout,
-	)
-	if err != nil {
-		if err == util.ErrTimedOut {
-			scpSetupCmd.Stop()
-			return nil, fmt.Errorf("scp-ing setup script timed out")
-		}
-		return nil, fmt.Errorf("error (%v) copying setup script to remote "+
-			"machine: %v", err, scpSetupCmdStderr.String())
-	}
+	// run the setup script
+	return script.Run()
 
-	// run command to ssh into remote machine and execute setup script
-	var sshSetupCmdStderr bytes.Buffer
-	runSetupCmd := &command.RemoteCommand{
-		CmdString:      sudoStr + "sh " + fileName,
-		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
-		Stderr:         ioutil.Discard,
-		RemoteHostName: hostInfo.Hostname,
-		User:           user,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     false,
-	}
-
-	// run the ssh command with given timeout
-	err = util.RunFunctionWithTimeout(
-		runSetupCmd.Run,
-		time.Duration(SSHTimeoutSeconds)*time.Second,
-	)
-
-	return sshSetupCmdStderr.Bytes(), err
 }
 
 // Build the setup script that will need to be run on the specified host.
