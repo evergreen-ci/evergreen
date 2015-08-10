@@ -108,10 +108,9 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(settings *evergreen.Settings,
 
 	err = self.startAgentOnRemote(settings, &taskToRun, &hostObj, sshOptions)
 	if err != nil {
-		return "", fmt.Errorf("error starting agent on %v for task %v: %v",
-			hostObj.Id, taskToRun.Id, err)
+		return "", fmt.Errorf("error starting agent on %v for task %v: %v", hostObj.Id, taskToRun.Id, err)
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Agent successfully started")
+	evergreen.Logger.Logf(slogger.INFO, "Agent successfully started for task %v", taskToRun.Id)
 
 	return agentRevision, nil
 }
