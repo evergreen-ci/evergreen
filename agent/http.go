@@ -452,7 +452,7 @@ func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 					return util.RetriableError{fmt.Errorf("unable to read "+
 						"project version response: %v\n", err)}
 				}
-				err = model.LoadProjectInto([]byte(v.Config), v.Project, projectConfig)
+				err = model.LoadProjectInto([]byte(v.Config), v.Identifier, projectConfig)
 				if err != nil {
 					h.Logger.Errorf(slogger.ERROR,
 						"unable to unmarshal project config: %v\n", err)
