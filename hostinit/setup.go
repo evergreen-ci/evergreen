@@ -279,7 +279,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		Stderr:         &sshSetupCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
-		Options:        append([]string{"-t", "-p", hostInfo.Port}, sshOptions...),
+		Options:        append([]string{"-t", "-t", "-p", hostInfo.Port}, sshOptions...),
 		Background:     false,
 	}
 
