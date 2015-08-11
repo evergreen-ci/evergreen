@@ -77,7 +77,7 @@ func TestGetRecentVersions(t *testing.T) {
 		for i := 0; i < rest.NumRecentVersions; i++ {
 			v := &version.Version{
 				Id:                  fmt.Sprintf("version%v", i),
-				Project:             projectName,
+				Identifier:          projectName,
 				Author:              fmt.Sprintf("author%v", i),
 				Revision:            fmt.Sprintf("%x", rand.Int()),
 				Message:             fmt.Sprintf("message%v", i),
@@ -93,7 +93,7 @@ func TestGetRecentVersions(t *testing.T) {
 		// of the build variants slice
 		earlyVersion := &version.Version{
 			Id:                  "some-id",
-			Project:             projectName,
+			Identifier:          projectName,
 			Author:              "some-author",
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Message:             "some-message",
@@ -106,7 +106,7 @@ func TestGetRecentVersions(t *testing.T) {
 		// since it belongs to a different project
 		otherVersion := &version.Version{
 			Id:                  "some-other-id",
-			Project:             otherProjectName,
+			Identifier:          otherProjectName,
 			Author:              "some-other-author",
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Message:             "some-other-message",
@@ -281,7 +281,6 @@ func TestGetVersionInfo(t *testing.T) {
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
 			FinishTime:          time.Now().Add(-5 * time.Second),
-			Project:             projectName,
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Author:              "some-author",
 			AuthorEmail:         "some-email",
@@ -379,7 +378,6 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
 			FinishTime:          time.Now().Add(-5 * time.Second),
-			Project:             projectName,
 			Revision:            revision,
 			Author:              "some-author",
 			AuthorEmail:         "some-email",
@@ -392,7 +390,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			Repo:                "some-repo",
 			Branch:              "some-branch",
 			RepoKind:            "github",
-			Identifier:          versionId,
+			Identifier:          projectName,
 			Remote:              false,
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -483,7 +481,6 @@ func TestActivateVersion(t *testing.T) {
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			StartTime:           time.Now().Add(-10 * time.Minute),
 			FinishTime:          time.Now().Add(-5 * time.Second),
-			Project:             projectName,
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Author:              "some-author",
 			AuthorEmail:         "some-email",
@@ -496,7 +493,7 @@ func TestActivateVersion(t *testing.T) {
 			Repo:                "some-repo",
 			Branch:              "some-branch",
 			RepoKind:            "github",
-			Identifier:          versionId,
+			Identifier:          projectName,
 			Remote:              false,
 			RemotePath:          "",
 			Requester:           evergreen.RepotrackerVersionRequester,
@@ -844,7 +841,7 @@ func validateVersionInfo(v *version.Version, response *httptest.ResponseRecorder
 		So(err, ShouldBeNil)
 		So(finishTime, ShouldHappenWithin, rest.TimePrecision, v.FinishTime)
 
-		So(jsonBody["project"], ShouldEqual, v.Project)
+		So(jsonBody["project"], ShouldEqual, v.Identifier)
 		So(jsonBody["revision"], ShouldEqual, v.Revision)
 		So(jsonBody["author"], ShouldEqual, v.Author)
 		So(jsonBody["author_email"], ShouldEqual, v.AuthorEmail)

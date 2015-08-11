@@ -30,7 +30,7 @@ func createVersion(order int, project string, buildVariants []string) error {
 		})
 	}
 	v.RevisionOrderNumber = order
-	v.Project = project
+	v.Identifier = project
 	v.Id = fmt.Sprintf("version_%v_%v", order, project)
 	v.Requester = evergreen.RepotrackerVersionRequester
 	return v.Insert()

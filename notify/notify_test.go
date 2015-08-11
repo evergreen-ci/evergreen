@@ -559,18 +559,18 @@ func insertTask(id, project, display_name, buildVariant, status string, createTi
 
 func insertVersions() {
 	v := &version.Version{
-		Id:       "version1",
-		Project:  "",
-		BuildIds: []string{"build1"},
-		Author:   "user@mci",
-		Message:  "Fixed all the bugs",
+		Id:         "version1",
+		Identifier: "",
+		BuildIds:   []string{"build1"},
+		Author:     "user@mci",
+		Message:    "Fixed all the bugs",
 	}
 
 	So(v.Insert(), ShouldBeNil)
 
 	version2 := &version.Version{
-		Id:      "version2",
-		Project: "",
+		Id:         "version2",
+		Identifier: "",
 		BuildIds: []string{"build2", "build3", "build4", "build5", "build6",
 			"build7", "build8", "build9", "build10"},
 		Author:  "user@mci",

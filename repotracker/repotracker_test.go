@@ -205,8 +205,8 @@ func TestBatchTimes(t *testing.T) {
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
 		previouslyActivatedVersion := version.Version{
-			Id:      "previously activated",
-			Project: "testproject",
+			Id:         "previously activated",
+			Identifier: "testproject",
 			BuildVariants: []version.BuildStatus{
 				{
 					BuildVariant: "bv1",

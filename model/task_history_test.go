@@ -45,7 +45,7 @@ func TestTaskHistory(t *testing.T) {
 					RevisionOrderNumber: i,
 					Revision:            vid,
 					Requester:           evergreen.RepotrackerVersionRequester,
-					Project:             projectToUse,
+					Identifier:          projectToUse,
 				}
 
 				testutil.HandleTestingErr(ver.Insert(), t,

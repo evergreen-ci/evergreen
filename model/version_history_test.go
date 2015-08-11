@@ -64,7 +64,7 @@ func insertVersion(id string, order int, project string) {
 	v := &version.Version{
 		Id:                  id,
 		RevisionOrderNumber: order,
-		Project:             project,
+		Identifier:          project,
 		Requester:           evergreen.RepotrackerVersionRequester,
 	}
 	So(v.Insert(), ShouldBeNil)
