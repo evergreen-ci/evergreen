@@ -3,18 +3,16 @@ package thirdparty
 import (
 	"crypto/hmac"
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -231,11 +229,9 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType string) err
 		return err
 	}
 
-	session := NewS3Session(pushAuth, aws.USEast)
+	session := s3.New(*pushAuth, aws.USEast)
 	bucket := session.Bucket(urlParsed.Host)
-	// options for the header
-	options := s3.Options{}
-	err = bucket.PutReader(urlParsed.Path, localFileReader, fi.Size(), contentType, s3.PublicRead, options)
+	err = bucket.PutReader(urlParsed.Path, localFileReader, fi.Size(), contentType, s3.PublicRead)
 	if err != nil {
 		return err
 	}
@@ -326,25 +322,7 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 	} else {
 		headers["Authorization"] = []string{"AWS " + auth.AccessKey + ":" + string(signature)}
 	}
-}
-
-// NewS3Session checks the OS of the agent if darwin, adds InsecureSkipVerify to the TLSConfig.
-// This workaround is meant to fix
-//"x509: failed to load system roots and no roots provided". This happens since cross-compiling
-// disables cgo - however cgo is required to find system root
-// certificates on darwin machines. Note that the client
-// returned can only connect successfully to the
-// supplied s3's region.
-
-func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
-	if runtime.GOOS == "darwin" {
-		// create a Transport which includes our TLS config
-		tlsConfig := tls.Config{InsecureSkipVerify: true}
-		tr := http.Transport{TLSClientConfig: &tlsConfig}
-		// add the Transport to our http client
-		client := &http.Client{Transport: &tr}
-		return s3.New(*auth, region, client)
-	}
-	return s3.New(*auth, region)
-
+	//For debugging
+	//fmt.Printf("Signature payload: %q\n", payload)
+	//fmt.Printf("Signature: %q", signature)
 }

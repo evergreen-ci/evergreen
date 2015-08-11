@@ -74,6 +74,7 @@ func (s Server) serveWebSocket(w http.ResponseWriter, req *http.Request) {
 	rwc, buf, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		panic("Hijack failed: " + err.Error())
+		return
 	}
 	// The server should abort the WebSocket connection if it finds
 	// the client did not send a handshake that matches with protocol

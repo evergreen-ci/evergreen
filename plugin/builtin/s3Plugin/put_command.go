@@ -6,10 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 	"github.com/mitchellh/mapstructure"
 	"os"
 	"path/filepath"
@@ -232,10 +231,9 @@ func (self *S3PutCommand) Put() error {
 		AccessKey: self.AwsKey,
 		SecretKey: self.AwsSecret,
 	}
-	session := thirdparty.NewS3Session(auth, aws.USEast)
+	session := s3.New(*auth, aws.USEast)
 	bucket := session.Bucket(self.Bucket)
 
-	options := s3.Options{}
 	// put the data
 	return bucket.PutReader(
 		self.RemoteFile,
@@ -243,7 +241,6 @@ func (self *S3PutCommand) Put() error {
 		fi.Size(),
 		self.ContentType,
 		s3.ACL(self.Permissions),
-		options,
 	)
 
 }

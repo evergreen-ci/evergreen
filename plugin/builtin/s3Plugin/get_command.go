@@ -8,9 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/archive"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/aws"
+	"github.com/mitchellh/goamz/aws"
+	"github.com/mitchellh/goamz/s3"
 	"github.com/mitchellh/mapstructure"
 	"io"
 	"os"
@@ -200,8 +200,7 @@ func (self *S3GetCommand) Get() error {
 		AccessKey: self.AwsKey,
 		SecretKey: self.AwsSecret,
 	}
-
-	session := thirdparty.NewS3Session(auth, aws.USEast)
+	session := s3.New(*auth, aws.USEast)
 	bucket := session.Bucket(self.Bucket)
 
 	// get a reader for the bucket

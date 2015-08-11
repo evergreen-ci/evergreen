@@ -3,7 +3,7 @@ package thirdparty
 import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/aws"
+	"github.com/mitchellh/goamz/aws"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"strings"

@@ -1,9 +1,9 @@
-golang.org/x/crypto/ssh							            e3f150b4372fce47109dbd8fef5f03cd2af08700
+golang.org/x/crypto/ssh							e3f150b4372fce47109dbd8fef5f03cd2af08700
 github.com/pkg/sftp                             506297c9013d2893d5c5daaa9155e7333a1c58de
 github.com/vaughan0/go-ini                      a98ad7ee00ec53921f08832bc06ecf7fd600e6a1
-github.com/goamz/goamz/s3						            786b544d40e6765311390f1759a6652f31c818b2
-github.com/goamz/goamz/ec2						          786b544d40e6765311390f1759a6652f31c818b2
-github.com/goamz/goamz/aws						          786b544d40e6765311390f1759a6652f31c818b2 
+github.com/10gen/goamz/s3						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/s3
+github.com/10gen/goamz/ec2						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/ec2
+github.com/10gen/goamz/aws						0808914066fb8e77c0d085a128c6b7c81f07f331 github.com/mitchellh/goamz/aws
 github.com/10gen-labs/slogger/v1                c972902347f8b08b39dac87b43955d01caedb63a
 github.com/codegangsta/inject                   37d7f8432a3e684eef9b2edece76bdfa6ac85b39
 github.com/fsouza/go-dockerclient               933433faa3e1c0bbc825b251143f8e77affbf797
@@ -12,11 +12,11 @@ github.com/gorilla/mux                          0ef595e787efa95d68151570ead5c85d
 github.com/gorilla/securecookie                 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b
 github.com/gorilla/sessions                     28f896870851935df0885fca3410114940d49e1b
 github.com/mitchellh/mapstructure               6fb2c832bcac61d01212ab1d172f7a14a8585b07
-github.com/smartystreets/assertions				      22fd8e1982688f4ff04e8e9ec6feae2c2459460d
+github.com/smartystreets/assertions				22fd8e1982688f4ff04e8e9ec6feae2c2459460d
 github.com/smartystreets/goconvey               6e8b6a6845c5dc7738d519162c9a9ff5c9cd5f48
 github.com/jacobsa/oglematchers                 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
 gopkg.in/yaml.v2                                49c95bdc21843256fb6c4e0d370a05f24a0bf213
-gopkg.in/mgo.v2			                            c6a7dce14133ccac2dcac3793f1d6e2ef048503a
+gopkg.in/mgo.v2			                        c6a7dce14133ccac2dcac3793f1d6e2ef048503a
 github.com/laher/goxc                           6629689d44fd183f8d29a3f2d1cd4e6174294299
 github.com/dynport/gocloud/                     86eb7951c13ee7437f5952d63537533068f9f15c
 github.com/dynport/gologger                     341c03cd2f0ff842817d6311364a1f8ab0df541e
