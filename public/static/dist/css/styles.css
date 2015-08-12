@@ -869,6 +869,9 @@ ul.tooltip-tasks li.tooltip-task {
 .host-button {
   margin-right: 15px;
 }
+.hosts-select-all {
+  white-space: nowrap;
+}
 .bg-brand {
   color: #FFF;
   background-color: #3B291F;

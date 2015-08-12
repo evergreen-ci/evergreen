@@ -17,12 +17,12 @@ Evergreen - Hosts
 <div id="content" class="container-fluid" ng-controller="HostsCtrl">
   {{template "flash" . }}
   <header class="clearfix">
-    <h1>MCI Hosts <span class="hosts-count"><small>(Showing [[filteredHosts.length]])</small></span></h1>
+    <h1>MCI Hosts <span><small>(Showing [[filteredHosts.length]])</small></span></h1>
 
     <!-- the filter inputs -->
     <form class="form-inline header-form" role="form">
       <div class="form-group">
-        <input class="form-control input-sm" type="text" ng-click="clearSelectAll()" ng-model="filter.hosts" placeholder="Filter hosts..." />
+        <input class="form-control input-sm" type="text" ng-keyup="clearSelectAll()" ng-model="filter.hosts" placeholder="Filter hosts..." />
       </div>
 
       <div class="checkbox">
@@ -57,9 +57,9 @@ Evergreen - Hosts
     <thead>
       <tr>
         {{if .User}}
-        <th>
+        <th class="hosts-select-all">
             <label>
-                <input style="margin-left: 0.95em" type="checkbox" ng-checked="selectAll" ng-click="toggleSelectAll()"/> Select All
+                <input style="margin-left: 0.95em" type="checkbox" ng-checked="selectAll" ng-click="toggleSelectAll()"/> Select All &nbsp
             </label>
         </th>
         {{end}}
