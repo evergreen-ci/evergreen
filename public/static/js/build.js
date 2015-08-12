@@ -105,27 +105,29 @@ function BuildViewController($scope, $http, $timeout, mciTime, $window) {
     if ($scope.build.PatchInfo) {
       $scope.showBaseCommitLink = $scope.build.PatchInfo.BaseBuildId !== '';
 
-      // setup diff data to use statusFilter
-      for (var i = 0; i < $scope.build.PatchInfo.StatusDiffs.length; ++i) {
+      if ($scope.build.PatchInfo.StatusDiffs) {
+        // setup diff data to use statusFilter
+        for (var i = 0; i < $scope.build.PatchInfo.StatusDiffs.length; ++i) {
 
-        var original = $scope.build.PatchInfo.StatusDiffs[i].diff.original;
+          var original = $scope.build.PatchInfo.StatusDiffs[i].diff.original;
 
-        // in case the base task has not yet run
-        if (_.size(original) !== 0) {
-          $scope.build.PatchInfo.StatusDiffs[i].diff.original = {
-            'task_end_details': original,
-            'status': original.status,
-          };
-        }
+          // in case the base task has not yet run
+          if (_.size(original) !== 0) {
+            $scope.build.PatchInfo.StatusDiffs[i].diff.original = {
+              'task_end_details': original,
+              'status': original.status,
+            };
+          }
 
-        var patch = $scope.build.PatchInfo.StatusDiffs[i].diff.patch;
+          var patch = $scope.build.PatchInfo.StatusDiffs[i].diff.patch;
 
-        // in case the patch task has not yet run
-        if (_.size(patch) !== 0) {
-          $scope.build.PatchInfo.StatusDiffs[i].diff.patch = {
-            'task_end_details': patch,
-            'status': patch.status,
-          };
+          // in case the patch task has not yet run
+          if (_.size(patch) !== 0) {
+            $scope.build.PatchInfo.StatusDiffs[i].diff.patch = {
+              'task_end_details': patch,
+              'status': patch.status,
+            };
+          }
         }
       }
     }
