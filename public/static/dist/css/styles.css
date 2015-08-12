@@ -1035,6 +1035,10 @@ ul.tooltip-tasks li.tooltip-task {
 .editalert-form {
   padding: 5px;
 }
+.project-dropdown {
+  height: 37em;
+  overflow-y: scroll;
+}
 textarea {
   background-position: bottom right;
   background-repeat: no-repeat;

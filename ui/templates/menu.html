@@ -31,9 +31,10 @@
       <ul class="nav navbar-nav navbar-right">
         <li class="dropdown" ng-show="!!allProjects" ng-cloak>
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a> 
-            <ul class="dropdown-menu">
+            <ul class="dropdown-menu project-dropdown">
+                <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.projects" placeholder="Filter projects" />
                 <span ng-repeat-start="(key, value) in groupedProjects"></span>
-                <li ng-repeat="p in value">
+                <li ng-repeat="p in value | filter:filter.projects">
                     <b ng-show="$index == 0 && value.length > 1">&nbsp;[[key]]</b>
                     <a href="/waterfall/[[p.identifier]]"><span ng-show="value.length>1">&nbsp;&nbsp;&nbsp;</span>[[p.display_name ? p.display_name : p.identifier]]</a>
                 </li> 
