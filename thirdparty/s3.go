@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha1"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
@@ -14,7 +15,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -247,7 +247,8 @@ func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	session := s3.New(*auth, aws.USEast)
+	session := NewS3Session(auth, aws.USEast)
+
 	bucket := session.Bucket(urlParsed.Host)
 	return bucket.GetReader(urlParsed.Path)
 }
@@ -337,7 +338,11 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 // supplied s3's region.
 
 func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
-	if runtime.GOOS == "darwin" {
+	cert := x509.Certificate{}
+	// no verify options so system root ca will be used
+	_, err := cert.Verify(x509.VerifyOptions{})
+	rootsError := x509.SystemRootsError{}
+	if err != nil && err.Error() == rootsError.Error() {
 		// create a Transport which includes our TLS config
 		tlsConfig := tls.Config{InsecureSkipVerify: true}
 		tr := http.Transport{TLSClientConfig: &tlsConfig}

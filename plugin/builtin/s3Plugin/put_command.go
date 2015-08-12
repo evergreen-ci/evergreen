@@ -233,6 +233,7 @@ func (self *S3PutCommand) Put() error {
 		SecretKey: self.AwsSecret,
 	}
 	session := thirdparty.NewS3Session(auth, aws.USEast)
+
 	bucket := session.Bucket(self.Bucket)
 
 	options := s3.Options{}
