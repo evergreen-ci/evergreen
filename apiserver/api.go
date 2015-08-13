@@ -281,6 +281,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
+		h.SetRunningTask(task.Id, h.AgentRevision, h.TaskDispatchTime)
 	}
 
 	if h == nil {
