@@ -77,7 +77,7 @@ func (self liveHttpGet) doGet(url string, username string, password string) (*ht
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GET: %v", err)
 	}
 
 	req.Header.Add("Accept", "*/*")
@@ -87,5 +87,8 @@ func (self liveHttpGet) doGet(url string, username string, password string) (*ht
 	client := &http.Client{Transport: tr}
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)
-	return resp, err
+	if err != nil {
+		return resp, fmt.Errorf("RDR: %v", err)
+	}
+	return resp, nil
 }
