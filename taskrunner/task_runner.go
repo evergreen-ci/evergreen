@@ -123,8 +123,7 @@ func (self *TaskRunner) Run() error {
 
 				// now update the host's running task/agent revision fields
 				// accordingly
-				err = nextHost.SetRunningTask(dereferencedTask.Id,
-					agentRevision, time.Now())
+				err = nextHost.SetRunningTask(dereferencedTask.Id, agentRevision, time.Now())
 				if err != nil {
 					evergreen.Logger.Logf(slogger.ERROR, "error updating running "+
 						"task %v on host %v: %v", dereferencedTask.Id,

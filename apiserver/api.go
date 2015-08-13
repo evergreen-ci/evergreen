@@ -979,7 +979,6 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	taskRouter := r.PathPrefix("/task/{taskId:[\\w_\\.]+}").Subrouter()
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.StartTask)).Methods("POST")
-	taskRouter.HandleFunc("/end2", as.checkTask(true, as.EndTask)).Methods("POST")
 	taskRouter.HandleFunc("/end", as.checkTask(true, as.EndTask)).Methods("POST")
 	taskRouter.HandleFunc("/log", as.checkTask(true, as.AppendTaskLog)).Methods("POST")
 	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.Heartbeat)).Methods("POST")
