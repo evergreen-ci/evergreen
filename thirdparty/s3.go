@@ -340,6 +340,9 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 
 func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
 	cert := x509.Certificate{}
+
+	// go's systemVerify panics with no verify options set
+	// TODO: EVG-483
 	if runtime.GOOS == "windows" {
 		return s3.New(*auth, region)
 	}
