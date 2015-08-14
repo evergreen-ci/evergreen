@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -339,6 +340,10 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 
 func NewS3Session(auth *aws.Auth, region aws.Region) *s3.S3 {
 	cert := x509.Certificate{}
+	if runtime.GOOS == "windows" {
+		return s3.New(*auth, region)
+	}
+
 	// no verify options so system root ca will be used
 	_, err := cert.Verify(x509.VerifyOptions{})
 	rootsError := x509.SystemRootsError{}
