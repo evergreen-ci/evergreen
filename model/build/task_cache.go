@@ -96,5 +96,8 @@ func ResetCachedTask(buildId, taskId string) error {
 			TasksKey + ".$." + TaskCacheStartTimeKey: util.ZeroTime,
 			TasksKey + ".$." + TaskCacheStatusKey:    evergreen.TaskUndispatched,
 		},
+		"$unset": bson.M{
+			TasksKey + ".$." + TaskCacheStatusDetailsKey: "",
+		},
 	})
 }
