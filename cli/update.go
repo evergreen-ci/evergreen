@@ -148,9 +148,9 @@ func notifyUserUpdate(ac *APIClient) {
 	update, err := checkUpdate(ac, true)
 	if update.needsUpdate && err == nil {
 		if runtime.GOOS == "windows" {
-			fmt.Println("A new version is available. Run 'evergreen get-update' to fetch it.")
+			fmt.Printf("A new version is available. Run '%s get-update' to fetch it.\n", os.Args[0])
 		} else {
-			fmt.Println("A new version is available. Run 'evergreen get-update --install' to download and install it.")
+			fmt.Printf("A new version is available. Run '%s get-update --install' to download and install it.\n", os.Args[0])
 		}
 	}
 }
