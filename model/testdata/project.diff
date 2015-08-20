@@ -1,0 +1,20 @@
+diff --git a/model/testdata/project2.config b/model/testdata/project2.config
+new file mode 100644
+index 0000000..9012033
+--- /dev/null
++++ b/model/testdata/project2.config
+@@ -0,0 +1,14 @@
++buildvariants:
++- name: test
++  run_on:
++  - rhel55
++  tasks:
++  - name: hello
++
++tasks:
++- name: hello
++  commands:
++    - command: shell.exec
++      params:
++        working_dir: src
++        script: ls -al

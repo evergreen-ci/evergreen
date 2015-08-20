@@ -6,12 +6,14 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
 var (
-	projectConfig = "testdata/project.config"
-	patchFile     = "testdata/patch.diff"
+	projectConfig        = "testdata/project.config"
+	patchFile            = "testdata/patch.diff"
+	fullProjectPatchFile = "testdata/project.diff"
 )
 
 func TestMakePatchedConfig(t *testing.T) {
@@ -30,13 +32,11 @@ func TestMakePatchedConfig(t *testing.T) {
 					Githash: "revision",
 					PatchSet: patch.PatchSet{
 						Patch: diffString,
-						Summary: []thirdparty.Summary{
-							thirdparty.Summary{
-								Name:      remoteConfigPath,
-								Additions: 3,
-								Deletions: 3,
-							},
-						},
+						Summary: []thirdparty.Summary{{
+							Name:      remoteConfigPath,
+							Additions: 3,
+							Deletions: 3,
+						}},
 					},
 				}},
 			}
@@ -46,6 +46,30 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(project, ShouldNotBeNil)
 			So(len(project.Tasks), ShouldEqual, 2)
+		})
+		Convey("an empty base config should be patched correctly", func() {
+			remoteConfigPath := "model/testdata/project2.config"
+			fileBytes, err := ioutil.ReadFile(fullProjectPatchFile)
+			So(err, ShouldBeNil)
+			p := &patch.Patch{
+				Patches: []patch.ModulePatch{{
+					Githash: "revision",
+					PatchSet: patch.PatchSet{
+						Patch:   string(fileBytes),
+						Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
+					},
+				}},
+			}
+			project, err := MakePatchedConfig(p, remoteConfigPath, "")
+			So(err, ShouldBeNil)
+			So(project, ShouldNotBeNil)
+			So(len(project.Tasks), ShouldEqual, 1)
+			So(project.Tasks[0].Name, ShouldEqual, "hello")
+
+			Reset(func() {
+				os.Remove(remoteConfigPath)
+			})
+
 		})
 	})
 }

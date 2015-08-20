@@ -20,29 +20,31 @@ func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Pro
 		return nil, err
 	}
 
-	// get the remote file at the requested revision
+	// try to get the remote project file data at the requested revision
+	var projectFileBytes []byte
 	projectFileURL := thirdparty.GetGithubFileURL(
 		projectRef.Owner,
 		projectRef.Repo,
 		projectRef.RemotePath,
 		p.Githash,
 	)
-
-	githubFile, err := thirdparty.GetGithubFile(
-		settings.Credentials["github"],
-		projectFileURL,
-	)
+	githubFile, err := thirdparty.GetGithubFile(settings.Credentials["github"], projectFileURL)
 	if err != nil {
-		return nil, fmt.Errorf("Could not get github file at %v: %v", projectFileURL, err)
-	}
-
-	projectFileBytes, err := base64.StdEncoding.DecodeString(githubFile.Content)
-	if err != nil {
-		return nil, fmt.Errorf("Could not decode github file at %v: %v", projectFileURL, err)
+		// if the project file doesn't exist, but our patch includes a project file,
+		// we try to apply the diff and proceed.
+		if !(p.ConfigChanged(projectRef.RemotePath) && thirdparty.IsFileNotFound(err)) {
+			// return an error if the github error is network/auth-related or we aren't patching the config
+			return nil, fmt.Errorf("Could not get github file at %v: %v", projectFileURL, err)
+		}
+	} else {
+		// we successfully got the project file in base64, so we decode it
+		projectFileBytes, err = base64.StdEncoding.DecodeString(githubFile.Content)
+		if err != nil {
+			return nil, fmt.Errorf("Could not decode github file at %v: %v", projectFileURL, err)
+		}
 	}
 
 	project := &model.Project{}
-
 	if err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
 		return nil, err
 	}

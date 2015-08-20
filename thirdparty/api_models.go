@@ -50,6 +50,11 @@ func (nfe FileNotFoundError) Error() string {
 	return fmt.Sprintf("Requested file at %v not found", nfe.filepath)
 }
 
+func IsFileNotFound(err error) bool {
+	_, ok := err.(FileNotFoundError)
+	return ok
+}
+
 type FileDecodeError struct {
 	Message string
 }

@@ -176,12 +176,14 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			return nil, err
 		}
 		// rename the temporary config file name to the remote config
-		// file path
-		if err = os.Rename(configFilePath, localConfigPath); err != nil {
-			return nil, fmt.Errorf("could not rename file '%v' to '%v': %v",
-				configFilePath, localConfigPath, err)
+		// file path if we are patching an existing remote config
+		if len(projectConfig) > 0 {
+			if err = os.Rename(configFilePath, localConfigPath); err != nil {
+				return nil, fmt.Errorf("could not rename file '%v' to '%v': %v",
+					configFilePath, localConfigPath, err)
+			}
+			defer os.Remove(localConfigPath)
 		}
-		defer os.Remove(localConfigPath)
 
 		// selectively apply the patch to the config file
 		patchCommandStrings := []string{
