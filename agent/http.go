@@ -484,14 +484,14 @@ func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 		h.Logger.Logf(slogger.ERROR, "Error sending heartbeat: %v", err)
 		return false, err
 	}
-	if resp != nil && resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("unexpected status code doing heartbeat: %v",
-			resp.StatusCode)
-	}
-	if resp != nil && resp.StatusCode == http.StatusConflict {
+	if resp.StatusCode == http.StatusConflict {
 		h.Logger.Logf(slogger.ERROR, "wrong secret (409) sending heartbeat")
 		h.SignalChan <- IncorrectSecret
 		return false, fmt.Errorf("unauthorized - wrong secret")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("unexpected status code doing heartbeat: %v",
+			resp.StatusCode)
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
