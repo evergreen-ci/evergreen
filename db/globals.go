@@ -7,53 +7,7 @@ import (
 
 const (
 	GlobalsCollection = "globals"
-	LastBuildId       = "last_agent_build"
 )
-
-// LastAgentBuild stores the last version of the agent that was built.
-type LastAgentBuild struct {
-	Id   string `bson:"_id"`
-	Hash string `bson:"hash"`
-}
-
-// GetLastAgentBuild returns the most recent agent githash stored in the database.
-func GetLastAgentBuild() (string, error) {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return "", err
-	}
-	defer session.Close()
-
-	// get the record of the last build
-	lastBuild := LastAgentBuild{}
-	err = db.C(GlobalsCollection).Find(bson.M{"_id": LastBuildId}).One(&lastBuild)
-
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			// this is fine, it just means we're definitely going to have to
-			// build the agent
-			return "", nil
-		}
-		return "", err
-	}
-
-	return lastBuild.Hash, nil
-}
-
-// StoreLastAgentBuild stores the given agent git hash in the database,
-// so that Evergreen can detect when a new version of the agent should
-// be compiled.
-func StoreLastAgentBuild(hash string) error {
-	session, db, err := GetGlobalSessionFactory().GetSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	_, err = db.C(GlobalsCollection).Upsert(bson.M{"_id": LastBuildId},
-		bson.M{"$set": bson.M{"hash": hash}})
-	return err
-}
 
 // Global stores internal tracking information.
 type Global struct {

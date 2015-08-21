@@ -32,11 +32,7 @@ func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 		&DBHostFinder{},
 		&DBTaskQueueFinder{},
 		&AgentBasedHostGateway{
-			Compiler: &GoxcAgentCompiler{
-				settings,
-			},
-			ExecutablesDir:  filepath.Join(evgHome, settings.AgentExecutablesDir),
-			AgentPackageDir: filepath.Join(evgHome, AgentPackageDirectorySubPath),
+			ExecutablesDir: filepath.Join(evgHome, settings.AgentExecutablesDir),
 		},
 	}
 }

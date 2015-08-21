@@ -1,13 +1,10 @@
 package util
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 // GetAppendingFile opens a file for appending. The file will be created
@@ -36,38 +33,6 @@ func FileExists(elem ...string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-// CurrentGitHash returns the current git hash of the git repository
-// located at the specified directory.
-func CurrentGitHash(repoDir string) (string, error) {
-
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = repoDir
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return "", err
-	}
-	defer stdout.Close()
-	cmd.Start()
-
-	var data []byte = make([]byte, 1024)
-	_, err = stdout.Read(data)
-	if err != nil {
-		return "", err
-	}
-
-	if err := cmd.Wait(); err != nil {
-		return "", err
-	}
-
-	line := strings.SplitN(string(data), "\n", 2)[0]
-
-	if len(line) != 40 { // a SHA1 in hex is 40 bytes
-		return "", fmt.Errorf("bad rev-parse output: %v (%d != 40)", line, len(line))
-	}
-	return line, nil
 }
 
 // WriteToTempFile writes the given string to a temporary file and returns the
