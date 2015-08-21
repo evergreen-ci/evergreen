@@ -3,14 +3,15 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"sort"
+
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
-	"io/ioutil"
-	"net/http"
-	"sort"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
@@ -132,6 +133,8 @@ func (uis *UIServer) getDistro(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
+	id, hasId := mux.Vars(r)["distro_id"]
+
 	u := MustHaveUser(r)
 
 	b, err := ioutil.ReadAll(r.Body)
@@ -150,6 +153,10 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusBadRequest)
 		return
+	}
+
+	if hasId {
+		d.Id = id
 	}
 
 	vErrs := validator.CheckDistro(&d, &uis.Settings, true)
