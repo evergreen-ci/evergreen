@@ -57,7 +57,7 @@ func TestPanelManagerRegistration(t *testing.T) {
 		ppm = &plugin.SimplePanelManager{}
 
 		Convey("and a registered set of test plugins without panels", func() {
-			uselessPlugins := []plugin.Plugin{
+			uselessPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "no_ui_config",
 					Conf:     nil,
@@ -89,7 +89,7 @@ func TestPanelManagerRegistration(t *testing.T) {
 		})
 
 		Convey("registering a plugin panel with no page should fail", func() {
-			badPanelPlugins := []plugin.Plugin{
+			badPanelPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "bad_panel",
 					Conf: &plugin.PanelConfig{
@@ -105,7 +105,7 @@ func TestPanelManagerRegistration(t *testing.T) {
 		})
 
 		Convey("registering the same plugin name twice should fail", func() {
-			conflictingPlugins := []plugin.Plugin{
+			conflictingPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "a",
 					Conf:     nil,
@@ -124,7 +124,7 @@ func TestPanelManagerRegistration(t *testing.T) {
 
 		Convey("registering more than one data function to the same page "+
 			"for the same plugin should fail", func() {
-			dataPlugins := []plugin.Plugin{
+			dataPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "data_function_fan",
 					Conf: &plugin.PanelConfig{
@@ -162,7 +162,7 @@ func TestPanelManagerRetrieval(t *testing.T) {
 			// and then by the order of their declaration in the Panels array.
 			// This test asserts that the panels in A come before B which come
 			// before C, even though they are not in the plugin array in that order.
-			testPlugins := []plugin.Plugin{
+			testPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "A_the_first_letter",
 					Conf: &plugin.PanelConfig{
@@ -295,7 +295,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 		ppm = &plugin.SimplePanelManager{}
 
 		Convey("and a set of plugins, some with erroring data functions", func() {
-			errorPlugins := []plugin.Plugin{
+			errorPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "error1",
 					Conf: &plugin.PanelConfig{
@@ -371,7 +371,7 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 			})
 		})
 		Convey("and a plugin that panics", func() {
-			errorPlugins := []plugin.Plugin{
+			errorPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "busted",
 					Conf: &plugin.PanelConfig{
@@ -424,7 +424,7 @@ func TestUIDataInjection(t *testing.T) {
 		ppm = &plugin.SimplePanelManager{}
 
 		Convey("and a registered set of test plugins with injection needs", func() {
-			funcPlugins := []plugin.Plugin{
+			funcPlugins := []plugin.UIPlugin{
 				&MockUIPlugin{
 					NickName: "combine",
 					Conf: &plugin.PanelConfig{

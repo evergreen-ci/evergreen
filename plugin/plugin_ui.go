@@ -116,7 +116,7 @@ type PanelLayout struct {
 // PanelManager is the manager the UI server uses to register and load
 // plugin UI information efficiently.
 type PanelManager interface {
-	RegisterPlugins([]Plugin) error
+	RegisterPlugins([]UIPlugin) error
 	Includes(PageScope) ([]template.HTML, error)
 	Panels(PageScope) (PanelLayout, error)
 	UIData(UIContext, PageScope) (map[string]interface{}, error)
@@ -163,7 +163,7 @@ type SimplePanelManager struct {
 
 // RegisterPlugins takes an array of plugins and registers them with the
 // manager. After this step is done, the other manager functions may be used.
-func (self *SimplePanelManager) RegisterPlugins(plugins []Plugin) error {
+func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 	//initialize temporary maps
 	registered := map[string]bool{}
 	includesWithPair := map[PageScope][]pluginTemplatePair{}

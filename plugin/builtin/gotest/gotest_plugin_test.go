@@ -32,7 +32,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
+		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
@@ -97,7 +97,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
+		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
@@ -165,7 +165,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
+		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 

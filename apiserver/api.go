@@ -60,7 +60,7 @@ type APIServer struct {
 	*render.Render
 	UserManager auth.UserManager
 	Settings    evergreen.Settings
-	plugins     []plugin.Plugin
+	plugins     []plugin.APIPlugin
 }
 
 const (
@@ -69,7 +69,7 @@ const (
 )
 
 // New returns an APIServer initialized with the given settings and plugins.
-func New(settings *evergreen.Settings, plugins []plugin.Plugin) (*APIServer, error) {
+func New(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, err
@@ -1006,7 +1006,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 			evergreen.Logger.Logf(slogger.WARN, "no API handlers to install for %v plugin", pl.Name())
 			continue
 		}
-		evergreen.Logger.Logf(slogger.WARN, "Installing API handlers for %v plugin", pl.Name())
+		evergreen.Logger.Logf(slogger.DEBUG, "Installing API handlers for %v plugin", pl.Name())
 		util.MountHandler(taskRouter, fmt.Sprintf("/%v/", pl.Name()), as.checkTask(false, handler.ServeHTTP))
 	}
 

@@ -483,7 +483,7 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 	pluginRegistry := plugin.NewSimpleRegistry()
 
 	// register the published plugins
-	for _, pl := range plugin.Published {
+	for _, pl := range plugin.CommandPlugins {
 		if err := pluginRegistry.Register(pl); err != nil {
 			errs = append(errs,
 				ValidationError{

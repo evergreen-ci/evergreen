@@ -59,7 +59,7 @@ func main() {
 
 	// Start SSL and non-SSL servers in independent goroutines, but exit
 	// the process if either one fails
-	as, err := apiserver.New(settings, plugin.Published)
+	as, err := apiserver.New(settings, plugin.APIPlugins)
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Failed to create API server: %v", err)
 		os.Exit(1)

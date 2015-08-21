@@ -122,7 +122,7 @@ func TestBasicEndpoints(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
-			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -209,7 +209,7 @@ func TestHeartbeatSignals(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
-			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -234,7 +234,7 @@ func TestSecrets(t *testing.T) {
 
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
-			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -268,7 +268,7 @@ func TestTaskSuccess(t *testing.T) {
 						tlsString+" with variant "+variant, func() {
 						testTask, _, err := setupAPITestData(testConfig, "compile", variant, NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test task: %v", err)
-						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 						testAgent, err := createAgent(testServer, testTask)
 						testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -329,7 +329,7 @@ func TestTaskSuccess(t *testing.T) {
 						tlsString+" on variant "+variant, func() {
 						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
-						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 						testAgent, err := createAgent(testServer, testTask)
 						testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -385,7 +385,7 @@ func TestTaskFailures(t *testing.T) {
 					testTask, _, err := setupAPITestData(testConfig, "failing_task",
 						"linux-64", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
-					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					testAgent, err := createAgent(testServer, testTask)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -432,7 +432,7 @@ func TestTaskAbortion(t *testing.T) {
 				Convey("With agent running a slow test and live API server over "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Failed to find test task")
-					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					testAgent, err := createAgent(testServer, testTask)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
@@ -477,7 +477,7 @@ func TestTaskTimeout(t *testing.T) {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
 			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
-			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 			So(err, ShouldBeNil)
@@ -509,7 +509,7 @@ func TestTaskExecTimeout(t *testing.T) {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
 			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
-			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 			So(err, ShouldBeNil)
@@ -542,7 +542,7 @@ func TestTaskEndEndpoint(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
-			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")

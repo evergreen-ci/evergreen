@@ -29,7 +29,7 @@ func TestPatchTask(t *testing.T) {
 						Convey(fmt.Sprintf("Using patch mode %v", mode.String()), func() {
 							testTask, _, err := setupAPITestData(testConfig, "compile", "linux-64", mode, t)
 							testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
-							testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+							testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 							testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 

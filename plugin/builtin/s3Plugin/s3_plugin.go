@@ -5,7 +5,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/s3"
-	"net/http"
 	"regexp"
 	"strings"
 )
@@ -32,24 +31,6 @@ var (
 // Name returns the name of the plugin. Fulfills Plugin interface.
 func (self *S3Plugin) Name() string {
 	return S3PluginName
-}
-
-func (self *S3Plugin) Configure(map[string]interface{}) error {
-	return nil
-}
-
-func (self *S3Plugin) GetAPIHandler() http.Handler {
-	return nil
-}
-
-func (self *S3Plugin) GetUIHandler() http.Handler {
-	return nil
-}
-
-// GetPanelConfig fulfills the Plugin interface. This plugin does
-// not need to register any UI hooks.
-func (self *S3Plugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
 }
 
 // NewCommand returns commands of the given name.

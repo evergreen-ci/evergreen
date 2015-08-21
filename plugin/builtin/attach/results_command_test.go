@@ -32,7 +32,7 @@ func TestAttachResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, true)
+		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		configFile := "testdata/plugin_attach_results.yml"

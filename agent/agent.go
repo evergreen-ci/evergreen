@@ -422,7 +422,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 	completed := agt.StartBackgroundActions(signalHandler)
 
 	// register plugins needed for execution
-	if err = registerPlugins(agt.Registry, plugin.Published, agt.logger); err != nil {
+	if err = registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "error initializing agent plugins: %v", err)
 		return agt.finishAndAwaitCleanup(CompletedFailure, completed)
 	}
@@ -565,7 +565,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 }
 
 // registerPlugins makes plugins available for use by the agent.
-func registerPlugins(registry plugin.Registry, plugins []plugin.Plugin, logger *StreamLogger) error {
+func registerPlugins(registry plugin.Registry, plugins []plugin.CommandPlugin, logger *StreamLogger) error {
 	for _, pl := range plugins {
 		if err := registry.Register(pl); err != nil {
 			return fmt.Errorf("Failed to register plugin %v: %v", pl.Name(), err)

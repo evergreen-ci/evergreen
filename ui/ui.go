@@ -42,7 +42,7 @@ type UIServer struct {
 // InitPlugins registers all installed plugins with the UI Server.
 func (uis *UIServer) InitPlugins() {
 	uis.PanelManager = &plugin.SimplePanelManager{}
-	uis.PanelManager.RegisterPlugins(plugin.Published)
+	uis.PanelManager.RegisterPlugins(plugin.UIPlugins)
 }
 
 // NewRouter sets up a request router for the UI, installing
@@ -182,7 +182,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()
-	for _, pl := range plugin.Published {
+	for _, pl := range plugin.UIPlugins {
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {

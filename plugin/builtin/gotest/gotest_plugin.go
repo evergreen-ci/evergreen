@@ -3,7 +3,6 @@ package gotest
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"net/http"
 	"time"
 )
 
@@ -36,20 +35,4 @@ func (self *GotestPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	default:
 		return nil, fmt.Errorf("No such %v command: %v", GotestPluginName, cmdName)
 	}
-}
-
-func (self *GotestPlugin) Configure(map[string]interface{}) error {
-	return nil
-}
-
-func (self *GotestPlugin) GetAPIHandler() http.Handler {
-	return nil
-}
-
-func (self *GotestPlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
-func (self *GotestPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
 }

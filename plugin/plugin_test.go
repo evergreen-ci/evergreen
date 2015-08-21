@@ -185,7 +185,7 @@ func TestPluginFunctions(t *testing.T) {
 			err = registry.Register(&expansions.ExpansionsPlugin{})
 			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 
-			testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
+			testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, false)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 			taskConfig, err := createTestConfig("testdata/plugin_project_functions.yml", t)
@@ -232,13 +232,14 @@ func TestPluginExecution(t *testing.T) {
 	Convey("With a SimpleRegistry and test project file", t, func() {
 		registry := plugin.NewSimpleRegistry()
 
-		plugins := []plugin.Plugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}, &shell.ShellPlugin{}}
+		plugins := []plugin.CommandPlugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}, &shell.ShellPlugin{}}
+		apiPlugins := []plugin.APIPlugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}}
 		for _, p := range plugins {
 			err := registry.Register(p)
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
 
-		testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugins, false)
+		testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, apiPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
@@ -418,10 +419,10 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 
 func TestPluginSelfRegistration(t *testing.T) {
 	Convey("Assuming the plugin collection has run its init functions", t, func() {
-		So(len(plugin.Published), ShouldBeGreaterThan, 0)
+		So(len(plugin.CommandPlugins), ShouldBeGreaterThan, 0)
 		nameMap := map[string]uint{}
 		// count all occurances of a plugin name
-		for _, plugin := range plugin.Published {
+		for _, plugin := range plugin.CommandPlugins {
 			nameMap[plugin.Name()] = nameMap[plugin.Name()] + 1
 		}
 
@@ -434,7 +435,7 @@ func TestPluginSelfRegistration(t *testing.T) {
 		Convey("some known default plugins should be present in the list", func() {
 			// These use strings instead of consts from the plugin
 			// packages, so we can avoid importing those packages
-			// and make sure the registration from plguin/config
+			// and make sure the registration from plugin/config
 			// is actually happening
 			So(nameMap["attach"], ShouldEqual, 1)
 			So(nameMap["s3"], ShouldEqual, 1)

@@ -113,16 +113,6 @@ func (self *S3CopyPlugin) Configure(map[string]interface{}) error {
 	return nil
 }
 
-func (scp *S3CopyPlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
-// GetPanelConfig fulfills the Plugin interface. This plugin does
-// not have any front-end components.
-func (scp *S3CopyPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
-}
-
 // NewCommand returns the S3CopyPlugin - this is to satisfy the
 // 'Plugin' interface
 func (scp *S3CopyPlugin) NewCommand(cmdName string) (plugin.Command, error) {

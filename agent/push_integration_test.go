@@ -29,7 +29,7 @@ func TestPushTask(t *testing.T) {
 						"linux-64", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
-					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.Published, Verbose)
+					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
 					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)

@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -35,26 +34,6 @@ type ShellPlugin struct{}
 // the Plugin interface.
 func (self *ShellPlugin) Name() string {
 	return ShellPluginName
-}
-
-// GetRoutes is required by the Plugin interface. This plugin has no API routes.
-func (self *ShellPlugin) GetAPIHandler() http.Handler {
-	//shell plugin doesn't need any server-side handlers, so this is a no-op
-	return nil
-}
-
-func (self *ShellPlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
-func (self *ShellPlugin) Configure(map[string]interface{}) error {
-	return nil
-}
-
-// GetPanelConfig is required by the Plugin interface. This plugin has
-// no UI presence.
-func (self *ShellPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
 }
 
 // NewCommand returns the requested command, or returns an error

@@ -36,18 +36,8 @@ func (self *GitPlugin) GetAPIHandler() http.Handler {
 	return r
 }
 
-func (self *GitPlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
 func (self *GitPlugin) Configure(map[string]interface{}) error {
 	return nil
-}
-
-// GetPanelConfig is required to fulfill the Plugin interface. This plugin
-// does not have any UI hooks.
-func (self *GitPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
 }
 
 // NewCommand returns requested commands by name. Fulfills the Plugin interface.

@@ -36,18 +36,8 @@ func (self *ExpansionsPlugin) GetAPIHandler() http.Handler {
 	return r
 }
 
-func (self *ExpansionsPlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
 func (self *ExpansionsPlugin) Configure(map[string]interface{}) error {
 	return nil
-}
-
-// GetPanelConfig fulfills the Plugin interface.
-// There is no UI component of this plugin.
-func (self *ExpansionsPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
 }
 
 // NewCommand fulfills the Plugin interface.
@@ -137,9 +127,7 @@ func (self *UpdateCommand) ExecuteUpdates(conf *model.TaskConfig) error {
 
 // Execute updates the expansions. Fulfills Command interface.
 func (self *UpdateCommand) Execute(pluginLogger plugin.Logger,
-	pluginCom plugin.PluginCommunicator,
-	conf *model.TaskConfig,
-	stop chan bool) error {
+	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 
 	err := self.ExecuteUpdates(conf)
 	if err != nil {

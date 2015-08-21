@@ -2,7 +2,6 @@ package archive
 
 import (
 	"github.com/evergreen-ci/evergreen/plugin"
-	"net/http"
 )
 
 func init() {
@@ -22,26 +21,6 @@ type ArchivePlugin struct{}
 // Name returns the name of the plugin. Fulfills the Plugin interface.
 func (self *ArchivePlugin) Name() string {
 	return ArchivePluginName
-}
-
-// GetRoutes is needed to fulfill the Plugin interface. ArchivePlugin
-// does not register any routes.
-func (self *ArchivePlugin) GetAPIHandler() http.Handler {
-	return nil
-}
-
-func (self *ArchivePlugin) GetUIHandler() http.Handler {
-	return nil
-}
-
-func (self *ArchivePlugin) Configure(map[string]interface{}) error {
-	return nil
-}
-
-// GetPanelConfig is needed to fulfill the Plugin interface, it
-// does nothing here.
-func (self *ArchivePlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
-	return nil, nil
 }
 
 // NewCommand takes a command name as a string and returns the requested command,
