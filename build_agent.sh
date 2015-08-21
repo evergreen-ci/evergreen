@@ -18,7 +18,7 @@ ARCHTARGETS="amd64 386"
 
 # cd into the agent directory, and cross compile
 cd agent/main
-go run $GOXC -tasks-=$NONTASKS -d $DESTDIR -os="$OSTARGETS" -arch="$ARCHTARGETS"
+go run $GOXC -tasks-=$NONTASKS -d $DESTDIR -os="$OSTARGETS" -arch="$ARCHTARGETS" -build-ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`"
 
 # place the correct built agent githash into the appropriate file
 git rev-parse HEAD > "$DESTDIR/version"

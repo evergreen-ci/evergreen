@@ -372,7 +372,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 	agt.CheckIn(InitialSetupCommand, InitialSetupTimeout)
 
 	agt.logger.LogLocal(slogger.INFO, "Local logger initialized.")
-	agt.logger.LogTask(slogger.INFO, "Task logger initialized.")
+	agt.logger.LogTask(slogger.INFO, "Task logger initialized (agent revision: %v)", evergreen.BuildRevision)
 	agt.logger.LogExecution(slogger.INFO, "Execution logger initialized.")
 	agt.logger.LogSystem(slogger.INFO, "System logger initialized.")
 
