@@ -54,7 +54,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		HostId:       "testHost",
 		Secret:       "mocktasksecret",
 		Status:       evergreen.TaskDispatched,
-		Revision:     "d0c52298b222f4973c48e9834a57966c448547de",
+		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	testutil.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
@@ -139,8 +139,6 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 	version := &version.Version{Id: "testVersionId", BuildIds: []string{task.BuildId}}
 	testutil.HandleTestingErr(version.Insert(), t, "failed to insert version %v")
 	if isPatch {
-		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
-		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
 		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
 		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
@@ -148,11 +146,6 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 			Status:  evergreen.PatchCreated,
 			Version: version.Id,
 			Patches: []patch.ModulePatch{
-				{
-					ModuleName: "",
-					Githash:    "d0c52298b222f4973c48e9834a57966c448547de",
-					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
-				},
 				{
 					ModuleName: "enterprise",
 					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",

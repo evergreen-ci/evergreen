@@ -94,7 +94,8 @@ func TestPatchPlugin(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		//sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := slogger.StdOutAppender()
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {

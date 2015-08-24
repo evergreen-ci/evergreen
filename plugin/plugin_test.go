@@ -310,7 +310,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		HostId:       "testHost",
 		Secret:       "mocktasksecret",
 		Status:       evergreen.TaskDispatched,
-		Revision:     "d0c52298b222f4973c48e9834a57966c448547de",
+		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 	testutil.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
@@ -382,7 +382,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 			Patches: []patch.ModulePatch{
 				{
 					ModuleName: "",
-					Githash:    "d0c52298b222f4973c48e9834a57966c448547de",
+					Githash:    "cb91350bf017337a734dcd0321bf4e6c34990b6a",
 					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
 				},
 				{

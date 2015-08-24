@@ -32,7 +32,7 @@ func TestAllOutputFiles(t *testing.T) {
 			}
 			files, err := pfCmd.AllOutputFiles()
 			So(err, ShouldBeNil)
-			So(len(files), ShouldEqual, 3)
+			So(len(files), ShouldEqual, 4)
 
 		})
 
