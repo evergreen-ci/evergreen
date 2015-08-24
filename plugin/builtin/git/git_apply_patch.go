@@ -195,7 +195,6 @@ func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com pl
 			return err
 		}
 		p.Patches[i].PatchSet.Patch = string(raw)
-		log.LogExecution(slogger.INFO, "Got result for %v", patchPart.PatchSet.Patch)
 	}
 	return nil
 }
