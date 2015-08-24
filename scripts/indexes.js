@@ -10,6 +10,9 @@ db.builds.ensureIndex({ "gitspec" : 1 })
 db.builds.ensureIndex({ "version" : 1 })
 db.builds.ensureIndex({ "branch" : 1, "r" : 1, "order" : 1 })
 
+//======patch files====//
+db.patchfiles.files.createIndex({"filename":1})
+
 //======event_log======//
 db.event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
 
