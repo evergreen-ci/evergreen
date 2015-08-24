@@ -129,7 +129,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		host, err := spawner.CreateHost(opts)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
-			mailErr := notify.TrySendNotificationToUser(authedUser.Email(), fmt.Sprintf("Spawning failed"),
+			mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
 				err.Error(), notify.ConstructMailer(uis.Settings.Notify))
 			if mailErr != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
