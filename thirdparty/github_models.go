@@ -22,6 +22,16 @@ type CommitEvent struct {
 	Files     []File
 }
 
+type BranchEvent struct {
+	Name     string
+	Commit   GithubCommit
+	Author   CommitAuthor
+	Parents  []Parent
+	URL      string
+	Commiter AuthorDetails
+	Links    Link
+}
+
 type GithubCommit struct {
 	Url       string
 	SHA       string

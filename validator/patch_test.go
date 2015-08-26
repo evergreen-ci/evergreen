@@ -146,7 +146,7 @@ func resetProjectlessPatchSetup(t *testing.T, testPath string) *patch.Patch {
 
 func TestProjectRef(t *testing.T) {
 	Convey("When inserting a project ref", t, func() {
-		err := testutil.CreateTestLocalConfig(patchTestConfig, "mci-test")
+		err := testutil.CreateTestLocalConfig(patchTestConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 		projectRef, err := model.FindOneProjectRef("mci-test")
 		So(err, ShouldBeNil)

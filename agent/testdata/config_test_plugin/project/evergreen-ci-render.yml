@@ -78,9 +78,12 @@ tasks:
         arg4: "Default: ${empty|default_value}"
     - func: "list of commands"
       timeout_secs: 2600
+    - command: manifest.load 
     - command: git.get_project
       params:
         directory: src
+        revisions: 
+          recursive: ${recursive_rev}
     - command: git.apply_patch
       params:
         directory: src

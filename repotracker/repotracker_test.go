@@ -33,7 +33,7 @@ func TestFetchRevisions(t *testing.T) {
 	dropTestDB(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFetchRevisions")
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
-		err := testutil.CreateTestLocalConfig(testConfig, "mci-test")
+		err := testutil.CreateTestLocalConfig(testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{
 			testConfig,
@@ -74,7 +74,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 	dropTestDB(t)
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestStoreRepositoryRevisions")
 	Convey("When storing revisions gotten from a repository...", t, func() {
-		err := testutil.CreateTestLocalConfig(testConfig, "mci-test")
+		err := testutil.CreateTestLocalConfig(testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 		repoTracker := RepoTracker{testConfig, projectRef, NewGithubRepositoryPoller(projectRef,
 			testConfig.Credentials["github"])}

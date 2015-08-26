@@ -24,13 +24,14 @@ const (
 // It also takes as an argument a function which runs any additional tests desired.
 func runTest(t *testing.T, configPath string, customTests func()) {
 	resetTasks(t)
+	testConfig := evergreen.TestConfig()
 	Convey("With attachResults plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		attachPlugin := &AttachPlugin{}
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		taskConfig, err := plugintest.CreateTestConfig(configPath, t)

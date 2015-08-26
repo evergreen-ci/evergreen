@@ -17,9 +17,7 @@ func TestPatchTask(t *testing.T) {
 	setupTlsConfigs(t)
 	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-
 	patchModes := []patchTestMode{InlinePatch, ExternalPatch}
-
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {

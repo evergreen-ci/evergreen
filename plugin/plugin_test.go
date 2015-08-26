@@ -177,6 +177,8 @@ func TestRegistry(t *testing.T) {
 }
 
 func TestPluginFunctions(t *testing.T) {
+	testConfig := evergreen.TestConfig()
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")
 	Convey("With a SimpleRegistry", t, func() {
 		Convey("with a project file containing functions", func() {
 			registry := plugin.NewSimpleRegistry()
@@ -185,7 +187,7 @@ func TestPluginFunctions(t *testing.T) {
 			err = registry.Register(&expansions.ExpansionsPlugin{})
 			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 
-			testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, false)
+			testServer, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 			taskConfig, err := createTestConfig("testdata/plugin_project_functions.yml", t)
@@ -309,6 +311,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		Project:      "mongodb-mongo-master",
 		DisplayName:  "test",
 		HostId:       "testHost",
+		Version:      "versionId",
 		Secret:       "mocktasksecret",
 		Status:       evergreen.TaskDispatched,
 		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
@@ -357,6 +360,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*mode
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",
 		Status:       evergreen.TaskDispatched,
+		Version:      "versionId",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 

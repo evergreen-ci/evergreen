@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -113,10 +114,6 @@ func createAgent(testServer *apiserver.TestServer, testTask *model.Task) (*Agent
 
 func TestBasicEndpoints(t *testing.T) {
 	setupTlsConfigs(t)
-
-	err := testutil.CreateTestLocalConfig(testConfig, "render")
-	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
-
 	for tlsString, tlsConfig := range tlsConfigs {
 		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
@@ -203,6 +200,7 @@ func TestBasicEndpoints(t *testing.T) {
 
 func TestHeartbeatSignals(t *testing.T) {
 	setupTlsConfigs(t)
+
 	for tlsString, tlsConfig := range tlsConfigs {
 
 		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", NoPatch, t)
@@ -255,10 +253,7 @@ func TestSecrets(t *testing.T) {
 
 func TestTaskSuccess(t *testing.T) {
 	setupTlsConfigs(t)
-
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskSuccess")
-	err := testutil.CreateTestLocalConfig(testConfig, "render")
-	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
@@ -323,6 +318,18 @@ func TestTaskSuccess(t *testing.T) {
 							So(testTask.Details.TimedOut, ShouldBeFalse)
 							So(testTask.Details.Type, ShouldEqual, model.SystemCommandType)
 						})
+
+						Convey("manifest should be created", func() {
+							m, err := manifest.FindOne(manifest.ById(testTask.Version))
+							So(testTask.Version, ShouldEqual, "testVersionId")
+							So(err, ShouldBeNil)
+							So(m, ShouldNotBeNil)
+							So(m.ProjectName, ShouldEqual, testTask.Project)
+							So(m.Id, ShouldEqual, testTask.Version)
+							So(m.Modules, ShouldNotBeEmpty)
+							So(m.Modules["recursive"], ShouldNotBeNil)
+							So(m.Modules["recursive"].URL, ShouldNotEqual, "")
+						})
 					})
 
 					Convey("With agent running a regular test and live API server over "+
@@ -374,9 +381,6 @@ func TestTaskFailures(t *testing.T) {
 	setupTlsConfigs(t)
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestTaskFailures")
-
-	err := testutil.CreateTestLocalConfig(testConfig, "render")
-	testutil.HandleTestingErr(err, t, "Couldn't create local config: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
@@ -619,7 +623,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		model.TasksCollection, build.Collection, host.Collection,
 		distro.Collection, version.Collection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
-	}
+		manifest.Collection, model.ProjectRefCollection}
 	testutil.HandleTestingErr(dbutil.ClearCollections(testCollections...), t, clearDataMsg)
 	projectVars := &model.ProjectVars{
 		Id: "evergreen-ci-render",
@@ -712,6 +716,9 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	}
 
 	testutil.HandleTestingErr(projectRef.Insert(), t, "failed to insert projectRef")
+
+	err = testutil.CreateTestLocalConfig(testConfig, "evergreen-ci-render", "testdata/config_test_plugin/project/evergreen-ci-render.yml")
+	testutil.HandleTestingErr(err, t, "failed to marshall project config")
 
 	// unmarshall the project configuration into a struct
 	project := &model.Project{}

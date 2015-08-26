@@ -36,7 +36,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, false)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)

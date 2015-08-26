@@ -51,10 +51,10 @@ func TestGetRecentVersions(t *testing.T) {
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "render")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "render", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
@@ -63,7 +63,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		projectName := "project_test"
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName)
+		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
@@ -260,10 +260,10 @@ func TestGetVersionInfo(t *testing.T) {
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "render")
+	err = testutil.CreateTestLocalConfig(buildTestConfig, "render", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
@@ -273,7 +273,7 @@ func TestGetVersionInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "project_test"
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName)
+		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 
 		v := &version.Version{

@@ -35,12 +35,14 @@ type GithubUser struct {
 func GetGithubCommits(oauthToken, commitsURL string) (
 	githubCommits []GithubCommit, header http.Header, err error) {
 	resp, err := tryGithubGet(oauthToken, commitsURL)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if resp == nil {
 		errMsg := fmt.Sprintf("nil response from url ‘%v’", commitsURL)
 		evergreen.Logger.Logf(slogger.ERROR, errMsg)
 		return nil, nil, APIResponseError{errMsg}
 	}
-	defer resp.Body.Close()
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying ‘%v’: %v", commitsURL, err)
 		evergreen.Logger.Logf(slogger.ERROR, errMsg)
@@ -131,13 +133,9 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	evergreen.Logger.Logf(slogger.ERROR, "requesting github commit from url: %v", commitURL)
 
 	resp, err := tryGithubGet(oauthToken, commitURL)
-	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url ‘%v’", commitURL)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
-		return nil, APIResponseError{errMsg}
+	if resp != nil {
+		defer resp.Body.Close()
 	}
-
-	defer resp.Body.Close()
 	if err != nil {
 		errMsg := fmt.Sprintf("error querying ‘%v’: %v", commitURL, err)
 		evergreen.Logger.Logf(slogger.ERROR, errMsg)
@@ -164,6 +162,51 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 		return nil, APIUnmarshalError{string(respBody), err.Error()}
 	}
 	return commitEvent, nil
+}
+
+// GetBranchEvent gets the head of the a given branch via an API call to GitHub
+func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
+	error) {
+	branchURL := fmt.Sprintf("%v/repos/%v/%v/branches/%v",
+		GithubAPIBase,
+		repoOwner,
+		repo,
+		branch,
+	)
+
+	evergreen.Logger.Logf(slogger.ERROR, "requesting github commit from url: %v", branchURL)
+
+	resp, err := tryGithubGet(oauthToken, branchURL)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
+	if err != nil {
+		errMsg := fmt.Sprintf("error querying ‘%v’: %v", branchURL, err)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		return nil, APIResponseError{errMsg}
+	}
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, ResponseReadError{err.Error()}
+	}
+	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
+		resp.Status, len(respBody))
+
+	if resp.StatusCode != http.StatusOK {
+		requestError := APIRequestError{}
+		if err = json.Unmarshal(respBody, &requestError); err != nil {
+			return nil, APIRequestError{Message: string(respBody)}
+		}
+		return nil, requestError
+	}
+
+	branchEvent := &BranchEvent{}
+	if err = json.Unmarshal(respBody, branchEvent); err != nil {
+		return nil, APIUnmarshalError{string(respBody), err.Error()}
+	}
+	return branchEvent, nil
 }
 
 // githubRequest performs the specified http request. If the oauth token field is empty it will not use oauth

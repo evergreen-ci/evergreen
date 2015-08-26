@@ -54,6 +54,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		HostId:       "testHost",
 		Secret:       "mocktasksecret",
 		Status:       evergreen.TaskDispatched,
+		Version:      "versionId",
 		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
@@ -67,6 +68,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 			"123": "456",
 		},
 	}
+
 	projectRef := &model.ProjectRef{
 		Owner:       "mongodb",
 		Repo:        "mongo",
@@ -78,6 +80,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		RemotePath:  "etc/evergreen.yml",
 		Identifier:  "mongodb-mongo-master",
 		DisplayName: "mongodb-mongo-master",
+		LocalConfig: string(data),
 	}
 	err = projectRef.Upsert()
 	testutil.HandleTestingErr(err, t, "failed to upsert project ref")

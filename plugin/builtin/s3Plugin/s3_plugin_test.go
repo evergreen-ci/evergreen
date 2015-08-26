@@ -216,7 +216,7 @@ func TestS3PutAndGet(t *testing.T) {
 				"content_type": "text/plain",
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, false)
+			server, err := apiserver.CreateTestServer(conf, nil, plugin.APIPlugins, false)
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
 			pluginCom := &agent.TaskJSONCommunicator{"s3", httpCom}
 

@@ -127,6 +127,10 @@ pre:
               username: ${crowduser}
               password: ${crowdpw}
               urlroot: ${crowdserver}
+        plugins:
+            manifest: 
+              github_token: "${github_token}"
+
         END_OF_CREDS
 
 post:
@@ -476,7 +480,7 @@ tasks:
 
           cd builtin
           #TODO coverage reports for other model packages
-          for i in attach expansions git gotest s3Plugin s3copy; do 
+          for i in attach expansions git gotest s3Plugin s3copy manifest; do 
             echo "running $i suite"
             cd $i
             mkfifo $i.pipe

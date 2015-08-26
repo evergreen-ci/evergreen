@@ -25,6 +25,7 @@ func reset(t *testing.T) {
 }
 
 func TestAttachFilesApi(t *testing.T) {
+	testConfig := evergreen.TestConfig()
 	Convey("With a running api server and installed api hook", t, func() {
 		reset(t)
 		taskConfig, _ := plugintest.CreateTestConfig("testdata/plugin_attach_files.yml", t)
@@ -32,7 +33,7 @@ func TestAttachFilesApi(t *testing.T) {
 		attachPlugin := &AttachPlugin{}
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
@@ -115,13 +116,14 @@ func TestAttachFilesApi(t *testing.T) {
 }
 
 func TestAttachTaskFilesPlugin(t *testing.T) {
+	testConfig := evergreen.TestConfig()
 	Convey("With attach plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		attachPlugin := &AttachPlugin{}
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 

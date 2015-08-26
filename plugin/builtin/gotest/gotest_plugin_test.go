@@ -24,6 +24,7 @@ func reset(t *testing.T) {
 }
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
+	testConfig := evergreen.TestConfig()
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 
@@ -32,7 +33,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
@@ -91,7 +92,8 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 func TestGotestPluginOnPassingTests(t *testing.T) {
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
-
+		testConfig := evergreen.TestConfig()
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestGotestPluginOnPassingTests")
 		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
@@ -159,13 +161,14 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 	Convey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
-
+		testConfig := evergreen.TestConfig()
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestGotestPluginWithEnvironmentVariables")
 		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 

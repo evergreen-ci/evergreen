@@ -41,20 +41,25 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 
 	// override the appropriate params
 	t.Logf("Loading cloud provider settings from %v", *settingsOverride)
-	testSettings.Providers = integrationSettings.Providers
 
+	testSettings.Providers = integrationSettings.Providers
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.AuthConfig = integrationSettings.AuthConfig
+	testSettings.Plugins = integrationSettings.Plugins
 }
 
 // Creates a project ref local config that can be used for testing, with the string identifier given
 // and the local config from a path
-func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName string) error {
+func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projectPath string) error {
 
-	config, err := evergreen.FindConfig(testSettings.ConfigDir)
-	if err != nil {
-		return err
+	if projectPath == "" {
+		config, err := evergreen.FindConfig(testSettings.ConfigDir)
+		if err != nil {
+			return err
+		}
+		projectPath = filepath.Join(config, "project", fmt.Sprintf("%v.yml", projectName))
 	}
+
 	projectRef, err := model.FindOneProjectRef(projectName)
 	if err != nil {
 		return err
@@ -64,7 +69,6 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName string)
 		projectRef = &model.ProjectRef{}
 	}
 
-	projectPath := filepath.Join(config, "project", fmt.Sprintf("%v.yml", projectName))
 	data, err := ioutil.ReadFile(projectPath)
 	if err != nil {
 		return err

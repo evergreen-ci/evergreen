@@ -164,14 +164,14 @@ func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com pl
 		}
 		// otherwise, fetch the contents and load it into the patch object
 		log.LogExecution(slogger.INFO, "Fetching patch contents for %v", patchPart.PatchSet.PatchFileId)
-		var result io.ReadCloser
+		var result []byte
 		retriableGet := util.RetriableFunc(
 			func() error {
 				resp, err := com.TaskGetJSON(fmt.Sprintf("%s/%s", GitPatchFilePath, patchPart.PatchSet.PatchFileId))
+				if resp != nil {
+					defer resp.Body.Close()
+				}
 				if err != nil {
-					if resp != nil {
-						resp.Body.Close()
-					}
 					//Some generic error trying to connect - try again
 					log.LogExecution(slogger.WARN, "Error connecting to API server: %v", err)
 					return util.RetriableError{err}
@@ -181,7 +181,10 @@ func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com pl
 					resp.Body.Close()
 					return util.RetriableError{fmt.Errorf("Unexpected status code %v", resp.StatusCode)}
 				}
-				result = resp.Body
+				result, err = ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return err
+				}
 				return nil
 			})
 
@@ -189,12 +192,7 @@ func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com pl
 		if err != nil {
 			return err
 		}
-		defer result.Close()
-		raw, err := ioutil.ReadAll(result)
-		if err != nil {
-			return err
-		}
-		p.Patches[i].PatchSet.Patch = string(raw)
+		p.Patches[i].PatchSet.Patch = string(result)
 	}
 	return nil
 }

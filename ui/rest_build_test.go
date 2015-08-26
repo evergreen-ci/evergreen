@@ -57,13 +57,13 @@ func TestGetBuildInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "mci-test"
 
-		err := testutil.CreateTestLocalConfig(buildTestConfig, "mci-test")
+		err := testutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, "render")
+		err = testutil.CreateTestLocalConfig(buildTestConfig, "render", "")
 		So(err, ShouldBeNil)
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, "project_test")
+		err = testutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
 
 		task := build.TaskCache{
 			Id:          "some-task-id",

@@ -18,36 +18,46 @@ type GitGetProjectCommand struct {
 	// The root directory (locally) that the code should be checked out into.
 	// Must be a valid non-blank directory name.
 	Directory string
+
+	// Revisions are the optional revisions associated with the modules of a project.
+	// Note: If a module does not have a revision it will use the module's branch to get the project.
+	Revisions map[string]string
 }
 
-func (self *GitGetProjectCommand) Name() string {
+func (ggpc *GitGetProjectCommand) Name() string {
 	return GetProjectCmdName
 }
 
-func (self *GitGetProjectCommand) Plugin() string {
+func (ggpc *GitGetProjectCommand) Plugin() string {
 	return GitPluginName
 }
 
 // ParseParams parses the command's configuration.
 // Fulfills the Command interface.
-func (self *GitGetProjectCommand) ParseParams(params map[string]interface{}) error {
-	err := mapstructure.Decode(params, self)
+func (ggpc *GitGetProjectCommand) ParseParams(params map[string]interface{}) error {
+	err := mapstructure.Decode(params, ggpc)
 	if err != nil {
 		return err
 	}
 
-	if self.Directory == "" {
+	if ggpc.Directory == "" {
 		return fmt.Errorf("error parsing '%v' params: value for directory "+
-			"must not be blank", self.Name())
+			"must not be blank", ggpc.Name())
 	}
 	return nil
 }
 
 // Execute gets the source code required by the project
-func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
+func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
+
+	// expand the github parameters before running the task
+	if err := plugin.ExpandValues(&ggpc.Revisions, conf.Expansions); err != nil {
+		return err
+	}
+
 	location, err := conf.ProjectRef.Location()
 
 	if err != nil {
@@ -57,9 +67,9 @@ func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	gitCommands := []string{
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("set -o verbose"),
-		fmt.Sprintf("rm -rf %v", self.Directory),
-		fmt.Sprintf("git clone %v '%v'", location, self.Directory),
-		fmt.Sprintf("cd %v; git checkout %v", self.Directory, conf.Task.Revision),
+		fmt.Sprintf("rm -rf %v", ggpc.Directory),
+		fmt.Sprintf("git clone %v '%v'", location, ggpc.Directory),
+		fmt.Sprintf("cd %v; git checkout %v", ggpc.Directory, conf.Task.Revision),
 	}
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
@@ -106,16 +116,23 @@ func (self *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 			return err
 		}
 
+		revision := ggpc.Revisions[moduleName]
+
+		// if there is no revision, then use the branch name
+		if revision == "" {
+			revision = module.Branch
+		}
+
 		moduleCmds := []string{
 			fmt.Sprintf("set -o errexit"),
 			fmt.Sprintf("set -o verbose"),
 			fmt.Sprintf("git clone %v '%v'", module.Repo, filepath.ToSlash(moduleBase)),
-			fmt.Sprintf("cd %v; git checkout '%v'", filepath.ToSlash(moduleBase), module.Branch),
+			fmt.Sprintf("cd %v; git checkout '%v'", filepath.ToSlash(moduleBase), revision),
 		}
 
 		moduleFetchCmd := &command.LocalCommand{
 			CmdString:        strings.Join(moduleCmds, "\n"),
-			WorkingDirectory: filepath.ToSlash(filepath.Join(conf.WorkDir, self.Directory)),
+			WorkingDirectory: filepath.ToSlash(filepath.Join(conf.WorkDir, ggpc.Directory)),
 			Stdout:           pluginLogger.GetTaskLogWriter(slogger.INFO),
 			Stderr:           pluginLogger.GetTaskLogWriter(slogger.ERROR),
 			ScriptMode:       true,

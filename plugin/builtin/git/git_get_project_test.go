@@ -20,13 +20,14 @@ func init() {
 }
 
 func TestGitPlugin(t *testing.T) {
+	testConfig := evergreen.TestConfig()
 	Convey("With git plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, false)
+		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
