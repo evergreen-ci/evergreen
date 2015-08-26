@@ -16,7 +16,7 @@ github.com/smartystreets/assertions				      22fd8e1982688f4ff04e8e9ec6feae2c245
 github.com/smartystreets/goconvey               6e8b6a6845c5dc7738d519162c9a9ff5c9cd5f48
 github.com/jacobsa/oglematchers                 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
 gopkg.in/yaml.v2                                49c95bdc21843256fb6c4e0d370a05f24a0bf213
-gopkg.in/mgo.v2			                            c6a7dce14133ccac2dcac3793f1d6e2ef048503a
+gopkg.in/mgo.v2			                            f4923a569136442e900b8cf5c1a706c0a8b0883c
 github.com/laher/goxc                           6629689d44fd183f8d29a3f2d1cd4e6174294299
 github.com/dynport/gocloud/                     86eb7951c13ee7437f5952d63537533068f9f15c
 github.com/dynport/gologger                     341c03cd2f0ff842817d6311364a1f8ab0df541e

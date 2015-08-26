@@ -209,17 +209,18 @@ func (cluster *mongoCluster) syncServer(server *mongoServer) (info *mongoServerI
 
 	if result.IsMaster {
 		debugf("SYNC %s is a master.", addr)
-		// Made an incorrect assumption above, so fix stats.
-		stats.conn(-1, false)
-		stats.conn(+1, true)
+		if !server.info.Master {
+			// Made an incorrect assumption above, so fix stats.
+			stats.conn(-1, false)
+			stats.conn(+1, true)
+		}
 	} else if result.Secondary {
 		debugf("SYNC %s is a slave.", addr)
 	} else if cluster.direct {
 		logf("SYNC %s in unknown state. Pretending it's a slave due to direct connection.", addr)
 	} else {
 		logf("SYNC %s is neither a master nor a slave.", addr)
-		// Made an incorrect assumption above, so fix stats.
-		stats.conn(-1, false)
+		// Let stats track it as whatever was known before.
 		return nil, nil, errors.New(addr + " is not a master nor slave")
 	}
 
@@ -408,7 +409,7 @@ func (cluster *mongoCluster) server(addr string, tcpaddr *net.TCPAddr) *mongoSer
 
 func resolveAddr(addr string) (*net.TCPAddr, error) {
 	// This hack allows having a timeout on resolution.
-	conn, err := net.DialTimeout("udp", addr, 10*time.Second)
+	conn, err := net.DialTimeout("udp4", addr, 10*time.Second)
 	if err != nil {
 		log("SYNC Failed to resolve server address: ", addr)
 		return nil, errors.New("failed to resolve server address: " + addr)
