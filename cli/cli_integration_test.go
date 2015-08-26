@@ -35,7 +35,7 @@ func TestCLIFunctions(t *testing.T) {
 
 	Convey("with API test server running", t, func() {
 		// create a test API server
-		testServer, err := apiserver.CreateTestServer(testConfig, nil, plugin.Published, true)
+		testServer, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 
 		// create a test user
 		So(db.Clear(user.Collection), ShouldBeNil)
