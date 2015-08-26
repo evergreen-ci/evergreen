@@ -1,6 +1,7 @@
 package s3Plugin
 
 import (
+	"errors"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/model"
@@ -23,6 +24,8 @@ var (
 	attachResultsRetrySleepSec = 10 * time.Second
 	s3baseURL                  = "https://s3.amazonaws.com/"
 )
+
+var errSkippedFile = errors.New("missing optional file was skipped")
 
 // A plugin command to put a resource to an s3 bucket and download it to
 // the local machine.
@@ -66,25 +69,30 @@ type S3PutCommand struct {
 	//  "none", which hides the file from the UI for everybody.
 	// If unset, the file will be public.
 	Visibility string `mapstructure:"visibility" plugin:"expand"`
+
+	// Optional, when set to true, causes this command to be skipped over without an error when
+	// the path specified in local_file does not exist. Defaults to false, which triggers errors
+	// for missing files.
+	Optional bool `mapstructure:"optional"`
 }
 
-func (self *S3PutCommand) Name() string {
+func (s3pc *S3PutCommand) Name() string {
 	return S3PutCmd
 }
 
-func (self *S3PutCommand) Plugin() string {
+func (s3pc *S3PutCommand) Plugin() string {
 	return S3PluginName
 }
 
 // S3PutCommand-specific implementation of ParseParams.
-func (self *S3PutCommand) ParseParams(params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, self); err != nil {
-		return fmt.Errorf("error decoding %v params: %v", self.Name(), err)
+func (s3pc *S3PutCommand) ParseParams(params map[string]interface{}) error {
+	if err := mapstructure.Decode(params, s3pc); err != nil {
+		return fmt.Errorf("error decoding %v params: %v", s3pc.Name(), err)
 	}
 
 	// make sure the command params are valid
-	if err := self.validateParams(); err != nil {
-		return fmt.Errorf("error validating %v params: %v", self.Name(), err)
+	if err := s3pc.validateParams(); err != nil {
+		return fmt.Errorf("error validating %v params: %v", s3pc.Name(), err)
 	}
 
 	return nil
@@ -92,34 +100,34 @@ func (self *S3PutCommand) ParseParams(params map[string]interface{}) error {
 }
 
 // Validate that all necessary params are set and valid.
-func (self *S3PutCommand) validateParams() error {
-	if self.AwsKey == "" {
+func (s3pc *S3PutCommand) validateParams() error {
+	if s3pc.AwsKey == "" {
 		return fmt.Errorf("aws_key cannot be blank")
 	}
-	if self.AwsSecret == "" {
+	if s3pc.AwsSecret == "" {
 		return fmt.Errorf("aws_secret cannot be blank")
 	}
-	if self.LocalFile == "" {
+	if s3pc.LocalFile == "" {
 		return fmt.Errorf("local_file cannot be blank")
 	}
-	if self.RemoteFile == "" {
+	if s3pc.RemoteFile == "" {
 		return fmt.Errorf("remote_file cannot be blank")
 	}
-	if self.ContentType == "" {
+	if s3pc.ContentType == "" {
 		return fmt.Errorf("content_type cannot be blank")
 	}
-	if !util.SliceContains(artifact.ValidVisibilities, self.Visibility) {
-		return fmt.Errorf("invalid visibility setting: %v", self.Visibility)
+	if !util.SliceContains(artifact.ValidVisibilities, s3pc.Visibility) {
+		return fmt.Errorf("invalid visibility setting: %v", s3pc.Visibility)
 	}
 
 	// make sure the bucket is valid
-	if err := validateS3BucketName(self.Bucket); err != nil {
-		return fmt.Errorf("%v is an invalid bucket name: %v", self.Bucket, err)
+	if err := validateS3BucketName(s3pc.Bucket); err != nil {
+		return fmt.Errorf("%v is an invalid bucket name: %v", s3pc.Bucket, err)
 	}
 
 	// make sure the s3 permissions are valid
-	if !validS3Permissions(self.Permissions) {
-		return fmt.Errorf("permissions '%v' are not valid", self.Permissions)
+	if !validS3Permissions(s3pc.Permissions) {
+		return fmt.Errorf("permissions '%v' are not valid", s3pc.Permissions)
 	}
 
 	return nil
@@ -127,123 +135,131 @@ func (self *S3PutCommand) validateParams() error {
 
 // Apply the expansions from the relevant task config to all appropriate
 // fields of the S3PutCommand.
-func (self *S3PutCommand) expandParams(conf *model.TaskConfig) error {
-	return plugin.ExpandValues(self, conf.Expansions)
+func (s3pc *S3PutCommand) expandParams(conf *model.TaskConfig) error {
+	return plugin.ExpandValues(s3pc, conf.Expansions)
 }
 
-func (self *S3PutCommand) shouldRunForVariant(buildVariantName string) bool {
+func (s3pc *S3PutCommand) shouldRunForVariant(buildVariantName string) bool {
 	//No buildvariant filter, so run always
-	if len(self.BuildVariants) == 0 {
+	if len(s3pc.BuildVariants) == 0 {
 		return true
 	}
 
 	//Only run if the buildvariant specified appears in our list.
-	return util.SliceContains(self.BuildVariants, buildVariantName)
+	return util.SliceContains(s3pc.BuildVariants, buildVariantName)
 }
 
 // Implementation of Execute.  Expands the parameters, and then puts the
 // resource to s3.
-func (self *S3PutCommand) Execute(pluginLogger plugin.Logger,
-	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig,
+func (s3pc *S3PutCommand) Execute(log plugin.Logger,
+	com plugin.PluginCommunicator, conf *model.TaskConfig,
 	stop chan bool) error {
 
 	// expand necessary params
-	if err := self.expandParams(conf); err != nil {
+	if err := s3pc.expandParams(conf); err != nil {
 		return err
 	}
 
 	// validate the params
-	if err := self.validateParams(); err != nil {
+	if err := s3pc.validateParams(); err != nil {
 		return fmt.Errorf("expanded params are not valid: %v", err)
 	}
 
-	if !self.shouldRunForVariant(conf.BuildVariant.Name) {
-		pluginLogger.LogTask(slogger.INFO, "Skipping S3 put of local file %v for variant %v",
-			self.LocalFile,
+	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
+		log.LogTask(slogger.INFO, "Skipping S3 put of local file %v for variant %v",
+			s3pc.LocalFile,
 			conf.BuildVariant.Name)
 		return nil
 	}
 
 	// if the local file is a relative path, join it to the work dir
-	if !filepath.IsAbs(self.LocalFile) {
-		self.LocalFile = filepath.Join(conf.WorkDir, self.LocalFile)
+	if !filepath.IsAbs(s3pc.LocalFile) {
+		s3pc.LocalFile = filepath.Join(conf.WorkDir, s3pc.LocalFile)
 	}
 
-	pluginLogger.LogTask(slogger.INFO, "Putting %v into path %v in s3 bucket %v",
-		self.LocalFile, self.RemoteFile, self.Bucket)
+	log.LogTask(slogger.INFO, "Putting %v into path %v in s3 bucket %v",
+		s3pc.LocalFile, s3pc.RemoteFile, s3pc.Bucket)
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- self.PutWithRetry(pluginLogger, pluginCom)
+		errChan <- s3pc.PutWithRetry(log, com)
 	}()
 
 	select {
 	case err := <-errChan:
 		return err
 	case <-stop:
-		pluginLogger.LogExecution(slogger.INFO, "Received signal to terminate"+
-			" execution of S3 Put Command")
+		log.LogExecution(slogger.INFO, "Received signal to terminate execution of S3 Put Command")
 		return nil
 	}
 
 }
 
 // Wrapper around the Put() function to retry it
-func (self *S3PutCommand) PutWithRetry(pluginLogger plugin.Logger,
-	pluginComm plugin.PluginCommunicator) error {
+func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommunicator) error {
 	retriablePut := util.RetriableFunc(
 		func() error {
-			err := self.Put()
+			err := s3pc.Put()
 			if err != nil {
-				pluginLogger.LogExecution(slogger.ERROR, "Error putting to s3"+
-					" bucket: %v", err)
+				if err == errSkippedFile {
+					return err
+				}
+				log.LogExecution(slogger.ERROR, "Error putting to s3 bucket: %v", err)
 				return util.RetriableError{err}
 			}
 			return nil
 		},
 	)
 
-	retryFail, err := util.RetryArithmeticBackoff(retriablePut,
-		maxS3PutAttempts, s3PutSleep)
+	retryFail, err := util.RetryArithmeticBackoff(retriablePut, maxS3PutAttempts, s3PutSleep)
+	if err == errSkippedFile {
+		log.LogExecution(slogger.INFO, "S3 put skipped optional missing file.")
+		return nil
+	}
 	if retryFail {
-		pluginLogger.LogExecution(slogger.ERROR, "S3 put failed with error: %v",
-			err)
+		log.LogExecution(slogger.ERROR, "S3 put failed with error: %v", err)
 		return err
 	}
-	return self.AttachTaskFiles(pluginLogger, pluginComm)
+	return s3pc.AttachTaskFiles(log, com)
 }
 
 // Put the specified resource to s3.
-func (self *S3PutCommand) Put() error {
+func (s3pc *S3PutCommand) Put() error {
 
-	fi, err := os.Stat(self.LocalFile)
+	fi, err := os.Stat(s3pc.LocalFile)
 	if err != nil {
+		if os.IsNotExist(err) && s3pc.Optional {
+			return errSkippedFile
+		}
 		return err
 	}
 
-	fileReader, err := os.Open(self.LocalFile)
+	fileReader, err := os.Open(s3pc.LocalFile)
 	if err != nil {
+		if os.IsNotExist(err) && s3pc.Optional {
+			return errSkippedFile
+		}
 		return err
 	}
 	defer fileReader.Close()
 
 	// get the appropriate session and bucket
 	auth := &aws.Auth{
-		AccessKey: self.AwsKey,
-		SecretKey: self.AwsSecret,
+		AccessKey: s3pc.AwsKey,
+		SecretKey: s3pc.AwsSecret,
 	}
 	session := thirdparty.NewS3Session(auth, aws.USEast)
 
-	bucket := session.Bucket(self.Bucket)
+	bucket := session.Bucket(s3pc.Bucket)
 
 	options := s3.Options{}
 	// put the data
 	return bucket.PutReader(
-		self.RemoteFile,
+		s3pc.RemoteFile,
 		fileReader,
 		fi.Size(),
-		self.ContentType,
-		s3.ACL(self.Permissions),
+		s3pc.ContentType,
+		s3.ACL(s3pc.Permissions),
 		options,
 	)
 
@@ -251,26 +267,26 @@ func (self *S3PutCommand) Put() error {
 
 // AttachTaskFiles is responsible for sending the
 // specified file to the API Server
-func (self *S3PutCommand) AttachTaskFiles(pluginLogger plugin.Logger,
-	pluginCom plugin.PluginCommunicator) error {
+func (s3pc *S3PutCommand) AttachTaskFiles(log plugin.Logger,
+	com plugin.PluginCommunicator) error {
 
-	remoteFile := filepath.ToSlash(self.RemoteFile)
-	fileLink := s3baseURL + self.Bucket + "/" + remoteFile
+	remoteFile := filepath.ToSlash(s3pc.RemoteFile)
+	fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFile
 
-	displayName := self.DisplayName
+	displayName := s3pc.DisplayName
 	if displayName == "" {
-		displayName = filepath.Base(self.LocalFile)
+		displayName = filepath.Base(s3pc.LocalFile)
 	}
 	file := &artifact.File{
 		Name:       displayName,
 		Link:       fileLink,
-		Visibility: self.Visibility,
+		Visibility: s3pc.Visibility,
 	}
 
-	err := pluginCom.PostTaskFiles([]*artifact.File{file})
+	err := com.PostTaskFiles([]*artifact.File{file})
 	if err != nil {
 		return fmt.Errorf("Attach files failed: %v", err)
 	}
-	pluginLogger.LogExecution(slogger.INFO, "API attach files call succeeded")
+	log.LogExecution(slogger.INFO, "API attach files call succeeded")
 	return nil
 }

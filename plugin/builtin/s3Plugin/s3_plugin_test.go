@@ -2,10 +2,14 @@ package s3Plugin
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -38,23 +42,19 @@ func TestValidateS3BucketName(t *testing.T) {
 			So(validateS3BucketName(strings.Repeat("a", 64)), ShouldNotBeNil)
 		})
 
-		Convey("a bucket name that does not start with a label should be"+
-			" rejected", func() {
+		Convey("a bucket name that does not start with a label should be rejected", func() {
 			So(validateS3BucketName(".xx"), ShouldNotBeNil)
 		})
 
-		Convey("a bucket name that does not end with a label should be"+
-			" rejected", func() {
+		Convey("a bucket name that does not end with a label should be rejected", func() {
 			So(validateS3BucketName("xx."), ShouldNotBeNil)
 		})
 
-		Convey("a bucket name with two consecutive periods should be"+
-			" rejected", func() {
+		Convey("a bucket name with two consecutive periods should be rejected", func() {
 			So(validateS3BucketName("xx..xx"), ShouldNotBeNil)
 		})
 
-		Convey("a bucket name with invalid characters should be"+
-			" rejected", func() {
+		Convey("a bucket name with invalid characters should be rejected", func() {
 			So(validateS3BucketName("a*a"), ShouldNotBeNil)
 			So(validateS3BucketName("a'a"), ShouldNotBeNil)
 			So(validateS3BucketName("a?a"), ShouldNotBeNil)
@@ -202,6 +202,30 @@ func TestS3PutAndGet(t *testing.T) {
 			So(putCmd.shouldRunForVariant("osx-108"), ShouldBeFalse)
 		})
 
+		Convey("put cmd with 'optional' and missing file should not throw an error", func() {
+			// load params into the put command
+			putCmd = &S3PutCommand{}
+			putParams := map[string]interface{}{
+				"aws_key":      conf.Providers.AWS.Id,
+				"aws_secret":   conf.Providers.AWS.Secret,
+				"optional":     true,
+				"local_file":   "this_file_does_not_exist.txt",
+				"remote_file":  "remote_file",
+				"bucket":       "test_bucket",
+				"permissions":  "private",
+				"content_type": "text/plain",
+			}
+			So(putCmd.ParseParams(putParams), ShouldBeNil)
+			server, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, plugin.Published, false)
+			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
+			pluginCom := &agent.TaskJSONCommunicator{"s3", httpCom}
+
+			So(err, ShouldBeNil)
+
+			err = putCmd.Execute(&plugintest.MockLogger{}, pluginCom,
+				&model.TaskConfig{nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
+			So(err, ShouldBeNil)
+		})
 	})
 
 }

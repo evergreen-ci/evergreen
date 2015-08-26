@@ -59,12 +59,10 @@ func TestS3CopyPluginExecution(t *testing.T) {
 				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin "+
-						"command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{s3CopyPlugin.Name(),
-						httpCom}
+					pluginCom := &agent.TaskJSONCommunicator{s3CopyPlugin.Name(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig,
 						make(chan bool))
 					So(err, ShouldBeNil)
