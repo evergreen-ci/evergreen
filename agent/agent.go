@@ -222,7 +222,8 @@ func (sh *SignalHandler) HandleSignals(agt *Agent, completed chan FinalTaskFunc)
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
 		os.Exit(1)
 	case HeartbeatMaxFailed:
-		agt.logger.LogExecution(slogger.ERROR, "Max heartbeats failed - stopping.")
+		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
+		os.Exit(1)
 	case AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
