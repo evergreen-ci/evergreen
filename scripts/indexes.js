@@ -18,13 +18,13 @@ db.event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
 
 //======hosts======//
 db.hosts.ensureIndex({ "status": 1 })
-db.hosts.ensureIndex({ "distro_id" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "started_by" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "running_task" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "host_type" : 1, "_id" : 1 })
 db.hosts.ensureIndex({ "branch" : 1, "create_time" : 1 })
 db.hosts.ensureIndex({ "version" : 1 })
 db.hosts.ensureIndex({ "author" : 1 })
+db.hosts.ensureIndex({ "distro._id" : 1, "status" : 1 })
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
