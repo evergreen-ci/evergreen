@@ -242,6 +242,11 @@ h3.section-heading {
   background-color: #0ed400;
   border: 1px solid #0ed400;
 }
+.block-status-inactive {
+  color: black;
+  background-color: #ebebed;
+  border: 1px solid #0ed400;
+}
 .block-status-failed {
   color: black;
   background-color: #f24738;
@@ -1590,6 +1595,10 @@ pre {
 .build-link.block-status-dispatched {
   background-color: #ffd20a;
   border: 1px solid #c4a208;
+}
+.build-link.block-status-inactive {
+  background: #ebebed;
+  color: #a09f9e;
 }
 .tasks-list {
   margin-top: 2px;

@@ -27,7 +27,7 @@ Evergreen - Timeline
     <li class="timeline-version"
         ng-repeat="versionData in data.Versions"
         ng-init="version = versionData.Version">
-      <div ng-if="versionActivated(version)" class="timeline-builds-list inline">
+      <div ng-if="versionActivated(versionData)" class="timeline-builds-list inline">
         <div class="timeline-text row-header">
           <div class="version-info clearfix">
             <i ng-if="!!version.Errors" class="icon-warning-sign" style="color:red">&nbsp;</i>
@@ -50,9 +50,7 @@ Evergreen - Timeline
             <li class="timeline-build"
                 ng-repeat="buildData in versionData.Builds | orderBy:'Build.display_name'"
                 ng-init="build = buildData.Build;">
-              <a  ng-href="/build/[[build._id]]"
-                  id="[[build._id]]"
-                  class="build-link status-[[build.status]] block-status-[[build.status]]">
+              <a  ng-href="/build/[[build._id]]" id="[[build._id]]" class="build-link" ng-class="build.tasks | buildStatus">
                 [[build.display_name]]
               </a>
               <div class="tasks-list inline" results-bar="buildData.taskResults">
@@ -62,7 +60,7 @@ Evergreen - Timeline
         </div>
       </div>
 
-      <div ng-if="!versionActivated(version)" class="timeline-builds-list inline inactive">
+      <div ng-if="!versionActivated(versionData)" class="timeline-builds-list inline inactive">
         <div class="timeline-text row-header">
           <div class="version-info">
             <i ng-if="!!version.Errors" class="icon-warning-sign" style="color:red">&nbsp;</i>

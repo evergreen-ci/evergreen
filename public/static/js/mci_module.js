@@ -291,6 +291,38 @@ var mciModule = angular.module('MCI', [
     }
     return input.substring(lastSlash + 1);
   }
+}).filter('buildStatus', function() {
+  // given a list of tasks, returns the status of the overall build.
+  return function(tasks) {
+    var countSuccess = 0;
+    var countInProgress = 0;
+    var countActive = 0;
+    for(i=0;i<tasks.length;i++){
+      // if any task is failed, the build status is "failed"
+      if(tasks[i].status == "failed"){
+        return "block-status-failed";
+      }
+      if(tasks[i].status == "success"){
+        countSuccess++;
+      } else if(tasks[i].status == "dispatched" || tasks[i].status=="started"){
+        countInProgress++;
+      } else if(tasks[i].status == "undispatched") {
+        countActive += tasks[i].activated ? 1 : 0;
+      }
+    }
+    if(countSuccess == tasks.length){ 
+      // all tasks are passing
+      return "block-status-success";
+    }else if(countInProgress>0){
+      // no failures yet, but at least 1 task in still progress
+      return "block-status-started";
+    }else if(countActive>0){
+      // no failures yet, but at least 1 task still active
+      return "block-status-created";
+    }
+    // no active tasks pending
+    return "block-status-inactive";
+  }
 }).factory('mciTime', [function() {
   var $time = {
     now: function() {

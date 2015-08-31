@@ -39,10 +39,11 @@ function TimelineController($scope, $timeline, $window, $location) {
   };
 
   $scope.versionActivated = function(version) {
-    return _.chain(version.build_variants_status)
-           // TODO, use _.property if we ever update underscore
-           .map(function(bvs) { return bvs.activated; })
-           .some()
-           .value()
+    // collect the tasks within all the builds of this version
+    var result = _.reduce(_.pluck(_.pluck(version.Builds, "Build"), "tasks"), function(all_tasks, tasks) {
+          return all_tasks.concat(tasks);
+    }, [])
+    // return true if at least 1 of those tasks is activated.
+    return _.some(_.pluck(result, "activated"));
   };
 }
