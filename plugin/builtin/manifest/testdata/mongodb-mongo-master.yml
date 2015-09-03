@@ -2,8 +2,6 @@ tasks:
 - name: load_modules
   commands:
   - command: manifest.load
-    params:
-      auth_token: ${github_creds}
 modules: 
 - name: sample
   repo: git@github.com:evergreen-ci/sample.git

@@ -9,7 +9,7 @@ const Collection = "manifest"
 // Branch is the branch of the repository. Modules is a map of the GitHub repository name to the
 // Module's information associated with the specific version.
 type Manifest struct {
-	Id          string             `json:"_id" bson:"_id"`
+	Id          string             `json:"id" bson:"_id"`
 	Revision    string             `json:"revision" bson:"revision"`
 	ProjectName string             `json:"project" bson:"project"`
 	Branch      string             `json:"branch" bson:"branch"`
@@ -23,7 +23,7 @@ type Manifest struct {
 // URL is the url to the GitHub API call to that specific commit.
 type Module struct {
 	Branch   string `json:"branch" bson:"branch"`
-	Revision string `json:"project" bson:"revision"`
+	Revision string `json:"revision" bson:"revision"`
 	Owner    string `json:"owner" bson:"owner"`
 	URL      string `json:"url" bson:"url"`
 }

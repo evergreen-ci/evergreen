@@ -1,9 +1,13 @@
 package manifest
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
+	"html/template"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -45,8 +49,51 @@ func (m *ManifestPlugin) Configure(conf map[string]interface{}) error {
 	m.OAuthCredentials = mp.GithubToken
 	return nil
 }
+
 func (m *ManifestPlugin) GetUIHandler() http.Handler {
 	return nil
+}
+
+// GetPanelConfig returns a pointer to a plugin's UI configuration.
+// or an error, if an error occur while trying to generate the config
+// A nil pointer represents a plugin without a UI presence, and is
+// not an error.
+// GetPanelConfig returns a plugin.PanelConfig struct representing panels
+// that will be added to the Version page.
+func (m *ManifestPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
+	root := plugin.StaticWebRootFromSourceFile()
+	panelHTML, err := ioutil.ReadFile(root + "/partials/version_manifest_panel.html")
+	if err != nil {
+		return nil, fmt.Errorf("Can't load panel html file, %v, %v",
+			root+"/partials/version_manifest_panel.html", err)
+	}
+	return &plugin.PanelConfig{
+		StaticRoot: plugin.StaticWebRootFromSourceFile(),
+		Panels: []plugin.UIPanel{
+			{
+				Page:      plugin.VersionPage,
+				Position:  plugin.PageRight,
+				PanelHTML: template.HTML(panelHTML),
+				DataFunc: func(context plugin.UIContext) (interface{}, error) {
+					if context.Version == nil {
+						return nil, nil
+					}
+					currentManifest, err := manifest.FindOne(manifest.ById(context.Version.Id))
+					if err != nil {
+						return nil, err
+					}
+					if currentManifest == nil {
+						return nil, nil
+					}
+					prettyManifest, err := json.MarshalIndent(currentManifest, "", "  ")
+					if err != nil {
+						return nil, err
+					}
+					return string(prettyManifest), nil
+				},
+			},
+		},
+	}, nil
 }
 
 func (m *ManifestPlugin) GetAPIHandler() http.Handler {
