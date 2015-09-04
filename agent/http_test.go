@@ -34,6 +34,7 @@ func TestCommunicatorServerDown(t *testing.T) {
 			logger,                 // logger to use for logging retry attempts
 			"",                     // cert
 			&http.Client{},
+			&http.Client{},
 		}
 		Convey("Calling start() should return err after max retries", func() {
 			So(agentCommunicator.Start("1"), ShouldNotBeNil)
@@ -61,6 +62,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 			make(chan Signal),
 			logger,
 			"",
+			&http.Client{},
 			&http.Client{},
 		}
 

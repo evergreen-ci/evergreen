@@ -16,16 +16,18 @@ type StatsCollector struct {
 	// indicates the sampling frequency
 	Interval time.Duration
 	// when closed this stops stats collector ticker
-	stop chan bool
+	stop <-chan struct{}
 }
 
 // NewSimpleStatsCollector creates a StatsCollector that runs the given commands
 // at the given interval and sends the results to the given logger.
-func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration, cmds ...string) *StatsCollector {
+func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration,
+	stop <-chan struct{}, cmds ...string) *StatsCollector {
 	return &StatsCollector{
 		logger:   logger,
 		Cmds:     cmds,
 		Interval: interval,
+		stop:     stop,
 	}
 }
 
@@ -48,19 +50,16 @@ func (sc *StatsCollector) LogStats(exp *command.Expansions) {
 	if sc.Interval < 0 {
 		panic(fmt.Sprintf("Illegal interval: %v", sc.Interval))
 	}
-	if sc.stop != nil {
-		panic("StatsCollector goroutine already running!")
-	}
 	if sc.Interval == 0 {
 		sc.Interval = 60 * time.Second
 	}
 
 	sysloggerInfoWriter := evergreen.NewInfoLoggingWriter(sc.logger)
 	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(sc.logger)
-	sc.stop = make(chan bool)
 
 	go func() {
 		ticker := time.NewTicker(sc.Interval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
@@ -77,14 +76,8 @@ func (sc *StatsCollector) LogStats(exp *command.Expansions) {
 				}
 			case <-sc.stop:
 				sc.logger.Logf(slogger.INFO, "StatsCollector ticker stopping.")
-				ticker.Stop()
-				sc.stop = nil
 				return
 			}
 		}
 	}()
-}
-
-func (sc *StatsCollector) Stop() {
-	sc.stop <- true
 }

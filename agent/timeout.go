@@ -8,7 +8,7 @@ import (
 type TimeoutWatcher struct {
 	duration time.Duration
 	timer    *time.Timer
-	stop     chan bool
+	stop     <-chan struct{}
 	disabled bool
 }
 
@@ -26,7 +26,7 @@ func (tw *TimeoutWatcher) CheckIn() {
 
 // NotifyTimeouts sends a signal on sigChan whenever the timeout threshold of
 // the current execution stage is reached.
-func (tw *TimeoutWatcher) NotifyTimeouts(sigChan chan Signal) {
+func (tw *TimeoutWatcher) NotifyTimeouts(sigChan chan<- Signal) {
 	go func() {
 		if tw.duration <= 0 {
 			panic("can't wait for timeouts with negative duration")

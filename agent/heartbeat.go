@@ -12,10 +12,10 @@ type HeartbeatTicker struct {
 	Interval time.Duration
 
 	// Channel on which to notify of failed heartbeats or aborted task
-	SignalChan chan Signal
+	SignalChan chan<- Signal
 
 	// A channel which, when closed, tells the heartbeat ticker should stop.
-	stop chan bool
+	stop <-chan struct{}
 
 	// The current count of how many heartbeats have failed consecutively.
 	numFailed int
@@ -27,48 +27,34 @@ type HeartbeatTicker struct {
 }
 
 func (hbt *HeartbeatTicker) StartHeartbeating() {
-	if hbt.stop != nil {
-		panic("Heartbeat goroutine already running!")
-	}
 	hbt.numFailed = 0
-	hbt.stop = make(chan bool)
 
 	go func() {
 		ticker := time.NewTicker(hbt.Interval)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
 				abort, err := hbt.TaskCommunicator.Heartbeat()
 				if err != nil {
 					hbt.numFailed++
-					hbt.Logger.Logf(slogger.ERROR, "Error sending heartbeat "+
-						"(%v): %v", hbt.numFailed, err)
+					hbt.Logger.Logf(slogger.ERROR, "Error sending heartbeat (%v): %v", hbt.numFailed, err)
 				} else {
 					hbt.numFailed = 0
 				}
 				if hbt.numFailed == hbt.MaxFailedHeartbeats+1 {
 					hbt.Logger.Logf(slogger.ERROR, "Max heartbeats failed - trying to stop...")
 					hbt.SignalChan <- HeartbeatMaxFailed
-					ticker.Stop()
-					hbt.stop = nil
 					return
 				}
 				if abort {
 					hbt.SignalChan <- AbortedByUser
-					ticker.Stop()
-					hbt.stop = nil
 					return
 				}
 			case <-hbt.stop:
 				hbt.Logger.Logf(slogger.INFO, "Heartbeat ticker stopping.")
-				ticker.Stop()
-				hbt.stop = nil
 				return
 			}
 		}
 	}()
-}
-
-func (hbt *HeartbeatTicker) Stop() {
-	hbt.stop <- true
 }

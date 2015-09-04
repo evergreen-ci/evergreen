@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+var HeartbeatTimeout = time.Minute
+
 var HTTPConflictError = errors.New("Conflict")
 
 // HTTPCommunicator handles communication with the API server. An HTTPCommunicator
@@ -35,6 +37,8 @@ type HTTPCommunicator struct {
 	Logger        *slogger.Logger
 	HttpsCert     string
 	httpClient    *http.Client
+	// TODO only use one Client after global locking is removed
+	heartbeatClient *http.Client
 }
 
 // NewHTTPCommunicator returns an initialized HTTPCommunicator.
@@ -58,8 +62,10 @@ func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan cha
 		tc := &tls.Config{RootCAs: pool}
 		tr := &http.Transport{TLSClientConfig: tc}
 		agentCommunicator.httpClient = &http.Client{Transport: tr}
+		agentCommunicator.heartbeatClient = &http.Client{Transport: tr, Timeout: HeartbeatTimeout}
 	} else {
 		agentCommunicator.httpClient = &http.Client{}
+		agentCommunicator.heartbeatClient = &http.Client{Timeout: HeartbeatTimeout}
 	}
 	return agentCommunicator, nil
 }
@@ -438,7 +444,8 @@ func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 // and "abort" response. This function returns true if the agent should abort.
 func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	h.Logger.Logf(slogger.INFO, "Sending heartbeat.")
-	resp, err := h.tryPostJSON("heartbeat", "heartbeat")
+	data := interface{}("heartbeat")
+	resp, err := h.tryRequestWithClient("heartbeat", "POST", h.heartbeatClient, &data)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -466,15 +473,17 @@ func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 }
 
 func (h *HTTPCommunicator) tryGet(path string) (*http.Response, error) {
-	return h.tryRequest(path, "GET", nil)
+	return h.tryRequestWithClient(path, "GET", h.httpClient, nil)
 }
 
 func (h *HTTPCommunicator) tryPostJSON(path string, data interface{}) (
 	*http.Response, error) {
-	return h.tryRequest(path, "POST", &data)
+	return h.tryRequestWithClient(path, "POST", h.httpClient, &data)
 }
 
-func (h *HTTPCommunicator) tryRequest(path string, method string,
+// tryRequestWithClient does the given task HTTP request using the provided client, allowing
+// requests to be done with multiple client configurations/timeouts.
+func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, client *http.Client,
 	data *interface{}) (*http.Response, error) {
 	endpointUrl := fmt.Sprintf("%s/task/%s/%s", h.ServerURLRoot, h.TaskId,
 		path)
@@ -492,7 +501,7 @@ func (h *HTTPCommunicator) tryRequest(path string, method string,
 	}
 	req.Header.Add(evergreen.TaskSecretHeader, h.TaskSecret)
 	req.Header.Add("Content-Type", "application/json")
-	return h.httpClient.Do(req)
+	return client.Do(req)
 }
 
 func (h *HTTPCommunicator) postJSON(path string, data interface{}) (

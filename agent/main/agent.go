@@ -30,15 +30,18 @@ func main() {
 
 	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could decode https certificate file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "could not decode https certificate file: %v\n", err)
 		os.Exit(1)
 	}
 
 	agt, err := agent.New(*apiServer, *taskId, *taskSecret, *logFile, httpsCert)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not create new agent: %v\n", err)
+		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
 	}
+
+	// enable debug traces on SIGQUIT signaling
+	go DumpStackOnSIGQUIT(&agt)
 
 	// run all tasks until an API server's response has RunNext set to false
 	for {
@@ -59,7 +62,7 @@ func main() {
 
 		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, *logFile, httpsCert)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not create new agent: %v\n", err)
+			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
 			os.Exit(1)
 		}
 	}
