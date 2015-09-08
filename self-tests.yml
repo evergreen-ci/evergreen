@@ -73,16 +73,19 @@ functions:
       display_name: Coverage Report (TXT)
 
   "start mongod":
-      command: shell.exec
-      params:
-        background: true
-        script: |
-          set -o verbose
-          cd mongodb
-          echo "starting mongod..."
-          ./mongod${extension} --dbpath ./db_files &
-          echo "waiting for mongod to start up"
-          ./mongo${extension} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
+      - command: shell.exec
+        params:
+          background: true
+          script: |
+            set -o verbose
+            cd mongodb
+            echo "starting mongod..."
+            ./mongod${extension} --dbpath ./db_files &
+            echo "waiting for mongod to start up"
+      - command: shell.exec
+        params:
+          script: |
+            ./mongo${extension} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
 
 pre:
   - command: shell.track
