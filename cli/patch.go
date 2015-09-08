@@ -257,7 +257,11 @@ func (pc *PatchCommand) Execute(args []string) error {
 	if len(pc.Variants) == 0 {
 		pc.Variants = settings.FindDefaultVariants(pc.Project)
 		if len(pc.Variants) == 0 {
-			return fmt.Errorf("Need to specify at least one buildvariant with -v")
+			if pc.Finalize {
+				return fmt.Errorf("Need to specify at least one buildvariant with -v")
+			} else {
+				pc.Variants = []string{"all"}
+			}
 		}
 	} else {
 		defaultVariants := settings.FindDefaultVariants(pc.Project)
