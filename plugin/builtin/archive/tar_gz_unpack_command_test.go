@@ -92,7 +92,9 @@ func TestTarGzCommandUnpackArchive(t *testing.T) {
 				}
 
 				So(tarPackCmd.ParseParams(tarPackParams), ShouldBeNil)
-				So(tarPackCmd.BuildArchive("", &plugintest.MockLogger{}), ShouldBeNil)
+				numFound, err := tarPackCmd.BuildArchive("", &plugintest.MockLogger{})
+				So(err, ShouldBeNil)
+				So(numFound, ShouldEqual, 2)
 
 				// make sure it was built
 				exists, err := util.FileExists(target)

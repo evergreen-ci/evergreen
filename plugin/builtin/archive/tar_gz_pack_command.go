@@ -80,13 +80,25 @@ func (self *TarGzPackCommand) Execute(pluginLogger plugin.Logger,
 	}
 
 	errChan := make(chan error)
+	filesArchived := -1
 	go func() {
-		errChan <- self.BuildArchive(conf.WorkDir, pluginLogger)
+		var err error
+		filesArchived, err = self.BuildArchive(conf.WorkDir, pluginLogger)
+		errChan <- err
 	}()
 
 	select {
 	case err := <-errChan:
-		return err
+		if err != nil {
+			return err
+		}
+		if filesArchived == 0 {
+			deleteErr := os.Remove(self.Target)
+			if deleteErr != nil {
+				pluginLogger.LogExecution(slogger.INFO, "Error deleting empty archive: %v", deleteErr)
+			}
+		}
+		return nil
 	case <-stop:
 		pluginLogger.LogExecution(slogger.INFO, "Received signal to terminate"+
 			" execution of targz pack command")
@@ -112,7 +124,8 @@ func (self *agentAppender) Append(log *slogger.Log) error {
 }
 
 // Build the archive.
-func (self *TarGzPackCommand) BuildArchive(workDir string, pluginLogger plugin.Logger) error {
+// Returns the number of files included in the archive (0 means empty archive).
+func (self *TarGzPackCommand) BuildArchive(workDir string, pluginLogger plugin.Logger) (int, error) {
 	// create a logger to pass into the BuildArchive command
 	appender := &agentAppender{
 		pluginLogger: pluginLogger,
@@ -125,8 +138,7 @@ func (self *TarGzPackCommand) BuildArchive(workDir string, pluginLogger plugin.L
 	// create a targz writer for the target file
 	f, gz, tarWriter, err := archive.TarGzWriter(self.Target)
 	if err != nil {
-		return fmt.Errorf("error opening target archive file %v: %v",
-			self.Target, err)
+		return -1, fmt.Errorf("error opening target archive file %v: %v", self.Target, err)
 	}
 	defer func() {
 		tarWriter.Close()

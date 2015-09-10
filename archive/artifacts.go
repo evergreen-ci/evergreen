@@ -20,12 +20,14 @@ type TarContentsFile struct {
 
 // BuildArchive reads the rootPath directory into the tar.Writer,
 // taking included and excluded strings into account.
+// Returns the number of files that were added to the archive
 func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
-	excludes []string, log *slogger.Logger) error {
+	excludes []string, log *slogger.Logger) (int, error) {
 
 	pathsToAdd := make(chan TarContentsFile)
 	done := make(chan bool)
 	errChan := make(chan error)
+	numFilesArchived := 0
 	go func(outputChan chan TarContentsFile) error {
 		for _, includePattern := range includes {
 			dir, filematch := filepath.Split(includePattern)
@@ -136,6 +138,7 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 			hdr.Size = file.info.Size()
 			hdr.ModTime = file.info.ModTime()
 
+			numFilesArchived++
 			err := tarWriter.WriteHeader(hdr)
 			if err != nil {
 				errChan <- fmt.Errorf("Error writing header for %v: %v", intarball, err)
@@ -171,9 +174,9 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 
 	select {
 	case _ = <-done:
-		return nil
+		return numFilesArchived, nil
 	case err := <-errChan:
-		return err
+		return numFilesArchived, err
 	}
 }
 

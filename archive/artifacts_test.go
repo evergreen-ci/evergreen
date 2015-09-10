@@ -57,7 +57,7 @@ func TestMakeArchive(t *testing.T) {
 		defer tarWriter.Close()
 		includes := []string{"artifacts/dir1/**"}
 		excludes := []string{"*.pdb"}
-		err = BuildArchive(tarWriter, "testdata/artifacts_in", includes, excludes, logger)
+		_, err = BuildArchive(tarWriter, "testdata/artifacts_in", includes, excludes, logger)
 		So(err, ShouldBeNil)
 	})
 }
@@ -74,8 +74,10 @@ func TestArchiveRoundTrip(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")
 		includes := []string{"dir1/**"}
 		excludes := []string{"*.pdb"}
-		err = BuildArchive(tarWriter, "testdata/artifacts_in", includes, excludes, logger)
+		var found int
+		found, err = BuildArchive(tarWriter, "testdata/artifacts_in", includes, excludes, logger)
 		So(err, ShouldBeNil)
+		So(found, ShouldEqual, 2)
 		tarWriter.Close()
 		gz.Close()
 		f.Close()

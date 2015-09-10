@@ -94,10 +94,8 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				target := filepath.Join(testDataDir, "target.tgz")
 				outputDir := filepath.Join(testDataDir, "output")
 
-				testutil.HandleTestingErr(os.RemoveAll(target), t,
-					"Error removing tgz file")
-				testutil.HandleTestingErr(os.RemoveAll(outputDir), t,
-					"Error removing output dir")
+				testutil.HandleTestingErr(os.RemoveAll(target), t, "Error removing tgz file")
+				testutil.HandleTestingErr(os.RemoveAll(outputDir), t, "Error removing output dir")
 
 				params := map[string]interface{}{
 					"target":        target,
@@ -107,7 +105,9 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.BuildArchive("", &plugintest.MockLogger{}), ShouldBeNil)
+				numFound, err := cmd.BuildArchive("", &plugintest.MockLogger{})
+				So(err, ShouldBeNil)
+				So(numFound, ShouldEqual, 1)
 
 				exists, err := util.FileExists(target)
 				So(err, ShouldBeNil)
