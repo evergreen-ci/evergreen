@@ -265,13 +265,14 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 
 	// construct the required termination command
 	remoteCommand := &command.RemoteCommand{
-		CmdString:      updatePwdCmd,
-		Stdout:         outputLineHandler,
-		Stderr:         errorLineHandler,
-		RemoteHostName: hostInfo.Hostname,
-		User:           hostObj.User,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     false,
+		CmdString:       updatePwdCmd,
+		Stdout:          outputLineHandler,
+		Stderr:          errorLineHandler,
+		LoggingDisabled: true,
+		RemoteHostName:  hostInfo.Hostname,
+		User:            hostObj.User,
+		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
+		Background:      false,
 	}
 	return remoteCommand, nil
 }

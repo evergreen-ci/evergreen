@@ -21,6 +21,9 @@ type RemoteCommand struct {
 	Options        []string
 	Background     bool
 
+	// optional flag for hiding sensitive commands from log output
+	LoggingDisabled bool
+
 	// set after the command is started
 	Cmd *exec.Cmd
 }
@@ -55,8 +58,10 @@ func (self *RemoteCommand) Start() error {
 	}
 	cmdArray = append(cmdArray, cmdString)
 
-	evergreen.Logger.Logf(slogger.WARN, "Remote command executing: '%#v'",
-		strings.Join(cmdArray, " "))
+	if !self.LoggingDisabled {
+		evergreen.Logger.Logf(slogger.WARN, "Remote command executing: '%#v'",
+			strings.Join(cmdArray, " "))
+	}
 
 	// set up execution
 	cmd := exec.Command("ssh", cmdArray...)
