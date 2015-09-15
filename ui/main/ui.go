@@ -82,7 +82,10 @@ func main() {
 		DisableCache: !settings.Ui.CacheTemplates,
 		Funcs:        functions,
 	})
-	uis.InitPlugins()
+	err = uis.InitPlugins()
+	if err != nil {
+		fmt.Println("WARNING: Error initializing plugins: %v", err)
+	}
 
 	n := negroni.New()
 	n.Use(negroni.NewStatic(http.Dir(webHome)))

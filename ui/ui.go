@@ -40,9 +40,9 @@ type UIServer struct {
 }
 
 // InitPlugins registers all installed plugins with the UI Server.
-func (uis *UIServer) InitPlugins() {
+func (uis *UIServer) InitPlugins() error {
 	uis.PanelManager = &plugin.SimplePanelManager{}
-	uis.PanelManager.RegisterPlugins(plugin.UIPlugins)
+	return uis.PanelManager.RegisterPlugins(plugin.UIPlugins)
 }
 
 // NewRouter sets up a request router for the UI, installing
