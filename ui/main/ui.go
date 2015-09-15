@@ -84,7 +84,7 @@ func main() {
 	})
 	err = uis.InitPlugins()
 	if err != nil {
-		fmt.Println("WARNING: Error initializing plugins: %v", err)
+		fmt.Println("WARNING: Error initializing plugins:", err)
 	}
 
 	n := negroni.New()
