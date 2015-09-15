@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// enable debug traces on SIGQUIT signaling
-	go DumpStackOnSIGQUIT(&agt)
+	go agent.DumpStackOnSIGQUIT(&agt)
 
 	// run all tasks until an API server's response has RunNext set to false
 	for {
