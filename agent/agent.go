@@ -240,8 +240,8 @@ func (sh *SignalHandler) awaitSignal() Signal {
 
 // HandleSignals listens on its signal channel and properly handles any signal received.
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
-	detail := agt.getTaskEndDetail()
 	receivedSignal := sh.awaitSignal()
+	detail := agt.getTaskEndDetail()
 	switch receivedSignal {
 	case Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
