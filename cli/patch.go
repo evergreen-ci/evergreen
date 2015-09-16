@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"sort"
 	"strings"
+	"text/tabwriter"
 	"text/template"
 	"time"
 )
@@ -354,14 +357,25 @@ func (lp *ListProjectsCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(len(projs), "projects:")
+	ids := make([]string, 0, len(projs))
+	names := make(map[string]string)
 	for _, proj := range projs {
-		fmt.Print("\t" + proj.Identifier)
-		if len(proj.DisplayName) > 0 && proj.DisplayName != proj.Identifier {
-			fmt.Printf("\t(%v)", proj.DisplayName)
-		}
-		fmt.Print("\n")
+		ids = append(ids, proj.Identifier)
+		names[proj.Identifier] = proj.DisplayName
 	}
+	sort.Strings(ids)
+	fmt.Println(len(ids), "projects:")
+	w := new(tabwriter.Writer)
+	// Format in tab-separated columns with a tab stop of 8.
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	for _, id := range ids {
+		line := fmt.Sprintf("\t%v\t", id)
+		if len(names[id]) > 0 && names[id] != id {
+			line = line + fmt.Sprintf("(%v)", names[id])
+		}
+		fmt.Fprintln(w, line)
+	}
+	w.Flush()
 	return nil
 }
 
