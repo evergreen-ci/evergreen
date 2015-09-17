@@ -18,7 +18,7 @@ Evergreen - Host {{.Host.Id}}
 <div id="content" class="container-fluid" ng-controller="HostCtrl">
   {{template "flash" . }}
   <header class="clearfix">
-    <h1>MCI Host: <strong>[[host.id]]</strong></h1>
+    <h1>Evergreen Host: <strong>[[host.id]]</strong></h1>
 
     {{if .User }}
       <div ng-controller="AdminOptionsCtrl" ng-init="setHost(host)" class="pull-right page-actions">
