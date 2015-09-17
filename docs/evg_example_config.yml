@@ -35,7 +35,7 @@ ui:
     secret: "here is my secret"
     cachetemplates: true
     defaultproject: "default project"
-    url: "http://localhost"
+    url: "http://localhost:9090"
     httplistenaddr: ":9090"
 
 repotracker:
