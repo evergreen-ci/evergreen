@@ -148,6 +148,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
 	var apiRequest PatchAPIRequest
 	var projId, description string
+	var finalize bool
 	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
 		apiRequest = PatchAPIRequest{
 			ProjectFileName: r.FormValue("project"),
@@ -158,6 +159,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}
 		projId = r.FormValue("project")
 		description = r.FormValue("desc")
+		finalize = strings.ToLower(r.FormValue("finalize")) == "true"
 	} else {
 		data := struct {
 			Description string `json:"desc"`
@@ -176,6 +178,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}
 		description = data.Description
 		projId = data.Project
+		finalize = data.Finalize
 
 		apiRequest = PatchAPIRequest{
 			ProjectFileName: data.Project,
@@ -306,7 +309,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.ToLower(r.FormValue("finalize")) == "true" {
+	if finalize {
 		if _, err = model.FinalizePatch(patchDoc, &as.Settings); err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
