@@ -439,7 +439,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 				v.Id)
 		}
 
-		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
+		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v, taskSpec)
 
 		// set the new task's dependencies
 		// TODO encapsulate better
@@ -550,7 +550,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *version.Version) *Task {
+	buildVariant *BuildVariant, b *build.Build, v *version.Version, projectTask ProjectTask) *Task {
 	return &Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
@@ -571,6 +571,7 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 		Version:             v.Id,
 		Revision:            v.Revision,
 		Project:             project.Identifier,
+		Priority:            projectTask.Priority,
 	}
 }
 
