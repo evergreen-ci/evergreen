@@ -474,6 +474,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			Tasks: []ProjectTask{
 				{
 					Name:      "taskA",
+					Priority:  5,
 					DependsOn: []TaskDependency{},
 				},
 				{
@@ -635,7 +636,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 		})
 
 		Convey("all of the tasks created should have the dependencies"+
-			" specified in the project", func() {
+			"and priorities specified in the project", func() {
 
 			buildId, err := CreateBuildFromVersion(project, v, tt, buildVar1.Name, false, nil)
 			So(err, ShouldBeNil)
@@ -658,12 +659,16 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			// taskA
 			So(len(tasks[0].DependsOn), ShouldEqual, 0)
 			So(len(tasks[1].DependsOn), ShouldEqual, 0)
+			So(tasks[0].Priority, ShouldEqual, 5)
+			So(tasks[1].Priority, ShouldEqual, 5)
 
 			// taskB
 			So(tasks[2].DependsOn, ShouldResemble,
 				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
 			So(tasks[3].DependsOn, ShouldResemble,
 				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}}) //cross-variant
+			So(tasks[2].Priority, ShouldEqual, 0)
+			So(tasks[3].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
 			So(tasks[4].DependsOn, ShouldResemble,

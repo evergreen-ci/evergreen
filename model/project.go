@@ -190,6 +190,7 @@ type TaskDependency struct {
 // Unmarshalled from the "tasks" list in the project file
 type ProjectTask struct {
 	Name        string              `yaml:"name" bson:"name"`
+	Priority    int                 `yaml:"priority" bson:"priority"`
 	ExecTimeout int                 `yaml:"exec_timeout" bson:"exec_timeout"`
 	DependsOn   []TaskDependency    `yaml:"depends_on" bson:"depends_on"`
 	Commands    []PluginCommandConf `yaml:"commands" bson:"commands"`
