@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -211,4 +212,48 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 	}{true, id, allProjects}
 
 	uis.WriteJSON(w, http.StatusOK, data)
+}
+
+// setRevision sets the latest revision in the Repository
+// database to the revision sent from the projects page.
+func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
+	MustHaveUser(r)
+
+	vars := mux.Vars(r)
+	id := vars["project_id"]
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusNotFound, err)
+		return
+	}
+	revision := string(data)
+	if revision == "" {
+		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("revision sent was empty"))
+		return
+	}
+
+	// update the latest revision to be the revision id
+	err = model.UpdateLastRevision(id, revision)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	// update the projectRef too
+	projectRef, err := model.FindOneProjectRef(id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	projectRef.RepotrackerError.Exists = false
+	projectRef.RepotrackerError.InvalidRevision = ""
+	projectRef.RepotrackerError.MergeBaseRevision = ""
+	err = projectRef.Upsert()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	uis.WriteJSON(w, http.StatusOK, nil)
 }

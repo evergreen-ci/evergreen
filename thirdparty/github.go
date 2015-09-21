@@ -121,6 +121,43 @@ func GetGithubFile(oauthToken, fileURL string) (
 	return
 }
 
+func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string, currentCommit *GithubCommit) (string, error) {
+	url := fmt.Sprintf("%v/repos/%v/%v/compare/%v:%v...%v:%v",
+		GithubAPIBase,
+		repoOwner,
+		repo,
+		repoOwner,
+		baseRevision,
+		repoOwner,
+		currentCommit.SHA)
+
+	resp, err := tryGithubGet(oauthToken, url)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		errMsg := fmt.Sprintf("error getting merge base commit response for url, %v: %v", url, err)
+		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		return "", APIResponseError{errMsg}
+	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", ResponseReadError{err.Error()}
+	}
+	if resp.StatusCode != http.StatusOK {
+		requestError := APIRequestError{}
+		if err = json.Unmarshal(respBody, &requestError); err != nil {
+			return "", APIRequestError{Message: string(respBody)}
+		}
+		return "", requestError
+	}
+	compareResponse := &GitHubCompareResponse{}
+	if err = json.Unmarshal(respBody, compareResponse); err != nil {
+		return "", APIUnmarshalError{string(respBody), err.Error()}
+	}
+	return compareResponse.MergeBaseCommit.SHA, nil
+}
+
 func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	error) {
 	commitURL := fmt.Sprintf("%v/repos/%v/%v/commits/%v",

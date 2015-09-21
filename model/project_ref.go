@@ -29,6 +29,18 @@ type ProjectRef struct {
 	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
 	// the set of alert deliveries to be processed for that trigger.
 	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config"`
+
+	// RepoDetails contain the details of the status of the consistency
+	// between what is in GitHub and what is in Evergreen
+	RepotrackerError *RepositoryErrorDetails `bson:"repotracker_error" json:"repotracker_error"`
+}
+
+// RepositoryErrorDetails indicates whether or not there is an invalid revision and if there is one,
+// what the guessed merge base revision is.
+type RepositoryErrorDetails struct {
+	Exists            bool   `bson:"exists" json:"exists"`
+	InvalidRevision   string `bson:"invalid_revision" json:"invalid_revision"`
+	MergeBaseRevision string `bson:"merge_base_revision" json:"merge_base_revision"`
 }
 
 type AlertConfig struct {
@@ -59,6 +71,7 @@ var (
 	ProjectRefTrackedKey            = bsonutil.MustHaveTag(ProjectRef{}, "Tracked")
 	ProjectRefLocalConfig           = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
 	ProjectRefAlertsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
+	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
 )
 
 const (
@@ -159,6 +172,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefTrackedKey:            projectRef.Tracked,
 				ProjectRefLocalConfig:           projectRef.LocalConfig,
 				ProjectRefAlertsKey:             projectRef.Alerts,
+				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
 			},
 		},
 	)

@@ -51,6 +51,29 @@ Evergreen Projects
       <div class="col-lg-8" ng-show="projectView">
       <div class="form-horizontal">
         <h2> Settings for [[displayName]]</h2>
+        <div class="col-lg-8">
+          <div class="panel panel-danger" ng-show="settingsFormData.repotracker_error.exists">
+              <div class="panel-heading">
+                <i class="icon-exclamation-sign"></i> 
+                The current base revision ([[settingsFormData.repotracker_error.invalid_revision]]) cannot be found on branch, [[settingsFormData.branch_name]]. In order to resume tracking the repository, please confirm or enter a new base revision.
+              </div>
+              <div class="panel-body">
+                <div class="form-group">
+                  <div class="col-lg-3 col-header">
+                      <label class="control-label"> New Merge Base Revision </label>
+                  </div>
+                  <div class="col-lg-6">
+                      <input class="form-control" type="text" ng-model="settingsFormData.repotracker_error.merge_base_revision">
+                  </div>    
+                <div class="col-lg-2">
+                    <button class="form-control btn btn-primary" type="button" ng-click="setLastRevision()">
+                      <i class="icon-ok"></i>
+                    </button>
+                </div>  
+              </div>
+            </div>    
+        </div>
+      </div>
         <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
         <div class ="form-group">
             <div class="col-lg-8">
@@ -100,26 +123,26 @@ Evergreen Projects
         <div id="github-info">
           <div class="h3"> Repository Info </div>
           <div class="form-group">
-            <div class="col-lg-2 col-header"> 
+            <div class="col-lg-3 col-header"> 
               <label class="control-label">Owner</label>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-5">
               <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
             </div>
           </div>
           <div class="form-group">
-            <div class="col-lg-2 col-header"> 
+            <div class="col-lg-3 col-header"> 
               <label class="control-label">Repo Name</label>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-6">
               <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
             </div>
           </div>
           <div class="form-group">
-            <div class="col-lg-2 col-header"> 
+            <div class="col-lg-3 col-header"> 
               <label class="control-label">Branch Name</label>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-6">
               <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" placeholder="master">
             </div>
           </div>

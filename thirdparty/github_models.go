@@ -150,3 +150,22 @@ type GithubAuthResponse struct {
 	Scope       string `json:"scope"`
 	TokenType   string `json:"token_type"`
 }
+
+type GitHubCompareResponse struct {
+	Url             string          `json:"url"`
+	HtmlUrl         string          `json:"html_url"`
+	PermalinkUrl    string          `json:"permalink_url"`
+	DiffUrl         string          `json:"diff_url"`
+	PatchUrl        string          `json:"patch_url"`
+	BaseCommit      CommitEvent     `json:"base_commit"`
+	Author          AuthorDetails   `json:"author"`
+	Committer       AuthorDetails   `json:"committer"`
+	Parents         []Parent        `json:"parents"`
+	MergeBaseCommit CommitEvent     `json:"merge_base_commit"`
+	Files           File            `json:"file"`
+	Commits         []CommitDetails `json:"commits"`
+	TotalCommits    int             `json:"total_commits"`
+	BehindBy        int             `json:"behind_by"`
+	AheadBy         int             `json:"ahead_by"`
+	Status          string          `json:"status"`
+}

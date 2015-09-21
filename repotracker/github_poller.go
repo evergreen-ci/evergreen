@@ -102,14 +102,12 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string,
 	maxRevisionsToSearch int) (revisions []model.Revision, err error) {
 	commitURL := getCommitURL(gRepoPoller.ProjectRef)
 	var foundLatest bool
-
+	githubCommits, header, err := thirdparty.GetGithubCommits(
+		gRepoPoller.OauthToken, commitURL)
+	if err != nil {
+		return nil, err
+	}
 	for len(revisions) < maxRevisionsToSearch {
-		githubCommits, header, err := thirdparty.GetGithubCommits(
-			gRepoPoller.OauthToken, commitURL)
-		if err != nil {
-			return nil, err
-		}
-
 		for _, commit := range githubCommits {
 			if isLastRevision(revision, &commit) {
 				foundLatest = true
@@ -132,9 +130,37 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string,
 	}
 
 	if !foundLatest {
-		return []model.Revision{}, fmt.Errorf("Unable to locate "+
-			"requested revision “%v” within “%v” revisions", revision,
-			maxRevisionsToSearch)
+		var revisionDetails *model.RepositoryErrorDetails
+		var revisionError error
+		// attempt to get the merge base commit
+		baseRevision, err := thirdparty.GetGitHubMergeBaseRevision(gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
+			gRepoPoller.ProjectRef.Repo, revision, &githubCommits[0])
+		if err != nil {
+			// unable to get merge base commit so set projectRef revision details with a blank base revision
+			revisionDetails = &model.RepositoryErrorDetails{
+				Exists:            true,
+				InvalidRevision:   revision[:10],
+				MergeBaseRevision: "",
+			}
+			revisionError = fmt.Errorf("unable to find a suggested merge base commit for revision %v, must fix on projects settings page: %v",
+				revision, err)
+		} else {
+			// update project ref to have an inconsistent status
+			revisionDetails = &model.RepositoryErrorDetails{
+				Exists:            true,
+				InvalidRevision:   revision[:10],
+				MergeBaseRevision: baseRevision,
+			}
+			revisionError = fmt.Errorf("base revision, %v not found, suggested base revision, %v found, must confirm on project settings page",
+				revision, baseRevision)
+		}
+
+		gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
+		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
+			return []model.Revision{}, fmt.Errorf("unable to update projectRef revision details: %v", err)
+		}
+
+		return []model.Revision{}, revisionError
 	}
 
 	return

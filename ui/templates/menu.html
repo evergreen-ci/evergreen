@@ -36,7 +36,10 @@
                 <span ng-repeat-start="(key, value) in groupedProjects"></span>
                 <li ng-repeat="p in value | filter:filter.projects">
                     <b ng-show="$index == 0 && value.length > 1">&nbsp;[[key]]</b>
-                    <a href="/waterfall/[[p.identifier]]"><span ng-show="value.length>1">&nbsp;&nbsp;&nbsp;</span>[[p.display_name ? p.display_name : p.identifier]]</a>
+                    <a href="/waterfall/[[p.identifier]]"><span ng-show="value.length>1">&nbsp;&nbsp;&nbsp;</span>
+                      <i ng-show="p.repotracker_error.exists" style= "color:red" class="icon-exclamation-sign"></i> 
+                      [[p.display_name ? p.display_name : p.identifier]]
+                    </a>
                 </li> 
                 <li class="repo-div" ng-show="[[!$last]]"></li>
                 <span ng-repeat-end></span>

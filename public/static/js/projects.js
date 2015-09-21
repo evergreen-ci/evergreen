@@ -132,6 +132,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,
           alert_config: $scope.projectRef.alert_config || {},
+          repotracker_error: $scope.projectRef.repotracker_error || {},
         };
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
@@ -192,6 +193,19 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
   $scope.removeAlert = function(triggerId, index){
     $scope.settingsFormData.alert_config[triggerId].splice(index, 1)
+  }
+
+  $scope.setLastRevision = function() {
+    if ($scope.settingsFormData.repotracker_error.exists) {
+      var revisionUrl = '/project/' + $scope.settingsFormData.identifier + "/repo_revision";
+      $http.put(revisionUrl, $scope.settingsFormData.repotracker_error.merge_base_revision).
+        success(function(data, status) {
+          $scope.settingsFormData.repotracker_error.exists = false;
+        }).
+        error(function(data, status, errorThrown){
+          console.log(status);
+        })
+    }
   }
 });
 

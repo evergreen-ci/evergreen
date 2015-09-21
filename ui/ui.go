@@ -172,6 +172,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.projectPage))).Methods("GET")
 	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyProject))).Methods("POST")
 	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.addProject))).Methods("PUT")
+	r.HandleFunc("/project/{project_id}/repo_revision", uis.requireSuperUser(uis.loadCtx(uis.setRevision))).Methods("PUT")
 
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
 	restRoutes := rest.GetRestRoutes(uis)
