@@ -257,23 +257,75 @@ func TestTaskSetPriority(t *testing.T) {
 		testutil.HandleTestingErr(db.Clear(TasksCollection), t, "Error clearing"+
 			" '%v' collection", TasksCollection)
 
-		task := &Task{
-			Id: "task",
+		tasks := []Task{
+			Task{
+				Id:        "one",
+				DependsOn: []Dependency{{"two", ""}, {"three", ""}, {"four", ""}},
+			},
+			Task{
+				Id:       "two",
+				Priority: 5,
+			},
+			Task{
+				Id:        "three",
+				DependsOn: []Dependency{{"five", ""}},
+			},
+			Task{
+				Id:        "four",
+				DependsOn: []Dependency{{"five", ""}},
+			},
+			Task{
+				Id: "five",
+			},
+			Task{
+				Id: "six",
+			},
 		}
-		So(task.Insert(), ShouldBeNil)
 
-		Convey("setting its priority should update it both in-memory"+
-			" and in the database", func() {
+		for _, task := range tasks {
+			So(task.Insert(), ShouldBeNil)
+		}
 
-			So(task.SetPriority(1), ShouldBeNil)
-			So(task.Priority, ShouldEqual, 1)
+		Convey("setting its priority should update it in-memory"+
+			" and update it and all dependencies in the database", func() {
 
-			task, err := FindTask(task.Id)
+			So(tasks[0].SetPriority(1), ShouldBeNil)
+			So(tasks[0].Priority, ShouldEqual, 1)
+
+			task, err := FindTask("one")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 1)
-		})
 
+			task, err = FindTask("two")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Priority, ShouldEqual, 5)
+
+			task, err = FindTask("three")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Priority, ShouldEqual, 1)
+
+			task, err = FindTask("four")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Id, ShouldEqual, "four")
+			So(task.Priority, ShouldEqual, 1)
+
+			task, err = FindTask("five")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Id, ShouldEqual, "five")
+			So(task.Priority, ShouldEqual, 1)
+
+			task, err = FindTask("six")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Id, ShouldEqual, "six")
+			So(task.Priority, ShouldEqual, 0)
+
+		})
 	})
 
 }

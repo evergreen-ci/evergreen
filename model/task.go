@@ -1023,12 +1023,45 @@ func (t *Task) SetPriority(priority int) error {
 		modifier[TaskActivatedKey] = false
 	}
 
-	return UpdateOneTask(
+	ids, err := t.getRecursiveDependencies()
+	if err != nil {
+		return fmt.Errorf("error getting task dependencies: %v", err)
+	}
+
+	_, err = UpdateAllTasks(
 		bson.M{
-			TaskIdKey: t.Id,
+			TaskIdKey:       bson.M{"$in": ids},
+			TaskPriorityKey: bson.M{"$lt": priority},
 		},
 		bson.M{"$set": modifier},
 	)
+	return err
+}
+
+// getRecursiveDependencies creates a slice containing t.Id and the Ids of all recursive dependencies.
+// We assume there are no dependency cycles.
+func (t *Task) getRecursiveDependencies() ([]string, error) {
+	recurIds := make([]string, 0, len(t.DependsOn))
+	for _, dependency := range t.DependsOn {
+		recurIds = append(recurIds, dependency.TaskId)
+	}
+
+	recurTasks, err := FindTasksByIds(recurIds)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, 0)
+	for _, recurTask := range recurTasks {
+		appendIds, err := recurTask.getRecursiveDependencies()
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, appendIds...)
+	}
+
+	ids = append(ids, t.Id)
+	return ids, nil
 }
 
 func (t *Task) TryReset(user, origin string, p *Project, detail *apimodels.TaskEndDetail) (err error) {
