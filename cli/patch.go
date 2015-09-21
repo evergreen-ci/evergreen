@@ -360,8 +360,11 @@ func (lp *ListProjectsCommand) Execute(args []string) error {
 	ids := make([]string, 0, len(projs))
 	names := make(map[string]string)
 	for _, proj := range projs {
-		ids = append(ids, proj.Identifier)
-		names[proj.Identifier] = proj.DisplayName
+		// Only list projects that are enabled
+		if proj.Enabled {
+			ids = append(ids, proj.Identifier)
+			names[proj.Identifier] = proj.DisplayName
+		}
 	}
 	sort.Strings(ids)
 	fmt.Println(len(ids), "projects:")
