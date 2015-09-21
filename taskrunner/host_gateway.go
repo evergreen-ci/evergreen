@@ -21,7 +21,7 @@ const (
 	MakeShellTimeout  = time.Second * 10
 	SCPTimeout        = time.Minute
 	StartAgentTimeout = time.Second * 30
-	agentFile         = "agent.log"
+	agentFile         = "agent"
 )
 
 // HostGateway is responsible for kicking off tasks on remote machines.
@@ -241,7 +241,7 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
-		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -log_file "%v" -https_cert "%v"`,
+		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -log_prefix "%v" -https_cert "%v"`,
 		pathToExecutable, settings.ApiUrl, task.Id, task.Secret, filepath.Join(hostObj.Distro.WorkDir,
 			agentFile), settings.Expansions["api_httpscert_path"],
 	)
