@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"io/ioutil"
 	"os"
@@ -80,6 +81,18 @@ type FinalizePatchCommand struct {
 
 // PatchCommand is used to submit a new patch to the API server.
 type PatchCommand struct {
+	PatchCommandParams
+}
+
+// PatchFileCommand is used to submit a new patch to the API server using a diff file.
+type PatchFileCommand struct {
+	PatchCommandParams
+	DiffFile string `long:"diff-file" description:"file containing the diff for the patch"`
+	Base     string `short:"b" long:"base" description:"githash of base"`
+}
+
+// PatchCommandParams contains parameters common to PatchCommand and PatchFileCommand
+type PatchCommandParams struct {
 	GlobalOpts  Options  `no-flag:"true"`
 	Project     string   `short:"p" long:"project" description:"project to submit patch for"`
 	Variants    []string `short:"v" long:"variants"`
@@ -230,77 +243,232 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 }
 
 func (pc *PatchCommand) Execute(args []string) error {
-	ac, settings, err := getAPIClient(pc.GlobalOpts)
-	if err != nil {
-		return err
-	}
-	notifyUserUpdate(ac)
-
-	if pc.Project == "" {
-		pc.Project = settings.FindDefaultProject()
-	} else {
-		if settings.FindDefaultProject() == "" &&
-			!pc.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", pc.Project), true) {
-			settings.SetDefaultProject(pc.Project)
-			if err = settings.Write(pc.GlobalOpts); err != nil {
-				fmt.Println("warning - failed to set default project: %v", err)
-			}
-		}
-	}
-
-	if pc.Project == "" {
-		return fmt.Errorf("Need to specify a project.")
-	}
-
-	ref, err := ac.GetProjectRef(pc.Project)
+	ac, settings, ref, err := validatePatchCommand(&pc.PatchCommandParams)
 	if err != nil {
 		return err
 	}
 
-	if len(pc.Variants) == 0 {
-		pc.Variants = settings.FindDefaultVariants(pc.Project)
-		if len(pc.Variants) == 0 {
-			if pc.Finalize {
-				return fmt.Errorf("Need to specify at least one buildvariant with -v")
-			} else {
-				pc.Variants = []string{"all"}
-			}
-		}
-	} else {
-		defaultVariants := settings.FindDefaultVariants(pc.Project)
-		if len(defaultVariants) == 0 &&
-			!pc.SkipConfirm &&
-			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?", pc.Variants, pc.Project), false) {
-			settings.SetDefaultVariants(pc.Project, pc.Variants...)
-			if err = settings.Write(pc.GlobalOpts); err != nil {
-				fmt.Println("warning - failed to set default variants: %v", err)
-			}
-		}
-	}
-
-	if pc.Description == "" && !pc.SkipConfirm {
-		pc.Description = prompt("Enter a description for this patch (optional):")
-	}
 	diffData, err := loadGitData(ref.Branch, args...)
 	if err != nil {
 		return err
 	}
 
-	if err := validatePatchSize(diffData, pc.Large); err != nil {
+	return createPatch(pc.PatchCommandParams, ac, settings, diffData)
+}
+
+func (pfc *PatchFileCommand) Execute(args []string) error {
+	ac, settings, _, err := validatePatchCommand(&pfc.PatchCommandParams)
+	if err != nil {
 		return err
 	}
-	if !pc.SkipConfirm {
+
+	fullPatch, err := ioutil.ReadFile(pfc.DiffFile)
+	if err != nil {
+		return fmt.Errorf("Error reading diff file: %v", err)
+	}
+	diffData := &localDiff{string(fullPatch), "", pfc.Base}
+
+	return createPatch(pfc.PatchCommandParams, ac, settings, diffData)
+}
+
+func (cpc *CancelPatchCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(cpc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+
+	err = ac.CancelPatch(cpc.PatchId)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Patch canceled.")
+	return nil
+}
+
+func (fpc *FinalizePatchCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(fpc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+
+	err = ac.FinalizePatch(fpc.PatchId)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Patch finalized.")
+	return nil
+}
+
+func (lp *ListProjectsCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(lp.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+
+	projs, err := ac.ListProjects()
+	if err != nil {
+		return err
+	}
+	fmt.Println(len(projs), "projects:")
+	for _, proj := range projs {
+		fmt.Print("\t" + proj.Identifier)
+		if len(proj.DisplayName) > 0 && proj.DisplayName != proj.Identifier {
+			fmt.Printf("\t(%v)", proj.DisplayName)
+		}
+		fmt.Print("\n")
+	}
+	return nil
+}
+
+// Performs validation for patch or patch-file
+func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *Settings, ref *model.ProjectRef, err error) {
+	ac, settings, err = getAPIClient(params.GlobalOpts)
+	if err != nil {
+		return
+	}
+	notifyUserUpdate(ac)
+
+	if params.Project == "" {
+		params.Project = settings.FindDefaultProject()
+	} else {
+		if settings.FindDefaultProject() == "" &&
+			!params.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", params.Project), true) {
+			settings.SetDefaultProject(params.Project)
+			if err := settings.Write(params.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default project: %v", err)
+			}
+		}
+	}
+
+	if params.Project == "" {
+		err = fmt.Errorf("Need to specify a project.")
+		return
+	}
+
+	ref, err = ac.GetProjectRef(params.Project)
+	if err != nil {
+		return
+	}
+
+	if len(params.Variants) == 0 {
+		params.Variants = settings.FindDefaultVariants(params.Project)
+		if len(params.Variants) == 0 {
+			err = fmt.Errorf("Need to specify at least one buildvariant with -v")
+			return
+		}
+	} else {
+		defaultVariants := settings.FindDefaultVariants(params.Project)
+		if len(defaultVariants) == 0 &&
+			!params.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?", params.Variants, params.Project), false) {
+			settings.SetDefaultVariants(params.Project, params.Variants...)
+			if err := settings.Write(params.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default variants: %v", err)
+			}
+		}
+	}
+
+	if params.Description == "" && !params.SkipConfirm {
+		params.Description = prompt("Enter a description for this patch (optional):")
+	}
+
+	return
+}
+
+// Creates a patch using diffData
+func createPatch(params PatchCommandParams, ac *APIClient, settings *Settings, diffData *localDiff) error {
+	if err := validatePatchSize(diffData, params.Large); err != nil {
+		return err
+	}
+	if !params.SkipConfirm && diffData.patchSummary != "" {
 		fmt.Println(diffData.patchSummary)
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
 			return nil
 		}
 	}
 
-	variantsStr := strings.Join(pc.Variants, ",")
-	if !pc.Finalize {
+	variantsStr := strings.Join(params.Variants, ",")
+	if !params.Finalize {
 		variantsStr = "all"
 	}
-	patchSub := patchSubmission{pc.Project, diffData.fullPatch, pc.Description, diffData.base, variantsStr, pc.Finalize}
+	patchSub := patchSubmission{params.Project, diffData.fullPatch, params.Description, diffData.base, variantsStr, params.Finalize}
+
+	newPatch, err := ac.PutPatch(patchSub)
+	if err != nil {
+		return err
+	}
+	patchDisp, err := getPatchDisplay(newPatch, true, settings.UIServerHost)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Patch successfully created.")
+	fmt.Print(patchDisp)
+	return nil
+}
+
+func (pfc *PatchFileCommand) Execute(args []string) error {
+	ac, settings, err := getAPIClient(pfc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+
+	if pfc.Project == "" {
+		pfc.Project = settings.FindDefaultProject()
+	} else {
+		if settings.FindDefaultProject() == "" &&
+			!pfc.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", pfc.Project), true) {
+			settings.SetDefaultProject(pfc.Project)
+			if err = settings.Write(pfc.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default project: %v", err)
+			}
+		}
+	}
+
+	if pfc.Project == "" {
+		return fmt.Errorf("Need to specify a project.")
+	}
+
+	if len(pfc.Variants) == 0 {
+		pfc.Variants = settings.FindDefaultVariants(pfc.Project)
+		if len(pfc.Variants) == 0 {
+			return fmt.Errorf("Need to specify at least one buildvariant with -v")
+		}
+	} else {
+		defaultVariants := settings.FindDefaultVariants(pfc.Project)
+		if len(defaultVariants) == 0 &&
+			!pfc.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?", pfc.Variants, pfc.Project), false) {
+			settings.SetDefaultVariants(pfc.Project, pfc.Variants...)
+			if err = settings.Write(pfc.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default variants: %v", err)
+			}
+		}
+	}
+
+	if pfc.Description == "" && !pfc.SkipConfirm {
+		pfc.Description = prompt("Enter a description for this patch (optional):")
+	}
+
+	fullPatchBytes, err := ioutil.ReadFile(pfc.DiffFile)
+	if err != nil {
+		return fmt.Errorf("Error reading diff file: %v", err)
+	}
+	fullPatch := string(fullPatchBytes)
+
+	if err := validatePatchSize(&localDiff{fullPatch, "", ""}, pfc.Large); err != nil {
+		return err
+	}
+
+	variantsStr := strings.Join(pfc.Variants, ",")
+	if !pfc.Finalize {
+		variantsStr = "all"
+	}
+	patchSub := patchSubmission{pfc.Project, fullPatch, pfc.Description, pfc.Base, variantsStr, pfc.Finalize}
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {
