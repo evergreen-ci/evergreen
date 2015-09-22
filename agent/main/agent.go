@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"io/ioutil"
 	"os"
-	"time"
 )
 
 func init() {
@@ -26,7 +25,7 @@ func main() {
 	taskSecret := flag.String("task_secret", "", "secret of task to run")
 	apiServer := flag.String("api_server", "", "URL of API server")
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
-	logPrefix := flag.String("log_prefix", "", "prefix for the agent's log filename")
+	logFile := flag.String("log_file", "", "log file for agent")
 	flag.Parse()
 
 	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
@@ -35,9 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logFile := *logPrefix + logSuffix()
-
-	agt, err := agent.New(*apiServer, *taskId, *taskSecret, logFile, httpsCert)
+	agt, err := agent.New(*apiServer, *taskId, *taskSecret, *logFile, httpsCert)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
@@ -63,18 +60,12 @@ func main() {
 			os.Exit(0)
 		}
 
-		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, logFile, httpsCert)
+		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, *logFile, httpsCert)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
 			os.Exit(1)
 		}
 	}
-}
-
-// logSuffix generates a unique log filename suffic that is namespaced
-// to the PID and Date of the agent's execution.
-func logSuffix() string {
-	return fmt.Sprintf("_%v_pid_%v.log", time.Now().Format(time.RFC3339), os.Getpid())
 }
 
 // getHTTPSCertFile fetches the contents of the file at httpsCertFile and
