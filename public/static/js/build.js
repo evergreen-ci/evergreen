@@ -6,7 +6,9 @@ function BuildVariantHistoryController($scope, $http, $filter, $timeout, $window
 
   $scope.setBuildId = function(buildId) {
     $scope.buildId = buildId;
-    $scope.loadHistory();
+    if (!$scope.build.PatchInfo) {
+      $scope.loadHistory();
+    }
   };
 
   $scope.checkTaskHidden = function(task) {
