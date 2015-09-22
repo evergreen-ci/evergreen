@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const FilenameTimestamp = "2006-01-02_15_04_05"
+
 // DumpStackOnSIGQUIT listens for a SIGQUIT signal and writes stack dump to the
 // given io.Writer when one is received. Blocks, so spawn it as a goroutine.
 func DumpStackOnSIGQUIT(curAgent **Agent) {
@@ -72,7 +74,8 @@ func dumpToDisk(task, command string, stack []byte) {
 
 func newDumpFilename() string {
 	// e.g. "evergreen_agent_46672_dump_2015-09-08T23:26:49-04:00..."
-	return fmt.Sprintf("evergreen_agent_%v_dump_%v_", os.Getpid(), time.Now().Format(time.RFC3339))
+	return fmt.Sprintf("evergreen_agent_%v_dump_%v_", os.Getpid(),
+		time.Now().Format(FilenameTimestamp))
 }
 
 func dumpDebugInfo(task, command string, stack []byte, w io.Writer) {
