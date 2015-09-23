@@ -135,18 +135,18 @@ func checkAllDependenciesSpec(project *model.Project) []ValidationError {
 func checkDependencyGraph(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 
-	// map of task name -> task
-	tasksByName := map[string]model.ProjectTask{}
-	for _, task := range project.Tasks {
-		tasksByName[task.Name] = task
-	}
+	// map of task name and variant -> BuildVariantTask
+	tasksByNameAndVariant := map[model.TVPair]model.BuildVariantTask{}
 
 	// generate task nodes for every task and variant combination
 	visited := map[model.TVPair]bool{}
 	allNodes := []model.TVPair{}
 	for _, bv := range project.BuildVariants {
 		for _, t := range bv.Tasks {
+			t.Populate(project.GetSpecForTask(t.Name))
 			node := model.TVPair{bv.Name, t.Name}
+
+			tasksByNameAndVariant[node] = t
 			visited[node] = false
 			allNodes = append(allNodes, node)
 		}
@@ -155,7 +155,7 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 	// run through the task nodes, checking their dependency graphs for cycles
 	for _, node := range allNodes {
 		// the visited nodes
-		if err := dependencyCycleExists(node, visited, tasksByName); err != nil {
+		if err := dependencyCycleExists(node, visited, tasksByNameAndVariant); err != nil {
 			errs = append(errs,
 				ValidationError{
 					Message: fmt.Sprintf(
@@ -170,7 +170,7 @@ func checkDependencyGraph(project *model.Project) []ValidationError {
 
 // Helper for checking the dependency graph for cycles.
 func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
-	tasksByName map[string]model.ProjectTask) error {
+	tasksByNameAndVariant map[model.TVPair]model.BuildVariantTask) error {
 
 	v, ok := visited[node]
 	// if the node does not exist, the deps are broken
@@ -184,7 +184,7 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 
 	visited[node] = true
 
-	task := tasksByName[node.TaskName]
+	task := tasksByNameAndVariant[node]
 	depNodes := []model.TVPair{}
 	// build a list of all possible dependency nodes for the task
 	for _, dep := range task.DependsOn {
@@ -230,7 +230,7 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 
 	// for each of the task's dependencies, make a recursive call
 	for _, dn := range depNodes {
-		if err := dependencyCycleExists(dn, visited, tasksByName); err != nil {
+		if err := dependencyCycleExists(dn, visited, tasksByNameAndVariant); err != nil {
 			return err
 		}
 	}
@@ -584,11 +584,11 @@ func verifyTaskDependencies(project *model.Project) []ValidationError {
 
 	for _, task := range project.Tasks {
 		// create a set of the dependencies, to check for duplicates
-		depNames := map[string]bool{}
+		depNames := map[model.TVPair]bool{}
 
 		for _, dep := range task.DependsOn {
 			// make sure the dependency is not specified more than once
-			if depNames[dep.Name] {
+			if depNames[model.TVPair{dep.Name, dep.Variant}] {
 				errs = append(errs,
 					ValidationError{
 						Message: fmt.Sprintf("project '%v' contains a "+
@@ -597,7 +597,7 @@ func verifyTaskDependencies(project *model.Project) []ValidationError {
 					},
 				)
 			}
-			depNames[dep.Name] = true
+			depNames[model.TVPair{dep.Name, dep.Variant}] = true
 
 			// check that the status is valid
 			switch dep.Status {

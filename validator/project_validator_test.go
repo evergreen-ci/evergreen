@@ -21,9 +21,7 @@ func init() {
 
 func TestVerifyTaskDependencies(t *testing.T) {
 	Convey("When validating a project's dependencies", t, func() {
-		Convey("if any task has a duplicate dependency, an error should be"+
-			" returned", func() {
-
+		Convey("if any task has a duplicate dependency, an error should be returned", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
 					{
@@ -41,6 +39,26 @@ func TestVerifyTaskDependencies(t *testing.T) {
 			}
 			So(verifyTaskDependencies(project), ShouldNotResemble, []ValidationError{})
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 1)
+		})
+
+		Convey("no error should be returned for dependencies of the same task on two variants", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name:      "compile",
+						DependsOn: []model.TaskDependency{},
+					},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskDependency{
+							{Name: "compile", Variant: "v1"},
+							{Name: "compile", Variant: "v2"},
+						},
+					},
+				},
+			}
+			So(verifyTaskDependencies(project), ShouldResemble, []ValidationError{})
+			So(len(verifyTaskDependencies(project)), ShouldEqual, 0)
 		})
 
 		Convey("if any dependencies have an invalid name field, an error"+
@@ -212,6 +230,42 @@ func TestCheckDependencyGraph(t *testing.T) {
 			}
 			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
 			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
+		})
+
+		Convey("cycles/errors from overwriting the dependency graph should return an error", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{
+						Name: "compile",
+					},
+					{
+						Name: "testOne",
+						DependsOn: []model.TaskDependency{
+							{Name: "compile"},
+						},
+					},
+				},
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "bv1",
+						Tasks: []model.BuildVariantTask{
+							{Name: "compile", DependsOn: []model.TaskDependency{{Name: "testOne"}}},
+							{Name: "testOne"},
+						},
+					},
+				},
+			}
+			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(len(checkDependencyGraph(project)), ShouldEqual, 2)
+
+			project.BuildVariants[0].Tasks[0].DependsOn = nil
+			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskDependency{{Name: "NOPE"}}
+			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
+
+			project.BuildVariants[0].Tasks[1].DependsOn = []model.TaskDependency{{Name: "compile", Variant: "bvNOPE"}}
+			So(checkDependencyGraph(project), ShouldNotResemble, []ValidationError{})
+			So(len(checkDependencyGraph(project)), ShouldEqual, 1)
 		})
 
 		Convey("variant wildcard cycles in the dependency graph should return an error", func() {

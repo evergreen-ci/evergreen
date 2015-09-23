@@ -298,3 +298,69 @@ func TestBuildVariantMatrix(t *testing.T) {
 		So(len(project.BuildVariants), ShouldEqual, 1)
 	})
 }
+
+func TestPopulateBVT(t *testing.T) {
+
+	Convey("With a test Project and BuildVariantTask", t, func() {
+
+		project := &Project{
+			Tasks: []ProjectTask{
+				{
+					Name:        "task1",
+					ExecTimeout: 500,
+					Stepback:    new(bool),
+					DependsOn:   []TaskDependency{{Name: "other"}},
+					Priority:    1000,
+				},
+			},
+			BuildVariants: []BuildVariant{
+				{
+					Name:  "test",
+					Tasks: []BuildVariantTask{{Name: "task1", Priority: 5}},
+				},
+			},
+		}
+
+		Convey("updating a BuildVariantTask with unset fields", func() {
+			bvt := project.BuildVariants[0].Tasks[0]
+			spec := project.GetSpecForTask("task1")
+			So(spec.Name, ShouldEqual, "task1")
+			bvt.Populate(spec)
+
+			Convey("should inherit the unset fields from the Project", func() {
+				So(bvt.Name, ShouldEqual, "task1")
+				So(bvt.ExecTimeout, ShouldEqual, 500)
+				So(bvt.Stepback, ShouldNotBeNil)
+				So(len(bvt.DependsOn), ShouldEqual, 1)
+
+				Convey("but not set fields", func() { So(bvt.Priority, ShouldEqual, 5) })
+			})
+		})
+
+		Convey("updating a BuildVariantTask with set fields", func() {
+			bvt := BuildVariantTask{
+				Name:        "task1",
+				ExecTimeout: 2,
+				Stepback:    boolPtr(true),
+				DependsOn:   []TaskDependency{{Name: "task2"}, {Name: "task3"}},
+			}
+			spec := project.GetSpecForTask("task1")
+			So(spec.Name, ShouldEqual, "task1")
+			bvt.Populate(spec)
+
+			Convey("should not inherit set fields from the Project", func() {
+				So(bvt.Name, ShouldEqual, "task1")
+				So(bvt.ExecTimeout, ShouldEqual, 2)
+				So(bvt.Stepback, ShouldNotBeNil)
+				So(*bvt.Stepback, ShouldBeTrue)
+				So(len(bvt.DependsOn), ShouldEqual, 2)
+
+				Convey("but unset fields should", func() { So(bvt.Priority, ShouldEqual, 1000) })
+			})
+		})
+	})
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}

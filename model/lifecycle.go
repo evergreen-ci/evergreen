@@ -423,35 +423,31 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	for _, task := range tasksToCreate {
 
 		// get the task spec out of the project
-		var taskSpec ProjectTask
-		for _, projectTask := range project.Tasks {
-			if projectTask.Name == task.Name {
-				taskSpec = projectTask
-				break
-			}
-		}
+		taskSpec := project.GetSpecForTask(task.Name)
 
 		// sanity check that the config isn't malformed
 		if taskSpec.Name == "" {
 			return nil, fmt.Errorf("config is malformed: variant '%v' runs "+
 				"task called '%v' but no such task exists for repo %v for "+
-				"version %v", buildVariant.Name, task.Name, project.Identifier,
-				v.Id)
+				"version %v", buildVariant.Name, task.Name, project.Identifier, v.Id)
 		}
 
-		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v, taskSpec)
+		// update task document with spec fields
+		task.Populate(taskSpec)
+
+		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
 
 		// set the new task's dependencies
 		// TODO encapsulate better
-		if len(taskSpec.DependsOn) == 1 &&
-			taskSpec.DependsOn[0].Name == AllDependencies &&
-			taskSpec.DependsOn[0].Variant != AllVariants {
+		if len(task.DependsOn) == 1 &&
+			task.DependsOn[0].Name == AllDependencies &&
+			task.DependsOn[0].Variant != AllVariants {
 			// the task depends on all of the other tasks in the build
 			newTask.DependsOn = make([]Dependency, 0, len(tasksToCreate)-1)
 			for _, dep := range tasksToCreate {
 				status := evergreen.TaskSucceeded
-				if taskSpec.DependsOn[0].Status != "" {
-					status = taskSpec.DependsOn[0].Status
+				if task.DependsOn[0].Status != "" {
+					status = task.DependsOn[0].Status
 				}
 				newDep := Dependency{
 					TaskId: tt.GetId(b.BuildVariant, dep.Name),
@@ -463,8 +459,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 			}
 		} else {
 			// the task has specific dependencies
-			newTask.DependsOn = make([]Dependency, 0, len(taskSpec.DependsOn))
-			for _, dep := range taskSpec.DependsOn {
+			newTask.DependsOn = make([]Dependency, 0, len(task.DependsOn))
+			for _, dep := range task.DependsOn {
 				// only add as a dependency if the dependency is valid/exists
 				status := evergreen.TaskSucceeded
 				if dep.Status != "" {
@@ -550,7 +546,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *version.Version, projectTask ProjectTask) *Task {
+	buildVariant *BuildVariant, b *build.Build, v *version.Version) *Task {
 	return &Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
@@ -571,7 +567,7 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 		Version:             v.Id,
 		Revision:            v.Revision,
 		Project:             project.Identifier,
-		Priority:            projectTask.Priority,
+		Priority:            buildVarTask.Priority,
 	}
 }
 

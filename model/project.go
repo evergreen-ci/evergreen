@@ -51,12 +51,39 @@ type Project struct {
 
 // Unmarshalled from the "tasks" list in an individual build variant
 type BuildVariantTask struct {
-	// this name HAS to match the name field of one of the tasks specified at
+	// Name has to match the name field of one of the tasks specified at
 	// the project level, or an error will be thrown
 	Name string `yaml:"name" bson:"name"`
 
+	// fields to overwrite ProjectTask settings
+	Priority  int              `yaml:"priority" bson:"priority"`
+	DependsOn []TaskDependency `yaml:"depends_on" bson:"depends_on"`
+
+	// currently unsupported (TODO EVG-578)
+	ExecTimeout int   `yaml:"exec_timeout" bson:"exec_timeout"`
+	Stepback    *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+
 	// the distros that the task can be run on
 	Distros []string `yaml:"distros" bson:"distros"`
+}
+
+// Populate updates the base fields of the BuildVariantTask with
+// fields from the project task definition
+func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
+	// We never update "Name" or "Commands"
+	if len(bvt.DependsOn) == 0 {
+		bvt.DependsOn = pt.DependsOn
+	}
+	if bvt.Priority == 0 {
+		bvt.Priority = pt.Priority
+	}
+	// TODO these are copied but unused until EVG-578 is completed
+	if bvt.ExecTimeout == 0 {
+		bvt.ExecTimeout = pt.ExecTimeout
+	}
+	if bvt.Stepback == nil {
+		bvt.Stepback = pt.Stepback
+	}
 }
 
 type BuildVariant struct {
@@ -458,17 +485,28 @@ func addMatrixVariants(project *Project) error {
 	return nil
 }
 
-func (self *Project) GetVariantMappings() map[string]string {
+// GetSpecForTask returns a ProjectTask spec for the given name.
+// Returns an empty ProjectTask if none exists.
+func (p Project) GetSpecForTask(name string) ProjectTask {
+	for _, pt := range p.Tasks {
+		if pt.Name == name {
+			return pt
+		}
+	}
+	return ProjectTask{}
+}
+
+func (p *Project) GetVariantMappings() map[string]string {
 	mappings := make(map[string]string)
-	for _, buildVariant := range self.BuildVariants {
+	for _, buildVariant := range p.BuildVariants {
 		mappings[buildVariant.Name] = buildVariant.DisplayName
 	}
 	return mappings
 }
 
-func (self *Project) GetVariantsWithTask(taskName string) []string {
+func (p *Project) GetVariantsWithTask(taskName string) []string {
 	var variantsList []string
-	for _, buildVariant := range self.BuildVariants {
+	for _, buildVariant := range p.BuildVariants {
 		for _, task := range buildVariant.Tasks {
 			if task.Name == taskName {
 				variantsList = append(variantsList, buildVariant.Name)

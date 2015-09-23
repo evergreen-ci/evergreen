@@ -78,6 +78,7 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projec
 	if err != nil {
 		return err
 	}
+
 	projectRef.LocalConfig = string(data)
 
 	return projectRef.Upsert()

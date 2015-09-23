@@ -469,6 +469,17 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{Name: "taskA"}, {Name: "taskB"}, {Name: "taskC"}, {Name: "taskE"},
 			},
 		}
+		buildVar3 := BuildVariant{
+			Name:        "buildVar3",
+			DisplayName: "Build Variant 3",
+			Tasks: []BuildVariantTask{
+				{
+					// wait for the first BV's taskA to complete
+					Name:      "taskA",
+					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
+				},
+			},
+		}
 
 		project := &Project{
 			Tasks: []ProjectTask{
@@ -502,7 +513,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					},
 				},
 			},
-			BuildVariants: []BuildVariant{buildVar1, buildVar2},
+			BuildVariants: []BuildVariant{buildVar1, buildVar2, buildVar3},
 		}
 
 		// the mock version we'll be using
@@ -521,6 +532,10 @@ func TestCreateBuildFromVersion(t *testing.T) {
 					BuildVariant: buildVar2.Name,
 					Activated:    false,
 				},
+				{
+					BuildVariant: buildVar3.Name,
+					Activated:    false,
+				},
 			},
 		}
 
@@ -535,11 +550,12 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tt.GetId("buildVar2", "taskB"), ShouldNotEqual, "")
 			So(tt.GetId("buildVar2", "taskC"), ShouldNotEqual, "")
 			So(tt.GetId("buildVar2", "taskE"), ShouldNotEqual, "")
+			So(tt.GetId("buildVar3", "taskA"), ShouldNotEqual, "")
 
 			Convey(`and incorrect GetId() calls should return ""`, func() {
 				So(tt.GetId("buildVar", "taskF"), ShouldEqual, "")
 				So(tt.GetId("buildVar2", "taskD"), ShouldEqual, "")
-				So(tt.GetId("buildVar3", "taskA"), ShouldEqual, "")
+				So(tt.GetId("buildVar7", "taskA"), ShouldEqual, "")
 			})
 		})
 
@@ -644,6 +660,9 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			buildId2, err := CreateBuildFromVersion(project, v, tt, buildVar2.Name, false, nil)
 			So(err, ShouldBeNil)
 			So(buildId2, ShouldNotEqual, "")
+			buildId3, err := CreateBuildFromVersion(project, v, tt, buildVar3.Name, false, nil)
+			So(err, ShouldBeNil)
+			So(buildId3, ShouldNotEqual, "")
 
 			// find the tasks, make sure they were all created
 			tasks, err := FindAllTasks(
@@ -654,39 +673,41 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				db.NoLimit,
 			)
 			So(err, ShouldBeNil)
-			So(len(tasks), ShouldEqual, 8)
+			So(len(tasks), ShouldEqual, 9)
 
 			// taskA
 			So(len(tasks[0].DependsOn), ShouldEqual, 0)
 			So(len(tasks[1].DependsOn), ShouldEqual, 0)
+			So(len(tasks[2].DependsOn), ShouldEqual, 1)
 			So(tasks[0].Priority, ShouldEqual, 5)
 			So(tasks[1].Priority, ShouldEqual, 5)
-
-			// taskB
 			So(tasks[2].DependsOn, ShouldResemble,
 				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
+
+			// taskB
 			So(tasks[3].DependsOn, ShouldResemble,
+				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
+			So(tasks[4].DependsOn, ShouldResemble,
 				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}}) //cross-variant
-			So(tasks[2].Priority, ShouldEqual, 0)
-			So(tasks[3].Priority, ShouldEqual, 0) //default priority
+			So(tasks[3].Priority, ShouldEqual, 0)
+			So(tasks[4].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
-			So(tasks[4].DependsOn, ShouldResemble,
-				[]Dependency{
-					{tasks[0].Id, evergreen.TaskSucceeded},
-					{tasks[2].Id, evergreen.TaskSucceeded}})
 			So(tasks[5].DependsOn, ShouldResemble,
 				[]Dependency{
-					{tasks[1].Id, evergreen.TaskSucceeded},
+					{tasks[0].Id, evergreen.TaskSucceeded},
 					{tasks[3].Id, evergreen.TaskSucceeded}})
 			So(tasks[6].DependsOn, ShouldResemble,
 				[]Dependency{
-					{tasks[0].Id, evergreen.TaskSucceeded},
-					{tasks[2].Id, evergreen.TaskSucceeded},
+					{tasks[1].Id, evergreen.TaskSucceeded},
 					{tasks[4].Id, evergreen.TaskSucceeded}})
-			So(tasks[7].DisplayName, ShouldEqual, "taskE")
-			So(len(tasks[7].DependsOn), ShouldEqual, 7)
-
+			So(tasks[7].DependsOn, ShouldResemble,
+				[]Dependency{
+					{tasks[0].Id, evergreen.TaskSucceeded},
+					{tasks[3].Id, evergreen.TaskSucceeded},
+					{tasks[5].Id, evergreen.TaskSucceeded}})
+			So(tasks[8].DisplayName, ShouldEqual, "taskE")
+			So(len(tasks[8].DependsOn), ShouldEqual, 8)
 		})
 
 		Convey("all of the build's essential fields should be set"+
