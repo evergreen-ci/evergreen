@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
+	"io/ioutil"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -15,10 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
-	"io/ioutil"
-	"os"
-	"sync"
-	"time"
 )
 
 const (
@@ -279,9 +279,15 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		Stderr:         &sshSetupCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
-		Options:        append([]string{"-t", "-t", "-p", hostInfo.Port}, sshOptions...),
+		Options:        []string{"-p", hostInfo.Port},
 		Background:     false,
 	}
+
+	// only force creation of a tty if sudo
+	if targetHost.Distro.SetupAsSudo {
+		runSetupCmd.Options = []string{"-t", "-t"}
+	}
+	runSetupCmd.Options = append(runSetupCmd.Options, sshOptions...)
 
 	// run the ssh command with given timeout
 	err = util.RunFunctionWithTimeout(
