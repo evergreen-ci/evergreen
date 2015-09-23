@@ -286,7 +286,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 
 	// only force creation of a tty if sudo
 	if targetHost.Distro.SetupAsSudo {
-		runSetupCmd.Options = []string{"-t", "-t"}
+		runSetupCmd.Options = []string{"-t", "-t", "-p", hostInfo.Port}
 	}
 	runSetupCmd.Options = append(runSetupCmd.Options, sshOptions...)
 
