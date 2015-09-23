@@ -144,6 +144,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/patch/{patch_id}", uis.requireUser(uis.loadCtx(uis.schedulePatch))).Methods("POST")
 	r.HandleFunc("/diff/{patch_id}/", uis.requireUser(uis.loadCtx(uis.diffPage)))
 	r.HandleFunc("/filediff/{patch_id}/", uis.requireUser(uis.loadCtx(uis.fileDiffPage)))
+	r.HandleFunc("/rawdiff/{patch_id}/", uis.requireUser(uis.loadCtx(uis.rawDiffPage)))
 	r.HandleFunc("/patches", uis.requireUser(uis.loadCtx(uis.patchTimeline)))
 	r.HandleFunc("/patches/project/{project_id}", uis.requireUser(uis.loadCtx(uis.patchTimeline)))
 	r.HandleFunc("/patches/user/{user_id}", uis.requireUser(uis.loadCtx(uis.userPatchesTimeline)))
