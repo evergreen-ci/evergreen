@@ -13,7 +13,10 @@ func main() {
 	parser.AddCommand("get-update", "fetch the latest version of this binary", "", &cli.GetUpdateCommand{GlobalOpts: opts})
 	parser.AddCommand("version", "display version information", "", &cli.VersionCommand{})
 	parser.AddCommand("set-module", "update or add module to an existing patch", "", &cli.SetModuleCommand{GlobalOpts: opts})
-	parser.AddCommand("patch", "submit a patch", "", &cli.PatchCommand{GlobalOpts: opts})
+	parser.AddCommand("patch", "submit a patch", "",
+		&cli.PatchCommand{PatchCommandParams: cli.PatchCommandParams{GlobalOpts: opts}})
+	parser.AddCommand("patch-file", "submit a patch using a diff file", "",
+		&cli.PatchFileCommand{PatchCommandParams: cli.PatchCommandParams{GlobalOpts: opts}})
 	parser.AddCommand("list-patches", "show existing patches", "", &cli.ListPatchesCommand{GlobalOpts: opts})
 	parser.AddCommand("rm-module", "remove a module from an existing patch", "", &cli.RemoveModuleCommand{GlobalOpts: opts})
 	parser.AddCommand("cancel-patch", "cancel an existing patch", "", &cli.CancelPatchCommand{GlobalOpts: opts})
