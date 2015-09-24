@@ -96,6 +96,14 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	} else {
 		evergreen.Logger.Logf(slogger.INFO, "Last recorded repository revision for "+
 			"“%v” is “%v”", projectRef, lastRevision)
+		// if the projectRef has a repotracker error then don't get the revisions
+		if projectRef.RepotrackerError != nil {
+			if projectRef.RepotrackerError.Exists {
+				evergreen.Logger.Logf(slogger.ERROR, "repotracker error for base revision, %v",
+					projectRef.RepotrackerError.InvalidRevision)
+				return nil
+			}
+		}
 		revisions, err = repoTracker.GetRevisionsSince(lastRevision,
 			settings.RepoTracker.MaxRepoRevisionsToSearch)
 	}
