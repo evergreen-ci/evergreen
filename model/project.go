@@ -39,6 +39,7 @@ type Project struct {
 	Pre                *YAMLCommandSet            `yaml:"pre" bson:"pre"`
 	Post               *YAMLCommandSet            `yaml:"post" bson:"post"`
 	Timeout            *YAMLCommandSet            `yaml:"timeout" bson:"timeout"`
+	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
 	Modules            []Module                   `yaml:"modules" bson:"modules"`
 	BuildVariants      []BuildVariant             `yaml:"buildvariants" bson:"build_variants"`
 	Functions          map[string]*YAMLCommandSet `yaml:"functions" bson:"functions"`

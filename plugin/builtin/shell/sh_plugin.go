@@ -227,7 +227,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 		} else {
 			pluginLogger.LogExecution(slogger.INFO, "Script execution complete.")
 		}
-	case _ = <-stop:
+	case <-stop:
 		pluginLogger.LogExecution(slogger.INFO, "Got kill signal")
 
 		// need to check command has started

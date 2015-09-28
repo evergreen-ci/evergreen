@@ -46,6 +46,9 @@ const (
 	// DefaultIdleTimeout specifies the duration after which agent sends an
 	// IdleTimeout signal if a task produces no logs.
 	DefaultIdleTimeout = 15 * time.Minute
+	// DefaultCallbackCmdTimeout specifies the duration after when the "post" or
+	// "timeout" command sets should be shut down.
+	DefaultCallbackCmdTimeout = 15 * time.Minute
 	// DefaultHeartbeatInterval is interval after which agent sends a heartbeat
 	// to API server.
 	DefaultHeartbeatInterval = 30 * time.Second
@@ -189,7 +192,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 	if agt.taskConfig.Project.Post != nil {
 		agt.logger.LogTask(slogger.INFO, "Running post-task commands.")
 		start := time.Now()
-		err := agt.RunCommands(agt.taskConfig.Project.Post.List(), false, nil)
+		err := agt.RunCommands(agt.taskConfig.Project.Post.List(), false, agt.callbackTimeoutSignal())
 		if err != nil {
 			agt.logger.LogExecution(slogger.ERROR, "Error running post-task command: %v", err)
 		}
@@ -262,7 +265,7 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		if agt.taskConfig.Project.Timeout != nil {
 			agt.logger.LogTask(slogger.INFO, "Running task-timeout commands.")
 			start := time.Now()
-			err := agt.RunCommands(agt.taskConfig.Project.Timeout.List(), false, nil)
+			err := agt.RunCommands(agt.taskConfig.Project.Timeout.List(), false, agt.callbackTimeoutSignal())
 			if err != nil {
 				agt.logger.LogExecution(slogger.ERROR, "Error running task-timeout command: %v", err)
 			}
@@ -446,7 +449,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	if agt.taskConfig.Project.Pre != nil {
 		agt.logger.LogExecution(slogger.INFO, "Running pre-task commands.")
-		err = agt.RunCommands(agt.taskConfig.Project.Pre.List(), false, nil)
+		err = agt.RunCommands(agt.taskConfig.Project.Pre.List(), false, agt.callbackTimeoutSignal())
 		if err != nil {
 			agt.logger.LogExecution(slogger.ERROR, "Running pre-task script failed: %v", err)
 		}
@@ -583,6 +586,22 @@ func registerPlugins(registry plugin.Registry, plugins []plugin.CommandPlugin, l
 		logger.LogExecution(slogger.INFO, "Registered plugin %v", pl.Name())
 	}
 	return nil
+}
+
+// callbackTimeoutSignal creates a stop channel that closes after
+// the the project's CallbackTimeout has passed. Uses the default
+// value if none is set.
+func (agt *Agent) callbackTimeoutSignal() chan bool {
+	timeout := DefaultCallbackCmdTimeout
+	if agt.taskConfig.Project.CallbackTimeout != 0 {
+		timeout = time.Duration(agt.taskConfig.Project.CallbackTimeout) * time.Second
+	}
+	stop := make(chan bool)
+	go func() {
+		time.Sleep(timeout)
+		close(stop)
+	}()
+	return stop
 }
 
 // StartBackgroundActions spawns goroutines that monitor various parts of the

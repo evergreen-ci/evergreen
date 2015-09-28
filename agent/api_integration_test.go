@@ -506,6 +506,45 @@ func TestTaskTimeout(t *testing.T) {
 	}
 }
 
+func TestTaskCallbackTimeout(t *testing.T) {
+	setupTlsConfigs(t)
+	for tlsString, tlsConfig := range tlsConfigs {
+		Convey("With an agent with callback_timeout_secs=1 and a live API server over "+tlsString, t, func() {
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", NoPatch, t)
+			testutil.HandleTestingErr(err, t, "Failed to find test task")
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			So(err, ShouldBeNil)
+			So(testAgent, ShouldNotBeNil)
+			prependConfigToVersion(t, testTask.Version, "callback_timeout_secs: 1\n")
+
+			Convey("after the slow test runs beyond the timeout threshold", func() {
+				// actually run the task.
+				// this function won't return until the whole thing is done.
+				testAgent.RunTask()
+				testAgent.APILogger.Flush()
+				time.Sleep(7 * time.Second)
+				//printLogsForTask(testTask.Id)
+				So(testAgent.taskConfig.Project.CallbackTimeout, ShouldEqual, 1)
+				Convey("the test should be marked as failed and timed out", func() {
+					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					testTask, err = model.FindTask(testTask.Id)
+					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
+					So(testTask.Details.TimedOut, ShouldBeTrue)
+					So(testTask.Details.Description, ShouldEqual, "shell.exec")
+
+					Convey("and the timeout task should have failed", func() {
+						So(scanLogsForTask(testTask.Id, "running task-timeout commands in 1"), ShouldBeTrue)
+					})
+				})
+			})
+		})
+	}
+}
+
 func TestTaskExecTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
@@ -797,4 +836,17 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 
 	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build")
 	return taskOne, build, nil
+}
+
+// prependConfigToVersion modifies the project config with the given id
+func prependConfigToVersion(t *testing.T, versionId, configData string) {
+	v, err := version.FindOne(version.ById(versionId))
+	testutil.HandleTestingErr(err, t, "failed to load version")
+	if v == nil {
+		err = fmt.Errorf("could not find version to update")
+		testutil.HandleTestingErr(err, t, "failed to find version")
+	}
+	v.Config = configData + v.Config
+	testutil.HandleTestingErr(dbutil.ClearCollections(version.Collection), t, "couldnt reset version")
+	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version")
 }
