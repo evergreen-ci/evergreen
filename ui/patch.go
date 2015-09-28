@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
 	"net/http"
+	"strconv"
 )
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
@@ -194,4 +195,33 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 		PatchNumber string
 	}{*fullPatch, r.FormValue("file_name"), r.FormValue("patch_number")},
 		"base", "file_diff.html")
+}
+
+func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveProjectContext(r)
+	if projCtx.Patch == nil {
+		http.Error(w, "patch not found", http.StatusNotFound)
+		return
+	}
+	fullPatch, err := patch.FindOne(patch.ById(projCtx.Patch.Id))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error loading patch: %v", err.Error),
+			http.StatusInternalServerError)
+		return
+	}
+	fullPatch.FetchPatchFiles()
+	patchNum, err := strconv.Atoi(r.FormValue("patch_number"))
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error getting patch number: %v", err.Error),
+			http.StatusInternalServerError)
+		return
+	}
+	if patchNum < 0 || patchNum >= len(fullPatch.Patches) {
+		http.Error(w, "patch number out of range", http.StatusInternalServerError)
+		return
+	}
+	diff := fullPatch.Patches[patchNum].PatchSet.Patch
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(diff))
 }

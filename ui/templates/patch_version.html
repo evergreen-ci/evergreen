@@ -134,7 +134,7 @@ Evergreen - Configure Patch
 
         <div class="panel-body">
           {{ $head := .}}
-          {{range .ProjectData.Patch.Patches}}
+          {{range $index, $patches := .ProjectData.Patch.Patches}}
           <div class="patch-message patch-changes-line">
             <div>
               {{if .ModuleName}}
@@ -143,8 +143,13 @@ Evergreen - Configure Patch
               Changes on {{$head.ProjectData.ProjectRef.DisplayName}} project:
               {{end}}
               <span class="pull-right">
-                <a href="/filediff/{{$head.ProjectData.Patch.Id.Hex}}">
-                  FULL DIFF
+                View Diff:
+                <a href="/filediff/{{$head.ProjectData.Patch.Id.Hex}}?patch_number={{$index}}">
+                  HTML
+                </a>
+                |
+                <a href="/rawdiff/{{$head.ProjectData.Patch.Id.Hex}}?patch_number={{$index}}">
+                  Raw
                 </a>
               </span>
             </div>
