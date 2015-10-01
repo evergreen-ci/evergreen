@@ -306,11 +306,11 @@ func TestPopulateBVT(t *testing.T) {
 		project := &Project{
 			Tasks: []ProjectTask{
 				{
-					Name:        "task1",
-					ExecTimeout: 500,
-					Stepback:    new(bool),
-					DependsOn:   []TaskDependency{{Name: "other"}},
-					Priority:    1000,
+					Name:            "task1",
+					ExecTimeoutSecs: 500,
+					Stepback:        new(bool),
+					DependsOn:       []TaskDependency{{Name: "other"}},
+					Priority:        1000,
 				},
 			},
 			BuildVariants: []BuildVariant{
@@ -329,7 +329,7 @@ func TestPopulateBVT(t *testing.T) {
 
 			Convey("should inherit the unset fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
-				So(bvt.ExecTimeout, ShouldEqual, 500)
+				So(bvt.ExecTimeoutSecs, ShouldEqual, 500)
 				So(bvt.Stepback, ShouldNotBeNil)
 				So(len(bvt.DependsOn), ShouldEqual, 1)
 
@@ -339,10 +339,10 @@ func TestPopulateBVT(t *testing.T) {
 
 		Convey("updating a BuildVariantTask with set fields", func() {
 			bvt := BuildVariantTask{
-				Name:        "task1",
-				ExecTimeout: 2,
-				Stepback:    boolPtr(true),
-				DependsOn:   []TaskDependency{{Name: "task2"}, {Name: "task3"}},
+				Name:            "task1",
+				ExecTimeoutSecs: 2,
+				Stepback:        boolPtr(true),
+				DependsOn:       []TaskDependency{{Name: "task2"}, {Name: "task3"}},
 			}
 			spec := project.GetSpecForTask("task1")
 			So(spec.Name, ShouldEqual, "task1")
@@ -350,7 +350,7 @@ func TestPopulateBVT(t *testing.T) {
 
 			Convey("should not inherit set fields from the Project", func() {
 				So(bvt.Name, ShouldEqual, "task1")
-				So(bvt.ExecTimeout, ShouldEqual, 2)
+				So(bvt.ExecTimeoutSecs, ShouldEqual, 2)
 				So(bvt.Stepback, ShouldNotBeNil)
 				So(*bvt.Stepback, ShouldBeTrue)
 				So(len(bvt.DependsOn), ShouldEqual, 2)
