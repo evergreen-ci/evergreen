@@ -43,6 +43,12 @@ const (
 	// DefaultCmdTimeout specifies the duration after which agent sends
 	// an IdleTimeout signal if a task's command does not run to completion.
 	DefaultCmdTimeout = 2 * time.Hour
+
+	// DefaultExecTimeoutSecs specifies in seconds the maximum time a task is allowed to run
+	// for, even if it is not idle. This default is used if exec_timeout_secs is not specified
+	// in the project file.
+	DefaultExecTimeoutSecs = 60 * 60 * 6 // six hours
+
 	// DefaultIdleTimeout specifies the duration after which agent sends an
 	// IdleTimeout signal if a task produces no logs.
 	DefaultIdleTimeout = 15 * time.Minute
@@ -413,7 +419,11 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	name := taskConfig.Task.DisplayName
 	pt := taskConfig.Project.FindProjectTask(name)
-	execTimeout := time.Duration(pt.ExecTimeout) * time.Second
+	if pt.ExecTimeoutSecs == 0 {
+		// if unspecified in the project, use the default value
+		pt.ExecTimeoutSecs = DefaultExecTimeoutSecs
+	}
+	execTimeout := time.Duration(pt.ExecTimeoutSecs) * time.Second
 	// Set master task timeout, only if included in the taskConfig
 	if execTimeout != 0 {
 		agt.maxExecTimeoutWatcher = &TimeoutWatcher{
