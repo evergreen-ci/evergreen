@@ -61,8 +61,8 @@ type BuildVariantTask struct {
 	DependsOn []TaskDependency `yaml:"depends_on" bson:"depends_on"`
 
 	// currently unsupported (TODO EVG-578)
-	ExecTimeout int   `yaml:"exec_timeout" bson:"exec_timeout"`
-	Stepback    *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	ExecTimeoutSecs int   `yaml:"exec_timeout_secs" bson:"exec_timeout_secs"`
+	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	// the distros that the task can be run on
 	Distros []string `yaml:"distros" bson:"distros"`
@@ -79,8 +79,8 @@ func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
 		bvt.Priority = pt.Priority
 	}
 	// TODO these are copied but unused until EVG-578 is completed
-	if bvt.ExecTimeout == 0 {
-		bvt.ExecTimeout = pt.ExecTimeout
+	if bvt.ExecTimeoutSecs == 0 {
+		bvt.ExecTimeoutSecs = pt.ExecTimeoutSecs
 	}
 	if bvt.Stepback == nil {
 		bvt.Stepback = pt.Stepback
