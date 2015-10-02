@@ -21,17 +21,8 @@ import (
 
 // Given a patch version and a list of task names, creates a new task with
 // the given name for each variant, if applicable.
-func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version,
+func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project,
 	taskNames []string) error {
-	projectRef, err := FindOneProjectRef(p.Project)
-	if err != nil {
-		return err
-	}
-	project, err := FindProject("", projectRef)
-	if err != nil {
-		return err
-	}
-
 	// create new tasks for all of the added patch tasks
 	var newTasks []string
 	for _, taskName := range taskNames {
@@ -41,7 +32,7 @@ func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version,
 	}
 
 	// add tasks to the patch in the db
-	if err = p.AddTasks(taskNames); err != nil {
+	if err := p.AddTasks(taskNames); err != nil {
 		return err
 	}
 
@@ -63,19 +54,8 @@ func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version,
 
 // Given the patch version and a list of build variants, creates new builds
 // with the patch's tasks.
-func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version,
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project,
 	buildVariants []string) (*version.Version, error) {
-	projectRef, err := FindOneProjectRef(p.Project)
-	if err != nil {
-		return nil, err
-	}
-	project, err := FindProject("", projectRef)
-	if err != nil {
-		return nil, err
-	}
-	if project == nil {
-		return nil, fmt.Errorf("Project not found for project ref: %v", projectRef.Identifier)
-	}
 
 	// compute a list of the newly added build variants
 	var newVariants []string
@@ -114,7 +94,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version,
 		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 	}
 
-	err = version.UpdateOne(
+	err := version.UpdateOne(
 		bson.M{version.IdKey: patchVersion.Id},
 		bson.M{
 			"$push": bson.M{

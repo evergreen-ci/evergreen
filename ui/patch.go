@@ -36,11 +36,11 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
-	project := model.Project{}
-	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), &project); err != nil {
+	project := &model.Project{}
+	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
 	}
-	projCtx.Project = &project
+	projCtx.Project = project
 
 	// retrieve tasks and variant mappings' names
 	variantMappings := make(map[string]model.BuildVariant)
@@ -68,7 +68,6 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
-
 	if projCtx.Patch == nil {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
@@ -93,6 +92,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	// Unmarshal the project config and set it in the project context
+	project := &model.Project{}
+	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+	}
+	projCtx.Project = project
+
 	if projCtx.Patch.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
 		if projCtx.Version == nil {
@@ -100,10 +107,9 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				fmt.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
 			return
 		}
-
 		// First add new tasks to existing builds, if necessary
 		if len(patchUpdateReq.Tasks) > 0 {
-			err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, patchUpdateReq.Tasks)
+			err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, patchUpdateReq.Tasks)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					fmt.Errorf("Error creating new tasks: `%v` for version `%v`", err, projCtx.Version.Id))
@@ -112,7 +118,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(patchUpdateReq.Variants) > 0 {
-			_, err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, patchUpdateReq.Variants)
+			_, err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, patchUpdateReq.Variants)
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError,
 					fmt.Errorf("Error creating new builds: `%v` for version `%v`", err, projCtx.Version.Id))
@@ -137,13 +143,6 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 				fmt.Errorf("Error setting description: %v", err))
 			return
 		}
-
-		// Unmarshal the project config and set it in the project context
-		project := model.Project{}
-		if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), &project); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
-		}
-		projCtx.Project = &project
 
 		ver, err := model.FinalizePatch(projCtx.Patch, &uis.Settings)
 		if err != nil {
