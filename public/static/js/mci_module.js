@@ -250,6 +250,11 @@ var mciModule = angular.module('MCI', [
             cls = 'system-failed';
           }
         }
+        if ('timed_out' in task.task_end_details) {
+          if (task.task_end_details.timed_out && 'desc' in task.task_end_details && task.task_end_details.desc == 'heartbeat') {
+            cls = 'system-failed';
+          }
+        }
       }
     }
     return cls;
