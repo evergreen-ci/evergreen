@@ -517,7 +517,7 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
   };
 
   $scope.hideInactiveVersions = {
-    v: false,
+    v: true,
     get: function() {
       return $scope.hideInactiveVersions.v;
     },
