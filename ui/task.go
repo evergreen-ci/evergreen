@@ -28,7 +28,7 @@ const (
 
 	// Number of revisions to return on subsequent requests
 	NoRevisions     = 0
-	MaxNumRevisions = 30
+	MaxNumRevisions = 50
 )
 
 var NumTestsToSearchForTestNames = 100
