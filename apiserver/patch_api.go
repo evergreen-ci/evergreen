@@ -150,6 +150,11 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	var projId, description string
 	var finalize bool
 	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		patchContent := r.FormValue("patch")
+		if patchContent == "" {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
+			return
+		}
 		apiRequest = PatchAPIRequest{
 			ProjectFileName: r.FormValue("project"),
 			ModuleName:      r.FormValue("module"),
@@ -175,6 +180,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(data.Patch) > patch.SizeLimit {
 			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Patch is too large."))
+		}
+		if len(data.Patch) == 0 {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
+			return
 		}
 		description = data.Description
 		projId = data.Project
@@ -341,6 +350,11 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		moduleName, patchContent, githash = data.Module, data.Patch, data.Githash
+	}
+
+	if len(patchContent) == 0 {
+		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
+		return
 	}
 
 	projectRef, err := model.FindOneProjectRef(p.Project)
