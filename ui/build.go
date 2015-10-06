@@ -41,14 +41,20 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	uiTasks := make([]uiTask, 0, len(tasks))
 
+	idToTask := make(map[string]model.Task)
 	for _, task := range tasks {
-		taskAsUI := uiTask{Task: task}
+		idToTask[task.Id] = task
+	}
+
+	// Insert the tasks in the same order as the task cache
+	uiTasks := make([]uiTask, 0, len(projCtx.Build.Tasks))
+	for _, taskCache := range projCtx.Build.Tasks {
+		taskAsUI := uiTask{Task: idToTask[taskCache.Id]}
 		uiTasks = append(uiTasks, taskAsUI)
 	}
 
-	buildAsUI.Tasks = sortUiTasks(uiTasks)
+	buildAsUI.Tasks = uiTasks
 
 	if projCtx.Build.Requester == evergreen.PatchVersionRequester {
 		buildOnBaseCommit, err := projCtx.Build.FindBuildOnBaseCommit()

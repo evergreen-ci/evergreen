@@ -80,22 +80,22 @@ func TestBuildRestart(t *testing.T) {
 			Id: "build",
 			Tasks: []build.TaskCache{
 				{
-					Id:        "taskOne",
+					Id:        "task1",
 					Status:    evergreen.TaskSucceeded,
 					Activated: true,
 				},
 				{
-					Id:        "taskTwo",
+					Id:        "task2",
 					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				},
 				{
-					Id:        "taskThree",
+					Id:        "task3",
 					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				},
 				{
-					Id:        "taskFour",
+					Id:        "task4",
 					Status:    evergreen.TaskDispatched,
 					Activated: true,
 				},
@@ -107,16 +107,18 @@ func TestBuildRestart(t *testing.T) {
 			" non in-progress tasks and abort in-progress ones", func() {
 
 			taskOne := &Task{
-				Id:      "taskOne",
-				BuildId: b.Id,
-				Status:  evergreen.TaskSucceeded,
+				Id:          "task1",
+				DisplayName: "task1",
+				BuildId:     b.Id,
+				Status:      evergreen.TaskSucceeded,
 			}
 			So(taskOne.Insert(), ShouldBeNil)
 
 			taskTwo := &Task{
-				Id:      "taskTwo",
-				BuildId: b.Id,
-				Status:  evergreen.TaskDispatched,
+				Id:          "task2",
+				DisplayName: "task2",
+				BuildId:     b.Id,
+				Status:      evergreen.TaskDispatched,
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
@@ -129,10 +131,10 @@ func TestBuildRestart(t *testing.T) {
 			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskDispatched)
 			So(b.Tasks[0].Activated, ShouldEqual, true)
 			So(b.Tasks[1].Activated, ShouldEqual, true)
-			taskOne, err = FindTask("taskOne")
+			taskOne, err = FindTask("task1")
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
-			taskTwo, err = FindTask("taskTwo")
+			taskTwo, err = FindTask("task2")
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
 		})
@@ -141,16 +143,18 @@ func TestBuildRestart(t *testing.T) {
 			" of only those build tasks not in-progress", func() {
 
 			taskThree := &Task{
-				Id:      "taskThree",
-				BuildId: b.Id,
-				Status:  evergreen.TaskSucceeded,
+				Id:          "task3",
+				DisplayName: "task3",
+				BuildId:     b.Id,
+				Status:      evergreen.TaskSucceeded,
 			}
 			So(taskThree.Insert(), ShouldBeNil)
 
 			taskFour := &Task{
-				Id:      "taskFour",
-				BuildId: b.Id,
-				Status:  evergreen.TaskDispatched,
+				Id:          "task4",
+				DisplayName: "task4",
+				BuildId:     b.Id,
+				Status:      evergreen.TaskDispatched,
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
@@ -164,10 +168,10 @@ func TestBuildRestart(t *testing.T) {
 			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskDispatched)
 			So(b.Tasks[2].Activated, ShouldEqual, true)
 			So(b.Tasks[3].Activated, ShouldEqual, true)
-			taskThree, err = FindTask("taskThree")
+			taskThree, err = FindTask("task3")
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
-			taskFour, err = FindTask("taskFour")
+			taskFour, err = FindTask("task4")
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
@@ -362,9 +366,9 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(b.Insert(), ShouldBeNil)
 
-				t1 := &Task{Id: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
-				t2 := &Task{Id: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
-				t3 := &Task{Id: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
+				t1 := &Task{Id: "tc1", DisplayName: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
+				t2 := &Task{Id: "tc2", DisplayName: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
+				t3 := &Task{Id: "tc3", DisplayName: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
 				So(t1.Insert(), ShouldBeNil)
 				So(t2.Insert(), ShouldBeNil)
 				So(t3.Insert(), ShouldBeNil)
@@ -1026,5 +1030,172 @@ func TestSetNumDeps(t *testing.T) {
 		So(tasks[1].NumDependents, ShouldEqual, 1)
 		So(tasks[2].NumDependents, ShouldEqual, 1)
 		So(tasks[3].NumDependents, ShouldEqual, 0)
+	})
+}
+
+func TestSortTasks(t *testing.T) {
+	Convey("sortTasks topologically sorts tasks by dependency", t, func() {
+		Convey("for tasks with single dependencies", func() {
+			tasks := []Task{
+				{
+					Id:          "idA",
+					DisplayName: "A",
+					DependsOn: []Dependency{
+						{TaskId: "idB"},
+					},
+				},
+				{
+					Id:          "idB",
+					DisplayName: "B",
+					DependsOn: []Dependency{
+						{TaskId: "idC"},
+					},
+				},
+				{
+					Id:          "idC",
+					DisplayName: "C",
+				},
+			}
+
+			sortedTasks := sortTasks(tasks)
+			So(len(sortedTasks), ShouldEqual, 3)
+			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
+			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
+			So(sortedTasks[2].DisplayName, ShouldEqual, "A")
+		})
+		Convey("for tasks with multiplie dependencies", func() {
+			tasks := []Task{
+				{
+					Id:          "idA",
+					DisplayName: "A",
+					DependsOn: []Dependency{
+						{TaskId: "idB"},
+						{TaskId: "idC"},
+					},
+				},
+				{
+					Id:          "idB",
+					DisplayName: "B",
+					DependsOn: []Dependency{
+						{TaskId: "idC"},
+					},
+				},
+				{
+					Id:          "idC",
+					DisplayName: "C",
+				},
+			}
+
+			sortedTasks := sortTasks(tasks)
+			So(len(sortedTasks), ShouldEqual, 3)
+			So(sortedTasks[0].DisplayName, ShouldEqual, "C")
+			So(sortedTasks[1].DisplayName, ShouldEqual, "B")
+			So(sortedTasks[2].DisplayName, ShouldEqual, "A")
+		})
+	})
+
+	Convey("grouping tasks by common dependencies and sorting alphabetically within groups", t, func() {
+		tasks := []Task{
+			{
+				Id:          "idA",
+				DisplayName: "A",
+				DependsOn: []Dependency{
+					{TaskId: "idE"},
+				},
+			},
+			{
+				Id:          "idB",
+				DisplayName: "B",
+				DependsOn: []Dependency{
+					{TaskId: "idD"},
+				},
+			},
+			{
+				Id:          "idC",
+				DisplayName: "C",
+				DependsOn: []Dependency{
+					{TaskId: "idD"},
+				},
+			},
+			{
+				Id:          "idD",
+				DisplayName: "D",
+			},
+			{
+				Id:          "idE",
+				DisplayName: "E",
+			},
+		}
+
+		sortedTasks := sortTasks(tasks)
+		So(len(sortedTasks), ShouldEqual, 5)
+		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
+		So(sortedTasks[1].DisplayName, ShouldEqual, "E")
+		So(sortedTasks[2].DisplayName, ShouldEqual, "B")
+		So(sortedTasks[3].DisplayName, ShouldEqual, "C")
+		So(sortedTasks[4].DisplayName, ShouldEqual, "A")
+	})
+
+	Convey("special-casing tasks with cross-variant dependencies to the far right", t, func() {
+		tasks := []Task{
+			{
+				Id:          "idA",
+				DisplayName: "A",
+				DependsOn: []Dependency{
+					{TaskId: "idB"},
+					{TaskId: "idC"},
+				},
+			},
+			{
+				Id:          "idB",
+				DisplayName: "B",
+				DependsOn: []Dependency{
+					{TaskId: "idC"},
+				},
+			},
+			{
+				Id:          "idC",
+				DisplayName: "C",
+				DependsOn: []Dependency{
+					{TaskId: "cross-variant"},
+				},
+			},
+			{
+				Id:          "idD",
+				DisplayName: "D",
+			},
+		}
+
+		sortedTasks := sortTasks(tasks)
+		So(len(sortedTasks), ShouldEqual, 4)
+		So(sortedTasks[0].DisplayName, ShouldEqual, "D")
+		So(sortedTasks[1].DisplayName, ShouldEqual, "C")
+		So(sortedTasks[2].DisplayName, ShouldEqual, "B")
+		So(sortedTasks[3].DisplayName, ShouldEqual, "A")
+
+		Convey("when there are cross-variant dependencies on different tasks", func() {
+
+			tasks = append(tasks,
+				Task{
+					Id:          "idE",
+					DisplayName: "E",
+					DependsOn: []Dependency{
+						{TaskId: "cross-variant2"},
+					}},
+				Task{
+					Id:          "idF",
+					DisplayName: "F",
+					DependsOn: []Dependency{
+						{TaskId: "idE"},
+					}})
+			sortedTasks = sortTasks(tasks)
+			So(len(sortedTasks), ShouldEqual, 6)
+			So(sortedTasks[0].DisplayName, ShouldEqual, "D")
+			So(sortedTasks[1].DisplayName, ShouldEqual, "C")
+			So(sortedTasks[2].DisplayName, ShouldEqual, "E")
+			So(sortedTasks[3].DisplayName, ShouldEqual, "B")
+			So(sortedTasks[4].DisplayName, ShouldEqual, "F")
+			So(sortedTasks[5].DisplayName, ShouldEqual, "A")
+		})
 	})
 }

@@ -74,7 +74,6 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 				versionAsUI.ActiveTasks++
 			}
 		}
-		uiTasks = sortUiTasks(uiTasks)
 		buildAsUI.Tasks = uiTasks
 		uiBuilds = append(uiBuilds, buildAsUI)
 	}
@@ -207,7 +206,6 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 					versionAsUI.ActiveTasks++
 				}
 			}
-			uiTasks = sortUiTasks(uiTasks)
 			buildAsUI.Tasks = uiTasks
 			uiBuilds = append(uiBuilds, buildAsUI)
 		}

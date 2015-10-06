@@ -11,7 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,7 +24,7 @@ const (
 )
 
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
-func cacheFromTask(t *Task) build.TaskCache {
+func cacheFromTask(t Task) build.TaskCache {
 	return build.TaskCache{
 		Id:            t.Id,
 		DisplayName:   t.DisplayName,
@@ -249,6 +251,15 @@ func RestartBuild(buildId string, abortInProgress bool) error {
 	return build.UpdateActivation(buildId, true)
 }
 
+func CreateTasksCache(tasks []Task) []build.TaskCache {
+	tasks = sortTasks(tasks)
+	cache := make([]build.TaskCache, 0, len(tasks))
+	for _, task := range tasks {
+		cache = append(cache, cacheFromTask(task))
+	}
+	return cache
+}
+
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
@@ -262,6 +273,7 @@ func RefreshTasksCache(buildId string) error {
 			TaskStartTimeKey:   1,
 			TaskTimeTakenKey:   1,
 			TaskActivatedKey:   1,
+			TaskDependsOnKey:   1,
 		},
 		db.NoSort,
 		db.NoSkip,
@@ -271,10 +283,8 @@ func RefreshTasksCache(buildId string) error {
 		return err
 	}
 
-	cache := make([]build.TaskCache, 0, len(tasks))
-	for _, t := range tasks {
-		cache = append(cache, cacheFromTask(&t))
-	}
+	cache := CreateTasksCache(tasks)
+
 	return build.SetTasksCache(buildId, cache)
 }
 
@@ -305,15 +315,8 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 		}
 	}
 
-	// create task caches for all of the tasks, and add them into the build
-	for _, t := range tasks {
-		b.Tasks = append(b.Tasks, cacheFromTask(t))
-	}
-
 	// update the build to hold the new tasks
-	if err = build.SetTasksCache(b.Id, b.Tasks); err != nil {
-		return nil, err
-	}
+	RefreshTasksCache(b.Id)
 
 	return b, nil
 }
@@ -377,10 +380,11 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 	}
 
 	// create task caches for all of the tasks, and place them into the build
-	b.Tasks = make([]build.TaskCache, 0, len(tasksForBuild))
-	for _, t := range tasksForBuild {
-		b.Tasks = append(b.Tasks, cacheFromTask(t))
+	tasks := make([]Task, 0, len(tasksForBuild))
+	for _, taskP := range tasksForBuild {
+		tasks = append(tasks, *taskP)
 	}
+	b.Tasks = CreateTasksCache(tasks)
 
 	// insert the build
 	if err := b.Insert(); err != nil {
@@ -615,4 +619,137 @@ func DeleteBuild(id string) error {
 		return err
 	}
 	return build.Remove(id)
+}
+
+// sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
+// and alphabetically sorting within groups.
+// All tasks with cross-variant dependencies are at the far right.
+func sortTasks(tasks []Task) []Task {
+	// Separate out tasks with cross-variant dependencies
+	taskPresent := make(map[string]bool)
+	for _, task := range tasks {
+		taskPresent[task.Id] = true
+	}
+	// depMap is a map from a task ID to the tasks that depend on it
+	depMap := make(map[string][]Task)
+	// crossVariantTasks will contain all tasks with cross-variant dependencies
+	crossVariantTasks := make(map[string]Task)
+	for _, task := range tasks {
+		for _, dep := range task.DependsOn {
+			if taskPresent[dep.TaskId] {
+				depMap[dep.TaskId] = append(depMap[dep.TaskId], task)
+			} else {
+				crossVariantTasks[task.Id] = task
+			}
+		}
+	}
+	for id := range crossVariantTasks {
+		for _, task := range depMap[id] {
+			addDepChildren(task, crossVariantTasks, depMap)
+		}
+	}
+	// normalTasks will contain all tasks with no cross-variant dependencies
+	normalTasks := make(map[string]Task)
+	for _, task := range tasks {
+		if _, ok := crossVariantTasks[task.Id]; !ok {
+			normalTasks[task.Id] = task
+		}
+	}
+
+	// Construct a map of task Id to DisplayName, used to sort both sets of tasks
+	idToDisplayName := make(map[string]string)
+	for _, task := range tasks {
+		idToDisplayName[task.Id] = task.DisplayName
+	}
+
+	// All tasks with cross-variant dependencies appear to the right
+	sortedTasks := sortTasksHelper(normalTasks, idToDisplayName)
+	sortedTasks = append(sortedTasks, sortTasksHelper(crossVariantTasks, idToDisplayName)...)
+	return sortedTasks
+}
+
+// addDepChildren recursively adds task and all tasks depending on it to tasks
+// depMap is a map from a task ID to the tasks that depend on it
+func addDepChildren(task Task, tasks map[string]Task, depMap map[string][]Task) {
+	if _, ok := tasks[task.Id]; !ok {
+		tasks[task.Id] = task
+		for _, dep := range depMap[task.Id] {
+			addDepChildren(dep, tasks, depMap)
+		}
+	}
+}
+
+// sortTasksHelper sorts the tasks, assuming they all have cross-variant dependencies, or none have
+// cross-variant dependencies
+func sortTasksHelper(tasks map[string]Task, idToDisplayName map[string]string) []Task {
+	layers := layerTasks(tasks)
+	sortedTasks := make([]Task, 0, len(tasks))
+	for _, layer := range layers {
+		sortedTasks = append(sortedTasks, sortLayer(layer, idToDisplayName)...)
+	}
+	return sortedTasks
+}
+
+// layerTasks sorts the tasks into layers
+// Layer n contains all tasks whose dependencies are contained in layers 0 through n-1, or are not
+// included in tasks (for tasks with cross-variant dependencies)
+func layerTasks(tasks map[string]Task) [][]Task {
+	layers := make([][]Task, 0)
+	for len(tasks) > 0 {
+		// Create a new layer
+		layer := make([]Task, 0)
+		for _, task := range tasks {
+			// Check if all dependencies are included in previous layers (or were not in tasks)
+			if allDepsProcessed(task, tasks) {
+				layer = append(layer, task)
+			}
+		}
+		// Add current layer to list of layers
+		layers = append(layers, layer)
+		// Delete all tasks in this layer
+		for _, task := range layer {
+			delete(tasks, task.Id)
+		}
+	}
+	return layers
+}
+
+// allDepsProcessed checks whether any dependencies of task are in unprocessedTasks
+func allDepsProcessed(task Task, unprocessedTasks map[string]Task) bool {
+	for _, dep := range task.DependsOn {
+		if _, unprocessed := unprocessedTasks[dep.TaskId]; unprocessed {
+			return false
+		}
+	}
+	return true
+}
+
+// sortLayer groups tasks by common dependencies, sorting alphabetically within each group
+func sortLayer(layer []Task, idToDisplayName map[string]string) []Task {
+	sortKeys := make([]string, 0, len(layer))
+	sortKeyToTask := make(map[string]Task)
+	for _, task := range layer {
+		// Construct a key to sort by, consisting of all dependency names, sorted alphabetically,
+		// followed by the task name
+		sortKeyWords := make([]string, 0, len(task.DependsOn)+1)
+		for _, dep := range task.DependsOn {
+			depName, ok := idToDisplayName[dep.TaskId]
+			// Cross-variant dependencies will not be included in idToDisplayName
+			if !ok {
+				depName = dep.TaskId
+			}
+			sortKeyWords = append(sortKeyWords, depName)
+		}
+		sort.Strings(sortKeyWords)
+		sortKeyWords = append(sortKeyWords, task.DisplayName)
+		sortKey := strings.Join(sortKeyWords, " ")
+		sortKeys = append(sortKeys, sortKey)
+		sortKeyToTask[sortKey] = task
+	}
+	sort.Strings(sortKeys)
+	sortedLayer := make([]Task, 0, len(layer))
+	for _, sortKey := range sortKeys {
+		sortedLayer = append(sortedLayer, sortKeyToTask[sortKey])
+	}
+	return sortedLayer
 }
