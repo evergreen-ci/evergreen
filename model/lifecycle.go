@@ -407,7 +407,20 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	tasksToCreate := []BuildVariantTask{}
 	createAll := len(taskNames) == 0
 	for _, task := range buildVariant.Tasks {
-		if task.Name == evergreen.PushStage &&
+		// get the task spec out of the project
+		taskSpec := project.GetSpecForTask(task.Name)
+
+		// sanity check that the config isn't malformed
+		if taskSpec.Name == "" {
+			return nil, fmt.Errorf("config is malformed: variant '%v' runs "+
+				"task called '%v' but no such task exists for repo %v for "+
+				"version %v", buildVariant.Name, task.Name, project.Identifier, v.Id)
+		}
+
+		// update task document with spec fields
+		task.Populate(taskSpec)
+
+		if task.Patchable != nil && *task.Patchable == false &&
 			b.Requester == evergreen.PatchVersionRequester {
 			continue
 		}
@@ -425,20 +438,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	// create and insert all of the actual tasks
 	tasks := make([]*Task, 0, len(tasksToCreate))
 	for _, task := range tasksToCreate {
-
-		// get the task spec out of the project
-		taskSpec := project.GetSpecForTask(task.Name)
-
-		// sanity check that the config isn't malformed
-		if taskSpec.Name == "" {
-			return nil, fmt.Errorf("config is malformed: variant '%v' runs "+
-				"task called '%v' but no such task exists for repo %v for "+
-				"version %v", buildVariant.Name, task.Name, project.Identifier, v.Id)
-		}
-
-		// update task document with spec fields
-		task.Populate(taskSpec)
-
 		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
 
 		// set the new task's dependencies
