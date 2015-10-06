@@ -82,11 +82,7 @@ function VersionController($scope, $location, $http, $filter, $now, $window) {
       }
       $scope.taskGrid[version.Builds[i].Build.display_name] = row;
     }
-    $scope.taskNames = Object.keys(taskNames).sort(function(a, b) {
-      if (a == 'compile' || b == 'push') return -1;
-      if (a == 'push' || b == 'compile') return 1;
-      return a.localeCompare(b);
-    })
+    $scope.taskNames = Object.keys(taskNames).sort()
     $scope.lastUpdate = $now.now();
   };
 
