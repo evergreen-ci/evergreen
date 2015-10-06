@@ -311,6 +311,7 @@ func TestPopulateBVT(t *testing.T) {
 					Stepback:        new(bool),
 					DependsOn:       []TaskDependency{{Name: "other"}},
 					Priority:        1000,
+					Patchable:       new(bool),
 				},
 			},
 			BuildVariants: []BuildVariant{
@@ -331,6 +332,7 @@ func TestPopulateBVT(t *testing.T) {
 				So(bvt.Name, ShouldEqual, "task1")
 				So(bvt.ExecTimeoutSecs, ShouldEqual, 500)
 				So(bvt.Stepback, ShouldNotBeNil)
+				So(bvt.Patchable, ShouldNotBeNil)
 				So(len(bvt.DependsOn), ShouldEqual, 1)
 
 				Convey("but not set fields", func() { So(bvt.Priority, ShouldEqual, 5) })

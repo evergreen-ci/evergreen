@@ -58,6 +58,7 @@ type BuildVariantTask struct {
 
 	// fields to overwrite ProjectTask settings
 	Priority  int              `yaml:"priority" bson:"priority"`
+	Patchable *bool            `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
 	DependsOn []TaskDependency `yaml:"depends_on" bson:"depends_on"`
 
 	// currently unsupported (TODO EVG-578)
@@ -77,6 +78,9 @@ func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
 	}
 	if bvt.Priority == 0 {
 		bvt.Priority = pt.Priority
+	}
+	if bvt.Patchable == nil {
+		bvt.Patchable = pt.Patchable
 	}
 	// TODO these are copied but unused until EVG-578 is completed
 	if bvt.ExecTimeoutSecs == 0 {
@@ -227,7 +231,8 @@ type ProjectTask struct {
 	//   1. nil   = not overriding the project setting (default)
 	//   2. true  = overriding the project setting with true
 	//   3. false = overriding the project setting with false
-	Stepback *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
+	Patchable *bool `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
+	Stepback  *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 }
 
 type TaskConfig struct {
