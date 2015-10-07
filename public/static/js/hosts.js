@@ -7,7 +7,7 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     },
     {
       name: 'Distro',
-      by: 'distro',
+      by: 'distro._id',
       order: false,
     },
     {
