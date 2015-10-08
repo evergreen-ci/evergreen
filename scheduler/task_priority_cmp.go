@@ -46,6 +46,21 @@ func byStageName(stageName string) taskPriorityCmp {
 	}
 }
 
+// byNumDeps compares the NumDependents field of the Task documents for
+// each Task.  The Task whose NumDependents field is higher will be considered
+// more important.
+func byNumDeps(t1, t2 model.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+	error) {
+	if t1.NumDependents > t2.NumDependents {
+		return 1, nil
+	}
+	if t1.NumDependents < t2.NumDependents {
+		return -1, nil
+	}
+
+	return 0, nil
+}
+
 // byRevisionOrderNumber compares the RevisionOrderNumber fields for the two Tasks,
 // and considers the one with the higher RevisionOrderNumber to be more important.
 // byRevisionOrderNumber short circuits if the two tasks are not of the same
