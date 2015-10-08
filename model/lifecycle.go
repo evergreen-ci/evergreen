@@ -504,8 +504,44 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		tasks = append(tasks, newTask)
 	}
 
+	// Set the NumDependents field
+	// Existing tasks in the db and tasks in other builds are not updated
+	setNumDeps(tasks)
+
 	// return all of the tasks created
 	return tasks, nil
+}
+
+// setNumDeps sets NumDependents for each task in tasks.
+// NumDependents is the number of tasks depending on the task. Only tasks created at the same time
+// and in the same variant are included.
+func setNumDeps(tasks []*Task) {
+	idToTask := make(map[string]*Task)
+	for i, task := range tasks {
+		idToTask[task.Id] = tasks[i]
+	}
+
+	for _, task := range tasks {
+		// Recursively find all tasks that task depends on and increments their NumDependents field
+		setNumDepsRec(task, idToTask, make(map[string]bool))
+	}
+
+	return
+}
+
+// setNumDepsRec recursively finds all tasks that task depends on and increments their NumDependents field.
+// tasks not in idToTasks are not affected.
+func setNumDepsRec(task *Task, idToTasks map[string]*Task, seen map[string]bool) {
+	for _, dep := range task.DependsOn {
+		// Check whether this dependency is included in the tasks we're currently creating
+		if depTask, ok := idToTasks[dep.TaskId]; ok {
+			if !seen[depTask.Id] {
+				seen[depTask.Id] = true
+				depTask.NumDependents = depTask.NumDependents + 1
+				setNumDepsRec(depTask, idToTasks, seen)
+			}
+		}
+	}
 }
 
 // TryMarkPatchBuildFinished attempts to mark a patch as finished if all
