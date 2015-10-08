@@ -81,6 +81,13 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
+	project := &model.Project{}
+	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+	}
+	projCtx.Project = project
+
 	patchUpdateReq := struct {
 		Variants    []string `json:"variants"`
 		Tasks       []string `json:"tasks"`
@@ -93,12 +100,37 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Unmarshal the project config and set it in the project context
-	project := &model.Project{}
-	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+	// Add all dependencies to patchUpdateReq.Tasks and add their variants to patchUpdateReq.Variants
+
+	// Construct a map from a task's name to its ProjectTask
+	nameToTask := make(map[string]model.ProjectTask)
+	for _, task := range projCtx.Project.Tasks {
+		nameToTask[task.Name] = task
 	}
-	projCtx.Project = project
+
+	// Construct a set of variants to include in patchUpdateReq.Variants
+	updateReqVariants := make(map[string]bool)
+	for _, variant := range patchUpdateReq.Variants {
+		updateReqVariants[variant] = true
+	}
+
+	// Construct a set of tasks to include in patchUpdateReq.Tasks
+	// Add all dependencies, and add their variants to updateReqVariants
+	updateReqTasks := make(map[string]bool)
+	for _, task := range patchUpdateReq.Tasks {
+		updateReqTasks[task] = true
+		addDeps(task, updateReqTasks, updateReqVariants, nameToTask)
+	}
+
+	// Reset patchUpdateReq.Tasks and patchUpdateReq.Variants
+	patchUpdateReq.Tasks = make([]string, 0, len(updateReqTasks))
+	for task := range updateReqTasks {
+		patchUpdateReq.Tasks = append(patchUpdateReq.Tasks, task)
+	}
+	patchUpdateReq.Variants = make([]string, 0, len(updateReqVariants))
+	for variant := range updateReqVariants {
+		patchUpdateReq.Variants = append(patchUpdateReq.Variants, variant)
+	}
 
 	if projCtx.Patch.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
@@ -153,6 +185,21 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, struct {
 			VersionId string `json:"version"`
 		}{ver.Id})
+	}
+}
+
+// addDeps recursively finds all dependencies of task, adds their names to tasks and adds their
+// variants to variants.
+// We assume all tasks are present in nameToTask.
+func addDeps(task string, tasks map[string]bool, variants map[string]bool, nameToTask map[string]model.ProjectTask) {
+	for _, dep := range nameToTask[task].DependsOn {
+		if dep.Variant != "" {
+			variants[dep.Variant] = true
+		}
+		if !tasks[dep.Name] {
+			tasks[dep.Name] = true
+			addDeps(dep.Name, tasks, variants, nameToTask)
+		}
 	}
 }
 
