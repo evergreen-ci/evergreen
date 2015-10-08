@@ -56,11 +56,12 @@ type Task struct {
 	LastHeartbeat time.Time `bson:"last_heartbeat"`
 
 	// used to indicate whether task should be scheduled to run
-	Activated    bool         `bson:"activated" json:"activated"`
-	BuildId      string       `bson:"build_id" json:"build_id"`
-	DistroId     string       `bson:"distro" json:"distro"`
-	BuildVariant string       `bson:"build_variant" json:"build_variant"`
-	DependsOn    []Dependency `bson:"depends_on" json:"depends_on"`
+	Activated     bool         `bson:"activated" json:"activated"`
+	BuildId       string       `bson:"build_id" json:"build_id"`
+	DistroId      string       `bson:"distro" json:"distro"`
+	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
+	DependsOn     []Dependency `bson:"depends_on" json:"depends_on"`
+	NumDependents int          `bson:"num_dependents,omitempty" json:"num_dependents,omitempty"`
 
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
@@ -172,6 +173,7 @@ var (
 	TaskDistroIdKey            = bsonutil.MustHaveTag(Task{}, "DistroId")
 	TaskBuildVariantKey        = bsonutil.MustHaveTag(Task{}, "BuildVariant")
 	TaskDependsOnKey           = bsonutil.MustHaveTag(Task{}, "DependsOn")
+	TaskNumDepsKey             = bsonutil.MustHaveTag(Task{}, "NumDependents")
 	TaskDisplayNameKey         = bsonutil.MustHaveTag(Task{}, "DisplayName")
 	TaskHostIdKey              = bsonutil.MustHaveTag(Task{}, "HostId")
 	TaskExecutionKey           = bsonutil.MustHaveTag(Task{}, "Execution")

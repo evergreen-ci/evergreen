@@ -1000,3 +1000,31 @@ func TestDeletingBuild(t *testing.T) {
 		})
 	})
 }
+
+func TestSetNumDeps(t *testing.T) {
+	Convey("setNumDeps correctly sets NumDependents for each task", t, func() {
+		tasks := []*Task{
+			&Task{
+				Id: "task1",
+			},
+			&Task{
+				Id:        "task2",
+				DependsOn: []Dependency{{TaskId: "task1"}},
+			},
+			&Task{
+				Id:        "task3",
+				DependsOn: []Dependency{{TaskId: "task1"}},
+			},
+			&Task{
+				Id:        "task4",
+				DependsOn: []Dependency{{TaskId: "task2"}, {TaskId: "task3"}, {TaskId: "not_here"}},
+			},
+		}
+		setNumDeps(tasks)
+		So(len(tasks), ShouldEqual, 4)
+		So(tasks[0].NumDependents, ShouldEqual, 3)
+		So(tasks[1].NumDependents, ShouldEqual, 1)
+		So(tasks[2].NumDependents, ShouldEqual, 1)
+		So(tasks[3].NumDependents, ShouldEqual, 0)
+	})
+}

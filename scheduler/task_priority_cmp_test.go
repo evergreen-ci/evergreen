@@ -89,6 +89,33 @@ func TestTaskImportanceComparators(t *testing.T) {
 
 		})
 
+		Convey("the dependent count comparator should prioritize a task"+
+			" if its number of dependents is higher", func() {
+
+			cmpResult, err := byNumDeps(tasks[0], tasks[1],
+				taskPrioritizer)
+			So(err, ShouldBeNil)
+			So(cmpResult, ShouldEqual, 0)
+
+			tasks[0].NumDependents = 1
+			cmpResult, err = byNumDeps(tasks[0], tasks[1],
+				taskPrioritizer)
+			So(err, ShouldBeNil)
+			So(cmpResult, ShouldEqual, 1)
+
+			cmpResult, err = byNumDeps(tasks[1], tasks[0],
+				taskPrioritizer)
+			So(err, ShouldBeNil)
+			So(cmpResult, ShouldEqual, -1)
+
+			tasks[1].NumDependents = 1
+			cmpResult, err = byNumDeps(tasks[0], tasks[1],
+				taskPrioritizer)
+			So(err, ShouldBeNil)
+			So(cmpResult, ShouldEqual, 0)
+
+		})
+
 		Convey("the commit order number comparator should prioritize a task"+
 			" whose commit order number is higher, providing the tasks are"+
 			" part of the same project", func() {
