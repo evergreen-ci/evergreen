@@ -348,6 +348,7 @@ func NewTaskConfig(d *distro.Distro, p *Project, t *Task, r *ProjectRef) (*TaskC
 func populateExpansions(d *distro.Distro, bv *BuildVariant, t *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
+	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)
 	expansions.Put("task_name", t.DisplayName)
 	expansions.Put("build_id", t.BuildId)
