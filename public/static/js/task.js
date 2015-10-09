@@ -292,7 +292,7 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
 
     $scope.isMet = function(dependency) {
       // check if a dependency is met, unmet, or in progress
-      if (dependency.status == "blocked") {
+      if (dependency.task_waiting == "blocked") {
         return "unmet"; 
       }
       if (dependency.status != "failed" && dependency.status != "success") {

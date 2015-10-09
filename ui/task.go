@@ -45,6 +45,7 @@ type uiTaskData struct {
 	Distro           string                  `json:"distro"`
 	BuildId          string                  `json:"build_id"`
 	Status           string                  `json:"status"`
+	TaskWaiting      string                  `json:"task_waiting"`
 	Activated        bool                    `json:"activated"`
 	Restarts         int                     `json:"restarts"`
 	Execution        int                     `json:"execution"`
@@ -101,6 +102,7 @@ type uiDep struct {
 	BuildVariant   string                  `json:"build_variant"`
 	Details        apimodels.TaskEndDetail `json:"task_end_details"`
 	Recursive      bool                    `json:"recursive"`
+	TaskWaiting    string                  `json:"task_waiting"`
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -205,13 +207,13 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Archived:            archived,
 	}
 
-	deps, status, err := getTaskDependencies(projCtx.Task)
+	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	task.DependsOn = deps
-	task.Status = status // update status to "blocked" or "pending" if appropriate
+	task.TaskWaiting = taskWaiting
 
 	// Activating and deactivating tasks should clear out the
 	// MinQueuePos but just in case, lets not show it if we shouldn't
@@ -447,9 +449,9 @@ func setBlockedOrPending(task model.Task, tasks map[string]model.Task, uiDeps ma
 		depTask := tasks[dep.TaskId]
 
 		uid := uiDeps[depTask.Id]
-		uid.Status = setBlockedOrPending(depTask, tasks, uiDeps)
+		uid.TaskWaiting = setBlockedOrPending(depTask, tasks, uiDeps)
 		uiDeps[depTask.Id] = uid
-		if uid.Status == TaskBlocked {
+		if uid.TaskWaiting == TaskBlocked {
 			blocked = true
 		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
 			if depTask.Status != dep.Status && dep.Status != model.AllStatuses {
@@ -465,7 +467,7 @@ func setBlockedOrPending(task model.Task, tasks map[string]model.Task, uiDeps ma
 	if pending {
 		return TaskPending
 	}
-	return task.Status
+	return ""
 }
 
 // async handler for polling the task log
