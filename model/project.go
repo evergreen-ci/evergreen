@@ -660,3 +660,24 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 	}
 	return nil, fmt.Errorf("No such module on this project.")
 }
+
+func (p *Project) FindTasksForVariant(build string) []string {
+	for _, b := range p.BuildVariants {
+		if b.Name == build {
+			tasks := make([]string, 0, len(b.Tasks))
+			for _, task := range b.Tasks {
+				tasks = append(tasks, task.Name)
+			}
+			return tasks
+		}
+	}
+	return nil
+}
+
+func (p *Project) FindAllVariants() []string {
+	variants := make([]string, 0, len(p.BuildVariants))
+	for _, b := range p.BuildVariants {
+		variants = append(variants, b.Name)
+	}
+	return variants
+}
