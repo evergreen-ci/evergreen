@@ -200,14 +200,14 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
         </div>
       </div>
 
-      <div class="row" ng-show="!!dependencies && dependencies.length > 0">
+      <div class="row" ng-show="!!task.depends_on && task.depends_on.length > 0">
         <div class="col-lg-12">
           <h3 class="section-heading"><i class="icon-exchange"></i> Depends On</h3>
-          
+          <span ng-show="task.status=='blocked'" style="color:red"> This task will not run because its dependencies are in an undesirable state.</span>
           <div class="mci-pod">
             <table class="table table-condensed dep-table">
               <tbody>
-                <tr ng-repeat="dependency in dependencies | orderBy:dependency.build_variant:dependency.display_name">
+                <tr ng-repeat="dependency in task.depends_on | filter :{recursive:false} | orderBy:dependency.build_variant:dependency.display_name">
                   <td class="dep-status">
                     <i ng-show="isMet(dependency) == 'met'" class="icon-ok"></i>
                     <i ng-show="isMet(dependency) == 'unmet'" class="icon-ban-circle"></i>

@@ -289,17 +289,12 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
     }
 
     $scope.sortBy = $scope.sortOrders[0];
-    $scope.dependencies = [];
-    $http.get('/task/dependencies/' + task.id + '/' + task.execution).
-    success(function(data) {
-      $scope.dependencies = data;
-    }).
-    error(function(data) {
-      alert('Error getting task dependencies: ' + JSON.stringify(data));
-    });
 
     $scope.isMet = function(dependency) {
       // check if a dependency is met, unmet, or in progress
+      if (dependency.status == "blocked") {
+        return "unmet"; 
+      }
       if (dependency.status != "failed" && dependency.status != "success") {
         // if we didn't succeed or fail, don't report anything
         return "";

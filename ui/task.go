@@ -29,6 +29,10 @@ const (
 	// Number of revisions to return on subsequent requests
 	NoRevisions     = 0
 	MaxNumRevisions = 50
+
+	// status overwrites
+	TaskBlocked = "blocked"
+	TaskPending = "pending"
 )
 
 var NumTestsToSearchForTestNames = 100
@@ -56,6 +60,7 @@ type uiTaskData struct {
 	TestResults      []model.TestResult      `json:"test_results"`
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
+	DependsOn        []uiDep                 `json:"depends_on"`
 
 	// from the host doc (the dns name)
 	HostDNS string `json:"host_dns,omitempty"`
@@ -85,6 +90,17 @@ type uiTaskData struct {
 	Archived bool `json:"archived"`
 
 	PatchInfo *uiPatch `json:"patch_info"`
+}
+
+type uiDep struct {
+	Id             string                  `json:"id"`
+	Name           string                  `json:"display_name"`
+	Status         string                  `json:"status"`
+	RequiredStatus string                  `json:"required"`
+	Activated      bool                    `json:"activated"`
+	BuildVariant   string                  `json:"build_variant"`
+	Details        apimodels.TaskEndDetail `json:"task_end_details"`
+	Recursive      bool                    `json:"recursive"`
 }
 
 func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
@@ -189,6 +205,14 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Archived:            archived,
 	}
 
+	deps, status, err := getTaskDependencies(projCtx.Task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	task.DependsOn = deps
+	task.Status = status // update status to "blocked" or "pending" if appropriate
+
 	// Activating and deactivating tasks should clear out the
 	// MinQueuePos but just in case, lets not show it if we shouldn't
 	if projCtx.Task.Status == evergreen.TaskUndispatched && projCtx.Task.Activated {
@@ -279,16 +303,11 @@ func getTaskLogs(taskId string, execution int, limit int, logType string,
 		logTypeFilter)
 }
 
-func (uis *UIServer) taskDependencies(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	if projCtx.Task == nil {
-		http.Error(w, "not found", http.StatusNotFound)
-		return
-	}
-
+// getTaskDependencies returns the uiDeps for the task and its status (either its original status,
+// "blocked", or "pending")
+func getTaskDependencies(task *model.Task) ([]uiDep, string, error) {
 	depIds := []string{}
-	for _, dep := range projCtx.Task.DependsOn {
+	for _, dep := range task.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
 	dependencies, err := model.FindAllTasks(
@@ -302,28 +321,19 @@ func (uis *UIServer) taskDependencies(w http.ResponseWriter, r *http.Request) {
 			"status_details":   1,
 			"build_variant":    1,
 			"task_end_details": 1,
+			"depends_on":       1,
 		}, []string{}, 0, 0)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, "", err
 	}
 
-	type uiDep struct {
-		Id             string                  `json:"id"`
-		Name           string                  `json:"display_name"`
-		Status         string                  `json:"status"`
-		RequiredStatus string                  `json:"required"`
-		Activated      bool                    `json:"activated"`
-		BuildVariant   string                  `json:"build_variant"`
-		Details        apimodels.TaskEndDetail `json:"task_end_details"`
-	}
-	uiDeps := []uiDep{}
+	idToUiDep := make(map[string]uiDep)
 	// match each task with its dependency requirements
 	for _, depTask := range dependencies {
-		for _, dep := range projCtx.Task.DependsOn {
+		for _, dep := range task.DependsOn {
 			if dep.TaskId == depTask.Id {
-				uiDeps = append(uiDeps, uiDep{
+				idToUiDep[depTask.Id] = uiDep{
 					Id:             depTask.Id,
 					Name:           depTask.DisplayName,
 					Status:         depTask.Status,
@@ -331,11 +341,131 @@ func (uis *UIServer) taskDependencies(w http.ResponseWriter, r *http.Request) {
 					Activated:      depTask.Activated,
 					BuildVariant:   depTask.BuildVariant,
 					Details:        depTask.Details,
-				})
+					//TODO EVG-614: add "Recursive: dep.Recursive," once Task.DependsOn includes all recursive dependencies
+				}
 			}
 		}
 	}
-	uis.WriteJSON(w, http.StatusOK, uiDeps)
+
+	idToDep := make(map[string]model.Task)
+	for _, dep := range dependencies {
+		idToDep[dep.Id] = dep
+	}
+
+	// TODO EVG 614: delete this section once Task.DependsOn includes all recursive dependencies
+	err = addRecDeps(idToDep, idToUiDep, make(map[string]bool))
+	if err != nil {
+		return nil, "", err
+	}
+
+	// set the status for each of the uiDeps as "blocked" or "pending" if appropriate
+	// and get the status for task
+	status := setBlockedOrPending(*task, idToDep, idToUiDep)
+
+	uiDeps := make([]uiDep, 0, len(idToUiDep))
+	for _, dep := range idToUiDep {
+		uiDeps = append(uiDeps, dep)
+	}
+	return uiDeps, status, nil
+}
+
+// addRecDeps recursively finds all dependencies of tasks and adds them to tasks and uiDeps.
+// done is a hashtable of task IDs whose dependencies we have found.
+// TODO EVG-614: delete this function once Task.DependsOn includes all recursive dependencies.
+func addRecDeps(tasks map[string]model.Task, uiDeps map[string]uiDep, done map[string]bool) error {
+	curTask := make(map[string]bool)
+	depIds := make([]string, 0)
+	for _, task := range tasks {
+		if _, ok := done[task.Id]; !ok {
+			for _, dep := range task.DependsOn {
+				depIds = append(depIds, dep.TaskId)
+			}
+			curTask[task.Id] = true
+		}
+	}
+
+	if len(depIds) == 0 {
+		return nil
+	}
+
+	deps, err := model.FindAllTasks(
+		bson.M{
+			"_id": bson.M{"$in": depIds},
+		},
+		bson.M{
+			"display_name":     1,
+			"status":           1,
+			"activated":        1,
+			"status_details":   1,
+			"build_variant":    1,
+			"task_end_details": 1,
+			"depends_on":       1,
+		}, []string{}, 0, 0)
+
+	if err != nil {
+		return err
+	}
+
+	for _, dep := range deps {
+		tasks[dep.Id] = dep
+	}
+
+	for _, task := range tasks {
+		if _, ok := curTask[task.Id]; ok {
+			for _, dep := range task.DependsOn {
+				if uid, ok := uiDeps[dep.TaskId]; !ok ||
+					// only replace if the current uiDep is not strict and not recursive
+					(uid.RequiredStatus == model.AllStatuses && !uid.Recursive) {
+					depTask := tasks[dep.TaskId]
+					uiDeps[depTask.Id] = uiDep{
+						Id:             depTask.Id,
+						Name:           depTask.DisplayName,
+						Status:         depTask.Status,
+						RequiredStatus: dep.Status,
+						Activated:      depTask.Activated,
+						BuildVariant:   depTask.BuildVariant,
+						Details:        depTask.Details,
+						Recursive:      true,
+					}
+				}
+			}
+			done[task.Id] = true
+		}
+	}
+
+	return addRecDeps(tasks, uiDeps, done)
+}
+
+// setBlockedOrPending sets the status of all uiDeps to "blocked" or "pending" if appropriate
+// and returns "blocked", "pending", or the original status of task as appropriate.
+// A task is blocked if some recursive dependency is in an undesirable state.
+// A task is pending if some dependency has not finished.
+func setBlockedOrPending(task model.Task, tasks map[string]model.Task, uiDeps map[string]uiDep) string {
+	blocked := false
+	pending := false
+	for _, dep := range task.DependsOn {
+		depTask := tasks[dep.TaskId]
+
+		uid := uiDeps[depTask.Id]
+		uid.Status = setBlockedOrPending(depTask, tasks, uiDeps)
+		uiDeps[depTask.Id] = uid
+		if uid.Status == TaskBlocked {
+			blocked = true
+		} else if depTask.Status == evergreen.TaskSucceeded || depTask.Status == evergreen.TaskFailed {
+			if depTask.Status != dep.Status && dep.Status != model.AllStatuses {
+				blocked = true
+			}
+		} else {
+			pending = true
+		}
+	}
+	if blocked {
+		return TaskBlocked
+	}
+	if pending {
+		return TaskPending
+	}
+	return task.Status
 }
 
 // async handler for polling the task log

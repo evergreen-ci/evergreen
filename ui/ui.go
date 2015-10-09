@@ -88,8 +88,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/json/task_log/{task_id}", uis.loadCtx(uis.taskLog))
 	r.HandleFunc("/json/task_log/{task_id}/{execution}", uis.loadCtx(uis.taskLog))
 	r.HandleFunc("/task_log_raw/{task_id}/{execution}", uis.loadCtx(uis.taskLogRaw))
-	r.HandleFunc("/task/dependencies/{task_id}", uis.loadCtx(uis.taskDependencies))
-	r.HandleFunc("/task/dependencies/{task_id}/{execution}", uis.loadCtx(uis.taskDependencies))
 
 	// Test Logs
 	r.HandleFunc("/test_log/{task_id}/{task_execution}/{test_name}", uis.loadCtx(uis.testLog))
