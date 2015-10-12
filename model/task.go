@@ -66,9 +66,6 @@ type Task struct {
 	// Human-readable name
 	DisplayName string `bson:"display_name" json:"display_name"`
 
-	// Tags that describe the task
-	Tags []string `bson:"tags,omitempty" json:"tags,omitempty"`
-
 	// The host the task was run on
 	HostId string `bson:"host_id" json:"host_id"`
 

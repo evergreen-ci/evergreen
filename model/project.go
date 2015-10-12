@@ -25,47 +25,47 @@ const (
 )
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind           string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	Enabled            bool                       `yaml:"enabled" bson:"enabled"`
+	Stepback           bool                       `yaml:"stepback" bson:"stepback"`
+	BatchTime          int                        `yaml:"batchtime" bson:"batch_time"`
+	Owner              string                     `yaml:"owner" bson:"owner_name"`
+	Repo               string                     `yaml:"repo" bson:"repo_name"`
+	RemotePath         string                     `yaml:"remote_path" bson:"remote_path"`
+	RepoKind           string                     `yaml:"repokind" bson:"repo_kind"`
+	Branch             string                     `yaml:"branch" bson:"branch_name"`
+	Identifier         string                     `yaml:"identifier" bson:"identifier"`
+	DisplayName        string                     `yaml:"display_name" bson:"display_name"`
+	CommandType        string                     `yaml:"command_type" bson:"command_type"`
+	Pre                *YAMLCommandSet            `yaml:"pre" bson:"pre"`
+	Post               *YAMLCommandSet            `yaml:"post" bson:"post"`
+	Timeout            *YAMLCommandSet            `yaml:"timeout" bson:"timeout"`
 	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants      []BuildVariant             `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix,omitempty" bson:"build_variant_matrix"`
+	Modules            []Module                   `yaml:"modules" bson:"modules"`
+	BuildVariants      []BuildVariant             `yaml:"buildvariants" bson:"build_variants"`
+	Functions          map[string]*YAMLCommandSet `yaml:"functions" bson:"functions"`
+	Tasks              []ProjectTask              `yaml:"tasks" bson:"tasks"`
+	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix" bson:"build_variant_matrix"`
 
 	// Flag that indicates a project as requiring user authentication
-	Private bool `yaml:"private,omitempty" bson:"private"`
+	Private bool `yaml:"private" bson:"private"`
 }
 
 // Unmarshalled from the "tasks" list in an individual build variant
 type BuildVariantTask struct {
 	// Name has to match the name field of one of the tasks specified at
 	// the project level, or an error will be thrown
-	Name string `yaml:"name,omitempty" bson:"name"`
+	Name string `yaml:"name" bson:"name"`
 
 	// fields to overwrite ProjectTask settings
-	Priority  int              `yaml:"priority,omitempty" bson:"priority"`
-	DependsOn []TaskDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
+	Priority  int              `yaml:"priority" bson:"priority"`
+	DependsOn []TaskDependency `yaml:"depends_on" bson:"depends_on"`
 
 	// currently unsupported (TODO EVG-578)
-	ExecTimeoutSecs int   `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	ExecTimeoutSecs int   `yaml:"exec_timeout_secs" bson:"exec_timeout_secs"`
 	Stepback        *bool `yaml:"stepback,omitempty" bson:"stepback,omitempty"`
 
 	// the distros that the task can be run on
-	Distros []string `yaml:"distros,omitempty" bson:"distros"`
+	Distros []string `yaml:"distros" bson:"distros"`
 }
 
 // Populate updates the base fields of the BuildVariantTask with
@@ -87,35 +87,13 @@ func (bvt *BuildVariantTask) Populate(pt ProjectTask) {
 	}
 }
 
-// UnmarshalYAML allows tasks to be referenced as single selector strings.
-// This works by first attempting to unmarshal the YAML into a string
-// and then falling back to the BuildVariantTask struct.
-func (bvt *BuildVariantTask) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// first, attempt to unmarshal just a selector string
-	var onlySelector string
-	if err := unmarshal(&onlySelector); err == nil {
-		bvt.Name = onlySelector
-		return nil
-	}
-	// we define a new type so that we can grab the yaml struct tags without the struct methods,
-	// preventing infinte recursion on the UnmarshalYAML() method.
-	type bvtCopyType BuildVariantTask
-	var bvtc bvtCopyType
-	err := unmarshal(&bvtc)
-	if err != nil {
-		return err
-	}
-	*bvt = BuildVariantTask(bvtc)
-	return nil
-}
-
 type BuildVariant struct {
-	Name        string            `yaml:"name,omitempty" bson:"name"`
-	DisplayName string            `yaml:"display_name,omitempty" bson:"display_name"`
-	Expansions  map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
-	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
-	Disabled    bool              `yaml:"disabled,omitempty" bson:"disabled"`
-	Push        bool              `yaml:"push,omitempty" bson:"push"`
+	Name        string            `yaml:"name" bson:"name"`
+	DisplayName string            `yaml:"display_name" bson:"display_name"`
+	Expansions  map[string]string `yaml:"expansions" bson:"expansions"`
+	Modules     []string          `yaml:"modules" bson:"modules"`
+	Disabled    bool              `yaml:"disabled" bson:"disabled"`
+	Push        bool              `yaml:"push" bson:"push"`
 
 	// Use a *int for 2 possible states
 	// nil - not overriding the project setting
@@ -130,73 +108,73 @@ type BuildVariant struct {
 
 	// the default distros.  will be used to run a task if no distro field is
 	// provided for the task
-	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
+	RunOn []string `yaml:"run_on" bson:"run_on"`
 
 	// all of the tasks to be run on the build variant, compile through tests.
-	Tasks                 []BuildVariantTask `yaml:"tasks,omitempty" bson:"tasks"`
-	MatrixParameterValues map[string]string  `yaml:"matrix_parameter_values,omitempty" bson:"matrix_parameter_values"`
+	Tasks                 []BuildVariantTask `yaml:"tasks" bson:"tasks"`
+	MatrixParameterValues map[string]string  `yaml:"matrix_parameter_values" bson:"matrix_parameter_values"`
 }
 
 type Module struct {
-	Name   string `yaml:"name,omitempty" bson:"name"`
-	Branch string `yaml:"branch,omitempty" bson:"branch"`
-	Repo   string `yaml:"repo,omitempty" bson:"repo"`
-	Prefix string `yaml:"prefix,omitempty" bson:"prefix"`
+	Name   string `yaml:"name" bson:"name"`
+	Branch string `yaml:"branch" bson:"branch"`
+	Repo   string `yaml:"repo" bson:"repo"`
+	Prefix string `yaml:"prefix" bson:"prefix"`
 }
 
 type TestSuite struct {
-	Name  string `yaml:"name,omitempty"`
-	Phase string `yaml:"phase,omitempty"`
+	Name  string `yaml:"name"`
+	Phase string `yaml:"phase"`
 }
 
 type PluginCommandConf struct {
-	Function string `yaml:"func,omitempty" bson:"func"`
+	Function string `yaml:"func" bson:"func"`
 	// Type is used to differentiate between setup related commands and actual
 	// testing commands.
-	Type string `yaml:"type,omitempty" bson:"type"`
+	Type string `yaml:"type" bson:"type"`
 
 	// DisplayName is a human readable description of the function of a given
 	// command.
-	DisplayName string `yaml:"display_name,omitempty" bson:"display_name"`
+	DisplayName string `yaml:"display_name" bson:"display_name"`
 
 	// Command is a unique identifier for the command configuration. It consists of a
 	// plugin name and a command name.
-	Command string `yaml:"command,omitempty" bson:"command"`
+	Command string `yaml:"command" bson:"command"`
 
 	// Variants is used to enumerate the particular sets of buildvariants to run
 	// this command configuration on. If it is empty, it is run on all defined
 	// variants.
-	Variants []string `yaml:"variants,omitempty" bson:"variants"`
+	Variants []string `yaml:"variants" bson:"variants"`
 
 	// TimeoutSecs indicates the maximum duration the command is allowed to run
 	// for. If undefined, it is unbounded.
-	TimeoutSecs int `yaml:"timeout_secs,omitempty" bson:"timeout_secs"`
+	TimeoutSecs int `yaml:"timeout_secs" bson:"timeout_secs"`
 
 	// Params are used to supply configuratiion specific information.
-	Params map[string]interface{} `yaml:"params,omitempty" bson:"params"`
+	Params map[string]interface{} `yaml:"params" bson:"params"`
 
 	// Vars defines variables that can be used within commands.
-	Vars map[string]string `yaml:"vars,omitempty" bson:"vars"`
+	Vars map[string]string `yaml:"vars" bson:"vars"`
 }
 
 type ArtifactInstructions struct {
-	Include      []string `yaml:"include,omitempty" bson:"include"`
-	ExcludeFiles []string `yaml:"excludefiles,omitempty" bson:"exclude_files"`
+	Include      []string `yaml:"include" bson:"include"`
+	ExcludeFiles []string `yaml:"excludefiles" bson:"exclude_files"`
 }
 
 type MatrixParameterValue struct {
-	Value      string            `yaml:"value,omitempty" bson:"value"`
-	Expansions map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
+	Value      string            `yaml:"value" bson:"value"`
+	Expansions map[string]string `yaml:"expansions" bson:"expansions"`
 }
 
 type MatrixParameter struct {
-	Name   string                 `yaml:"name,omitempty" bson:"name"`
-	Values []MatrixParameterValue `yaml:"values,omitempty" bson:"values"`
+	Name   string                 `yaml:"name" bson:"name"`
+	Values []MatrixParameterValue `yaml:"values" bson:"values"`
 }
 
 type BuildVariantMatrix struct {
-	MatrixParameters []MatrixParameter `yaml:"matrix_parameters,omitempty" bson:"matrix_parameters"`
-	Template         BuildVariant      `yaml:"template,omitempty" bson:"template"`
+	MatrixParameters []MatrixParameter `yaml:"matrix_parameters" bson:"matrix_parameters"`
+	Template         BuildVariant      `yaml:"template" bson:"template"`
 }
 
 type YAMLCommandSet struct {
@@ -232,41 +210,18 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 
 // The information about a task's dependency
 type TaskDependency struct {
-	Name    string `yaml:"name,omitempty" bson:"name"`
-	Variant string `yaml:"variant,omitempty" bson:"variant,omitempty"`
-	Status  string `yaml:"status,omitempty" bson:"status,omitempty"`
-}
-
-// UnmarshalYAML allows tasks to be referenced as single selector strings.
-// This works by first attempting to unmarshal the YAML into a string
-// and then falling back to the TaskDependency struct.
-func (td *TaskDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	// first, attempt to unmarshal just a selector string
-	var onlySelector string
-	if err := unmarshal(&onlySelector); err == nil {
-		td.Name = onlySelector
-		return nil
-	}
-	// we define a new type so that we can grab the yaml struct tags without the struct methods,
-	// preventing infinte recursion on the UnmarshalYAML() method.
-	type tdCopyType TaskDependency
-	var tdc tdCopyType
-	err := unmarshal(&tdc)
-	if err != nil {
-		return err
-	}
-	*td = TaskDependency(tdc)
-	return nil
+	Name    string `yaml:"name" bson:"name"`
+	Variant string `yaml:"variant" bson:"variant,omitempty"`
+	Status  string `yaml:"status" bson:"status,omitempty"`
 }
 
 // Unmarshalled from the "tasks" list in the project file
 type ProjectTask struct {
-	Name            string              `yaml:"name,omitempty" bson:"name"`
-	Priority        int                 `yaml:"priority,omitempty" bson:"priority"`
-	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
-	DependsOn       []TaskDependency    `yaml:"depends_on,omitempty" bson:"depends_on"`
-	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands"`
-	Tags            []string            `yaml:"tags,omitempty" bson:"tags"`
+	Name            string              `yaml:"name" bson:"name"`
+	Priority        int                 `yaml:"priority" bson:"priority"`
+	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs" bson:"exec_timeout_secs"`
+	DependsOn       []TaskDependency    `yaml:"depends_on" bson:"depends_on"`
+	Commands        []PluginCommandConf `yaml:"commands" bson:"commands"`
 
 	// Use a *bool so that there are 3 possible states:
 	//   1. nil   = not overriding the project setting (default)
@@ -563,25 +518,6 @@ func (p *Project) GetVariantsWithTask(taskName string) []string {
 	return variantsList
 }
 
-// EvaluateTags replaces all tag selectors with actual tasks objects that
-// can be used by the rest of Evergreen's code.
-func (p *Project) EvaluateTags() (err error) {
-	tse := NewTaskSelectorEvaluator(p.Tasks)
-	for i, bv := range p.BuildVariants {
-		p.BuildVariants[i].Tasks, err = tse.EvaluateTasks(bv.Tasks)
-		if err != nil {
-			return fmt.Errorf("error evaluating tags on variant '%v': %v", bv.Name, err)
-		}
-	}
-	for i, t := range p.Tasks {
-		p.Tasks[i].DependsOn, err = tse.EvaluateDeps(t.DependsOn)
-		if err != nil {
-			return fmt.Errorf("error evaluating dependency tags on task '%v': %v", t.Name, err)
-		}
-	}
-	return nil
-}
-
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || util.SliceContains(p.Variants, variant)
@@ -680,15 +616,10 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags and matrix variants
-// are expanded.
+// and sets the project's identifier field to identifier
 func LoadProjectInto(data []byte, identifier string, project *Project) error {
 	if err := yaml.Unmarshal(data, project); err != nil {
-		return fmt.Errorf("parse error unmarshalling project: %v", err)
-	}
-	// expand task definitions
-	if err := project.EvaluateTags(); err != nil {
-		return fmt.Errorf("error evaluating project tags: %v", err)
+		return fmt.Errorf("Parse error unmarshalling project: %v", err)
 	}
 	project.Identifier = identifier
 	return addMatrixVariants(project)

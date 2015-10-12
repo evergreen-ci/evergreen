@@ -24,24 +24,6 @@ func init() {
 	}
 }
 
-const versionProjectString = `
-buildvariants:
-- name: ubuntu
-  display_name: ubuntu1404
-  run_on:
-  - ubuntu1404-test
-  expansions:
-    mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
-  tasks:
-  - name: agent
-  - name: plugin
-  - name: model
-tasks:
-- name: agent
-- name: plugin
-- name: model
-`
-
 // mock implementations, for testing purposes
 
 type MockTaskFinder struct{}
@@ -134,7 +116,7 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 			"be returned and the map should be updated", func() {
 			v := &version.Version{
 				Id:     "versionStr",
-				Config: versionProjectString,
+				Config: "\nbuildvariants:\n  - name: ubuntu\n    display_name: ubuntu\n    run_on:\n    - ubuntu1404-test\n    expansions: \n      mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz\n    tasks:\n    - name: agent\n    - name: plugin\n    - name: mci\n    - name: model\n    - name: scheduler\n    - name: notify\n    - name: cleanup\n    - name: thirdparty\n    - name: util\n    - name: db\n    - name: repotracker\n",
 			}
 
 			// insert the test version
@@ -149,7 +131,7 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 			So(buildVariant, ShouldNotBeNil)
 
 			// check buildvariant tasks
-			So(len(buildVariant.Tasks), ShouldEqual, 3)
+			So(len(buildVariant.Tasks), ShouldEqual, 11)
 		})
 
 		Reset(func() {

@@ -441,9 +441,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 
 		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
 
-		// set Tags based on the spec
-		newTask.Tags = taskSpec.Tags
-
 		// set the new task's dependencies
 		// TODO encapsulate better
 		if len(task.DependsOn) == 1 &&

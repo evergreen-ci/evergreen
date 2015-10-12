@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/util"
-	"strconv"
 	"strings"
 )
 
@@ -44,7 +43,6 @@ var projectSyntaxValidators = []projectValidator{
 	validateBVTaskNames,
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
-	validateProjectTaskIdsAndTags,
 	ensureReferentialIntegrity,
 }
 
@@ -570,34 +568,6 @@ func validateProjectTaskNames(project *model.Project) []ValidationError {
 			)
 		}
 		taskNames[task.Name] = true
-	}
-	return errs
-}
-
-// validateProjectTaskIdsAndTags ensures that task tags and ids only contain valid characters
-func validateProjectTaskIdsAndTags(project *model.Project) []ValidationError {
-	errs := []ValidationError{}
-	// create a map to hold the task names
-	for _, task := range project.Tasks {
-		// check task name
-		if i := strings.IndexAny(task.Name, model.InvalidCriterionRunes); i == 0 {
-			errs = append(errs, ValidationError{
-				Message: fmt.Sprintf("task '%v' has invalid name: starts with invalid character %v",
-					task.Name, strconv.QuoteRune(rune(task.Name[0])))})
-		}
-		// check tag names
-		for _, tag := range task.Tags {
-			if i := strings.IndexAny(tag, model.InvalidCriterionRunes); i == 0 {
-				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("task '%v' has invalid tag '%v': starts with invalid character %v",
-						task.Name, tag, strconv.QuoteRune(rune(tag[0])))})
-			}
-			if i := util.IndexWhiteSpace(tag); i != -1 {
-				errs = append(errs, ValidationError{
-					Message: fmt.Sprintf("task '%v' has invalid tag '%v': tag contains white space",
-						task.Name, tag)})
-			}
-		}
 	}
 	return errs
 }

@@ -21,18 +21,3 @@ func SliceContains(slice, elt interface{}) bool {
 	}
 	return false
 }
-
-// StringSliceIntersection returns the intersecting elements of slices a and b.
-func StringSliceIntersection(a, b []string) []string {
-	inA := map[string]bool{}
-	out := []string{}
-	for _, elem := range a {
-		inA[elem] = true
-	}
-	for _, elem := range b {
-		if inA[elem] {
-			out = append(out, elem)
-		}
-	}
-	return out
-}

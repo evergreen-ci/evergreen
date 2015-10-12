@@ -196,7 +196,7 @@ func (self *Scheduler) updateVersionBuildVarMap(versionStr string,
 
 	err = model.LoadProjectInto([]byte(version.Config), version.Identifier, project)
 	if err != nil {
-		return fmt.Errorf("unable to load project config for version %v: "+
+		return fmt.Errorf("unable to unmarshal project config for version %v: "+
 			"%v", versionStr, err)
 	}
 
