@@ -223,7 +223,7 @@ tasks:
 - name: exec_timeout_task
   depends_on:
   - name: compile
-  exec_timeout: 3
+  exec_timeout_secs: 3
   commands:
     - command: shell.exec
       params:
