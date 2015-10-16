@@ -17,23 +17,34 @@
     height: auto;
     margin-bottom: 4px;
     padding: 5px;
-    text-align: center;
-    white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
-    font-weight: bold;
     font-size: 12px;
     border-top: 2px solid @gray7;
     border-bottom: 2px solid @gray7;
+    font-weight: bold;
 
     &.text-right {
       text-align: right;
       padding-right: 10px;
     }
-    &:hover {
-      cursor: pointer;
-      color: @linkText;
+    &-expanded {
+      font-weight: normal;
+      text-align: left;
     }
+    &-full {
+      text-align: center;
+      white-space: nowrap;
+      &:hover {
+        cursor: pointer;
+        color: @linkText;
+     }
+  }
+  &-button-link {
+    padding: 0;
+    border: 0;
+    margin: 0;
+  }
 }
 
 .popover.popover-wide {

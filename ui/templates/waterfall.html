@@ -36,22 +36,50 @@ Evergreen - Waterfall
 
   </header>
 
+<!-- the row of titles -->
+  <div class="row version-header">
+      <!-- build variants title -->
+    <div id="build-variant-col" class="col-xs-2">
+      <div class="row version-header-full text-right">Variant</div>
+    </div>
+   <div class="col-xs-2" ng-repeat="version in versions" ng-model="showFullMessage">
+      <!-- header -->
+      <version-header>
+        <div class="row version-header-full" ng-show="version.rolled_up">
+        <popover-section>
+          [[version.rolled_header]]
+        </popover-section>
+        </div>
+        <div ng-show="!version.rolled_up" class="version-header-expanded">
+          <div>
+            <span class="btn btn-default btn-hash history-item-revision">
+              <a href=[[version.id_link]]> [[version.commit]]</a>
+            </span>
+            [[version.create_time]]
+          </div>
+          <strong>[[version.author]] - </strong>
+              [[version.message]]
+          <span ng-show="version.messages[0].length > 35">
+            <span ng-show="!showFullMessage">... <button ng-click="flipExpand()" class="btn-link version-header-button-link">more</button></span>
+            <span ng-show="showFullMessage">[[version.messages[0].substring(35)]]
+              <button ng-click="flipExpand()" class="btn-link version-header-button-link">less</button>
+            </span>
+          </span>
+        </div>
+      </version-header>
+    </div>
+  </div>
+
   <!-- the actual waterfall display -->
   <div id="wrapper" class="row">
     
     <!-- column of build variant names -->
     <div id="build-variant-col" class="col-xs-2">
-      <div class="row waterfall-cell version-header text-right">Build Variant</div>
       <div class="row waterfall-cell build-variant-name" ng-repeat="variant in buildVariants | filter:filter.variant">[[variant]]</div>
     </div>
 
     <!-- version columns -->
     <div class="col-xs-2" ng-repeat="version in versions">
-      
-      <!-- header -->
-      <div class="row waterfall-cell version-header">
-        <version-header></version-header>
-      </div>
 
       <!-- build cells -->
       <div class="row waterfall-cell" ng-class="{ 'inactive-build': version.rolled_up }"
@@ -65,11 +93,9 @@ Evergreen - Waterfall
               <task-result ng-repeat="task in build.tasks | filter:{ display_name: filter.task }">
               </task-result>
             </build-result>
-
             <build-summary>
             </build-summary>
           </div>
-
           <div ng-switch-when="true" class="inactive-build">inactive build</div>
 
         </div>

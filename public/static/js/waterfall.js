@@ -5,6 +5,13 @@ mciModule
     // load in the build variants, sorting 
     $scope.buildVariants = $window.serverData.build_variants.sort();
 
+    //variable/function to handle expanding the header message
+    $scope.showFullMessage = false;
+    $scope.flipExpand = function() {
+      $scope.showFullMessage = !$scope.showFullMessage;
+    };
+
+
     // load in the versions
     $scope.versions = $window.serverData.versions;
     var versionsOnPage = 0;
@@ -108,12 +115,11 @@ mciModule
     $scope.$watch('filter.task', function() {
       $location.path('filter/' + $scope.filter.variant + '/' + $scope.filter.task);
     });
-
   })
-  // directive for a single version header - the cell at the top of a version column
-  .directive('versionHeader', function($filter) {
+  // directive to make the popover that is placed onclick above the rolled up content
+  .directive('popoverSection', function ($filter) {
 
-    function createPopoverInfo(id, revision, author, message, create_time, error) {
+   function createPopoverInfo(id, revision, author, message, create_time, error) {
       var errorIcon = "";
       if (error.messages && error.messages.length != 0) {
         errorIcon = '<span><i class="icon-warning-sign" style="color:red" data-element-tooltip="body">&nbsp;</i></span>';
@@ -130,7 +136,6 @@ mciModule
       scope: false,
       replace: true,
       link: function(scope, element, attrs) {
-
         // create the content of the popover that will appear over the version
         var popoverContent = '<ul class="githash-popover list-unstyled">';
         for (var i = 0; i < scope.version.messages.length; i++) {
@@ -151,19 +156,28 @@ mciModule
           container: 'body',
           template: '<div class="popover popover-wide" role="tooltip"><div class="arrow"></div><h3 class="popover-title"></h3><div class="popover-content"></div></div>'
         });
-
-        // the text appearing in the cell
-        scope.header = "";
-        if (scope.version.rolled_up) {
-          header = $filter('pluralize')(scope.version.messages.length, 'version');
-          scope.header = scope.version.messages.length + ' inactive ' + header;
-        } else {
-          scope.header = $filter('date')(scope.version.create_times[0], 'short');
-        }
-
-      },
-      template: '<div>[[header]]</div>'
+      }
     };
+  })
+  //directive to make the version header for each section of the table
+  .directive('versionHeader', function ($filter) {
+    return {
+      restrict: 'E',
+      replace: true,
+      scope: false,
+      link: function(scope, element, attr) {
+        if (scope.version.rolled_up) {
+          scope.version.rolled_header = scope.version.messages.length + ' inactive ' + $filter('pluralize')(scope.version.messages.length, 'version');
+        } else {
+          scope.version.create_time = $filter('date')(scope.version.create_times[0], 'short');
+          scope.version.author = scope.version.authors[0];
+          scope.version.id_link = "/version/"+scope.version.ids[0];
+          scope.version.commit = scope.version.revisions[0].substring(0, 5);
+          scope.version.message = scope.version.messages[0].substring(0,35);
+        }
+      }
+
+    }
   })
   // directive for a single cell representing the result of a build
   .directive('buildResult', function() {
