@@ -420,7 +420,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		// update task document with spec fields
 		task.Populate(taskSpec)
 
-		if task.Patchable != nil && *task.Patchable == false &&
+		if ((task.Patchable != nil && *task.Patchable == false) || task.Name == evergreen.PushStage) && //TODO remove PushStage
 			b.Requester == evergreen.PatchVersionRequester {
 			continue
 		}

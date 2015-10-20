@@ -630,6 +630,20 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 	return addMatrixVariants(project)
 }
 
+func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTask {
+	bv := p.FindBuildVariant(variant)
+	if bv == nil {
+		return nil
+	}
+	for _, bvt := range bv.Tasks {
+		if bvt.Name == task {
+			bvt.Populate(*p.FindProjectTask(task))
+			return &bvt
+		}
+	}
+	return nil
+}
+
 func (p *Project) FindBuildVariant(build string) *BuildVariant {
 	for _, b := range p.BuildVariants {
 		if b.Name == build {

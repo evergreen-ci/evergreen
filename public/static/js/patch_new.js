@@ -62,7 +62,7 @@ function PatchController($scope, $filter, $window) {
     var allTasksModelsOriginal = [];
     for (var i = 0; i < allTasks.length; ++i) {
       task = allTasks[i];
-      if (task.Name === "unit_tests" || task.Name === "push") {
+      if (task.Name === "unit_tests" || task.Name === "push") { //TODO remove these cases
         continue;
       }
       if (task.Name === "compile" || $.inArray(task.Name, patch.Tasks) >= 0) {

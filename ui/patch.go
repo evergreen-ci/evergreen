@@ -55,10 +55,10 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 
 	tasksList := []interface{}{}
 	for _, task := range projCtx.Project.Tasks {
-		tasksList = append(tasksList,
-			struct {
-				Name string
-			}{task.Name})
+		// add a task name to the list if it's patchable
+		if !(task.Patchable != nil && *task.Patchable == false) {
+			tasksList = append(tasksList, struct{ Name string }{task.Name})
+		}
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
@@ -212,11 +212,11 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 // If task has a non-patchable dependency, getDeps will return TaskNotPatchableError
 // The returned slices may contain duplicates.
 func getDeps(task string, variant string, p *model.Project) ([]string, []string, error) {
-	projectTask := p.FindProjectTask(task)
+	projectTask := p.FindTaskForVariant(task, variant)
 	if projectTask == nil {
 		return nil, nil, fmt.Errorf("Task not found in project: %v", task)
 	}
-	if task == evergreen.PushStage { // TODO EVG-596 change to "if patchable := projectTask.Patchable; patchable != nil && !patchable"
+	if patchable := projectTask.Patchable; (patchable != nil && !*patchable) || task == evergreen.PushStage { //TODO remove PushStage
 		return nil, nil, TaskNotPatchableError
 	}
 	deps := make([]string, 0)
@@ -231,8 +231,9 @@ func getDeps(task string, variant string, p *model.Project) ([]string, []string,
 						if t == task && v == variant {
 							continue
 						}
-						if t == evergreen.PushStage {
-							return nil, nil, TaskNotPatchableError // TODO EVG-596 instead check if the ProjectTask is not patchable
+						if depTask := p.FindTaskForVariant(t, v); t == evergreen.PushStage ||
+							(depTask.Patchable != nil && !*depTask.Patchable) {
+							return nil, nil, TaskNotPatchableError // TODO remove PushStage
 						}
 						deps = append(deps, t)
 					}
