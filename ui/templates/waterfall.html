@@ -58,10 +58,10 @@ Evergreen - Waterfall
             [[version.create_time]]
           </div>
           <strong>[[version.author]] - </strong>
-              [[version.message]]
-          <span ng-show="version.messages[0].length > 35">
-            <span ng-show="!showFullMessage">... <button ng-click="flipExpand()" class="btn-link version-header-button-link">more</button></span>
-            <span ng-show="showFullMessage">[[version.messages[0].substring(35)]]
+              [[version.message]]<!--
+          --><span ng-show="version.messages[0].length > 35"><!--
+          --><span ng-show="!showFullMessage">... <button ng-click="flipExpand()" class="btn-link version-header-button-link">more</button></span><!--
+          --><span ng-show="showFullMessage">[[version.messages[0].substring(35)]]
               <button ng-click="flipExpand()" class="btn-link version-header-button-link">less</button>
             </span>
           </span>
