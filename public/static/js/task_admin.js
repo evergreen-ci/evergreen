@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', function($scope, taskRestService) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'errorPasserService', function($scope, taskRestService, errorPasser) {
     $scope.modalOpen = false;
     $scope.modalTitle = 'Modify Task';
     $scope.adminOptionVals = {};
@@ -23,7 +23,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', funct
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error aborting: ' + jqXHR);
+                    errorPasser.pushError('Error aborting: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -39,7 +39,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', funct
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error restarting: ' + jqXHR);
+                    errorPasser.pushError('Error restarting: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -55,7 +55,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', funct
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error setting priority: ' + jqXHR);
+                    errorPasser.pushError('Error setting priority: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -71,7 +71,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', funct
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error setting active = ' + active + ': ' + jqXHR);
+                    errorPasser.pushError('Error setting active = ' + active + ': ' + jqXHR,'errorModal');
                 }
             }
         );

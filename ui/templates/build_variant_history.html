@@ -15,6 +15,8 @@ Evergreen - Build Variant History
 {{end}}
 
 {{define "content"}}
+<error-flash ng-init="destination='errorHeader'"></error-flash>
+
 <div id="content" ng-controller="BuildVariantHistoryController" class="container-fluid">
   <div class="row">
     <div class="gridtable-timeline">

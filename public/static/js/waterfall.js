@@ -1,7 +1,7 @@
 mciModule
 // top-level controller for the waterfall
   .controller('WaterfallCtrl', function($scope, $window, $location, $locationHash) {
-
+    
     // load in the build variants, sorting 
     $scope.buildVariants = $window.serverData.build_variants.sort();
 
@@ -90,7 +90,6 @@ mciModule
       }
       return url
     };
-
     // refs for the next and previous page of the waterfall
     $scope.previousPage = function() {
       return getUrl() + '?skip=' + previousSkip + '#/filter/' + $scope.filter.variant +

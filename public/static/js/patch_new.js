@@ -1,4 +1,4 @@
-function PatchController($scope, $filter, $window) {
+function PatchController($scope, $filter, $window, errorPasser) {
   $scope.userTz = $window.userTz;
 
   $scope.selectedTask = {
@@ -146,7 +146,7 @@ function PatchUpdateController($scope, $http) {
       window.location.replace("/version/" + data.version);
     }).
     error(function(data, status, errorThrown) {
-      alert("Failed to save changes: `" + data.error + "`");
+      alert("Failed to save changes: `" + data + "`",'errorHeader');
     });
   };
 

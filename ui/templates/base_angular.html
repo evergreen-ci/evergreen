@@ -42,6 +42,7 @@
         <script type="text/javascript" src="/static/js/mci_module.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/controllers/project_controller.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="{{Static "js" "login.js"}}?hash={{ StaticsMD5 }}"></script>
+        <script type="text/javascript" src="{{Static "js" "error.js"}}?hash={{ StaticsMD5 }}"></script>
         <style type="text/css">
           #footer{ font-size:.8em; color:#888; }
         </style>
@@ -59,7 +60,6 @@
 
     <body ng-controller="ProjectController">
         {{template "menu" .}}
-
         <script src="/static/js/jquery.js"></script>
         <script src="/static/js/mongostrap.min.js"></script>
         <script src="/static/js/common.js"></script>
@@ -73,7 +73,7 @@
         <!-- insert the actual content -->
         {{template "content" .}}
     </body>
-    <login-modal/>
+	<login-modal></login-modal>
 </html>
 {{end}}
 {{define "flash"}}

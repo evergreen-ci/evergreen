@@ -63,17 +63,6 @@ function BuildVariantHistoryController($scope, $http, $filter, $timeout, $window
         console.log("Error getting build history: " + data);
       });
   };
-
-
-  // Reload every 10 minutes
-  var INTERVAL_MS = 10 * 60 * 1000;
-  var setReloadTimer = function() {
-    $timeout(function() {
-      $scope.load();
-      setReloadTimer();
-    }, INTERVAL_MS);
-  };
-  setReloadTimer();
 }
 
 function BuildViewController($scope, $http, $timeout, mciTime, $window) {
@@ -151,29 +140,7 @@ function BuildViewController($scope, $http, $timeout, mciTime, $window) {
     $scope.lastUpdate = mciTime.now();
   };
 
-  $scope.reloadBuild = function() {
-    $scope.loading = true;
-    $http.get('/json/build/' + $scope.build.Build._id).success(function(data) {
-      if (data.error) {
-        alert(data.error);
-      } else {
-        $scope.setBuild(data);
-        $scope.loading = false;
-      }
-    });
-  };
-
-  // Reload every 10 minutes
-  var INTERVAL_MS = 10 * 60 * 1000;
-  var setReloadTimer = function() {
-    $timeout(function() {
-      $scope.reloadBuild();
-      setReloadTimer();
-    }, INTERVAL_MS);
-  };
-
   $scope.setBuild($window.build);
   $scope.plugins = $window.plugins
 
-  setReloadTimer();
 }

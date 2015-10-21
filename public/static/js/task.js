@@ -448,7 +448,7 @@ mciModule.directive('testResultBar', function($filter) {
   }
 });
 
-mciModule.controller('TaskLogCtrl', function($scope, $timeout, $http, $location, $window, $filter) {
+mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location', '$window', '$filter', 'errorPasserService', function($scope, $timeout, $http, $location, $window, $filter, errorPasser) {
   $scope.logs = 'Loading...';
   $scope.task = {};
   $scope.eventLogs = 'EV';
@@ -506,7 +506,7 @@ mciModule.controller('TaskLogCtrl', function($scope, $timeout, $http, $location,
       }
     }).
     error(function(jqXHR, status, errorThrown) {
-      //alert('Error retrieving logs: ' + jqXHR);
+      	errorPasser.pushError('Error retrieving logs: ' + jqXHR, 'errorHeader');
     });
 
     // If we already have an outstanding timeout, cancel it
@@ -534,4 +534,4 @@ mciModule.controller('TaskLogCtrl', function($scope, $timeout, $http, $location,
 
   $scope.setTask($window.task_data);
 
-});
+}]);

@@ -1,4 +1,4 @@
-function VersionController($scope, $location, $http, $filter, $now, $window) {
+function VersionController($scope, $location, $http, $filter, $now, $window, errorPasserService) {
   $scope.tab = 0
   $scope.version = {};
   $scope.taskStatuses = {};
@@ -125,13 +125,13 @@ function VersionController($scope, $location, $http, $filter, $now, $window) {
     $http.get('/version_json/' + $scope.version.Version.id).
     success(function(data) {
       if (data.error) {
-        alert(data.error);
+        errorPasserService.pushError(data.error);
       } else {
         $scope.setVersion(data);
       }
     }).
     error(function(data) {
-      alert("Error occurred - " + data);
+      errorPasserService.pushError("Error occurred - " + data.error);
     });
   };
 

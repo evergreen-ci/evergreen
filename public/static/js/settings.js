@@ -1,4 +1,4 @@
-mciModule.controller('SettingsCtrl', function($scope, $http, $window) {
+mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'errorPasserService', function($scope, $http, $window, errorPasser) {
   $scope.timezones = [
     {str: "American Samoa, Niue", value: "Pacific/Niue"},
     {str: "Hawaii", value: "Pacific/Tahiti"},
@@ -71,7 +71,7 @@ mciModule.controller('SettingsCtrl', function($scope, $http, $window) {
         window.location.reload()
       })
       .error(function(jqXHR, status, errorThrown) {
-        alert("Failed to save changes: " + errorThrown)
+        errorPasser.pushError("Failed to save changes: " + jqXHR,'errorHeader')
       });
    };
-});
+}]);
