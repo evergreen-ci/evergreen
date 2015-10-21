@@ -146,7 +146,7 @@ function PatchUpdateController($scope, $http) {
       window.location.replace("/version/" + data.version);
     }).
     error(function(data, status, errorThrown) {
-      alert("Failed to save changes: `" + data + "`");
+      alert("Failed to save changes: `" + data.error + "`");
     });
   };
 
