@@ -1,4 +1,4 @@
-package rest
+package ui
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/gorilla/mux"
 	"net/http"
 	"time"
 )
@@ -19,7 +18,7 @@ type taskStatusContent struct {
 	Tests         taskStatusByTest  `json:"tests"`
 }
 
-type task struct {
+type restTask struct {
 	Id                  string                `json:"id"`
 	CreateTime          time.Time             `json:"create_time"`
 	ScheduledTime       time.Time             `json:"scheduled_time"`
@@ -83,24 +82,14 @@ type taskStatusByTest map[string]taskTestResult
 // Returns a JSON response with the marshalled output of the task
 // specified in the request.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
-	taskId := mux.Vars(r)["task_id"]
-
-	srcTask, err := model.FindTask(taskId)
-	if err != nil || srcTask == nil {
-		msg := fmt.Sprintf("Error finding task '%v'", taskId)
-		statusCode := http.StatusNotFound
-
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-			statusCode = http.StatusInternalServerError
-		}
-
-		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+	projCtx := MustHaveProjectContext(r)
+	srcTask := projCtx.Task
+	if srcTask == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
-
 	}
 
-	destTask := &task{}
+	destTask := &restTask{}
 	destTask.Id = srcTask.Id
 	destTask.CreateTime = srcTask.CreateTime
 	destTask.ScheduledTime = srcTask.ScheduledTime
@@ -148,9 +137,9 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy over artifacts and binaries
-	entries, err := artifact.FindAll(artifact.ByTaskId(taskId))
+	entries, err := artifact.FindAll(artifact.ByTaskId(srcTask.Id))
 	if err != nil {
-		msg := fmt.Sprintf("Error finding task '%v'", taskId)
+		msg := fmt.Sprintf("Error finding task '%v'", srcTask.Id)
 		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
@@ -174,25 +163,15 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 // Returns a JSON response with the status of the specified task.
 // The keys of the object are the test names.
 func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
-	taskId := mux.Vars(r)["task_id"]
-
-	task, err := model.FindTask(taskId)
-	if err != nil || task == nil {
-		msg := fmt.Sprintf("Error finding task '%v'", taskId)
-		statusCode := http.StatusNotFound
-
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-			statusCode = http.StatusInternalServerError
-		}
-
-		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+	projCtx := MustHaveProjectContext(r)
+	task := projCtx.Task
+	if task == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding task"})
 		return
-
 	}
 
 	result := taskStatusContent{
-		Id:     taskId,
+		Id:     task.Id,
 		Name:   task.DisplayName,
 		Status: task.Status,
 	}

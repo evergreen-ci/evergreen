@@ -1,4 +1,4 @@
-package rest
+package ui
 
 import (
 	"encoding/json"
@@ -188,19 +188,10 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 // Returns a JSON response with the marshalled output of the version
 // specified in the request.
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
-	versionId := mux.Vars(r)["version_id"]
-
-	srcVersion, err := version.FindOne(version.ById(versionId))
-	if err != nil || srcVersion == nil {
-		msg := fmt.Sprintf("Error finding version '%v'", versionId)
-		statusCode := http.StatusNotFound
-
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-			statusCode = http.StatusInternalServerError
-		}
-
-		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+	projCtx := MustHaveProjectContext(r)
+	srcVersion := projCtx.Version
+	if srcVersion == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding version"})
 		return
 	}
 
@@ -213,7 +204,6 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 
 	restapi.WriteJSON(w, http.StatusOK, destVersion)
 	return
-
 }
 
 // Returns a JSON response with the marshalled output of the version
@@ -253,35 +243,26 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 // Modifies part of the version specified in the request, and returns a
 // JSON response with the marshalled output of its new state.
 func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
-	versionId := mux.Vars(r)["version_id"]
+	projCtx := MustHaveProjectContext(r)
+	v := projCtx.Version
+	if v == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding version"})
+		return
+	}
 
 	var input struct {
 		Activated *bool `json:"activated"`
 	}
 	json.NewDecoder(r.Body).Decode(&input)
 
-	v, err := version.FindOne(version.ById(versionId))
-	if err != nil || v == nil {
-		msg := fmt.Sprintf("Error finding version '%v'", versionId)
-		statusCode := http.StatusNotFound
-
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-			statusCode = http.StatusInternalServerError
-		}
-
-		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
-		return
-	}
-
 	if input.Activated != nil {
-		if err = model.SetVersionActivation(v.Id, *input.Activated); err != nil {
+		if err := model.SetVersionActivation(v.Id, *input.Activated); err != nil {
 			state := "inactive"
 			if *input.Activated {
 				state = "active"
 			}
 
-			msg := fmt.Sprintf("Error marking version '%v' as %v", versionId, state)
+			msg := fmt.Sprintf("Error marking version '%v' as %v", v.Id, state)
 			restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 			return
 		}

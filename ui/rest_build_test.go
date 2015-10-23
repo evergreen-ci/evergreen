@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -120,22 +119,22 @@ func TestGetBuildInfo(t *testing.T) {
 			var createTime time.Time
 			err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 			So(err, ShouldBeNil)
-			So(createTime, ShouldHappenWithin, rest.TimePrecision, build.CreateTime)
+			So(createTime, ShouldHappenWithin, TimePrecision, build.CreateTime)
 
 			var startTime time.Time
 			err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 			So(err, ShouldBeNil)
-			So(startTime, ShouldHappenWithin, rest.TimePrecision, build.StartTime)
+			So(startTime, ShouldHappenWithin, TimePrecision, build.StartTime)
 
 			var finishTime time.Time
 			err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
-			So(finishTime, ShouldHappenWithin, rest.TimePrecision, build.FinishTime)
+			So(finishTime, ShouldHappenWithin, TimePrecision, build.FinishTime)
 
 			var pushTime time.Time
 			err = json.Unmarshal(*rawJsonBody["push_time"], &pushTime)
 			So(err, ShouldBeNil)
-			So(pushTime, ShouldHappenWithin, rest.TimePrecision, build.PushTime)
+			So(pushTime, ShouldHappenWithin, TimePrecision, build.PushTime)
 
 			So(jsonBody["version"], ShouldEqual, build.Version)
 			So(jsonBody["project"], ShouldEqual, build.Project)
@@ -148,7 +147,7 @@ func TestGetBuildInfo(t *testing.T) {
 			var activatedTime time.Time
 			err = json.Unmarshal(*rawJsonBody["activated_time"], &activatedTime)
 			So(err, ShouldBeNil)
-			So(activatedTime, ShouldHappenWithin, rest.TimePrecision, build.ActivatedTime)
+			So(activatedTime, ShouldHappenWithin, TimePrecision, build.ActivatedTime)
 
 			So(jsonBody["order"], ShouldEqual, build.RevisionOrderNumber)
 
@@ -193,9 +192,7 @@ func TestGetBuildInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding build '%v'", buildId))
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
 }
@@ -306,9 +303,7 @@ func TestGetBuildStatus(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding build '%v'", buildId))
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
 }

@@ -1,11 +1,6 @@
-package rest
+package ui
 
 import (
-	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/gorilla/mux"
 	"net/http"
 	"time"
 )
@@ -48,45 +43,34 @@ type buildStatusByTask map[string]buildStatus
 // Returns a JSON response with the marshalled output of the build
 // specified in the request.
 func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
-	buildId := mux.Vars(r)["build_id"]
-
-	srcBuild, err := build.FindOne(build.ById(buildId))
-	if err != nil || srcBuild == nil {
-		msg := fmt.Sprintf("Error finding build '%v'", buildId)
-		statusCode := http.StatusNotFound
-
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-			statusCode = http.StatusInternalServerError
-		}
-
-		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+	projCtx := MustHaveProjectContext(r)
+	b := projCtx.Build
+	if b == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
-
 	}
 
 	destBuild := &restBuild{}
+	destBuild.Id = b.Id
+	destBuild.CreateTime = b.CreateTime
+	destBuild.StartTime = b.StartTime
+	destBuild.FinishTime = b.FinishTime
+	destBuild.PushTime = b.PushTime
+	destBuild.Version = b.Version
+	destBuild.Project = b.Project
+	destBuild.Revision = b.Revision
+	destBuild.BuildVariant = b.BuildVariant
+	destBuild.BuildNumber = b.BuildNumber
+	destBuild.Status = b.Status
+	destBuild.Activated = b.Activated
+	destBuild.ActivatedTime = b.ActivatedTime
+	destBuild.RevisionOrderNumber = b.RevisionOrderNumber
+	destBuild.TimeTaken = b.TimeTaken
+	destBuild.DisplayName = b.DisplayName
+	destBuild.Requester = b.Requester
 
-	destBuild.Id = srcBuild.Id
-	destBuild.CreateTime = srcBuild.CreateTime
-	destBuild.StartTime = srcBuild.StartTime
-	destBuild.FinishTime = srcBuild.FinishTime
-	destBuild.PushTime = srcBuild.PushTime
-	destBuild.Version = srcBuild.Version
-	destBuild.Project = srcBuild.Project
-	destBuild.Revision = srcBuild.Revision
-	destBuild.BuildVariant = srcBuild.BuildVariant
-	destBuild.BuildNumber = srcBuild.BuildNumber
-	destBuild.Status = srcBuild.Status
-	destBuild.Activated = srcBuild.Activated
-	destBuild.ActivatedTime = srcBuild.ActivatedTime
-	destBuild.RevisionOrderNumber = srcBuild.RevisionOrderNumber
-	destBuild.TimeTaken = srcBuild.TimeTaken
-	destBuild.DisplayName = srcBuild.DisplayName
-	destBuild.Requester = srcBuild.Requester
-
-	destBuild.Tasks = make(buildStatusByTask, len(srcBuild.Tasks))
-	for _, task := range srcBuild.Tasks {
+	destBuild.Tasks = make(buildStatusByTask, len(b.Tasks))
+	for _, task := range b.Tasks {
 		status := buildStatus{
 			Id:        task.Id,
 			Status:    task.Status,
@@ -97,31 +81,20 @@ func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 
 	restapi.WriteJSON(w, http.StatusOK, destBuild)
 	return
-
 }
 
 // Returns a JSON response with the status of the specified build.
 // The keys of the object are the task names.
 func (restapi restAPI) getBuildStatus(w http.ResponseWriter, r *http.Request) {
-	buildId := mux.Vars(r)["build_id"]
-
-	b, err := build.FindOne(build.ById(buildId))
-	if err != nil || b == nil {
-		msg := fmt.Sprintf("Error finding build '%v'", buildId)
-		statusCode := http.StatusNotFound
-
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
-			statusCode = http.StatusInternalServerError
-		}
-
-		restapi.WriteJSON(w, statusCode, responseError{Message: msg})
+	projCtx := MustHaveProjectContext(r)
+	b := projCtx.Build
+	if b == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding build"})
 		return
-
 	}
 
 	result := buildStatusContent{
-		Id:           buildId,
+		Id:           b.Id,
 		BuildVariant: b.BuildVariant,
 		Tasks:        make(buildStatusByTask, len(b.Tasks)),
 	}

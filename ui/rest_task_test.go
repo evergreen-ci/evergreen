@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -48,7 +47,6 @@ func TestGetTaskInfo(t *testing.T) {
 		DisableCache: true,
 		Funcs:        nil,
 	})
-
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
@@ -143,32 +141,32 @@ func TestGetTaskInfo(t *testing.T) {
 			var createTime time.Time
 			err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 			So(err, ShouldBeNil)
-			So(createTime, ShouldHappenWithin, rest.TimePrecision, task.CreateTime)
+			So(createTime, ShouldHappenWithin, TimePrecision, task.CreateTime)
 
 			var scheduledTime time.Time
 			err = json.Unmarshal(*rawJsonBody["scheduled_time"], &scheduledTime)
 			So(err, ShouldBeNil)
-			So(scheduledTime, ShouldHappenWithin, rest.TimePrecision, task.ScheduledTime)
+			So(scheduledTime, ShouldHappenWithin, TimePrecision, task.ScheduledTime)
 
 			var dispatchTime time.Time
 			err = json.Unmarshal(*rawJsonBody["dispatch_time"], &dispatchTime)
 			So(err, ShouldBeNil)
-			So(dispatchTime, ShouldHappenWithin, rest.TimePrecision, task.DispatchTime)
+			So(dispatchTime, ShouldHappenWithin, TimePrecision, task.DispatchTime)
 
 			var startTime time.Time
 			err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 			So(err, ShouldBeNil)
-			So(startTime, ShouldHappenWithin, rest.TimePrecision, task.StartTime)
+			So(startTime, ShouldHappenWithin, TimePrecision, task.StartTime)
 
 			var finishTime time.Time
 			err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
-			So(finishTime, ShouldHappenWithin, rest.TimePrecision, task.FinishTime)
+			So(finishTime, ShouldHappenWithin, TimePrecision, task.FinishTime)
 
 			var pushTime time.Time
 			err = json.Unmarshal(*rawJsonBody["push_time"], &pushTime)
 			So(err, ShouldBeNil)
-			So(pushTime, ShouldHappenWithin, rest.TimePrecision, task.PushTime)
+			So(pushTime, ShouldHappenWithin, TimePrecision, task.PushTime)
 
 			So(jsonBody["version"], ShouldEqual, task.Version)
 			So(jsonBody["project"], ShouldEqual, task.Project)
@@ -178,7 +176,7 @@ func TestGetTaskInfo(t *testing.T) {
 			var lastHeartbeat time.Time
 			err = json.Unmarshal(*rawJsonBody["last_heartbeat"], &lastHeartbeat)
 			So(err, ShouldBeNil)
-			So(lastHeartbeat, ShouldHappenWithin, rest.TimePrecision, task.LastHeartbeat)
+			So(lastHeartbeat, ShouldHappenWithin, TimePrecision, task.LastHeartbeat)
 
 			So(jsonBody["activated"], ShouldEqual, task.Activated)
 			So(jsonBody["build_id"], ShouldEqual, task.BuildId)
@@ -266,9 +264,7 @@ func TestGetTaskInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding task '%v'", taskId))
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
 }
@@ -397,9 +393,7 @@ func TestGetTaskStatus(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding task '%v'", taskId))
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
 }

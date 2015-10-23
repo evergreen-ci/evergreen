@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -70,11 +70,11 @@ func TestGetRecentVersions(t *testing.T) {
 
 		buildIdPreface := "build-id-for-version%v"
 
-		So(rest.NumRecentVersions, ShouldBeGreaterThan, 0)
-		versions := make([]*version.Version, 0, rest.NumRecentVersions)
+		So(NumRecentVersions, ShouldBeGreaterThan, 0)
+		versions := make([]*version.Version, 0, NumRecentVersions)
 
 		// Insert a bunch of versions into the database
-		for i := 0; i < rest.NumRecentVersions; i++ {
+		for i := 0; i < NumRecentVersions; i++ {
 			v := &version.Version{
 				Id:                  fmt.Sprintf("version%v", i),
 				Identifier:          projectName,
@@ -110,12 +110,12 @@ func TestGetRecentVersions(t *testing.T) {
 			Author:              "some-other-author",
 			Revision:            fmt.Sprintf("%x", rand.Int()),
 			Message:             "some-other-message",
-			RevisionOrderNumber: rest.NumRecentVersions + 1,
+			RevisionOrderNumber: NumRecentVersions + 1,
 			Requester:           evergreen.RepotrackerVersionRequester,
 		}
 		So(otherVersion.Insert(), ShouldBeNil)
 
-		builds := make([]*build.Build, 0, rest.NumRecentVersions)
+		builds := make([]*build.Build, 0, NumRecentVersions)
 		task := build.TaskCache{
 			Id:          "some-task-id",
 			DisplayName: "some-task-name",
@@ -123,7 +123,7 @@ func TestGetRecentVersions(t *testing.T) {
 			TimeTaken:   time.Duration(100 * time.Millisecond),
 		}
 
-		for i := 0; i < rest.NumRecentVersions; i++ {
+		for i := 0; i < NumRecentVersions; i++ {
 			build := &build.Build{
 				Id:           fmt.Sprintf(buildIdPreface, i),
 				Version:      versions[i].Id,
@@ -241,13 +241,10 @@ func TestGetRecentVersions(t *testing.T) {
 
 func TestGetVersionInfo(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
-
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
 		Settings:    *versionTestConfig,
-		UserManager: userManager,
+		UserManager: testutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
 
@@ -311,6 +308,8 @@ func TestGetVersionInfo(t *testing.T) {
 		// in the actual handler function
 		router.ServeHTTP(response, request)
 
+		Println(response.Body)
+
 		So(response.Code, ShouldEqual, http.StatusOK)
 		validateVersionInfo(v, response)
 	})
@@ -335,9 +334,7 @@ func TestGetVersionInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding version '%v'", versionId))
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
 }
@@ -434,22 +431,17 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding revision '%v' for project '%v'", revision, projectName))
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
 		})
 	})
 }
 
 func TestActivateVersion(t *testing.T) {
 
-	userManager, err := auth.LoadUserManager(versionTestConfig.AuthConfig)
-	testutil.HandleTestingErr(err, t, "Failure in loading UserManager from config")
-
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
 		Settings:    *versionTestConfig,
-		UserManager: userManager,
+		UserManager: testutil.MockUserManager{},
 	}
 
 	home := evergreen.FindEvergreenHome()
@@ -462,6 +454,10 @@ func TestActivateVersion(t *testing.T) {
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
+
+	n := negroni.New()
+	n.Use(negroni.HandlerFunc(UserMiddleware(uis.UserManager)))
+	n.UseHandler(router)
 
 	Convey("When marking a particular version as active", t, func() {
 		testutil.HandleTestingErr(db.Clear(version.Collection), t,
@@ -512,11 +508,13 @@ func TestActivateVersion(t *testing.T) {
 
 		request, err := http.NewRequest("PATCH", url.String(), bodyReader)
 		So(err, ShouldBeNil)
+		// add auth cookie--this can be anything if we are using a MockUserManager
+		request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 
 		response := httptest.NewRecorder()
 		// Need match variables to be set so can call mux.Vars(request)
 		// in the actual handler function
-		router.ServeHTTP(response, request)
+		n.ServeHTTP(response, request)
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 
@@ -540,9 +538,9 @@ func TestActivateVersion(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
-		// Need match variables to be set so can call mux.Vars(request)
-		// in the actual handler function
-		router.ServeHTTP(response, request)
+		// add auth cookie--this can be anything if we are using a MockUserManager
+		request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
+		n.ServeHTTP(response, request)
 
 		So(response.Code, ShouldEqual, http.StatusNotFound)
 
@@ -550,9 +548,31 @@ func TestActivateVersion(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
+			So(len(jsonBody["message"].(string)), ShouldBeGreaterThan, 0)
+		})
+	})
 
-			So(jsonBody["message"], ShouldEqual,
-				fmt.Sprintf("Error finding version '%v'", versionId))
+	Convey("When modifying a version without credentials", t, func() {
+		versionId := "not-present"
+
+		url, err := router.Get("version_info").URL("version_id", versionId)
+		So(err, ShouldBeNil)
+
+		var body = map[string]interface{}{
+			"activated": true,
+		}
+		jsonBytes, err := json.Marshal(body)
+		So(err, ShouldBeNil)
+		bodyReader := bytes.NewReader(jsonBytes)
+
+		request, err := http.NewRequest("PATCH", url.String(), bodyReader)
+		So(err, ShouldBeNil)
+
+		response := httptest.NewRecorder()
+		n.ServeHTTP(response, request)
+
+		Convey("response should indicate a permission error", func() {
+			So(response.Code, ShouldEqual, http.StatusFound)
 		})
 	})
 }
@@ -829,17 +849,17 @@ func validateVersionInfo(v *version.Version, response *httptest.ResponseRecorder
 		var createTime time.Time
 		err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 		So(err, ShouldBeNil)
-		So(createTime, ShouldHappenWithin, rest.TimePrecision, v.CreateTime)
+		So(createTime, ShouldHappenWithin, TimePrecision, v.CreateTime)
 
 		var startTime time.Time
 		err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 		So(err, ShouldBeNil)
-		So(startTime, ShouldHappenWithin, rest.TimePrecision, v.StartTime)
+		So(startTime, ShouldHappenWithin, TimePrecision, v.StartTime)
 
 		var finishTime time.Time
 		err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 		So(err, ShouldBeNil)
-		So(finishTime, ShouldHappenWithin, rest.TimePrecision, v.FinishTime)
+		So(finishTime, ShouldHappenWithin, TimePrecision, v.FinishTime)
 
 		So(jsonBody["project"], ShouldEqual, v.Identifier)
 		So(jsonBody["revision"], ShouldEqual, v.Revision)

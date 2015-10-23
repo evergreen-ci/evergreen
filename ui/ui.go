@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
@@ -173,12 +172,19 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/project/{project_id}", uis.requireSuperUser(uis.loadCtx(uis.addProject))).Methods("PUT")
 	r.HandleFunc("/project/{project_id}/repo_revision", uis.requireSuperUser(uis.loadCtx(uis.setRevision))).Methods("PUT")
 
+	// REST routes
+	rest := restAPI{uis}
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
-	restRoutes := rest.GetRestRoutes(uis)
-
-	for _, restRoute := range restRoutes {
-		restRouter.HandleFunc(restRoute.Path, uis.loadCtx(restRoute.Handler)).Name(restRoute.Name).Methods(restRoute.Method)
-	}
+	restRouter.HandleFunc("/projects/{project_id}/versions", uis.loadCtx(rest.getRecentVersions)).Name("recent_versions").Methods("GET")
+	restRouter.HandleFunc("/projects/{project_id}/revisions/{revision}", uis.loadCtx(rest.getVersionInfoViaRevision)).Name("version_info_via_revision").Methods("GET")
+	restRouter.HandleFunc("/versions/{version_id}", uis.loadCtx(rest.getVersionInfo)).Name("version_info").Methods("GET")
+	restRouter.HandleFunc("/versions/{version_id}", uis.requireUser(uis.loadCtx(rest.modifyVersionInfo))).Name("").Methods("PATCH")
+	restRouter.HandleFunc("/versions/{version_id}/status", uis.loadCtx(rest.getVersionStatus)).Name("version_status").Methods("GET")
+	restRouter.HandleFunc("/builds/{build_id}", uis.loadCtx(rest.getBuildInfo)).Name("build_info").Methods("GET")
+	restRouter.HandleFunc("/builds/{build_id}/status", uis.loadCtx(rest.getBuildStatus)).Name("build_status").Methods("GET")
+	restRouter.HandleFunc("/tasks/{task_id}", uis.loadCtx(rest.getTaskInfo)).Name("task_info").Methods("GET")
+	restRouter.HandleFunc("/tasks/{task_id}/status", uis.loadCtx(rest.getTaskStatus)).Name("task_status").Methods("GET")
+	restRouter.HandleFunc("/tasks/{task_name}/history", uis.loadCtx(rest.getTaskHistory)).Name("task_history").Methods("GET")
 
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()
