@@ -103,6 +103,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		Branch             string            `json:"branch_name"`
 		ProjVarsMap        map[string]string `json:"project_vars"`
 		Enabled            bool              `json:"enabled"`
+		Private            bool              `json:"private"`
 		Owner              string            `json:"owner_name"`
 		Repo               string            `json:"repo_name"`
 		AlertConfig        map[string][]struct {
@@ -123,6 +124,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	projectRef.BatchTime = responseRef.BatchTime
 	projectRef.Branch = responseRef.Branch
 	projectRef.Enabled = responseRef.Enabled
+	projectRef.Private = responseRef.Private
 	projectRef.Owner = responseRef.Owner
 	projectRef.DeactivatePrevious = responseRef.DeactivatePrevious
 	projectRef.Repo = responseRef.Repo

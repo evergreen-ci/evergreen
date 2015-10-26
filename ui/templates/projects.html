@@ -148,6 +148,28 @@ Evergreen Projects
           </div>
         </div>
 
+        <div id="access-info">
+          <div class="h3">Access Settings</div>
+          <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
+            <div class ="form-group">
+              <div class="col-lg-8">
+                <div class="radio">
+                  <label class="control-label">
+                    <input type="radio" ng-model="settingsFormData.private" ng-value="true"> <strong> Private </strong>
+                  </label> <br>
+                  <label class="muted col-lg-offset-1">Users must be logged in to see this project.</label>
+                </div>
+                <div class="radio">
+                  <label class="control-label"> 
+                    <input type="radio" ng-model="settingsFormData.private" ng-value="false"> <strong> Public </strong> 
+                  </label> <br>
+                  <label class="muted col-lg-offset-1">Anyone can see this project.</label>
+                </div>
+              </div>
+            </div>
+        </div>
+
+
         <div id="scheduling-info">
           <div class="h3">Scheduling Settings</div>
           <div class="form-group">

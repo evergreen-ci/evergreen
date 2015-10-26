@@ -131,6 +131,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
           owner_name: $scope.projectRef.owner_name,
           repo_name: $scope.projectRef.repo_name,
           enabled: $scope.projectRef.enabled,
+          private: $scope.projectRef.private,
           alert_config: $scope.projectRef.alert_config || {},
           repotracker_error: $scope.projectRef.repotracker_error || {},
         };
