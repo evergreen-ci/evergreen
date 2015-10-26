@@ -45,7 +45,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
           <span class="history-date-header-numbers">[[revisionsForDate.date | date:'M/d/yyyy']]</span>
         </div>
 
-        <div ng-repeat="revision in revisionsForDate.revisions" 
+        <div ng-repeat="revision in revisionsForDate.revisions"
             class="drawer-item"
             ng-class="{ 'drawer-item-highlighted': isCurrent(revision) }">
             <revision-blurb linktype="'task'" linkid="revision.task.id" revision="revision" task="task"><revision-blurb>
@@ -241,7 +241,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
     </div>
     <div class="col-lg-5">
       <h3 class="section-heading"><i class="icon-beaker"></i> Tests</h3>
-      
+
       <div ng-show="!task.test_results || task.test_results.length == 0" class="mci-pod">
         <h4 class="text-center text-muted">No test results to show</h4>
       </div>
@@ -312,7 +312,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   <a href="[[test.url]]" ng-hide="test.url == ''">
                     View Logs
                   </a>
-                  <a href="/test_log/[[test.log_id]]" ng-hide="test.url!='' || (test.log_id == '' && test.line_num <= 0)">
+                  <a href="/test_log/[[test.log_id]]#L[[test.line_num || 0]]" ng-hide="test.url!='' || (test.log_id == '' && test.line_num <= 0)">
                     View Logs
                   </a>
                 </td>
