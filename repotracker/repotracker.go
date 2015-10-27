@@ -18,7 +18,7 @@ import (
 const (
 	// determines the default maximum number of revisions to fetch for a newly tracked repo
 	// if not specified in configuration file
-	DefaultNumNewRepoRevisionsToFetch = 50
+	DefaultNumNewRepoRevisionsToFetch = 200
 )
 
 // RepoTracker is used to manage polling repository changes and storing such
