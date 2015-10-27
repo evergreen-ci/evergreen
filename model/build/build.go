@@ -40,6 +40,7 @@ type Build struct {
 	BuildNumber         string        `bson:"build_number" json:"build_number,omitempty"`
 	Status              string        `bson:"status" json:"status,omitempty"`
 	Activated           bool          `bson:"activated" json:"activated,omitempty"`
+	ActivatedBy         string        `bson:"activated_by" json:"activated_by,omitempty"`
 	ActivatedTime       time.Time     `bson:"activated_time" json:"activated_time,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
 	Tasks               []TaskCache   `bson:"tasks" json:"tasks,omitempty"`
@@ -88,20 +89,37 @@ func (b *Build) PreviousSuccessful() (*Build, error) {
 		b.RevisionOrderNumber, b.Project, b.BuildVariant))
 }
 
-// Update
-
 // UpdateActivation updates one build with the given id
 // to the given activation setting.
-func UpdateActivation(buildId string, active bool) error {
-	return UpdateOne(
-		bson.M{IdKey: buildId},
-		bson.M{
-			"$set": bson.M{
-				ActivatedKey:     active,
-				ActivatedTimeKey: time.Now(),
+func UpdateActivation(buildId string, active bool, caller string) error {
+	var err error
+	if !active && caller == evergreen.DefaultTaskActivator {
+		_, err = UpdateAllBuilds(
+			bson.M{IdKey: buildId,
+				ActivatedByKey: evergreen.DefaultTaskActivator,
 			},
-		},
-	)
+			bson.M{
+				"$set": bson.M{
+					ActivatedKey:     active,
+					ActivatedTimeKey: time.Now(),
+					ActivatedByKey:   caller,
+				},
+			},
+		)
+	} else {
+		_, err = UpdateAllBuilds(
+			bson.M{IdKey: buildId},
+			bson.M{
+				"$set": bson.M{
+					ActivatedKey:     active,
+					ActivatedTimeKey: time.Now(),
+					ActivatedByKey:   caller,
+				},
+			},
+		)
+	}
+	return err
+
 }
 
 // UpdateStatus sets the build status to the given string.

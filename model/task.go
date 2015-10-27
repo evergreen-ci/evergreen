@@ -57,6 +57,7 @@ type Task struct {
 
 	// used to indicate whether task should be scheduled to run
 	Activated     bool         `bson:"activated" json:"activated"`
+	ActivatedBy   string       `bson:"activated_by" json:"activated_by"`
 	BuildId       string       `bson:"build_id" json:"build_id"`
 	DistroId      string       `bson:"distro" json:"distro"`
 	BuildVariant  string       `bson:"build_variant" json:"build_variant"`
@@ -193,6 +194,7 @@ var (
 	TaskTestResultsKey         = bsonutil.MustHaveTag(Task{}, "TestResults")
 	TaskPriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	TaskMinQueuePosKey         = bsonutil.MustHaveTag(Task{}, "MinQueuePos")
+	TaskActivatedByKey         = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
@@ -934,7 +936,8 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 				},
 				bson.M{
 					"$set": bson.M{
-						TaskActivatedKey: active,
+						TaskActivatedKey:   active,
+						TaskActivatedByKey: caller,
 					},
 					"$unset": bson.M{
 						TaskMinQueuePosKey: "",
@@ -942,7 +945,8 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 				},
 			)
 		}
-	} else {
+		// if the caller is not the evergreen or the the task is activated by evergreen, deactivate it
+	} else if caller != evergreen.DefaultTaskActivator || task.ActivatedBy == evergreen.DefaultTaskActivator {
 		err = UpdateOneTask(
 			bson.M{
 				TaskIdKey: taskId,
@@ -957,6 +961,8 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 				},
 			},
 		)
+	} else {
+		return nil
 	}
 
 	if err != nil {

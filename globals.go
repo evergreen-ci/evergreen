@@ -80,6 +80,8 @@ const (
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp
 
 	EvergreenHome = "EVGHOME"
+
+	DefaultTaskActivator = ""
 )
 
 // evergreen package names

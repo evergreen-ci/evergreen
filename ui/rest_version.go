@@ -244,6 +244,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 // JSON response with the marshalled output of its new state.
 func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	user := MustHaveUser(r)
 	v := projCtx.Version
 	if v == nil {
 		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "error finding version"})
@@ -256,7 +257,7 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 	json.NewDecoder(r.Body).Decode(&input)
 
 	if input.Activated != nil {
-		if err := model.SetVersionActivation(v.Id, *input.Activated); err != nil {
+		if err := model.SetVersionActivation(v.Id, *input.Activated, user.Id); err != nil {
 			state := "inactive"
 			if *input.Activated {
 				state = "active"

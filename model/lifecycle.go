@@ -38,7 +38,7 @@ func cacheFromTask(t Task) build.TaskCache {
 
 // SetVersionActivation updates the "active" state of all builds and tasks associated with a
 // version to the given setting. It also updates the task cache for all builds affected.
-func SetVersionActivation(versionId string, active bool) error {
+func SetVersionActivation(versionId string, active bool, caller string) error {
 	builds, err := build.Find(
 		build.ByVersion(versionId).WithFields(build.IdKey),
 	)
@@ -46,7 +46,7 @@ func SetVersionActivation(versionId string, active bool) error {
 		return err
 	}
 	for _, b := range builds {
-		err = SetBuildActivation(b.Id, active)
+		err = SetBuildActivation(b.Id, active, caller)
 		if err != nil {
 			return err
 		}
@@ -56,31 +56,52 @@ func SetVersionActivation(versionId string, active bool) error {
 
 // SetBuildActivation updates the "active" state of this build and all associated tasks.
 // It also updates the task cache for the build document.
-func SetBuildActivation(buildId string, active bool) error {
-	_, err := UpdateAllTasks(
-		bson.M{
-			TaskBuildIdKey: buildId,
-			TaskStatusKey:  evergreen.TaskUndispatched,
-		},
-		bson.M{"$set": bson.M{TaskActivatedKey: active}},
-	)
+func SetBuildActivation(buildId string, active bool, caller string) error {
+	var err error
+
+	// If activating a task, set the ActivatedBy field to be the caller
+	if active {
+		_, err = UpdateAllTasks(
+			bson.M{
+				TaskBuildIdKey: buildId,
+				TaskStatusKey:  evergreen.TaskUndispatched,
+			},
+			bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
+		)
+	} else {
+
+		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
+		// if the caller is the default task activator,
+		// only deactivate tasks that are activated by the default task activator
+		if caller == evergreen.DefaultTaskActivator {
+			_, err = UpdateAllTasks(
+				bson.M{
+					TaskBuildIdKey:     buildId,
+					TaskStatusKey:      evergreen.TaskUndispatched,
+					TaskActivatedByKey: evergreen.DefaultTaskActivator,
+				},
+				bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
+			)
+
+		} else {
+			// update all tasks if the caller is not evergreen.
+			_, err = UpdateAllTasks(
+				bson.M{
+					TaskBuildIdKey: buildId,
+					TaskStatusKey:  evergreen.TaskUndispatched,
+				},
+				bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
+			)
+		}
+	}
+
 	if err != nil {
 		return err
 	}
-	if err = build.UpdateActivation(buildId, active); err != nil {
+	if err = build.UpdateActivation(buildId, active, caller); err != nil {
 		return err
 	}
 	return RefreshTasksCache(buildId)
-}
-
-// SetTaskActivation updates the task's active state to the given value.
-// Does not update the task cache for the associated build, so this may need to be done separately
-// after this function is called.
-func SetTaskActivation(taskId string, active bool) error {
-	return UpdateOneTask(
-		bson.M{TaskIdKey: taskId},
-		bson.M{"$set": bson.M{TaskActivatedKey: active}},
-	)
 }
 
 // AbortTask sets the "abort" flag on a given task ID, if it is currently in a state which allows
@@ -98,7 +119,7 @@ func AbortTask(taskId string) error {
 
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state, and marks the build as deactivated.
-func AbortBuild(buildId string) error {
+func AbortBuild(buildId string, caller string) error {
 	_, err := UpdateAllTasks(
 		bson.M{
 			TaskBuildIdKey: buildId,
@@ -109,7 +130,7 @@ func AbortBuild(buildId string) error {
 	if err != nil {
 		return err
 	}
-	return build.UpdateActivation(buildId, false)
+	return build.UpdateActivation(buildId, false, caller)
 }
 
 // AbortVersion sets the abort flag on all tasks associated with the version which are in an
@@ -197,7 +218,7 @@ func SetVersionPriority(versionId string, priority int) error {
 
 // RestartBuild restarts completed tasks associated with a given buildId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
-func RestartBuild(buildId string, abortInProgress bool) error {
+func RestartBuild(buildId string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the build
 	allTasks, err := FindAllTasks(
 		bson.M{
@@ -248,7 +269,7 @@ func RestartBuild(buildId string, abortInProgress bool) error {
 		}
 	}
 
-	return build.UpdateActivation(buildId, true)
+	return build.UpdateActivation(buildId, true, caller)
 }
 
 func CreateTasksCache(tasks []Task) []build.TaskCache {

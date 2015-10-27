@@ -459,6 +459,8 @@ func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
+	user := MustHaveUser(r)
+
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
@@ -520,7 +522,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 
 		as.WriteJSON(w, http.StatusOK, "patch finalized")
 	case "cancel":
-		err = model.CancelPatch(p)
+		err = model.CancelPatch(p, user.Id)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

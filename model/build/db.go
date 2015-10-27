@@ -26,6 +26,7 @@ var (
 	BuildNumberKey         = bsonutil.MustHaveTag(Build{}, "BuildNumber")
 	StatusKey              = bsonutil.MustHaveTag(Build{}, "Status")
 	ActivatedKey           = bsonutil.MustHaveTag(Build{}, "Activated")
+	ActivatedByKey         = bsonutil.MustHaveTag(Build{}, "ActivatedBy")
 	ActivatedTimeKey       = bsonutil.MustHaveTag(Build{}, "ActivatedTime")
 	RevisionOrderNumberKey = bsonutil.MustHaveTag(Build{}, "RevisionOrderNumber")
 	TasksKey               = bsonutil.MustHaveTag(Build{}, "Tasks")
@@ -202,6 +203,14 @@ func Find(query db.Q) ([]Build, error) {
 // UpdateOne updates one build.
 func UpdateOne(query interface{}, update interface{}) error {
 	return db.Update(
+		Collection,
+		query,
+		update,
+	)
+}
+
+func UpdateAllBuilds(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
+	return db.UpdateAll(
 		Collection,
 		query,
 		update,

@@ -289,9 +289,9 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (
 	return patchVersion, nil
 }
 
-func CancelPatch(p *patch.Patch) error {
+func CancelPatch(p *patch.Patch, caller string) error {
 	if p.Version != "" {
-		if err := SetVersionActivation(p.Version, false); err != nil {
+		if err := SetVersionActivation(p.Version, false, caller); err != nil {
 			return err
 		}
 		return AbortVersion(p.Version)

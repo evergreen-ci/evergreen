@@ -90,6 +90,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	user := MustHaveUser(r)
 
 	if projCtx.Build == nil {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -118,7 +119,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "abort":
-		if err := model.AbortBuild(projCtx.Build.Id); err != nil {
+		if err := model.AbortBuild(projCtx.Build.Id, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
@@ -141,7 +142,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, "Successfully set priority")
 		return
 	case "set_active":
-		err := model.SetBuildActivation(projCtx.Build.Id, putParams.Active)
+		err := model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error marking build %v as activated=%v", projCtx.Build.Id, putParams.Active),
 				http.StatusInternalServerError)
@@ -155,7 +156,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, fmt.Sprintf("Successfully marked build as active=%v", putParams.Active))
 		return
 	case "restart":
-		if err := model.RestartBuild(projCtx.Build.Id, putParams.Abort); err != nil {
+		if err := model.RestartBuild(projCtx.Build.Id, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}

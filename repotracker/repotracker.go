@@ -180,7 +180,7 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 			evergreen.Logger.Logf(slogger.INFO, "activating build %v for project %v, variant %v",
 				status.BuildId, projectId, status.BuildVariant)
 			// Don't need to set the version in here since we do it ourselves in a single update
-			if err = model.SetBuildActivation(b.Id, true); err != nil {
+			if err = model.SetBuildActivation(b.Id, true, evergreen.DefaultTaskActivator); err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "error activating build %v for project %v, variant %v: %v",
 					b.Id, projectId, status.BuildVariant, err)
 				continue

@@ -122,7 +122,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskTwo.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, true), ShouldBeNil)
+			So(RestartBuild(b.Id, true, evergreen.DefaultTaskActivator), ShouldBeNil)
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildCreated)
@@ -158,7 +158,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskFour.Insert(), ShouldBeNil)
 
-			So(RestartBuild(b.Id, false), ShouldBeNil)
+			So(RestartBuild(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(err, ShouldBeNil)
@@ -209,7 +209,7 @@ func TestBuildMarkAborted(t *testing.T) {
 		Convey("when marking it as aborted", func() {
 
 			Convey("it should be deactivated", func() {
-				So(AbortBuild(b.Id), ShouldBeNil)
+				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
@@ -252,7 +252,7 @@ func TestBuildMarkAborted(t *testing.T) {
 				// aborting the build should mark only the two abortable tasks
 				// with the correct build id as aborted
 
-				So(AbortBuild(b.Id), ShouldBeNil)
+				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
 
 				abortedTasks, err := FindAllTasks(
 					bson.M{
@@ -279,10 +279,11 @@ func TestBuildSetActivated(t *testing.T) {
 		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
 			"Error clearing test collection")
 
-		Convey("when changing the activated status of the build", func() {
-
+		Convey("when changing the activated status of the build to true", func() {
 			Convey("the activated status of the build and all undispatched"+
 				" tasks that are part of it should be set", func() {
+
+				user := "differentUser"
 
 				b := &build.Build{
 					Id:           "build",
@@ -316,16 +317,27 @@ func TestBuildSetActivated(t *testing.T) {
 					Status:    evergreen.TaskUndispatched,
 					Activated: true,
 				}
+
 				So(matching.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false), ShouldBeNil)
+				differentUser := &Task{
+					Id:          "differentUser",
+					BuildId:     b.Id,
+					Status:      evergreen.TaskUndispatched,
+					Activated:   true,
+					ActivatedBy: user,
+				}
+
+				So(differentUser.Insert(), ShouldBeNil)
+
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// the build should have been updated in the db
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeFalse)
+				So(b.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 
-				// only the matching task should have been updated
-
+				// only the matching task should have been updated that has not been set by a user
 				deactivatedTasks, err := FindAllTasks(
 					bson.M{TaskActivatedKey: false},
 					db.NoProjection,
@@ -336,6 +348,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(deactivatedTasks), ShouldEqual, 1)
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
+
+				// task with the different user activating should be activated with that user
+				differentUserTask, err := FindTask(differentUser.Id)
+				So(err, ShouldBeNil)
+				So(differentUserTask.Activated, ShouldBeTrue)
+				So(differentUserTask.ActivatedBy, ShouldEqual, user)
+
 			})
 
 			Convey("all of the undispatched task caches within the build"+
@@ -362,6 +381,11 @@ func TestBuildSetActivated(t *testing.T) {
 							Status:    evergreen.TaskUndispatched,
 							Activated: true,
 						},
+						{
+							Id:        "tc4",
+							Status:    evergreen.TaskUndispatched,
+							Activated: true,
+						},
 					},
 				}
 				So(b.Insert(), ShouldBeNil)
@@ -369,11 +393,13 @@ func TestBuildSetActivated(t *testing.T) {
 				t1 := &Task{Id: "tc1", DisplayName: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
 				t2 := &Task{Id: "tc2", DisplayName: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
 				t3 := &Task{Id: "tc3", DisplayName: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
+				t4 := &Task{Id: "tc4", DisplayName: "tc4", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: "anotherUser"}
 				So(t1.Insert(), ShouldBeNil)
 				So(t2.Insert(), ShouldBeNil)
 				So(t3.Insert(), ShouldBeNil)
+				So(t4.Insert(), ShouldBeNil)
 
-				So(SetBuildActivation(b.Id, false), ShouldBeNil)
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
 				// refresh from the database and check again
 				b, err := build.FindOne(build.ById(b.Id))
 				So(err, ShouldBeNil)
@@ -381,8 +407,79 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.Tasks[0].Activated, ShouldBeFalse)
 				So(b.Tasks[1].Activated, ShouldBeTrue)
 				So(b.Tasks[2].Activated, ShouldBeFalse)
+				So(b.Tasks[3].Activated, ShouldBeTrue)
+			})
+
+			Convey("if a build is activated by a user it should not be able to be deactivated by evergreen", func() {
+				user := "differentUser"
+
+				b := &build.Build{
+					Id:           "anotherBuild",
+					Activated:    true,
+					BuildVariant: "bv",
+				}
+
+				So(b.Insert(), ShouldBeNil)
+
+				matching := &Task{
+					Id:        "matching",
+					BuildId:   b.Id,
+					Status:    evergreen.TaskUndispatched,
+					Activated: false,
+				}
+				So(matching.Insert(), ShouldBeNil)
+
+				matching2 := &Task{
+					Id:        "matching2",
+					BuildId:   b.Id,
+					Status:    evergreen.TaskUndispatched,
+					Activated: false,
+				}
+				So(matching2.Insert(), ShouldBeNil)
+
+				// have a user set the build activation to true
+				So(SetBuildActivation(b.Id, true, user), ShouldBeNil)
+
+				// task with the different user activating should be activated with that user
+				task1, err := FindTask(matching.Id)
+				So(err, ShouldBeNil)
+				So(task1.Activated, ShouldBeTrue)
+				So(task1.ActivatedBy, ShouldEqual, user)
+
+				// task with the different user activating should be activated with that user
+				task2, err := FindTask(matching2.Id)
+				So(err, ShouldBeNil)
+				So(task2.Activated, ShouldBeTrue)
+				So(task2.ActivatedBy, ShouldEqual, user)
+
+				// refresh from the database and check again
+				b, err = build.FindOne(build.ById(b.Id))
+				So(b.Activated, ShouldBeTrue)
+				So(b.ActivatedBy, ShouldEqual, user)
+
+				// deactivate the task from evergreen and nothing should be deactivated.
+				So(SetBuildActivation(b.Id, false, evergreen.DefaultTaskActivator), ShouldBeNil)
+
+				// refresh from the database and check again
+				b, err = build.FindOne(build.ById(b.Id))
+				So(b.Activated, ShouldBeTrue)
+				So(b.ActivatedBy, ShouldEqual, user)
+
+				// task with the different user activating should be activated with that user
+				task1, err = FindTask(matching.Id)
+				So(err, ShouldBeNil)
+				So(task1.Activated, ShouldBeTrue)
+				So(task1.ActivatedBy, ShouldEqual, user)
+
+				// task with the different user activating should be activated with that user
+				task2, err = FindTask(matching2.Id)
+				So(err, ShouldBeNil)
+				So(task2.Activated, ShouldBeTrue)
+				So(task2.ActivatedBy, ShouldEqual, user)
+
 			})
 		})
+
 	})
 }
 

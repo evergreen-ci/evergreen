@@ -95,6 +95,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	user := MustHaveUser(r)
 	if projCtx.Project == nil || projCtx.Version == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
@@ -124,7 +125,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 				PushFlash(uis.CookieStore, r, w, msg)
 			}
 		}
-		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active); err != nil {
+		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		} else {

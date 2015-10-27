@@ -465,7 +465,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 
 func TestSetTaskActivated(t *testing.T) {
 
-	Convey("With a task and build", t, func() {
+	Convey("With a task activated by evergreen and build", t, func() {
 
 		testutil.HandleTestingErr(
 			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
@@ -483,6 +483,7 @@ func TestSetTaskActivated(t *testing.T) {
 				{"t2", evergreen.TaskSucceeded},
 				{"t3", evergreen.TaskSucceeded},
 			},
+			ActivatedBy: evergreen.DefaultTaskActivator,
 		}
 
 		b := &build.Build{
@@ -530,6 +531,96 @@ func TestSetTaskActivated(t *testing.T) {
 				So(dbTask.Activated, ShouldBeFalse)
 				So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, ZeroTime)
 
+			})
+		})
+	})
+	Convey("With a task activated by a user and build", t, func() {
+
+		testutil.HandleTestingErr(
+			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
+			t, "Error clearing test collections")
+
+		taskId := "t1"
+		buildId := "b1"
+		testTime := time.Now()
+		user := "user1"
+
+		task := &Task{
+			Id:            taskId,
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+			DependsOn: []Dependency{
+				{"t2", evergreen.TaskSucceeded},
+				{"t3", evergreen.TaskSucceeded},
+			},
+		}
+
+		b := &build.Build{
+			Id: buildId,
+			Tasks: []build.TaskCache{
+				{Id: taskId}, {Id: "t2"}, {Id: "t3"},
+			},
+		}
+
+		dep1 := &Task{
+			Id:            "t2",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		dep2 := &Task{
+			Id:            "t3",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		So(dep1.Insert(), ShouldBeNil)
+		So(dep2.Insert(), ShouldBeNil)
+
+		So(task.Insert(), ShouldBeNil)
+		So(b.Insert(), ShouldBeNil)
+
+		Convey("setting the test to active will update relevant db fields", func() {
+			So(SetTaskActivated(taskId, user, true), ShouldBeNil)
+			dbTask, err := FindTask(taskId)
+			So(err, ShouldBeNil)
+			So(dbTask.Activated, ShouldBeTrue)
+			So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
+			So(dbTask.ActivatedBy, ShouldEqual, user)
+
+			// make sure the dependencies were activated
+			dbDepOne, err := FindTask(dep1.Id)
+			So(err, ShouldBeNil)
+			So(dbDepOne.Activated, ShouldBeTrue)
+			So(dbDepOne.ActivatedBy, ShouldEqual, user)
+			dbDepTwo, err := FindTask(dep2.Id)
+			So(err, ShouldBeNil)
+			So(dbDepTwo.Activated, ShouldBeTrue)
+			So(dbDepTwo.ActivatedBy, ShouldEqual, user)
+
+			Convey("and setting active to false will not reset the fields if the caller is evergreen", func() {
+				So(SetTaskActivated(taskId, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				dbTask, err := FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				So(dbTask.ActivatedBy, ShouldEqual, user)
+
+				// make sure the dependencies were activated
+				dbDepOne, err := FindTask(dep1.Id)
+				So(err, ShouldBeNil)
+				So(dbDepOne.Activated, ShouldBeTrue)
+				So(dbDepOne.ActivatedBy, ShouldEqual, user)
+				dbDepTwo, err := FindTask(dep2.Id)
+				So(err, ShouldBeNil)
+				So(dbDepTwo.Activated, ShouldBeTrue)
+				So(dbDepTwo.ActivatedBy, ShouldEqual, user)
+
+			})
+			Convey("and setting active to false will not reset the fields if the caller is not evergreen", func() {
+				So(SetTaskActivated(taskId, user, false), ShouldBeNil)
+				dbTask, err := FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeFalse)
+				So(dbTask.ActivatedBy, ShouldEqual, user)
+				So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, ZeroTime)
 			})
 		})
 	})
