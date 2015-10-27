@@ -5,16 +5,75 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   $scope.userTz = $window.userTz;
   $scope.baseRef = $window.baseRef;
 
-  // If a tab number is specified in the URL, parse it out and set the tab
-  // number in the scope so that the correct tab is open when the page loads.
+  $scope.consts = { recentFailuresView: "RF", 
+                    gridView: "GV", 
+                    taskFailuresView: "task",
+                    testFailuresView: "test",
+                    variantFailuresView: "variant", 
+                    numFailures: "NF", 
+                    nameSort: "NS",
+                  }
+
+  $scope.taskFailures = [];
+  $scope.testFailures = [];
+  $scope.variantFailures = [];
+  $scope.currentFailureView = $scope.consts.taskFailuresView;
+  $scope.sortBy = $scope.consts.numFailures;
+
+  $scope.testHeaders = [
+    {name: "Task", by: "task", order: false},
+    {name : "Variant", by: "variant", order: false}
+  ]
+
+  $scope.taskHeaders = [
+    {name:"Test", by: "test", order: false},
+    {name : "Variant", by: "variant", order: false}
+  ]
+
+  $scope.variantHeaders = [
+    {name: "Task", by: "task", order: false},
+    {name:"Test", by: "test", order: false}
+  ]
+  
+  $scope.currentHeaders = $scope.taskHeaders;
+
+  $scope.selectedHeader = {};
+
+  $scope.setSelectedHeader = function(headerField) {
+    if ($scope.selectedHeader.name == headerField.name) {
+      $scope.selectedHeader.order = !$scope.selectedHeader.order;
+    } else {
+      $scope.selectedHeader = headerField;
+      $scope.selectedHeader.order = false;
+    }
+  };
+
+  $scope.selectedClass = function(headerField) {
+    var newIcon = 'icon-sort';
+    if (headerField.name == $scope.selectedHeader.name) {
+      newIcon = 'icon-sort-up';
+      if ($scope.selectedHeader.order) {
+        newIcon =  'icon-sort-down';
+      }
+    }
+    return newIcon;
+  }
+
+  // If a tab name is specified in the URL, parse it out and set the tab
+  // name in the scope so that the correct tab is open when the page loads.
   var hash = $location.hash();
   var path = $location.path();
-  if (path && !isNaN(parseInt(path.substring(1)))) {
-    $scope.tab = parseInt(path.substring(1));
-  } else if (!isNaN(parseInt(hash))) {
-    $scope.tab = parseInt(hash);
+
+  if (path && (path.substring(1) != "")) {
+    $scope.tab = path.substring(1);
+  } else if (hash) {
+    $scope.tab = hash;
   } else {
-    $scope.tab = 1;
+    $scope.tab = $scope.consts.recentFailuresView;
+  }
+
+  $scope.getTab = function() {
+    return $scope.tab;
   }
 
   $scope.getTab = function() {
@@ -29,55 +88,150 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     }, 0)
   }
 
+  $scope.setSort = function(sort) {
+    $scope.sortBy = sort;
+    if (sort == $scope.consts.numFailures){
+      $scope.sortByFailures();
+    } else {
+      $scope.sortByName();
+    }
+  }
+
+  $scope.setSubSort = function(headerField, groupingField, ordering){
+    var subGroup = $scope.currentFailures[groupingField];
+    subGroup.sort(function(a,b){
+      if (a[headerField] < b[headerField]) {
+        return 1;
+      } else if (a[headerField] > b[headerField]) {
+        return -1;
+      } else {
+        return 0;
+      }
+    }); 
+    $scope.currentFailures[groupingField] = subGroup;
+  }
+
+  $scope.getHeaderVal = function(fields, index) {
+    return fields[$scope.currentHeaders[index].by];
+  }
+
+  $scope.goTo = function(field){
+    $window.location.href = "/task/"+ field.task_id;
+  }
+
+  // sort by failures takes the current failures and sorts them on the number 
+  $scope.sortByFailures = function(){
+    $scope.currentFailures.sort(function(a,b){
+      if (a.fields.length < b.fields.length) {
+        return 1;
+      } else if (a.fields.length > b.fields.length) {
+        return -1;
+      } else {
+        return 0;
+      }
+    })
+  }
+
+  // sort by the name of the field
+  $scope.sortByName = function(){
+    $scope.currentFailures.sort(function(a,b) {
+      if (a.groupingField < b.groupingField) {
+        return -1;
+      } else if (a.groupingField > b.groupingField) {
+        return 1 ;
+      } else {
+        return 0;
+      }
+    });
+  }
+
   $scope.grid = {};
   $scope.taskNames = [];
   $scope.buildVariants = [];
 
-  // group the failures by task and test
-  var failures = {};
-  $scope.numTestFailures = 0;
-  for (var i = 0; i < $window.failures.length; i++) {
-    var failure = $window.failures[i];
-    var identifier = failure.identifier;
-    identifier.test = $filter('endOfPath')(identifier.test);
-    if (!failures[identifier.task]) {
-      failures[identifier.task] = {};
-      failures[identifier.task][identifier.test] = [].concat(failure.variants);
-      $scope.numTestFailures += 1;
-    } else {
-      if (!failures[identifier.task][identifier.test]) {
-        failures[identifier.task][identifier.test] = [];
+  $scope.groupByTask = function(){
+    // group the failures by task and test
+    var failures = {};
+    $scope.numTestFailures = 0;
+    for (var i = 0; i < $window.failures.length; i++) {
+      var failure = $window.failures[i];
+      var identifier = failure.identifier;
+      identifier.test = $filter('endOfPath')(identifier.test);
+      if (!failures[identifier.task]) {
+        failures[identifier.task] = [];
+        $scope.numTestFailures += 1;
+      } 
+      for (var j in failure.variants) {
+        failures[identifier.task].push({"test": identifier.test, 
+                                        "variant": failure.variants[j].name, 
+                                        "task_id": failure.variants[j].task_id });
       }
-      var variants = failures[identifier.task][identifier.test];
-      failures[identifier.task][identifier.test] = variants.concat(failure.variants);
-      $scope.numTestFailures += 1;
     }
+    // sort failures by number of failing tests
+    $scope.taskFailures = [];
+    Object.keys(failures).forEach(function(t) {
+      $scope.taskFailures.push({
+        "groupingField": t,
+        "fields": failures[t]
+      });
+    });
   }
 
-  // sort failures by number of failing tests
-  $scope.failures = [];
-  Object.keys(failures).forEach(function(t) {
-    $scope.failures.push({
-      "task": t,
-      "variants": failures[t]
+  $scope.groupByTest = function(){
+    // group the failures by task and test
+    var failures = {};
+    $scope.numTestFailures = 0;
+    for (var i = 0; i < $window.failures.length; i++) {
+      var failure = $window.failures[i];
+      var identifier = failure.identifier;
+      identifier.test = $filter('endOfPath')(identifier.test);
+      if (!failures[identifier.test]) {
+        failures[identifier.test] = [];
+        $scope.numTestFailures += 1;
+      } 
+      for (var j in failure.variants) {
+        failures[identifier.test].push({"task": identifier.task, 
+                                        "variant": failure.variants[j].name, 
+                                        "task_id": failure.variants[j].task_id});
+      }
+    }
+    _.each(failures,function(value, key) {
+      $scope.testFailures.push({
+        "groupingField": key,
+        "fields": value
+      });
     });
-  });
+  }
 
-  $scope.failures.sort(function(a, b) {
-    var numA = 0;
-    var numB = 0;
-    Object.keys(a.variants).forEach(function(v) {
-      numA += a.variants[v].length;
+  $scope.groupByVariant = function(){
+    // group the failures by task and test
+    var failures = {};
+    $scope.numTestFailures = 0;
+    for (var i = 0; i < $window.failures.length; i++) {
+      var failure = $window.failures[i];
+      var identifier = failure.identifier;
+      identifier.test = $filter('endOfPath')(identifier.test);
+      for (var j in failure.variants) {
+        if (!failures[failure.variants[j].name]) {
+          failures[failure.variants[j].name] = [];
+        }
+        failures[failure.variants[j].name].push({"task": identifier.task, 
+                                                "test": identifier.test, 
+                                                "task_id": failure.variants[j].task_id});
+      }
+    }
+    Object.keys(failures).forEach(function(t) {
+      $scope.variantFailures.push({
+        "groupingField": t,
+        "fields": failures[t]
+      });
     });
-    Object.keys(b.variants).forEach(function(v) {
-      numB += b.variants[v].length;
-    });
-    if (numB == numA)
-      return a.task > b.task;
-    return numB > numA;
-  });
+  }
 
-  // create grid with map of buildvariant to its tasks
+
+  // creates the grid view
+  $scope.createGrid = function () {
+      // create grid with map of buildvariant to its tasks
   for (var i = 0; i < gridCells.length; i++) {
     var task = gridCells[i].cellId.task;
     var variant = gridCells[i].cellId.variant;
@@ -104,6 +258,35 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   $scope.currentCell = '';
   $scope.currentBuildVariant = '';
   $scope.currentTaskName = '';
+  }
+
+
+  // pre-create all the groupings
+  $scope.groupByTask();
+  $scope.groupByTest();
+  $scope.groupByVariant();
+
+  $scope.createGrid();
+
+  // set the default current failures to task failures
+  $scope.currentFailures = $scope.taskFailures;
+  $scope.setSort($scope.sortBy);
+
+
+  $scope.setFailureView = function(view) {
+    $scope.currentFailureView = view;
+    if (view == $scope.consts.taskFailuresView) {
+      $scope.currentFailures = $scope.taskFailures;
+      $scope.currentHeaders = $scope.taskHeaders;
+    } else if (view == $scope.consts.testFailuresView) {
+      $scope.currentFailures = $scope.testFailures;
+      $scope.currentHeaders = $scope.testHeaders;
+    } else {
+      $scope.currentFailures = $scope.variantFailures;
+      $scope.currentHeaders = $scope.variantHeaders;
+    }
+    $scope.setSort($scope.sortBy);
+  }
 
   $scope.getRevisionMessage = function(revision) {
     return $scope.allVersions[revision].message;

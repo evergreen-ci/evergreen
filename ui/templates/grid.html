@@ -23,20 +23,64 @@ Evergreen - Grid
     {{end}}
   </div>
   <ul class="nav nav-tabs">
-  <li ng-class="{active:tab == 0}"><a href="#" ng-click="setTab(0)">Grid</a></li>
-  <li ng-class="{active:tab == 1}"><a href="#" ng-click="setTab(1)">Recent Failures</a></li>
-  <div class="row summary" ng-hide="tab != 1">
+  <li ng-class="{active:tab == consts.recentFailuresView}"><a href="#" ng-click="setTab(consts.recentFailuresView)">Recent Failures</a></li>
+  <li ng-class="{active:tab == consts.gridView}"><a href="#" ng-click="setTab(consts.gridView)">Grid</a></li>
+  <div class="row summary" ng-hide="tab != consts.recentFailuresView ">
     <div class="gridtable-small">
       <h3 ng-show="failures.length == 0">Hooray! There are no recent test failures.</h3>
-      <ul ng-repeat="failure in failures" ng-show="failures.length != 0">
-        <div class="failure-task">[[failure.task]]</div>
-        <li class="failure-tab failure-test strong" ng-repeat="(name, variants) in failure.variants | orderBy:['-variants.length', 'name']">
-          <a ng-href="/task_history/[[baseRef.identifier]]/[[failure.task]]?#[[name]]=fail">[[name]]</a></span>&nbsp;on&nbsp;<span ng-repeat="variant in variants | orderBy:'name'"><a ng-href="/task/[[variant.task_id]]">[[variant.name]]</a>[[$last ? '' : ',&nbsp;']]</span>
-        </li>
-      </ul>
-    </div>
+      <div ng-show="failures.length != 0">
+        <div class="grid">
+          <div class="row">
+            <div class="pull-left" style="margin-left:20px">
+              <h4> Group Failures By: </h4>
+              <div class = "btn-group btn-group-sm">
+                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.taskFailuresView}" ng-click="setFailureView(consts.taskFailuresView)"> Task </a>
+                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.testFailuresView}" ng-click="setFailureView(consts.testFailuresView)"> Test </a>
+                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.variantFailuresView}" ng-click="setFailureView(consts.variantFailuresView)"> Variant </a>
+              </div>
+            </div>
+            <div class="col-lg-2">
+              <h4> Sort Groups By: </h4>
+              <div class="btn-group btn-group-sm">
+                 <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.numFailures}" ng-click="setSort(consts.numFailures)"># of Failures </a> 
+                  <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.nameSort}" ng-click="setSort(consts.nameSort)"> Name </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid" ng-repeat="failure in currentFailures">
+          <div class="row">
+            <div class="col-lg-4">
+              <h4> [[failure.groupingField]] <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize> </span></h4>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-lg-6">
+              <table class="table table-new table-hover" style="margin-bottom:5px">
+                <thead>
+                  <tr>
+                  <th style="width:5%"></th>
+                  <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)"> 
+                    [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
+                  </th> 
+                  </tr>
+                </thead>  
+                <tbody>
+                  <tr ng-repeat="field in failure.fields = (failure.fields | orderBy: selectedHeader.by: selectedHeader.order)" style="cursor:pointer" ng-click="goTo(field)">
+                    <td align="center"><span class="tooltip-task-status failed" ng-class="task | statusFilter">&nbsp;</span>
+                    </td>
+                    <td>[[getHeaderVal(field, 0)]]</td>
+                    <td>[[getHeaderVal(field,1)]]</td>
+                  </tr>
+                </tbody> 
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>  
   </div>
-  <div class="row" ng-hide="tab != 0">
+  </div>
+  <div class="row" ng-hide="tab != consts.gridView">
     <div class="row"></div>
       <div id="popover"></div>
       <div class="gridtable-small">
