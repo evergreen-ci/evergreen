@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'errorPasserService', function($scope, taskRestService, errorPasser) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', function($scope, taskRestService) {
     $scope.modalOpen = false;
     $scope.modalTitle = 'Modify Task';
     $scope.adminOptionVals = {};
@@ -23,7 +23,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'erro
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error aborting: ' + jqXHR,'errorModal');
+                    alert('Error aborting: ' + jqXHR);
                 }
             }
         );
@@ -39,7 +39,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'erro
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error restarting: ' + jqXHR,'errorModal');
+                    alert('Error restarting: ' + jqXHR);
                 }
             }
         );
@@ -55,7 +55,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'erro
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error setting priority: ' + jqXHR,'errorModal');
+                    alert('Error setting priority: ' + jqXHR);
                 }
             }
         );
@@ -71,7 +71,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'erro
                     window.location.reload(true);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error setting active = ' + active + ': ' + jqXHR,'errorModal');
+                    alert('Error setting active = ' + active + ': ' + jqXHR);
                 }
             }
         );

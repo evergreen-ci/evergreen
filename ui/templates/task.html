@@ -59,7 +59,6 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 {{ else }}
 <div id="content" class="container-fluid">
 {{ end }}
-<error-flash ng-init="destination='errorHeader';"></error-flash>
 {{template "flash" . }}
 <div ng-controller="TaskCtrl">
   <ol class="breadcrumb">
