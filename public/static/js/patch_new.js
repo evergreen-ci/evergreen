@@ -1,4 +1,4 @@
-function PatchController($scope, $filter, $window, errorPasser) {
+function PatchController($scope, $filter, $window, errorPasserService) {
   $scope.userTz = $window.userTz;
 
   $scope.selectedTask = {

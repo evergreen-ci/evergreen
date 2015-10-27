@@ -65,7 +65,7 @@ mciModule.controller('BuildVariantHistoryController',['$scope', '$filter','$wind
         },
 
         error: function(jqXHR, status, errorThrown) {
-          errorPasser.pushError('Error getting build variant history: ' + jqXHR);
+          errorPasser.pushError('Error getting build variant history: ' + jqXHR,'errorHeader');
         }
       }
     );
