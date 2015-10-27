@@ -1,4 +1,4 @@
-function TaskTimingController($scope, $http, $window, $filter, $locationHash) {
+function TaskTimingController($scope, $http, $window, $filter, $locationHash, errorPasserService) {
   $scope.allProjects = $window.allProjects;
   var initialHash = $locationHash.get();
 
@@ -102,7 +102,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash) {
         $scope.recompute();
       }).
       error(function(data) {
-        alert("Error - " + JSON.stringify(data));
+        errorPasserService.pushError("Error loading data: `" + data.error+"`", 'errorHeader');
         $scope.taskData = [];
       });
 

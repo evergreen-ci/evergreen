@@ -1,5 +1,5 @@
-mciModule.controller('BuildVariantHistoryController', function($scope, $filter, $window,
-  mciBuildVariantHistoryRestService) {
+mciModule.controller('BuildVariantHistoryController',['$scope', '$filter','$window', 'mciBuildVariantHistoryRestService', 'errorPasserService', function($scope, $filter, $window,
+  mciBuildVariantHistoryRestService, errorPasser) {
   $scope.buildVariant = $window.buildVariant;
   $scope.project = $window.project;
   $scope.taskNames = $window.taskNames;
@@ -65,9 +65,9 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $filter, 
         },
 
         error: function(jqXHR, status, errorThrown) {
-          return alert('Error getting build variant history: ' + jqXHR);
+          errorPasser.pushError('Error getting build variant history: ' + jqXHR);
         }
       }
     );
   };
-});
+}]);

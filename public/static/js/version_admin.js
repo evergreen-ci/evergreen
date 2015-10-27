@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService', function($scope, versionRestService) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService','errorPasserService', function($scope, versionRestService, errorPasser) {
 
     $scope.adminOptionVals = {};
     $scope.modalTitle = 'Modify Version';
@@ -13,7 +13,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService', fu
                     window.location.reload();
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error setting version activation: ' + jqXHR);
+                    errorPasser.pushError('Error setting version activation: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -28,7 +28,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService', fu
                     window.location.reload();
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error changing priority: ' + jqXHR);
+                    errorPasser.pushError('Error changing priority: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -44,7 +44,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService', fu
 	$scope.updatePriority = function() {
 		var newPriority = parseInt($scope.adminOptionVals.priority);
 		if(isNaN(newPriority)) {
-			alert('New priority value must be an integer');
+			errorPasser.pushError('New priority value must be an integer','errorModal');
 		} else {
 			setVersionPriority(parseInt($scope.adminOptionVals.priority));
 		}

@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', function($scope, buildRestService) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'errorPasserService', function($scope, buildRestService, errorPasser) {
     $scope.setBuild = function(build) {
         $scope.build = build;
         $scope.buildId = build._id;
@@ -18,7 +18,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', func
                     window.location.reload();
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error aborting build: ' + jqXHR);
+                    errorPasser.pushError('Error aborting build: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -34,7 +34,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', func
                     window.location.reload();
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error restarting build: ' + jqXHR);
+                    errorPasser.pushError('Error restarting build: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -50,7 +50,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', func
                     window.location.reload();
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error setting build priority: ' + jqXHR);
+                    errorPasser.pushError('Error setting build priority: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -66,7 +66,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', func
                     window.location.reload();
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    alert('Error aborting build: ' + jqXHR);
+                    errorPasser.pushError('Error aborting build: ' + jqXHR,'errorModal');
                 }
             }
         );

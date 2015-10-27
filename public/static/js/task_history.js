@@ -262,7 +262,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
 });
 
 mciModule.controller('TaskHistoryController', function($scope, $window, $http,
-  $filter, $timeout, taskHistoryFilter, mciTaskHistoryRestService) {
+  $filter, $timeout, taskHistoryFilter, mciTaskHistoryRestService, errorPasserService) {
   $scope.taskName = $window.taskName;
   $scope.variants = $window.variants;
   $scope.versions = [];
@@ -510,7 +510,7 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
         },
 
         error: function(jqXHR, status, errorThrown) {
-          return alert('Error getting task history: ' + jqXHR);
+          errorPasserService.pushError('Error getting task history: ' + jqXHR,'errorNearButton');
         }
       }
     );

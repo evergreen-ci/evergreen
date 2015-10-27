@@ -31,6 +31,7 @@ Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName
 
 {{define "content"}}
 <div id="content" class="container-fluid" ng-controller="BuildViewController">
+<error-flash ng-init="destination='errorHeader';"></error-flash>
   {{template "flash" . }}
   <ol class="breadcrumb">
     <li>

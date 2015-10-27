@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestService', function($scope, $filter, hostsRestService) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestService', 'errorPasserService', function($scope, $filter, hostsRestService, errorPasser) {
   $scope.modalTitle = 'Modify Hosts';
   $scope.validHostStatuses = ["running", "decommissioned", "quarantined"];
   $scope.newStatus = $scope.validHostStatuses[0];
@@ -18,7 +18,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
           window.location.reload();
         },
         error: function(jqXHR, status, errorThrown) {
-          alert('Error updating host status: ' + jqXHR);
+          errorPasser.pushError('Error updating host status: ' + jqXHR, 'errorModal');
         }
       }
     );
