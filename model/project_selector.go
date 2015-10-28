@@ -76,8 +76,8 @@ func (sc selectCriterion) Validate() error {
 	if sc.name == "" {
 		return fmt.Errorf("name is empty")
 	}
-	if i := strings.IndexAny(sc.name, InvalidCriterionRunes); i != -1 {
-		return fmt.Errorf("name contains invalid character '%v'", sc.name[i])
+	if i := strings.IndexAny(sc.name, InvalidCriterionRunes); i == 0 {
+		return fmt.Errorf("name starts with invalid character '%v'", sc.name[i])
 	}
 	if sc.name == SelectAll {
 		if sc.tagged {
