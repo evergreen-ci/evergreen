@@ -199,6 +199,12 @@ func (tse *taskSelectorEvaluator) EvaluateDeps(deps []TaskDependency) ([]TaskDep
 	// TODO accumulate a list of validation errors for each dep
 	// once the validator package is broken up
 	for _, d := range deps {
+		// * is a special case for dependencies //TODO--should it be?
+		if d.Name == AllDependencies {
+			newDeps = append(newDeps, d)
+			newDepsByNameAndVariant[TVPair{d.Variant, d.Name}] = d
+			continue
+		}
 		if d.Name == "" {
 			return nil, fmt.Errorf("dependency has empty name")
 		}
