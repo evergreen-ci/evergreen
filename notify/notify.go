@@ -480,6 +480,9 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 	}
 
 	for _, projectRef := range allProjects {
+		if !projectRef.Enabled {
+			continue
+		}
 		var buildVariants []string
 		var proj *model.Project
 		var err error
