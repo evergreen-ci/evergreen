@@ -194,7 +194,8 @@ func (tse *taskSelectorEvaluator) EvaluateTasks(bvTasks []BuildVariantTask) ([]B
 func (tse *taskSelectorEvaluator) EvaluateDeps(deps []TaskDependency) ([]TaskDependency, error) {
 	// This is almost an exact copy of EvaluateTasks.
 	newDeps := []TaskDependency{}
-	newDepsByName := map[string]TaskDependency{}
+	newDepsByNameAndVariant := map[TVPair]TaskDependency{}
+
 	// TODO accumulate a list of validation errors for each dep
 	// once the validator package is broken up
 	for _, d := range deps {
@@ -205,19 +206,19 @@ func (tse *taskSelectorEvaluator) EvaluateDeps(deps []TaskDependency) ([]TaskDep
 		if err != nil {
 			return nil, err
 		}
-		// create new BuildVariantTask definitions, throwing away duplicates
+		// create new dependency definitions--duplicates must have the same status requirements
 		for _, name := range names {
 			// create a newDep by copying the dep that selected it,
 			// so we can preserve the "Variant" and "Status" field.
 			newDep := d
 			newDep.Name = name
-			// add the new dep if it doesn't already exists (we must avoid duplicates)
-			if oldDep, ok := newDepsByName[name]; !ok {
+			// add the new dep if it doesn't already exists (we must avoid conflicting status fields)
+			if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {
 				// not a duplicate--add it!
 				newDeps = append(newDeps, newDep)
-				newDepsByName[name] = newDep
+				newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}] = newDep
 			} else {
-				// dep already in the new list, so we check to make sure the definitions match.
+				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(newDep, oldDep) {
 					return nil, fmt.Errorf(
 						"conflicting definitions of dependency '%v': %v != %v", name, newDep, oldDep)

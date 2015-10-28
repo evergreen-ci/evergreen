@@ -290,8 +290,8 @@ func TestTaskSelectorEvaluation(t *testing.T) {
 						{Name: ".warm .secondary"}})
 					So(err, ShouldNotBeNil)
 					_, err = tse.EvaluateDeps([]TaskDependency{
-						{Name: "orange", Variant: "woop"},
-						{Name: ".warm .secondary"}})
+						{Name: "orange", Variant: "woop", Status: "*"},
+						{Name: ".warm .secondary", Variant: "woop"}})
 					So(err, ShouldNotBeNil)
 				})
 				Convey("bad selectors", func() {
