@@ -850,9 +850,16 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+	yamlBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		as.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Error reading request body: %v", err))
+		return
+	}
+
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if err := util.ReadYAMLInto(r.Body, project); err != nil {
+	if err := model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
 		as.WriteJSON(w, http.StatusBadRequest, []validator.ValidationError{validationErr})
 		return

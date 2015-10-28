@@ -490,14 +490,17 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				{
 					Name:      "taskA",
 					Priority:  5,
+					Tags:      []string{"tag1", "tag2"},
 					DependsOn: []TaskDependency{},
 				},
 				{
 					Name:      "taskB",
+					Tags:      []string{"tag1", "tag2"},
 					DependsOn: []TaskDependency{{Name: "taskA", Variant: "buildVar"}},
 				},
 				{
 					Name: "taskC",
+					Tags: []string{"tag1", "tag2"},
 					DependsOn: []TaskDependency{
 						{Name: "taskA"},
 						{Name: "taskB"},
@@ -505,10 +508,12 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				},
 				{
 					Name:      "taskD",
+					Tags:      []string{"tag1", "tag2"},
 					DependsOn: []TaskDependency{{Name: AllDependencies}},
 				},
 				{
 					Name: "taskE",
+					Tags: []string{"tag1", "tag2"},
 					DependsOn: []TaskDependency{
 						{
 							Name:    AllDependencies,
@@ -591,6 +596,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			)
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 8)
+			So(len(tasks[0].Tags), ShouldEqual, 2)
 
 		})
 

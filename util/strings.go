@@ -2,6 +2,7 @@ package util
 
 import (
 	"strings"
+	"unicode"
 )
 
 // RemoveSuffix returns s with 'suffix' removed from end of string if present
@@ -25,4 +26,15 @@ func CleanName(name string) string {
 	name = strings.Replace(name, "-", "_", -1)
 	name = strings.Replace(name, " ", "_", -1)
 	return name
+}
+
+// IndexWhiteSpace returns the first index of white space in the given string.
+// Returns -1 if no white space exists.
+func IndexWhiteSpace(s string) int {
+	for i, r := range s {
+		if unicode.IsSpace(r) {
+			return i
+		}
+	}
+	return -1
 }

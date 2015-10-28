@@ -680,6 +680,32 @@ func TestValidateProjectTaskNames(t *testing.T) {
 	})
 }
 
+func TestValidateProjectTaskIdsAndTags(t *testing.T) {
+	Convey("When validating a project", t, func() {
+		Convey("ensure bad task tags throw an error", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "compile", Tags: []string{"a", "!b", "ccc ccc", "d", ".e", "f\tf"}},
+				},
+			}
+			So(validateProjectTaskIdsAndTags(project), ShouldNotResemble, []ValidationError{})
+			So(len(validateProjectTaskIdsAndTags(project)), ShouldEqual, 4)
+		})
+		Convey("ensure bad task names throw an error", func() {
+			project := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "compile"},
+					{Name: "!compile"},
+					{Name: ".compile"},
+					{Name: "Fun!"},
+				},
+			}
+			So(validateProjectTaskIdsAndTags(project), ShouldNotResemble, []ValidationError{})
+			So(len(validateProjectTaskIdsAndTags(project)), ShouldEqual, 2)
+		})
+	})
+}
+
 func TestCheckTaskCommands(t *testing.T) {
 	Convey("When validating a project", t, func() {
 		Convey("ensure tasks that do not have at least one command throw "+

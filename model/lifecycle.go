@@ -440,6 +440,9 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	for _, task := range tasksToCreate {
 		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
 
+		// set Tags based on the spec
+		newTask.Tags = project.GetSpecForTask(task.Name).Tags
+
 		// set the new task's dependencies
 		// TODO encapsulate better
 		if len(task.DependsOn) == 1 &&
