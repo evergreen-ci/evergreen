@@ -61,6 +61,10 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	// turn the project refs into a map of the project id -> project
 	projects := map[string]model.Project{}
 	for _, ref := range projectRefs {
+		// only monitor projects that are enabled
+		if !ref.Enabled {
+			continue
+		}
 		project, err := model.FindProject("", &ref)
 
 		// continue on error to stop the whole monitoring process from
