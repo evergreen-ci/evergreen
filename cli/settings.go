@@ -42,7 +42,7 @@ func confirm(message string, defaultYes bool) bool {
 }
 
 // loadSettings attempts to load the settings file
-func loadSettings(opts Options) (*Settings, error) {
+func loadSettings(opts *Options) (*Settings, error) {
 	confPath := opts.ConfFile
 	if confPath == "" {
 		u, err := user.Current()
@@ -83,7 +83,7 @@ type Settings struct {
 	Projects      []ProjectConf `yaml:"projects,omitempty"`
 }
 
-func (s *Settings) Write(opts Options) error {
+func (s *Settings) Write(opts *Options) error {
 	confPath := opts.ConfFile
 	if confPath == "" {
 		u, err := user.Current()

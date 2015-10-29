@@ -19,7 +19,7 @@ import (
 // GetUpdateCommand attempts to fetch the latest version of the client binary and install it over
 // the current one.
 type GetUpdateCommand struct {
-	GlobalOpts Options `no-flag:"true"`
+	GlobalOpts *Options `no-flag:"true"`
 	Install    bool    `long:"install" description:"after downloading update, overwrite old binary with new one"`
 }
 

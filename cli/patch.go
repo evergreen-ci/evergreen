@@ -52,30 +52,30 @@ type patchSubmission struct {
 
 // ListPatchesCommand is used to list a user's existing patches.
 type ListPatchesCommand struct {
-	GlobalOpts  Options  `no-flag:"true"`
+	GlobalOpts  *Options  `no-flag:"true"`
 	Variants    []string `short:"v" long:"variants" description:"variants to run the patch on. may be specified multiple times, or use the value 'all'"`
 	PatchId     string   `short:"i" description:"show details for only the patch with this ID"`
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
 }
 
 type ListProjectsCommand struct {
-	GlobalOpts Options `no-flag:"true"`
+	GlobalOpts *Options `no-flag:"true"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
 type ValidateCommand struct {
-	GlobalOpts Options `no-flag:"true"`
+	GlobalOpts *Options `no-flag:"true"`
 }
 
 // CancelPatchCommand is used to cancel a patch.
 type CancelPatchCommand struct {
-	GlobalOpts Options `no-flag:"true"`
+	GlobalOpts *Options `no-flag:"true"`
 	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
 // FinalizePatchCommand is used to finalize a patch, allowing it to be scheduled.
 type FinalizePatchCommand struct {
-	GlobalOpts Options `no-flag:"true"`
+	GlobalOpts *Options `no-flag:"true"`
 	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
@@ -93,7 +93,7 @@ type PatchFileCommand struct {
 
 // PatchCommandParams contains parameters common to PatchCommand and PatchFileCommand
 type PatchCommandParams struct {
-	GlobalOpts  Options  `no-flag:"true"`
+	GlobalOpts  *Options  `no-flag:"true"`
 	Project     string   `short:"p" long:"project" description:"project to submit patch for"`
 	Variants    []string `short:"v" long:"variants"`
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
@@ -104,7 +104,7 @@ type PatchCommandParams struct {
 
 // SetModuleCommand adds or updates a module in an existing patch.
 type SetModuleCommand struct {
-	GlobalOpts  Options `no-flag:"true"`
+	GlobalOpts  *Options `no-flag:"true"`
 	Module      string  `short:"m" long:"module" description:"name of the module to set patch for"`
 	PatchId     string  `short:"i" description:"id of the patch to modify" required:"true" `
 	SkipConfirm bool    `short:"y" long:"yes" description:"skip confirmation text"`
@@ -113,14 +113,14 @@ type SetModuleCommand struct {
 
 // RemoveModuleCommand removes module information from an existing patch.
 type RemoveModuleCommand struct {
-	GlobalOpts Options `no-flag:"true"`
+	GlobalOpts *Options `no-flag:"true"`
 	Module     string  `short:"m" long:"module" description:"name of the module to remove from patch" required:"true" `
 	PatchId    string  `short:"i" description:"name of the module to remove from patch" required:"true" `
 }
 
 // getAPIClient loads the user settings and creates an APIClient configured for the API/UI
 // endpoints defined in the settings file.
-func getAPIClient(o Options) (*APIClient, *Settings, error) {
+func getAPIClient(o *Options) (*APIClient, *Settings, error) {
 	settings, err := loadSettings(o)
 	if err != nil {
 		return nil, nil, err
