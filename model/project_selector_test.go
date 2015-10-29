@@ -255,11 +255,7 @@ func TestTaskSelectorEvaluation(t *testing.T) {
 						{Name: "green", Status: "*"}})
 				taskSelectorDepEval(tse,
 					[]TaskDependency{{Name: "*"}},
-					[]TaskDependency{
-						{Name: "red"}, {Name: "blue"}, {Name: "yellow"},
-						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
-						{Name: "brown"}, {Name: "white"}, {Name: "black"},
-					})
+					[]TaskDependency{{Name: "*"}})
 			})
 			Convey("should fail on  invalid tasks pointers like", func() {
 				Convey("tasks and tags that do not exist", func() {
