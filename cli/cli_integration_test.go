@@ -74,7 +74,7 @@ func TestCLIFunctions(t *testing.T) {
 		settingsFile.Close()
 		t.Log("Wrote settings file to ", settingsFile.Name())
 
-		ac, _, err := getAPIClient(Options{settingsFile.Name()})
+		ac, _, err := getAPIClient(&Options{settingsFile.Name()})
 		So(err, ShouldBeNil)
 
 		Convey("check that creating a patch works", func() {
