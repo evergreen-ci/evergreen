@@ -50,7 +50,7 @@ Evergreen - Grid
         </div>
         <div class="grid" ng-repeat="failure in currentFailures">
           <div class="row">
-            <div class="col-lg-4">
+            <div class="col-lg-6">
               <h4> [[failure.groupingField]] <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize> </span></h4>
             </div>
           </div>
@@ -59,8 +59,8 @@ Evergreen - Grid
               <table class="table table-new table-hover" style="margin-bottom:5px">
                 <thead>
                   <tr>
-                  <th style="width:5%"></th>
-                  <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)"> 
+                  <th style="width:6%"></th>
+                  <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)" style="width:47%"> 
                     [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
                   </th> 
                   </tr>
