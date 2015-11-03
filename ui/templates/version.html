@@ -114,7 +114,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
           <li ng-class="{active:tab==1}"><a href="#" ng-click="setTab(1)">Grid</a></li>
         </ul>
         <div class="row" ng-hide="tab!=0">
-          <div ng-repeat="build in version.Builds | orderBy:'build.Build.display_name'" class="col-lg-4">
+          <div ng-repeat="build in version.Builds | orderBy:'Build.display_name'" class="col-lg-4">
             <h4 class="one-liner" style="margin-bottom: 5px;">
               <a ng-href="/build/[[build.Build._id]]" class="semi-muted">[[build.Build.display_name]]</a>
             </h4>
