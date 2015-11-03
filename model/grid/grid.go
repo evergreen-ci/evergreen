@@ -54,8 +54,27 @@ type Failure struct {
 	Variants []VariantInfo `bson:"a" json:"variants"`
 }
 
+// Revision failure contains the revision and a list of the
+// task failures that exist on that version.
+type RevisionFailure struct {
+	Id       string        `bson:"_id" json:"revision"`
+	Failures []TaskFailure `bson:"a" json:"failures"`
+}
+
+// TaskFailure has the information needed to be displayed on
+// the revision failures tab.
+type TaskFailure struct {
+	BuildVariant string `bson:"n" json:"variant"`
+	TestName     string `bson:"i" json:"test"`
+	TaskName     string `bson:"t" json:"task"`
+	TaskId       string `bson:"tid" json:"task_id"`
+}
+
 // Failures holds failures.
 type Failures []Failure
+
+// RevisionFailures holds revision failures
+type RevisionFailures []RevisionFailure
 
 // FetchCells returns a Grid of Cells - grouped by variant and display name.
 // current is the most recent version and from which to fetch prior Cells
@@ -226,4 +245,58 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 	}
 	failures := Failures{}
 	return failures, db.Aggregate(model.TasksCollection, pipeline, &failures)
+}
+
+// FetchRevisionOrderFailures returns the most recent test failures
+// grouped by revision - looking as far back as depth revisions
+func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFailures, error) {
+	pipeline := []bson.M{
+		// Stage 1: Get the most recent completed tasks - looking back as far as
+		// depth versions - on this project.
+		{"$match": bson.M{
+			model.TaskRevisionOrderNumberKey: bson.M{
+				"$lte": current.RevisionOrderNumber,
+				"$gte": (current.RevisionOrderNumber - depth),
+			},
+			model.TaskProjectKey:   current.Identifier,
+			model.TaskRequesterKey: evergreen.RepotrackerVersionRequester,
+		}},
+		// Stage 2: Project only relevant fields.
+		{"$project": bson.M{
+			model.TaskDisplayNameKey:  1,
+			model.TaskRevisionKey:     1,
+			model.TaskBuildVariantKey: 1,
+			model.TaskIdKey:           1,
+			"l":                       "$" + model.TaskTestResultsKey,
+		}},
+		// Stage 3: Flatten out the test results
+		{"$unwind": "$l"},
+		// Stage 4: Take only failed test results
+		{"$match": bson.M{
+			"l." + model.TestResultStatusKey: evergreen.TestFailedStatus,
+		}},
+		// Stage 5: Project only relevant fields including just the test file key
+		{"$project": bson.M{
+			model.TaskRevisionKey:     1,
+			model.TaskBuildVariantKey: 1,
+			model.TaskDisplayNameKey:  1,
+			model.TaskIdKey:           1,
+			"f":                       "$l." + model.TestResultTestFileKey,
+		}},
+		// Stage 6: Group by revision. For each one include the
+		// variant name, task name, task id and test name
+		{"$group": bson.M{
+			"_id": "$" + model.TaskRevisionKey,
+			"a": bson.M{
+				"$push": bson.M{
+					"n":   "$" + model.TaskBuildVariantKey,
+					"i":   "$f",
+					"t":   "$" + model.TaskDisplayNameKey,
+					"tid": "$" + model.TaskIdKey,
+				},
+			},
+		}},
+	}
+	taskFailures := RevisionFailures{}
+	return taskFailures, db.Aggregate(model.TasksCollection, pipeline, &taskFailures)
 }

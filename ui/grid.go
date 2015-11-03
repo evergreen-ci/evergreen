@@ -37,6 +37,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	var versions map[string]version.Version
 	var cells grid.Grid
 	var failures grid.Failures
+	var revisionFailures grid.RevisionFailures
 	var depth int
 	var err error
 
@@ -58,7 +59,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Version != nil {
 		recentVersions, err := version.Find(version.
 			ByProjectIdAndOrder(projCtx.Version.Identifier, projCtx.Version.RevisionOrderNumber).
-			WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey).
+			WithFields(version.IdKey, version.RevisionKey, version.RevisionOrderNumberKey, version.MessageKey, version.AuthorKey, version.CreateTimeKey).
 			Sort([]string{"-" + version.RevisionOrderNumberKey}).
 			Limit(depth + 1))
 		if err != nil {
@@ -82,16 +83,24 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error fetching builds: %v", err), http.StatusInternalServerError)
 			return
 		}
+
+		revisionFailures, err = grid.FetchRevisionOrderFailures(*projCtx.Version, depth)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error fetching revision failures: %v", err), http.StatusInternalServerError)
+			return
+		}
 	} else {
 		versions = make(map[string]version.Version)
 		cells = make(grid.Grid, 0)
 		failures = make(grid.Failures, 0)
+		revisionFailures = make(grid.RevisionFailures, 0)
 	}
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		Versions    map[string]version.Version
-		GridCells   grid.Grid
-		Failures    grid.Failures
-		User        *user.DBUser
-	}{projCtx, versions, cells, failures, GetUser(r)}, "base", "grid.html", "base_angular.html", "menu.html")
+		ProjectData      projectContext
+		Versions         map[string]version.Version
+		GridCells        grid.Grid
+		Failures         grid.Failures
+		RevisionFailures grid.RevisionFailures
+		User             *user.DBUser
+	}{projCtx, versions, cells, failures, revisionFailures, GetUser(r)}, "base", "grid.html", "base_angular.html", "menu.html")
 }

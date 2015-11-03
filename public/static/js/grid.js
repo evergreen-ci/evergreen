@@ -1,6 +1,7 @@
 mciModule.controller('VersionMatrixController', function($scope, $window, $location, $filter) {
   $scope.baseVersion = $window.baseVersion;
   $scope.gridCells = $window.gridCells;
+  $scope.revisionFailures = $window.revisionFailures;
   $scope.allVersions = $window.allVersions;
   $scope.userTz = $window.userTz;
   $scope.baseRef = $window.baseRef;
@@ -10,13 +11,16 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
                     taskFailuresView: "task",
                     testFailuresView: "test",
                     variantFailuresView: "variant", 
+                    revisionFailuresView: "revision",
                     numFailures: "NF", 
                     nameSort: "NS",
+                    revisionSort: "RS",
                   }
 
   $scope.taskFailures = [];
   $scope.testFailures = [];
   $scope.variantFailures = [];
+  $scope.revisionFailures = [];
   $scope.currentFailureView = $scope.consts.taskFailuresView;
   $scope.sortBy = $scope.consts.numFailures;
 
@@ -34,8 +38,18 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     {name: "Task", by: "task", order: false},
     {name:"Test", by: "test", order: false}
   ]
+
+  $scope.revisionHeaders = [
+    {name: "Task", by: "task", order: false},
+    {name:"Test", by: "test", order: false},
+    {name: "Variant", by:"variant", order: false},
+  ]
   
   $scope.currentHeaders = $scope.taskHeaders;
+
+  $scope.widthPercentage = function(){
+    return 96/($scope.currentHeaders.length)
+  }
 
   $scope.selectedHeader = {};
 
@@ -111,12 +125,20 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     }
   }
 
+  //variable/function to handle expanding the header message
+  $scope.showFullMessage = false;
+  $scope.flipExpand = function() {
+    $scope.showFullMessage = !$scope.showFullMessage;
+  };
+
   $scope.setSort = function(sort) {
     $scope.sortBy = sort;
     if (sort == $scope.consts.numFailures){
       $scope.sortByFailures();
-    } else {
+    } else if( sort == $scope.consts.nameSort) {
       $scope.sortByName();
+    } else {
+      $scope.sortByRevisionOrder();
     }
   }
 
@@ -163,6 +185,7 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
       }
     });
   }
+
 
   $scope.grid = {};
   $scope.taskNames = [];
@@ -253,6 +276,41 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     });
   }
 
+  $scope.groupByRevision = function(){
+    // group the revision failures by task, test and variant
+    var failures = {};
+    $scope.numTestFailures = 0;
+    for (var i = 0; i < $window.revisionFailures.length; i++) {
+      var identifier = $window.revisionFailures[i].revision;
+      var revFailures = $window.revisionFailures[i].failures;
+      for (j in revFailures){
+        var failure = revFailures[j];
+        if (!failures[identifier]) {
+          failures[identifier] = [];
+        }
+        failures[identifier].push({ "task": failure.task, 
+                                    "test": failure.test, 
+                                    "task_id": failure.task_id, 
+                                    "variant": failure.variant,
+                                  });
+      
+    }
+}
+    _.each(failures,function(value, key) {
+      $scope.revisionFailures.push({
+        "groupingField": key,
+        "order": $scope.allVersions[key].order, // add the order field from the dictionary of all versions. 
+        "fields": value, 
+        "hidden" : false,
+      });
+    });
+
+    // sort on revision order
+    $scope.revisionFailures.sort(function(a,b) {
+      return a.order < b.order;
+    });
+  }
+
 
   // creates the grid view
   $scope.createGrid = function () {
@@ -290,6 +348,7 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   $scope.groupByTask();
   $scope.groupByTest();
   $scope.groupByVariant();
+  $scope.groupByRevision();
 
   $scope.createGrid();
 
@@ -306,11 +365,16 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     } else if (view == $scope.consts.testFailuresView) {
       $scope.currentFailures = $scope.testFailures;
       $scope.currentHeaders = $scope.testHeaders;
-    } else {
+    } else if (view == $scope.consts.variantFailuresView) {
       $scope.currentFailures = $scope.variantFailures;
       $scope.currentHeaders = $scope.variantHeaders;
+    } else {
+      $scope.currentFailures = $scope.revisionFailures;
+      $scope.currentHeaders = $scope.revisionHeaders;
     }
-    $scope.setSort($scope.sortBy);
+    if (view != $scope.consts.revisionFailuresView){
+      $scope.setSort($scope.sortBy);
+    }
   }
 
   $scope.getRevisionMessage = function(revision) {
