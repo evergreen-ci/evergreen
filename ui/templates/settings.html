@@ -1,10 +1,14 @@
 {{define "scripts"}}
 <script type="text/javascript" src="{{Static "js" "settings.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
-    var user_tz = {{.Data.Timezone}};
-	var userApiKey = {{.User.APIKey}}
-    var userConf = {{.Config}}
+  var user_tz = {{.Data.Timezone}};
+  var userApiKey = {{.User.APIKey}};
+  var userConf = {{.Config}};
+  var binaries = {{.Binaries}};
 </script>
+<style type="text/css">
+  body{ background: #f5f6f7; }
+</style>
 {{end}}
 
 {{define "title"}}
@@ -13,35 +17,65 @@ Settings for {{.User.Id}}
 
 
 {{define "content"}}
-<div id="content" class="container" ng-controller="SettingsCtrl">
-<error-flash ng-init="destination='errorHeader';"></error-flash>
+<div id="content" class="container-fluid" ng-controller="SettingsCtrl">
+  <error-flash ng-init="destination='errorHeader';"></error-flash>
   {{template "flash" . }}
-  <div class="row">
-    <div class="col-lg-4">
-      <h3>Local Settings</h3>
-      <form novalidate class="css-form">
-        <div>
-          <label>Timezone <select ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select></label>
-        </div>
-        <br />
-        <div style="text-align:center">
-          <button ng-click="updateUserSettings(new_tz)" class="btn btn-primary">Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
-  <div class="row" ng-controller="SettingsCtrl">
-    <div class="col-lg-8">
-      <h3>Authentication</h3>
-      <div>Copy and paste these settings into ~/.evergreen.yml to authenticate the command line client.</div>
-      <textarea readonly style="font-family:monospace" id="conf"  ng-click="selectConf()">
+  <div class="col-lg-12">
+    <div class="row" ng-controller="SettingsCtrl">
+      <div class="col-lg-6">
+        <div class="row">
+          <div class="col-lg-12">
+            <h3 class="section-heading"><i class="icon-key"></i> Authentication</h3>
+            <div class="mci-pod">
+              <div>
+                <p>Copy and paste these settings into ~/.evergreen.yml to authenticate the command line client.</p>
+                <pre readonly style="font-family:monospace" id="conf">
 user: "[[userConf.user]]"
 api_key: "[[userConf.api_key]]"
 api_server_host: "[[userConf.api_server_host]]"
-ui_server_host: "[[userConf.ui_server_host]]"
-</textarea>
-      <div><button ng-click="newKey()" class="btn btn-primary">Reset API Key</button> </div>
+ui_server_host: "[[userConf.ui_server_host]]"</pre>
+                <div><button ng-click="newKey()" class="btn btn-primary">Reset API Key</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="row">
+          <div class="col-lg-12">
+            <h3 class="section-heading"><i class="icon-download"></i> Command Line Client</h3>
+            <div class="mci-pod">
+              <div class="row">
+                <div class="col-lg-3">
+                  <div ng-repeat="bin in binaries">
+                    <a ng-href="[[bin.url]]"> [[bin.os]]/[[bin.arch]]</a>
+                  </div>
+                </div>
+                <div class="col-lg-9">
+                  <p>The latest Evergreen command line client is available for download on these platforms.</p>
+                  <p>
+                  The command line client lets you run patch builds and debug project configuration files from your terminal.
+                  View the <a href="https://github.com/evergreen-ci/evergreen/wiki/Using-the-command-line-tool">documentation</a> or run <code>evergreen --help</code> or <code>evergreen [command] --help</code> for additional assistance.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-lg-12">
+            <h3 class="section-heading"><i class="icon-globe"></i> Locale Settings</h3>
+            <div class="mci-pod">
+              <form novalidate class="css-form">
+                <label>Timezone <select ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select></label>
+                <div><button ng-click="updateUserSettings(new_tz)" class="btn btn-primary">Save</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
+</div>
 </div>
 {{end}}

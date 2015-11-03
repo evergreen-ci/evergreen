@@ -61,9 +61,9 @@ type RepoTrackerConfig struct {
 }
 
 type ClientBinary struct {
-	Arch string `yaml:"arch"`
-	OS   string `yaml:"os"`
-	URL  string `yaml:"url"`
+	Arch string `yaml:"arch" json:"arch"`
+	OS   string `yaml:"os" json:"os"`
+	URL  string `yaml:"url" json:"url"`
 }
 
 type ClientConfig struct {

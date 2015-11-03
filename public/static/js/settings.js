@@ -44,11 +44,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'errorPasser
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
   $scope.userConf = $window.userConf;
-
-
-  $scope.selectConf = function() {
-     $('#conf').focus().select();
-  }
+  $scope.binaries = $window.binaries;
 
   $scope.newKey = function(){
     if(!confirm("Generating a new API key will invalidate your current API key. Continue?"))
