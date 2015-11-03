@@ -88,6 +88,29 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     }, 0)
   }
 
+  // to be able to toggle hiding and showing individual subtables
+  $scope.toggleView = function(index) {
+    $scope.currentFailures[index].hidden = !$scope.currentFailures[index].hidden;
+  }
+
+  $scope.getToggleClass = function(hidden) {
+    return hidden ? "icon-caret-right" : "icon-caret-down";
+  }
+
+  // expand all of the current failures
+  $scope.expandAll = function() {
+    for (var i in $scope.currentFailures) {
+      $scope.currentFailures[i].hidden = false;
+    }
+  }
+
+  // collapse all of the current failures
+  $scope.collapseAll = function() {
+    for(var i in $scope.currentFailures) {
+      $scope.currentFailures[i].hidden = true;
+    }
+  }
+
   $scope.setSort = function(sort) {
     $scope.sortBy = sort;
     if (sort == $scope.consts.numFailures){
@@ -164,15 +187,17 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
       for (var j in failure.variants) {
         failures[identifier.task].push({"test": identifier.test, 
                                         "variant": failure.variants[j].name, 
-                                        "task_id": failure.variants[j].task_id });
+                                        "task_id": failure.variants[j].task_id, 
+                                         });
       }
     }
     // sort failures by number of failing tests
     $scope.taskFailures = [];
-    Object.keys(failures).forEach(function(t) {
+    _.each(failures,function(value, key) {
       $scope.taskFailures.push({
-        "groupingField": t,
-        "fields": failures[t]
+        "groupingField": key,
+        "fields": value, 
+        "hidden" : false,
       });
     });
   }
@@ -192,13 +217,15 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
       for (var j in failure.variants) {
         failures[identifier.test].push({"task": identifier.task, 
                                         "variant": failure.variants[j].name, 
-                                        "task_id": failure.variants[j].task_id});
+                                        "task_id": failure.variants[j].task_id, 
+                                        });
       }
     }
     _.each(failures,function(value, key) {
       $scope.testFailures.push({
         "groupingField": key,
-        "fields": value
+        "fields": value, 
+        "hidden" : false,
       });
     });
   }
@@ -217,13 +244,15 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
         }
         failures[failure.variants[j].name].push({"task": identifier.task, 
                                                 "test": identifier.test, 
-                                                "task_id": failure.variants[j].task_id});
+                                                "task_id": failure.variants[j].task_id, 
+                                                });
       }
     }
-    Object.keys(failures).forEach(function(t) {
+    _.each(failures,function(value, key) {
       $scope.variantFailures.push({
-        "groupingField": t,
-        "fields": failures[t]
+        "groupingField": key,
+        "fields": value, 
+        "hidden" : false,
       });
     });
   }

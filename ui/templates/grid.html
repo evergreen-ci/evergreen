@@ -39,28 +39,38 @@ Evergreen - Grid
                 <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.variantFailuresView}" ng-click="setFailureView(consts.variantFailuresView)"> Variant </a>
               </div>
             </div>
-            <div class="col-lg-2">
+            <div class="col-lg-4">
               <h4> Sort Groups By: </h4>
               <div class="btn-group btn-group-sm">
                  <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.numFailures}" ng-click="setSort(consts.numFailures)"># of Failures </a> 
                   <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.nameSort}" ng-click="setSort(consts.nameSort)"> Name </a>
               </div>
             </div>
+            <div class="col-lg-2 pull-right">
+              <div class="btn-group btn-group-sm">
+                 <a class="pointer btn btn-default"  ng-click="expandAll()">Expand All </a> 
+                  <a class="pointer btn btn-default" ng-click="collapseAll()"> Collapse All </a>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="grid" ng-repeat="failure in currentFailures">
+        <div class="grid" ng-repeat="(index,failure) in currentFailures">
           <div class="row">
-            <div class="col-lg-6">
-              <h4> [[failure.groupingField]] <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize> </span></h4>
+            <div class="col-lg-8">
+              <h4 ng-click="toggleView(index)" style="cursor:pointer" > 
+              <i ng-class="getToggleClass(failure.hidden)"></i>
+                [[failure.groupingField]]
+                <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize></span>
+              </h4>
             </div>
           </div>
           <div class="row">
-            <div class="col-lg-6">
+            <div ng-show="!failure.hidden" class="col-lg-8">
               <table class="table table-new table-hover" style="margin-bottom:5px">
                 <thead>
                   <tr>
-                  <th style="width:6%"></th>
-                  <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)" style="width:47%"> 
+                  <th style="width:4%"></th>
+                  <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)" style="width:48%"> 
                     [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
                   </th> 
                   </tr>
