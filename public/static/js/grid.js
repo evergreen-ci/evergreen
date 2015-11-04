@@ -138,10 +138,6 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
     return fields[$scope.currentHeaders[index].by];
   }
 
-  $scope.goTo = function(field){
-    $window.location.href = "/task/"+ field.task_id;
-  }
-
   // sort by failures takes the current failures and sorts them on the number 
   $scope.sortByFailures = function(){
     $scope.currentFailures.sort(function(a,b){

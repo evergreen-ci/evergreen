@@ -76,11 +76,22 @@ Evergreen - Grid
                   </tr>
                 </thead>  
                 <tbody>
-                  <tr ng-repeat="field in failure.fields = (failure.fields | orderBy: selectedHeader.by: selectedHeader.order)" style="cursor:pointer" ng-click="goTo(field)">
-                    <td align="center"><span class="tooltip-task-status failed" ng-class="task | statusFilter">&nbsp;</span>
+                  <tr ng-repeat="field in failure.fields = (failure.fields | orderBy: selectedHeader.by: selectedHeader.order)">
+                    <td align="center">
+                      <a class="failure-link" ng-href="/task/[[field.task_id]]">
+                        <span class="tooltip-task-status failed" ng-class="task | statusFilter">&nbsp;</span>
+                      </a>
                     </td>
-                    <td>[[getHeaderVal(field, 0)]]</td>
-                    <td>[[getHeaderVal(field,1)]]</td>
+                    <td>
+                      <a class="failure-link" ng-href="/task/[[field.task_id]]">
+                        [[getHeaderVal(field, 0)]]
+                      </a>
+                    </td>
+                    <td>
+                      <a class="failure-link" ng-href="/task/[[field.task_id]]">
+                        [[getHeaderVal(field,1)]]
+                      </a>
+                    </td>
                   </tr>
                 </tbody> 
               </table>
