@@ -2,14 +2,15 @@ package manifest
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"net/http"
-	"time"
 )
 
 // ManifestLoadCommand
@@ -158,6 +159,7 @@ func (mp *ManifestPlugin) ManifestLoadHandler(w http.ResponseWriter, r *http.Req
 		modules[module.Name] = &manifest.Module{
 			Branch:   module.Branch,
 			Revision: gitBranch.Commit.SHA,
+			Repo:     module.Repo,
 			Owner:    owner,
 			URL:      gitBranch.Commit.Url,
 		}

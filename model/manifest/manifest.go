@@ -18,11 +18,13 @@ type Manifest struct {
 
 // A Module is a snapshot of the module associated with a version.
 // Branch is the branch of the repository,
+// Repo is the name of the repository,
 // Revision is the revision of the head of the branch,
 // Owner is the owner of the repository,
 // URL is the url to the GitHub API call to that specific commit.
 type Module struct {
 	Branch   string `json:"branch" bson:"branch"`
+	Repo     string `json:"repo" bson:"repo"`
 	Revision string `json:"revision" bson:"revision"`
 	Owner    string `json:"owner" bson:"owner"`
 	URL      string `json:"url" bson:"url"`
