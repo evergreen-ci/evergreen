@@ -33,6 +33,7 @@ func TestManifest(t *testing.T) {
 		m.Modules["sample"] = &manifest.Module{
 			Branch:   "master",
 			Revision: "xyz345",
+			Repo:     "repo",
 			Owner:    "sr527",
 			URL:      "randomurl.com",
 		}
@@ -119,8 +120,7 @@ func TestManifestLoad(t *testing.T) {
 					So(len(task.Commands), ShouldNotEqual, 0)
 					for _, command := range task.Commands {
 						pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-						testutil.HandleTestingErr(err, t, "Couldn't get plugin "+
-							"command: %v")
+						testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 						So(pluginCmds, ShouldNotBeNil)
 						So(err, ShouldBeNil)
 						pluginCom := &agent.TaskJSONCommunicator{manifestPlugin.Name(),
@@ -141,6 +141,7 @@ func TestManifestLoad(t *testing.T) {
 					for key, _ := range currentManifest.Modules {
 						So(key, ShouldEqual, "sample")
 					}
+					So(currentManifest.Modules["sample"].Repo, ShouldEqual, "git@github.com:evergreen-ci/sample.git")
 					So(taskConfig.Expansions.Get("sample_rev"), ShouldEqual, "3c7bfeb82d492dc453e7431be664539c35b5db4b")
 					So(currentManifest.Id, ShouldEqual, taskConfig.Task.Version)
 				})
