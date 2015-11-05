@@ -22,6 +22,10 @@ const (
 	surroundWindow = "surround"
 	beforeWindow   = "before"
 	afterWindow    = "after"
+
+	// this regex either matches against the exact 'test' string, or
+	// against the 'test' string at the end of some kind of filepath.
+	testMatchRegex = `(\Q%s\E|.*(\\|/)\Q%s\E)$`
 )
 
 // Representation of a group of tasks with the same display name and revision,
@@ -255,7 +259,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 	// projection to make sure we only get the tests we care about.
 	elemMatchOr := make([]bson.M, 0)
 	for test, result := range filter.Tests {
-		regexp := fmt.Sprintf(".*(\\\\|/)%s$", test)
+		regexp := fmt.Sprintf(testMatchRegex, test, test)
 		if result == "ran" {
 			// Special case: if asking for tasks where the test ran, don't care
 			// about the test status
