@@ -1,12 +1,13 @@
 package command
 
 import (
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 )
 
 type LocalCommand struct {
@@ -30,10 +31,10 @@ func (self *LocalCommand) Run() error {
 func (self *LocalCommand) Start() error {
 	var cmd *exec.Cmd
 	if self.ScriptMode {
-		cmd = exec.Command("sh")
+		cmd = exec.Command("bash")
 		cmd.Stdin = strings.NewReader(self.CmdString)
 	} else {
-		cmd = exec.Command("sh", "-c", self.CmdString)
+		cmd = exec.Command("bash", "-c", self.CmdString)
 	}
 
 	// create the command, set the options
