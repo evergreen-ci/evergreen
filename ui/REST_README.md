@@ -3,6 +3,8 @@ MCI API v1
 
 ### Contents
 
+  - [A note on authentication](#a-note-on-authentication)
+  - [Retrieve info on a particular project](#retrieve-info-on-a-particular-project)
   - [Retrieve the most recent revisions for a particular project](#retrieve-the-most-recent-revisions-for-a-particular-project)
   - [Retrieve info on a particular version](#retrieve-info-on-a-particular-version)
   - [Retrieve info on a particular version by its revision](#retrieve-info-on-a-particular-version-by-its-revision)
@@ -14,13 +16,59 @@ MCI API v1
   - [Retrieve the status of a particular task](#retrieve-the-status-of-a-particular-task)
   - [Retrieve the most recent revisions for a particular kind of task](#retrieve-the-most-recent-revisions-for-a-particular-kind-of-task)
 
+#### A note on authentication
+
+Most of the these REST endpoints do not require authentication to access.
+However, if the task, build, version, etc. that you are attempting to access is part of a private project, auth information is required to access.
+Attempts to load private pages with a public REST call receive a 302 FOUND response.
+
+The simplest way to do this is to use your `user` and `api_key` fields from the Settings page.
+Authenticated REST access requires setting two headers, `Auth-Username` and `Api-Key`.
+
+##### Example
+
+```bash
+    curl -H Auth-Username:my.name -H Api-Key:21312mykey12312 https://localhost:9090/rest/v1/projects/my_private_project
+```
+
+#### Retrieve info on a particular project
+
+    GET /rest/v1/projects/{project_id}
+
+_Note that you must use API credentials to see private projects._
+
+##### Request
+
+    curl https://localhost:9090/rest/v1/projects/mci
+
+##### Response
+
+```json
+{
+  "owner_name": "evergreen-ci",
+  "repo_name": "evergreen",
+  "branch_name": "master",
+  "repo_kind": "github",
+  "enabled": true,
+  "private": false,
+  "batch_time": 1200,
+  "remote_path": "self-tests.yml",
+  "identifier": "mci",
+  "display_name": "Evergreen Self-Tests",
+  "local_config": "",
+  "deactivate_previous": true,
+  "tracked": true,
+  "repotracker_error": null
+}
+```
+
 #### Retrieve the most recent revisions for a particular project
 
     GET /rest/v1/projects/{project_id}/versions
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/projects/mongodb-mongo-master/versions
+    curl https://localhost:9090/rest/v1/projects/mongodb-mongo-master/versions
 
 ##### Response
 
@@ -67,7 +115,7 @@ _Note that the revision is equivalent to the git hash._
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/projects/mongodb-mongo-master/revisions/d477da53e119b207de45880434ccef1e47084652
+    curl https://localhost:9090/rest/v1/projects/mongodb-mongo-master/revisions/d477da53e119b207de45880434ccef1e47084652
 
 ##### Response
 
@@ -113,7 +161,7 @@ _Note that the revision is equivalent to the git hash._
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652
+    curl https://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652
 
 ##### Response
 
@@ -165,7 +213,7 @@ activated | bool | **Optional**. Activates the version when `true`, and deactiva
 
 ##### Request
 
-    curl -X PATCH http://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652 -d '{"activated": false}'
+    curl -X PATCH https://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652 -d '{"activated": false}' -H Auth-Username:my.name -H Api-Key:21312mykey12312
 
 ##### Response
 
@@ -218,7 +266,7 @@ groupby | string | tasks   | Determines how to key into the task status. For `ta
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652/status
+    curl https://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652/status
 
 ##### Response
 
@@ -243,7 +291,7 @@ groupby | string | tasks   | Determines how to key into the task status. For `ta
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652/status?groupby=builds
+    curl https://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652/status?groupby=builds
 
 ##### Response
 
@@ -272,7 +320,7 @@ groupby | string | tasks   | Determines how to key into the task status. For `ta
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/builds/mongodb_mongo_master_linux_64_d477da53e119b207de45880434ccef1e47084652_14_07_22_17_02_09
+    curl https://localhost:9090/rest/v1/builds/mongodb_mongo_master_linux_64_d477da53e119b207de45880434ccef1e47084652_14_07_22_17_02_09
 
 ##### Response
 
@@ -313,7 +361,7 @@ groupby | string | tasks   | Determines how to key into the task status. For `ta
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/builds/mongodb_mongo_master_linux_64_d477da53e119b207de45880434ccef1e47084652_14_07_22_17_02_09/status
+    curl https://localhost:9090/rest/v1/builds/mongodb_mongo_master_linux_64_d477da53e119b207de45880434ccef1e47084652_14_07_22_17_02_09/status
 
 ##### Response
 
@@ -339,7 +387,7 @@ groupby | string | tasks   | Determines how to key into the task status. For `ta
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/tasks/mongodb_mongo_master_linux_64_7ffac7f351b80f84589349e44693a94d5cc5e14c_14_07_22_13_27_06_aggregation_linux_64
+    curl https://localhost:9090/rest/v1/tasks/mongodb_mongo_master_linux_64_7ffac7f351b80f84589349e44693a94d5cc5e14c_14_07_22_13_27_06_aggregation_linux_64
 
 ##### Response
 
@@ -401,7 +449,7 @@ groupby | string | tasks   | Determines how to key into the task status. For `ta
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/tasks/mongodb_mongo_master_linux_64_7ffac7f351b80f84589349e44693a94d5cc5e14c_14_07_22_13_27_06_aggregation_linux_64/status
+    curl https://localhost:9090/rest/v1/tasks/mongodb_mongo_master_linux_64_7ffac7f351b80f84589349e44693a94d5cc5e14c_14_07_22_13_27_06_aggregation_linux_64/status
 
 ##### Response
 
@@ -441,7 +489,7 @@ project | string | The project name.
 
 ##### Request
 
-    curl http://localhost:9090/rest/v1/tasks/compile/history?project=sample
+    curl https://localhost:9090/rest/v1/tasks/compile/history?project=sample
 
 ##### Response
 

@@ -28,7 +28,7 @@ type ProjectRef struct {
 
 	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
 	// the set of alert deliveries to be processed for that trigger.
-	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config"`
+	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
 
 	// RepoDetails contain the details of the status of the consistency
 	// between what is in GitHub and what is in Evergreen
