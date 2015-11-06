@@ -285,6 +285,7 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
       var revFailures = $window.revisionFailures[i].failures;
       for (j in revFailures){
         var failure = revFailures[j];
+        failure.test = $filter('endOfPath')(failure.test);
         if (!failures[identifier]) {
           failures[identifier] = [];
         }
