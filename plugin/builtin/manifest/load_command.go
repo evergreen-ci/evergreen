@@ -158,7 +158,7 @@ func (mp *ManifestPlugin) ManifestLoadHandler(w http.ResponseWriter, r *http.Req
 		modules[module.Name] = &manifest.Module{
 			Branch:   module.Branch,
 			Revision: gitBranch.Commit.SHA,
-			Repo:     module.Repo,
+			Repo:     repo,
 			Owner:    owner,
 			URL:      gitBranch.Commit.Url,
 		}
