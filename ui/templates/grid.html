@@ -24,119 +24,117 @@ Evergreen - Grid
     {{end}}
   </div>
   <ul class="nav nav-tabs">
-  <li ng-class="{active:tab == consts.recentFailuresView}"><a href="#" ng-click="setTab(consts.recentFailuresView)">Recent Failures</a></li>
-  <li ng-class="{active:tab == consts.gridView}"><a href="#" ng-click="setTab(consts.gridView)">Grid</a></li>
-  <div class="row summary" ng-hide="tab != consts.recentFailuresView ">
+    <li ng-class="{active:tab == consts.recentFailuresView}"><a href="#" ng-click="setTab(consts.recentFailuresView)">Recent Failures</a></li>
+    <li ng-class="{active:tab == consts.gridView}"><a href="#" ng-click="setTab(consts.gridView)">Grid</a></li>
+  </ul>
+  <div class="col-lg-12 summary" ng-hide="tab != consts.recentFailuresView ">
     <div class="gridtable-small">
       <h3 ng-show="failures.length == 0">Hooray! There are no recent test failures.</h3>
       <div ng-show="failures.length != 0">
-        <div class="grid">
-          <div class="row">
-            <div class="pull-left" style="margin-left:20px">
-              <h4> Group Failures By: </h4>
-              <div class = "btn-group btn-group-sm">
-                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.taskFailuresView}" ng-click="setFailureView(consts.taskFailuresView)"> Task </a>
-                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.testFailuresView}" ng-click="setFailureView(consts.testFailuresView)"> Test </a>
-                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.variantFailuresView}" ng-click="setFailureView(consts.variantFailuresView)"> Variant </a>
-                <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.revisionFailuresView}" ng-click="setFailureView(consts.revisionFailuresView)"> Revision  </a>
-              </div>
-            </div>
-            <div class="col-lg-2" ng-show="currentFailureView != consts.revisionFailuresView">
-              <h4> Sort Groups By: </h4>
-              <div class="btn-group btn-group-sm">
-                 <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.numFailures}" ng-click="setSort(consts.numFailures)"># of Failures </a> 
-                  <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.nameSort}" ng-click="setSort(consts.nameSort)"> Name </a>
-              </div>
-            </div>
-            <div class="col-lg-4">
-              <h4> &nbsp; </h4>
-              <div class="btn-group btn-group-sm">
-                 <a class="pointer btn btn-default"  ng-click="expandAll()">Expand All </a> 
-                  <a class="pointer btn btn-default" ng-click="collapseAll()"> Collapse All </a>
-              </div>
+        <div class="row">
+          <div class="pull-left" style="margin-left:20px">
+            <h4> Group Failures By: </h4>
+            <div class = "btn-group btn-group-sm">
+              <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.taskFailuresView}" ng-click="setFailureView(consts.taskFailuresView)"> Task </a>
+              <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.testFailuresView}" ng-click="setFailureView(consts.testFailuresView)"> Test </a>
+              <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.variantFailuresView}" ng-click="setFailureView(consts.variantFailuresView)"> Variant </a>
+              <a class="pointer btn btn-default" ng-class="{active:currentFailureView==consts.revisionFailuresView}" ng-click="setFailureView(consts.revisionFailuresView)"> Revision  </a>
             </div>
           </div>
+          <div class="col-lg-2" ng-show="currentFailureView != consts.revisionFailuresView">
+            <h4> Sort Groups By: </h4>
+            <div class="btn-group btn-group-sm">
+             <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.numFailures}" ng-click="setSort(consts.numFailures)"># of Failures </a> 
+             <a class="pointer btn btn-default" ng-class="{active:sortBy==consts.nameSort}" ng-click="setSort(consts.nameSort)"> Name </a>
+           </div>
+         </div>
+         <div class="col-lg-4">
+          <h4> &nbsp; </h4>
+          <div class="btn-group btn-group-sm">
+           <a class="pointer btn btn-default"  ng-click="expandAll()">Expand All </a> 
+           <a class="pointer btn btn-default" ng-click="collapseAll()"> Collapse All </a>
+         </div>
+       </div>
+     </div>
 
-        </div>
-        <div class="grid" ng-repeat="(index,failure) in currentFailures">
-          <br>
-          <div class="row">
-            <div class="col-lg-8">
-              <div ng-click="toggleView(index)" style="cursor:pointer" > 
-              <h4 ng-show="currentFailureView != consts.revisionFailuresView">
+     <div ng-repeat="(index,failure) in currentFailures">
+      <div class="row">
+        <div class="col-lg-8">
+          <div ng-click="toggleView(index)" style="cursor:pointer" > 
+            <h4 ng-show="currentFailureView != consts.revisionFailuresView">
+              <i ng-class="getToggleClass(failure.hidden)"></i>
+              [[failure.groupingField]] 
+              <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize></span>
+            </h4>
+            <div ng-show="currentFailureView == consts.revisionFailuresView" class="version-header-expanded" style="margin-top:15px">
+              <div>
                 <i ng-class="getToggleClass(failure.hidden)"></i>
-                [[failure.groupingField]] 
-                <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize></span>
-              </h4>
-              <div ng-show="currentFailureView == consts.revisionFailuresView" class="version-header-expanded">
-                  <div>
-                  <i ng-class="getToggleClass(failure.hidden)"></i>
-                    <span class="btn btn-default btn-hash history-item-revision">
-                      <a href="/version/[[allVersions[failure.groupingField].id]]"> [[failure.groupingField.substring(0,5)]] </a>
-                    </span>
-                    [[allVersions[failure.groupingField].create_time | date: "MM/dd/yyyy 'at' h:mma"]]
-                  </div>
-                  <div>
-                  <strong>[[allVersions[failure.groupingField].author]] - </strong>
-                      [[allVersions[failure.groupingField].message.substring(0,100)]]<span ng-show="allVersions[failure.groupingField].message.length > 100">...</span>
-                <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize></span>
-                </div>
+                <span class="btn btn-default btn-hash history-item-revision">
+                  <a href="/version/[[allVersions[failure.groupingField].id]]"> [[failure.groupingField.substring(0,5)]] </a>
+                </span>
+                [[allVersions[failure.groupingField].create_time | date: "MM/dd/yyyy 'at' h:mma"]]
               </div>
+              <div style="margin-left:10px">
+                <strong>[[allVersions[failure.groupingField].author]] - </strong>
+                [[allVersions[failure.groupingField].message.substring(0,100)]]<span ng-show="allVersions[failure.groupingField].message.length > 100">...</span>
+                <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize></span>
               </div>
             </div>
           </div>
-          <div class="row">
-            <div ng-show="!failure.hidden" class="col-lg-8">
-              <table class="table table-new table-hover" style="margin-bottom:5px">
-                <thead>
-                  <tr>
-                  <th style="width:4%"></th>
-                  <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)" style="width:[[widthPercentage()]]%"> 
-                    [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
-                  </th> 
-                  </tr>
-                </thead>  
-                <tbody>
-                  <tr ng-repeat="field in failure.fields = (failure.fields | orderBy: selectedHeader.by: selectedHeader.order)">
-                    <td align="center">
-                      <a class="failure-link" ng-href="/task/[[field.task_id]]">
-                        <span class="tooltip-task-status failed" ng-class="task | statusFilter">&nbsp;</span>
-                      </a>
-                    </td>
-                    <td ng-repeat="(index, header) in currentHeaders">
-                      <a class="failure-link" ng-href="/task/[[field.task_id]]">
-                        [[getHeaderVal(field, index)]]
-                      </a>
-                    </td>
-                  </tr>
-                </tbody> 
-              </table>
-            </div>
-          </div>
         </div>
-      </div>  
-  </div>
-  </div>
-  <div class="row" ng-hide="tab != consts.gridView">
-    <div class="row"></div>
-      <div id="popover"></div>
-      <div class="gridtable-small">
-        <div class="top-header-row">
-          <div class="header-cell" ng-repeat="task in taskNames" id="[['buildVariant' + $index]]">
-            <span class="header-text">
-            <a ng-href="/task_history/[[project]]/[[task]]">[[task]]</a>
-            </span>
-          </div>
+      </div>
+      <div class="row">
+        <div ng-show="!failure.hidden" class="col-lg-8">
+          <table class="table table-new table-hover" style="margin-bottom:5px">
+            <thead>
+              <tr>
+                <th style="width:4%"></th>
+                <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)" style="width:[[widthPercentage()]]%"> 
+                  [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
+                </th> 
+              </tr>
+            </thead>  
+            <tbody>
+              <tr ng-repeat="field in failure.fields = (failure.fields | orderBy: selectedHeader.by: selectedHeader.order)">
+                <td align="center">
+                  <a class="failure-link" ng-href="/task/[[field.task_id]]">
+                    <span class="tooltip-task-status failed" ng-class="task | statusFilter">&nbsp;</span>
+                  </a>
+                </td>
+                <td ng-repeat="(index, header) in currentHeaders">
+                  <a class="failure-link" ng-href="/task/[[field.task_id]]">
+                    [[getHeaderVal(field, index)]]
+                  </a>
+                </td>
+              </tr>
+            </tbody> 
+          </table>
         </div>
-        <div class="tablerow" ng-repeat="buildVariant in buildVariants">
-          <div class="header">
-            <div class="taskNames" id="[['task' + $index]]">[[buildVariant]]</div>
-          </div>
-          <div class="cells">
-            <div ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(buildVariant, task)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(buildVariant, task, $event.target);">&nbsp;</div>
-          </div>
-        </div>
+      </div>
+    </div>
+  </div>  
+</div>
+</div>
+<div class="row" ng-hide="tab != consts.gridView">
+  <div class="row"></div>
+  <div id="popover"></div>
+  <div class="gridtable-small">
+    <div class="top-header-row">
+      <div class="header-cell" ng-repeat="task in taskNames" id="[['buildVariant' + $index]]">
+        <span class="header-text">
+          <a ng-href="/task_history/[[project]]/[[task]]">[[task]]</a>
+        </span>
+      </div>
+    </div>
+    <div class="tablerow" ng-repeat="buildVariant in buildVariants">
+      <div class="header">
+        <div class="taskNames" id="[['task' + $index]]">[[buildVariant]]</div>
+      </div>
+      <div class="cells">
+        <div ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(buildVariant, task)" ng-mouseover="highlightHeader($parent.$parent.$index, $index)" bs-popover="'/static/partials/popover_content.html'" data-container="#popover" data-unique="1" ng-click="showTaskPopover(buildVariant, task, $event.target);">&nbsp;</div>
+      </div>
     </div>
   </div>
+</div>
 </div>
 {{end}}
