@@ -47,12 +47,13 @@ type patchSubmission struct {
 	description string
 	base        string
 	variants    string
+	tasks       []string
 	finalize    bool
 }
 
 // ListPatchesCommand is used to list a user's existing patches.
 type ListPatchesCommand struct {
-	GlobalOpts  *Options  `no-flag:"true"`
+	GlobalOpts  *Options `no-flag:"true"`
 	Variants    []string `short:"v" long:"variants" description:"variants to run the patch on. may be specified multiple times, or use the value 'all'"`
 	PatchId     string   `short:"i" description:"show details for only the patch with this ID"`
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
@@ -70,13 +71,13 @@ type ValidateCommand struct {
 // CancelPatchCommand is used to cancel a patch.
 type CancelPatchCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
+	PatchId    string   `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
 // FinalizePatchCommand is used to finalize a patch, allowing it to be scheduled.
 type FinalizePatchCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-	PatchId    string  `short:"i" description:"id of the patch to modify" required:"true"`
+	PatchId    string   `short:"i" description:"id of the patch to modify" required:"true"`
 }
 
 // PatchCommand is used to submit a new patch to the API server.
@@ -93,9 +94,10 @@ type PatchFileCommand struct {
 
 // PatchCommandParams contains parameters common to PatchCommand and PatchFileCommand
 type PatchCommandParams struct {
-	GlobalOpts  *Options  `no-flag:"true"`
+	GlobalOpts  *Options `no-flag:"true"`
 	Project     string   `short:"p" long:"project" description:"project to submit patch for"`
 	Variants    []string `short:"v" long:"variants"`
+	Tasks       []string `short:"t" long:"tasks"`
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
@@ -105,17 +107,17 @@ type PatchCommandParams struct {
 // SetModuleCommand adds or updates a module in an existing patch.
 type SetModuleCommand struct {
 	GlobalOpts  *Options `no-flag:"true"`
-	Module      string  `short:"m" long:"module" description:"name of the module to set patch for"`
-	PatchId     string  `short:"i" description:"id of the patch to modify" required:"true" `
-	SkipConfirm bool    `short:"y" long:"yes" description:"skip confirmation text"`
-	Large       bool    `long:"large" description:"enable submitting larger patches (>16MB)"`
+	Module      string   `short:"m" long:"module" description:"name of the module to set patch for"`
+	PatchId     string   `short:"i" description:"id of the patch to modify" required:"true" `
+	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
+	Large       bool     `long:"large" description:"enable submitting larger patches (>16MB)"`
 }
 
 // RemoveModuleCommand removes module information from an existing patch.
 type RemoveModuleCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-	Module     string  `short:"m" long:"module" description:"name of the module to remove from patch" required:"true" `
-	PatchId    string  `short:"i" description:"name of the module to remove from patch" required:"true" `
+	Module     string   `short:"m" long:"module" description:"name of the module to remove from patch" required:"true" `
+	PatchId    string   `short:"i" description:"name of the module to remove from patch" required:"true" `
 }
 
 // getAPIClient loads the user settings and creates an APIClient configured for the API/UI
@@ -367,20 +369,42 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 		return
 	}
 
+	// update variants
 	if len(params.Variants) == 0 {
 		params.Variants = settings.FindDefaultVariants(params.Project)
-		if len(params.Variants) == 0 {
-			err = fmt.Errorf("Need to specify at least one buildvariant with -v")
+		if len(params.Variants) == 0 && params.Finalize {
+			err = fmt.Errorf("Need to specify at least one buildvariant with -v when finalizing." +
+				" Run with `-v all` to finalize against all variants.")
 			return
 		}
 	} else {
 		defaultVariants := settings.FindDefaultVariants(params.Project)
-		if len(defaultVariants) == 0 &&
-			!params.SkipConfirm &&
-			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?", params.Variants, params.Project), false) {
+		if len(defaultVariants) == 0 && !params.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?",
+				params.Variants, params.Project), false) {
 			settings.SetDefaultVariants(params.Project, params.Variants...)
 			if err := settings.Write(params.GlobalOpts); err != nil {
 				fmt.Println("warning - failed to set default variants: %v", err)
+			}
+		}
+	}
+
+	// update tasks
+	if len(params.Tasks) == 0 {
+		params.Tasks = settings.FindDefaultTasks(params.Project)
+		if len(params.Tasks) == 0 && params.Finalize {
+			err = fmt.Errorf("Need to specify at least one task with -t when finalizing." +
+				" Run with `-t all` to finalize against all tasks.")
+			return
+		}
+	} else {
+		defaultTasks := settings.FindDefaultTasks(params.Project)
+		if len(defaultTasks) == 0 && !params.SkipConfirm &&
+			confirm(fmt.Sprintf("Set %v as the default tasks for project '%v'?",
+				params.Tasks, params.Project), false) {
+			settings.SetDefaultTasks(params.Project, params.Tasks...)
+			if err := settings.Write(params.GlobalOpts); err != nil {
+				fmt.Println("warning - failed to set default tasks: %v", err)
 			}
 		}
 	}
@@ -405,10 +429,10 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *Settings, d
 	}
 
 	variantsStr := strings.Join(params.Variants, ",")
-	if !params.Finalize {
-		variantsStr = "all"
+	patchSub := patchSubmission{
+		params.Project, diffData.fullPatch, params.Description,
+		diffData.base, variantsStr, params.Tasks, params.Finalize,
 	}
-	patchSub := patchSubmission{params.Project, diffData.fullPatch, params.Description, diffData.base, variantsStr, params.Finalize}
 
 	newPatch, err := ac.PutPatch(patchSub)
 	if err != nil {

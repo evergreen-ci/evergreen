@@ -71,6 +71,7 @@ type ProjectConf struct {
 	Name     string   `yaml:"name,omitempty"`
 	Default  bool     `yaml:"default,omitempty"`
 	Variants []string `yaml:"variants,omitempty"`
+	Tasks    []string `yaml:"tasks,omitempty"`
 }
 
 // Settings represents the data stored in the user's config file, by default
@@ -125,7 +126,27 @@ func (s *Settings) SetDefaultVariants(project string, variants ...string) {
 		}
 	}
 
-	s.Projects = append(s.Projects, ProjectConf{project, true, variants})
+	s.Projects = append(s.Projects, ProjectConf{project, true, variants, nil})
+}
+
+func (s *Settings) FindDefaultTasks(project string) []string {
+	for _, p := range s.Projects {
+		if p.Name == project {
+			return p.Tasks
+		}
+	}
+	return nil
+}
+
+func (s *Settings) SetDefaultTasks(project string, tasks ...string) {
+	for i, p := range s.Projects {
+		if p.Name == project {
+			s.Projects[i].Tasks = tasks
+			return
+		}
+	}
+
+	s.Projects = append(s.Projects, ProjectConf{project, true, nil, tasks})
 }
 
 func (s *Settings) SetDefaultProject(name string) {
@@ -140,6 +161,6 @@ func (s *Settings) SetDefaultProject(name string) {
 	}
 
 	if !foundDefault {
-		s.Projects = append(s.Projects, ProjectConf{name, true, []string{}})
+		s.Projects = append(s.Projects, ProjectConf{name, true, []string{}, []string{}})
 	}
 }

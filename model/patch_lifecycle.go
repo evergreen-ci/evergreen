@@ -246,6 +246,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (
 		Requester:     evergreen.PatchVersionRequester,
 	}
 
+	//expand tasks and build variants
 	buildVariants := p.BuildVariants
 	if len(p.BuildVariants) == 1 && p.BuildVariants[0] == "all" {
 		buildVariants = make([]string, 0)
@@ -256,9 +257,16 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (
 			buildVariants = append(buildVariants, buildVariant.Name)
 		}
 	}
+	tasks := p.Tasks
+	if len(p.Tasks) == 1 && p.Tasks[0] == "all" {
+		tasks = make([]string, 0)
+		for _, t := range project.Tasks {
+			tasks = append(tasks, t.Name)
+		}
+	}
 	tt := BuildTaskIdTable(project, patchVersion)
 	for _, buildvariant := range buildVariants {
-		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, buildvariant, true, p.Tasks)
+		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, buildvariant, true, tasks)
 		if err != nil {
 			return nil, err
 		}

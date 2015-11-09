@@ -90,6 +90,7 @@ func TestCLIFunctions(t *testing.T) {
 					"sample patch",
 					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
 					"all",
+					[]string{"all"},
 					false}
 
 				newPatch, err := ac.PutPatch(patchSub)
@@ -135,10 +136,31 @@ func TestCLIFunctions(t *testing.T) {
 						})
 					})
 				})
-
 			})
 
-		})
+			Convey("Creating a complex patch should be successful", func() {
+				patchSub := patchSubmission{"sample",
+					testPatch,
+					"sample patch #2",
+					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					"osx-108",
+					[]string{"failing_test"},
+					false}
 
+				_, err := ac.PutPatch(patchSub)
+				So(err, ShouldBeNil)
+
+				Convey("Newly created patch should be fetchable via API", func() {
+					patches, err := ac.GetPatches()
+					Println(patches)
+					So(err, ShouldBeNil)
+					So(len(patches), ShouldEqual, 1)
+					So(len(patches[0].BuildVariants), ShouldEqual, 1)
+					So(patches[0].BuildVariants[0], ShouldEqual, "osx-108")
+					So(len(patches[0].Tasks), ShouldEqual, 1)
+					So(patches[0].Tasks[0], ShouldEqual, "failing_test")
+				})
+			})
+		})
 	})
 }

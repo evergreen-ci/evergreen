@@ -31,6 +31,7 @@ type PatchAPIRequest struct {
 	Githash         string
 	PatchContent    string
 	BuildVariants   []string
+	Tasks           []string
 }
 
 // PatchMetadata stores relevant patch information that is not
@@ -107,7 +108,7 @@ func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
 		return nil, fmt.Errorf("no buildvariants specified")
 	}
 
-	// verify that this build variant exists
+	// verify that all variants exists
 	for _, buildVariant := range pr.BuildVariants {
 		if buildVariant == "all" {
 			continue
@@ -115,6 +116,17 @@ func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
 		bv := project.FindBuildVariant(buildVariant)
 		if bv == nil {
 			return nil, fmt.Errorf("No such buildvariant: %v", buildVariant)
+		}
+	}
+
+	// verify that all tasks exist
+	for _, tName := range pr.Tasks {
+		if tName == "all" {
+			continue
+		}
+		bv := project.FindProjectTask(tName)
+		if bv == nil {
+			return nil, fmt.Errorf("No such task: %v", tName)
 		}
 	}
 	return &PatchMetadata{pr.Githash, project, module, pr.BuildVariants, summaries}, nil
@@ -167,12 +179,13 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		finalize = strings.ToLower(r.FormValue("finalize")) == "true"
 	} else {
 		data := struct {
-			Description string `json:"desc"`
-			Project     string `json:"project"`
-			Patch       string `json:"patch"`
-			Githash     string `json:"githash"`
-			Variants    string `json:"buildvariants"`
-			Finalize    bool   `json:"finalize"`
+			Description string   `json:"desc"`
+			Project     string   `json:"project"`
+			Patch       string   `json:"patch"`
+			Githash     string   `json:"githash"`
+			Variants    string   `json:"buildvariants"`
+			Tasks       []string `json:"tasks"`
+			Finalize    bool     `json:"finalize"`
 		}{}
 		if err := util.ReadJSONInto(r.Body, &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
@@ -195,6 +208,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			Githash:         data.Githash,
 			PatchContent:    data.Patch,
 			BuildVariants:   strings.Split(data.Variants, ","),
+			Tasks:           data.Tasks,
 		}
 	}
 
@@ -271,7 +285,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		CreateTime:    createTime,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: apiRequest.BuildVariants,
-		Tasks:         nil,
+		Tasks:         apiRequest.Tasks,
 		Patches: []patch.ModulePatch{
 			patch.ModulePatch{
 				ModuleName: "",

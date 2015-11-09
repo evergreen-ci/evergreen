@@ -233,24 +233,21 @@ func (ac *APIClient) ListProjects() ([]model.ProjectRef, error) {
 // the patch object itself.
 func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {
 	data := struct {
-		Description string `json:"desc"`
-		Project     string `json:"project"`
-		Patch       string `json:"patch"`
-		Githash     string `json:"githash"`
-		Variants    string `json:"buildvariants"`
-		Finalize    bool   `json:"finalize"`
+		Description string   `json:"desc"`
+		Project     string   `json:"project"`
+		Patch       string   `json:"patch"`
+		Githash     string   `json:"githash"`
+		Variants    string   `json:"buildvariants"` //TODO make this an array
+		Tasks       []string `json:"tasks"`
+		Finalize    bool     `json:"finalize"`
 	}{
 		incomingPatch.description,
 		incomingPatch.projectId,
 		incomingPatch.patchData,
 		incomingPatch.base,
-		"all",
-		false,
-	}
-
-	if incomingPatch.finalize {
-		data.Variants = incomingPatch.variants
-		data.Finalize = true
+		incomingPatch.variants,
+		incomingPatch.tasks,
+		incomingPatch.finalize,
 	}
 
 	rPipe, wPipe := io.Pipe()
