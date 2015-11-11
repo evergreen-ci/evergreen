@@ -29,8 +29,8 @@ Evergreen - Grid
   </ul>
   <div class="col-lg-12 summary" ng-hide="tab != consts.recentFailuresView ">
     <div class="gridtable-small">
-      <h3 ng-show="failures.length == 0">Hooray! There are no recent test failures.</h3>
-      <div ng-show="failures.length != 0">
+      <h3 ng-show="currentFailures.length == 0">Hooray! There are no recent test failures.</h3>
+      <div ng-show="currentFailures.length != 0">
         <div class="row">
           <div class="pull-left" style="margin-left:20px">
             <h4> Group Failures By: </h4>
