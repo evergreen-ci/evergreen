@@ -308,8 +308,15 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
 
     // sort on revision order
     $scope.revisionFailures.sort(function(a,b) {
-      return a.order < b.order;
+      if (a.order < b.order) {
+        return 1;
+      } else if (a.order > b.order) {
+        return -1;
+      } else {
+        return 0;
+      }
     });
+
   }
 
 
