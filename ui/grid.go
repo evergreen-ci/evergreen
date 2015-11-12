@@ -13,7 +13,7 @@ import (
 
 var (
 	// how many prior versions to fetch by default
-	defaultGridDepth = 10
+	defaultGridDepth = 20
 )
 
 func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
