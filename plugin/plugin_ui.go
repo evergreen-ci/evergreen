@@ -53,8 +53,10 @@ const (
 )
 
 type pluginContext int
+type pluginUser int
 
 const pluginContextKey pluginContext = 0
+const pluginUserKey pluginUser = 0
 
 // MustHaveContext loads a UIContext from the http.Request. It panics
 // if the context is not set.
@@ -63,6 +65,19 @@ func MustHaveContext(request *http.Request) UIContext {
 		return c.(UIContext)
 	}
 	panic("no UI context found")
+}
+
+// SetUser sets the user for the request context. This is a helper for UI middleware.
+func SetUser(u *user.DBUser, r *http.Request) {
+	context.Set(r, pluginUserKey, u)
+}
+
+// GetUser fetches the user, if it exists, from the request context.
+func GetUser(r *http.Request) *user.DBUser {
+	if rv := context.Get(r, pluginUserKey); rv != nil {
+		return rv.(*user.DBUser)
+	}
+	return nil
 }
 
 // UIDataFunction is a function which is called to populate panels

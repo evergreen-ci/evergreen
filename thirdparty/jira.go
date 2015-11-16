@@ -38,6 +38,13 @@ type TicketFields struct {
 	Status      *JiraStatus  `json:"status"`
 }
 
+// JiraCreateTicketResponse contains the results of a JIRA create ticket API call.
+type JiraCreateTicketResponse struct {
+	Id   string `json:"id"`
+	Key  string `json:"key"`
+	Self string `json:"self"`
+}
+
 type jiraBase struct {
 	Id   string `json:"id"`
 	Self string `json:"self"`
@@ -74,12 +81,60 @@ type User struct {
 }
 
 type JiraHandler struct {
-	MyHttp     httpGet
+	MyHttp     httpClient
 	JiraServer string
 	UserName   string
 	Password   string
 }
 
+// CreateTicket takes a map of fields to initialize a JIRA ticket with. Returns a response containing the
+// new ticket's key, id, and API URL. See the JIRA API documentation for help.
+func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*JiraCreateTicketResponse, error) {
+	postArgs := struct {
+		Fields map[string]interface{} `json:"fields"`
+	}{fields}
+	apiEndpoint := fmt.Sprintf("https://%v/rest/api/2/issue", jiraHandler.JiraServer)
+	res, err := jiraHandler.MyHttp.doPost(apiEndpoint, jiraHandler.UserName, jiraHandler.Password, postArgs)
+	if res != nil {
+		defer res.Body.Close()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode >= 300 || res.StatusCode < 200 {
+		msg, _ := ioutil.ReadAll(res.Body)
+		return nil, fmt.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
+	}
+
+	ticketInfo := &JiraCreateTicketResponse{}
+	if err := json.NewDecoder(res.Body).Decode(ticketInfo); err != nil {
+		return nil, fmt.Errorf("Unable to decode http body: %v", err.Error())
+	}
+	return ticketInfo, nil
+}
+
+// UpdateTicket sets the given fields of the ticket with the given key. Returns any errors JIRA returns.
+func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]interface{}) error {
+	apiEndpoint := fmt.Sprintf("https://%v/rest/api/2/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
+	putArgs := struct {
+		Fields map[string]interface{} `json:"fields"`
+	}{fields}
+	res, err := jiraHandler.MyHttp.doPut(apiEndpoint, jiraHandler.UserName, jiraHandler.Password, putArgs)
+	if res != nil {
+		defer res.Body.Close()
+	}
+	if err != nil {
+		return err
+	}
+	if res.StatusCode >= 300 || res.StatusCode < 200 {
+		msg, _ := ioutil.ReadAll(res.Body)
+		return fmt.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
+	}
+
+	return nil
+}
+
+// GetJIRATicket returns the ticket with the given key.
 func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 	apiEndpoint := fmt.Sprintf("https://%v/rest/api/latest/issue/%v", jiraHandler.JiraServer, url.QueryEscape(key))
 
@@ -87,7 +142,6 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 	if res != nil {
 		defer res.Body.Close()
 	}
-
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +203,7 @@ func (jiraHandler *JiraHandler) JQLSearch(query string) (*JiraSearchResults, err
 
 func NewJiraHandler(server string, user string, password string) JiraHandler {
 	return JiraHandler{
-		liveHttpGet{},
+		liveHttp{},
 		server,
 		user,
 		password,

@@ -1,27 +1,35 @@
 package thirdparty
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
 	"net/http"
 	"testing"
 )
 
-type JiraTestSuite struct{}
-
-type stubHttpGet struct {
+type stubHttp struct {
 	res *http.Response
 	err error
 }
 
-func (self stubHttpGet) doGet(url string, username string, password string) (*http.Response, error) {
+func (self stubHttp) doGet(url string, username string, password string) (*http.Response, error) {
 	return self.res, self.err
 }
 
-func (self *JiraTestSuite) TestNetworkFail(t *testing.T) {
+func (self stubHttp) doPost(url string, username string, password string, content interface{}) (*http.Response, error) {
+	return self.res, self.err
+}
+
+func (self stubHttp) doPut(url string, username string, password string, content interface{}) (*http.Response, error) {
+	return self.res, self.err
+}
+
+func TestJiraNetworkFail(t *testing.T) {
 	Convey("With a JIRA rest interface with broken network", t, func() {
-		stub := stubHttpGet{nil, fmt.Errorf("Generic network error")}
+		stub := stubHttp{nil, fmt.Errorf("Generic network error")}
 
 		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
 
@@ -33,12 +41,13 @@ func (self *JiraTestSuite) TestNetworkFail(t *testing.T) {
 	})
 }
 
-func (self *JiraTestSuite) TestUnauthorized(t *testing.T) {
+func TestJiraUnauthorized(t *testing.T) {
 	Convey("With a JIRA rest interface that makes an unauthorized response", t, func() {
-		stub := stubHttpGet{&http.Response{}, nil}
+		stub := stubHttp{&http.Response{}, nil}
 
 		stub.res.StatusCode = 401
 		stub.res.Status = "401 Unauthorized"
+		stub.res.Body = ioutil.NopCloser(&bytes.Buffer{})
 
 		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
 
@@ -50,13 +59,14 @@ func (self *JiraTestSuite) TestUnauthorized(t *testing.T) {
 	})
 }
 
-func (self *JiraTestSuite) TestIntegration(t *testing.T) {
+func TestJiraIntegration(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestJiraIntegration")
 	Convey("With a JIRA rest interface that makes a valid request", t, func() {
-		jira := JiraHandler{liveHttpGet{}, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
+		jira := JiraHandler{liveHttp{}, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
 
 		Convey("the request for a ticket should return a valid ticket response", func() {
 			ticket, err := jira.GetJIRATicket("BF-1")
-			testutil.HandleTestingErr(err, t, "Failed to get ticket from JIRA")
+			So(err, ShouldBeNil)
 			So(ticket.Key, ShouldEqual, "BF-1")
 			So(ticket.Fields.Project.Name, ShouldEqual, "Build Failures")
 		})

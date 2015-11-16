@@ -46,6 +46,7 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testSettings.Credentials = integrationSettings.Credentials
 	testSettings.AuthConfig = integrationSettings.AuthConfig
 	testSettings.Plugins = integrationSettings.Plugins
+	testSettings.Jira = integrationSettings.Jira
 }
 
 // Creates a project ref local config that can be used for testing, with the string identifier given

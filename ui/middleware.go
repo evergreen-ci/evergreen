@@ -111,6 +111,15 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 	return uis.Settings
 }
 
+// withPluginUser takes a request and makes the user accessible to plugin code.
+func withPluginUser(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := GetUser(r)
+		plugin.SetUser(u, r)
+		next.ServeHTTP(w, r)
+	}
+}
+
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // be redirected to the login page instead.

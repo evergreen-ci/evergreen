@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/render"
 	"net/http"
 )
 
@@ -37,7 +38,19 @@ func (self *HelloWorldPlugin) GetAPIHandler() http.Handler {
 }
 
 func (hwp *HelloWorldPlugin) GetUIHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	renderer := render.New(render.Options{})
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// this handler returns the Id of the current user, as a sanity check that
+		// proves plugins have access to user information.
+		userId := "Not Logged In"
+		u := plugin.GetUser(r)
+		if u != nil {
+			userId = u.Id
+		}
+		renderer.WriteJSON(w, http.StatusOK, struct {
+			UserId string
+		}{userId})
+	})
 }
 
 func (self *HelloWorldPlugin) Configure(map[string]interface{}) error {

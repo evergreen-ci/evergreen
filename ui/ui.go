@@ -215,7 +215,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			)
 		}
 		pluginUIhandler := pl.GetUIHandler()
-		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), pluginUIhandler)
+		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
 	}
 
 	return r, nil
