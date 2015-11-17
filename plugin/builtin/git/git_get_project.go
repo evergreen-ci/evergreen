@@ -82,11 +82,29 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 		ScriptMode:       true,
 	}
 
-	pluginLogger.LogExecution(slogger.INFO, "Fetching source from git...")
-	if err := fetchSourceCmd.Run(); err != nil {
-		return err
+	errChan := make(chan error)
+	go func() {
+		pluginLogger.LogExecution(slogger.INFO, "Fetching source from git...")
+		errChan <- fetchSourceCmd.Run()
+		pluginLogger.Flush()
+	}()
+
+	// wait until the command finishes or the stop channel is tripped
+	select {
+	case err := <-errChan:
+		if err != nil {
+			return err
+		}
+	case <-stop:
+		pluginLogger.LogExecution(slogger.INFO, "Got kill signal")
+		if fetchSourceCmd.Cmd != nil {
+			pluginLogger.LogExecution(slogger.INFO, "Stopping process: %v", fetchSourceCmd.Cmd.Process.Pid)
+			if err := fetchSourceCmd.Stop(); err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
+			}
+		}
+		return fmt.Errorf("Fetch command interrupted.")
 	}
-	pluginLogger.Flush()
 
 	// Fetch source for the modules
 	for _, moduleName := range conf.BuildVariant.Modules {
@@ -137,11 +155,28 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 			Stderr:           pluginLogger.GetTaskLogWriter(slogger.ERROR),
 			ScriptMode:       true,
 		}
-		err = moduleFetchCmd.Run()
-		if err != nil {
-			return err
+
+		go func() {
+			errChan <- moduleFetchCmd.Run()
+			pluginLogger.Flush()
+		}()
+
+		// wait until the command finishes or the stop channel is tripped
+		select {
+		case err := <-errChan:
+			if err != nil {
+				return err
+			}
+		case <-stop:
+			pluginLogger.LogExecution(slogger.INFO, "Got kill signal")
+			if moduleFetchCmd.Cmd != nil {
+				pluginLogger.LogExecution(slogger.INFO, "Stopping process: %v", moduleFetchCmd.Cmd.Process.Pid)
+				if err := moduleFetchCmd.Stop(); err != nil {
+					pluginLogger.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
+				}
+			}
+			return fmt.Errorf("Fetch module command interrupted.")
 		}
-		pluginLogger.Flush()
 	}
 
 	return nil

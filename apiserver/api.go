@@ -293,6 +293,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	// Fall back to checking host field on task doc
 	if h == nil && len(task.HostId) > 0 {
+		evergreen.Logger.Logf(slogger.DEBUG, "Falling back to host field of task: %v", task.Id)
 		h, err = host.FindOne(host.ById(task.HostId))
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

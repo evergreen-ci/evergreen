@@ -56,28 +56,39 @@ func (gapc *GitApplyPatchCommand) ParseParams(params map[string]interface{}) err
 func (gapc *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 
-	//Apply patches only if necessary
-	if conf.Task.Requester == evergreen.PatchVersionRequester {
-		pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
-		patch, err := gapc.GetPatch(conf, pluginCom, pluginLogger)
-		if err != nil {
-			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
-			return fmt.Errorf("Failed to get patch: %v", err)
-		}
+	errChan := make(chan error)
 
-		err = gapc.getPatchContents(conf, pluginCom, pluginLogger, patch)
-		if err != nil {
-			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
-			return fmt.Errorf("Failed to get patch contents: %v", err)
-		}
+	go func() {
+		//Apply patches only if necessary
+		if conf.Task.Requester == evergreen.PatchVersionRequester {
+			pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
+			patch, err := gapc.GetPatch(conf, pluginCom, pluginLogger)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
+				errChan <- fmt.Errorf("Failed to get patch: %v", err)
+			}
 
-		err = gapc.applyPatch(conf, patch, pluginLogger)
-		if err != nil {
-			pluginLogger.LogExecution(slogger.INFO, "Failed to apply patch: %v", err)
-			return fmt.Errorf("Failed to apply patch: %v", err)
+			err = gapc.getPatchContents(conf, pluginCom, pluginLogger, patch)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
+				errChan <- fmt.Errorf("Failed to get patch contents: %v", err)
+			}
+
+			err = gapc.applyPatch(conf, patch, pluginLogger)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.INFO, "Failed to apply patch: %v", err)
+				errChan <- fmt.Errorf("Failed to apply patch: %v", err)
+			}
 		}
+		errChan <- nil
+	}()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-stop:
+		return fmt.Errorf("Patch command interrupted.")
 	}
-	return nil
 }
 
 // GetPatch tries to get the patch data from the server in json format,

@@ -216,9 +216,9 @@ Evergreen Projects
                 <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
             </div>
             <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
-                <div class="col-lg-2"> <label class="control-label"> [[name]] </label> </div>  
+                <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>  
                 <div class="col-lg-4" > 
-                    <textarea class="form-control" style="font-family:monospace;" readonly> [[key]] </textarea> 
+                    <textarea class="form-control" style="font-family:monospace;" readonly>[[key]]</textarea> 
                 </div>
                 <div class="col-lg-2">
                     <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
