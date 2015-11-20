@@ -53,6 +53,10 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, er
     {
       name: "Scheduled \u21E2 Start",
       diff: ['start_time', 'scheduled_time']
+    },
+   {
+      name: "Scheduled \u21E2 Finish",
+      diff: ['finish_time', 'scheduled_time']
     }
   ];
   $scope.timeDiff = $scope.timeDiffOptions[0];
