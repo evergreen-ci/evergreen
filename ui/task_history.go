@@ -19,9 +19,16 @@ import (
 )
 
 const (
-	surroundWindow = "surround"
-	beforeWindow   = "before"
-	afterWindow    = "after"
+	beforeWindow = "before"
+	afterWindow  = "after"
+
+	// Initial number of revisions to return on first page load
+	InitRevisionsBefore = 50
+	InitRevisionsAfter  = 100
+
+	// Number of revisions to return on subsequent requests
+	NoRevisions     = 0
+	MaxNumRevisions = 50
 
 	// this regex either matches against the exact 'test' string, or
 	// against the 'test' string at the end of some kind of filepath.

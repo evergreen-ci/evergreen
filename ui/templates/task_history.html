@@ -43,9 +43,9 @@ Evergreen - Task History
           <div  class="tablerow"
                 ng-repeat="taskGroup in tasksByVariantByCommit"
                 style="margin-bottom: 0px;">
-            <div ng-hide="hideInactiveVersions.get() && isTaskGroupInactive[taskGroup._id]">
+            <div ng-hide="hideInactiveVersions.get() && isTaskGroupInactive[taskGroup._id] || (!taskGroupHasTaskMatchingFilter(variants, taskGroup) && hideUnmatchingVersions.get())">
               <div  class="header"
-                    ng-class="taskGroupHasTaskMatchingFilter(taskHistoryFilter.filter, variants, taskGroup) | conditional:'full-opacity':'semi-transparent'">
+                    ng-class="taskGroupHasTaskMatchingFilter(variants, taskGroup) | conditional:'full-opacity':'semi-transparent'">
                 <div ng-class="{'highlight-bg': taskGroup._id == selectedRevision}">
                   <a href="/version/[[getVersionForCommit(taskGroup._id).id]]">
                     [[ getVersionForCommit(taskGroup._id).message ]]
@@ -63,18 +63,17 @@ Evergreen - Task History
                       data-animation=""
                       ng-class="variantInFilter(taskHistoryFilter.filter, bv) |
                                 conditional:'full-opacity':'transparent'">
-                    <span ng-class="taskMatchesFilter(taskHistoryFilter.filter, getTestForVariant(taskGroup, bv)) |
-                                    conditional:'full-opacity':'semi-transparent'">
-                      <div ng-class="'cell ' + getGridClass(getTestForVariant(taskGroup, bv)) + ' ' + (taskMatchesFilter(taskHistoryFilter.filter, getTestForVariant(taskGroup, bv)) | conditional:'':'task-doesnt-match')"></div>
+                    <span ng-class="taskMatchesFilter(getTestForVariant(taskGroup, bv)) | conditional:'full-opacity':'semi-transparent'">
+                      <div ng-class="'cell ' + getGridClass(getTestForVariant(taskGroup, bv)) + ' ' + (taskMatchesFilter(getTestForVariant(taskGroup, bv)) | conditional:'':'task-doesnt-match')"></div>
                     </span>
                   </a>
                 </div>
                 <div style="clear: both"></div>
               </div>
             </div>
-            <div ng-show="hideInactiveVersions.get() && inactiveTaskGroupCount[$index]">
+            <div ng-show="hideInactiveVersions.get() && inactiveTaskGroupCount[$index] && !hideUnmatchingVersions.get() ">
               <div class="header muted" style="text-align: center; position: relative">
-                <div class="task-history-divider-line">
+                <div class="task-history-divider-line">z
                 </div>
                 <div class="task-history-inactive-count-wrapper">
                   [[ inactiveTaskGroupCount[$index] ]] inactive
@@ -123,12 +122,18 @@ Evergreen - Task History
                                   taskHistoryFilter.queryServer();"></select>
             </div>
 
-            <h3>Options</h3>
+            <h3> Options <span class="small"> ([[tasksByVariantByCommit.length]] Versions)</span></h3> 
 
             <div class="checkbox">
               <label>
                 <input type="checkbox" ng-model="hideInactiveVersions.v">
                 Hide Inactive Versions
+              </label>
+            </div>
+            <div ng-hide="hideUnmatchingVersions.hidden()" class="checkbox">
+              <label>
+                <input type="checkbox" ng-model="hideUnmatchingVersions.v">
+                Hide Unmatched Versions
               </label>
             </div>
           </div>
@@ -168,7 +173,7 @@ Evergreen - Task History
     </div>
   </div>
   <div class="row" style="margin-top: 10px">
-    <div class="col-lg-2">
+    <div class="col-lg-3">
       <button type="button" class="btn btn-info" ng-click="loadMore(true)" ng-hide="exhaustedBefore">Load Older Entries</button>
       <error-flash ng-init="destination='errorNearButton';"></error-flash>
     </div>

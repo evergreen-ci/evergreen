@@ -17,7 +17,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
   };
 
   /* Convert `ret.filter` to a readable string and back for use in the location
-   * hash. */
+  * hash. */
   var filterSerializer = {
     // Converts `ret.filter` into a readable string
     serialize: function() {
@@ -28,7 +28,7 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
         }
 
         str += encodeURIComponent(testName) + '=' +
-          encodeURIComponent(testResult);
+        encodeURIComponent(testResult);
       });
 
       if (str.length > 0) {
@@ -36,14 +36,14 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       }
 
       /* buildVariants is a single string delimited by ',' and each buildVariant
-       * gets piped through encodeURIComponent */
+      * gets piped through encodeURIComponent */
       str += 'buildVariants=' +
-        _.map(ret.filter.buildVariants, encodeURIComponent).join(',');
+      _.map(ret.filter.buildVariants, encodeURIComponent).join(',');
 
       return str;
     },
     /* The inverse of `serialize`. Takes a string, parses it, and sets
-     * `ret.filter` to the parsed value. */
+    * `ret.filter` to the parsed value. */
     deserialize: function(str) {
       ret.filter = ret.filter || {};
       ret.filter.tests = {};
@@ -54,19 +54,19 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       _.each(testNamesToResults, function(v) {
         var nameValuePair = v.split('=');
         ret.filter.tests[decodeURIComponent(nameValuePair[0])] =
-          decodeURIComponent(nameValuePair[1]);
+        decodeURIComponent(nameValuePair[1]);
       });
 
       if (nameValuePairs.length > 0) {
         var lastNameValuePair = _.last(nameValuePairs).split('=');
         if (lastNameValuePair[0] === 'buildVariants') {
           /* If buildVariants isn't empty, split buildVariants by ',' delimiter
-           * and do a URI decode on each of them */
+          * and do a URI decode on each of them */
           ret.filter.buildVariants = lastNameValuePair[1] ?
-            _.map(lastNameValuePair[1].split(','), decodeURIComponent) : [];
+          _.map(lastNameValuePair[1].split(','), decodeURIComponent) : [];
         } else {
           ret.filter.tests[decodeURIComponent(lastNameValuePair[0])] =
-            decodeURIComponent(lastNameValuePair[1]);
+          decodeURIComponent(lastNameValuePair[1]);
         }
       }
     }
@@ -85,24 +85,24 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       '/' +
       encodeURIComponent(ret.taskName) +
       '/test_names'
-    ).success(function(testNames) {
-      ret.testNames = [];
-      var testNamesMap = {};
-      _.each(testNames, function(name) {
-        testNamesMap[$filter('endOfPath')(name)] = true;
+      ).success(function(testNames) {
+        ret.testNames = [];
+        var testNamesMap = {};
+        _.each(testNames, function(name) {
+          testNamesMap[$filter('endOfPath')(name)] = true;
+        });
+
+        _.each(testNamesMap, function(value, key) {
+          ret.testNames.push(key);
+        });
+      }).error(function(data, status, headers, config) {
+        console.log("Error occurred when getting test names: `" + headers + "`");
       });
 
-      _.each(testNamesMap, function(value, key) {
-        ret.testNames.push(key);
-      });
-    }).error(function(data, status, headers, config) {
-      console.log("Error occurred when getting test names: `" + headers + "`");
-    });
-
-    ret.constraints = {
-      low: Number.POSITIVE_INFINITY,
-      high: 0
-    };
+      ret.constraints = {
+        low: Number.POSITIVE_INFINITY,
+        high: 0
+      };
 
     // Build Variant autocomplete state
     ret.buildVariantSearchString = "";
@@ -223,7 +223,6 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
 
     var filterStr = JSON.stringify(ret.filter);
     var uriFilterStr = encodeURIComponent(filterStr);
-
     $http.get(
       "/task_history/" +
       encodeURIComponent(ret.project) +
@@ -234,19 +233,19 @@ mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
       "&high=" + ret.constraints.high +
       "&only_matching_tasks=true" +
       "&filter=" + uriFilterStr
-    ).success(function(tasks) {
-      ret.testsLoading = false;
-      ret.taskMatchesFilter = {};
-      if (tasks.length) {
-        tasks.forEach(function(task) {
-          ret.taskMatchesFilter[task.id] = true;
-        });
-      }
-    }).error(function(data, status, headers, config) {
-      ret.testsLoading = false;
-      console.log("Error occurred when filtering tasks: `" + headers + "`");
-    });
-  };
+      ).success(function(tasks) {
+        ret.testsLoading = false;
+        ret.taskMatchesFilter = {};
+        if (tasks.length) {
+          tasks.forEach(function(task) {
+            ret.taskMatchesFilter[task.id] = true;
+          });
+        }
+      }).error(function(data, status, headers, config) {
+        ret.testsLoading = false;
+        console.log("Error occurred when filtering tasks: `" + headers + "`");
+      });
+    };
 
   // Show the test name autocomplete results
   ret.showTestNameResults = function() {
@@ -291,6 +290,7 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
       $scope.firstVersion = $scope.versions[0].revision;
       $scope.lastVersion = $scope.versions[numVersions - 1].revision;
     }
+    console.log($scope.taskHistoryFilter.filter.tests)
   };
 
   function buildVersionsByRevisionMap(versions, before) {
@@ -332,7 +332,7 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
       var buildVariantTaskMap = {};
       for (var j = 0; j < commitTasks.tasks.length; ++j) {
         buildVariantTaskMap[commitTasks.tasks[j].build_variant] =
-          commitTasks.tasks[j];
+        commitTasks.tasks[j];
       }
 
       tasksByVariant.push({
@@ -347,6 +347,7 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
       Array.prototype.unshift.apply($scope.tasksByVariantByCommit, tasksByVariant);
     }
 
+
     var inactiveVersionSequenceStart = -1;
     _.each($scope.tasksByVariantByCommit, function(obj, index) {
       $scope.isTaskGroupInactive[obj._id] = isTaskGroupInactive($scope.variants, obj);
@@ -360,9 +361,11 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
         inactiveVersionSequenceStart = -1;
       }
     });
+
   }
 
-  $scope.taskMatchesFilter = function(filter, task) {
+  $scope.taskMatchesFilter = function(task) {
+    filter = $scope.taskHistoryFilter.filter;
     if (filter.buildVariants.length > 0) {
       if (filter.buildVariants.indexOf(task.build_variant) == -1) {
         return false;
@@ -376,7 +379,9 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
     return true;
   };
 
-  $scope.variantInFilter = function(filter, variant) {
+
+  $scope.variantInFilter = function(variant) {
+    filter = $scope.taskHistoryFilter.filter;
     if (filter.buildVariants.length > 0) {
       return filter.buildVariants.indexOf(variant) != -1;
     }
@@ -384,123 +389,122 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
     return true;
   };
 
-  $scope.taskGroupHasTaskMatchingFilter =
-    function(filter, variants, taskGroup) {
-      for (var i = 0; i < variants.length; ++i) {
-        var variant = variants[i];
-        if (taskGroup.tasksByVariant[variant] &&
-          $scope.taskMatchesFilter(filter, taskGroup.tasksByVariant[variant])) {
-          return true;
-        }
-      }
-
-      return false;
-    };
-
-  var isTaskGroupInactive = function(variants, taskGroup) {
+  $scope.taskGroupHasTaskMatchingFilter = function(variants, taskGroup) {
     for (var i = 0; i < variants.length; ++i) {
-      var task = taskGroup.tasksByVariant[variants[i]];
-      if (task && ['success', 'failed'].indexOf(task.status) != -1) {
-        return false;
-      }
+      var variant = variants[i];
+      if (taskGroup.tasksByVariant[variant] &&
+        $scope.taskMatchesFilter(taskGroup.tasksByVariant[variant])) {
+        return true;
     }
-
-    return true;
-  };
-
-  $scope.getTestForVariant = function(testGroup, buildvariant) {
-    return testGroup.tasksByVariant[buildvariant];
   }
 
-  $scope.getVersionForCommit = function(gitspec) {
-    return $scope.versionsByGitspec[gitspec];
+  return false;
+};
+
+var isTaskGroupInactive = function(variants, taskGroup) {
+  for (var i = 0; i < variants.length; ++i) {
+    var task = taskGroup.tasksByVariant[variants[i]];
+    if (task && ['success', 'failed'].indexOf(task.status) != -1) {
+      return false;
+    }
   }
 
-  $scope.getTaskTooltip = function(testGroup, buildvariant) {
-    var task = testGroup.tasksByVariant[buildvariant];
-    var tooltip = '';
-    if (!task) {
-      return
-    }
+  return true;
+};
 
-    switch (task.status) {
-      case 'failed':
-        if ('task_end_details' in task && 'timed_out' in task.task_end_details && task.task_end_details.timed_out) {
-          tooltip += 'Timed out (' + task.task_end_details.desc + ') in ' +
-            $filter('stringifyNanoseconds')(task.time_taken);
-        } else if (task._id in $scope.failedTestsByTaskId &&
-          $scope.failedTestsByTaskId[task._id].length > 0) {
-          var failedTests = $scope.failedTestsByTaskId[task._id];
-          var failedTestLimit = 3;
-          var displayedTests = [];
-          for (var i = 0; i < failedTests.length; i++) {
-            if (i < failedTestLimit) {
-              displayedTests.push($filter('endOfPath')(failedTests[i].test_file));
-            }
-          }
-          tooltip += failedTests.length + ' ' + $filter('pluralize')(failedTests.length, 'test') +
-            ' failed (' + $filter('stringifyNanoseconds')(task.time_taken) + ')\n';
-          _.each(displayedTests, function(displayedTest) {
-            tooltip += '- ' + displayedTest + '\n';
-          });
-        } else {
-          tooltip = $filter('capitalize')(task.status) + ' (' +
-            $filter('stringifyNanoseconds')(task.time_taken) + ')';
+$scope.getTestForVariant = function(testGroup, buildvariant) {
+  return testGroup.tasksByVariant[buildvariant];
+}
+
+$scope.getVersionForCommit = function(gitspec) {
+  return $scope.versionsByGitspec[gitspec];
+}
+
+$scope.getTaskTooltip = function(testGroup, buildvariant) {
+  var task = testGroup.tasksByVariant[buildvariant];
+  var tooltip = '';
+  if (!task) {
+    return
+  }
+
+  switch (task.status) {
+    case 'failed':
+    if ('task_end_details' in task && 'timed_out' in task.task_end_details && task.task_end_details.timed_out) {
+      tooltip += 'Timed out (' + task.task_end_details.desc + ') in ' +
+      $filter('stringifyNanoseconds')(task.time_taken);
+    } else if (task._id in $scope.failedTestsByTaskId &&
+      $scope.failedTestsByTaskId[task._id].length > 0) {
+      var failedTests = $scope.failedTestsByTaskId[task._id];
+      var failedTestLimit = 3;
+      var displayedTests = [];
+      for (var i = 0; i < failedTests.length; i++) {
+        if (i < failedTestLimit) {
+          displayedTests.push($filter('endOfPath')(failedTests[i].test_file));
         }
-        break;
-      case 'success':
-        tooltip = $filter('capitalize')(task.status) + ' (' +
-          $filter('stringifyNanoseconds')(task.time_taken) + ')';
-        break;
-      default:
+      }
+      tooltip += failedTests.length + ' ' + $filter('pluralize')(failedTests.length, 'test') +
+      ' failed (' + $filter('stringifyNanoseconds')(task.time_taken) + ')\n';
+      _.each(displayedTests, function(displayedTest) {
+        tooltip += '- ' + displayedTest + '\n';
+      });
+    } else {
+      tooltip = $filter('capitalize')(task.status) + ' (' +
+        $filter('stringifyNanoseconds')(task.time_taken) + ')';
+}
+break;
+case 'success':
+tooltip = $filter('capitalize')(task.status) + ' (' +
+  $filter('stringifyNanoseconds')(task.time_taken) + ')';
+break;
+default:
+}
+return tooltip;
+}
+
+$scope.getGridClass = function(cell) {
+  if (cell) {
+    if (cell.status == 'undispatched') {
+      return 'undispatched ' + (cell.activated ? 'active' : 'inactive')
     }
-    return tooltip;
+    cell.task_end_details = cell.details;
+    return $filter('statusFilter')(cell);
+  }
+  return 'skipped';
+};
+
+
+$scope.loadMore = function(before) {
+  var revision = $scope.firstVersion;
+  if (before) {
+    revision = $scope.lastVersion;
   }
 
-  $scope.getGridClass = function(cell) {
-    if (cell) {
-      if (cell.status == 'undispatched') {
-        return 'undispatched ' + (cell.activated ? 'active' : 'inactive')
-      }
-      cell.task_end_details = cell.details;
-      return $filter('statusFilter')(cell);
-    }
-    return 'skipped';
-  };
+  mciTaskHistoryRestService.getTaskHistory(
+    $scope.project,
+    $scope.taskName, {
+      format: 'json',
+      revision: revision,
+      before: before,
+    }, {
+      success: function(data, status) {
+        if (data.Versions) {
+          buildVersionsByRevisionMap(data.Versions, before);
 
-
-  $scope.loadMore = function(before) {
-    var revision = $scope.firstVersion;
-    if (before) {
-      revision = $scope.lastVersion;
-    }
-
-    mciTaskHistoryRestService.getTaskHistory(
-      $scope.project,
-      $scope.taskName, {
-        format: 'json',
-        revision: revision,
-        before: before,
-      }, {
-        success: function(data, status) {
-          if (data.Versions) {
-            buildVersionsByRevisionMap(data.Versions, before);
-
-            var numVersions = data.Versions.length;
-            if (numVersions > 0) {
-              if (before) {
-                $scope.lastVersion = data.Versions[numVersions - 1].revision;
-                $scope.exhaustedBefore = data.ExhaustedBefore;
-              } else {
-                $scope.firstVersion = data.Versions[0].revision;
-                $scope.exhaustedAfter = data.ExhaustedAfter;
-              }
+          var numVersions = data.Versions.length;
+          if (numVersions > 0) {
+            if (before) {
+              $scope.lastVersion = data.Versions[numVersions - 1].revision;
+              $scope.exhaustedBefore = data.ExhaustedBefore;
+            } else {
+              $scope.firstVersion = data.Versions[0].revision;
+              $scope.exhaustedAfter = data.ExhaustedAfter;
             }
           }
+        }
 
-          if (data.Tasks) {
-            buildTasksByVariantCommitMap(data.Tasks, before)
-          }
+        if (data.Tasks) {
+          buildTasksByVariantCommitMap(data.Tasks, before)
+        }
 
           // add column highlighting to the new elements. use a $timeout to
           // let the new elements get created before the handlers are registered
@@ -513,19 +517,34 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
           errorPasserService.pushError('Error getting task history: ' + jqXHR,'errorNearButton');
         }
       }
-    );
-  };
+      );
+};
 
-  $scope.hideInactiveVersions = {
-    v: true,
-    get: function() {
-      return $scope.hideInactiveVersions.v;
-    },
-    toggle: function() {
-      $scope.hideInactiveVersions.v = !$scope.hideInactiveVersions.v;
-    }
-  };
+$scope.hideInactiveVersions = {
+  v: true,
+  get: function() {
+    return $scope.hideInactiveVersions.v;
+  },
+  toggle: function() {
+    $scope.hideInactiveVersions.v = !$scope.hideInactiveVersions.v;
+  }
+};
+
+$scope.hideUnmatchingVersions = {
+  v: false,
+  get: function() {
+    return $scope.hideUnmatchingVersions.v;
+  },
+  toggle: function() {
+    $scope.hideUnmatchingVersions.v = !$scope.hideUnmatchingVersions.v;
+  },
+  hidden: function(){
+    return _.size($scope.taskHistoryFilter.filter.tests) == 0
+  }
+};
 });
+
+
 
 // function to add mouseover handlers for highlighting columns
 function addColumnHighlighting(unbindPrevious) {

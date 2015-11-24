@@ -22,14 +22,6 @@ import (
 )
 
 const (
-	// Initial number of revisions to return on first page load
-	InitRevisionsBefore = 9
-	InitRevisionsAfter  = 20
-
-	// Number of revisions to return on subsequent requests
-	NoRevisions     = 0
-	MaxNumRevisions = 50
-
 	// status overwrites
 	TaskBlocked = "blocked"
 	TaskPending = "pending"
