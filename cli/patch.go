@@ -100,6 +100,7 @@ type PatchCommandParams struct {
 	Tasks       []string `short:"t" long:"tasks"`
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
+	Rev         string   `short:"r" long:"rev" rev:"create diff against this revision/branch (default: master)"`
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
 	Large       bool     `long:"large" description:"enable submitting larger patches (>16MB)"`
 }
@@ -220,7 +221,7 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	}
 	notifyUserUpdate(ac)
 
-	diffData, err := loadGitData("master", args...) // modules always diff relative to master. this is not great.
+	diffData, err := loadGitData("origin/master", args...) // modules always diff relative to master. this is not great.
 	if err != nil {
 		return err
 	}
@@ -245,12 +246,12 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 }
 
 func (pc *PatchCommand) Execute(args []string) error {
-	ac, settings, ref, err := validatePatchCommand(&pc.PatchCommandParams)
+	ac, settings, _, err := validatePatchCommand(&pc.PatchCommandParams)
 	if err != nil {
 		return err
 	}
 
-	diffData, err := loadGitData(ref.Branch, args...)
+	diffData, err := loadGitData(pc.PatchCommandParams.Rev, args...)
 	if err != nil {
 		return err
 	}
@@ -413,6 +414,10 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 		params.Description = prompt("Enter a description for this patch (optional):")
 	}
 
+	if params.Rev == "" {
+		params.Rev = "origin/"+ref.Branch
+	}
+
 	return
 }
 
@@ -467,7 +472,7 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
 func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
-	mergeBase, err := gitMergeBase("origin/"+branch, "HEAD")
+	mergeBase, err := gitMergeBase(branch, "HEAD")
 	if err != nil {
 		return nil, fmt.Errorf("Error getting merge base: %v", err)
 	}
