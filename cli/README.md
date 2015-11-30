@@ -23,6 +23,10 @@ Or to patch relative to a specific tag:
 
       evergreen patch -- r3.0.2
 
+For patches containing binary data, you can use the extra args to git diff to include the binary changes by passing through --binary to the `git` command itself:
+
+      evergreen patch -- --binary
+
 Operating on existing patches
 --
 
