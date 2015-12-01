@@ -1,4 +1,6 @@
 function VersionController($scope, $location, $http, $filter, $now, $window, errorPasserService) {
+  var nsPerMs = 1000000
+
   $scope.tab = 0
   $scope.version = {};
   $scope.taskStatuses = {};
@@ -84,6 +86,28 @@ function VersionController($scope, $location, $http, $filter, $now, $window, err
     }
     $scope.taskNames = Object.keys(taskNames).sort()
     $scope.lastUpdate = $now.now();
+
+    //calculate makespan and total processing time for the version
+    var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))}
+
+    var tasks = version.Builds.map(function(x){ return _.pluck(x.Tasks, "Task") }).reduce(function(x,y){return x.concat(y)});
+    var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort();
+    var taskEndTimes = _.filter(tasks.map(function(x){
+        if(x.time_taken == 0){
+            return new Date(0);
+        }else{
+            return new Date(+new Date(x.start_time) + x.time_taken/nsPerMs);
+        }
+    }), nonZeroTimeFilter).sort();
+
+    if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
+        $scope.makeSpanMS = 0;
+    }else {
+        $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
+    }
+
+    $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0]
+    $scope.totalTimeMS = _.reduce(_.pluck(tasks, "time_taken"), function(x, y){return x+y}, 0) / nsPerMs;
   };
 
   $scope.getGridLink = function(bv, test) {

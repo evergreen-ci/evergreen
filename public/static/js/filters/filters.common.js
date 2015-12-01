@@ -72,7 +72,11 @@ filters.common.filter('conditional', function() {
   var NS_PER_MINUTE = NS_PER_SEC * 60;
   var NS_PER_HOUR = NS_PER_MINUTE * 60;
 
-  return function(input) {
+  // stringifyNanoseconds takes an integer count of nanoseconds and
+  // returns it formatted as a human readable string, like "1h32m40s"
+  // If skipDayMax is true, then durations longer than 1 day will be represented
+  // in hours. Otherwise, they will be displayed as '>=1 day'
+  return function(input, skipDayMax) {
     if (input == 0) {
       return "Not Started";
     } else if (input < NS_PER_SEC) {
@@ -81,14 +85,14 @@ filters.common.filter('conditional', function() {
       return Math.floor(input / NS_PER_SEC) + " seconds";
     } else if (input < NS_PER_HOUR) {
       return Math.floor(input / NS_PER_MINUTE) + "m " + Math.floor((input % NS_PER_MINUTE) / NS_PER_SEC) + "s";
-    } else if (input < NS_PER_HOUR * 24) {
+    } else if (input < NS_PER_HOUR * 24 || skipDayMax) {
       return Math.floor(input / NS_PER_HOUR) + "h " +
           Math.floor((input % NS_PER_HOUR) / NS_PER_MINUTE) + "m " +
           Math.floor((input % NS_PER_MINUTE) / NS_PER_SEC) + "s";
     } else if (input == "unknown") {
       return "unknown";
-    } else {
-      return ">= 1 day";
+    }  else {
+      return ">= 1 day";   
     }
   };
 }).filter('linkify', function() {

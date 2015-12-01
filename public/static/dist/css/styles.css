@@ -522,6 +522,12 @@ ul.inline li {
 #build-info-elements i {
   margin-right: 10px;
 }
+#build-info-elements tr {
+  margin-bottom: 3px;
+}
+#build-info-elements th {
+  padding-right: 10px;
+}
 #build-priority {
   margin-top: 15px;
 }

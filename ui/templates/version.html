@@ -68,77 +68,82 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
 
   <div class="row">
     <div class="col-lg-7">
-      <div class="row">
-        <div class="col-lg-10">
-          <br>
-          {{if .Version.PatchInfo}}
-            <patch-commit-panel patchinfo="version.PatchInfo" basecommit="version" timezone="{{GetTimezone .User}}" baselink="/version" base="{{.Version.PatchInfo.BaseVersionId}}"></patch-commit-panel>
-          {{else}}
-            <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
-          {{end}}
-          <div ng-show="[[version.Version.errors.length]]">
-            <i class="icon-warning-sign" style="color:red"></i>
-            [[version.Version.errors.length]]  [[version.Version.errors.length | pluralize:'error']] in configuration file
-            <div style="color:red" ng-repeat="error in version.Version.errors">- [[error]]</div>
-          </div>
-        </div>
-        <div class="col-lg-2">
-          {{if .User}}
-            <div ng-controller="AdminOptionsCtrl">
-              <div id="admin-dropdown" class="dropdown pull-right page-actions">
-                <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
-                  <i class="icon-gear"></i>
-                  <i class="icon-caret-down"></i>
-                </a>
+        <!-- The breadcrumb acts as the header on this page, but we have this empty <h1> to make
+             the spacing above the github commit info panel consistent with the task and build pages. -->
+        <h1></h1>
+        {{if .User}}
+          <div ng-controller="AdminOptionsCtrl">
+             <div id="admin-dropdown" class="dropdown pull-right page-actions">
+               <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
+                 <i class="icon-gear"></i>
+                 <i class="icon-caret-down"></i>
+               </a>
 
-                <ul class="dropdown-menu" role="menu">
-                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('schedule')">Schedule all</a></li>
-                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
-                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set priority</a></li>
-                </ul>
-              </div>
-              <admin-modal>
-                  <admin-schedule-all ng-show="adminOption=='schedule'"></admin-schedule-all>
-                  <admin-unschedule-all ng-show="adminOption=='unschedule'"></admin-unschedule-all>
-                  <admin-set-priority ng-show="adminOption=='priority'"></admin-set-priority>
-              </admin-modal>
-            </div>
-          {{end}}
-        </div>
-      </div>
+               <ul class="dropdown-menu" role="menu">
+                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('schedule')">Schedule all</a></li>
+                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
+                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set priority</a></li>
+               </ul>
+             </div>
+             <admin-modal>
+                 <admin-schedule-all ng-show="adminOption=='schedule'"></admin-schedule-all>
+                 <admin-unschedule-all ng-show="adminOption=='unschedule'"></admin-unschedule-all>
+                 <admin-set-priority ng-show="adminOption=='priority'"></admin-set-priority>
+             </admin-modal>
+           </div>
+         {{end}}
 
-      <h3 class="section-heading">Status</h3>
-      <div class="mci-pod">
-        <ul class="nav nav-tabs">
-          <li ng-class="{active:tab==0}"><a href="#" ng-click="setTab(0)">By Variant</a></li>
-          <li ng-class="{active:tab==1}"><a href="#" ng-click="setTab(1)">Grid</a></li>
-        </ul>
-        <div class="row" ng-hide="tab!=0">
-          <div ng-repeat="build in version.Builds | orderBy:'Build.display_name'" class="col-lg-4">
-            <h4 class="one-liner" style="margin-bottom: 5px;">
-              <a ng-href="/build/[[build.Build._id]]" class="semi-muted">[[build.Build.display_name]]</a>
-            </h4>
-            <div class="progress" results-bar="taskStatuses[build.Build._id]"></div>
-          </div>
-        </div>
-        <div class="row" ng-hide="tab!=1">
-          <div class="gridtable-small">  
-            <div class="top-header-row">
-              <div class="header-cell" ng-repeat="task in taskNames" id="[['bv' + $index]]">
-                <span class="header-text">[[task]]</span>
-              </div>
-            </div>
-            <div class="tablerow" ng-repeat="build in version.Builds">
-              <div class="header">
-                <div class="testname" id="[['test' + $index]]">[[build.Build.display_name]]</div>
-              </div>
-              <div class="cells">
-                <a ng-href="[[getGridLink(build.Build.display_name, task)]]" ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(build.Build.display_name, task)">&nbsp;</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+         <div class="row mci-pod">
+           <div>
+             {{if .Version.PatchInfo}}
+               <patch-commit-panel patchinfo="version.PatchInfo" basecommit="version" timezone="{{GetTimezone .User}}" baselink="/version" base="{{.Version.PatchInfo.BaseVersionId}}"></patch-commit-panel>
+             {{else}}
+               <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
+             {{end}}
+             <div ng-show="[[version.Version.errors.length]]">
+               <i class="icon-warning-sign" style="color:red"></i>
+               [[version.Version.errors.length]]  [[version.Version.errors.length | pluralize:'error']] in configuration file
+               <div style="color:red" ng-repeat="error in version.Version.errors">- [[error]]</div>
+             </div>
+           </div>
+           <table id="build-info-elements">
+             <tr ng-show="makeSpanMS != 0"><td><i class="icon-time"></i></td><th><strong title="The makespan is the difference in time from when the first task in the version has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+             <tr ng-show="totalTimeMS != 0"><td><i class="icon-time"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+             <tr/>
+           </table>
+         </div>
+
+         <div class="mci-pod row">
+           <ul class="nav nav-tabs">
+             <li ng-class="{active:tab==0}"><a href="#" ng-click="setTab(0)">By Variant</a></li>
+             <li ng-class="{active:tab==1}"><a href="#" ng-click="setTab(1)">Grid</a></li>
+           </ul>
+           <div class="row" ng-hide="tab!=0">
+             <div ng-repeat="build in version.Builds | orderBy:'Build.display_name'" class="col-lg-4">
+               <h4 class="one-liner" style="margin-bottom: 5px;">
+                 <a ng-href="/build/[[build.Build._id]]" class="semi-muted">[[build.Build.display_name]]</a>
+               </h4>
+               <div class="progress" results-bar="taskStatuses[build.Build._id]"></div>
+             </div>
+           </div>
+           <div class="row" ng-hide="tab!=1">
+             <div class="gridtable-small">  
+               <div class="top-header-row">
+                 <div class="header-cell" ng-repeat="task in taskNames" id="[['bv' + $index]]">
+                   <span class="header-text">[[task]]</span>
+                 </div>
+               </div>
+               <div class="tablerow" ng-repeat="build in version.Builds">
+                 <div class="header">
+                   <div class="testname" id="[['test' + $index]]">[[build.Build.display_name]]</div>
+                 </div>
+                 <div class="cells">
+                   <a ng-href="[[getGridLink(build.Build.display_name, task)]]" ng-repeat="task in taskNames" ng-class="'cell ' + getGridClass(build.Build.display_name, task)">&nbsp;</a>
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
 
 
       <div class="row">

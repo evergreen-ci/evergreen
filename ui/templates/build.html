@@ -94,18 +94,16 @@ Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName
       <div class="row">
         <div class="col-lg-12">
           <div class="mci-pod">
-            <table id="build-info-elements">
-              <tr ng-show="build.Build.time_taken">
-                <td><i class="icon-time"></i></td>
-                <td>[[build.Build.time_taken | default:0 | stringifyNanoseconds]]</td>
-              </tr>
-            </table>
             <br>
             {{if .Build.PatchInfo}}
               <patch-commit-panel patchinfo="build.PatchInfo" basecommit="commit" timezone="{{GetTimezone .User}}" baselink="/build" base="{{.Build.PatchInfo.BaseBuildId}}"></patch-commit-panel>
             {{else}}
               <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
             {{end}}
+            <table id="build-info-elements">
+              <tr><td><i class="icon-time"></i></td><th><strong title="The makespan is the difference in time from when the first task in the build has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+              <tr><td><i class="icon-time"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+            </table>
           </div>
         </div>
       </div>

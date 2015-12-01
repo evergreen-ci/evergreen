@@ -68,7 +68,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
 		for _, task := range build.Tasks {
 			uiTasks = append(uiTasks,
-				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated,
+				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated, StartTime: task.StartTime, TimeTaken: task.TimeTaken,
 					Status: task.Status, Details: task.StatusDetails, DisplayName: task.DisplayName}})
 			if task.Activated {
 				versionAsUI.ActiveTasks++

@@ -138,6 +138,33 @@ function BuildViewController($scope, $http, $timeout, mciTime, $window) {
     }
 
     $scope.lastUpdate = mciTime.now();
+
+    //calculate makespan and total processing time for the build
+
+    // filter function to remove zero times from a list of times
+    var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))}
+
+    // extract the start an end times for the tasks in the build, discarding the zero times
+    var taskStartTimes = _.filter(build.Tasks.map(function(x){return new Date(x.Task.start_time)}).sort(), nonZeroTimeFilter)
+    var taskEndTimes = _.filter(build.Tasks.map(function(x){return  new Date(x.Task.finish_time)}).sort(), nonZeroTimeFilter)
+
+    //  calculate the makespan by taking the difference of the first start time and last end time
+    if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
+      $scope.makeSpanMS = 0
+    }else {
+      $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0]
+    }
+    
+    var finishedOnly = _.filter(build.Tasks,
+      function(x){
+        return new Date(x.Task.start_time) > new Date(0) && new Date(x.Task.finish_time) > new Date(0)
+      }
+    )
+    $scope.totalTimeMS = _.reduce(
+      _.map(finishedOnly,
+            function(x){return new Date(x.Task.finish_time) - new Date(x.Task.start_time)}), 
+            function(sum, el){return sum+el},
+            0)
   };
 
   $scope.setBuild($window.build);
