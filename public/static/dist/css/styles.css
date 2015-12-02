@@ -910,7 +910,7 @@ ul.tooltip-tasks li.tooltip-task {
 }
 #tasks > li {
   float: left;
-  width: 33%;
+  width: 50%;
 }
 .config-heading {
   margin-top: 2px;

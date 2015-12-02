@@ -24,7 +24,7 @@ function PatchController($scope, $filter, $window, errorPasserService) {
   $scope.setPatchInfo = function() {
     $scope.patch = $window.patch;
     var patch = $scope.patch;
-    var allTasks = $window.tasks;
+    var allTasks = _.sortBy($window.tasks, 'Name')
     var allVariants = $window.variants;
 
     var allVariantsModels = [];

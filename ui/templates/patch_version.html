@@ -43,7 +43,7 @@ Evergreen - Configure Patch
         <div class="col-lg-12">
           <div class="panel">
             <div class="panel-heading">
-              <h4 class="config-heading"> <b>Build Variants</b> </h4>
+              <h4 class="config-heading"> <b>Variants</b> </h4>
               <div class="pull-right">
                 <a href="#" ng-click="select(allVariants, true)">all</a>
                 &nbsp; &bull; &nbsp;
@@ -92,7 +92,7 @@ Evergreen - Configure Patch
                     mci-mouseleave="selectedTask.set('')">
                   <div  class="highlight-wrapper"
                         ng-class="{true:'highlight-bg-no-border', false:''}[taskRunsOnVariant(task.Name, selectedVariant.get())]">
-                    <label ng-class="{true:'muted', false:''}[!!patch.Version && allVariantsOriginal[$index].checked]">
+                    <label ng-class="{true:'muted', false:''}[!!patch.Version && allTasksOriginal[$index].checked]">
                       <input  type="checkbox"
                               ng-disabled="!!patch.Version && allTasksOriginal[$index].checked"
                               ng-checked="task.checked"
