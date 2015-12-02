@@ -51,7 +51,7 @@ const (
 
 	// DefaultIdleTimeout specifies the duration after which agent sends an
 	// IdleTimeout signal if a task produces no logs.
-	DefaultIdleTimeout = 15 * time.Minute
+	DefaultIdleTimeout = 20 * time.Minute
 	// DefaultCallbackCmdTimeout specifies the duration after when the "post" or
 	// "timeout" command sets should be shut down.
 	DefaultCallbackCmdTimeout = 15 * time.Minute
