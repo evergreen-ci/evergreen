@@ -110,6 +110,149 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 	return patchVersion, nil
 }
 
+// IncludePatchDependencies takes a project, slice of variant names, and a slice of task names,
+// and returns expanded lists of variants and tasks to include dependencies of the given tasks.
+// If a dependency is cross-variant, it will include the variant and task for that dependency.
+func IncludePatchDependencies(project *Project, variants, tasks []string) (vs, ts []string) {
+	// Construct a set of variants to include in patchUpdate.Variants
+	updateVariants := make(map[string]bool)
+	for _, variant := range variants {
+		updateVariants[variant] = true
+	}
+
+	// Construct a set of tasks to include in patchUpdate.Tasks
+	// Add all dependencies, and add their variants to updateVariants
+	updateTasks := make(map[string]bool)
+	for _, v := range variants {
+		for _, t := range project.FindTasksForVariant(v) {
+			for _, task := range tasks {
+				if t == task {
+					deps, variants, _ := getDeps(task, v, project)
+					updateTasks[task] = true
+					for _, dep := range deps {
+						updateTasks[dep] = true
+					}
+					for _, variant := range variants {
+						updateVariants[variant] = true
+					}
+				}
+			}
+		}
+	}
+
+	// Return new slices of variant and task names
+	ts = make([]string, 0, len(updateTasks))
+	for task := range updateTasks {
+		ts = append(ts, task)
+	}
+	vs = make([]string, 0, len(updateVariants))
+	for variant := range updateVariants {
+		vs = append(vs, variant)
+	}
+	return vs, ts
+}
+
+// getDeps returns all recursive dependencies of task and their variants.
+// If task has a non-patchable dependency, getDeps will return a true boolean.
+// The returned slices may contain duplicates.
+func getDeps(task string, variant string, p *Project) ([]string, []string, bool) {
+	projectTask := p.FindTaskForVariant(task, variant)
+	if projectTask == nil {
+		evergreen.Logger.Logf(slogger.ERROR, "task %v does not exist in project %v", task, p.Identifier)
+		return nil, nil, true // task not found in project
+	}
+	if patchable := projectTask.Patchable; patchable != nil && !*patchable {
+		return nil, nil, true // task cannot be patched, so skip it
+	}
+	deps := make([]string, 0)
+	variants := make([]string, 0)
+	// check each dependency of the current task
+	for _, dep := range projectTask.DependsOn {
+		switch {
+
+		// task = *, variant = *
+		case dep.Variant == AllVariants && dep.Name == AllDependencies:
+			// Here we get all variants and tasks (excluding the current task)
+			// and add them to the list of tasks and variants.
+			for _, v := range p.FindAllVariants() {
+				variants = append(variants, v)
+				for _, t := range p.FindTasksForVariant(v) {
+					if t == task && v == variant {
+						continue
+					}
+					// if a dependency is not patchable, we quit, as the current task will never be run
+					if depTask := p.FindTaskForVariant(t, v); depTask.Patchable != nil && !*depTask.Patchable {
+						return nil, nil, true
+					}
+					deps = append(deps, t)
+				}
+			}
+
+		// specific task, variant = *
+		case dep.Variant == AllVariants:
+			// In the case where we depend on a task on all variants, we fetch the task's
+			// dependencies, then add that task for all variants that have it.
+			deps = append(deps, dep.Name)
+			for _, v := range p.FindAllVariants() {
+				for _, t := range p.FindTasksForVariant(v) {
+					if t == dep.Name {
+						if t == task && v == variant {
+							continue
+						}
+						recDeps, recVariants, notPatchable := getDeps(t, v, p)
+						if notPatchable {
+							return nil, nil, true
+						}
+						deps = append(deps, recDeps...)
+						variants = append(variants, v)
+						variants = append(variants, recVariants...)
+					}
+				}
+			}
+
+		// task = *, specific variant
+		case dep.Name == AllDependencies:
+			// Here we add every task for a single variant. We add the dependent variant,
+			// then add all of that variant's task, as well as their dependencies.
+			v := dep.Variant
+			if v == "" {
+				v = variant
+			}
+			variants = append(variants, v)
+			for _, t := range p.FindTasksForVariant(v) {
+				if t == task && v == variant {
+					continue
+				}
+				recDeps, recVariants, notPatchable := getDeps(t, v, p)
+				if notPatchable {
+					return nil, nil, true
+				}
+				deps = append(deps, t)
+				deps = append(deps, recDeps...)
+				variants = append(variants, recVariants...)
+			}
+
+		// specific name, specific variant
+		default:
+			// We simply add a single task/variant and its dependencies.
+			v := dep.Variant
+			if v == "" {
+				v = variant
+			}
+			recDeps, recVariants, notPatchable := getDeps(dep.Name, v, p)
+			if notPatchable {
+				return nil, nil, true
+			}
+			deps = append(deps, dep.Name)
+			deps = append(deps, recDeps...)
+			variants = append(variants, v)
+			variants = append(variants, recVariants...)
+
+		}
+	}
+	return deps, variants, false
+}
+
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
 // of the current project and returns an unmarshalled version of the project
 // with the patch applied

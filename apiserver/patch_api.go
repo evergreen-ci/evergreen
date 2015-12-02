@@ -271,6 +271,10 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// update variant and tasks to include dependencies
+	apiRequest.BuildVariants, apiRequest.Tasks = model.IncludePatchDependencies(
+		project, apiRequest.BuildVariants, apiRequest.Tasks)
+
 	createTime := time.Now()
 
 	// create a new object ID to use as reference for the patch data

@@ -2,7 +2,6 @@ package ui
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -10,10 +9,6 @@ import (
 	"gopkg.in/yaml.v2"
 	"net/http"
 	"strconv"
-)
-
-var (
-	TaskNotPatchableError = fmt.Errorf("Task is not patchable.")
 )
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
@@ -105,52 +100,8 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Add all dependencies to patchUpdateReq.Tasks and add their variants to patchUpdateReq.Variants
-
-	// Construct a set of variants to include in patchUpdateReq.Variants
-	updateReqVariants := make(map[string]bool)
-	for _, variant := range patchUpdateReq.Variants {
-		updateReqVariants[variant] = true
-	}
-
-	// Construct a set of tasks to include in patchUpdateReq.Tasks
-	// Add all dependencies, and add their variants to updateReqVariants
-	updateReqTasks := make(map[string]bool)
-	for _, v := range patchUpdateReq.Variants {
-		for _, t := range projCtx.Project.FindTasksForVariant(v) {
-			for _, task := range patchUpdateReq.Tasks {
-				if t == task {
-					deps, variants, err := getDeps(task, v, projCtx.Project)
-					if err != nil {
-						if err == TaskNotPatchableError {
-							continue
-						} else {
-							uis.LoggedError(w, r, http.StatusInternalServerError,
-								fmt.Errorf("Error getting dependencies for task: %v", err))
-							return
-						}
-					}
-					updateReqTasks[task] = true
-					for _, dep := range deps {
-						updateReqTasks[dep] = true
-					}
-					for _, variant := range variants {
-						updateReqVariants[variant] = true
-					}
-				}
-			}
-		}
-	}
-
-	// Reset patchUpdateReq.Tasks and patchUpdateReq.Variants
-	patchUpdateReq.Tasks = make([]string, 0, len(updateReqTasks))
-	for task := range updateReqTasks {
-		patchUpdateReq.Tasks = append(patchUpdateReq.Tasks, task)
-	}
-	patchUpdateReq.Variants = make([]string, 0, len(updateReqVariants))
-	for variant := range updateReqVariants {
-		patchUpdateReq.Variants = append(patchUpdateReq.Variants, variant)
-	}
+	patchUpdateReq.Variants, patchUpdateReq.Tasks = model.IncludePatchDependencies(
+		projCtx.Project, patchUpdateReq.Variants, patchUpdateReq.Tasks)
 
 	if projCtx.Patch.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
@@ -206,96 +157,6 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			VersionId string `json:"version"`
 		}{ver.Id})
 	}
-}
-
-// getDeps returns all recursive dependencies of task and their variants.
-// If task has a non-patchable dependency, getDeps will return TaskNotPatchableError
-// The returned slices may contain duplicates.
-func getDeps(task string, variant string, p *model.Project) ([]string, []string, error) {
-	projectTask := p.FindTaskForVariant(task, variant)
-	if projectTask == nil {
-		return nil, nil, fmt.Errorf("Task not found in project: %v", task)
-	}
-	if patchable := projectTask.Patchable; (patchable != nil && !*patchable) || task == evergreen.PushStage { //TODO remove PushStage
-		return nil, nil, TaskNotPatchableError
-	}
-	deps := make([]string, 0)
-	variants := make([]string, 0)
-	for _, dep := range projectTask.DependsOn {
-		if dep.Variant == model.AllVariants {
-			if dep.Name == model.AllDependencies {
-				// Case: name = *, variant = *
-				for _, v := range p.FindAllVariants() {
-					variants = append(variants, v)
-					for _, t := range p.FindTasksForVariant(v) {
-						if t == task && v == variant {
-							continue
-						}
-						if depTask := p.FindTaskForVariant(t, v); t == evergreen.PushStage ||
-							(depTask.Patchable != nil && !*depTask.Patchable) {
-							return nil, nil, TaskNotPatchableError // TODO remove PushStage
-						}
-						deps = append(deps, t)
-					}
-				}
-			} else {
-				// Case: variant = *, specific name
-				deps = append(deps, dep.Name)
-				for _, v := range p.FindAllVariants() {
-					for _, t := range p.FindTasksForVariant(v) {
-						if t == dep.Name {
-							if t == task && v == variant {
-								continue
-							}
-							recDeps, recVariants, err := getDeps(t, v, p)
-							if err != nil {
-								return nil, nil, err
-							}
-							deps = append(deps, recDeps...)
-							variants = append(variants, v)
-							variants = append(variants, recVariants...)
-						}
-					}
-				}
-			}
-		} else {
-			if dep.Name == model.AllDependencies {
-				// Case: name = *, specific variant
-				v := dep.Variant
-				if v == "" {
-					v = variant
-				}
-				variants = append(variants, v)
-				for _, t := range p.FindTasksForVariant(v) {
-					if t == task && v == variant {
-						continue
-					}
-					recDeps, recVariants, err := getDeps(t, v, p)
-					if err != nil {
-						return nil, nil, err
-					}
-					deps = append(deps, t)
-					deps = append(deps, recDeps...)
-					variants = append(variants, recVariants...)
-				}
-			} else {
-				// Case: specific name, specific variant
-				v := dep.Variant
-				if v == "" {
-					v = variant
-				}
-				recDeps, recVariants, err := getDeps(dep.Name, v, p)
-				if err != nil {
-					return nil, nil, err
-				}
-				deps = append(deps, dep.Name)
-				deps = append(deps, recDeps...)
-				variants = append(variants, v)
-				variants = append(variants, recVariants...)
-			}
-		}
-	}
-	return deps, variants, nil
 }
 
 func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {

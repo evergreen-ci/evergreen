@@ -157,8 +157,11 @@ func TestCLIFunctions(t *testing.T) {
 					So(len(patches), ShouldEqual, 1)
 					So(len(patches[0].BuildVariants), ShouldEqual, 1)
 					So(patches[0].BuildVariants[0], ShouldEqual, "osx-108")
-					So(len(patches[0].Tasks), ShouldEqual, 1)
-					So(patches[0].Tasks[0], ShouldEqual, "failing_test")
+					So(len(patches[0].Tasks), ShouldEqual, 2)
+					So(patches[0].Tasks, ShouldContain, "failing_test")
+					Convey("and have expanded dependencies", func() {
+						So(patches[0].Tasks, ShouldContain, "compile")
+					})
 				})
 			})
 		})

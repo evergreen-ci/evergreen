@@ -193,8 +193,10 @@ tasks:
           fi;
           . ./set_gopath.sh
           export EVGHOME=${EVGHOME_cmd}
+          mkfifo test_pipe
+          tee -a client.suite < test_pipe&
           cd cli
-          go test -v -evergreen.all -evergreen.settingsOverride=../creds.yml 
+          go test -v -evergreen.all -evergreen.settingsOverride=../creds.yml > ../test_pipe
 
 - name: client
   tags: ["nodb"]
