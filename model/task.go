@@ -699,12 +699,13 @@ func FindTasksForHostIds(ids []string) ([]Task, error) {
 
 // Get history of tasks for a given build variant, project, and display name.
 func FindCompletedTasksByVariantAndName(project string, buildVariant string,
-	taskName string, limit int, beforeTaskId string) ([]Task, error) {
+	taskName string, request string, limit int, beforeTaskId string) ([]Task, error) {
 	query := bson.M{
 		TaskBuildVariantKey: buildVariant,
 		TaskDisplayNameKey:  taskName,
 		TaskStatusKey:       bson.M{"$in": evergreen.CompletedStatuses},
 		TaskProjectKey:      project,
+		TaskRequesterKey:    request,
 	}
 
 	if beforeTaskId != "" {

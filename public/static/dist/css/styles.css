@@ -1850,4 +1850,65 @@ pre {
     padding: 8px 10px 0 10px;
   }
 }
+.active-elt-colors {
+  background-color: #5F923B;
+  color: white;
+}
+.active-elt {
+  background-color: #5F923B;
+  color: white;
+}
+.task-circle {
+  stroke-width: 3;
+  fill: #EFEFEF;
+  cursor: pointer;
+}
+path {
+  stroke: #BBBBBB;
+  stroke-width: 2;
+  fill: none;
+}
+.axis .tick line {
+  stroke: lightgrey;
+  opacity: .5;
+}
+.task-timing-list-container {
+  height: 120px;
+  overflow-y: scroll;
+  border: 1px solid #ddd;
+}
+.task-timing-list {
+  margin-left: 0;
+  list-style-type: none;
+}
+.task-timing-list a {
+  color: black;
+}
+.task-timing-list li {
+  padding: 6px;
+  border-radius: 2px;
+  -moz-border-radius: 2px;
+  margin-bottom: 3px;
+}
+.task-timing-list li:hover {
+  background-color: #5F923B;
+  color: white;
+  cursor: pointer;
+}
+.task-timing-list li:hover:not(.active-elt) {
+  opacity: .5;
+}
+.overlay {
+  fill: none;
+  stroke-width: 1px;
+  pointer-events: all;
+}
+.info-container {
+  padding-top: 100px;
+  padding-left: 30px;
+}
+.axis line {
+  stroke: black;
+  shape-rendering: crispEdges;
+}
 /*# sourceMappingURL=/static/dist/less.map */

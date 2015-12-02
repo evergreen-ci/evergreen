@@ -79,6 +79,17 @@ func ByProject(proj string) db.Q {
 	return db.Query(bson.D{{ProjectKey, proj}})
 }
 
+// ByProjectAndVariant creates a query that finds all completed builds for a given project
+// and variant, while also specifying a requester
+func ByProjectAndVariant(project, variant, requester string) db.Q {
+	return db.Query(bson.M{
+		ProjectKey:      project,
+		StatusKey:       bson.M{"$in": evergreen.CompletedStatuses},
+		BuildVariantKey: variant,
+		RequesterKey:    requester,
+	})
+}
+
 // ByRevisionAndVariant creates a query that returns the non-patch build for
 // a revision + buildvariant combionation.
 func ByRevisionAndVariant(revision, variant string) db.Q {

@@ -68,7 +68,8 @@ filters.common.filter('conditional', function() {
     return nanoseconds * 1000 * 1000 * 1000;
   }
 }).filter('stringifyNanoseconds', function() {
-  var NS_PER_SEC = 1000 * 1000 * 1000; // 10^9
+  var NS_PER_MS = 1000 * 1000; // 10^6
+  var NS_PER_SEC = NS_PER_MS * 1000 
   var NS_PER_MINUTE = NS_PER_SEC * 60;
   var NS_PER_HOUR = NS_PER_MINUTE * 60;
 
@@ -76,11 +77,18 @@ filters.common.filter('conditional', function() {
   // returns it formatted as a human readable string, like "1h32m40s"
   // If skipDayMax is true, then durations longer than 1 day will be represented
   // in hours. Otherwise, they will be displayed as '>=1 day'
-  return function(input, skipDayMax) {
+  return function(input, skipDayMax, skipSecMax) {
     if (input == 0) {
       return "Not Started";
+    } else if (input < NS_PER_MS) {
+      return "< 1 ms";
     } else if (input < NS_PER_SEC) {
-      return "< 1 second";
+      if (skipSecMax){
+        return Math.floor(input / NS_PER_MS) + " ms";
+      }
+        else {
+        return "< 1 second"
+      }
     } else if (input < NS_PER_MINUTE) {
       return Math.floor(input / NS_PER_SEC) + " seconds";
     } else if (input < NS_PER_HOUR) {

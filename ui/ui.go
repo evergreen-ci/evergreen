@@ -163,7 +163,8 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// Task stats
 	r.HandleFunc("/task_timing", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
 	r.HandleFunc("/task_timing/{project_id}", uis.requireUser(uis.loadCtx(uis.taskTimingPage))).Methods("GET")
-	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{task_name}", uis.requireUser(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
+	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{request}/{task_name}", uis.requireUser(uis.loadCtx(uis.taskTimingJSON))).Methods("GET")
+	r.HandleFunc("/json/task_timing/{project_id}/{build_variant}/{request}", uis.requireUser(uis.loadCtx(uis.buildJSON))).Methods("GET")
 
 	// Project routes
 	r.HandleFunc("/projects", uis.requireUser(uis.loadCtx(uis.projectsPage))).Methods("GET")

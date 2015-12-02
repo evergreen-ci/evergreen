@@ -3,21 +3,8 @@
 <script type="text/javascript">
 	//HELLO
   window.activeProject = {{.Project}};
-  window.allProjects = {{.AllProjects}};
-
-  // Hide all popovers when user clicks on the SVG canvas
-  $(document).ready(function() {
-    $('svg').click(function(ev) {
-      if ($(ev.target).prop('tagName') !== 'svg') {
-        return;
-      }
-
-      $('.mci-circle').each(function(i, el) {
-        $(el).popover('hide');
-      });
-    });
-  });
 </script>
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.3/d3.min.js"></script>
 <script type="text/javascript" src="{{Static "js" "task_timing.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
 
@@ -26,135 +13,72 @@ Evergreen - Task Timing
 {{end}}
 
 {{define "content"}}
-  <div id="content" class="container" ng-controller="TaskTimingController">
-	<error-flash ng-init="destination='errorHeader';"></error-flash>
+  <div id="content" class="container-fluid" ng-controller="TaskTimingController">
     <div class="row">
-      <div class="col-lg-4">
-        <h3>Project</h3>
-        <select ng-options="project as project.Name for project in allProjects"
-                ng-model="currentProject"
-                ng-change="updateProject(); load(null, numTasks)">
-        </select>
-      </div>
-      <div class="col-lg-4">
-        <h3>Build Variant</h3>
-        <select ng-options="bv as bv.Name for bv in currentProject.BuildVariants"
-                ng-model="buildVariant"
-                ng-change="updateBuildVariant(); load(null, numTasks);">
-        </select>
-      </div>
-      <div class="col-lg-4">
-        <h3>Task Name</h3>
-        <select ng-options="taskName for taskName in buildVariant.TaskNames"
-                ng-model="taskName"
-                ng-change="load(null, numTasks)">
-        </select>
-      </div>
+      <ul class="nav nav-tabs">
+    <li ng-repeat="view in requestViewOptions" ng-class="{active:currentRequest.requester == view.requester }"><a href="#" ng-click="setCurrentRequest(view)">[[view.name]]</a></li>
+  </ul>
     </div>
     <div class="row">
-      <div class="col-lg-4">
-        <h4>Time From:</h4>
-        <select ng-options="diff as diff.name for diff in timeDiffOptions"
-                ng-model="timeDiff"
-                ng-change="recompute()">
-        </select>
-      </div>
-      <div class="col-lg-4">
-        <h4>Number of Versions:</h4>
-        <select ng-options="num for num in numTasksOptions"
-                ng-model="numTasks"
-                ng-change="load(null, numTasks)">
-        </select>
+      <div class="col-lg-3">
+        <h3>Variants</h3>
+        <div class="dropdown task-timing-list-container">
+          <ul id="build-variants" class="task-timing-list">
+            <li ng-repeat="bv in currentProject.build_variants" ng-click="form.$setPristine();setBuildVariant(bv)"
+            ng-class="{'active-elt': bv.name == currentBV.name}">
+            [[bv.name]]
+          </li>
+        </ul>
       </div>
     </div>
-    <svg  version="1.1"
-          style="width: 100%; height: 550px; background-color: #EFEFEF; margin-top: 15px"
-          width="1060"
-          height="550"
-          ng-init=" CANVAS_WIDTH = 1060;
-                    CANVAS_HEIGHT = 550;
-                    GRAPH_WIDTH = 1000;
-                    GRAPH_X_OFFSET = 40;
-                    GRAPH_HEIGHT = 500;
-                    Y_AXIS_TICK_WIDTH = 10;"
-          mci-canvas="true">
-      <!-- Axes -->
-      <!-- Y Axis -->
-      <line mci-attr-x1="GRAPH_X_OFFSET"
-            mci-attr-y1="GRAPH_HEIGHT"
-            mci-attr-x2="GRAPH_X_OFFSET"
-            mci-attr-y2="0"
-            style="stroke:rgb(0,0,0);stroke-width:2" />
-      <!-- Y Axis Ticks -->
-      <line ng-repeat="y in 0 | range:5"
-            mci-attr-x1="GRAPH_X_OFFSET"
-            mci-attr-y1="y * 100"
-            mci-attr-x2="GRAPH_X_OFFSET + Y_AXIS_TICK_WIDTH"
-            mci-attr-y2="y * 100"
-            style="stroke:rgb(0,0,0);stroke-width:2" />
-      <!-- Y Axis Lines -->
-      <line ng-repeat="y in 0 | range:5"
-            mci-attr-x1="GRAPH_X_OFFSET + Y_AXIS_TICK_WIDTH"
-            mci-attr-y1="y * 100"
-            mci-attr-x2="CANVAS_WIDTH"
-            mci-attr-y2="y * 100"
-            style="stroke:#E9E9E9;stroke-width:2" />
-      <!-- Y Axis Markers -->
-      <text ng-repeat="y in 0 | range:5"
-            mci-attr-x="GRAPH_X_OFFSET - 5"
-            mci-attr-y="y * 100 + 8"
-            mci-attr-width="GRAPH_X_OFFSET - 5"
-            style="fill: black; text-anchor: end; font-size: 10px">
-        [[computeSampleTime((5 - y) * 100, 500) | fixedPrecisionTimeDiff]]
-      </text>
-      <!-- X Axis -->
-      <line mci-attr-x1="GRAPH_X_OFFSET"
-            mci-attr-y1="GRAPH_HEIGHT"
-            mci-attr-x2="CANVAS_WIDTH"
-            mci-attr-y2="GRAPH_HEIGHT"
-            style="stroke:rgb(0,0,0);stroke-width:2" />
-      <!-- X Axis Text -->
-      <text ng-repeat="x in 0 | range:taskData.length | sample:50"
-            mci-attr-x="(x + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y="GRAPH_HEIGHT + 5"
-            style="fill: black; writing-mode: tb; font-size: 10px">
-        [[taskData[x].moment.create_time.format('M/DD')]]
-      </text>
-      <!-- X Axis Markers -->
-      <line ng-repeat="x in 0 | range:taskData.length | sample:50"
-            mci-attr-x1="(x + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y1="GRAPH_HEIGHT"
-            mci-attr-x2="(x + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y2="GRAPH_HEIGHT - 5"
-            style="stroke:rgb(0,0,0);stroke-width:2" />
-      <!-- Y Axis Lines -->
-      <line ng-repeat="x in 0 | range:taskData.length | sample:50"
-            mci-attr-x1="(x + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y1="GRAPH_HEIGHT - 5"
-            mci-attr-x2="(x + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y2="0"
-            style="stroke:#E9E9E9;stroke-width:1" />
-      <!-- End Axes -->
-      <!-- Line graph -->
-      <!-- Lines between circles -->
-      <line ng-repeat="index in 1 | range:taskData.length"
-            mci-attr-x1="index * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y1="GRAPH_HEIGHT - computeHeight(taskData[index - 1], GRAPH_HEIGHT)"
-            mci-attr-x2="(index + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-            mci-attr-y2="GRAPH_HEIGHT - computeHeight(taskData[index], GRAPH_HEIGHT)"
-            style="stroke:#BBBBBB;stroke-width:2;" />
-      <!-- Circles -->
-      <circle ng-repeat="task in taskData"
-              class="mci-circle"
-              mci-attr-cx="($index + 1) * computeWidth(GRAPH_WIDTH) + GRAPH_X_OFFSET"
-              mci-attr-cy="GRAPH_HEIGHT - computeHeight(task, GRAPH_HEIGHT)"
-              mci-attr-r="(computeWidth(GRAPH_WIDTH) | min:100) / 5"
-              element-tooltip="getTooltip(task)",
-              element-tooltip-container="body"
-              ng-click="redirectToTask(task)"
-              style="stroke-width: 3; fill: #EFEFEF; cursor: pointer"
-              ng-style="{ stroke: {'success':'green','failed':'red'}[task.status] }" />
-      <!-- End Line graph -->
-    </svg>
+
+    <div class="col-lg-3">
+      <h3>Tasks</h3>
+      <div class="task-timing-list-container">
+      <ul id="task-names" class="task-timing-list">
+          <li ng-repeat="task in currentProject.task_names" ng-click="form.$setPristine();setTaskName(task)"
+          ng-class="{'active-elt': task == currentTask, 'semi-transparent': !checkTaskForGraph(task), 'full-opacity': checkTaskForGraph(task)}">
+          [[task]]
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-2" ng-show = "!allTasks">
+    <h3>Duration</h3>
+    <div class="row" ng-repeat="diff in timeDiffOptions" >  
+      <button class="btn btn-default col-lg-12" ng-class="{active: timeDiff == diff}" ng-click="setTimeDiff(diff)"> 
+       [[diff.name]]
+     </button>
+   </div>
+ </div>
+ <div class="col-lg-2" ng-show = "allTasks">
+  <h3>Duration</h3>
+  <div class="row" ng-repeat="diff in allTasksOptions" >  
+    <button class="btn btn-default col-lg-12" ng-class="{active: allTasksView == diff}" ng-click="setAllTasksView(diff)"> 
+     [[diff.name]]
+   </button>
+ </div>
+</div>
+    <div class="col-lg-4">
+      <h3>Number of Versions</h3>
+      <div>
+        <button ng-repeat="num in numTasksOptions" ng-class="{active: numTasks == num}" class="btn btn-default" ng-class="{active: timeDiff == diff}" ng-click="setNumTasks(num)"> 
+           [[num]]
+        </button>
+    </div>
+    </div>
+      </div>
+    <div class="row">
+    <div class="col-lg-3" style="margin-top:50px; margin-left:10px;" >
+      <div ng-hide="hoverInfo.hidden">
+        <div> duration: <b>[[hoverInfo.duration]]</b> </div>
+        <div style="font-family:monospace"><a ng-href="[[getLink()]]">[[hoverInfo.revision| limitTo:7]]</a></div>
+        <div>[[hoverInfo.create_time |  date: "MM/dd/yyyy 'at' h:mma"]] </div>
+        <div> <b> [[hoverInfo.author]]</b> </div><div>[[hoverInfo.message]] </div> 
+      </div>
+    </div>
+    <div class="col-lg-8 task-timing-chart" id="tt-graph"></div>
+  </div>
   </div>
 {{end}}
