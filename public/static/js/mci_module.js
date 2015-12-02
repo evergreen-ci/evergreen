@@ -278,9 +278,16 @@ var mciModule = angular.module('MCI', [
       if ('task_end_details' in task) {
         if ('timed_out' in task.task_end_details) {
           if (task.task_end_details.timed_out && 'desc' in task.task_end_details && task.task_end_details.desc == 'heartbeat') {
-            return 'unresponsive';
+            return 'system unresponsive';
           }
-          return 'timed out';
+
+          if (task.task_end_details.type == 'system') {
+            return 'system timed out';
+          }
+          return 'test timed out';
+        }
+        if (task.task_end_details.type == 'system') {
+          return 'system failure';
         }
         return 'failed';
       }
