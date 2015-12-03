@@ -58,11 +58,12 @@ func (sc *StatsCollector) LogStats(exp *command.Expansions) {
 	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(sc.logger)
 
 	go func() {
-		ticker := time.NewTicker(sc.Interval)
-		defer ticker.Stop()
 		for {
 			select {
-			case <-ticker.C:
+			case <-sc.stop:
+				sc.logger.Logf(slogger.INFO, "StatsCollector ticker stopping.")
+				return
+			default:
 				for _, cmd := range sc.Cmds {
 					sc.logger.Logf(slogger.INFO, "Running %v", cmd)
 					command := &command.LocalCommand{
@@ -74,9 +75,7 @@ func (sc *StatsCollector) LogStats(exp *command.Expansions) {
 						sc.logger.Logf(slogger.ERROR, "error running '%v': %v", cmd, err)
 					}
 				}
-			case <-sc.stop:
-				sc.logger.Logf(slogger.INFO, "StatsCollector ticker stopping.")
-				return
+				time.Sleep(sc.Interval)
 			}
 		}
 	}()

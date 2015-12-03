@@ -123,30 +123,7 @@ func TestBasicEndpoints(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
-			testAgent.StartBackgroundActions(&NoopSignalHandler{})
 
-			Convey("calling GetTask should get retrieve same task back", func() {
-				testTaskFromApi, err := testAgent.GetTask()
-				So(err, ShouldBeNil)
-
-				// ShouldResemble doesn't seem to work here, possibly because of
-				// omitempty? anyways, just assert equality of the important fields
-				So(testTaskFromApi.Id, ShouldEqual, testTask.Id)
-				So(testTaskFromApi.Status, ShouldEqual, testTask.Status)
-				So(testTaskFromApi.HostId, ShouldEqual, testTask.HostId)
-			})
-
-			Convey("calling start should flip the task's status to started", func() {
-				err := testAgent.Start("1")
-				testutil.HandleTestingErr(err, t, "Couldn't start task: %v", err)
-				testTask, err := model.FindTask(testTask.Id)
-				testutil.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)
-				So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
-				testHost, err := host.FindOne(host.ByRunningTaskId(testTask.Id))
-				So(err, ShouldBeNil)
-				So(testHost.Id, ShouldEqual, "testHost")
-				So(testHost.RunningTask, ShouldEqual, testTask.Id)
-			})
 			Convey("sending logs should store the log messages properly", func() {
 				msg1 := "task logger initialized!"
 				msg2 := "system logger initialized!"
@@ -164,36 +141,62 @@ func TestBasicEndpoints(t *testing.T) {
 				So(logMessages[2].Message, ShouldEndWith, msg1)
 				So(logMessages[1].Message, ShouldEndWith, msg2)
 				So(logMessages[0].Message, ShouldEndWith, msg3)
+				Convey("Task endpoints should work between agent and server", func() {
+					testAgent.StartBackgroundActions(&NoopSignalHandler{})
+					Convey("calling GetTask should get retrieve same task back", func() {
+						testTaskFromApi, err := testAgent.GetTask()
+						So(err, ShouldBeNil)
+
+						// ShouldResemble doesn't seem to work here, possibly because of
+						// omitempty? anyways, just assert equality of the important fields
+						So(testTaskFromApi.Id, ShouldEqual, testTask.Id)
+						So(testTaskFromApi.Status, ShouldEqual, testTask.Status)
+						So(testTaskFromApi.HostId, ShouldEqual, testTask.HostId)
+					})
+
+					Convey("calling start should flip the task's status to started", func() {
+						err := testAgent.Start("1")
+						testutil.HandleTestingErr(err, t, "Couldn't start task: %v", err)
+						testTask, err := model.FindTask(testTask.Id)
+						testutil.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)
+						So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
+						testHost, err := host.FindOne(host.ByRunningTaskId(testTask.Id))
+						So(err, ShouldBeNil)
+						So(testHost.Id, ShouldEqual, "testHost")
+						So(testHost.RunningTask, ShouldEqual, testTask.Id)
+					})
+
+					Convey("calling end() should update task status properly", func() {
+						commandType := model.SystemCommandType
+						description := "random"
+						details := &apimodels.TaskEndDetail{
+							Description: description,
+							Type:        commandType,
+							TimedOut:    true,
+							Status:      evergreen.TaskSucceeded,
+						}
+						testAgent.End(details)
+						time.Sleep(100 * time.Millisecond)
+						taskUpdate, err := model.FindTask(testTask.Id)
+						So(err, ShouldBeNil)
+						So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
+						So(taskUpdate.Details.Description, ShouldEqual, description)
+						So(taskUpdate.Details.Type, ShouldEqual, commandType)
+						So(taskUpdate.Details.TimedOut, ShouldEqual, true)
+					})
+
+					Convey("no checkins should trigger timeout signal", func() {
+						testAgent.idleTimeoutWatcher.SetDuration(2 * time.Second)
+						testAgent.idleTimeoutWatcher.CheckIn()
+						// sleep long enough for the timeout watcher to time out
+						time.Sleep(3 * time.Second)
+						timeoutSignal, ok := <-testAgent.signalHandler.idleTimeoutChan
+						So(ok, ShouldBeTrue)
+						So(timeoutSignal, ShouldEqual, IdleTimeout)
+					})
+				})
 			})
 
-			Convey("calling end() should update task status properly", func() {
-				commandType := model.SystemCommandType
-				description := "random"
-				details := &apimodels.TaskEndDetail{
-					Description: description,
-					Type:        commandType,
-					TimedOut:    true,
-					Status:      evergreen.TaskSucceeded,
-				}
-				testAgent.End(details)
-				time.Sleep(100 * time.Millisecond)
-				taskUpdate, err := model.FindTask(testTask.Id)
-				So(err, ShouldBeNil)
-				So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
-				So(taskUpdate.Details.Description, ShouldEqual, description)
-				So(taskUpdate.Details.Type, ShouldEqual, commandType)
-				So(taskUpdate.Details.TimedOut, ShouldEqual, true)
-			})
-
-			Convey("no checkins should trigger timeout signal", func() {
-				testAgent.idleTimeoutWatcher.SetDuration(2 * time.Second)
-				testAgent.idleTimeoutWatcher.CheckIn()
-				// sleep long enough for the timeout watcher to time out
-				time.Sleep(3 * time.Second)
-				timeoutSignal, ok := <-testAgent.signalHandler.idleTimeoutChan
-				So(ok, ShouldBeTrue)
-				So(timeoutSignal, ShouldEqual, IdleTimeout)
-			})
 		})
 	}
 }
