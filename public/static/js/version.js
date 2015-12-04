@@ -88,15 +88,15 @@ function VersionController($scope, $location, $http, $filter, $now, $window, err
     $scope.lastUpdate = $now.now();
 
     //calculate makespan and total processing time for the version
-    var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))}
+    var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))};
 
     var tasks = version.Builds.map(function(x){ return _.pluck(x.Tasks, "Task") }).reduce(function(x,y){return x.concat(y)});
     var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort();
     var taskEndTimes = _.filter(tasks.map(function(x){
-        if(x.time_taken == 0){
+        if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
             return new Date(0);
         }else{
-            return new Date(+new Date(x.start_time) + x.time_taken/nsPerMs);
+            return new Date((+new Date(x.start_time)) + (x.time_taken/nsPerMs));
         }
     }), nonZeroTimeFilter).sort();
 
@@ -106,7 +106,7 @@ function VersionController($scope, $location, $http, $filter, $now, $window, err
         $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
     }
 
-    $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0]
+    $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
     $scope.totalTimeMS = _.reduce(_.pluck(tasks, "time_taken"), function(x, y){return x+y}, 0) / nsPerMs;
   };
 
