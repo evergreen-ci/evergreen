@@ -4,6 +4,7 @@
     <span ng-switch-when="TASK_FINISHED">Completed with status: <b>[[eventLogObj.data.status]]</b></span>
     <span ng-switch-when="TASK_STARTED">Marked as "started"</span>
     <span ng-switch-when="TASK_DISPATCHED">Dispatched to host <a href="/host/[[eventLogObj.data.host_id]]">[[eventLogObj.data.host_id]]</a></span>
+    <span ng-switch-when="TASK_UNDISPATCHED">Undispatched from host <a href="/host/[[eventLogObj.data.host_id]]">[[eventLogObj.data.host_id]]</a></span>
     <span ng-switch-when="TASK_CREATED">Task created</span>
     <span ng-switch-when="TASK_RESTARTED">Restarted by [[eventLogObj.data.user_id]].</span>
     <span ng-switch-when="TASK_ACTIVATED">Activated by [[eventLogObj.data.user_id]].</span>
