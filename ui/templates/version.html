@@ -80,6 +80,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                </a>
 
                <ul class="dropdown-menu" role="menu">
+                 <li><a ng-show="version.PatchInfo.Patch.Id" ng-href="/patch/[[version.PatchInfo.Patch.Id]]">Reconfigure Tasks/Variants</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('schedule')">Schedule all</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set priority</a></li>
