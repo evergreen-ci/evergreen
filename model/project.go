@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -407,6 +408,9 @@ func populateExpansions(d *distro.Distro, bv *BuildVariant, t *Task) *command.Ex
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
 	expansions.Put("branch_name", t.Project)
+	if t.Requester == evergreen.PatchVersionRequester {
+		expansions.Put("is_patch", "true")
+	}
 	for _, e := range d.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}
