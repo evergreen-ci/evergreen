@@ -426,7 +426,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 
 	// a. fetch the host this task just completed on to see if it's
 	// now decommissioned
-	host, err := host.FindOne(host.ById(task.HostId))
+	host, err := host.FindOne(host.ByRunningTaskId(task.Id))
 	if err != nil {
 		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", task.Id,
 			task.HostId, err)
