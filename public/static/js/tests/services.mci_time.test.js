@@ -4,7 +4,7 @@
  *  Created on: September 26, 2013
  *      Author: Valeri Karpov
  *
- *  Karma-based unit tests for mciTime service (see $mci_home/ui/static/js/conf/karma.conf.js)
+ *  Karma-based unit tests for mciTime service (see public/static/js/tests/conf/karma.conf.js)
  *
  */
 

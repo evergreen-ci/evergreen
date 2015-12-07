@@ -160,7 +160,7 @@ tasks:
             set -o igncr
           fi;
           . ./set_gopath.sh
-          export mci_home=`pwd`
+          export EVGHOME=`pwd`
           cd alerts
           mkfifo test_pipe
           tee -a alerts.suite < test_pipe&

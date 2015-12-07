@@ -4,7 +4,7 @@
  *  Created on: September 10, 2013
  *      Author: Valeri Karpov
  *
- *  Karma-based unit tests for stringifyNanoseconds filter (see $mci_home/ui/static/js/conf/karma.conf.js)
+ *  Karma-based unit tests for stringifyNanoseconds filter (see public/static/js/tests/conf/karma.conf.js)
  *
  */
 

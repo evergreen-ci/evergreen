@@ -6,7 +6,7 @@
  *
  *  Karma-based unit tests for the capitalize filter, which should convert the first letter of
  *  each word in the input to upper case.
- *  (see $mci_home/ui/static/js/conf/karma.conf.js)
+ *  (see public/static/js/tests/conf/karma.conf.js)
  *
  */
 

@@ -13,7 +13,7 @@ const (
 	User = "mci"
 
 	TestDir      = "config_test"
-	TestSettings = "mci_settings.yml"
+	TestSettings = "evg_settings.yml"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -143,11 +143,6 @@ func FindEvergreenHome() string {
 	if len(root) > 0 {
 		return root
 	}
-	root = os.Getenv("mci_home")
-	if len(root) > 0 {
-		Logger.Logf(slogger.WARN, "'mci_home' environment variable is deprecated; please use 'EVGHOME' instead")
-		return root
-	}
 	return ""
 }
 
@@ -160,7 +155,7 @@ func FindConfig(configName string) (string, error) {
 		if yes {
 			return root, nil
 		}
-		return "", fmt.Errorf("Can't find mci config root: '%v'", root)
+		return "", fmt.Errorf("Can't find evergreen config root: '%v'", root)
 	}
 	return "", fmt.Errorf("%v environment variable must be set", EvergreenHome)
 }

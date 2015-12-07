@@ -4,7 +4,7 @@
  *  Created on: September 11, 2013
  *      Author: Valeri Karpov
  *
- *  Karma-based unit tests for build.js/BuildViewController (see $mci_home/ui/static/js/conf/karma.conf.js)
+ *  Karma-based unit tests for build.js/BuildViewController (see public/static/js/tests/conf/karma.conf.js)
  *
  */
 
