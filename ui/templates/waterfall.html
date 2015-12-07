@@ -74,7 +74,7 @@ Evergreen - Waterfall
     
     <!-- column of build variant names -->
     <div id="build-variant-col" class="col-xs-2">
-      <div class="row waterfall-cell build-variant-name" ng-repeat="variant in buildVariants | filter:filter.variant">[[variant]]</div>
+      <div class="row waterfall-cell build-variant-name" ng-repeat="variant in buildVariants | filter:filter.variant" title="[[variant]]">[[variant]]</div>
     </div>
 
     <!-- version columns -->
