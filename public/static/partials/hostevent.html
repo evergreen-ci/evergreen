@@ -8,15 +8,23 @@
     <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id]]</a></span>
     <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id]]</a></span>
     <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.task_pid]]</b></span>
+    <span ng-switch-when="HOST_MONITOR_FLAG">Flagged for termination because: 
+      <span ng-switch="eventLogObj.data.monitor"> 
+        <strong ng-switch-when="decommissioned">host was decommissioned.</strong>
+        <strong ng-switch-when="idle">host was idle.</strong>
+        <strong ng-switch-when="excess">pool exceeded maximum hosts limit.</strong>
+        <strong ng-switch-when="provision_timeout">host took too long for provisioning to complete.</strong>
+        <strong ng-switch-when="provision_failed">provisioning failed.</strong>
+        <strong ng-switch-when="expired">expiration time passed.</strong>
+      </span>
+    </span>
     <span ng-switch-when="HOST_PROVISION_FAILED">
-      <div>
-        Provisioning failed.</div>
+      <div>Provisioning failed.</div>
       <div class="toggle" ng-click="showlogs = !showlogs"><i ng-class="showlogs | conditional:'icon-caret-down':'icon-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
       <div ng-show="showlogs">
         <pre>[[eventLogObj.data.setup_log]]</pre>
       </div>
-      </div>
-    </div>
-    <div class="clearfix"></div>
-  </span>
+    </span>
+  </div>
+  <div class="clearfix"></div>
 </div>

@@ -82,6 +82,7 @@ func (self *Host) SetStatus(status string) error {
 	}
 
 	event.LogHostStatusChanged(self.Id, self.Status, status)
+
 	self.Status = status
 	return UpdateOne(
 		bson.M{
@@ -353,6 +354,7 @@ func (self *Host) UpdateReachability(reachable bool) error {
 	}
 
 	event.LogHostStatusChanged(self.Id, self.Status, status)
+
 	self.Status = status
 
 	return UpdateOne(

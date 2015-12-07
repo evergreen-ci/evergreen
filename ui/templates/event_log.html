@@ -19,10 +19,10 @@ Events
 <div id="content" class="container" ng-controller="LogController">
     <div ng-repeat="event in events">
         <div ng-show="event.data.resource_type == 'HOST'">
-          <hostevent  event="event" tz="userTz"></hostevent>
+          <hostevent event="event" tz="userTz"></hostevent>
         </div>
         <div ng-show="event.data.resource_type == 'TASK'">
-          <taskevent  event="event" tz="userTz"></taskevent>
+          <taskevent event="event" tz="userTz"></taskevent>
         </div>
     </div>
 </div>

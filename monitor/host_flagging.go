@@ -15,6 +15,11 @@ const (
 	ProvisioningCutoff = 35 * time.Minute
 )
 
+type hostFlagger struct {
+	hostFlaggingFunc
+	Reason string
+}
+
 // function that takes in all distros - specified as a map of
 // distro name -> distro info - as well as the mci settings,
 // and spits out a list of hosts to be terminated
@@ -23,26 +28,16 @@ type hostFlaggingFunc func([]distro.Distro, *evergreen.Settings) ([]host.Host, e
 // flagDecommissionedHosts is a hostFlaggingFunc to get all hosts which should
 // be terminated because they are decommissioned
 func flagDecommissionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding decommissioned hosts...")
-
-	// fetch the decommissioned hosts
 	hosts, err := host.Find(host.IsDecommissioned)
 	if err != nil {
 		return nil, fmt.Errorf("error finding decommissioned hosts: %v", err)
 	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Found %v decommissioned hosts", len(hosts))
-
 	return hosts, nil
 }
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
 // long without running a task
 func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding idle hosts...")
-
 	// will ultimately contain all of the hosts determined to be idle
 	idleHosts := []host.Host{}
 
@@ -62,16 +57,14 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 		// get a cloud manager for the host
 		cloudManager, err := providers.GetCloudManager(host.Provider, s)
 		if err != nil {
-			return nil, fmt.Errorf("error getting cloud manager for host %v:"+
-				" %v", host.Id, err)
+			return nil, fmt.Errorf("error getting cloud manager for host %v: %v", host.Id, err)
 		}
 
 		// if the host is not dynamically spun up (and can thus be terminated),
 		// skip it
 		canTerminate, err := hostCanBeTerminated(host, s)
 		if err != nil {
-			return nil, fmt.Errorf("error checking if host %v can be"+
-				" terminated: %v", host.Id, err)
+			return nil, fmt.Errorf("error checking if host %v can be terminated: %v", host.Id, err)
 		}
 		if !canTerminate {
 			continue
@@ -86,10 +79,7 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 		if idleTime >= 15*time.Minute && tilNextPayment <= 5*time.Minute {
 			idleHosts = append(idleHosts, host)
 		}
-
 	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Found %v idle hosts", len(idleHosts))
 
 	return idleHosts, nil
 }
@@ -97,9 +87,6 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 // flagExcessHosts is a hostFlaggingFunc to get all hosts that push their
 // distros over the specified max hosts
 func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding excess hosts...")
-
 	// will ultimately contain all the hosts that can be terminated
 	excessHosts := []host.Host{}
 
@@ -126,8 +113,7 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 				// thus be terminated), skip it
 				canTerminate, err := hostCanBeTerminated(host, s)
 				if err != nil {
-					return nil, fmt.Errorf("error checking if host %v can be"+
-						" terminated: %v", host.Id, err)
+					return nil, fmt.Errorf("error checking if host %v can be terminated: %v", host.Id, err)
 				}
 				if !canTerminate {
 					continue
@@ -146,52 +132,35 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 				}
 			}
 
-			evergreen.Logger.Logf(slogger.INFO, "Flagged %v excess hosts for distro"+
-				" %v", counter, d.Id)
+			evergreen.Logger.Logf(slogger.INFO, "Found %v excess hosts for distro %v", counter, d.Id)
 
 		}
 
 	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Found %v total excess hosts", len(excessHosts))
-
 	return excessHosts, nil
 }
 
 // flagUnprovisionedHosts is a hostFlaggingFunc to get all hosts that are
 // taking too long to provision
 func flagUnprovisionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding unprovisioned hosts...")
-
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-ProvisioningCutoff)
 	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))
 	if err != nil {
 		return nil, fmt.Errorf("error finding unprovisioned hosts: %v", err)
 	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Found %v unprovisioned hosts", len(hosts))
-
 	return hosts, err
 }
 
 // flagProvisioningFailedHosts is a hostFlaggingFunc to get all hosts
 // whose provisioning failed
 func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding hosts whose provisioning failed...")
-
 	// fetch all hosts whose provisioning failed
 	hosts, err := host.Find(host.IsProvisioningFailure)
 	if err != nil {
 		return nil, fmt.Errorf("error finding hosts whose provisioning"+
 			" failed: %v", err)
 	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Found %v hosts whose provisioning failed",
-		len(hosts))
-
 	return hosts, nil
 
 }
@@ -199,37 +168,28 @@ func flagProvisioningFailedHosts(d []distro.Distro, s *evergreen.Settings) ([]ho
 // flagExpiredHosts is a hostFlaggingFunc to get all user-spawned hosts
 // that have expired
 func flagExpiredHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding expired hosts")
-
 	// fetch the expired hosts
 	hosts, err := host.Find(host.ByExpiredSince(time.Now()))
 	if err != nil {
 		return nil, fmt.Errorf("error finding expired spawned hosts: %v", err)
 	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Found %v expired hosts", len(hosts))
-
 	return hosts, nil
 
 }
 
 // helper to check if a host can be terminated
 func hostCanBeTerminated(h host.Host, s *evergreen.Settings) (bool, error) {
-
 	// get a cloud manager for the host
 	cloudManager, err := providers.GetCloudManager(h.Provider, s)
 	if err != nil {
-		return false, fmt.Errorf("error getting cloud manager for host %v:"+
-			" %v", h.Id, err)
+		return false, fmt.Errorf("error getting cloud manager for host %v: %v", h.Id, err)
 	}
 
 	// if the host is not part of a spawnable distro, then it was not
 	// dynamically spun up and as such cannot be terminated
 	canSpawn, err := cloudManager.CanSpawn()
 	if err != nil {
-		return false, fmt.Errorf("error checking if cloud manager for host %v"+
-			" supports spawning: %v", h.Id, err)
+		return false, fmt.Errorf("error checking if cloud manager for host %v supports spawning: %v", h.Id, err)
 	}
 
 	return canSpawn, nil

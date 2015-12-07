@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"sync"
@@ -15,7 +16,7 @@ import (
 // responsible for running regular monitoring of hosts
 type HostMonitor struct {
 	// will be used to determine what hosts need to be terminated
-	flaggingFuncs []hostFlaggingFunc
+	flaggingFuncs []hostFlagger
 
 	// will be used to perform regular checks on hosts
 	monitoringFuncs []hostMonitoringFunc
@@ -23,14 +24,14 @@ type HostMonitor struct {
 
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
-func (self *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error {
+func (hm *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
 
 	// used to store any errors that occur
 	var errors []error
 
-	for _, f := range self.monitoringFuncs {
+	for _, f := range hm.monitoringFuncs {
 
 		// continue on error to allow the other monitoring functions to run
 		if errs := f(settings); errs != nil {
@@ -49,34 +50,33 @@ func (self *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []err
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.Settings) []error {
+func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.Settings) []error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Running host cleanup...")
 
 	// used to store any errors that occur
 	var errors []error
 
-	for idx, f := range self.flaggingFuncs {
+	for idx, flagger := range hm.flaggingFuncs {
+		evergreen.Logger.Logf(slogger.INFO, "Searching for flagged hosts under criteria: %v", flagger.Reason)
 		// find the next batch of hosts to terminate
-		hostsToTerminate, err := f(distros, settings)
+		hostsToTerminate, err := flagger.hostFlaggingFunc(distros, settings)
+		evergreen.Logger.Logf(slogger.INFO, "Found %v hosts flagged for '%v'", len(hostsToTerminate), flagger.Reason)
 
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error flagging hosts to"+
-				" be terminated: %v", err))
+			errors = append(errors, fmt.Errorf("error flagging hosts to be terminated: %v", err))
 			continue
 		}
 
-		evergreen.Logger.Logf(slogger.INFO, "Check %v: found %v hosts to be"+
-			" terminated", idx, len(hostsToTerminate))
+		evergreen.Logger.Logf(slogger.INFO, "Check %v: found %v hosts to be terminated", idx, len(hostsToTerminate))
 
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
-		if errs := terminateHosts(hostsToTerminate, settings); errs != nil {
+		if errs := terminateHosts(hostsToTerminate, settings, flagger.Reason); errs != nil {
 			for _, err := range errs {
-				errors = append(errors, fmt.Errorf("error terminating host:"+
-					" %v", err))
+				errors = append(errors, fmt.Errorf("error terminating host: %v", err))
 			}
 			continue
 		}
@@ -89,7 +89,7 @@ func (self *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergre
 
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
-func terminateHosts(hosts []host.Host, settings *evergreen.Settings) []error {
+func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason string) []error {
 
 	// used to store any errors that occur
 	var errors []error
@@ -112,6 +112,9 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings) []error {
 
 			defer waitGroup.Done()
 
+			// Log that the host was flagged, and why
+			event.LogMonitorOperation(hostToTerminate.Id, reason)
+
 			// wrapper function to terminate the host
 			terminateFunc := func() error {
 				return terminateHost(&hostToTerminate, settings)
@@ -122,21 +125,17 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings) []error {
 
 			if err == util.ErrTimedOut {
 				errsLock.Lock()
-				errors = append(errors, fmt.Errorf("timeout terminating"+
-					" host %v", hostToTerminate.Id))
+				errors = append(errors, fmt.Errorf("timeout terminating host %v", hostToTerminate.Id))
 				errsLock.Unlock()
 			} else if err != nil {
 				errsLock.Lock()
-				errors = append(errors, fmt.Errorf("error terminating host:"+
-					" %v", err))
+				errors = append(errors, fmt.Errorf("error terminating host: %v", err))
 				errsLock.Unlock()
 			} else {
-				evergreen.Logger.Logf(slogger.INFO, "Successfully terminated host"+
-					" %v", hostToTerminate.Id)
+				evergreen.Logger.Logf(slogger.INFO, "Successfully terminated host %v", hostToTerminate.Id)
 			}
 
 		}(h)
-
 	}
 
 	// make sure all terminations finish

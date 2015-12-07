@@ -19,6 +19,7 @@ const (
 	EventHostRunningTaskSet     = "HOST_RUNNING_TASK_SET"
 	EventHostRunningTaskCleared = "HOST_RUNNING_TASK_CLEARED"
 	EventHostTaskPidSet         = "HOST_TASK_PID_SET"
+	EventHostMonitorFlag        = "HOST_MONITOR_FLAG"
 )
 
 // implements EventData
@@ -32,6 +33,7 @@ type HostEventData struct {
 	Hostname  string `bson:"hn,omitempty" json:"hostname,omitempty"`
 	TaskId    string `bson:"t_id,omitempty" json:"task_id,omitempty"`
 	TaskPid   string `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	MonitorOp string `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
 }
 
 func (self HostEventData) IsValid() bool {
@@ -57,8 +59,10 @@ func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{})
 }
 
-func LogHostStatusChanged(hostId string, oldStatus string,
-	newStatus string) {
+func LogHostStatusChanged(hostId string, oldStatus string, newStatus string) {
+	if oldStatus == newStatus {
+		return
+	}
 	LogHostEvent(hostId, EventHostStatusChanged,
 		HostEventData{OldStatus: oldStatus, NewStatus: newStatus})
 }
@@ -83,10 +87,13 @@ func LogHostRunningTaskCleared(hostId string, taskId string) {
 }
 
 func LogHostTaskPidSet(hostId string, taskPid string) {
-	LogHostEvent(hostId, EventHostTaskPidSet,
-		HostEventData{TaskPid: taskPid})
+	LogHostEvent(hostId, EventHostTaskPidSet, HostEventData{TaskPid: taskPid})
 }
 
 func LogProvisionFailed(hostId string, setupLog string) {
 	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{SetupLog: setupLog})
+}
+
+func LogMonitorOperation(hostId string, op string) {
+	LogHostEvent(hostId, EventHostMonitorFlag, HostEventData{MonitorOp: op})
 }
