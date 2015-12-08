@@ -33,12 +33,12 @@
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a> 
             <ul class="dropdown-menu project-dropdown">
                 <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.projects" placeholder="Filter projects" />
-                <span ng-repeat-start="(key, value) in groupedProjects"></span>
-                <li ng-repeat="p in value | filter:filter.projects">
-                    <b ng-show="$index == 0 && value.length > 1">&nbsp;[[key]]</b>
-                    <a href="/waterfall/[[p.identifier]]"><span ng-show="value.length>1">&nbsp;&nbsp;&nbsp;</span>
+                <span ng-repeat-start="kv in groupedProjects | orderBy:getGroupName"></span>
+                <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
+                    <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[kv.0]]</b>
+                    <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
                       <i ng-show="p.repotracker_error.exists" style= "color:red" class="icon-exclamation-sign"></i> 
-                      [[p.display_name ? p.display_name : p.identifier]]
+                      [[getName(p)]]
                     </a>
                 </li> 
                 <li class="repo-div" ng-show="[[!$last]]"></li>

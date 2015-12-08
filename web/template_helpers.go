@@ -6,14 +6,11 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"html/template"
 	"io"
 	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 )
@@ -81,49 +78,6 @@ func humanTimeDiff(sinceSecs int) []string {
 	return returnVal
 }
 
-// for sorting the repo names by how many projects each has
-type sortableRepoNames struct {
-	names       []string
-	namesByRepo map[string][]model.ProjectRef
-}
-
-func (self *sortableRepoNames) Len() int {
-	return len(self.names)
-}
-
-func (self *sortableRepoNames) Swap(i, j int) {
-	self.names[i], self.names[j] = self.names[j], self.names[i]
-}
-
-// considers one repo to come before another (be "less" than) if it only has
-// one project associated and the other has more.  otherwise, falls back to
-// alphabetical order of the repo's name.
-func (self *sortableRepoNames) Less(i, j int) bool {
-	if len(self.namesByRepo[self.names[i]]) > 1 &&
-		len(self.namesByRepo[self.names[j]]) == 1 {
-		return false
-	}
-	if len(self.namesByRepo[self.names[j]]) > 1 &&
-		len(self.namesByRepo[self.names[i]]) == 1 {
-		return true
-	}
-	return (self.namesByRepo[self.names[i]][0].DisplayName <
-		self.namesByRepo[self.names[j]][0].DisplayName)
-}
-
-// for sorting model.ProjectRefs
-type sortableDisplayProjects []model.ProjectRef
-
-func (self sortableDisplayProjects) Len() int {
-	return len(self)
-}
-func (self sortableDisplayProjects) Swap(i, j int) {
-	self[i], self[j] = self[j], self[i]
-}
-func (self sortableDisplayProjects) Less(i, j int) bool {
-	return self[i].DisplayName < self[j].DisplayName
-}
-
 //Create function Mappings - Add functions here to
 //make them usable in the template language
 func MakeCommonFunctionMap(settings *evergreen.Settings) (template.FuncMap,
@@ -145,62 +99,6 @@ func MakeCommonFunctionMap(settings *evergreen.Settings) (template.FuncMap,
 			return iftrue
 		}
 		return otherwise
-	}
-
-	// get info about the projects, and sort by repo
-	projectRefs, err := model.FindAllTrackedProjectRefs()
-	if err != nil {
-		return nil, fmt.Errorf("Error getting info on tracked projects: %v", err)
-	}
-
-	// build the map of repo -> projects
-	projectRefsByRepo := map[string][]model.ProjectRef{}
-	publicProjectRefsByRepo := map[string][]model.ProjectRef{}
-	for _, pRef := range projectRefs {
-		if !pRef.Enabled {
-			continue
-		}
-		if !pRef.Private {
-			publicProjectRefsByRepo[pRef.Repo] = append(publicProjectRefsByRepo[pRef.Repo], pRef)
-		}
-		projectRefsByRepo[pRef.Repo] = append(projectRefsByRepo[pRef.Repo], pRef)
-	}
-
-	repoNames := []string{}
-	for repoName, _ := range projectRefsByRepo {
-		// sort the project display names alphabetically
-		sort.Sort(sortableDisplayProjects(projectRefsByRepo[repoName]))
-		// make a unique list of repo names
-		repoNames = append(repoNames, repoName)
-	}
-
-	publicRepoNames := []string{}
-	for repoName, _ := range publicProjectRefsByRepo {
-		// sort the project display names alphabetically
-		sort.Sort(sortableDisplayProjects(publicProjectRefsByRepo[repoName]))
-		// make a unique list of public repo names
-		publicRepoNames = append(publicRepoNames, repoName)
-	}
-
-	// return the project infos, sorted by repo
-	funcs["ProjectNamesByRepo"] = func(user auth.User) map[string][]model.ProjectRef {
-		if user != nil {
-			return projectRefsByRepo
-		}
-		return publicProjectRefsByRepo
-	}
-
-	// sort the repo names based on info about how many projects are associated
-	forSorting := &sortableRepoNames{
-		names:       repoNames,
-		namesByRepo: projectRefsByRepo,
-	}
-	sort.Sort(forSorting)
-	funcs["SortedRepoNames"] = func(user auth.User) []string {
-		if user != nil {
-			return repoNames
-		}
-		return publicRepoNames
 	}
 
 	// Unescape HTML. Be very careful that you don't pass any user input through
