@@ -5,11 +5,8 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"net/http"
 	"time"
-)
-
-var (
-	_ fmt.Stringer = nil
 )
 
 // GithubRepositoryPoller is a struct that implements Github specific behavior
@@ -98,27 +95,31 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(
 
 // GetRevisionsSince fetches the all commits from the corresponding Github
 // ProjectRef that were made after 'revision'
-func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string,
-	maxRevisionsToSearch int) (revisions []model.Revision, err error) {
-	commitURL := getCommitURL(gRepoPoller.ProjectRef)
+func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
+	revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
+
 	var foundLatest bool
-	githubCommits, header, err := thirdparty.GetGithubCommits(
-		gRepoPoller.OauthToken, commitURL)
-	if err != nil {
-		return nil, err
-	}
+	var commits []thirdparty.GithubCommit
+	var header http.Header
+	commitURL := getCommitURL(gRepoPoller.ProjectRef)
+	revisions := []model.Revision{}
+
 	for len(revisions) < maxRevisionsToSearch {
-		for _, commit := range githubCommits {
+		var err error
+		commits, header, err = thirdparty.GetGithubCommits(gRepoPoller.OauthToken, commitURL)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, commit := range commits {
 			if isLastRevision(revision, &commit) {
 				foundLatest = true
 				break
 			}
-			revisions = append(revisions, githubCommitToRevision(
-				&commit))
+			revisions = append(revisions, githubCommitToRevision(&commit))
 		}
 
-		// stop querying for commits if we've found the latest commit or got
-		// back no commits
+		// stop querying for commits if we've found the latest commit or got back no commits
 		if foundLatest || len(revisions) == 0 {
 			break
 		}
@@ -133,8 +134,13 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string,
 		var revisionDetails *model.RepositoryErrorDetails
 		var revisionError error
 		// attempt to get the merge base commit
-		baseRevision, err := thirdparty.GetGitHubMergeBaseRevision(gRepoPoller.OauthToken, gRepoPoller.ProjectRef.Owner,
-			gRepoPoller.ProjectRef.Repo, revision, &githubCommits[0])
+		baseRevision, err := thirdparty.GetGitHubMergeBaseRevision(
+			gRepoPoller.OauthToken,
+			gRepoPoller.ProjectRef.Owner,
+			gRepoPoller.ProjectRef.Repo,
+			revision,
+			&commits[0],
+		)
 		if err != nil {
 			// unable to get merge base commit so set projectRef revision details with a blank base revision
 			revisionDetails = &model.RepositoryErrorDetails{
@@ -163,7 +169,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(revision string,
 		return []model.Revision{}, revisionError
 	}
 
-	return
+	return revisions, nil
 }
 
 // GetRecentRevisions fetches the most recent 'numRevisions'
