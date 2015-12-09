@@ -90,7 +90,7 @@ function VersionController($scope, $location, $http, $filter, $now, $window, err
     //calculate makespan and total processing time for the version
     var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))};
 
-    var tasks = version.Builds.map(function(x){ return _.pluck(x.Tasks, "Task") }).reduce(function(x,y){return x.concat(y)});
+    var tasks = version.Builds.map(function(x){ return _.pluck(x['Tasks'] || [], "Task") }).reduce(function(x,y){return x.concat(y)});
     var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort();
     var taskEndTimes = _.filter(tasks.map(function(x){
         if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
