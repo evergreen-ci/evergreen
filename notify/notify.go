@@ -416,6 +416,7 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 	}
 
 	// send patch notifications
+	/* XXX temporarily disable patch notifications
 	for _, subscription := range mciNotification.PatchNotifications {
 		for _, notification := range subscription.NotifyOn {
 			key := NotificationKey{
@@ -447,7 +448,7 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 				}
 			}
 		}
-	}
+	}*/
 
 	return nil
 }
