@@ -64,7 +64,7 @@ type APIServer struct {
 }
 
 const (
-	APIServerLockTitle = "apiserver"
+	APIServerLockTitle = evergreen.APIServerTaskActivator
 	PatchLockTitle     = "patches"
 )
 

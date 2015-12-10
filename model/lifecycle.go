@@ -73,12 +73,12 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
 		// if the caller is the default task activator,
 		// only deactivate tasks that are activated by the default task activator
-		if caller == evergreen.DefaultTaskActivator {
+		if build.IsSystemActivator(caller) {
 			_, err = UpdateAllTasks(
 				bson.M{
 					TaskBuildIdKey:     buildId,
 					TaskStatusKey:      evergreen.TaskUndispatched,
-					TaskActivatedByKey: evergreen.DefaultTaskActivator,
+					TaskActivatedByKey: caller,
 				},
 				bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
 			)

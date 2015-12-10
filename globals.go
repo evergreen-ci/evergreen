@@ -81,7 +81,8 @@ const (
 
 	EvergreenHome = "EVGHOME"
 
-	DefaultTaskActivator = ""
+	DefaultTaskActivator   = ""
+	APIServerTaskActivator = "apiserver"
 )
 
 // evergreen package names

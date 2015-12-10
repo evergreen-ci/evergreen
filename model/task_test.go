@@ -596,7 +596,7 @@ func TestSetTaskActivated(t *testing.T) {
 			So(dbDepTwo.Activated, ShouldBeTrue)
 			So(dbDepTwo.ActivatedBy, ShouldEqual, user)
 
-			Convey("and setting active to false will not reset the fields if the caller is evergreen", func() {
+			Convey("and setting active to false will not reset the fields if the caller is evergreen or the apiserver", func() {
 				So(SetTaskActivated(taskId, evergreen.DefaultTaskActivator, false), ShouldBeNil)
 				dbTask, err := FindTask(taskId)
 				So(err, ShouldBeNil)
@@ -612,6 +612,12 @@ func TestSetTaskActivated(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(dbDepTwo.Activated, ShouldBeTrue)
 				So(dbDepTwo.ActivatedBy, ShouldEqual, user)
+
+				So(SetTaskActivated(taskId, evergreen.APIServerTaskActivator, false), ShouldBeNil)
+				dbTask, err = FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				So(dbTask.ActivatedBy, ShouldEqual, user)
 
 			})
 			Convey("and setting active to false will not reset the fields if the caller is not evergreen", func() {

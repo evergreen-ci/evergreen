@@ -945,8 +945,8 @@ func SetTaskActivated(taskId string, caller string, active bool) error {
 				},
 			)
 		}
-		// if the caller is not the evergreen or the the task is activated by evergreen, deactivate it
-	} else if caller != evergreen.DefaultTaskActivator || task.ActivatedBy == evergreen.DefaultTaskActivator {
+		// if the caller is not evergreen or the the task is activated by evergreen, deactivate it
+	} else if !build.IsSystemActivator(caller) || build.IsSystemActivator(task.ActivatedBy) {
 		err = UpdateOneTask(
 			bson.M{
 				TaskIdKey: taskId,
