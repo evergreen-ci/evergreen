@@ -16,7 +16,7 @@ Evergreen - Configure Patch
 {{define "content"}}
 <div  id="content" class="container-fluid"
       ng-controller="PatchController" ng-init="setPatchInfo()">
-  <error-flash ng-init="destination='errorHeader';"></error-flash>
+  <notify-box ng-init="destination='errorHeader'"></notify-box>
   <form name="variantsTasksForm" ng-controller="PatchUpdateController">
     <div class="col-lg-7">
       <h3>

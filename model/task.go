@@ -535,10 +535,10 @@ func (task *Task) FindPreviousTasks(limit int) ([]Task, error) {
 	return reversed, nil
 }
 
-func FindTasksForBuild(b *build.Build) ([]Task, error) {
+func FindTasksForBuild(buildId string) ([]Task, error) {
 	tasks, err := FindAllTasks(
 		bson.M{
-			TaskBuildIdKey: b.Id,
+			TaskBuildIdKey: buildId,
 		},
 		db.NoProjection,
 		db.NoSort,
@@ -1204,7 +1204,7 @@ func (t *Task) UpdateBuildStatus() error {
 		return err
 	}
 
-	buildTasks, err := FindTasksForBuild(b)
+	buildTasks, err := FindTasksForBuild(b.Id)
 	if err != nil {
 		return err
 	}

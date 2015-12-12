@@ -1,4 +1,4 @@
-mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSpawnRestService', 'errorPasserService', function($scope, $window, $timeout, mciSpawnRestService, errorPasserService) {
+mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSpawnRestService', 'notificationService', function($scope, $window, $timeout, mciSpawnRestService, notificationService) {
     $scope.userTz = $window.userTz;
     $scope.hosts = null;
     $scope.modalOpen = false;
@@ -91,7 +91,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           error: function(jqXHR, status, errorThrown) {
             // Avoid errors when leaving the page because of a background refresh
             if ($scope.hosts == null && !$scope.errorFetchingHosts) {
-                errorPasserService.pushError('Error fetching spawned hosts: ' + jqXHR, 'errorHeader');
+                notificationService.pushNotification('Error fetching spawned hosts: ' + jqXHR, 'errorHeader');
                 $scope.errorFetchingHosts = true;
             }
           }
@@ -114,7 +114,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             $scope.setSpawnableDistros(distros);
           },
           error: function(jqXHR, status, errorThrown) {
-            errorPasserService.pushError('Error fetching spawnable distros: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error fetching spawnable distros: ' + jqXHR,'errorHeader');
           }
         }
       );
@@ -127,7 +127,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             $scope.setUserKeys(keys);
           },
           error: function(jqXHR, status, errorThrown) {
-            errorPasserService.pushError('Error fetching user keys: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error fetching user keys: ' + jqXHR,'errorHeader');
           }
         }
       );
@@ -143,7 +143,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.reload(true);
           },
           error: function(jqXHR, status, errorThrown) {
-            errorPasserService.pushError('Error spawning host: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error spawning host: ' + jqXHR,'errorHeader');
           }
         }
       );
@@ -158,7 +158,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.reload(true);
           },
           error: function (jqXHR, status, errorThrown) {
-            errorPasserService.pushError('Error setting host RDP password: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error setting host RDP password: ' + jqXHR,'errorHeader');
           }
         }
       );
@@ -173,7 +173,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.reload(true);
           },
           error: function (jqXHR, status, errorThrown) {
-            errorPasserService.pushError('Error extending host expiration: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error extending host expiration: ' + jqXHR,'errorHeader');
           }
         }
       );
@@ -187,7 +187,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.reload(true);
           },
           error: function(jqXHR, status, errorThrown) {
-            errorPasserService.pushError('Error terminating host: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error terminating host: ' + jqXHR,'errorHeader');
           }
         }
       );

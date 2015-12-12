@@ -14,7 +14,7 @@ Evergreen - My Hosts
 
 {{define "content"}}
 <div id="content" class="container-fluid" ng-controller="SpawnedHostsCtrl">
-<error-flash ng-init="destination='errorHeader';"></error-flash>
+  <notify-box ng-init="destination='errorHeader'"></notify-box>
   {{template "flash" . }}
   <div class="col-lg-6">
     <div ng-show="hosts && hosts.length == 0">

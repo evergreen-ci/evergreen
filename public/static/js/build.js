@@ -32,6 +32,7 @@ function BuildVariantHistoryController($scope, $http, $filter, $timeout, $window
     }
   };
 
+
   $scope.setBuilds = function(data) {
     var builds = data.builds;
     $scope.buildResults = {};
@@ -65,7 +66,7 @@ function BuildVariantHistoryController($scope, $http, $filter, $timeout, $window
   };
 }
 
-function BuildViewController($scope, $http, $timeout, mciTime, $window) {
+function BuildViewController($scope, $http, $timeout, $rootScope, mciTime, $window) {
   $scope.build = {};
   $scope.computed = {};
   $scope.loading = false;
@@ -166,6 +167,11 @@ function BuildViewController($scope, $http, $timeout, mciTime, $window) {
             function(sum, el){return sum+el},
             0)
   };
+
+  $rootScope.$on("build_updated", function(e, newBuild){
+    $scope.setBuild(newBuild);
+  });
+
 
   $scope.setBuild($window.build);
   $scope.plugins = $window.plugins

@@ -52,6 +52,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
 
 <div id="content" class="container-fluid">
   {{template "flash" . }}
+  <notify-box ng-init="destination='notifyHeader';"></notify-box>
   <ol class="breadcrumb">
     <li>
       <span>

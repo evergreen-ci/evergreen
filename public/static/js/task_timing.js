@@ -1,6 +1,4 @@
-function TaskTimingController($scope, $http, $window, $filter, $locationHash, mciTime, errorPasserService) {
-
-
+function TaskTimingController($scope, $http, $window, $filter, $locationHash, mciTime, notificationService) {
     $scope.currentProject = $window.activeProject;
     // sort the task names for the current project
     $scope.currentProject.task_names.sort()
@@ -309,7 +307,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
             setTimeout(function(){$scope.drawDetailGraph()},0);
         }).
         error(function(data) {
-            errorPasserService.pushError("Error loading data: `" + data.error+"`", 'errorHeader');
+            notificationService.pushNotification("Error loading data: `" + data.error+"`", 'errorHeader', "error");
             $scope.taskData = [];
         });
 
@@ -487,4 +485,3 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
 
     $scope.load();
 };
-

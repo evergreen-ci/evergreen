@@ -226,7 +226,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
 });
 
-mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash) {
+mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash) {
   $scope.userTz = $window.userTz;
 
   var hash = $locationHash.get();
@@ -247,6 +247,7 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
       $locationHash.set(hash);
     }
   };
+
 
   $scope.setTask = function(task) {
     $scope.task = task;
@@ -320,6 +321,17 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
       var updateTimers = $interval(updateFunc, 1000);
     }
   };
+
+ $rootScope.$on("task_updated", function(e, newTask){
+    newTask.message = $scope.task.message;
+    newTask.author = $scope.task.author;
+    newTask.author_email = $scope.task.author_email;
+    newTask.min_queue_pos = $scope.task.min_queue_pos;
+    newTask.patch_info = $scope.task.patch_info;
+    newTask.build_variant_display = $scope.task.build_variant_display;
+    newTask.depends_on = $scope.task.depends_on;
+    $scope.setTask(newTask);
+ })
 
   $scope.setTask($window.task_data);
   $scope.plugins = $window.plugins
@@ -448,7 +460,7 @@ mciModule.directive('testResultBar', function($filter) {
   }
 });
 
-mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location', '$window', '$filter', 'errorPasserService', function($scope, $timeout, $http, $location, $window, $filter, errorPasser) {
+mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location', '$window', '$filter', 'notificationService', function($scope, $timeout, $http, $location, $window, $filter, notifier) {
   $scope.logs = 'Loading...';
   $scope.task = {};
   $scope.eventLogs = 'EV';
@@ -506,7 +518,7 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
       }
     }).
     error(function(jqXHR, status, errorThrown) {
-      	errorPasser.pushError('Error retrieving logs: ' + jqXHR, 'errorHeader');
+      	notifier.pushNotification('Error retrieving logs: ' + jqXHR, 'errorHeader');
     });
 
     // If we already have an outstanding timeout, cancel it

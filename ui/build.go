@@ -6,6 +6,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -15,6 +16,28 @@ import (
 	"strconv"
 	"time"
 )
+
+// getUiTaskCache takes a build object and returns a slice of
+// uiTask objects suitable for front-end
+func getUiTaskCache(build *build.Build) ([]uiTask, error) {
+	tasks, err := model.FindTasksForBuild(build.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	idToTask := make(map[string]model.Task)
+	for _, task := range tasks {
+		idToTask[task.Id] = task
+	}
+
+	// Insert the tasks in the same order as the task cache
+	uiTasks := make([]uiTask, 0, len(build.Tasks))
+	for _, taskCache := range build.Tasks {
+		taskAsUI := uiTask{Task: idToTask[taskCache.Id]}
+		uiTasks = append(uiTasks, taskAsUI)
+	}
+	return uiTasks, nil
+}
 
 func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
@@ -35,23 +58,10 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		Version:     *projCtx.Version,
 	}
 
-	// add in the tasks
-	tasks, err := model.FindTasksForBuild(projCtx.Build)
+	uiTasks, err := getUiTaskCache(projCtx.Build)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
-	}
-
-	idToTask := make(map[string]model.Task)
-	for _, task := range tasks {
-		idToTask[task.Id] = task
-	}
-
-	// Insert the tasks in the same order as the task cache
-	uiTasks := make([]uiTask, 0, len(projCtx.Build.Tasks))
-	for _, taskCache := range projCtx.Build.Tasks {
-		taskAsUI := uiTask{Task: idToTask[taskCache.Id]}
-		uiTasks = append(uiTasks, taskAsUI)
 	}
 
 	buildAsUI.Tasks = uiTasks
@@ -124,8 +134,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		model.RefreshTasksCache(projCtx.Build.Id)
-		uis.WriteJSON(w, http.StatusOK, "Successfully marked tasks as aborted")
-		return
 	case "set_priority":
 		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {
@@ -138,9 +146,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.StatusInternalServerError)
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Priority for build set to %v.", priority)))
-		uis.WriteJSON(w, http.StatusOK, "Successfully set priority")
-		return
 	case "set_active":
 		err := model.SetBuildActivation(projCtx.Build.Id, putParams.Active, user.Id)
 		if err != nil {
@@ -148,25 +153,38 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 				http.StatusInternalServerError)
 			return
 		}
-		if putParams.Active {
-			PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Build scheduled."))
-		} else {
-			PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Build unscheduled."))
-		}
-		uis.WriteJSON(w, http.StatusOK, fmt.Sprintf("Successfully marked build as active=%v", putParams.Active))
-		return
 	case "restart":
 		if err := model.RestartBuild(projCtx.Build.Id, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Build %v restarted.", projCtx.Build.Id)))
-		uis.WriteJSON(w, http.StatusOK, fmt.Sprintf("Successfully restarted build", putParams.Active))
-		return
 	default:
 		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action")
 		return
 	}
+
+	// After updating the build, fetch updated version to serve back to client
+	projCtx.Build, err = build.FindOne(build.ById(projCtx.Build.Id))
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	updatedBuild := uiBuild{
+		Build:       *projCtx.Build,
+		CurrentTime: time.Now().UnixNano(),
+		Elapsed:     time.Now().Sub(projCtx.Build.StartTime),
+		RepoOwner:   projCtx.ProjectRef.Owner,
+		Repo:        projCtx.ProjectRef.Repo,
+		Version:     *projCtx.Version,
+	}
+
+	uiTasks, err := getUiTaskCache(projCtx.Build)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	updatedBuild.Tasks = uiTasks
+	uis.WriteJSON(w, http.StatusOK, updatedBuild)
 }
 
 func (uis *UIServer) lastGreenHandler(w http.ResponseWriter, r *http.Request) {

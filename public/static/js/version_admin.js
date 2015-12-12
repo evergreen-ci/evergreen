@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService','errorPasserService', function($scope, versionRestService, errorPasser) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRestService','notificationService', function($scope, $rootScope, versionRestService, notifier) {
 
     $scope.adminOptionVals = {};
     $scope.modalTitle = 'Modify Version';
@@ -10,10 +10,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService','er
             { active: active, abort: abort },
             {
                 success: function(data, status) {
-                    window.location.reload();
+                    $scope.closeAdminModal()
+                    $rootScope.$broadcast("version_updated", data)
+                    notifier.pushNotification(
+                      "Version " + (active ? "scheduled." : "unscheduled.") + 
+                      (abort ? "\n In progress tasks will be aborted." : ""),
+                      'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error setting version activation: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error setting version activation: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -25,10 +30,13 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService','er
             { priority: newPriority },
             {
                 success: function(data, status) {
-                    window.location.reload();
+                    $scope.closeAdminModal()
+                    $rootScope.$broadcast("version_updated", data)
+                    var msg = "Priority for version set to " + newPriority + "."
+                    notifier.pushNotification(msg, 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error changing priority: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error changing priority: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -44,11 +52,15 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService','er
 	$scope.updatePriority = function() {
 		var newPriority = parseInt($scope.adminOptionVals.priority);
 		if(isNaN(newPriority)) {
-			errorPasser.pushError('New priority value must be an integer','errorModal');
+			notifier.pushNotification('New priority value must be an integer','errorModal');
 		} else {
 			setVersionPriority(parseInt($scope.adminOptionVals.priority));
 		}
 	}
+
+	$scope.closeAdminModal = function() {
+		var modal = $('#admin-modal').modal('hide');
+    }
 
 	$scope.openAdminModal = function(opt) {
 		$scope.adminOption = opt
@@ -58,22 +70,18 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciVersionsRestService','er
             modal.on('shown.bs.modal', function() {
                 $('#input-priority').focus();
                 $scope.modalOpen = true;
-                $scope.$apply();
             });
 
             modal.on('hide.bs.modal', function() {
                 $scope.modalOpen = false;
-                $scope.$apply();
             });
         } else {
             modal.on('shown.bs.modal', function() {
                 $scope.modalOpen = true;
-                $scope.$apply();
             });
 
             modal.on('hide.bs.modal', function() {
                 $scope.modalOpen = false;
-                $scope.$apply();
             });
         }
 

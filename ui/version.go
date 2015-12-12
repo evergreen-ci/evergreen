@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"net/http"
@@ -120,41 +121,59 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			if err = model.AbortVersion(projCtx.Version.Id); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
-			} else {
-				msg := NewSuccessFlash("All tasks in this version are now aborting.")
-				PushFlash(uis.CookieStore, r, w, msg)
 			}
 		}
 		if err = model.SetVersionActivation(projCtx.Version.Id, jsonMap.Active, user.Id); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		} else {
-			if !jsonMap.Abort { // don't add a msg if we already added one for abort
-				var msg flashMessage
-				if jsonMap.Active {
-					msg = NewSuccessFlash("All tasks in this version are now scheduled.")
-				} else {
-					msg = NewSuccessFlash("All tasks in this version are now unscheduled.")
-				}
-				PushFlash(uis.CookieStore, r, w, msg)
-			}
 		}
-		uis.WriteJSON(w, http.StatusOK, projCtx.Version)
-		return
 	case "set_priority":
 		if err = model.SetVersionPriority(projCtx.Version.Id, jsonMap.Priority); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		msg := NewSuccessFlash(fmt.Sprintf("Priority for all tasks in this version set to %v.", jsonMap.Priority))
-		PushFlash(uis.CookieStore, r, w, msg)
-		uis.WriteJSON(w, http.StatusOK, projCtx.Version)
-		return
 	default:
 		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Unrecognized action: %v", jsonMap.Action))
 		return
 	}
-	return
+
+	// After the version has been modified, re-load it from DB and send back the up-to-date view
+	// to the client.
+	projCtx.Version, err = version.FindOne(version.ById(projCtx.Version.Id))
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	versionAsUI := uiVersion{
+		Version:   *projCtx.Version,
+		RepoOwner: projCtx.ProjectRef.Owner,
+		Repo:      projCtx.ProjectRef.Repo,
+	}
+	dbBuilds, err := build.Find(build.ByIds(projCtx.Version.BuildIds))
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
+	for _, build := range dbBuilds {
+		buildAsUI := uiBuild{Build: build}
+		uiTasks := make([]uiTask, 0, len(build.Tasks))
+		for _, task := range build.Tasks {
+			uiTasks = append(uiTasks,
+				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated,
+					StartTime: task.StartTime, TimeTaken: task.TimeTaken, Status: task.Status,
+					Details: task.StatusDetails, DisplayName: task.DisplayName}})
+			if task.Activated {
+				versionAsUI.ActiveTasks++
+			}
+		}
+		buildAsUI.Tasks = uiTasks
+		uiBuilds = append(uiBuilds, buildAsUI)
+	}
+	versionAsUI.Builds = uiBuilds
+	uis.WriteJSON(w, http.StatusOK, versionAsUI)
 }
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {

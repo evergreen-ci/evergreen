@@ -598,8 +598,12 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Task is now marked to restart."))
-		uis.WriteJSON(w, http.StatusOK, "Task successfully restarted")
+		// Reload the task from db, send it back
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	case "abort":
 		if err := projCtx.Task.Abort(authName, true); err != nil {
@@ -607,8 +611,13 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Task is now aborting."))
-		uis.WriteJSON(w, http.StatusOK, "Task successfully restarted")
+		// Reload the task from db, send it back
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
+
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	case "set_active":
 		active := putParams.Active
@@ -618,13 +627,12 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if active {
-			PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Task is now scheduled."))
-		} else {
-			PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Task is now unscheduled."))
+		// Reload the task from db, send it back
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
-
-		uis.WriteJSON(w, http.StatusOK, "Task successfully activated")
+		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	case "set_priority":
 		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
@@ -636,8 +644,12 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
-		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Priority for task set to %v.", priority)))
-		uis.WriteJSON(w, http.StatusOK, "Successfully set priority")
+		// Reload the task from db, send it back
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	default:
 		uis.WriteJSON(w, http.StatusBadRequest, "Unrecognized action: "+putParams.Action)

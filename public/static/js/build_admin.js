@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'errorPasserService', function($scope, buildRestService, errorPasser) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRestService', 'notificationService', function($scope, $rootScope, buildRestService, notifier) {
     $scope.setBuild = function(build) {
         $scope.build = build;
         $scope.buildId = build._id;
@@ -15,10 +15,12 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'err
             {},
             {
                 success: function(data, status) {
-                    window.location.reload();
+                    $scope.closeAdminModal();
+                    $rootScope.$broadcast("build_updated", data);
+                    notifier.pushNotification("Build aborted.", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error aborting build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error aborting build: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -31,10 +33,12 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'err
             { abort: $scope.adminOptionVals.abort },
             {
                 success: function(data, status) {
-                    window.location.reload();
+                    $scope.closeAdminModal();
+                    $rootScope.$broadcast("build_updated", data);
+                    notifier.pushNotification("Build scheduled to restart.", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error restarting build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error restarting build: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -47,10 +51,13 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'err
             { priority: $scope.adminOptionVals.priority },
             {
                 success: function(data, status) {
-                    window.location.reload();
+                    $scope.closeAdminModal();
+                    $rootScope.$broadcast("build_updated", data);
+                    notifier.pushNotification("Priority for build updated to "+
+                    $scope.adminOptionVals.priority + ".", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error setting build priority: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error setting build priority: ' + jqXHR,'errorModal');
                 }
             }
         );
@@ -63,14 +70,20 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'err
             { active: active },
             {
                 success: function(data, status) {
-                    window.location.reload();
+                    $scope.closeAdminModal();
+                    $rootScope.$broadcast("build_updated", data);
+                    notifier.pushNotification("Build marked as scheduled.", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    errorPasser.pushError('Error aborting build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error scheduling build: ' + jqXHR,'errorModal');
                 }
             }
         );
     };
+
+	$scope.closeAdminModal = function() {
+		var modal = $('#admin-modal').modal('hide');
+    }
 
     $scope.openAdminModal = function(opt) {
         $scope.adminOption = opt;
@@ -81,22 +94,18 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciBuildsRestService', 'err
             modal.on('shown.bs.modal', function() {
                 $('#input-priority').focus();
                 $scope.modalOpen = true;
-                $scope.$apply();
             });
 
             modal.on('hide.bs.modal', function() {
                 $scope.modalOpen = false;
-                $scope.$apply();
             });
         } else {
             modal.on('shown.bs.modal', function() {
                 $scope.modalOpen = true;
-                $scope.$apply();
             });
 
             modal.on('hide.bs.modal', function() {
                 $scope.modalOpen = false;
-                $scope.$apply();
             });
         }
 

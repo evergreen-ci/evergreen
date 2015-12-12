@@ -1,4 +1,4 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'errorPasserService', function($scope, hostRestService, errorPasser) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notificationService', function($scope, hostRestService, notifier) {
   $scope.setHostId = function(host) {
     $scope.host = host;
   };
@@ -21,7 +21,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'error
           window.location.reload();
         },
         error: function(jqXHR, status, errorThrown) {
-          errorPasser.pushError('Error updating host status: ' + jqXHR, 'errorModal');
+          notifier.pushNotification('Error updating host status: ' + jqXHR, 'errorModal');
         }
       }
     );

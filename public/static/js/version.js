@@ -1,4 +1,4 @@
-function VersionController($scope, $location, $http, $filter, $now, $window, errorPasserService) {
+function VersionController($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
   var nsPerMs = 1000000
 
   $scope.tab = 0
@@ -26,6 +26,13 @@ function VersionController($scope, $location, $http, $filter, $now, $window, err
       $scope.$apply();
     }, 0)
   }
+
+  $rootScope.$on("version_updated", function(e, newVersion){
+    // cheat and copy over the patch info, since it never changes.
+    newVersion.PatchInfo = $scope.version['PatchInfo']
+    $scope.setVersion(newVersion);
+  })
+
 
 
   $scope.setVersion = function(version) {
@@ -149,13 +156,13 @@ function VersionController($scope, $location, $http, $filter, $now, $window, err
     $http.get('/version_json/' + $scope.version.Version.id).
     success(function(data) {
       if (data.error) {
-        errorPasserService.pushError(data.error);
+        notificationService.pushNotification(data.error);
       } else {
         $scope.setVersion(data);
       }
     }).
     error(function(data) {
-      errorPasserService.pushError("Error occurred - " + data.error);
+      notificationService.pushNotification("Error occurred - " + data.error);
     });
   };
 

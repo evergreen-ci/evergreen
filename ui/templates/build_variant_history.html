@@ -15,7 +15,7 @@ Evergreen - Build Variant History
 {{end}}
 
 {{define "content"}}
-<error-flash ng-init="destination='errorHeader'"></error-flash>
+<notify-box ng-init="destination='errorHeader'"></notify-box>
 
 <div id="content" ng-controller="BuildVariantHistoryController" class="container-fluid">
   <div class="row">
