@@ -5,6 +5,7 @@
     </h2>
   </div>
   <div class="panel-body" style="min-height: 233px">
+
     <div class="entry">
       <strong>ID:</strong> <span>[[curHostData.id]]</span>
     </div>
@@ -34,6 +35,10 @@
     <div class ="entry" ng-show="curHostData.userdata">
       <strong>User Data:</strong><br/>
       <pre>[[curHostData.userdata]]</pre>
+    </div>
+    <div class="entry" ng-show="!curHostData.isTerminated && curHostData.host.length > 0">
+      <strong>Login Command:</strong>
+      <pre readonly>ssh [[curHostData.user]]@[[curHostData.host]]</pre>
     </div>
     <br>
     <button type="button" ng-show="curHostData.isWinHost && curHostData.status

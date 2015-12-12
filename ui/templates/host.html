@@ -39,6 +39,10 @@ Evergreen - Host {{.Host.Id}}
     {{end}}
   </header>
 
+  <div class="entry" ng-show="!host.isTerminated && host.host.length > 0">
+    <b class="h4">Login Command:</b>
+    <pre readonly>ssh [[host.user]]@[[host.host]]</pre>
+  </div>
   <div><b class="h4">User:</b> [[host.user]]</div>
   <div><b class="h4">DNS Name:</b> [[host.host]]</div>
   <div><b class="h4">Status:</b> [[host.status]]</div>
