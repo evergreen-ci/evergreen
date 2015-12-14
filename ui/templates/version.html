@@ -75,8 +75,8 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
           <div ng-controller="AdminOptionsCtrl">
              <div id="admin-dropdown" class="dropdown pull-right page-actions">
                <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
-                 <i class="icon-gear"></i>
-                 <i class="icon-caret-down"></i>
+                 <i class="fa fa-gear"></i>
+                 <i class="fa fa-caret-down"></i>
                </a>
 
                <ul class="dropdown-menu" role="menu">
@@ -102,14 +102,14 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
              {{end}}
              <div ng-show="[[version.Version.errors.length]]">
-               <i class="icon-warning-sign" style="color:red"></i>
+               <i class="fa fa-warning" style="color:red"></i>
                [[version.Version.errors.length]]  [[version.Version.errors.length | pluralize:'error']] in configuration file
                <div style="color:red" ng-repeat="error in version.Version.errors">- [[error]]</div>
              </div>
            </div>
            <table id="build-info-elements">
-             <tr ng-show="makeSpanMS != 0"><td><i class="icon-time"></i></td><th><strong title="The makespan is the difference in time from when the first task in the version has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
-             <tr ng-show="totalTimeMS != 0"><td><i class="icon-time"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+             <tr ng-show="makeSpanMS != 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the version has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+             <tr ng-show="totalTimeMS != 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
              <tr/>
            </table>
          </div>

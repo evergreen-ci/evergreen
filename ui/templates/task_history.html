@@ -97,7 +97,7 @@ Evergreen - Task History
                     mci-focus="taskHistoryFilter.showTestNameResults()"
                     mci-blur="taskHistoryFilter.hideTestNameResults()"
                     mci-key-return="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')">
-            <i  class="icon-plus"
+            <i  class="fa fa-plus"
                 style="cursor: pointer"
                 ng-click="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')"></i>
             <div  class="autocomplete-container" ng-show="taskHistoryFilter.testsSearchDisplay">
@@ -109,7 +109,7 @@ Evergreen - Task History
             </div>
             <div  ng-repeat="(test, status) in taskHistoryFilter.filter.tests" class="filter-atom">
               <span ng-click="taskHistoryFilter.removeTestFilter(test)" style="cursor: pointer">
-                <i class="icon-remove"></i>
+                <i class="fa fa-remove"></i>
               </span>
               [[ test ]]
               <select ng-options="status for status in ['pass', 'fail', 'ran']"
@@ -142,7 +142,7 @@ Evergreen - Task History
                     mci-focus="taskHistoryFilter.showBuildVariantResults()"
                     mci-blur="taskHistoryFilter.hideBuildVariantResults()"
                     mci-key-return="taskHistoryFilter.filterBuildVariant(taskHistoryFilter.buildVariantSearchString)">
-            <i  class="icon-plus"
+            <i  class="fa fa-plus"
                 style="cursor: pointer"
                 ng-click="taskHistoryFilter.filterBuildVariant(taskHistoryFilter.buildVariantSearchString)"></i>
             <div  class="autocomplete-container"
@@ -156,7 +156,7 @@ Evergreen - Task History
             <div  ng-repeat="variant in taskHistoryFilter.filter.buildVariants"
                   class="filter-atom">
               <span ng-click="taskHistoryFilter.removeBuildVariant($index)" style="cursor: pointer">
-                <i class="icon-remove"></i>
+                <i class="fa fa-remove"></i>
               </span>
               [[ variant ]]
             </div>

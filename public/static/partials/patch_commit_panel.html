@@ -17,7 +17,7 @@
 
   <div class="patch" ng-init="showAllChanges = false;">
     <div ng-click="showAllChanges = !showAllChanges" class="pointer semi-muted">
-      <i ng-class="showAllChanges | conditional:'icon-caret-down':'icon-caret-right'"></i>
+      <i class="fa" ng-class="showAllChanges | conditional:'fa-caret-down':'fa-caret-right'"></i>
       [[showAllChanges | conditional:'Hide':'Show']] All Changes
       
       <span ng-show='!showAllChanges' class="toggle-message">

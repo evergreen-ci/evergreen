@@ -98,8 +98,8 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
             <div ng-controller="AdminOptionsCtrl" ng-init="setTask(task)">
               <div id="admin-dropdown" class="dropdown pull-right">
                   <a id="admin-options" class="btn btn-default" data-toggle="dropdown">
-                    <i class="icon-gear"></i>
-                    <i class="icon-caret-down"></i>
+                    <i class="fa fa-gear"></i>
+                    <i class="fa fa-caret-down"></i>
                   </a>
 
                   <ul class="dropdown-menu" role="menu">
@@ -142,22 +142,22 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
             <table id="task-info-elements">
               <tr ng-show="task.min_queue_pos != 0">
-                <td><i class="icon-sort-by-order"></i></td>
+                <td><i class="fa fa-sort-numeric-asc"></i></td>
                 <td><strong>[[task.min_queue_pos | ordinalNum]]</strong> in queue</td>
               </tr>
               <tr ng-show="task.status != 'undispatched'">
-                <td><i class="icon-time"></i></td>
+                <td><i class="fa fa-clock-o"></i></td>
                 <td>[[timeTaken | stringifyNanoseconds]]<span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span></td>
               </tr>
 
               <tr ng-show="task.execution > 0 || task.archived">
-                <td><i class="icon-rotate-left"></i></td>
+                <td><i class="fa fa-rotate-left"></i></td>
 
                 <td ng-show="!task.archived">
                   Latest of [[task.execution+1]] executions
                   <span class="dropdown">
                     <button class="btn btn-default btn-dropdown btn-xs" data-toggle="dropdown" href="#" id="dLabel">
-                      Previous executions: <span class="icon-caret-down"></span>
+                      Previous executions: <span class="fa fa-caret-down"></span>
                     </button>
                     <ul class="dropdown-menu">
                       <li ng-repeat="i in pastExecutions">
@@ -173,29 +173,29 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </td>
               </tr>
               <tr ng-show="task.host_dns">
-                <td><i class="icon-desktop"></i></td>
+                <td><i class="fa fa-desktop"></i></td>
                 <td data-element-tooltip="task.distro">[[task.host_dns]]
                   (<a ng-href="/host/[[task.host_id]]">details</a>)
                 </td>
               </tr>
               <tr ng-show="task.abort">
-                <td><i class="icon-level-down"></i></td>
+                <td><i class="fa fa-level-down"></i></td>
                 <td>Aborting</td>
               </tr>
               <tr ng-show="task.start_time > 0 && (task.status != 'undispatched' && task.status != 'dispatched') ">
-                <td><i class="icon-calendar"></i></td>
+                <td><i class="fa fa-calendar"></i></td>
                 <td>Started on [[task.start_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
               </tr>
               <tr ng-show="task.finish_time > 0 && (task.status == 'success' || task.status == 'failed') ">
-                <td><i class="icon-calendar"></i></td>
+                <td><i class="fa fa-calendar"></i></td>
                 <td>Finished on [[task.finish_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
               </tr>
               <tr ng-show="task.priority > 0">
-                <td><i class="icon-rocket"></i></td>
+                <td><i class="fa fa-rocket"></i></td>
                 <td>Priority: [[task.priority]]</td>
               </tr>
               <tr ng-show="task.priority < 0">
-                <td><i class="icon-ban-circle"></i></td>
+                <td><i class="fa fa-ban"></i></td>
                 <td>Blacklisted</td>
               </tr>
             </table>
@@ -205,15 +205,15 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
       <div class="row" ng-show="!!task.depends_on && task.depends_on.length > 0">
         <div class="col-lg-12">
-          <h3 class="section-heading"><i class="icon-exchange"></i> Depends On</h3>
+          <h3 class="section-heading"><i class="fa fa-exchange"></i> Depends On</h3>
           <span ng-show="task.status=='blocked'" style="color:red"> This task will not run because its dependencies are in an undesirable state.</span>
           <div class="mci-pod">
             <table class="table table-condensed dep-table">
               <tbody>
                 <tr ng-repeat="dependency in task.depends_on | filter :{recursive:false} | orderBy:dependency.build_variant:dependency.display_name">
                   <td class="dep-status">
-                    <i ng-show="isMet(dependency) == 'met'" class="icon-ok"></i>
-                    <i ng-show="isMet(dependency) == 'unmet'" class="icon-ban-circle"></i>
+                    <i ng-show="isMet(dependency) == 'met'" class="fa fa-check"></i>
+                    <i ng-show="isMet(dependency) == 'unmet'" class="fa fa-ban"></i>
                   </td>
                   <td>
                     <a ng-href="/task/[[dependency.id]]">[[dependency.display_name]]</a>
@@ -242,7 +242,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       {{end}}
     </div>
     <div class="col-lg-5">
-      <h3 class="section-heading"><i class="icon-beaker"></i> Tests</h3>
+      <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
 
       <div ng-show="!task.test_results || task.test_results.length == 0" class="mci-pod">
         <h4 class="text-center text-muted">No test results to show</h4>
@@ -257,7 +257,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </span>
                 <strong>
                   [[sortBy.name]]&nbsp;&nbsp;
-                  <span class="icon-caret-down"></span>
+                  <span class="fa fa-caret-down"></span>
                 </strong>
               </button>
               <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
@@ -295,7 +295,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   ng-class="test.display_name == hash.test | conditional:'highlight-bg':''">
                 <td class="col-lg-6">
                   <div class="test-result-link-wrapper">
-                    <i  class="icon icon-link"
+                    <i  class="icon fa fa-link"
                         style="cursor: pointer;"
                         ng-click="linkToTest(test.display_name)">
                     </i>
@@ -341,7 +341,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 <div class="row" ng-controller="TaskLogCtrl">
   <div class="col-lg-12">
     <h3 class="section-heading">
-      <i class="icon-folder-open"></i>
+      <i class="fa fa-folder-open"></i>
       Logs (<a ng-href="[[getRawLogLink()]]" target="_blank">view full</a>)
       <div id="logs-options" class="btn-group btn-group-sm">
           <a class="pointer btn btn-default" ng-class="{active:currentLogs==allLogs}" ng-click="setCurrentLogs(allLogs)">All logs</a>

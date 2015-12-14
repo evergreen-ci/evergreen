@@ -20,7 +20,7 @@
     </span>
     <span ng-switch-when="HOST_PROVISION_FAILED">
       <div>Provisioning failed.</div>
-      <div class="toggle" ng-click="showlogs = !showlogs"><i ng-class="showlogs | conditional:'icon-caret-down':'icon-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
+      <div class="toggle" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
       <div ng-show="showlogs">
         <pre>[[eventLogObj.data.setup_log]]</pre>
       </div>

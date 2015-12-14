@@ -121,7 +121,7 @@ mciModule
     function createPopoverInfo(id, revision, author, message, create_time, error) {
       var errorIcon = "";
       if (error.messages && error.messages.length != 0) {
-        errorIcon = '<span><i class="icon-warning-sign" style="color:red" data-element-tooltip="body">&nbsp;</i></span>';
+        errorIcon = '<span><i class="fa fa-warning-circle" style="color:red" data-element-tooltip="body">&nbsp;</i></span>';
       }
       return '<div class="commit-meta"><div class="commit-date">' + (create_time ? create_time : '') + '</div>' +
         '<a href="/version/' + $filter('escapeHtml')(id) + '">' + errorIcon +

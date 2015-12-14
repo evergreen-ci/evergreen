@@ -54,7 +54,7 @@ Evergreen Projects
         <div class="col-lg-8">
           <div class="panel panel-danger" ng-show="settingsFormData.repotracker_error.exists">
               <div class="panel-heading">
-                <i class="icon-exclamation-sign"></i> 
+                <i class="fa fa-exclamation-circle"></i> 
                 The current base revision ([[settingsFormData.repotracker_error.invalid_revision]]) cannot be found on branch, [[settingsFormData.branch_name]]. In order to resume tracking the repository, please confirm or enter a new base revision.
               </div>
               <div class="panel-body">
@@ -67,7 +67,7 @@ Evergreen Projects
                   </div>    
                 <div class="col-lg-2">
                     <button class="form-control btn btn-primary" type="button" ng-click="setLastRevision()">
-                      <i class="icon-ok"></i>
+                      <i class="fa fa-check"></i>
                     </button>
                 </div>  
               </div>
@@ -116,7 +116,7 @@ Evergreen Projects
             </div>
             <div class="col-lg-4">
             <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
-            <label class="icon icon-warning-sign project-error" ng-show="!isBatchTimeValid(settingsFormData.batch_time)">&nbsp;Batch time must be a number, &gt;=0.</label>
+            <label class="icon fa fa-warning project-error" ng-show="!isBatchTimeValid(settingsFormData.batch_time)">&nbsp;Batch time must be a number, &gt;=0.</label>
             </div>
         </div>
 
@@ -193,7 +193,7 @@ Evergreen Projects
                     <div class="add-action pull-right"><a href="javascript:void(0)" ng-click="editing=true">add action</a></div>
                   </div>
                   <ul class="trigger-actions">
-                    <li ng-repeat="alertConfig in getProjectAlertConfig(trigger.id)" class="action-config">&nbsp;&bull;&nbsp;[[getAlertDisplay(alertConfig)]] <div class="btn btn-danger btn-xs pull-right" ng-click="removeAlert(trigger.id, $index)"><i class="icon-trash" style="font-size:1.3em;">&nbsp;</i></div><div class="clearfix"/></li>
+                    <li ng-repeat="alertConfig in getProjectAlertConfig(trigger.id)" class="action-config">&nbsp;&bull;&nbsp;[[getAlertDisplay(alertConfig)]] <div class="btn btn-danger btn-xs pull-right" ng-click="removeAlert(trigger.id, $index)"><i class="fa fa-trash" style="font-size:1.3em;">&nbsp;</i></div><div class="clearfix"/></li>
                     <!-- TODO only email for now. More providers can be supported by adding more options to this form. -->
                     <div ng-show="editing==true" class="editalert-form">
                         <label>Send alert to:</label>
@@ -222,7 +222,7 @@ Evergreen Projects
                 </div>
                 <div class="col-lg-2">
                     <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
-                        <i class="icon-trash"></i>
+                        <i class="fa fa-trash"></i>
                     </button>
                 </div>
             </div>
@@ -235,7 +235,7 @@ Evergreen Projects
                 </div>
                 <div class="col-lg-2">
                     <button class="plus-button btn btn-primary " ng-disabled="!(proj_var.name && proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
-                        <i class="icon-plus"></i>
+                        <i class="fa fa-plus"></i>
                     </button>
                 </div>
             </div>

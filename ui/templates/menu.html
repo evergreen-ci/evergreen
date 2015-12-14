@@ -12,9 +12,6 @@
 		</a>
       <button type="button" class="navbar-toggle" data-toggle="collapse"
         data-target="#navbar-collapse-content">
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
       </button>
     </div>
 
@@ -37,7 +34,7 @@
                 <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
                     <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[kv.0]]</b>
                     <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
-                      <i ng-show="p.repotracker_error.exists" style= "color:red" class="icon-exclamation-sign"></i> 
+                      <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i> 
                       [[getName(p)]]
                     </a>
                 </li> 
@@ -46,7 +43,7 @@
             </ul>
         </li>
         <li>
-          <a id="help-btn" href='{{HelpUrl}}'><i class="icon-question-sign"></i></a>
+          <a id="help-btn" href='{{HelpUrl}}'><i class="fa fa-question-circle"></i></a>
         </li>
         {{if .User }}
           <li class="dropdown">

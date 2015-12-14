@@ -30,7 +30,7 @@ Evergreen - Timeline
       <div ng-if="versionActivated(versionData)" class="timeline-builds-list inline">
         <div class="timeline-text row-header">
           <div class="version-info clearfix">
-            <i ng-if="!!version.Errors" class="icon-warning-sign" style="color:red">&nbsp;</i>
+            <i ng-if="!!version.Errors" class="fa fa-warning" style="color:red">&nbsp;</i>
 
             <div class="pull-left">
               <span class="label label-info">Active</span>
@@ -63,7 +63,7 @@ Evergreen - Timeline
       <div ng-if="!versionActivated(versionData)" class="timeline-builds-list inline inactive">
         <div class="timeline-text row-header">
           <div class="version-info">
-            <i ng-if="!!version.Errors" class="icon-warning-sign" style="color:red">&nbsp;</i>
+            <i ng-if="!!version.Errors" class="fa fa-warning" style="color:red">&nbsp;</i>
 
             <div class="pull-left">
               <span class="label label-default">Inactive</span>

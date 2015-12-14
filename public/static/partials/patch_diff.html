@@ -1,4 +1,4 @@
-<h3 id="history-header" class="section-heading"><i class="icon-paste"></i> Patch Status</h3>
+<h3 id="history-header" class="section-heading"><i class="fa fa-paste"></i> Patch Status</h3>
 <div class="mci-pod patch-diff-panel">
   <div ng-show="!diffs.length">
     <h3>No patch status available for this page</h3>
@@ -14,7 +14,7 @@
     </thead>
     <tr ng-repeat="diff in diffs | orderBy:['displayInfo.type', 'diff.patch', 'name', 'build_variant']">
       <td class="text-center">
-        <i ng-class="diff.displayInfo.icon"></i>
+        <i class="fa" ng-class="diff.displayInfo.icon"></i>
       </td>
       <td>
         <a ng-href="[[diff.patchLink]]">

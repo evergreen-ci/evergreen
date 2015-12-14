@@ -23,7 +23,7 @@ Evergreen - My Hosts
     <div id="hosts-info" class="panel" ng-show="!!hosts && hosts.length > 0">
       <div class="panel-heading">
         <h2>
-          <i class="icon-list-alt" style="margin-right:10px"></i>
+          <i class="fa fa-list-alt" style="margin-right:10px"></i>
           Hosts
         </h2>
       </div>
@@ -36,7 +36,7 @@ Evergreen - My Hosts
               </span>
               <strong>
                 [[sortBy.name]]&nbsp;&nbsp;
-                <span class="icon-caret-down"></span>
+                <span class="fa fa-caret-down"></span>
               </strong>
             </button>
             <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
@@ -82,7 +82,7 @@ Evergreen - My Hosts
               </td>
               <td class="col-lg-2">
                 [[host.uptime]]
-                <i class="icon-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
+                <i class="fa fa-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
               </td>
             </tr>
           </tbody>

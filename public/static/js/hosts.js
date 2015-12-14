@@ -42,11 +42,11 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
   };
 
   $scope.selectedClass = function(headerField) {
-    var newIcon = 'icon-sort';
+    var newIcon = 'fa-sort';
     if (headerField.name == $scope.selectedHeader.name) {
-      newIcon = 'icon-sort-up';
+      newIcon = 'fa-sort-up';
       if ($scope.selectedHeader.order) {
-        newIcon =  'icon-sort-down';
+        newIcon = 'fa-sort-down';
       }
     }
     return newIcon;

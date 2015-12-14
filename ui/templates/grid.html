@@ -62,7 +62,7 @@ Evergreen - Grid
         <div class="col-lg-8">
           <div ng-click="toggleView(index)" style="cursor:pointer" > 
             <h4 ng-show="currentFailureView != consts.revisionFailuresView">
-              <i ng-class="getToggleClass(failure.hidden)"></i>
+              <i class="fa" ng-class="getToggleClass(failure.hidden)"></i>
               [[failure.groupingField]] 
               <span class="muted small"> <ng-pluralize count="failure.fields.length" when="{'one': '1 failure', 'other': '{} failures'}"></ng-pluralize></span>
             </h4>
@@ -90,7 +90,7 @@ Evergreen - Grid
               <tr>
                 <th style="width:4%"></th>
                 <th ng-repeat="headerField in currentHeaders" ng-click="setSelectedHeader(headerField)" style="width:[[widthPercentage()]]%"> 
-                  [[headerField.name]] <i ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
+                  [[headerField.name]] <i class="fa" ng-class="selectedClass(headerField)" style="margin-left:2px;"></i>
                 </th> 
               </tr>
             </thead>  

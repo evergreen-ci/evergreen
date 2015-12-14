@@ -47,12 +47,12 @@ directives.patch.directive('patchDiffPanel', function() {
       // there is redundancy here between "success/pass" and "failed/fail"
       // to allow this to work generically with both test and task statuses
       scope.diffTypes = {
-        successfailed:  {icon:"icon-bug", type: 0},
-        passfail:       {icon:"icon-bug", type: 0},
-        failedfailed:   {icon:"icon-question", type: 1},
-        failfail:       {icon:"icon-question", type: 1},
-        failedsuccess:  {icon:"icon-star", type: 2},
-        failpass:       {icon:"icon-star", type: 2},
+        successfailed:  {icon:"fa-bug", type: 0},
+        passfail:       {icon:"fa-bug", type: 0},
+        failedfailed:   {icon:"fa-question", type: 1},
+        failfail:       {icon:"fa-question", type: 1},
+        failedsuccess:  {icon:"fa-star", type: 2},
+        failpass:       {icon:"fa-star", type: 2},
         successsuccess: {icon:"", type: 3},
         passpass:       {icon:"", type: 3},
       };

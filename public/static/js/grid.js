@@ -63,11 +63,11 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   };
 
   $scope.selectedClass = function(headerField) {
-    var newIcon = 'icon-sort';
+    var newIcon = 'fa-sort';
     if (headerField.name == $scope.selectedHeader.name) {
-      newIcon = 'icon-sort-up';
+      newIcon = 'fa-sort-up';
       if ($scope.selectedHeader.order) {
-        newIcon =  'icon-sort-down';
+        newIcon =  'fa-sort-down';
       }
     }
     return newIcon;
@@ -108,7 +108,7 @@ mciModule.controller('VersionMatrixController', function($scope, $window, $locat
   }
 
   $scope.getToggleClass = function(hidden) {
-    return hidden ? "icon-caret-right" : "icon-caret-down";
+    return hidden ? "fa-caret-right" : "fa-caret-down";
   }
 
   // expand all of the current failures
