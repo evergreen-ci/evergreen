@@ -312,7 +312,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   <a href="[[test.url]]" ng-hide="test.url == ''">
                     View Logs
                   </a>
-                  <a href="/test_log/[[test.log_id]]#L[[test.line_num || 0]]" ng-hide="test.url!='' || (test.log_id == '' && test.line_num <= 0)">
+                  <a href="/test_log/[[test.log_id]]#L[[test.line_num || 0]]" ng-hide="test.url!='' || !test.log_id">
                     View Logs
                   </a>
                 </td>
