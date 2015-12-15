@@ -36,7 +36,6 @@ const (
 	TaskUndispatched = "undispatched"
 	TaskDispatched   = "dispatched"
 	TaskFailed       = "failed"
-	TaskCancelled    = "cancelled"
 	TaskSucceeded    = "success"
 
 	TestFailedStatus    = "fail"
@@ -47,19 +46,16 @@ const (
 	BuildCreated   = "created"
 	BuildFailed    = "failed"
 	BuildSucceeded = "success"
-	BuildCancelled = "cancelled"
 
 	VersionStarted   = "started"
 	VersionCreated   = "created"
 	VersionFailed    = "failed"
 	VersionSucceeded = "success"
-	VersionCancelled = "cancelled"
 
 	PatchCreated   = "created"
 	PatchStarted   = "started"
 	PatchSucceeded = "succeeded"
 	PatchFailed    = "failed"
-	PatchCancelled = "cancelled"
 
 	PushLogPushing = "pushing"
 	PushLogSuccess = "success"

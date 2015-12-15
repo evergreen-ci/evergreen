@@ -224,7 +224,6 @@ func (task Task) IsStarted() bool {
 
 func (task Task) IsFinished() bool {
 	return task.Status == evergreen.TaskFailed ||
-		task.Status == evergreen.TaskCancelled ||
 		task.Status == evergreen.TaskSucceeded ||
 		(task.Status == evergreen.TaskUndispatched && task.DispatchTime != ZeroTime)
 }
@@ -574,8 +573,7 @@ func PreviousCompletedTask(task *Task, project string,
 	statuses []string) (*Task, error) {
 
 	if len(statuses) == 0 {
-		statuses = []string{evergreen.TaskCancelled, evergreen.TaskFailed,
-			evergreen.TaskSucceeded}
+		statuses = []string{evergreen.TaskFailed, evergreen.TaskSucceeded}
 	}
 
 	priorRevisions := bson.M{
@@ -615,11 +613,7 @@ func RecentlyFinishedTasks(finishTime time.Time, project string,
 	finishedOpts = append(finishedOpts,
 		bson.M{
 			TaskStatusKey: bson.M{
-				"$in": []string{
-					evergreen.TaskFailed,
-					evergreen.TaskSucceeded,
-					evergreen.TaskCancelled,
-				},
+				"$in": []string{evergreen.TaskFailed, evergreen.TaskSucceeded},
 			},
 		},
 	)

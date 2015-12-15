@@ -58,7 +58,6 @@ type Build struct {
 // Returns whether or not the build has finished, based on its status.
 func (b *Build) IsFinished() bool {
 	return b.Status == evergreen.BuildFailed ||
-		b.Status == evergreen.BuildCancelled ||
 		b.Status == evergreen.BuildSucceeded
 }
 

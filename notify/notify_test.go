@@ -135,19 +135,15 @@ func TestNotify(t *testing.T) {
 					&buildCompletionNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 6 completed notifications
-				So(len(emails), ShouldEqual, 6)
+				So(len(emails), ShouldEqual, 4)
 				So(emails[0].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] Build #build1 completed on displayName")
 				So(emails[1].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] Build #build3 completed on displayName")
 				So(emails[2].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] Build #build4 completed on displayName")
-				So(emails[3].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] Build #build8 completed on displayName")
-				So(emails[4].GetSubject(), ShouldEqual,
+				So(emails[3].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] Build #build9 completed on displayName")
-				So(emails[5].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] Build #build10 completed on displayName")
 			})
 
 			Convey("BuildSuccessToFailureHandler should return 1 email per "+
@@ -203,7 +199,7 @@ func TestNotify(t *testing.T) {
 					&taskCompletionNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 6 completion notifications
-				So(len(emails), ShouldEqual, 6)
+				So(len(emails), ShouldEqual, 4)
 				So(emails[0].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[1].GetSubject(), ShouldEqual,
@@ -211,10 +207,6 @@ func TestNotify(t *testing.T) {
 				So(emails[2].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 				So(emails[3].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
-				So(emails[4].GetSubject(), ShouldEqual,
-					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
-				So(emails[5].GetSubject(), ShouldEqual,
 					"[MCI-COMPLETION ] possible MCI failure in displayName (completed on build1)")
 			})
 
@@ -363,13 +355,6 @@ func insertBuildDocs(priorTime time.Time) {
 		evergreen.BuildSucceeded, time.Now(), time.Now(), time.Duration(50), true,
 		evergreen.RepotrackerVersionRequester, 3)
 
-	// build 4
-	// build cancelled (cancelled)
-	// - buildCompletionHandler
-	insertBuild(buildId+"4", projectId, displayName, buildVariant,
-		evergreen.BuildCancelled, time.Now(), priorTime, time.Duration(50), true,
-		evergreen.RepotrackerVersionRequester, 4)
-
 	// build 5
 	// build not finished
 	insertBuild(buildId+"5", projectId, displayName, buildVariant,
@@ -411,12 +396,6 @@ func insertBuildDocs(priorTime time.Time) {
 		evergreen.BuildFailed, time.Now(), time.Now(), time.Duration(10), true,
 		evergreen.RepotrackerVersionRequester, 9)
 
-	// build 10
-	// build finished (cancelled) from different build variant
-	insertBuild(buildId+"10", projectId, displayName, buildVariant+"_",
-		evergreen.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
-		evergreen.RepotrackerVersionRequester, 10)
-
 	insertVersions()
 }
 
@@ -446,14 +425,6 @@ func insertTaskDocs(priorTime time.Time) {
 	insertTask(taskId+"3", projectId, displayName, buildVariant,
 		evergreen.TaskSucceeded, time.Now(), time.Now(), time.Now(), time.Duration(50),
 		true, evergreen.RepotrackerVersionRequester, 3)
-
-	// task 4
-	// task cancelled (cancelled)
-	// should trigger the following handler(s):
-	// - taskCompletionHandler
-	insertTask(taskId+"4", projectId, displayName, buildVariant,
-		evergreen.TaskCancelled, time.Now(), time.Now(), priorTime, time.Duration(50),
-		true, evergreen.RepotrackerVersionRequester, 4)
 
 	// task 5
 	// task not finished
@@ -494,24 +465,7 @@ func insertTaskDocs(priorTime time.Time) {
 		time.Now().Add(time.Duration(3*time.Minute)), time.Duration(10), true,
 		evergreen.RepotrackerVersionRequester, 9)
 
-	// task 10
-	// task finished (cancelled) from different build variant
-	// should trigger the following handler(s):
-	// - taskCompletionHandler
-	insertTask(taskId+"10", projectId, displayName, buildVariant+"_",
-		evergreen.TaskCancelled, time.Now(), time.Now(),
-		time.Now().Add(time.Duration(-1*time.Minute)), time.Duration(10), true,
-		evergreen.RepotrackerVersionRequester, 10)
-
 	insertVersions()
-
-	insertBuild(buildId+"0", projectId, displayName, buildVariant+"_",
-		evergreen.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
-		evergreen.RepotrackerVersionRequester, 10)
-
-	insertBuild(buildId+"1", projectId, displayName, buildVariant,
-		evergreen.BuildCancelled, time.Now(), time.Now(), time.Duration(10), true,
-		evergreen.RepotrackerVersionRequester, 10)
 }
 
 func insertBuild(id, project, display_name, buildVariant, status string, createTime,
@@ -571,8 +525,8 @@ func insertVersions() {
 	version2 := &version.Version{
 		Id:         "version2",
 		Identifier: "",
-		BuildIds: []string{"build2", "build3", "build4", "build5", "build6",
-			"build7", "build8", "build9", "build10"},
+		BuildIds: []string{"build2", "build3", "build5", "build6",
+			"build7", "build8", "build9"},
 		Author:  "user@mci",
 		Message: "Fixed all the other bugs",
 	}
