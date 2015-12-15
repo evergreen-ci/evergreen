@@ -23,4 +23,4 @@ for i in `seq 0 $((${#OSTARGETS[@]}-1))`; do
 done
 
 # place the correct built agent githash into the appropriate file
-git rev-parse HEAD > "$DESTDIR/version"
+git rev-parse HEAD > `pwd`/executables/version
