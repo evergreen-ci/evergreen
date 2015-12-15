@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"
+
 // FuncOptions are global variables injected into our templating functions.
 type FuncOptions struct {
 	WebHome  string
@@ -136,7 +138,10 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (template.FuncMap, e
 		// HelpUrl returns the address of the Evergreen help page,
 		// if one is set.
 		"HelpUrl": func() string {
-			return fo.HelpHome
+			if fo.HelpHome != "" {
+				return fo.HelpHome
+			}
+			return defaultHelpURL
 		},
 	}
 
