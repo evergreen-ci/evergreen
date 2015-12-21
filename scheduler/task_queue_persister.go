@@ -4,12 +4,13 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 )
 
 // TaskQueuePersister is responsible for taking a task queue for a particular distro
 // and saving it.
 type TaskQueuePersister interface {
-	PersistTaskQueue(distro string, tasks []model.Task,
+	PersistTaskQueue(distro string, tasks []task.Task,
 		taskExpectedDuration model.ProjectTaskDurations) ([]model.TaskQueueItem,
 		error)
 }
@@ -20,24 +21,24 @@ type DBTaskQueuePersister struct{}
 // PersistTaskQueue saves the task queue to the database.
 // Returns an error if the db call returns an error.
 func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
-	tasks []model.Task,
+	tasks []task.Task,
 	taskDurations model.ProjectTaskDurations) ([]model.TaskQueueItem, error) {
 	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
-	for _, task := range tasks {
-		expectedTaskDuration := model.GetTaskExpectedDuration(task, taskDurations)
+	for _, t := range tasks {
+		expectedTaskDuration := model.GetTaskExpectedDuration(t, taskDurations)
 		taskQueue = append(taskQueue, model.TaskQueueItem{
-			Id:                  task.Id,
-			DisplayName:         task.DisplayName,
-			BuildVariant:        task.BuildVariant,
-			RevisionOrderNumber: task.RevisionOrderNumber,
-			Requester:           task.Requester,
-			Revision:            task.Revision,
-			Project:             task.Project,
+			Id:                  t.Id,
+			DisplayName:         t.DisplayName,
+			BuildVariant:        t.BuildVariant,
+			RevisionOrderNumber: t.RevisionOrderNumber,
+			Requester:           t.Requester,
+			Revision:            t.Revision,
+			Project:             t.Project,
 			ExpectedDuration:    expectedTaskDuration,
 		})
-		if err := task.SetExpectedDuration(expectedTaskDuration); err != nil {
+		if err := t.SetExpectedDuration(expectedTaskDuration); err != nil {
 			evergreen.Logger.Errorf(slogger.ERROR, "Error updating projected task "+
-				"duration for %v: %v", task.Id, err)
+				"duration for %v: %v", t.Id, err)
 		}
 	}
 	return taskQueue, model.UpdateTaskQueue(distro, taskQueue)

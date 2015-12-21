@@ -5,6 +5,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/web"
 )
 
@@ -34,7 +35,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 		curr := currentTask
 
 		// get previous task for this project/build variant
-		previousTask, err := model.PreviousCompletedTask(&currentTask, key.Project, []string{})
+		previousTask, err := currentTask.PreviousCompletedTask(key.Project, []string{})
 		if previousTask == nil {
 			evergreen.Logger.Logf(slogger.DEBUG,
 				"No previous completed task found for ”%v” on %v %v notification",
@@ -130,7 +131,7 @@ func (self *TaskSuccessToFailureHandler) GetChangeInfo(
 	if err != nil {
 		return nil, err
 	}
-	allTasks := make([]model.Task, len(intermediateTasks)+1)
+	allTasks := make([]task.Task, len(intermediateTasks)+1)
 
 	// include the current/previous task
 	allTasks[len(allTasks)-1] = *current

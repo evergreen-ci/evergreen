@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -19,7 +20,7 @@ import (
 func reset(t *testing.T) {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 	testutil.HandleTestingErr(
-		db.ClearCollections(model.TasksCollection, model.TestLogCollection), t,
+		db.ClearCollections(task.Collection, model.TestLogCollection), t,
 		"error clearing test collections")
 }
 
@@ -49,12 +50,12 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			// to a temporary directory
 			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			task, _, err := plugintest.SetupAPITestData("testTask", false, t)
+			pluginTask, _, err := plugintest.SetupAPITestData("testTask", false, t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
-			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
-				for _, command := range task.Commands {
+			for _, testTask := range taskConfig.Project.Tasks {
+				So(len(testTask.Commands), ShouldNotEqual, 0)
+				for _, command := range testTask.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
@@ -67,7 +68,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			}
 
 			Convey("and the tests in the task should be updated", func() {
-				updatedTask, err := model.FindTask(task.Id)
+				updatedTask, err := task.FindOne(task.ById(pluginTask.Id))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
 				So(len(updatedTask.TestResults), ShouldEqual, 5)
@@ -115,12 +116,12 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			// to a temporary directory
 			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			task, _, err := plugintest.SetupAPITestData("testTask", false, t)
+			pluginTask, _, err := plugintest.SetupAPITestData("testTask", false, t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
-			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
-				for _, command := range task.Commands {
+			for _, testTask := range taskConfig.Project.Tasks {
+				So(len(testTask.Commands), ShouldNotEqual, 0)
+				for _, command := range testTask.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
@@ -133,7 +134,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			}
 
 			Convey("and the tests in the task should be updated", func() {
-				updatedTask, err := model.FindTask(task.Id)
+				updatedTask, err := task.FindOne(task.ById(pluginTask.Id))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
 				So(len(updatedTask.TestResults), ShouldEqual, 2)
@@ -187,9 +188,9 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 			_, _, err = plugintest.SetupAPITestData("testTask", false, t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
-			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
-				for _, command := range task.Commands {
+			for _, testTask := range taskConfig.Project.Tasks {
+				So(len(testTask.Commands), ShouldNotEqual, 0)
+				for _, command := range testTask.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)

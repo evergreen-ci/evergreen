@@ -3,8 +3,8 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -25,7 +25,7 @@ func TestSetupFuncs(t *testing.T) {
 
 	var taskPrioritizer *CmpBasedTaskPrioritizer
 	var taskIds []string
-	var tasks []model.Task
+	var tasks []task.Task
 
 	Convey("When running the setup funcs for task prioritizing", t, func() {
 
@@ -33,14 +33,14 @@ func TestSetupFuncs(t *testing.T) {
 
 		taskIds = []string{"t1", "t2", "t3"}
 
-		tasks = []model.Task{
-			model.Task{Id: taskIds[0]},
-			model.Task{Id: taskIds[1]},
-			model.Task{Id: taskIds[2]},
+		tasks = []task.Task{
+			task.Task{Id: taskIds[0]},
+			task.Task{Id: taskIds[1]},
+			task.Task{Id: taskIds[2]},
 		}
 
 		testutil.HandleTestingErr(
-			db.ClearCollections(build.Collection, model.TasksCollection),
+			db.ClearCollections(build.Collection, task.Collection),
 			t, "Failed to clear test collections")
 
 		Convey("the previous task caching setup func should fetch and save the"+
@@ -71,7 +71,7 @@ func TestSetupFuncs(t *testing.T) {
 
 			// the previous tasks
 
-			prevTaskOne := &model.Task{
+			prevTaskOne := &task.Task{
 				Id:                  prevTaskIds[0],
 				RevisionOrderNumber: 99,
 				Requester:           evergreen.RepotrackerVersionRequester,
@@ -81,7 +81,7 @@ func TestSetupFuncs(t *testing.T) {
 				Status:              evergreen.TaskFailed,
 			}
 
-			prevTaskTwo := &model.Task{
+			prevTaskTwo := &task.Task{
 				Id:                  prevTaskIds[1],
 				RevisionOrderNumber: 199,
 				Requester:           evergreen.RepotrackerVersionRequester,
@@ -91,7 +91,7 @@ func TestSetupFuncs(t *testing.T) {
 				Status:              evergreen.TaskSucceeded,
 			}
 
-			prevTaskThree := &model.Task{
+			prevTaskThree := &task.Task{
 				Id:                  prevTaskIds[2],
 				RevisionOrderNumber: 299,
 				Requester:           evergreen.RepotrackerVersionRequester,

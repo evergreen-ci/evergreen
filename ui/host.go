@@ -3,9 +3,9 @@ package ui
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
@@ -58,9 +58,9 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	runningTask := &model.Task{}
+	runningTask := &task.Task{}
 	if h.RunningTask != "" {
-		runningTask, err = model.FindTask(h.RunningTask)
+		runningTask, err = task.FindOne(task.ById(h.RunningTask))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -72,7 +72,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		Flashes     []interface{}
 		Events      []event.Event
 		Host        *host.Host
-		RunningTask *model.Task
+		RunningTask *task.Task
 		User        *user.DBUser
 		ProjectData projectContext
 	}{flashes, events, h, runningTask, GetUser(r), projCtx},

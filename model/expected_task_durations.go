@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/evergreen-ci/evergreen/model/task"
 	"time"
 )
 
@@ -39,7 +40,7 @@ type TaskDurations struct {
 
 // GetTaskExpectedDuration returns the expected duration for a given task
 // if the task does not exist, it returns model.DefaultTaskDuration
-func GetTaskExpectedDuration(task Task,
+func GetTaskExpectedDuration(task task.Task,
 	allDurations ProjectTaskDurations) time.Duration {
 	projectDur, ok := allDurations.TaskDurationByProject[task.Project]
 	if ok {

@@ -6,6 +6,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/gorilla/context"
 	"io"
 	"net/http"
@@ -90,7 +91,7 @@ type PluginCommunicator interface {
 	TaskGetJSON(endpoint string) (*http.Response, error)
 
 	// Make a POST request against the results api endpoint
-	TaskPostResults(results *model.TestResults) error
+	TaskPostResults(results *task.TestResults) error
 
 	// Make a POST request against the test_log api endpoint
 	TaskPostTestLog(log *model.TestLog) (string, error)
@@ -217,15 +218,15 @@ const pluginTaskContextKey pluginTaskContext = 0
 
 // SetTask puts the task for an API request into the context of a request.
 // This task can be retrieved in a handler function by using "GetTask()"
-func SetTask(request *http.Request, task *model.Task) {
+func SetTask(request *http.Request, task *task.Task) {
 	context.Set(request, pluginTaskContextKey, task)
 }
 
 // GetTask returns the task object for a plugin API request at runtime,
 // it is a valuable helper function for API PluginRoute handlers.
-func GetTask(request *http.Request) *model.Task {
+func GetTask(request *http.Request) *task.Task {
 	if rv := context.Get(request, pluginTaskContextKey); rv != nil {
-		return rv.(*model.Task)
+		return rv.(*task.Task)
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -118,7 +119,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 		})
 
 		Convey("Calling GetTask() should fetch the task successfully", func() {
-			testTask := &model.Task{Id: "mocktaskid"}
+			testTask := &task.Task{Id: "mocktaskid"}
 			serveMux.HandleFunc("/task/mocktaskid/",
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, testTask, http.StatusOK)

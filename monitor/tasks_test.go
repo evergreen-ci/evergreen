@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -21,7 +22,7 @@ func TestCleanupTask(t *testing.T) {
 	Convey("When cleaning up a task", t, func() {
 
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(model.TasksCollection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection),
 			t, "error clearing tasks collection")
 		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
@@ -30,7 +31,7 @@ func TestCleanupTask(t *testing.T) {
 			" does not contain the task's project", func() {
 
 			wrapper := doomedTaskWrapper{
-				task: model.Task{
+				task: task.Task{
 					Project: "proj",
 				},
 			}
@@ -45,7 +46,7 @@ func TestCleanupTask(t *testing.T) {
 			" the wrong running task id", func() {
 
 			wrapper := doomedTaskWrapper{
-				task: model.Task{
+				task: task.Task{
 					Id:      "t1",
 					HostId:  "h1",
 					Project: "proj",
@@ -72,20 +73,20 @@ func TestCleanupTask(t *testing.T) {
 		Convey("if the task's heartbeat timed out", func() {
 
 			// reset the db
-			testutil.HandleTestingErr(db.ClearCollections(model.TasksCollection),
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection),
 				t, "error clearing tasks collection")
 			testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 				t, "error clearing hosts collection")
 			testutil.HandleTestingErr(db.ClearCollections(build.Collection),
 				t, "error clearing builds collection")
-			testutil.HandleTestingErr(db.ClearCollections(model.OldTasksCollection),
+			testutil.HandleTestingErr(db.ClearCollections(task.OldCollection),
 				t, "error clearing old tasks collection")
 			testutil.HandleTestingErr(db.ClearCollections(version.Collection),
 				t, "error clearing versions collection")
 
 			Convey("the task should be reset", func() {
 
-				task := &model.Task{
+				newTask := &task.Task{
 					Id:       "t1",
 					Status:   "started",
 					HostId:   "h1",
@@ -93,11 +94,11 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				testutil.HandleTestingErr(task.Insert(), t, "error inserting task")
+				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
 
 				wrapper := doomedTaskWrapper{
 					reason: HeartbeatTimeout,
-					task:   *task,
+					task:   *newTask,
 				}
 
 				projects := map[string]model.Project{
@@ -129,17 +130,17 @@ func TestCleanupTask(t *testing.T) {
 				So(cleanUpTask(wrapper, projects), ShouldBeNil)
 
 				// refresh the task - it should be reset
-				task, err := model.FindTask("t1")
+				newTask, err := task.FindOne(task.ById("t1"))
 				So(err, ShouldBeNil)
-				So(task.Status, ShouldEqual, evergreen.TaskUndispatched)
-				So(task.Restarts, ShouldEqual, 2)
+				So(newTask.Status, ShouldEqual, evergreen.TaskUndispatched)
+				So(newTask.Restarts, ShouldEqual, 2)
 
 			})
 
 			Convey("the running task field on the task's host should be"+
 				" reset", func() {
 
-				task := &model.Task{
+				newTask := &task.Task{
 					Id:       "t1",
 					Status:   "started",
 					HostId:   "h1",
@@ -147,11 +148,11 @@ func TestCleanupTask(t *testing.T) {
 					Project:  "proj",
 					Restarts: 1,
 				}
-				testutil.HandleTestingErr(task.Insert(), t, "error inserting task")
+				testutil.HandleTestingErr(newTask.Insert(), t, "error inserting task")
 
 				wrapper := doomedTaskWrapper{
 					reason: HeartbeatTimeout,
-					task:   *task,
+					task:   *newTask,
 				}
 
 				projects := map[string]model.Project{

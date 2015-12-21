@@ -8,9 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/hostutil"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/mgo.v2/bson"
@@ -292,8 +292,8 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, owner string, us
 		Distro:           *d,
 		CreationTime:     newContainer.Created,
 		Status:           evergreen.HostUninitialized,
-		TerminationTime:  model.ZeroTime,
-		TaskDispatchTime: model.ZeroTime,
+		TerminationTime:  util.ZeroTime,
+		TaskDispatchTime: util.ZeroTime,
 		Provider:         ProviderName,
 		StartedBy:        owner,
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
@@ -94,7 +95,7 @@ func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response, err
 }
 
 // TaskPostResults posts a set of test results for the communicator's task.
-func (t *TaskJSONCommunicator) TaskPostResults(results *model.TestResults) error {
+func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error {
 	retriableSendFile := util.RetriableFunc(
 		func() error {
 			resp, err := t.tryPostJSON("results", results)
@@ -281,8 +282,8 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 }
 
 // GetTask returns the communicator's task.
-func (h *HTTPCommunicator) GetTask() (*model.Task, error) {
-	task := &model.Task{}
+func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
+	task := &task.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.tryGet("")

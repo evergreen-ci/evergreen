@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/notify"
@@ -163,7 +164,7 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 
 // MustHaveTask get the task from an HTTP Request.
 // Panics if the task is not in request context.
-func MustHaveTask(r *http.Request) *model.Task {
+func MustHaveTask(r *http.Request) *task.Task {
 	t := GetTask(r)
 	if t == nil {
 		panic("no task attached to request")
@@ -197,12 +198,12 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("missing task id"))
 			return
 		}
-		task, err := model.FindTask(taskId)
+		t, err := task.FindOne(task.ById(taskId))
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if task == nil {
+		if t == nil {
 			as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("task not found"))
 			return
 		}
@@ -211,25 +212,25 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 			secret := r.Header.Get(evergreen.TaskSecretHeader)
 
 			// Check the secret - if it doesn't match, write error back to the client
-			if secret != task.Secret {
-				evergreen.Logger.Logf(slogger.ERROR, "Wrong secret sent for task %v: Expected %v but got %v", taskId, task.Secret, secret)
+			if secret != t.Secret {
+				evergreen.Logger.Logf(slogger.ERROR, "Wrong secret sent for task %v: Expected %v but got %v", taskId, t.Secret, secret)
 				http.Error(w, "wrong secret!", http.StatusConflict)
 				return
 			}
 		}
 
-		context.Set(r, apiTaskKey, task)
+		context.Set(r, apiTaskKey, t)
 		// also set the task in the context visible to plugins
-		plugin.SetTask(r, task)
+		plugin.SetTask(r, t)
 		next(w, r)
 	}
 }
 
 func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 
 	// Get the version for this task, so we can get its config data
-	v, err := version.FindOne(version.ById(task.Version))
+	v, err := version.FindOne(version.ById(t.Version))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -244,9 +245,9 @@ func (as *APIServer) GetVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 
-	p, err := model.FindOneProjectRef(task.Project)
+	p, err := model.FindOneProjectRef(t.Project)
 
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -262,65 +263,65 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 
-	if !getGlobalLock(r.RemoteAddr, task.Id) {
+	if !getGlobalLock(r.RemoteAddr, t.Id) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(r.RemoteAddr, task.Id)
+	defer releaseGlobalLock(r.RemoteAddr, t.Id)
 
-	evergreen.Logger.Logf(slogger.INFO, "Marking task started: %v", task.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Marking task started: %v", t.Id)
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err := util.ReadJSONInto(r.Body, taskStartInfo); err != nil {
-		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", task.Id, err), http.StatusBadRequest)
+		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
 		return
 	}
 
-	if err := task.MarkStart(); err != nil {
-		message := fmt.Errorf("Error marking task '%v' started: %v", task.Id, err)
+	if err := model.MarkStart(t.Id); err != nil {
+		message := fmt.Errorf("Error marking task '%v' started: %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
-	h, err := host.FindOne(host.ByRunningTaskId(task.Id))
+	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
 	if err != nil {
-		message := fmt.Errorf("Error finding host running task %v: %v", task.Id, err)
+		message := fmt.Errorf("Error finding host running task %v: %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	// Fall back to checking host field on task doc
-	if h == nil && len(task.HostId) > 0 {
-		evergreen.Logger.Logf(slogger.DEBUG, "Falling back to host field of task: %v", task.Id)
-		h, err = host.FindOne(host.ById(task.HostId))
+	if h == nil && len(t.HostId) > 0 {
+		evergreen.Logger.Logf(slogger.DEBUG, "Falling back to host field of task: %v", t.Id)
+		h, err = host.FindOne(host.ById(t.HostId))
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		h.SetRunningTask(task.Id, h.AgentRevision, h.TaskDispatchTime)
+		h.SetRunningTask(t.Id, h.AgentRevision, h.TaskDispatchTime)
 	}
 
 	if h == nil {
-		message := fmt.Errorf("No host found running task %v", task.Id)
+		message := fmt.Errorf("No host found running task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	if err := h.SetTaskPid(taskStartInfo.Pid); err != nil {
-		message := fmt.Errorf("Error calling set pid on task %v : %v", task.Id, err)
+		message := fmt.Errorf("Error calling set pid on task %v : %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Task %v started on host %v", task.Id, h.Id))
+	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Task %v started on host %v", t.Id, h.Id))
 }
 
 func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	finishTime := time.Now()
 	taskEndResponse := &apimodels.TaskEndResponse{}
 
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 
 	details := &apimodels.TaskEndDetail{}
 	if err := util.ReadJSONInto(r.Body, details); err != nil {
@@ -332,12 +333,12 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if details.Status != evergreen.TaskSucceeded &&
 		details.Status != evergreen.TaskFailed &&
 		details.Status != evergreen.TaskUndispatched {
-		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, task.Id)
+		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(task.Project)
+	projectRef, err := model.FindOneProjectRef(t.Project)
 
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -354,29 +355,29 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !getGlobalLock(r.RemoteAddr, task.Id) {
+	if !getGlobalLock(r.RemoteAddr, t.Id) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(r.RemoteAddr, task.Id)
+	defer releaseGlobalLock(r.RemoteAddr, t.Id)
 
 	// mark task as finished
-	err = task.MarkEnd(APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
+	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
 	if err != nil {
-		message := fmt.Errorf("Error calling mark finish on task %v : %v", task.Id, err)
+		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
-	if task.Requester != evergreen.PatchVersionRequester {
-		alerts.RunTaskFailureTriggers(task)
+	if t.Requester != evergreen.PatchVersionRequester {
+		alerts.RunTaskFailureTriggers(t)
 	} else {
 		//TODO(EVG-223) process patch-specific triggers
 	}
 
 	// if task was aborted, reset to inactive
 	if details.Status == evergreen.TaskUndispatched {
-		if err = model.SetTaskActivated(task.Id, "", false); err != nil {
+		if err = model.SetActiveState(t.Id, "", false); err != nil {
 			message := fmt.Sprintf("Error deactivating task after abort: %v", err)
 			evergreen.Logger.Logf(slogger.ERROR, message)
 			taskEndResponse.Message = message
@@ -384,29 +385,29 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		as.taskFinished(w, task, finishTime)
+		as.taskFinished(w, t, finishTime)
 		return
 	}
 
 	// update the bookkeeping entry for the task
-	err = bookkeeping.UpdateExpectedDuration(task, task.TimeTaken)
+	err = bookkeeping.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Error updating expected duration: %v",
 			err)
 	}
 
 	// log the task as finished
-	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished", task.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished", t.Id)
 
 	// construct and return the appropriate response for the agent
-	as.taskFinished(w, task, finishTime)
+	as.taskFinished(w, t, finishTime)
 }
 
-func markHostRunningTaskFinished(h *host.Host, task *model.Task, newTaskId string) {
+func markHostRunningTaskFinished(h *host.Host, t *task.Task, newTaskId string) {
 	// update the given host's running_task field accordingly
-	if err := h.UpdateRunningTask(task.Id, newTaskId, time.Now()); err != nil {
+	if err := h.UpdateRunningTask(t.Id, newTaskId, time.Now()); err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error updating running task "+
-			"%v on host %v to '': %v", task.Id, h.Id, err)
+			"%v on host %v to '': %v", t.Id, h.Id, err)
 	}
 }
 
@@ -421,32 +422,32 @@ func markHostRunningTaskFinished(h *host.Host, task *model.Task, newTaskId strin
 // c. There is no currently queued dispatchable and activated task
 // In any of these aforementioned cases, the agent in question should terminate
 // immediately and cease running any tasks on its host.
-func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finishTime time.Time) {
+func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTime time.Time) {
 	taskEndResponse := &apimodels.TaskEndResponse{}
 
 	// a. fetch the host this task just completed on to see if it's
 	// now decommissioned
-	host, err := host.FindOne(host.ByRunningTaskId(task.Id))
+	host, err := host.FindOne(host.ByRunningTaskId(t.Id))
 	if err != nil {
-		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", task.Id,
-			task.HostId, err)
+		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", t.Id,
+			t.HostId, err)
 		evergreen.Logger.Logf(slogger.ERROR, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
 	}
 	if host == nil {
-		message := fmt.Sprintf("Error finding host running for task %v - set to %v", task.Id,
-			task.HostId)
+		message := fmt.Sprintf("Error finding host running for task %v - set to %v", t.Id,
+			t.HostId)
 		evergreen.Logger.Logf(slogger.ERROR, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
 	}
 	if host.Status == evergreen.HostDecommissioned || host.Status == evergreen.HostQuarantined {
-		markHostRunningTaskFinished(host, task, "")
+		markHostRunningTaskFinished(host, t, "")
 		message := fmt.Sprintf("Host %v - running %v - is in state '%v'. Agent will terminate",
-			task.HostId, task.Id, host.Status)
+			t.HostId, t.Id, host.Status)
 		evergreen.Logger.Logf(slogger.INFO, message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
@@ -457,14 +458,14 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 	if err != nil {
-		markHostRunningTaskFinished(host, task, "")
+		markHostRunningTaskFinished(host, t, "")
 		evergreen.Logger.Logf(slogger.ERROR, "failed to get agent revision: %v", err)
 		taskEndResponse.Message = err.Error()
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
 	}
 	if host.AgentRevision != agentRevision {
-		markHostRunningTaskFinished(host, task, "")
+		markHostRunningTaskFinished(host, t, "")
 		message := fmt.Sprintf("Remote agent needs to be rebuilt")
 		evergreen.Logger.Logf(slogger.INFO, message)
 		taskEndResponse.Message = message
@@ -473,23 +474,23 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 	}
 
 	// c. fetch the task's distro queue to dispatch the next pending task
-	nextTask, err := getNextDistroTask(task, host)
+	nextTask, err := getNextDistroTask(t, host)
 	if err != nil {
-		markHostRunningTaskFinished(host, task, "")
+		markHostRunningTaskFinished(host, t, "")
 		evergreen.Logger.Logf(slogger.ERROR, err.Error())
 		taskEndResponse.Message = err.Error()
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
 	}
 	if nextTask == nil {
-		markHostRunningTaskFinished(host, task, "")
+		markHostRunningTaskFinished(host, t, "")
 		taskEndResponse.Message = "No next task on queue"
 	} else {
 		taskEndResponse.Message = "Proceed with next task"
 		taskEndResponse.RunNext = true
 		taskEndResponse.TaskId = nextTask.Id
 		taskEndResponse.TaskSecret = nextTask.Secret
-		markHostRunningTaskFinished(host, task, nextTask.Id)
+		markHostRunningTaskFinished(host, t, nextTask.Id)
 	}
 
 	// give the agent the green light to keep churning
@@ -498,8 +499,8 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, task *model.Task, finis
 
 // getNextDistroTask fetches the next task to run for the given distro and marks
 // the task as dispatched in the given host's document
-func getNextDistroTask(currentTask *model.Task, host *host.Host) (
-	nextTask *model.Task, err error) {
+func getNextDistroTask(currentTask *task.Task, host *host.Host) (
+	nextTask *task.Task, err error) {
 	taskQueue, err := model.FindTaskQueueForDistro(currentTask.DistroId)
 	if err != nil {
 		return nil, fmt.Errorf("Error locating distro queue (%v) for task "+
@@ -526,7 +527,7 @@ func getNextDistroTask(currentTask *model.Task, host *host.Host) (
 // AttachTestLog is the API Server hook for getting
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 	log := &model.TestLog{}
 	err := util.ReadJSONInto(r.Body, log)
 	if err != nil {
@@ -535,8 +536,8 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// enforce proper taskID and Execution
-	log.Task = task.Id
-	log.TaskExecution = task.Execution
+	log.Task = t.Id
+	log.TaskExecution = t.Execution
 
 	if err := log.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -550,15 +551,15 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 
 // AttachResults attaches the received results to the task in the database.
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
-	results := &model.TestResults{}
+	t := MustHaveTask(r)
+	results := &task.TestResults{}
 	err := util.ReadJSONInto(r.Body, results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 	// set test result of task
-	if err := task.SetResults(results.Results); err != nil {
+	if err := t.SetResults(results.Results); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
@@ -568,8 +569,8 @@ func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 // FetchProjectVars is an API hook for returning the project variables
 // associated with a task's project.
 func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
-	projectVars, err := model.FindOneProjectVars(task.Project)
+	t := MustHaveTask(r)
+	projectVars, err := model.FindOneProjectVars(t.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
@@ -584,18 +585,18 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 
 // AttachFiles updates file mappings for a task or build
 func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
-	evergreen.Logger.Logf(slogger.INFO, "Attaching files to task %v", task.Id)
+	t := MustHaveTask(r)
+	evergreen.Logger.Logf(slogger.INFO, "Attaching files to task %v", t.Id)
 
 	entry := &artifact.Entry{
-		TaskId:          task.Id,
-		TaskDisplayName: task.DisplayName,
-		BuildId:         task.BuildId,
+		TaskId:          t.Id,
+		TaskDisplayName: t.DisplayName,
+		BuildId:         t.BuildId,
 	}
 
 	err := util.ReadJSONInto(r.Body, &entry.Files)
 	if err != nil {
-		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", task.Id, err)
+		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		evergreen.Logger.Errorf(slogger.ERROR, message)
 		as.WriteJSON(w, http.StatusBadRequest, message)
 		return
@@ -603,17 +604,17 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("file entry is %#v\n", entry)
 
 	if err := entry.Upsert(); err != nil {
-		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", task.Id, err)
+		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", t.Id, err)
 		evergreen.Logger.Errorf(slogger.ERROR, message)
 		as.WriteJSON(w, http.StatusInternalServerError, message)
 		return
 	}
-	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Artifact files for task %v successfully attached", task.Id))
+	as.WriteJSON(w, http.StatusOK, fmt.Sprintf("Artifact files for task %v successfully attached", t.Id))
 }
 
 // AppendTaskLog appends the received logs to the task's internal logs.
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
 
 	if err := util.ReadJSONInto(r.Body, taskLog); err != nil {
@@ -621,8 +622,8 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	taskLog.TaskId = task.Id
-	taskLog.Execution = task.Execution
+	taskLog.TaskId = t.Id
+	taskLog.Execution = t.Execution
 
 	if err := taskLog.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -634,33 +635,33 @@ func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 
 // FetchTask loads the task from the database and sends it to the requester.
 func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
-	as.WriteJSON(w, http.StatusOK, task)
+	t := MustHaveTask(r)
+	as.WriteJSON(w, http.StatusOK, t)
 }
 
 // GetDistro loads the task's distro and sends it to the requester.
 func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 
 	// Get the distro for this task
-	h, err := host.FindOne(host.ByRunningTaskId(task.Id))
+	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
 	// Fall back to checking host field on task doc
-	if h == nil && len(task.HostId) > 0 {
-		h, err = host.FindOne(host.ById(task.HostId))
+	if h == nil && len(t.HostId) > 0 {
+		h, err = host.FindOne(host.ById(t.HostId))
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		h.SetRunningTask(task.Id, h.AgentRevision, h.TaskDispatchTime)
+		h.SetRunningTask(t.Id, h.AgentRevision, h.TaskDispatchTime)
 	}
 
 	if h == nil {
-		message := fmt.Errorf("No host found running task %v", task.Id)
+		message := fmt.Errorf("No host found running task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -673,15 +674,15 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 // Heartbeat handles heartbeat pings from Evergreen agents. If the heartbeating
 // task is marked to be aborted, the abort response is sent.
 func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
-	task := MustHaveTask(r)
+	t := MustHaveTask(r)
 
 	heartbeatResponse := apimodels.HeartbeatResponse{}
-	if task.Aborted {
+	if t.Aborted {
 		//evergreen.Logger.Logf(slogger.INFO, "Sending abort signal for task %v", task.Id)
 		heartbeatResponse.Abort = true
 	}
 
-	if err := task.UpdateHeartbeat(); err != nil {
+	if err := t.UpdateHeartbeat(); err != nil {
 		//evergreen.Logger.Errorf(slogger.ERROR, "Error updating heartbeat for task %v : %v", task.Id, err)
 	}
 	as.WriteJSON(w, http.StatusOK, heartbeatResponse)
@@ -700,9 +701,9 @@ func GetUser(r *http.Request) *user.DBUser {
 }
 
 // GetTask loads the task attached to a request.
-func GetTask(r *http.Request) *model.Task {
+func GetTask(r *http.Request) *task.Task {
 	if rv := context.Get(r, apiTaskKey); rv != nil {
-		return rv.(*model.Task)
+		return rv.(*task.Task)
 	}
 	return nil
 }

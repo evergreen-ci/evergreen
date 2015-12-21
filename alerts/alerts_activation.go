@@ -1,34 +1,14 @@
 package alerts
 
 import (
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
 	"time"
 )
-
-// TODO once model/task.go becomes a model/task package, this should be subsumed into there.
-func lastFinishedQ(projectId, taskName, variant string, beforeRevNum int) db.Q {
-	return db.Query(
-		bson.M{
-			model.TaskDisplayNameKey: taskName,
-			model.TaskStatusKey: bson.M{
-				"$in": []string{
-					evergreen.TaskFailed,
-					evergreen.TaskSucceeded,
-				},
-			},
-			model.TaskBuildVariantKey: variant,
-			model.TaskRevisionOrderNumberKey: bson.M{
-				"$lt": beforeRevNum,
-			},
-		},
-	).Sort([]string{"-" + model.TaskRevisionOrderNumberKey}).Limit(1)
-}
 
 func RunLastRevisionNotFoundTrigger(proj *model.ProjectRef, v *version.Version) error {
 	ctx := triggerContext{
@@ -58,8 +38,8 @@ func RunLastRevisionNotFoundTrigger(proj *model.ProjectRef, v *version.Version) 
 }
 
 // RunTaskTriggers queues alerts for any active triggers on the tasks's state change.
-func RunTaskFailureTriggers(task *model.Task) error {
-	ctx, err := getTaskTriggerContext(task)
+func RunTaskFailureTriggers(t *task.Task) error {
+	ctx, err := getTaskTriggerContext(t)
 	if err != nil {
 		return err
 	}
@@ -71,11 +51,11 @@ func RunTaskFailureTriggers(task *model.Task) error {
 		req := &alert.AlertRequest{
 			Id:        bson.NewObjectId(),
 			Trigger:   trigger.Id(),
-			TaskId:    task.Id,
-			Execution: task.Execution,
-			BuildId:   task.BuildId,
-			VersionId: task.Version,
-			ProjectId: task.Project,
+			TaskId:    t.Id,
+			Execution: t.Execution,
+			BuildId:   t.BuildId,
+			VersionId: t.Version,
+			ProjectId: t.Project,
 			PatchId:   "",
 			CreatedAt: time.Now(),
 		}
@@ -141,15 +121,18 @@ func RunSpawnWarningTriggers(host *host.Host) error {
 	return nil
 }
 
-func getTaskTriggerContext(task *model.Task) (*triggerContext, error) {
-	ctx := triggerContext{task: task}
-	tasks, err := model.FindTasks(lastFinishedQ(task.Project, task.DisplayName, task.BuildVariant, task.RevisionOrderNumber))
+func getTaskTriggerContext(t *task.Task) (*triggerContext, error) {
+	ctx := triggerContext{task: t}
+	t, err := task.FindOne(task.ByBeforeRevision(t.RevisionOrderNumber, t.BuildVariant,
+		t.DisplayName, t.Project, t.Requester).
+		Sort([]string{"-" + task.RevisionOrderNumberKey}))
 	if err != nil {
 		return nil, err
 	}
-	if len(tasks) > 0 {
-		ctx.previousCompleted = &tasks[0]
+	if t != nil {
+		ctx.previousCompleted = t
 	}
+
 	return &ctx, nil
 }
 

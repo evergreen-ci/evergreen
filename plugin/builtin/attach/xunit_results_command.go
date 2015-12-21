@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/attach/xunit"
 	"github.com/mitchellh/mapstructure"
@@ -99,7 +100,7 @@ func getFilePaths(workDir string, file string) ([]string, error) {
 func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 	taskConfig *model.TaskConfig, pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator) error {
-	tests := []model.TestResult{}
+	tests := []task.TestResult{}
 	logs := []*model.TestLog{}
 	logIdxToTestIdx := []int{}
 
@@ -148,5 +149,5 @@ func (self *AttachXUnitResultsCommand) parseAndUploadResults(
 		tests[logIdxToTestIdx[i]].LineNum = 1
 	}
 
-	return SendJSONResults(taskConfig, pluginLogger, pluginCom, &model.TestResults{tests})
+	return SendJSONResults(taskConfig, pluginLogger, pluginCom, &task.TestResults{tests})
 }

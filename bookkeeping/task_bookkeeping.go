@@ -5,7 +5,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"time"
@@ -93,11 +93,11 @@ func upsertOneTaskBk(matcher interface{}, update interface{}) error {
 
 // update the expected duration that we expect the given task to take when run on the
 // given host
-func UpdateExpectedDuration(task *model.Task, timeTaken time.Duration) error {
+func UpdateExpectedDuration(t *task.Task, timeTaken time.Duration) error {
 	matcher := bson.M{
-		"name":          task.DisplayName,
-		"build_variant": task.BuildVariant,
-		"branch":        task.Project,
+		"name":          t.DisplayName,
+		"build_variant": t.BuildVariant,
+		"branch":        t.Project,
 	}
 	taskBk, err := findOneTaskBk(matcher, bson.M{})
 	if err != nil {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"sort"
 )
 
@@ -14,20 +14,20 @@ type TaskPrioritizer interface {
 	// Takes in a slice of tasks and the current MCI settings.
 	// Returns the slice of tasks, sorted in the order in which they should
 	// be run, as well as an error if appropriate.
-	PrioritizeTasks(settings *evergreen.Settings, tasks []model.Task) (
-		[]model.Task, error)
+	PrioritizeTasks(settings *evergreen.Settings, tasks []task.Task) (
+		[]task.Task, error)
 }
 
 // CmpBasedTaskPrioritizer runs the tasks through a slice of comparator functions
 // determining which is more important.
 type CmpBasedTaskPrioritizer struct {
-	tasks          []model.Task
+	tasks          []task.Task
 	errsDuringSort []error
 	setupFuncs     []sortSetupFunc
 	comparators    []taskPriorityCmp
 
 	// caches for sorting
-	previousTasksCache map[string]model.Task
+	previousTasksCache map[string]task.Task
 
 	// cache the number of tasks that have failed in other buildvariants; tasks
 	// with the same revision, project, display name and requester
@@ -59,13 +59,13 @@ func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
 func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
-	settings *evergreen.Settings, tasks []model.Task) ([]model.Task, error) {
+	settings *evergreen.Settings, tasks []task.Task) ([]task.Task, error) {
 
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
 	repoTrackerTasks, patchTasks := self.splitTasksByRequester(tasks)
-	prioritizedTaskLists := make([][]model.Task, 0, 2)
-	for _, taskList := range [][]model.Task{repoTrackerTasks, patchTasks} {
+	prioritizedTaskLists := make([][]task.Task, 0, 2)
+	for _, taskList := range [][]task.Task{repoTrackerTasks, patchTasks} {
 
 		self.tasks = taskList
 
@@ -109,7 +109,7 @@ func (self *CmpBasedTaskPrioritizer) setupForSortingTasks() error {
 // the comparator functions and returning the first definitive decision on which
 // is more important.
 func (self *CmpBasedTaskPrioritizer) taskMoreImportantThan(task1,
-	task2 model.Task) (bool, error) {
+	task2 task.Task) (bool, error) {
 
 	// run through the comparators, and return the first definitive decision on
 	// which task is more important
@@ -158,10 +158,10 @@ func (self *CmpBasedTaskPrioritizer) Swap(i, j int) {
 // Returns two slices - the tasks requested by the repotracker, and the tasks
 // requested in a patch.
 func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
-	allTasks []model.Task) ([]model.Task, []model.Task) {
+	allTasks []task.Task) ([]task.Task, []task.Task) {
 
-	repoTrackerTasks := make([]model.Task, 0, len(allTasks))
-	patchTasks := make([]model.Task, 0, len(allTasks))
+	repoTrackerTasks := make([]task.Task, 0, len(allTasks))
+	patchTasks := make([]task.Task, 0, len(allTasks))
 
 	for _, task := range allTasks {
 		switch task.Requester {
@@ -181,9 +181,9 @@ func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
 func (self *CmpBasedTaskPrioritizer) mergeTasks(settings *evergreen.Settings,
-	repoTrackerTasks []model.Task, patchTasks []model.Task) []model.Task {
+	repoTrackerTasks []task.Task, patchTasks []task.Task) []task.Task {
 
-	mergedTasks := make([]model.Task, 0, len(repoTrackerTasks)+len(patchTasks))
+	mergedTasks := make([]task.Task, 0, len(repoTrackerTasks)+len(patchTasks))
 
 	toggle := settings.Scheduler.MergeToggle
 	if toggle == 0 {

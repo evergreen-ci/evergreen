@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"time"
 )
 
@@ -26,7 +26,7 @@ type taskFlaggingFunc func() ([]doomedTaskWrapper, error)
 // reason it is being cleaned up
 type doomedTaskWrapper struct {
 	// the task to be cleaned up
-	task model.Task
+	task task.Task
 	// why the task is being cleaned up
 	reason string
 }
@@ -40,7 +40,7 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 	// fetch any running tasks whose last heartbeat was too long in the past
 	threshold := time.Now().Add(-HeartbeatTimeoutThreshold)
 
-	tasks, err := model.FindTasksWithNoHeartbeatSince(threshold)
+	tasks, err := task.Find(task.ByRunningLastHeartbeat(threshold))
 	if err != nil {
 		return nil, fmt.Errorf("error finding tasks with timed-out"+
 			" heartbeats: %v", err)

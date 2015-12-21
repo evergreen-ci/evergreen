@@ -7,9 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"path/filepath"
@@ -28,7 +28,7 @@ const (
 type HostGateway interface {
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	RunTaskOnHost(*evergreen.Settings, model.Task, host.Host) (string, error)
+	RunTaskOnHost(*evergreen.Settings, task.Task, host.Host) (string, error)
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -47,7 +47,7 @@ type AgentBasedHostGateway struct {
 // machine.
 // Returns an error if any step along the way fails.
 func (self *AgentBasedHostGateway) RunTaskOnHost(settings *evergreen.Settings,
-	taskToRun model.Task, hostObj host.Host) (string, error) {
+	taskToRun task.Task, hostObj host.Host) (string, error) {
 
 	// cache mci home
 	evgHome := evergreen.FindEvergreenHome()
@@ -233,7 +233,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 // the specified task.
 // Returns an error if starting the agent remotely fails.
 func (self *AgentBasedHostGateway) startAgentOnRemote(
-	settings *evergreen.Settings, task *model.Task,
+	settings *evergreen.Settings, task *task.Task,
 	hostObj *host.Host, sshOptions []string) error {
 
 	// the path to the agent binary on the remote machine

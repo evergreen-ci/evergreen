@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 	"strconv"
 	"testing"
@@ -578,25 +579,16 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			},
 		}
 
-		So(db.Clear(model.TasksCollection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 
 		Convey("the total duration of running tasks with similar start times "+
 			" should be the total of the remaining time using estimates from "+
 			"the project task duration data for running tasks", func() {
 			// tasks running on hosts
-			runningTasks := []model.Task{
-				model.Task{
-					Id:        runningTaskIds[0],
-					StartTime: startTimeOne,
-				},
-				model.Task{
-					Id:        runningTaskIds[1],
-					StartTime: startTimeOne,
-				},
-				model.Task{
-					Id:        runningTaskIds[2],
-					StartTime: startTimeOne,
-				},
+			runningTasks := []task.Task{
+				{Id: runningTaskIds[0], StartTime: startTimeOne},
+				{Id: runningTaskIds[1], StartTime: startTimeOne},
+				{Id: runningTaskIds[2], StartTime: startTimeOne},
 			}
 
 			for _, runningTask := range runningTasks {
@@ -638,31 +630,13 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			}
 
 			// tasks running on hosts
-			runningTasks := []model.Task{
-				model.Task{
-					Id:        runningTaskIds[0],
-					StartTime: startTimeThree,
-				},
-				model.Task{
-					Id:        runningTaskIds[1],
-					StartTime: startTimeTwo,
-				},
-				model.Task{
-					Id:        runningTaskIds[2],
-					StartTime: startTimeOne,
-				},
-				model.Task{
-					Id:        runningTaskIds[3],
-					StartTime: startTimeTwo,
-				},
-				model.Task{
-					Id:        runningTaskIds[4],
-					StartTime: startTimeOne,
-				},
-				model.Task{
-					Id:        runningTaskIds[5],
-					StartTime: startTimeThree,
-				},
+			runningTasks := []task.Task{
+				{Id: runningTaskIds[0], StartTime: startTimeThree},
+				{Id: runningTaskIds[1], StartTime: startTimeTwo},
+				{Id: runningTaskIds[2], StartTime: startTimeOne},
+				{Id: runningTaskIds[3], StartTime: startTimeTwo},
+				{Id: runningTaskIds[4], StartTime: startTimeOne},
+				{Id: runningTaskIds[5], StartTime: startTimeThree},
 			}
 
 			for _, runningTask := range runningTasks {
@@ -691,21 +665,10 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			}
 
 			// tasks running on hosts
-			runningTasks := []model.Task{
-				model.Task{
-					Id:          runningTaskIds[0],
-					StartTime:   startTimeThree,
-					DisplayName: "unknown",
-				},
-				model.Task{
-					Id:        runningTaskIds[1],
-					StartTime: startTimeTwo,
-				},
-				model.Task{
-					Id:          runningTaskIds[2],
-					StartTime:   startTimeOne,
-					DisplayName: "unknown",
-				},
+			runningTasks := []task.Task{
+				{Id: runningTaskIds[0], StartTime: startTimeThree, DisplayName: "unknown"},
+				{Id: runningTaskIds[1], StartTime: startTimeTwo},
+				{Id: runningTaskIds[2], StartTime: startTimeOne, DisplayName: "unknown"},
 			}
 
 			for _, runningTask := range runningTasks {
@@ -731,19 +694,10 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			}
 
 			// tasks running on hosts
-			runningTasks := []model.Task{
-				model.Task{
-					Id:        runningTaskIds[0],
-					StartTime: startTimeOne,
-				},
-				model.Task{
-					Id:        runningTaskIds[1],
-					StartTime: startTimeOne.Add(-time.Duration(4) * time.Hour),
-				},
-				model.Task{
-					Id:        runningTaskIds[2],
-					StartTime: startTimeTwo,
-				},
+			runningTasks := []task.Task{
+				{Id: runningTaskIds[0], StartTime: startTimeOne},
+				{Id: runningTaskIds[1], StartTime: startTimeOne.Add(-time.Duration(4) * time.Hour)},
+				{Id: runningTaskIds[2], StartTime: startTimeTwo},
 			}
 
 			for _, runningTask := range runningTasks {
@@ -931,7 +885,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 			},
 		}
 
-		So(db.Clear(model.TasksCollection), ShouldBeNil)
+		So(db.Clear(task.Collection), ShouldBeNil)
 
 		Convey("if there are no tasks to run, no new hosts should be needed",
 			func() {
@@ -1119,7 +1073,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := model.Task{Id: runningTaskId}
+				task := task.Task{Id: runningTaskId}
 				So(task.Insert(), ShouldBeNil)
 			}
 
@@ -1187,7 +1141,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := model.Task{Id: runningTaskId}
+				task := task.Task{Id: runningTaskId}
 				So(task.Insert(), ShouldBeNil)
 			}
 
@@ -1353,7 +1307,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := model.Task{Id: runningTaskId}
+				task := task.Task{Id: runningTaskId}
 				So(task.Insert(), ShouldBeNil)
 			}
 
@@ -1406,7 +1360,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := model.Task{Id: runningTaskId}
+				task := task.Task{Id: runningTaskId}
 				So(task.Insert(), ShouldBeNil)
 			}
 
@@ -1465,7 +1419,7 @@ func TestDurationBasedHostAllocator(t *testing.T) {
 
 			// tasks running on hosts
 			for _, runningTaskId := range runningTaskIds {
-				task := model.Task{Id: runningTaskId}
+				task := task.Task{Id: runningTaskId}
 				So(task.Insert(), ShouldBeNil)
 			}
 
