@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/context"
@@ -112,7 +113,7 @@ type UIPanel struct {
 type UIContext struct {
 	Settings   evergreen.Settings
 	User       *user.DBUser
-	Task       *model.Task
+	Task       *task.Task
 	Build      *build.Build
 	Version    *version.Version
 	Patch      *patch.Patch

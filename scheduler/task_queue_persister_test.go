@@ -4,6 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -33,7 +34,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 	var projects []string
 	var taskIds []string
 	var durations []time.Duration
-	var tasks []model.Task
+	var tasks []task.Task
 
 	Convey("With a DBTaskQueuePersister", t, func() {
 
@@ -53,8 +54,8 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			time.Duration(4) * time.Minute,
 		}
 
-		tasks = []model.Task{
-			model.Task{
+		tasks = []task.Task{
+			task.Task{
 				Id:                  taskIds[0],
 				DisplayName:         displayNames[0],
 				BuildVariant:        buildVariants[0],
@@ -63,7 +64,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[0],
 				Project:             projects[0],
 			},
-			model.Task{
+			task.Task{
 				Id:                  taskIds[1],
 				DisplayName:         displayNames[1],
 				BuildVariant:        buildVariants[1],
@@ -72,7 +73,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[1],
 				Project:             projects[1],
 			},
-			model.Task{
+			task.Task{
 				Id:                  taskIds[2],
 				DisplayName:         displayNames[2],
 				BuildVariant:        buildVariants[2],
@@ -81,7 +82,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[2],
 				Project:             projects[2],
 			},
-			model.Task{
+			task.Task{
 				Id:                  taskIds[3],
 				DisplayName:         displayNames[3],
 				BuildVariant:        buildVariants[3],
@@ -90,7 +91,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[3],
 				Project:             projects[3],
 			},
-			model.Task{
+			task.Task{
 				Id:                  taskIds[4],
 				DisplayName:         displayNames[4],
 				BuildVariant:        buildVariants[4],
@@ -148,11 +149,11 @@ func TestDBTaskQueuePersister(t *testing.T) {
 			"correct ordering of tasks along with the relevant average task "+
 			"completion times", func() {
 			_, err := taskQueuePersister.PersistTaskQueue(distroIds[0],
-				[]model.Task{tasks[0], tasks[1], tasks[2]},
+				[]task.Task{tasks[0], tasks[1], tasks[2]},
 				durationMappings)
 			So(err, ShouldBeNil)
 			_, err = taskQueuePersister.PersistTaskQueue(distroIds[1],
-				[]model.Task{tasks[3], tasks[4]},
+				[]task.Task{tasks[3], tasks[4]},
 				durationMappings)
 			So(err, ShouldBeNil)
 

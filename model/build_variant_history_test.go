@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -37,7 +38,7 @@ func createVersion(order int, project string, buildVariants []string) error {
 }
 
 func createTask(id string, order int, project string, buildVariant string, gitspec string) error {
-	task := &Task{}
+	task := &task.Task{}
 	task.BuildVariant = buildVariant
 	task.RevisionOrderNumber = order
 	task.Project = project

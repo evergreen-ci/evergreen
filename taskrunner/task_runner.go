@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"path/filepath"
 	"sync"
 	"time"
@@ -106,8 +107,7 @@ func (self *TaskRunner) Run() error {
 					evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
 						" on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
 
-					// record that the task as undispatched on the host
-					if err := nextTask.MarkAsUndispatched(&nextHost); err != nil {
+					if err := model.MarkTaskUndispatched(nextTask); err != nil {
 						evergreen.Logger.Logf(slogger.ERROR, "error marking task %v as undispatched "+
 							"on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
 					}
@@ -140,7 +140,7 @@ func (self *TaskRunner) Run() error {
 // DispatchTaskForHost assigns the task at the head of the task queue to the
 // given host, dequeues the task and then marks it as dispatched for the host
 func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
-	nextTask *model.Task, err error) {
+	nextTask *task.Task, err error) {
 	if assignedHost == nil {
 		return nil, fmt.Errorf("can not assign task to a nil host")
 	}
@@ -150,7 +150,7 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 		queueItem := taskQueue.NextTask()
 		// pin the task to the given host and fetch the full task document from
 		// the database
-		nextTask, err = model.FindTask(queueItem.Id)
+		nextTask, err = task.FindOne(task.ById(queueItem.Id))
 		if err != nil {
 			return nil, fmt.Errorf("error finding task with id %v: %v",
 				queueItem.Id, err)
@@ -178,12 +178,9 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 		}
 
 		// record that the task was dispatched on the host
-		err = nextTask.MarkAsDispatched(assignedHost, time.Now())
-		if err != nil {
-			return nil, fmt.Errorf("error marking task %v as dispatched "+
-				"on host %v: %v", nextTask.Id, assignedHost.Id, err)
+		if err := model.MarkTaskDispatched(nextTask, assignedHost.Id, assignedHost.Distro.Id); err != nil {
+			return nil, err
 		}
-
 		return nextTask, nil
 	}
 	return nil, nil
@@ -192,7 +189,7 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 // Determines whether or not a task should be skipped over by the
 // task runner. Checks if the task is not undispatched, as a sanity check that
 // it is not already running.
-func shouldSkipTask(task *model.Task) bool {
+func shouldSkipTask(task *task.Task) bool {
 	return task.Status != evergreen.TaskUndispatched || !task.Activated
 }
 

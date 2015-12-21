@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"io"
 	"strings"
 	"time"
@@ -47,12 +48,12 @@ func ParseXMLResults(reader io.Reader) (XUnitResults, error) {
 }
 
 // ToModelTestResultAndLog converts an xunit test case into an
-// mci model.TestResult and model.TestLog. Logs are only
+// mci task.TestResult and model.TestLog. Logs are only
 // generated if the test case did not succeed (this is part of
 // the xunit xml file design)
-func (tc TestCase) ToModelTestResultAndLog(task *model.Task) (model.TestResult, *model.TestLog) {
+func (tc TestCase) ToModelTestResultAndLog(t *task.Task) (task.TestResult, *model.TestLog) {
 
-	res := model.TestResult{}
+	res := task.TestResult{}
 	var log *model.TestLog
 
 	if tc.ClassName != "" {
@@ -86,8 +87,8 @@ func (tc TestCase) ToModelTestResultAndLog(task *model.Task) (model.TestResult, 
 
 	if log != nil {
 		log.Name = res.TestFile
-		log.Task = task.Id
-		log.TaskExecution = task.Execution
+		log.Task = t.Id
+		log.TaskExecution = t.Execution
 
 		// update the URL of the result to the expected log URL
 		res.URL = log.URL()

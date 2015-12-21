@@ -3,9 +3,9 @@ package alerts
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -20,7 +20,7 @@ func init() {
 }
 
 // Used as a template for task objects inserted/queried on within this file
-var testTask = &model.Task{
+var testTask = &task.Task{
 	Id:                  "testTask",
 	Status:              evergreen.TaskFailed,
 	DisplayName:         "compile",
@@ -40,7 +40,7 @@ func hasTrigger(triggers []Trigger, t Trigger) bool {
 }
 
 func TestEmptyTaskTriggers(t *testing.T) {
-	db.Clear(model.TasksCollection)
+	db.Clear(task.Collection)
 	db.Clear(alertrecord.Collection)
 	Convey("With no existing tasks in the database", t, func() {
 		Convey("a newly failed task should return all triggers", func() {
@@ -82,12 +82,12 @@ func TestEmptyTaskTriggers(t *testing.T) {
 
 func TestExistingPassedTaskTriggers(t *testing.T) {
 	Convey("With a previously passing instance of task in the database", t, func() {
-		db.Clear(model.TasksCollection)
+		db.Clear(task.Collection)
 		db.Clear(alertrecord.Collection)
 		testTask.Status = evergreen.TaskSucceeded
 		err := testTask.Insert()
 		So(err, ShouldBeNil)
-		t2 := &model.Task{
+		t2 := &task.Task{
 			Id:                  "testTask2",
 			Status:              evergreen.TaskFailed,
 			DisplayName:         testTask.DisplayName,
@@ -128,12 +128,12 @@ func TestExistingPassedTaskTriggers(t *testing.T) {
 
 func TestExistingFailedTaskTriggers(t *testing.T) {
 	Convey("With a previously failed instance of task in the database", t, func() {
-		db.Clear(model.TasksCollection)
+		db.Clear(task.Collection)
 		testTask.Status = evergreen.TaskFailed
 		err := testTask.Insert()
 		So(err, ShouldBeNil)
 		Convey("a newly failed task should trigger TaskFailed but *not* TaskFailTransition", func() {
-			t2 := &model.Task{
+			t2 := &task.Task{
 				Id:                  "testTask2",
 				Status:              evergreen.TaskFailed,
 				DisplayName:         testTask.DisplayName,

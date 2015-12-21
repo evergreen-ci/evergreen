@@ -6,11 +6,11 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
@@ -127,7 +127,7 @@ func TestCLIFunctions(t *testing.T) {
 								patches, err := ac.GetPatches()
 								So(err, ShouldBeNil)
 								// After cancelling, tasks in the version should be deactivated
-								tasks, err := model.FindTasks(db.Query(bson.M{model.TaskVersionKey: patches[0].Version}))
+								tasks, err := task.Find(task.ByVersion(patches[0].Version))
 								So(err, ShouldBeNil)
 								for _, t := range tasks {
 									So(t.Activated, ShouldBeFalse)

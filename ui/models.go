@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"gopkg.in/mgo.v2/bson"
@@ -74,7 +75,7 @@ type uiPatch struct {
 
 type uiHost struct {
 	Host        host.Host
-	RunningTask *model.Task
+	RunningTask *task.Task
 }
 
 type uiBuild struct {
@@ -89,12 +90,12 @@ type uiBuild struct {
 }
 
 type uiTask struct {
-	Task          model.Task
+	Task          task.Task
 	Gitspec       string
 	BuildDisplay  string
 	TaskLog       []model.LogMessage
-	NextTasks     []model.Task
-	PreviousTasks []model.Task
+	NextTasks     []task.Task
+	PreviousTasks []task.Task
 	Elapsed       time.Duration
 	StartTime     int64
 }
@@ -118,13 +119,13 @@ func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
 
 		//Use the build's task cache, instead of querying for each individual task.
 		uiTasks := make([]uiTask, len(build.Tasks))
-		for taskIdx, task := range build.Tasks {
-			uiTasks[taskIdx] = uiTask{
-				Task: model.Task{
-					Id:          task.Id,
-					Status:      task.Status,
-					Details:     task.StatusDetails,
-					DisplayName: task.DisplayName,
+		for i, t := range build.Tasks {
+			uiTasks[i] = uiTask{
+				Task: task.Task{
+					Id:          t.Id,
+					Status:      t.Status,
+					Details:     t.StatusDetails,
+					DisplayName: t.DisplayName,
 				},
 			}
 		}
@@ -333,7 +334,7 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 
 		uiHosts[idx] = host
 		// get the task running on this host
-		task, err := model.FindTask(dbHost.RunningTask)
+		task, err := task.FindOne(task.ById(dbHost.RunningTask))
 		if err != nil {
 			return nil, err
 		}

@@ -8,9 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/hostutil"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"math"
 	"math/rand"
@@ -95,8 +95,8 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
 		Status:           evergreen.HostUninitialized,
-		TerminationTime:  model.ZeroTime,
-		TaskDispatchTime: model.ZeroTime,
+		TerminationTime:  util.ZeroTime,
+		TaskDispatchTime: util.ZeroTime,
 		Provider:         ProviderName,
 		StartedBy:        owner,
 	}

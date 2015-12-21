@@ -288,7 +288,7 @@ func (gapc *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
 // servePatch is the API hook for returning patch data as json
 func servePatch(w http.ResponseWriter, r *http.Request) {
 	task := plugin.GetTask(r)
-	patch, err := task.FetchPatch()
+	patch, err := patch.FindOne(patch.ByVersion(task.Version))
 	if err != nil {
 		msg := fmt.Sprintf("error fetching patch for task %v from db: %v", task.Id, err)
 		evergreen.Logger.Logf(slogger.ERROR, msg)

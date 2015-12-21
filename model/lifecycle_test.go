@@ -4,10 +4,10 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
 	"testing"
 	"time"
 )
@@ -16,7 +16,7 @@ func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 }
 
-func taskIdInSlice(tasks []Task, id string) bool {
+func taskIdInSlice(tasks []task.Task, id string) bool {
 	for _, task := range tasks {
 		if task.Id == id {
 			return true
@@ -29,7 +29,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 	Convey("With a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
 			"Error clearing test collection")
 
 		b := &build.Build{
@@ -37,13 +37,13 @@ func TestBuildSetPriority(t *testing.T) {
 		}
 		So(b.Insert(), ShouldBeNil)
 
-		taskOne := &Task{Id: "taskOne", BuildId: b.Id}
+		taskOne := &task.Task{Id: "taskOne", BuildId: b.Id}
 		So(taskOne.Insert(), ShouldBeNil)
 
-		taskTwo := &Task{Id: "taskTwo", BuildId: b.Id}
+		taskTwo := &task.Task{Id: "taskTwo", BuildId: b.Id}
 		So(taskTwo.Insert(), ShouldBeNil)
 
-		taskThree := &Task{Id: "taskThree", BuildId: b.Id}
+		taskThree := &task.Task{Id: "taskThree", BuildId: b.Id}
 		So(taskThree.Insert(), ShouldBeNil)
 
 		Convey("setting its priority should update the priority"+
@@ -51,15 +51,7 @@ func TestBuildSetPriority(t *testing.T) {
 
 			So(SetBuildPriority(b.Id, 42), ShouldBeNil)
 
-			tasks, err := FindAllTasks(
-				bson.M{
-					TaskBuildIdKey: b.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			tasks, err := task.Find(task.ByBuildId(b.Id))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 3)
 			So(tasks[0].Priority, ShouldEqual, 42)
@@ -74,7 +66,7 @@ func TestBuildSetPriority(t *testing.T) {
 func TestBuildRestart(t *testing.T) {
 	Convey("Restarting a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
 			"Error clearing test collection")
 		b := &build.Build{
 			Id: "build",
@@ -106,7 +98,7 @@ func TestBuildRestart(t *testing.T) {
 		Convey("with task abort should update the status of"+
 			" non in-progress tasks and abort in-progress ones", func() {
 
-			taskOne := &Task{
+			taskOne := &task.Task{
 				Id:          "task1",
 				DisplayName: "task1",
 				BuildId:     b.Id,
@@ -114,7 +106,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskOne.Insert(), ShouldBeNil)
 
-			taskTwo := &Task{
+			taskTwo := &task.Task{
 				Id:          "task2",
 				DisplayName: "task2",
 				BuildId:     b.Id,
@@ -131,10 +123,10 @@ func TestBuildRestart(t *testing.T) {
 			So(b.Tasks[1].Status, ShouldEqual, evergreen.TaskDispatched)
 			So(b.Tasks[0].Activated, ShouldEqual, true)
 			So(b.Tasks[1].Activated, ShouldEqual, true)
-			taskOne, err = FindTask("task1")
+			taskOne, err = task.FindOne(task.ById("task1"))
 			So(err, ShouldBeNil)
 			So(taskOne.Status, ShouldEqual, evergreen.TaskUndispatched)
-			taskTwo, err = FindTask("task2")
+			taskTwo, err = task.FindOne(task.ById("task2"))
 			So(err, ShouldBeNil)
 			So(taskTwo.Aborted, ShouldEqual, true)
 		})
@@ -142,7 +134,7 @@ func TestBuildRestart(t *testing.T) {
 		Convey("without task abort should update the status"+
 			" of only those build tasks not in-progress", func() {
 
-			taskThree := &Task{
+			taskThree := &task.Task{
 				Id:          "task3",
 				DisplayName: "task3",
 				BuildId:     b.Id,
@@ -150,7 +142,7 @@ func TestBuildRestart(t *testing.T) {
 			}
 			So(taskThree.Insert(), ShouldBeNil)
 
-			taskFour := &Task{
+			taskFour := &task.Task{
 				Id:          "task4",
 				DisplayName: "task4",
 				BuildId:     b.Id,
@@ -168,10 +160,10 @@ func TestBuildRestart(t *testing.T) {
 			So(b.Tasks[3].Status, ShouldEqual, evergreen.TaskDispatched)
 			So(b.Tasks[2].Activated, ShouldEqual, true)
 			So(b.Tasks[3].Activated, ShouldEqual, true)
-			taskThree, err = FindTask("task3")
+			taskThree, err = task.FindOne(task.ById("task3"))
 			So(err, ShouldBeNil)
 			So(taskThree.Status, ShouldEqual, evergreen.TaskUndispatched)
-			taskFour, err = FindTask("task4")
+			taskFour, err = task.FindOne(task.ById("task4"))
 			So(err, ShouldBeNil)
 			So(taskFour.Aborted, ShouldEqual, false)
 			So(taskFour.Status, ShouldEqual, evergreen.TaskDispatched)
@@ -183,7 +175,7 @@ func TestBuildRestart(t *testing.T) {
 func TestBuildMarkAborted(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection, version.Collection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection, version.Collection), t,
 			"Error clearing test collection")
 
 		v := &version.Version{
@@ -221,28 +213,28 @@ func TestBuildMarkAborted(t *testing.T) {
 				// for the correct build, and one abortable task for
 				// a different build
 
-				abortableOne := &Task{
+				abortableOne := &task.Task{
 					Id:      "abortableOne",
 					BuildId: b.Id,
 					Status:  evergreen.TaskStarted,
 				}
 				So(abortableOne.Insert(), ShouldBeNil)
 
-				abortableTwo := &Task{
+				abortableTwo := &task.Task{
 					Id:      "abortableTwo",
 					BuildId: b.Id,
 					Status:  evergreen.TaskDispatched,
 				}
 				So(abortableTwo.Insert(), ShouldBeNil)
 
-				notAbortable := &Task{
+				notAbortable := &task.Task{
 					Id:      "notAbortable",
 					BuildId: b.Id,
 					Status:  evergreen.TaskSucceeded,
 				}
 				So(notAbortable.Insert(), ShouldBeNil)
 
-				wrongBuildId := &Task{
+				wrongBuildId := &task.Task{
 					Id:      "wrongBuildId",
 					BuildId: "blech",
 					Status:  evergreen.TaskStarted,
@@ -254,16 +246,7 @@ func TestBuildMarkAborted(t *testing.T) {
 
 				So(AbortBuild(b.Id, evergreen.DefaultTaskActivator), ShouldBeNil)
 
-				abortedTasks, err := FindAllTasks(
-					bson.M{
-						TaskAbortedKey: true,
-					},
-					db.NoProjection,
-					db.NoSort,
-					db.NoSkip,
-					db.NoLimit,
-				)
-
+				abortedTasks, err := task.Find(task.ByAborted(true))
 				So(err, ShouldBeNil)
 				So(len(abortedTasks), ShouldEqual, 2)
 				So(taskIdInSlice(abortedTasks, abortableOne.Id), ShouldBeTrue)
@@ -276,7 +259,7 @@ func TestBuildMarkAborted(t *testing.T) {
 func TestBuildSetActivated(t *testing.T) {
 	Convey("With a build", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
 			"Error clearing test collection")
 
 		Convey("when changing the activated status of the build to true", func() {
@@ -295,7 +278,7 @@ func TestBuildSetActivated(t *testing.T) {
 				// insert three tasks, with only one of them undispatched and
 				// belonging to the correct build
 
-				wrongBuildId := &Task{
+				wrongBuildId := &task.Task{
 					Id:        "wrongBuildId",
 					BuildId:   "blech",
 					Status:    evergreen.TaskUndispatched,
@@ -303,7 +286,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(wrongBuildId.Insert(), ShouldBeNil)
 
-				wrongStatus := &Task{
+				wrongStatus := &task.Task{
 					Id:        "wrongStatus",
 					BuildId:   b.Id,
 					Status:    evergreen.TaskDispatched,
@@ -311,7 +294,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(wrongStatus.Insert(), ShouldBeNil)
 
-				matching := &Task{
+				matching := &task.Task{
 					Id:        "matching",
 					BuildId:   b.Id,
 					Status:    evergreen.TaskUndispatched,
@@ -320,7 +303,7 @@ func TestBuildSetActivated(t *testing.T) {
 
 				So(matching.Insert(), ShouldBeNil)
 
-				differentUser := &Task{
+				differentUser := &task.Task{
 					Id:          "differentUser",
 					BuildId:     b.Id,
 					Status:      evergreen.TaskUndispatched,
@@ -338,19 +321,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 
 				// only the matching task should have been updated that has not been set by a user
-				deactivatedTasks, err := FindAllTasks(
-					bson.M{TaskActivatedKey: false},
-					db.NoProjection,
-					db.NoSort,
-					db.NoSkip,
-					db.NoLimit,
-				)
+				deactivatedTasks, err := task.Find(task.ByActivation(false))
 				So(err, ShouldBeNil)
 				So(len(deactivatedTasks), ShouldEqual, 1)
 				So(deactivatedTasks[0].Id, ShouldEqual, matching.Id)
 
 				// task with the different user activating should be activated with that user
-				differentUserTask, err := FindTask(differentUser.Id)
+				differentUserTask, err := task.FindOne(task.ById(differentUser.Id))
 				So(err, ShouldBeNil)
 				So(differentUserTask.Activated, ShouldBeTrue)
 				So(differentUserTask.ActivatedBy, ShouldEqual, user)
@@ -390,10 +367,10 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(b.Insert(), ShouldBeNil)
 
-				t1 := &Task{Id: "tc1", DisplayName: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
-				t2 := &Task{Id: "tc2", DisplayName: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
-				t3 := &Task{Id: "tc3", DisplayName: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
-				t4 := &Task{Id: "tc4", DisplayName: "tc4", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: "anotherUser"}
+				t1 := &task.Task{Id: "tc1", DisplayName: "tc1", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
+				t2 := &task.Task{Id: "tc2", DisplayName: "tc2", BuildId: b.Id, Status: evergreen.TaskDispatched, Activated: true}
+				t3 := &task.Task{Id: "tc3", DisplayName: "tc3", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true}
+				t4 := &task.Task{Id: "tc4", DisplayName: "tc4", BuildId: b.Id, Status: evergreen.TaskUndispatched, Activated: true, ActivatedBy: "anotherUser"}
 				So(t1.Insert(), ShouldBeNil)
 				So(t2.Insert(), ShouldBeNil)
 				So(t3.Insert(), ShouldBeNil)
@@ -421,7 +398,7 @@ func TestBuildSetActivated(t *testing.T) {
 
 				So(b.Insert(), ShouldBeNil)
 
-				matching := &Task{
+				matching := &task.Task{
 					Id:        "matching",
 					BuildId:   b.Id,
 					Status:    evergreen.TaskUndispatched,
@@ -429,7 +406,7 @@ func TestBuildSetActivated(t *testing.T) {
 				}
 				So(matching.Insert(), ShouldBeNil)
 
-				matching2 := &Task{
+				matching2 := &task.Task{
 					Id:        "matching2",
 					BuildId:   b.Id,
 					Status:    evergreen.TaskUndispatched,
@@ -441,13 +418,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(SetBuildActivation(b.Id, true, user), ShouldBeNil)
 
 				// task with the different user activating should be activated with that user
-				task1, err := FindTask(matching.Id)
+				task1, err := task.FindOne(task.ById(matching.Id))
 				So(err, ShouldBeNil)
 				So(task1.Activated, ShouldBeTrue)
 				So(task1.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task2, err := FindTask(matching2.Id)
+				task2, err := task.FindOne(task.ById(matching2.Id))
 				So(err, ShouldBeNil)
 				So(task2.Activated, ShouldBeTrue)
 				So(task2.ActivatedBy, ShouldEqual, user)
@@ -466,13 +443,13 @@ func TestBuildSetActivated(t *testing.T) {
 				So(b.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task1, err = FindTask(matching.Id)
+				task1, err = task.FindOne(task.ById(matching.Id))
 				So(err, ShouldBeNil)
 				So(task1.Activated, ShouldBeTrue)
 				So(task1.ActivatedBy, ShouldEqual, user)
 
 				// task with the different user activating should be activated with that user
-				task2, err = FindTask(matching2.Id)
+				task2, err = task.FindOne(task.ById(matching2.Id))
 				So(err, ShouldBeNil)
 				So(task2.Activated, ShouldBeTrue)
 				So(task2.ActivatedBy, ShouldEqual, user)
@@ -552,7 +529,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 
 	Convey("When creating a build from a version", t, func() {
 
-		testutil.HandleTestingErr(db.ClearCollections(build.Collection, TasksCollection), t,
+		testutil.HandleTestingErr(db.ClearCollections(build.Collection, task.Collection), t,
 			"Error clearing test collection")
 
 		// the mock build variant we'll be using. runs all three tasks
@@ -684,13 +661,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(buildId2, ShouldNotEqual, "")
 
 			// find the tasks, make sure they were all created
-			tasks, err := FindAllTasks(
-				bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			tasks, err := task.Find(task.All)
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 8)
 			So(len(tasks[0].Tags), ShouldEqual, 2)
@@ -706,13 +677,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(buildId, ShouldNotEqual, "")
 
 			// find the tasks, make sure they were all created
-			tasks, err := FindAllTasks(
-				bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			tasks, err := task.Find(task.All)
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 2)
 
@@ -726,13 +691,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(buildId, ShouldNotEqual, "")
 
 			// find the tasks, make sure they were all created
-			tasks, err := FindAllTasks(
-				bson.M{},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			tasks, err := task.Find(task.All)
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 4)
 
@@ -772,13 +731,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(buildId3, ShouldNotEqual, "")
 
 			// find the tasks, make sure they were all created
-			tasks, err := FindAllTasks(
-				bson.M{},
-				db.NoProjection,
-				[]string{"display_name", "build_variant"},
-				db.NoSkip,
-				db.NoLimit,
-			)
+			tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey, task.BuildVariantKey}))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 9)
 
@@ -789,27 +742,27 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(tasks[0].Priority, ShouldEqual, 5)
 			So(tasks[1].Priority, ShouldEqual, 5)
 			So(tasks[2].DependsOn, ShouldResemble,
-				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
+				[]task.Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
 
 			// taskB
 			So(tasks[3].DependsOn, ShouldResemble,
-				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
+				[]task.Dependency{{tasks[0].Id, evergreen.TaskSucceeded}})
 			So(tasks[4].DependsOn, ShouldResemble,
-				[]Dependency{{tasks[0].Id, evergreen.TaskSucceeded}}) //cross-variant
+				[]task.Dependency{{tasks[0].Id, evergreen.TaskSucceeded}}) //cross-variant
 			So(tasks[3].Priority, ShouldEqual, 0)
 			So(tasks[4].Priority, ShouldEqual, 0) //default priority
 
 			// taskC
 			So(tasks[5].DependsOn, ShouldResemble,
-				[]Dependency{
+				[]task.Dependency{
 					{tasks[0].Id, evergreen.TaskSucceeded},
 					{tasks[3].Id, evergreen.TaskSucceeded}})
 			So(tasks[6].DependsOn, ShouldResemble,
-				[]Dependency{
+				[]task.Dependency{
 					{tasks[1].Id, evergreen.TaskSucceeded},
 					{tasks[4].Id, evergreen.TaskSucceeded}})
 			So(tasks[7].DependsOn, ShouldResemble,
-				[]Dependency{
+				[]task.Dependency{
 					{tasks[0].Id, evergreen.TaskSucceeded},
 					{tasks[3].Id, evergreen.TaskSucceeded},
 					{tasks[5].Id, evergreen.TaskSucceeded}})
@@ -858,13 +811,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			// find the tasks, make sure they were all created
-			tasks, err := FindAllTasks(
-				bson.M{},
-				db.NoProjection,
-				[]string{"display_name"},
-				db.NoSkip,
-				db.NoLimit,
-			)
+			tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey}))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 4)
 
@@ -954,13 +901,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 				So(build.Activated, ShouldBeTrue)
 
 				// find the tasks, make sure they were all created
-				tasks, err := FindAllTasks(
-					bson.M{},
-					db.NoProjection,
-					[]string{"display_name"},
-					db.NoSkip,
-					db.NoLimit,
-				)
+				tasks, err := task.Find(task.All.Sort([]string{task.DisplayNameKey}))
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 4)
 
@@ -1055,23 +996,23 @@ func TestDeletingBuild(t *testing.T) {
 		Convey("deleting it should remove it and all its associated"+
 			" tasks from the database", func() {
 
-			testutil.HandleTestingErr(db.ClearCollections(TasksCollection), t, "Error"+
-				" clearing '%v' collection", TasksCollection)
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "Error"+
+				" clearing '%v' collection", task.Collection)
 
 			// insert two tasks that are part of the build, and one that isn't
-			matchingTaskOne := &Task{
+			matchingTaskOne := &task.Task{
 				Id:      "matchingOne",
 				BuildId: b.Id,
 			}
 			So(matchingTaskOne.Insert(), ShouldBeNil)
 
-			matchingTaskTwo := &Task{
+			matchingTaskTwo := &task.Task{
 				Id:      "matchingTwo",
 				BuildId: b.Id,
 			}
 			So(matchingTaskTwo.Insert(), ShouldBeNil)
 
-			nonMatchingTask := &Task{
+			nonMatchingTask := &task.Task{
 				Id:      "nonMatching",
 				BuildId: "blech",
 			}
@@ -1085,23 +1026,11 @@ func TestDeletingBuild(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(b, ShouldBeNil)
 
-			matchingTasks, err := FindAllTasks(
-				bson.M{TaskBuildIdKey: "build"},
-				db.NoProjection,
-				db.NoSort,
-				db.NoSkip,
-				db.NoLimit,
-			)
+			matchingTasks, err := task.Find(task.ByBuildId("build"))
 			So(err, ShouldBeNil)
 			So(len(matchingTasks), ShouldEqual, 0)
 
-			nonMatchingTask, err = FindOneTask(
-				bson.M{
-					TaskIdKey: nonMatchingTask.Id,
-				},
-				db.NoProjection,
-				db.NoSort,
-			)
+			nonMatchingTask, err = task.FindOne(task.ById(nonMatchingTask.Id))
 			So(err, ShouldBeNil)
 			So(nonMatchingTask, ShouldNotBeNil)
 		})
@@ -1110,21 +1039,21 @@ func TestDeletingBuild(t *testing.T) {
 
 func TestSetNumDeps(t *testing.T) {
 	Convey("setNumDeps correctly sets NumDependents for each task", t, func() {
-		tasks := []*Task{
-			&Task{
+		tasks := []*task.Task{
+			&task.Task{
 				Id: "task1",
 			},
-			&Task{
+			&task.Task{
 				Id:        "task2",
-				DependsOn: []Dependency{{TaskId: "task1"}},
+				DependsOn: []task.Dependency{{TaskId: "task1"}},
 			},
-			&Task{
+			&task.Task{
 				Id:        "task3",
-				DependsOn: []Dependency{{TaskId: "task1"}},
+				DependsOn: []task.Dependency{{TaskId: "task1"}},
 			},
-			&Task{
+			&task.Task{
 				Id:        "task4",
-				DependsOn: []Dependency{{TaskId: "task2"}, {TaskId: "task3"}, {TaskId: "not_here"}},
+				DependsOn: []task.Dependency{{TaskId: "task2"}, {TaskId: "task3"}, {TaskId: "not_here"}},
 			},
 		}
 		setNumDeps(tasks)
@@ -1139,18 +1068,18 @@ func TestSetNumDeps(t *testing.T) {
 func TestSortTasks(t *testing.T) {
 	Convey("sortTasks topologically sorts tasks by dependency", t, func() {
 		Convey("for tasks with single dependencies", func() {
-			tasks := []Task{
+			tasks := []task.Task{
 				{
 					Id:          "idA",
 					DisplayName: "A",
-					DependsOn: []Dependency{
+					DependsOn: []task.Dependency{
 						{TaskId: "idB"},
 					},
 				},
 				{
 					Id:          "idB",
 					DisplayName: "B",
-					DependsOn: []Dependency{
+					DependsOn: []task.Dependency{
 						{TaskId: "idC"},
 					},
 				},
@@ -1167,11 +1096,11 @@ func TestSortTasks(t *testing.T) {
 			So(sortedTasks[2].DisplayName, ShouldEqual, "A")
 		})
 		Convey("for tasks with multiplie dependencies", func() {
-			tasks := []Task{
+			tasks := []task.Task{
 				{
 					Id:          "idA",
 					DisplayName: "A",
-					DependsOn: []Dependency{
+					DependsOn: []task.Dependency{
 						{TaskId: "idB"},
 						{TaskId: "idC"},
 					},
@@ -1179,7 +1108,7 @@ func TestSortTasks(t *testing.T) {
 				{
 					Id:          "idB",
 					DisplayName: "B",
-					DependsOn: []Dependency{
+					DependsOn: []task.Dependency{
 						{TaskId: "idC"},
 					},
 				},
@@ -1198,25 +1127,25 @@ func TestSortTasks(t *testing.T) {
 	})
 
 	Convey("grouping tasks by common dependencies and sorting alphabetically within groups", t, func() {
-		tasks := []Task{
+		tasks := []task.Task{
 			{
 				Id:          "idA",
 				DisplayName: "A",
-				DependsOn: []Dependency{
+				DependsOn: []task.Dependency{
 					{TaskId: "idE"},
 				},
 			},
 			{
 				Id:          "idB",
 				DisplayName: "B",
-				DependsOn: []Dependency{
+				DependsOn: []task.Dependency{
 					{TaskId: "idD"},
 				},
 			},
 			{
 				Id:          "idC",
 				DisplayName: "C",
-				DependsOn: []Dependency{
+				DependsOn: []task.Dependency{
 					{TaskId: "idD"},
 				},
 			},
@@ -1240,11 +1169,11 @@ func TestSortTasks(t *testing.T) {
 	})
 
 	Convey("special-casing tasks with cross-variant dependencies to the far right", t, func() {
-		tasks := []Task{
+		tasks := []task.Task{
 			{
 				Id:          "idA",
 				DisplayName: "A",
-				DependsOn: []Dependency{
+				DependsOn: []task.Dependency{
 					{TaskId: "idB"},
 					{TaskId: "idC"},
 				},
@@ -1252,14 +1181,14 @@ func TestSortTasks(t *testing.T) {
 			{
 				Id:          "idB",
 				DisplayName: "B",
-				DependsOn: []Dependency{
+				DependsOn: []task.Dependency{
 					{TaskId: "idC"},
 				},
 			},
 			{
 				Id:          "idC",
 				DisplayName: "C",
-				DependsOn: []Dependency{
+				DependsOn: []task.Dependency{
 					{TaskId: "cross-variant"},
 				},
 			},
@@ -1279,16 +1208,16 @@ func TestSortTasks(t *testing.T) {
 		Convey("when there are cross-variant dependencies on different tasks", func() {
 
 			tasks = append(tasks,
-				Task{
+				task.Task{
 					Id:          "idE",
 					DisplayName: "E",
-					DependsOn: []Dependency{
+					DependsOn: []task.Dependency{
 						{TaskId: "cross-variant2"},
 					}},
-				Task{
+				task.Task{
 					Id:          "idF",
 					DisplayName: "F",
-					DependsOn: []Dependency{
+					DependsOn: []task.Dependency{
 						{TaskId: "idE"},
 					}})
 			sortedTasks = sortTasks(tasks)

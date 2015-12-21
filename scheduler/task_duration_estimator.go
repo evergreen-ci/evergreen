@@ -3,12 +3,13 @@ package scheduler
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 )
 
 // TaskDurationEstimator is responsible for fetching the expected duration for a
 // given set of runnable tasks.
 type TaskDurationEstimator interface {
-	GetExpectedDurations(runnableTasks []model.Task) (
+	GetExpectedDurations(runnableTasks []task.Task) (
 		model.ProjectTaskDurations, error)
 }
 
@@ -19,40 +20,40 @@ type DBTaskDurationEstimator struct{}
 // GetExpectedDurations returns the expected duration of tasks
 // (by display name) on a project, buildvariant basis.
 func (self *DBTaskDurationEstimator) GetExpectedDurations(
-	runnableTasks []model.Task) (model.ProjectTaskDurations, error) {
+	runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
 	durations := model.ProjectTaskDurations{}
 
 	// get the average task duration for all the runnable tasks
-	for _, task := range runnableTasks {
+	for _, t := range runnableTasks {
 		if durations.TaskDurationByProject == nil {
 			durations.TaskDurationByProject =
 				make(map[string]*model.BuildVariantTaskDurations)
 		}
 
-		_, ok := durations.TaskDurationByProject[task.Project]
+		_, ok := durations.TaskDurationByProject[t.Project]
 		if !ok {
-			durations.TaskDurationByProject[task.Project] =
+			durations.TaskDurationByProject[t.Project] =
 				&model.BuildVariantTaskDurations{}
 		}
 
-		projectDurations := durations.TaskDurationByProject[task.Project]
+		projectDurations := durations.TaskDurationByProject[t.Project]
 		if projectDurations.TaskDurationByBuildVariant == nil {
-			durations.TaskDurationByProject[task.Project].
+			durations.TaskDurationByProject[t.Project].
 				TaskDurationByBuildVariant = make(map[string]*model.TaskDurations)
 		}
 
-		_, ok = projectDurations.TaskDurationByBuildVariant[task.BuildVariant]
+		_, ok = projectDurations.TaskDurationByBuildVariant[t.BuildVariant]
 		if !ok {
-			expTaskDurationByDisplayName, err := model.ExpectedTaskDuration(
-				task.Project, task.BuildVariant,
+			expTaskDurationByDisplayName, err := task.ExpectedTaskDuration(
+				t.Project, t.BuildVariant,
 				model.TaskCompletionEstimateWindow)
 			if err != nil {
 				return durations, fmt.Errorf("Error fetching "+
 					"expected task duration for %v on %v: %v",
-					task.BuildVariant, task.Project, err)
+					t.BuildVariant, t.Project, err)
 			}
-			durations.TaskDurationByProject[task.Project].
-				TaskDurationByBuildVariant[task.BuildVariant] =
+			durations.TaskDurationByProject[t.Project].
+				TaskDurationByBuildVariant[t.BuildVariant] =
 				&model.TaskDurations{expTaskDurationByDisplayName}
 		}
 	}
