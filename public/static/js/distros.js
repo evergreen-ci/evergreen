@@ -23,6 +23,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
     'id': 'windows_amd64',
     'display': 'Windows 64-bit'
   }, {
+    'id': 'ppc_amd64',
+    'display': 'PowerPC 64-bit'
+  }, {
     'id': 'windows_386',
     'display': 'Windows 32-bit'
   }, {
