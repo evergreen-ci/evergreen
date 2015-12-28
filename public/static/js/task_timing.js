@@ -435,7 +435,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         .on("click", function(scope){
             return function(){
                 scope.locked = !scope.locked
-                //scope.digest()
+                scope.digest()
             }
         }($scope))
         .on("mousemove", function(){
@@ -455,8 +455,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
             // set the focus's location to be the location of the closest point
             focus.attr("cx", scaledX($scope.taskData[i], i))
             .attr("cy", scaledY($scope.taskData[i]));
-
-            //$scope.$digest();
+            $scope.$digest();
         });          
     }
 
