@@ -2,8 +2,10 @@ package ui
 
 import (
 	"fmt"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
@@ -37,7 +39,7 @@ type UITask struct {
 	Status        string    `json:"status"`
 }
 
-//UITask has the fields that are necessary to send over the wire for tasks
+//UIBuild has the fields that are necessary to send over the wire for builds
 type UIBuild struct {
 	Id         string            `json:"id"`
 	CreateTime time.Time         `json:"create_time"`
@@ -47,6 +49,14 @@ type UIBuild struct {
 	Status     string            `json:"status"`
 	Tasks      []build.TaskCache `json:"tasks"`
 	TimeTaken  int64             `json:"time_taken"`
+}
+
+// UIStats is all of the data that the stats page might need.
+type UIStats struct {
+	Tasks    []*UITask         `json:"tasks"`
+	Builds   []*UIBuild        `json:"builds"`
+	Versions []version.Version `json:"versions"`
+	Patches  []patch.Patch     `json:"patches"`
 }
 
 func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
@@ -105,129 +115,105 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("build variant %v not found", buildVariant))
 		return
 	}
+	var versionIds []string
+	data := UIStats{}
 
-	foundTask := false
-	if taskName == "compile" || taskName == "push" {
-		foundTask = true
+	// if its all tasks find the build
+	if taskName == "" {
+		// TODO: switch this to be a query on the builds TaskCache
+		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request).
+			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
+			build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey).
+			Limit(limit))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		versionIds = make([]string, 0, len(builds))
+		uiBuilds := []*UIBuild{}
+		// get the versions for every single task that was returned
+		for _, build := range builds {
+
+			// create a UITask
+			b := &UIBuild{
+				Id:         build.Id,
+				CreateTime: build.CreateTime,
+				StartTime:  build.StartTime,
+				FinishTime: build.FinishTime,
+				Version:    build.Version,
+				Status:     build.Status,
+				TimeTaken:  int64(build.TimeTaken),
+				Tasks:      build.Tasks,
+			}
+			uiBuilds = append(uiBuilds, b)
+			versionIds = append(versionIds, b.Version)
+		}
+
+		data.Builds = uiBuilds
+
 	} else {
+		foundTask := false
+
 		for _, task := range bv.Tasks {
 			if task.Name == taskName {
 				foundTask = true
 				break
 			}
 		}
-	}
-	if !foundTask {
-		uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("no task named '%v'", taskName))
-		return
-	}
 
-	tasks, err := model.FindCompletedTasksByVariantAndName(projCtx.Project.Identifier,
-		buildVariant, taskName, request, limit, beforeTaskId)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusNotFound, err)
-		return
-	}
-	versions := []*version.Version{}
-	uiTasks := []*UITask{}
-	fmt.Println(len(tasks))
-	// get the versions for every single task that was returned
-	for _, task := range tasks {
-		// create a UITask
-		t := &UITask{
-			Id:            task.Id,
-			CreateTime:    task.CreateTime,
-			DispatchTime:  task.DispatchTime,
-			PushTime:      task.PushTime,
-			ScheduledTime: task.ScheduledTime,
-			StartTime:     task.StartTime,
-			FinishTime:    task.FinishTime,
-			Version:       task.Version,
-			Status:        task.Status,
+		if !foundTask {
+			uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("no task named '%v'", taskName))
+			return
 		}
-		uiTasks = append(uiTasks, t)
 
-		// find the version and append it as well
-		v, err := version.FindOne(version.ById(task.Version))
+		tasks, err := model.FindCompletedTasksByVariantAndName(projCtx.Project.Identifier,
+			buildVariant, taskName, request, limit, beforeTaskId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusNotFound, err)
+			return
+		}
+
+		uiTasks := []*UITask{}
+		versionIds = make([]string, 0, len(tasks))
+		// get the versions for every single task that was returned
+		for _, task := range tasks {
+			// create a UITask
+			t := &UITask{
+				Id:            task.Id,
+				CreateTime:    task.CreateTime,
+				DispatchTime:  task.DispatchTime,
+				PushTime:      task.PushTime,
+				ScheduledTime: task.ScheduledTime,
+				StartTime:     task.StartTime,
+				FinishTime:    task.FinishTime,
+				Version:       task.Version,
+				Status:        task.Status,
+			}
+			uiTasks = append(uiTasks, t)
+			versionIds = append(versionIds, task.Version)
+		}
+		data.Tasks = uiTasks
+	}
+
+	// Populate the versions field if with commits, otherwise patches field
+	if request == evergreen.RepotrackerVersionRequester {
+		versions, err := version.Find(version.ByIds(versionIds).
+			WithFields(version.IdKey, version.CreateTimeKey, version.MessageKey, version.AuthorKey, version.RevisionKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		if v == nil {
-			uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("No version found for task %v", task.Id))
-		}
-
-		versions = append(versions, v)
-
-	}
-	data := struct {
-		Tasks    []*UITask          `json:"tasks"`
-		Versions []*version.Version `json:"versions"`
-	}{uiTasks, versions}
-	uis.WriteJSON(w, http.StatusOK, data)
-}
-
-// allTasksJSON sends over the total times for a certain buildvariant
-func (uis *UIServer) buildJSON(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	limit, err := getIntValue(r, "limit", 50)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	buildVariant := mux.Vars(r)["build_variant"]
-	request := mux.Vars(r)["request"]
-
-	if projCtx.Project == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("not found"))
-		return
-	}
-
-	// TODO: switch this to be a query on the builds TaskCache
-	builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request).
-		WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
-		build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey).
-		Limit(limit))
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, err)
-		return
-	}
-
-	versions := []*version.Version{}
-	uiBuilds := []*UIBuild{}
-	// get the versions for every single task that was returned
-	for _, build := range builds {
-
-		// create a UITask
-		b := &UIBuild{
-			Id:         build.Id,
-			CreateTime: build.CreateTime,
-			StartTime:  build.StartTime,
-			FinishTime: build.FinishTime,
-			Version:    build.Version,
-			Status:     build.Status,
-			TimeTaken:  int64(build.TimeTaken),
-			Tasks:      build.Tasks,
-		}
-		uiBuilds = append(uiBuilds, b)
-
-		v, err := version.FindOne(version.ById(build.Version))
+		data.Versions = versions
+	} else {
+		// patches
+		patches, err := patch.Find(patch.ByVersions(versionIds).
+			WithFields(patch.IdKey, patch.CreateTimeKey, patch.DescriptionKey, patch.AuthorKey))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
-		if v == nil {
-			uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("No version found for build %v", build.Id))
-		}
-
-		versions = append(versions, v)
-
+		data.Patches = patches
 	}
-	data := struct {
-		Builds   []*UIBuild         `json:"tasks"`
-		Versions []*version.Version `json:"versions"`
-	}{uiBuilds, versions}
+
 	uis.WriteJSON(w, http.StatusOK, data)
 }

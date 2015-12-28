@@ -86,9 +86,14 @@ func ByUserProjectAndGitspec(user string, project string, gitspec string) db.Q {
 	})
 }
 
-// ByUser produces a query that returns the patch for a given version.
+// ByVersion produces a query that returns the patch for a given version.
 func ByVersion(version string) db.Q {
 	return db.Query(bson.D{{VersionKey, version}})
+}
+
+// ByVersion produces a query that returns the patch for a given version.
+func ByVersions(versions []string) db.Q {
+	return db.Query(bson.M{VersionKey: bson.M{"$in": versions}})
 }
 
 // ExcludePatchDiff is a projection that excludes diff data, helping load times.

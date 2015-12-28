@@ -1,6 +1,11 @@
 function TaskTimingController($scope, $http, $window, $filter, $locationHash, mciTime, errorPasserService) {
 
   $scope.currentProject = $window.activeProject;
+  // sort the task names for the current project
+  $scope.currentProject.task_names.sort()
+  $scope.currentProject.build_variants.sort(function(a,b){
+    return (a.name < b.name) ? -1 : 1
+  });
   $scope.currentBV = "";
   $scope.currentTask = "";
   $scope.currentHover = -1;
@@ -9,6 +14,8 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
   var time_taken = "tt";
   var makespan = "makespan";
   var processing_time = "tpt";
+  var repotracker_requester = "gitter_request";
+  var patch_requester = "patch_request"
   var nsPerMs = 1000000;
 
 
@@ -18,21 +25,21 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
   $scope.allTasks = false;
   
   $scope.requestViewOptions = [
-    {
+  {
     name: "Commits",
-    requester: "gitter_request"
+    requester: repotracker_requester
   },
   {
     name: "Patches",
-    requester : "patch_request"
+    requester : patch_requester
   }
-];
+  ];
 
-$scope.currentRequest = $scope.requestViewOptions[0];
-$scope.setCurrentRequest = function(requestView) {
-  $scope.currentRequest = requestView;
-  $scope.load()
-}
+  $scope.currentRequest = $scope.requestViewOptions[0];
+  $scope.setCurrentRequest = function(requestView) {
+    $scope.currentRequest = requestView;
+    $scope.load()
+  }
 
   // normal task options 
   $scope.timeDiffOptions = [
@@ -117,7 +124,6 @@ var initialHash = $locationHash.get();
     for (var i = 0; i < $scope.currentProject.build_variants.length; ++i) {
       if ($scope.currentProject.build_variants[i].Name === initialHash.buildVariant) {
         $scope.currentBV = $scope.currentProject.build_variants[i];
-        console.log("$$$ " + $scope.buildVariant.Name);
       }
     }
   }
@@ -162,6 +168,34 @@ var initialHash = $locationHash.get();
   // filter function to remove zero times from a list of times
   var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))}
 
+  var isPatch = function(){
+    return $scope.currentRequest.requester == patch_requester;
+  }
+
+  var getHoverInfo = function(i){
+    if (isPatch()){
+      return {
+        "revision" : $scope.versions[i].Revision,
+        "duration" : formatDuration(yMap($scope.taskData[i])),
+        "id" : $scope.taskData[i].id,
+        "message" : $scope.versions[i].Description,
+        "author": $scope.versions[i].Author,
+        "create_time": $scope.versions[i].CreateTime,
+        "hidden": false
+      }
+    } else {
+      return {
+        "revision" : $scope.versions[i].revision,
+        "duration" : formatDuration(yMap($scope.taskData[i])),
+        "id" : $scope.taskData[i].id,
+        "message" : $scope.versions[i].message,
+        "author": $scope.versions[i].author,
+        "create_time": $scope.versions[i].create_time,
+        "hidden": false
+      }
+    }
+  }
+
   function calculateMakespan(build) {
     var tasks = build.tasks;
     // extract the start an end times for the tasks in the build, discarding the zero times
@@ -193,6 +227,29 @@ var initialHash = $locationHash.get();
   }
 
 
+    var xMap = function(task){
+      return moment(task.create_time);
+    }
+
+    var yMap  = function(task){
+      if ($scope.allTasks){ 
+        if ($scope.allTasksView.type == time_taken) {
+          if (task.time_taken){
+            return mciTime.fromNanoseconds(task.time_taken)
+          } else {
+            return 0
+          }
+        } else if ($scope.allTasksView.type == makespan) {
+          return calculateMakespan(task);
+        } else {
+          return calculateTotalProcessingTime(task);
+        }
+      }
+      var a1 = moment(task[$scope.timeDiff.diff[0]]);
+      var a2 = moment(task[$scope.timeDiff.diff[1]]);
+      return mciTime.fromMilliseconds(a1.diff(a2));
+    }
+
   $scope.load = function(before) {
 
     $scope.hoverInfo.hidden = true;
@@ -209,18 +266,15 @@ var initialHash = $locationHash.get();
     url = '/json/task_timing/' +
     encodeURIComponent($scope.currentProject.name) + '/' +
     encodeURIComponent($scope.currentBV.name) + '/' +
-    encodeURIComponent($scope.currentRequest.requester)
+    encodeURIComponent($scope.currentRequest.requester) 
     if (!$scope.allTasks) {
-      url += '/' + encodeURIComponent($scope.currentTask) 
+      url +=  '/' + encodeURIComponent($scope.currentTask) 
     }
     $http.get(
       url + '?' + query).
     success(function(data) {
-      $scope.taskData = data.tasks.reverse();
-      $scope.versions = data.versions.reverse();
-      $scope.current_time = mciTime.fromNanoseconds(data.current_time);
-      console.log($scope.taskData);
-
+      $scope.taskData = ($scope.allTasks) ? data.builds.reverse() : data.tasks.reverse();
+      $scope.versions = ($scope.currentRequest.requester == repotracker_requester) ? data.versions.reverse() : data.patches.reverse();
       setTimeout(function(){$scope.drawDetailGraph()},0);
     }).
     error(function(data) {
@@ -268,28 +322,7 @@ var initialHash = $locationHash.get();
       return moment(a.create_time).diff(moment(b.create_time));
     })
 
-    var xMap = function(task){
-      return moment(task.create_time);
-    }
 
-    var yMap  = function(task){
-      if ($scope.allTasks){ 
-        if ($scope.allTasksView.type == time_taken) {
-          if (task.time_taken){
-            return mciTime.fromNanoseconds(task.time_taken)
-          } else {
-            return 0
-          }
-        } else if ($scope.allTasksView.type == makespan) {
-          return calculateMakespan(task);
-        } else {
-          return calculateTotalProcessingTime(task);
-        }
-      }
-      var a1 = moment(task[$scope.timeDiff.diff[0]]);
-      var a2 = moment(task[$scope.timeDiff.diff[1]]);
-      return mciTime.fromMilliseconds(a1.diff(a2));
-    }
 
     var maxTime = d3.max($scope.taskData, function(task){return yMap(task);});
     var minTime = d3.min($scope.taskData, function(task){ return yMap(task);});
@@ -313,7 +346,15 @@ var initialHash = $locationHash.get();
     .scale(xScale)
     .orient("bottom")
     .ticks($scope.taskData.length)
-    .tickFormat(function(d){
+    .tickFormat(function(d, i){
+      // every 5 ticks
+      if ($scope.numTasks >= 200 && i % 5 != 0) {
+        return "";
+      }
+      // every 2 ticks
+      if ($scope.numTasks >= 100 && i % 2 != 0){
+        return "";
+      }
       var task = $scope.taskData[d];
       if (task) {
         return moment(task.create_time).format("M/D")}
@@ -355,12 +396,13 @@ var initialHash = $locationHash.get();
     .attr("class", "tooltip")
     .style("opacity", 0);
 
+    var radius = $scope.numTasks >= 100 ? 1 : 3.5;
     // draw dots
     svg.selectAll(".task-circle")
     .data($scope.taskData)
     .enter().append("circle")
     .attr("class", "task-circle")
-    .attr("r", 3.5)
+    .attr("r", radius)
     .attr("cx", scaledX)
     .attr("cy", scaledY)
     .style("stroke", function(task){
@@ -369,7 +411,7 @@ var initialHash = $locationHash.get();
 
     // create a focus circle 
     var focus = svg.append("circle")
-    .attr("r", 4.5);
+    .attr("r", radius + 1);
 
 
     // create a transparent rectangle for tracking hovering
@@ -402,15 +444,7 @@ var initialHash = $locationHash.get();
 
           // set the revision to be the current hash
           $scope.currentHover = i;
-          $scope.hoverInfo = {
-            "revision" : $scope.versions[i].revision,
-            "duration" : formatDuration(yMap($scope.taskData[i])),
-            "id" : $scope.taskData[i].id,
-            "message" : $scope.versions[i].message,
-            "author": $scope.versions[i].author,
-            "create_time": $scope.versions[i].create_time,
-            "hidden": false
-          }
+          $scope.hoverInfo = getHoverInfo(i, yMap);
 
           // set the focus's location to be the location of the closest point
           focus.attr("cx", scaledX($scope.taskData[i], i))
@@ -418,9 +452,9 @@ var initialHash = $locationHash.get();
 
           $scope.$digest();
         });          
-    }
+}
 
-    $scope.load();
+$scope.load();
 
-  };
+};
 
