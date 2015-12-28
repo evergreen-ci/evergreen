@@ -24,7 +24,7 @@
       for (var j = 0; j < lines.length; ++j) {
         var line = lines[j];
 
-        var isNewFile = line.indexOf('diff --git') != -1;
+        var isNewFile = (line.indexOf('diff --git') === 0);
 
         if (isNewFile && found) {
           break;
