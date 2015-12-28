@@ -115,7 +115,9 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <li ng-class="{'admin-disabled': !canRestart}">
                       <a tabindex="-1" href="#" ng-click="!canRestart || openAdminModal('restart')">Restart Task</a>
                     </li>
-                    <li><a tabindex="-1" href="#" ng-click="openAdminModal('setPriority')">Set Priority</a></li>
+                    <li ng-class="{'admin-disabled': !canSetPriority}">
+                      <a tabindex="-1" href="#" ng-click="!canSetPriority || openAdminModal('setPriority')">Set Priority</a>
+                    </li>
                   </ul>
               </div>
               <admin-modal>

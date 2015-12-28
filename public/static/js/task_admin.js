@@ -11,12 +11,13 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'erro
         $scope.canAbort = ($scope.task.status == "dispatched" || $scope.task.status == "started");
         $scope.canSchedule = !$scope.task.activated && !$scope.canRestart && !$scope.isAborted;
         $scope.canUnschedule = $scope.task.activated && ($scope.task.status == "undispatched") ;
+        $scope.canSetPriority = ($scope.task.status == "undispatched");
 	};
 
 	$scope.abort = function() {
         taskRestService.takeActionOnTask(
-            $scope.taskId, 
-            'abort', 
+            $scope.taskId,
+            'abort',
             {},
             {
                 success: function(data, status) {
@@ -31,8 +32,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciTasksRestService', 'erro
 
     $scope.restart = function() {
         taskRestService.takeActionOnTask(
-            $scope.taskId, 
-            'restart', 
+            $scope.taskId,
+            'restart',
             {},
             {
                 success: function(data, status) {
