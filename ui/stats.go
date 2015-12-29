@@ -198,7 +198,9 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	// Populate the versions field if with commits, otherwise patches field
 	if request == evergreen.RepotrackerVersionRequester {
 		versions, err := version.Find(version.ByIds(versionIds).
-			WithFields(version.IdKey, version.CreateTimeKey, version.MessageKey, version.AuthorKey, version.RevisionKey))
+			WithFields(version.IdKey, version.CreateTimeKey, version.MessageKey,
+			version.AuthorKey, version.RevisionKey, version.RevisionOrderNumberKey).
+			Sort([]string{"-" + version.RevisionOrderNumberKey}))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)
 			return
