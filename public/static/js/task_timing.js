@@ -27,7 +27,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
                 $scope.currentBV = $scope.currentProject.build_variants[i];
             }
         }
-    }else{
+    } else {
         // check if there are no build variants in the project
         if ($scope.currentProject.build_variants != []) {
             $scope.currentBV = $scope.currentProject.build_variants[0];
@@ -38,7 +38,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
     // if there isn't one then get the first task 
     if(initialHash.taskName){
         $scope.currentTask = initialHash.taskName
-    }else{
+    } else {
         if ($scope.currentProject.task_names != []) {
             if ($scope.currentBV.task_names != []) {
                 $scope.currentTask = $scope.currentBV.task_names[0]; 
@@ -66,7 +66,19 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         }
     ];
 
-    $scope.currentRequest = $scope.requestViewOptions[0];
+    // use the location hash for patches vs commit view
+    if (initialHash.requester) {
+      r = initialHash.requester;
+      if (r == repotracker_requester){
+        $scope.currentRequest = $scope.requestViewOptions[0];
+      }
+      if (r == patch_requester){
+        $scope.currentRequest = $scope.requestViewOptions[1];
+      }
+    }  else {
+      $scope.currentRequest = $scope.requestViewOptions[0]; 
+    }
+
     $scope.setCurrentRequest = function(requestView) {
         $scope.currentRequest = requestView;
         $scope.load()
@@ -120,7 +132,11 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
     }
 
 
-    $scope.numTasks = 50;
+    if (initialHash.limit) {
+      $scope.numTasks = initialHash.limit;
+    } else {
+      $scope.numTasks = 50; 
+    }
     $scope.numTasksOptions = [25, 50, 100, 200, 500, 1000, 2000];
 
 
@@ -279,11 +295,11 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
             $scope.taskData = [];
         });
 
-        setTimeout( function(p, bv, t){
+        setTimeout( function(p, bv, t, r, l){
             return function(){
-                $locationHash.set({ project: p, buildVariant: bv, taskName: t});
+                $locationHash.set({ project: p, buildVariant: bv, taskName: t, requester:r, limit: l});
             }
-        }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask), 0)
+        }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks), 0)
     };
 
     // formatting function for the way the y values should show up. 
