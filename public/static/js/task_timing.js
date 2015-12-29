@@ -99,10 +99,6 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
     // options for the all tasks functionality 
     $scope.allTasksOptions = [
         {
-            name: "Time Taken",
-            type: time_taken,
-        },
-        {
             name: "Makespan",
             type: makespan,
 
@@ -117,6 +113,10 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
     $scope.setAllTasksView = function(view) {
         $scope.allTasksView = view;
         $scope.load();
+    }
+
+    $scope.isAllTasks = function(){
+      return $scope.allTasks || $scope.currentTask == "All Tasks";
     }
 
 
@@ -163,7 +163,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
 
 
     $scope.getLink = function() {
-        if ($scope.allTasks) {
+        if ($scope.isAllTasks()) {
             return "/build/" + $scope.hoverInfo.id;
         } else {
             return "/task/" + $scope.hoverInfo.id;
@@ -209,58 +209,52 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
             if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
                 return new Date(0);
             }else {
-                return new Date((+new Date(x.start_time)) + (x.time_taken/nsPerMs));
+              return new Date((+new Date(x.start_time)) + (x.time_taken/nsPerMs));
             }
-        }), nonZeroTimeFilter).sort();
+          }), nonZeroTimeFilter).sort();
 
 
         if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
-            return 0;
+          return 0;
         } else {
-            var makeSpan = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
-            if (makeSpan < 0) {
-                return 0;
-            }
-            return makeSpan;
+          var makeSpan = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
+          if (makeSpan < 0) {
+            return 0;
+          }
+          return makeSpan;
         }
 
-    }
+      }
 
-    function calculateTotalProcessingTime (build) {
+      function calculateTotalProcessingTime (build) {
         var tasks = build.tasks;
         return mciTime.fromNanoseconds(_.reduce(tasks, function(sum, task){return sum + task.time_taken}, 0));
-    }
+      }
 
 
-    var xMap = function(task){
+      var xMap = function(task){
         return moment(task.create_time);
-    }
+      }
 
-    var yMap  = function(task){
-        if ($scope.allTasks){ 
-            if ($scope.allTasksView.type == time_taken) {
-                if (task.time_taken){
-                    return mciTime.fromNanoseconds(task.time_taken)
-                } else {
-                    return 0
-                }
-            } else if ($scope.allTasksView.type == makespan) {
-                return calculateMakespan(task);
-            } else {
-                return calculateTotalProcessingTime(task);
-            }
+      var yMap  = function(task){
+        if ($scope.isAllTasks()){
+         if ($scope.allTasksView.type == makespan) {
+          return calculateMakespan(task);
+        } else {
+          return calculateTotalProcessingTime(task);
         }
-        var a1 = moment(task[$scope.timeDiff.diff[0]]);
-        var a2 = moment(task[$scope.timeDiff.diff[1]]);
-        return mciTime.fromMilliseconds(a1.diff(a2));
+      }
+      var a1 = moment(task[$scope.timeDiff.diff[0]]);
+      var a2 = moment(task[$scope.timeDiff.diff[1]]);
+      return mciTime.fromMilliseconds(a1.diff(a2));
     }
 
 
     $scope.load = function(before) {
-        $scope.hoverInfo.hidden = true;
-        $scope.locked = false;
+      $scope.hoverInfo.hidden = true;
+      $scope.locked = false;
         // check that task exists in build variant
-        if (!$scope.checkTaskForGraph($scope.currentTask) && !$scope.allTasks){
+        if (!$scope.checkTaskForGraph($scope.currentTask) && !$scope.isAllTasks()){
             return;
         }
 
@@ -271,14 +265,12 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         url = '/json/task_timing/' +
             encodeURIComponent($scope.currentProject.name) + '/' +
             encodeURIComponent($scope.currentBV.name) + '/' +
-            encodeURIComponent($scope.currentRequest.requester) 
-        if (!$scope.allTasks) {
-            url +=  '/' + encodeURIComponent($scope.currentTask) 
-        }
+            encodeURIComponent($scope.currentRequest.requester) + '/' +
+            encodeURIComponent($scope.currentTask) 
         $http.get(
         url + '?' + query).
         success(function(data) {
-            $scope.taskData = ($scope.allTasks) ? data.builds.reverse() : data.tasks.reverse();
+            $scope.taskData = ($scope.isAllTasks()) ? data.builds.reverse() : data.tasks.reverse();
             $scope.versions = ($scope.currentRequest.requester == repotracker_requester) ? data.versions.reverse() : data.patches.reverse();
             setTimeout(function(){$scope.drawDetailGraph()},0);
         }).

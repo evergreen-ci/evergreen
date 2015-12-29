@@ -44,7 +44,7 @@ Evergreen - Task Timing
     </div>
   </div>
 
-  <div class="col-lg-2" ng-show = "!allTasks">
+  <div class="col-lg-2" ng-show = "!isAllTasks()">
     <h3>Duration</h3>
     <div class="row" ng-repeat="diff in timeDiffOptions" >  
       <button class="btn btn-default col-lg-12" ng-class="{active: timeDiff == diff}" ng-click="setTimeDiff(diff)"> 
@@ -52,7 +52,7 @@ Evergreen - Task Timing
      </button>
    </div>
  </div>
- <div class="col-lg-2" ng-show = "allTasks">
+ <div class="col-lg-2" ng-show = "isAllTasks()">
   <h3>Duration</h3>
   <div class="row" ng-repeat="diff in allTasksOptions" >  
     <button class="btn btn-default col-lg-12" ng-class="{active: allTasksView == diff}" ng-click="setAllTasksView(diff)"> 

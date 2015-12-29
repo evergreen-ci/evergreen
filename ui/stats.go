@@ -119,7 +119,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	data := UIStats{}
 
 	// if its all tasks find the build
-	if taskName == "" {
+	if taskName == "" || taskName == "All Tasks" {
 		// TODO: switch this to be a query on the builds TaskCache
 		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
