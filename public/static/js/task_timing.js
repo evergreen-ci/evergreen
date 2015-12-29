@@ -435,7 +435,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         .on("click", function(scope){
             return function(){
                 scope.locked = !scope.locked
-                scope.digest()
+                scope.$digest()
             }
         }($scope))
         .on("mousemove", function(){
