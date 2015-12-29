@@ -1,8 +1,8 @@
 mciModule
 // top-level controller for the waterfall
   .controller('WaterfallCtrl', function($scope, $window, $location, $locationHash) {
-    
-    // load in the build variants, sorting 
+
+    // load in the build variants, sorting
     $scope.buildVariants = $window.serverData.build_variants.sort();
 
     //variable/function to handle expanding the header message
@@ -42,7 +42,7 @@ mciModule
         return 0;
       });
 
-      // iterate over all of the build variants - if the version is 
+      // iterate over all of the build variants - if the version is
       // missing a build for the variant, insert a blank one
       for (var i = 0, l = $scope.buildVariants.length; i < l; i++) {
         var buildVariantName = $scope.buildVariants[i];
@@ -117,17 +117,22 @@ mciModule
   })
   // directive to make the popover that is placed onclick above the rolled up content
   .directive('popoverSection', function ($filter) {
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    };
 
-   function createPopoverInfo(id, revision, author, message, create_time, error) {
+    function createPopoverInfo(id, revision, author, message, create_time, error) {
       var errorIcon = "";
       if (error.messages && error.messages.length != 0) {
         errorIcon = '<span><i class="icon-warning-sign" style="color:red" data-element-tooltip="body">&nbsp;</i></span>';
       }
       return '<div class="commit-meta"><div class="commit-date">' + (create_time ? create_time : '') + '</div>' +
-        '<a href="/version/' + id + '">' + errorIcon +
-        '<span class="monospace">' + revision.substring(0, 10) + '</span></a>' +
-        ' - ' + '<strong>' + author + '</strong></div>' +
-        '<p>' + message + '</p>';
+        '<a href="/version/' + escapeHtml(id) + '">' + errorIcon +
+        '<span class="monospace">' + escapeHtml(revision.substring(0, 10)) + '</span></a>' +
+        ' - ' + '<strong>' + escapeHtml(author) + '</strong></div>' +
+        '<p>' + escapeHtml(message) + '</p>';
     }
 
     return {
@@ -217,7 +222,7 @@ mciModule
         ' class="task-result [[task | statusFilter]]"></a>'
     }
   })
-  // directive for a smaller, mobile-friendly waterfall cell representing a build 
+  // directive for a smaller, mobile-friendly waterfall cell representing a build
   // outcome
   .directive('buildSummary', function() {
     return {
@@ -240,7 +245,7 @@ mciModule
             }
           }
 
-          // don't display zero values 
+          // don't display zero values
           ['failed', 'succeeded'].
           forEach(function(status) {
             if (!scope[status]) {

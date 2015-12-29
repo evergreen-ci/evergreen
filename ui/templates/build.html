@@ -126,9 +126,7 @@ Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName
                   </div>
                   <b>
                     <a ng-href="/build/[[build.Build._id]]" title="[[build.Version.message]]">
-                      <span ng-class="viewingBuild.Build._id == build.Build._id | conditional:'semi-muted':''"
-                            ng-bind-html-unsafe="build.Version.message">
-                      </span>
+                      <span ng-class="viewingBuild.Build._id == build.Build._id | conditional:'semi-muted':''">[[build.Version.message]]</span>
                     </a>
                   </b>
                 </div>
@@ -149,7 +147,7 @@ Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName
                     </div>
                     <b>
                       <a ng-href="/build/[[lastSuccess.Build._id]]" title="[[lastSuccess.Version.message]]">
-                        <span ng-bind-html-unsafe="lastSuccess.Version.message"></span>
+                        <span>[[lastSuccess.Version.message]]</span>
                       </a>
                     </b>
                   </div>
