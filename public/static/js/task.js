@@ -83,7 +83,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
         return
       }
 
-      // get a task id from it 
+      // get a task id from it
       var anchorId = mostRecentRevision.task.id;
 
       historyDrawerService.fetchTaskHistory(anchorId, 'after', 20, {
@@ -111,7 +111,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
   var fetchEarlierRevisions = _.debounce(
 
     function() {
-      // get the least recent revision in the history  
+      // get the least recent revision in the history
       var leastRecentRevision = ($scope.revisions &&
         $scope.revisions[$scope.revisions.length - 1]);
 
@@ -133,10 +133,10 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
               return
             }
 
-            // place on the end of the stored revisions  
+            // place on the end of the stored revisions
             $scope.revisions = $scope.revisions.concat(data.revisions);
 
-            // regroup 
+            // regroup
             $scope.groupedRevisions = groupHistory($scope.revisions);
 
           },
@@ -198,7 +198,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
   drawerContentsEl.on('mousewheel DOMMouseScroll onmousewheel', smallScrollFunc);
 
-  // scrolling function to fire if the element is scrollable (it overflows 
+  // scrolling function to fire if the element is scrollable (it overflows
   // its div)
   var bigScrollFunc = function() {
     if (drawerContentsEl.scrollTop() === 0) {
@@ -293,7 +293,7 @@ mciModule.controller('TaskCtrl', function($scope, $now, $timeout, $interval, md5
     $scope.isMet = function(dependency) {
       // check if a dependency is met, unmet, or in progress
       if (dependency.task_waiting == "blocked") {
-        return "unmet"; 
+        return "unmet";
       }
       if (dependency.status != "failed" && dependency.status != "success") {
         // if we didn't succeed or fail, don't report anything

@@ -69,7 +69,7 @@ filters.common.filter('conditional', function() {
   }
 }).filter('stringifyNanoseconds', function() {
   var NS_PER_MS = 1000 * 1000; // 10^6
-  var NS_PER_SEC = NS_PER_MS * 1000 
+  var NS_PER_SEC = NS_PER_MS * 1000
   var NS_PER_MINUTE = NS_PER_SEC * 60;
   var NS_PER_HOUR = NS_PER_MINUTE * 60;
 
@@ -100,7 +100,7 @@ filters.common.filter('conditional', function() {
     } else if (input == "unknown") {
       return "unknown";
     }  else {
-      return ">= 1 day";   
+      return ">= 1 day";
     }
   };
 }).filter('linkify', function() {
@@ -129,6 +129,16 @@ filters.common.filter('conditional', function() {
     /* AnsiUp does some unexpected things in a pre tag, so run AnsiUp on a
      * line-by-line basis */
     return _.map(input.split('\n'), $window.ansi_up.ansi_to_html).join('\n');
+  };
+}).filter('trustAsHtml', function($sce) {
+  return function(input) {
+    return $sce.trustAsHtml(input);
+  };
+}).filter('escapeHtml', function() {
+  return function(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
   };
 }).filter('ordinalNum', function() {
   // converts 1, 2, 3, etc. to 1st, 2nd, 3rd, etc.

@@ -117,11 +117,6 @@ mciModule
   })
   // directive to make the popover that is placed onclick above the rolled up content
   .directive('popoverSection', function ($filter) {
-    function escapeHtml(str) {
-      var div = document.createElement('div');
-      div.appendChild(document.createTextNode(str));
-      return div.innerHTML;
-    };
 
     function createPopoverInfo(id, revision, author, message, create_time, error) {
       var errorIcon = "";
@@ -129,10 +124,10 @@ mciModule
         errorIcon = '<span><i class="icon-warning-sign" style="color:red" data-element-tooltip="body">&nbsp;</i></span>';
       }
       return '<div class="commit-meta"><div class="commit-date">' + (create_time ? create_time : '') + '</div>' +
-        '<a href="/version/' + escapeHtml(id) + '">' + errorIcon +
-        '<span class="monospace">' + escapeHtml(revision.substring(0, 10)) + '</span></a>' +
-        ' - ' + '<strong>' + escapeHtml(author) + '</strong></div>' +
-        '<p>' + escapeHtml(message) + '</p>';
+        '<a href="/version/' + $filter('escapeHtml')(id) + '">' + errorIcon +
+        '<span class="monospace">' + $filter('escapeHtml')(revision.substring(0, 10)) + '</span></a>' +
+        ' - ' + '<strong>' + $filter('escapeHtml')(author) + '</strong></div>' +
+        '<p>' + $filter('escapeHtml')(message) + '</p>';
     }
 
     return {
