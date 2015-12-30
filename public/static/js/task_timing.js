@@ -325,7 +325,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         var graph = d3.select(graphId)[0][0];
         var colWidth = graph.clientWidth;
 
-        var margin = { top: 20, right: 60, bottom: 100, left: 100 };
+        var margin = { top: 20, right: 60, bottom: 100, left: 120 };
         var width = colWidth - margin.left - margin.right;
         var height = (colWidth/2) - margin.top - margin.bottom;
         var svg = d3.select(graphId)
