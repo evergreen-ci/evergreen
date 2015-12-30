@@ -194,8 +194,9 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
     }
 
     var getHoverInfo = function(i){
+        var hoverInfo;
         if (isPatch()){
-            return {
+            hoverInfo =  {
                 "revision" : $scope.versions[i].Revision,
                 "duration" : formatDuration(yMap($scope.taskData[i])),
                 "id" : $scope.taskData[i].id,
@@ -205,7 +206,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
                 "hidden": false
             }
         } else {
-            return {
+            hoverInfo =  {
                 "revision" : $scope.versions[i].revision,
                 "duration" : formatDuration(yMap($scope.taskData[i])),
                 "id" : $scope.taskData[i].id,
@@ -215,6 +216,11 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
                 "hidden": false
             }
         }
+        if (!$scope.isAllTasks()){
+          hoverInfo.host = $scope.taskData[i].host
+          hoverInfo.distro = $scope.taskData[i].distro
+        }
+        return hoverInfo
     }
 
     function calculateMakespan(build) {
@@ -458,7 +464,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
 
             // set the revision to be the current hash
             $scope.currentHover = i;
-            $scope.hoverInfo = getHoverInfo(i, yMap);
+            $scope.hoverInfo = getHoverInfo(i);
 
             // set the focus's location to be the location of the closest point
             focus.attr("cx", scaledX($scope.taskData[i], i))

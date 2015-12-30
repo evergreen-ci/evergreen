@@ -37,6 +37,8 @@ type UITask struct {
 	FinishTime    time.Time `json:"finish_time"`
 	Version       string    `json:"version"`
 	Status        string    `json:"status"`
+	Host          string    `json:"host"`
+	Distro        string    `json:"distro"`
 }
 
 //UIBuild has the fields that are necessary to send over the wire for builds
@@ -188,6 +190,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				FinishTime:    task.FinishTime,
 				Version:       task.Version,
 				Status:        task.Status,
+				Host:          task.HostId,
+				Distro:        task.DistroId,
 			}
 			uiTasks = append(uiTasks, t)
 			versionIds = append(versionIds, task.Version)

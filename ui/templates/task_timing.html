@@ -72,6 +72,8 @@ Evergreen - Task Timing
     <div class="row">
     <div class="col-lg-2" style="margin-top:50px; margin-left:10px;" >
       <div ng-hide="hoverInfo.hidden">
+        <div ng-hide="isAllTasks()">host id: <b>[[hoverInfo.host]]</b></div>
+        <div ng-hide="isAllTasks()">distro id: <b>[[hoverInfo.distro]]</b></div>
         <div> duration: <b>[[hoverInfo.duration]]</b> </div>
         <div style="font-family:monospace"><a ng-href="[[getLink()]]">[[hoverInfo.revision| limitTo:7]]</a></div>
         <div>[[hoverInfo.create_time |  date: "MM/dd/yyyy 'at' h:mma"]] </div>
