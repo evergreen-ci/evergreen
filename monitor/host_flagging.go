@@ -11,8 +11,12 @@ import (
 )
 
 const (
-	// the threshold to consider as too long for a host to take provisioning
+	// ProvisioningCutoff is the threshold to consider as too long for a host to take provisioning
 	ProvisioningCutoff = 35 * time.Minute
+
+	// UnreachableCutoff is the threshold to wait for an unreachable host to become marked
+	// as reachable again before giving up and terminating it.
+	UnreachableCutoff = 10 * time.Minute
 )
 
 type hostFlagger struct {
@@ -31,6 +35,17 @@ func flagDecommissionedHosts(d []distro.Distro, s *evergreen.Settings) ([]host.H
 	hosts, err := host.Find(host.IsDecommissioned)
 	if err != nil {
 		return nil, fmt.Errorf("error finding decommissioned hosts: %v", err)
+	}
+	return hosts, nil
+}
+
+// flagUnreachableHosts is a hostFlaggingFunc to get all hosts which should
+// be terminated because they are unreachable
+func flagUnreachableHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error) {
+	threshold := time.Now().Add(-1 * UnreachableCutoff)
+	hosts, err := host.Find(host.ByUnreachableBefore(threshold))
+	if err != nil {
+		return nil, fmt.Errorf("error finding hosts unreachable since before %v: %v", threshold, err)
 	}
 	return hosts, nil
 }

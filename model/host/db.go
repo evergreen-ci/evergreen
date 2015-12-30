@@ -44,6 +44,7 @@ var (
 	NotificationsKey         = bsonutil.MustHaveTag(Host{}, "Notifications")
 	UserDataKey              = bsonutil.MustHaveTag(Host{}, "UserData")
 	LastReachabilityCheckKey = bsonutil.MustHaveTag(Host{}, "LastReachabilityCheck")
+	UnreachableSinceKey      = bsonutil.MustHaveTag(Host{}, "UnreachableSince")
 )
 
 // === Queries ===
@@ -156,10 +157,7 @@ var IsRunningAndSpawned = db.Query(
 // IsDecommissioned is a query that returns all hosts without a
 // running task that are marked for decommissioning.
 var IsDecommissioned = db.Query(
-	bson.M{
-		RunningTaskKey: "",
-		StatusKey:      evergreen.HostDecommissioned,
-	},
+	bson.M{RunningTaskKey: "", StatusKey: evergreen.HostDecommissioned},
 )
 
 // ByDistroId produces a query that returns all working hosts (not terminated and
@@ -238,6 +236,16 @@ func ByExpiringBetween(lowerBound time.Time, upperBound time.Time) db.Q {
 			"$nin": []string{evergreen.HostTerminated, evergreen.HostQuarantined},
 		},
 		ExpirationTimeKey: bson.M{"$gte": lowerBound, "$lte": upperBound},
+	})
+}
+
+// ByUnreachableBefore produces a query that returns a list of all
+// hosts that are still unreachable, and have been in that state since before the
+// given time threshold.
+func ByUnreachableBefore(threshold time.Time) db.Q {
+	return db.Query(bson.M{
+		StatusKey:           evergreen.HostUnreachable,
+		UnreachableSinceKey: bson.M{"$gt": time.Unix(0, 0), "$lt": threshold},
 	})
 }
 

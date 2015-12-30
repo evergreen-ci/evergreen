@@ -23,6 +23,7 @@ var (
 	// to be terminated
 	defaultHostFlaggingFuncs = []hostFlagger{
 		{flagDecommissionedHosts, "decommissioned"},
+		{flagUnreachableHosts, "unreachable"},
 		{flagIdleHosts, "idle"},
 		{flagExcessHosts, "excess"},
 		{flagUnprovisionedHosts, "provision_timeout"},

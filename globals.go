@@ -99,7 +99,6 @@ var (
 		HostUninitialized,
 		HostInitializing,
 		HostProvisionFailed,
-		HostUnreachable,
 	}
 
 	// Logger is our global logger. It can be changed for testing.

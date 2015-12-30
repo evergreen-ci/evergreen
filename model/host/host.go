@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"time"
@@ -52,6 +53,9 @@ type Host struct {
 
 	// the last time that the host's reachability was checked
 	LastReachabilityCheck time.Time `bson:"last_reachability_check" json:"last_reachability_check"`
+
+	// if set, the time at which the host first became unreachable
+	UnreachableSince time.Time `bson:"unreachable_since,omitempty" json:"unreachable_since"`
 }
 
 // IdleTime returns how long has this host been idle
@@ -315,7 +319,7 @@ func (self *Host) SetExpirationNotification(thresholdKey string) error {
 func (self *Host) ClearRunningTask() error {
 	event.LogHostRunningTaskCleared(self.Id, self.RunningTask)
 	self.RunningTask = ""
-	self.TaskDispatchTime = time.Unix(0, 0)
+	self.TaskDispatchTime = util.ZeroTime
 	self.Pid = ""
 	return UpdateOne(
 		bson.M{
@@ -324,7 +328,7 @@ func (self *Host) ClearRunningTask() error {
 		bson.M{
 			"$set": bson.M{
 				RunningTaskKey:      "",
-				TaskDispatchTimeKey: time.Unix(0, 0),
+				TaskDispatchTimeKey: util.ZeroTime,
 				PidKey:              "",
 			},
 		},
@@ -345,29 +349,41 @@ func (self *Host) SetTaskPid(pid string) error {
 	)
 }
 
-// UpdateReachability sets a host as either running or unreachable, depending on the bool passed
-// in. also update the last reachability check for the host
-func (self *Host) UpdateReachability(reachable bool) error {
+// UpdateReachability sets a host as either running or unreachable,
+// and updates the timestamp of the host's last reachability check.
+// If the host is being set to unreachable, the "unreachable since" field
+// is also set to the current time if it is unset.
+func (h *Host) UpdateReachability(reachable bool) error {
 	status := evergreen.HostRunning
-	if !reachable {
-		status = evergreen.HostUnreachable
+	setUpdate := bson.M{
+		StatusKey:                status,
+		LastReachabilityCheckKey: time.Now(),
 	}
 
-	event.LogHostStatusChanged(self.Id, self.Status, status)
+	update := bson.M{}
+	if !reachable {
+		status = evergreen.HostUnreachable
+		setUpdate[StatusKey] = status
 
-	self.Status = status
+		// If the host is being switched to unreachable for the first time, then
+		// "unreachable since" will be unset, so we set it to the current time.
+		if h.UnreachableSince.Equal(util.ZeroTime) || h.UnreachableSince.Before(util.ZeroTime) {
+			now := time.Now()
+			setUpdate[UnreachableSinceKey] = now
+			h.UnreachableSince = now
+		}
+	} else {
+		// host is reachable, so unset the unreachable_since field
+		update["$unset"] = bson.M{UnreachableSinceKey: 1}
+		h.UnreachableSince = util.ZeroTime
+	}
+	update["$set"] = setUpdate
 
-	return UpdateOne(
-		bson.M{
-			IdKey: self.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				StatusKey:                status,
-				LastReachabilityCheckKey: time.Now(),
-			},
-		},
-	)
+	event.LogHostStatusChanged(h.Id, h.Status, status)
+
+	h.Status = status
+
+	return UpdateOne(bson.M{IdKey: h.Id}, update)
 }
 
 func (self *Host) Upsert() (*mgo.ChangeInfo, error) {
