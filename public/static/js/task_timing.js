@@ -249,7 +249,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
       }
 
       function calculateTotalProcessingTime (build) {
-        var tasks = build.tasks;
+        var tasks = _.filter(build.tasks, function(task){return nonZeroTimeFilter(new Date(task.start_time));})
         return mciTime.fromNanoseconds(_.reduce(tasks, function(sum, task){return sum + task.time_taken}, 0));
       }
 
@@ -325,7 +325,7 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         var graph = d3.select(graphId)[0][0];
         var colWidth = graph.clientWidth;
 
-        var margin = { top: 20, right: 60, bottom: 100, left: 120 };
+        var margin = { top: 20, right: 60, bottom: 100, left: 110 };
         var width = colWidth - margin.left - margin.right;
         var height = (colWidth/2) - margin.top - margin.bottom;
         var svg = d3.select(graphId)
