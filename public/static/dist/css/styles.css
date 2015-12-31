@@ -1359,6 +1359,13 @@ textarea {
   text-overflow: ellipsis;
   overflow: hidden;
 }
+.task-history-gridtable .tablerow .header a {
+  font-size: .8em;
+  overflow-x: hide;
+  text-overflow: ellipsis;
+  width: 100%;
+  display: inline-block;
+}
 .revision {
   font-family: monospace;
 }

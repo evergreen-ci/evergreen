@@ -47,13 +47,9 @@ Evergreen - Task History
               <div  class="header"
                     ng-class="taskGroupHasTaskMatchingFilter(variants, taskGroup) | conditional:'full-opacity':'semi-transparent'">
                 <div ng-class="{'highlight-bg': taskGroup._id == selectedRevision}">
-                  <a href="/version/[[getVersionForCommit(taskGroup._id).id]]">
-                    [[ getVersionForCommit(taskGroup._id).message ]]
-                  </a>
+                  <a href="/version/[[getVersionForCommit(taskGroup._id).id]]" title="[[ getVersionForCommit(taskGroup._id).message ]]">[[ getVersionForCommit(taskGroup._id).message ]]</a>
                 </div>
-                <div class="revision-date">
-                  [[ getVersionForCommit(taskGroup._id).create_time | date:"medium" ]]
-                </div>
+                <div class="revision-date">[[ getVersionForCommit(taskGroup._id).create_time | date:"medium" ]]</div>
               </div>
               <div class="cells" style="height: 50px; margin-left: 9px">
                 <div  ng-repeat="bv in variants"
