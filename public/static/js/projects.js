@@ -2,14 +2,14 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
 
   $scope.availableTriggers = $window.availableTriggers
 
-  $scope.refreshTrackedProjects = function(trackedProjects) { 
+  $scope.refreshTrackedProjects = function(trackedProjects) {
     $scope.trackedProjects = trackedProjects
     $scope.enabledProjects = _.filter($scope.trackedProjects, function(p){
       return p.enabled;
     });
     $scope.disabledProjects = _.filter($scope.trackedProjects, function(p) {
       return !(p.enabled);
-    });    
+    });
   };
 
   $scope.refreshTrackedProjects($window.allTrackedProjects);
@@ -43,7 +43,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
   $scope.addAlert = function(obj, trigger){
     if(!$scope.settingsFormData.alert_config) {
       $scope.settingsFormData.alert_config = {}
-    } 
+    }
     if(!$scope.settingsFormData.alert_config[trigger.id]){
       $scope.settingsFormData.alert_config[trigger.id] = []
     }
@@ -86,7 +86,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
   $scope.addProject = function() {
     $scope.modalOpen = false;
     $('#admin-modal').modal('hide');
-    
+
     if ($scope.findProject($scope.newProject.identifier)) {
       console.log("project identifier already exists");
       $scope.newProjectMessage = "Project name already exists.";
@@ -120,7 +120,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
         }
 
         $scope.settingsFormData = {
-          identifier : $scope.projectRef.identifier,   
+          identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
@@ -150,9 +150,12 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
     }
     return false;
   }
- 
+
   $scope.saveProject = function() {
     $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time)
+    if ($scope.proj_var) {
+      $scope.addProjectVar();
+    }
     $http.post('/project/' + $scope.settingsFormData.identifier, $scope.settingsFormData).
       success(function(data, status) {
         $scope.saveMessage = "Settings Saved.";
@@ -182,7 +185,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
     if (dirty){
       $scope.saveMessage = "You have unsaved changes.";
       $scope.isDirty = true;
-    } 
+    }
   });
 
   $scope.getAlertDisplay =function(alertObj){

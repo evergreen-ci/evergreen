@@ -234,7 +234,7 @@ Evergreen Projects
                     <textarea ng-model="proj_var.value" class="form-control" placeholder="variable" style="font-family:monospace;"></textarea>
                 </div>
                 <div class="col-lg-2">
-                    <button class="plus-button btn btn-primary " id="variable-add" type="button" ng-click="addProjectVar()">
+                    <button class="plus-button btn btn-primary " ng-disabled="!(proj_var.name && proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
                         <i class="icon-plus"></i>
                     </button>
                 </div>
