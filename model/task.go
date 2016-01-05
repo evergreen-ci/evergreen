@@ -1135,12 +1135,7 @@ func (t *Task) reset() error {
 		},
 	}
 
-	err := UpdateOneTask(
-		bson.M{
-			TaskIdKey: t.Id,
-		},
-		reset,
-	)
+	err := UpdateOneTask(bson.M{TaskIdKey: t.Id}, reset)
 	if err != nil {
 		return err
 	}

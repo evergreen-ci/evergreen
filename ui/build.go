@@ -115,10 +115,11 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	putParams := struct {
-		Action   string `json:"action"`
-		Active   bool   `json:"active"`
-		Abort    bool   `json:"abort"`
-		Priority string `json:"priority"`
+		Action   string   `json:"action"`
+		Active   bool     `json:"active"`
+		Abort    bool     `json:"abort"`
+		Priority string   `json:"priority"`
+		TaskIds  []string `json:"taskIds"`
 	}{}
 	err = json.Unmarshal(reqBody, &putParams)
 	if err != nil {
@@ -154,7 +155,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "restart":
-		if err := model.RestartBuild(projCtx.Build.Id, putParams.Abort, user.Id); err != nil {
+		if err := model.RestartBuild(projCtx.Build.Id, putParams.TaskIds, putParams.Abort, user.Id); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}

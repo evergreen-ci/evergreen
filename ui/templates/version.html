@@ -84,6 +84,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                  <li><a ng-show="version.PatchInfo.Patch.Id" ng-href="/patch/[[version.PatchInfo.Patch.Id]]">Reconfigure Tasks/Variants</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('schedule')">Schedule all</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
+                 <li><a tabindex="-1" href="#" ng-click="openAdminModal('restart')">Restart</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('priority')">Set priority</a></li>
                </ul>
              </div>
@@ -91,6 +92,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                  <admin-schedule-all ng-show="adminOption=='schedule'"></admin-schedule-all>
                  <admin-unschedule-all ng-show="adminOption=='unschedule'"></admin-unschedule-all>
                  <admin-set-priority ng-show="adminOption=='priority'"></admin-set-priority>
+                 <admin-restart-version ng-show="adminOption=='restart'"></admin-restart-version>
              </admin-modal>
            </div>
          {{end}}

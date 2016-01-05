@@ -1,7 +1,77 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRestService','notificationService', function($scope, $rootScope, versionRestService, notifier) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRestService','notificationService', '$filter', function($scope, $rootScope, versionRestService, notifier, $filter) {
 
     $scope.adminOptionVals = {};
     $scope.modalTitle = 'Modify Version';
+    $scope.selection = "completed";
+    $scope.collapsedBuilds = {};
+
+    $scope.checkedForRestartIds = function(){
+        return _.pluck($scope.version.Builds.map(
+          function(x){
+            return x.Build.tasks.filter(function(y){return y.checkedForRestart});
+          }
+        ).reduce(function(x,y){return x.concat(y)}, []), "id");
+    }
+
+    $scope.numToBeRestarted = function(build_id){
+        var buildFilter = function(){return true;};
+        if(build_id){ // if specified, only count the number checked in the given build
+            buildFilter = function(x){return x.Build._id == build_id};
+        }
+        // count the number of checked items in the tasks from the
+        // filtered set of builds
+        return $scope.version.Builds.filter(buildFilter).map(
+          function(x){
+            return x.Build.tasks.filter(function(y){return y.checkedForRestart}).length;
+          }
+        ).reduce(function(x,y){return x+y}, 0);
+    }
+
+    $scope.setRestartSelection = function(s){
+        $scope.selection = s;
+        if($scope.selection == "") {
+            return;
+        }
+        for(var j=0;j<$scope.version.Builds.length;j++){
+            for(var i=0;i<$scope.version.Builds[j].Build.tasks.length;i++){
+                var t = $scope.version.Builds[j].Build.tasks[i];
+                var setting = false;
+                if(s == "none"){
+                    // do nothing (everything gets unchecked)
+                }else if(s == "all"){
+                    setting = true;
+                }else if(t.status != "undispatched" && t.status == "failed"){
+                    if(s == "failures"){
+                        setting = true;
+                    }else if (s == "system-failures" && $filter("statusFilter")(t) =="system-failed"){
+                        setting = true;
+                    }
+                }
+                $scope.version.Builds[j].Build.tasks[i].checkedForRestart = setting;
+            }
+        }
+    }
+
+    $scope.restart = function() {
+        versionRestService.takeActionOnVersion(
+            $scope.version.Version.id,
+            'restart',
+            { 
+              abort: $scope.adminOptionVals.abort,
+              task_ids: $scope.checkedForRestartIds()
+            },
+            {
+                success: function(data, status) {
+                    $scope.closeAdminModal()
+                    $rootScope.$broadcast("version_updated", data)
+                    notifier.pushNotification( "Selected tasks are restarted.", 'notifyHeader', 'success');
+                },
+                error: function(jqXHR, status, errorThrown) {
+                    notifier.pushNotification('Error restarting build: ' + jqXHR,'errorModal');
+                }
+            }
+        );
+    };
 
 	function setVersionActive(active, abort) {
         versionRestService.takeActionOnVersion(
@@ -96,9 +166,18 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                 }
             }
         });
-	}
+    }
 
+    $scope.setRestartSelection('all');
 }]);
+
+mciModule.directive('adminRestartVersion', function() {
+  return {
+    restrict: 'E',
+    templateUrl: '/static/partials/admin-restart-version.html',
+  }
+});
+
 
 mciModule.directive('adminScheduleAll', function() {
     return {

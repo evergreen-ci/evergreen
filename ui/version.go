@@ -103,10 +103,11 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonMap := struct {
-		Action   string `json:"action"`
-		Active   bool   `json:"active"`
-		Abort    bool   `json:"abort"`
-		Priority int64  `json:"priority"`
+		Action   string   `json:"action"`
+		Active   bool     `json:"active"`
+		Abort    bool     `json:"abort"`
+		Priority int64    `json:"priority"`
+		TaskIds  []string `json:"task_ids"`
 	}{}
 	err := util.ReadJSONInto(r.Body, &jsonMap)
 	if err != nil {
@@ -116,6 +117,11 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 
 	// determine what action needs to be taken
 	switch jsonMap.Action {
+	case "restart":
+		if err = model.RestartVersion(projCtx.Version.Id, jsonMap.TaskIds, jsonMap.Abort, user.Id); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	case "set_active":
 		if jsonMap.Abort {
 			if err = model.AbortVersion(projCtx.Version.Id); err != nil {

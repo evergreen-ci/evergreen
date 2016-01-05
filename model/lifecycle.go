@@ -216,12 +216,118 @@ func SetVersionPriority(versionId string, priority int64) error {
 	return err
 }
 
+// RestartVersion restarts completed tasks associated with a given versionId.
+// If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
+func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
+	// restart all the 'not in-progress' tasks for the version
+	allTasks, err := FindAllTasks(
+		bson.M{
+			TaskIdKey:           bson.M{"$in": taskIds},
+			TaskVersionKey:      versionId,
+			TaskDispatchTimeKey: bson.M{"$ne": ZeroTime},
+			TaskStatusKey: bson.M{
+				"$in": []string{
+					evergreen.TaskSucceeded,
+					evergreen.TaskFailed,
+				},
+			},
+		},
+		db.NoProjection,
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
+	if err != nil && err != mgo.ErrNotFound {
+		return err
+	}
+
+	// archive all the tasks
+	for _, t := range allTasks {
+		if err := t.Archive(); err != nil {
+			return fmt.Errorf("failed to archive task: %v", err)
+		}
+	}
+
+	// Set all the task fields to indicate restarted
+	_, err = UpdateAllTasks(
+		bson.M{TaskIdKey: bson.M{"$in": taskIds}},
+		bson.M{
+			"$set": bson.M{
+				TaskActivatedKey:     true,
+				TaskSecretKey:        util.RandomString(),
+				TaskStatusKey:        evergreen.TaskUndispatched,
+				TaskDispatchTimeKey:  ZeroTime,
+				TaskStartTimeKey:     ZeroTime,
+				TaskScheduledTimeKey: ZeroTime,
+				TaskFinishTimeKey:    ZeroTime,
+				TaskTestResultsKey:   []TestResult{},
+			},
+			"$unset": bson.M{
+				TaskDetailsKey: "",
+			},
+		})
+	if err != nil {
+		return err
+	}
+
+	// TODO figure out a way to coalesce updates for task cache for the same build, so we
+	// only need to do one update per-build instead of one per-task here.
+	// Doesn't seem to be possible as-is because $ can only apply to one array element matched per
+	// document.
+	buildIdSet := map[string]bool{}
+	for _, t := range allTasks {
+		buildIdSet[t.BuildId] = true
+		err = build.ResetCachedTask(t.BuildId, t.Id)
+		if err != nil {
+			return err
+		}
+	}
+
+	// reset the build statuses, once per build
+	buildIdList := make([]string, 0, len(buildIdSet))
+	for k, _ := range buildIdSet {
+		buildIdList = append(buildIdList, k)
+	}
+
+	// Set the build status for all the builds containing the tasks that we touched
+	_, err = build.UpdateAllBuilds(
+		bson.M{build.IdKey: bson.M{"$in": buildIdList}},
+		bson.M{"$set": bson.M{build.StatusKey: evergreen.BuildStarted}},
+	)
+
+	if abortInProgress {
+		// abort in-progress tasks in this build
+		_, err = UpdateAllTasks(
+			bson.M{
+				TaskVersionKey: versionId,
+				TaskIdKey:      bson.M{"$in": taskIds},
+				TaskStatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+			},
+			bson.M{"$set": bson.M{TaskAbortedKey: true}},
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	// update activation for all the builds
+	for _, b := range buildIdList {
+		err := build.UpdateActivation(b, true, caller)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+
+}
+
 // RestartBuild restarts completed tasks associated with a given buildId.
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
-func RestartBuild(buildId string, abortInProgress bool, caller string) error {
+func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the build
 	allTasks, err := FindAllTasks(
 		bson.M{
+			TaskIdKey:      bson.M{"$in": taskIds},
 			TaskBuildIdKey: buildId,
 			TaskStatusKey: bson.M{
 				"$in": []string{

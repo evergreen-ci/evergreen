@@ -1,12 +1,41 @@
-mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRestService', 'notificationService', function($scope, $rootScope, buildRestService, notifier) {
+mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRestService', 'notificationService','$filter',  function($scope, $rootScope, buildRestService, notifier, $filter) {
+    $scope.selection = "completed";
     $scope.setBuild = function(build) {
         $scope.build = build;
+        $scope.setRestartSelection('all')
         $scope.buildId = build._id;
     };
+
+    $scope.numToBeRestarted = function(){
+        return $scope.build.tasks.filter(function(x){return x.checkedForRestart}).length;
+    }
 
     $scope.adminOptionVals = {};
     $scope.modalOpen = false;
     $scope.modalTitle = 'Modify Build';
+
+
+    $scope.setRestartSelection = function(s){
+        $scope.selection = s;
+        if($scope.selection == "") {
+            return;
+        }
+        for(var i=0;i<$scope.build.tasks.length;i++){
+            var t = $scope.build.tasks[i];
+            var setting = false;
+            if(s == "none"){
+            }else if(s == "all"){
+                setting = true;
+            }else if(t.status != "undispatched" && t.status == "failed"){
+                if(s == "failures"){
+                    setting = true;
+                }else if (s == "system-failures" && $filter("statusFilter")(t) =="system-failed"){
+                    setting = true;
+                }
+            }
+            $scope.build.tasks[i].checkedForRestart = setting;
+        }
+    }
 
     $scope.abort = function() {
         buildRestService.takeActionOnBuild(
@@ -30,7 +59,9 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
         buildRestService.takeActionOnBuild(
             $scope.buildId,
             'restart',
-            { abort: $scope.adminOptionVals.abort },
+            { abort: $scope.adminOptionVals.abort,
+              taskIds: _.pluck(_.filter($scope.build.tasks, function(y){return y.checkedForRestart}),"id")
+            },
             {
                 success: function(data, status) {
                     $scope.closeAdminModal();
@@ -190,20 +221,6 @@ mciModule.directive('adminSetPriority', function() {
 mciModule.directive('adminRestartBuild', function() {
     return {
         restrict: 'E',
-        template:
-    '<div class="row">' +
-      '<div class="col-lg-12">' +
-        '<div>' +
-          'Restart all tasks?' +
-          '<div style="float:right">' +
-            '<button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
-            '<button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="restart()">Yes</button>' +
-        '</div>' +
-      '</div>' +
-      '<div styl="float:right">' +
-        '<input type="checkbox" id="passed" name="passed" ng-model="adminOptionVals.abort" class="ng-valid ng-dirty"> ' +
-        '<label for="passed" style="font-weight:normal;font-size:.8em;">  Abort in-progress tasks</label>' +
-      '</div>' +
-    '</div>'
+        templateUrl: "/static/partials/admin-restart-build.html"
   }
 });
