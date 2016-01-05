@@ -1,4 +1,4 @@
-mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
+mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) {
 
   $scope.availableTriggers = $window.availableTriggers
 
@@ -137,12 +137,25 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http) {
         };
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
-
+        $location.hash($scope.projectRef.identifier);
       })
       .error(function(data, status) {
         console.log(status);
       });
   };
+
+  $scope.$on('$locationChangeStart', function(event) {
+    $scope.hashLoad();
+  });
+
+  $scope.hashLoad = function() {
+    var projectHash = $location.hash();
+    if (projectHash) {
+      if ( _.contains(_.pluck($scope.trackedProjects, "identifier"), projectHash)) {
+        $scope.loadProject(projectHash);
+      }
+    }
+  }
 
   $scope.shouldHighlight = function(project) {
     if ($scope.projectRef) {
