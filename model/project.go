@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
-	"reflect"
 	"strings"
 )
 
@@ -26,26 +25,25 @@ const (
 )
 
 type Project struct {
-	Enabled            bool                       `yaml:"enabled,omitempty" bson:"enabled"`
-	Stepback           bool                       `yaml:"stepback,omitempty" bson:"stepback"`
-	BatchTime          int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
-	Owner              string                     `yaml:"owner,omitempty" bson:"owner_name"`
-	Repo               string                     `yaml:"repo,omitempty" bson:"repo_name"`
-	RemotePath         string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
-	RepoKind           string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
-	Branch             string                     `yaml:"branch,omitempty" bson:"branch_name"`
-	Identifier         string                     `yaml:"identifier,omitempty" bson:"identifier"`
-	DisplayName        string                     `yaml:"display_name,omitempty" bson:"display_name"`
-	CommandType        string                     `yaml:"command_type,omitempty" bson:"command_type"`
-	Pre                *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
-	Post               *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
-	Timeout            *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
-	CallbackTimeout    int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
-	Modules            []Module                   `yaml:"modules,omitempty" bson:"modules"`
-	BuildVariants      []BuildVariant             `yaml:"buildvariants,omitempty" bson:"build_variants"`
-	Functions          map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
-	Tasks              []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
-	BuildVariantMatrix BuildVariantMatrix         `yaml:"build_variant_matrix,omitempty" bson:"build_variant_matrix"`
+	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
+	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
+	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
+	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`
+	RemotePath      string                     `yaml:"remote_path,omitempty" bson:"remote_path"`
+	RepoKind        string                     `yaml:"repokind,omitempty" bson:"repo_kind"`
+	Branch          string                     `yaml:"branch,omitempty" bson:"branch_name"`
+	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
+	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
+	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
+	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
+	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
+	CallbackTimeout int                        `yaml:"callback_timeout_secs,omitempty" bson:"callback_timeout_secs"`
+	Modules         []Module                   `yaml:"modules,omitempty" bson:"modules"`
+	BuildVariants   []BuildVariant             `yaml:"buildvariants,omitempty" bson:"build_variants"`
+	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
+	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`
@@ -138,8 +136,7 @@ type BuildVariant struct {
 	RunOn []string `yaml:"run_on,omitempty" bson:"run_on"`
 
 	// all of the tasks to be run on the build variant, compile through tests.
-	Tasks                 []BuildVariantTask `yaml:"tasks,omitempty" bson:"tasks"`
-	MatrixParameterValues map[string]string  `yaml:"matrix_parameter_values,omitempty" bson:"matrix_parameter_values"`
+	Tasks []BuildVariantTask `yaml:"tasks,omitempty" bson:"tasks"`
 }
 
 type Module struct {
@@ -187,21 +184,6 @@ type PluginCommandConf struct {
 type ArtifactInstructions struct {
 	Include      []string `yaml:"include,omitempty" bson:"include"`
 	ExcludeFiles []string `yaml:"excludefiles,omitempty" bson:"exclude_files"`
-}
-
-type MatrixParameterValue struct {
-	Value      string            `yaml:"value,omitempty" bson:"value"`
-	Expansions map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
-}
-
-type MatrixParameter struct {
-	Name   string                 `yaml:"name,omitempty" bson:"name"`
-	Values []MatrixParameterValue `yaml:"values,omitempty" bson:"values"`
-}
-
-type BuildVariantMatrix struct {
-	MatrixParameters []MatrixParameter `yaml:"matrix_parameters,omitempty" bson:"matrix_parameters"`
-	Template         BuildVariant      `yaml:"template,omitempty" bson:"template"`
 }
 
 type YAMLCommandSet struct {
@@ -373,7 +355,6 @@ var (
 	ProjectFunctionsKey     = bsonutil.MustHaveTag(Project{}, "Functions")
 	ProjectStepbackKey      = bsonutil.MustHaveTag(Project{}, "Stepback")
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
-	ProjectBVMatrixKey      = bsonutil.MustHaveTag(Project{}, "BuildVariantMatrix")
 )
 
 func NewTaskConfig(d *distro.Distro, p *Project, t *Task, r *ProjectRef) (*TaskConfig, error) {
@@ -416,129 +397,6 @@ func populateExpansions(d *distro.Distro, bv *BuildVariant, t *Task) *command.Ex
 	}
 	expansions.Update(bv.Expansions)
 	return expansions
-}
-
-// Creates a copy of `current`, with instances of ${matrixParameterName} in
-// top level string and slice of strings fields replaced by the value specified
-// in matrixParameterValues
-func expandBuildVariantMatrixParameters(project *Project, current BuildVariant,
-	matrixParameterValues []MatrixParameterValue) (*BuildVariant, error) {
-	// Create a new build variant with the same parameters
-	newBv := current
-	newBv.Expansions = make(map[string]string)
-
-	// Make sure to copy over expansions
-	for k, v := range current.Expansions {
-		newBv.Expansions[k] = v
-	}
-
-	// Convert parameter value state into a map for use with expansions
-	matrixParameterMap := make(map[string]string)
-	for i, parameter := range project.BuildVariantMatrix.MatrixParameters {
-		matrixParameterMap[parameter.Name] = matrixParameterValues[i].Value
-	}
-	matrixParameterExpansions := command.NewExpansions(matrixParameterMap)
-
-	// Iterate over all fields
-	numFields := reflect.TypeOf(newBv).NumField()
-	for fieldIndex := 0; fieldIndex < numFields; fieldIndex++ {
-		// Expand matrix parameters in top level string fields
-		if reflect.TypeOf(newBv).Field(fieldIndex).Type.Kind() == reflect.String {
-			val := reflect.ValueOf(&newBv).Elem().Field(fieldIndex).String()
-			val, err := matrixParameterExpansions.ExpandString(val)
-			if err != nil {
-				return nil, err
-			}
-			reflect.ValueOf(&newBv).Elem().Field(fieldIndex).SetString(val)
-		}
-
-		// Expand matrix parameters in top level slices of strings
-		if reflect.TypeOf(newBv).Field(fieldIndex).Type == reflect.SliceOf(reflect.TypeOf("")) {
-			slice := reflect.ValueOf(&newBv).Elem().Field(fieldIndex)
-			newSlice := []string{}
-			for arrayIndex := 0; arrayIndex < slice.Len(); arrayIndex++ {
-				// Expand matrix parameters for each individual element of the slice
-				val := slice.Index(arrayIndex).String()
-				val, err := matrixParameterExpansions.ExpandString(val)
-				if err != nil {
-					return nil, err
-				}
-				newSlice = append(newSlice, val)
-			}
-
-			reflect.ValueOf(&newBv).Elem().Field(fieldIndex).Set(reflect.ValueOf(newSlice))
-		}
-	}
-
-	// First, attach all conditional expansions (i.e. expansions associated with
-	// a given parameter value)
-	for _, value := range matrixParameterValues {
-		for k, v := range value.Expansions {
-			newBv.Expansions[k] = v
-		}
-	}
-
-	// Then, expand matrix parameters in all expansions
-	for key, expansion := range newBv.Expansions {
-		expansion, err := matrixParameterExpansions.ExpandString(expansion)
-		if err != nil {
-			return nil, err
-		}
-		newBv.Expansions[key] = expansion
-	}
-
-	// Build variant matrix parameter values are stored in the build variant
-	buildVariantMatrixParameterValues := make(map[string]string)
-	for i, matrixParameter := range project.BuildVariantMatrix.MatrixParameters {
-		buildVariantMatrixParameterValues[matrixParameter.Name] =
-			matrixParameterValues[i].Value
-	}
-	newBv.MatrixParameterValues = buildVariantMatrixParameterValues
-
-	return &newBv, nil
-}
-
-// Recursively builds up build variants specified in build variant matrix.
-// Should not be called directly, use addMatrixVariants() below instead.
-func addMatrixVariantsRecursion(project *Project,
-	valueState []MatrixParameterValue, current BuildVariant) error {
-	parameterIndex := len(valueState)
-	values := project.BuildVariantMatrix.MatrixParameters[parameterIndex].Values
-
-	// Recursion by values specified for each parameter
-	for _, value := range values {
-		valueState = append(valueState, value)
-		// If we're at the bottom of the recursion, create new build variant
-		if parameterIndex >= len(project.BuildVariantMatrix.MatrixParameters)-1 {
-			newBv, err := expandBuildVariantMatrixParameters(project, current,
-				valueState)
-			if err != nil {
-				return err
-			}
-			project.BuildVariants = append(project.BuildVariants, *newBv)
-		} else {
-			// Otherwise, continue on to next parameter
-			err := addMatrixVariantsRecursion(project, valueState, current)
-			if err != nil {
-				return err
-			}
-		}
-		valueState = valueState[:len(valueState)-1]
-	}
-
-	return nil
-}
-
-// Append new build variants based on the project's build variant matrix
-func addMatrixVariants(project *Project) error {
-	if len(project.BuildVariantMatrix.MatrixParameters) > 0 {
-		err := addMatrixVariantsRecursion(project, []MatrixParameterValue{},
-			project.BuildVariantMatrix.Template)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // GetSpecForTask returns a ProjectTask spec for the given name.
@@ -689,8 +547,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 }
 
 // LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags and matrix variants
-// are expanded.
+// and sets the project's identifier field to identifier. Tags are expanded.
 func LoadProjectInto(data []byte, identifier string, project *Project) error {
 	if err := yaml.Unmarshal(data, project); err != nil {
 		return fmt.Errorf("parse error unmarshalling project: %v", err)
@@ -700,7 +557,7 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 		return fmt.Errorf("error evaluating project tags: %v", err)
 	}
 	project.Identifier = identifier
-	return addMatrixVariants(project)
+	return nil
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTask {
