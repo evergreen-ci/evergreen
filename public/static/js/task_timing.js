@@ -271,6 +271,11 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
       return mciTime.fromMilliseconds(a1.diff(a2));
     }
 
+    // isValidDate checks that none of the start, finish or scheduled times are zero
+    var isValidDate = function(task){
+        return nonZeroTimeFilter(+new Date(task.start_time)) && nonZeroTimeFilter(+new Date(task.finish_time)) && nonZeroTimeFilter(+new Date(task.scheduled_time)) 
+    }
+
 
     $scope.load = function(before) {
       $scope.hoverInfo.hidden = true;
@@ -294,6 +299,10 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
         success(function(data) {
             $scope.taskData = ($scope.isAllTasks()) ? data.builds.reverse() : data.tasks.reverse();
             $scope.versions = ($scope.currentRequest.requester == repotracker_requester) ? data.versions.reverse() : data.patches.reverse();
+            $scope.versions = _.filter($scope.versions, function(v, i){
+                return isValidDate($scope.taskData[i]);
+            })
+            $scope.taskData = _.filter($scope.taskData, isValidDate)
             setTimeout(function(){$scope.drawDetailGraph()},0);
         }).
         error(function(data) {
