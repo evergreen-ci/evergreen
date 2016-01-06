@@ -138,6 +138,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
 
         $scope.displayName = $scope.projectRef.display_name ? $scope.projectRef.display_name : $scope.projectRef.identifier;
         $location.hash($scope.projectRef.identifier);
+        $scope.$emit('loadProject', $scope.projectRef.identifier, $scope.displayName);
       })
       .error(function(data, status) {
         console.log(status);
@@ -151,7 +152,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.hashLoad = function() {
     var projectHash = $location.hash();
     if (projectHash) {
-      if ( _.contains(_.pluck($scope.trackedProjects, "identifier"), projectHash)) {
+      // If the project in the hash exists and is not the current project, load it.
+      if ( _.contains(_.pluck($scope.trackedProjects, "identifier"), projectHash) && ($scope.projectRef.identifier != projectHash)) {
         $scope.loadProject(projectHash);
       }
     }
