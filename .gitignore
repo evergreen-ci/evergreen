@@ -36,8 +36,14 @@ tags
 mci_testing_env
 /executables
 logs
-ui/node_modules/
+public/node_modules/
 *testlog*
+archive/testdata/artifacts_out/
+archive/testdata/artifacts_test/
+command/testdata/tmp/
+plugin/builtin/archive/testdata/output/
+plugin/builtin/archive/testdata/target.tgz
+plugin/builtin/s3Plugin/testdata/
 
 # directory for gvp
 .godeps
