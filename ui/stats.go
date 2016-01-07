@@ -126,6 +126,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
 			build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey).
+			Sort([]string{"-" + build.RevisionOrderNumberKey}).
 			Limit(limit))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)

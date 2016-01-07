@@ -225,6 +225,9 @@ function TaskTimingController($scope, $http, $window, $filter, $locationHash, mc
 
     function calculateMakespan(build) {
         var tasks = build.tasks;
+        if (!tasks) {
+            return 0;
+        }
         // extract the start an end times for the tasks in the build, discarding the zero times
         var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort();
         var taskEndTimes = _.filter(tasks.map(function(x){
