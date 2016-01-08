@@ -45,8 +45,8 @@ var s3ParamsToSign = map[string]bool{
 
 const (
 	S3ConnectTimeout = 2 * time.Minute
-	S3ReadTimeout    = 2 * time.Minute
-	S3WriteTimeout   = 2 * time.Minute
+	S3ReadTimeout    = 10 * time.Minute
+	S3WriteTimeout   = 10 * time.Minute
 )
 
 // For our S3 copy operations, S3 either returns an CopyObjectResult or
