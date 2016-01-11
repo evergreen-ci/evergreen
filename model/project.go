@@ -57,7 +57,7 @@ type BuildVariantTask struct {
 
 	// fields to overwrite ProjectTask settings
 	Patchable *bool            `yaml:"patchable,omitempty" bson:"patchable,omitempty"`
-	Priority  int              `yaml:"priority,omitempty" bson:"priority"`
+	Priority  int64            `yaml:"priority,omitempty" bson:"priority"`
 	DependsOn []TaskDependency `yaml:"depends_on,omitempty" bson:"depends_on"`
 
 	// currently unsupported (TODO EVG-578)
@@ -249,7 +249,7 @@ func (td *TaskDependency) UnmarshalYAML(unmarshal func(interface{}) error) error
 // Unmarshalled from the "tasks" list in the project file
 type ProjectTask struct {
 	Name            string              `yaml:"name,omitempty" bson:"name"`
-	Priority        int                 `yaml:"priority,omitempty" bson:"priority"`
+	Priority        int64               `yaml:"priority,omitempty" bson:"priority"`
 	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 	DependsOn       []TaskDependency    `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands"`

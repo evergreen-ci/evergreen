@@ -49,7 +49,7 @@ type Task struct {
 	Version  string `bson:"version" json:"version,omitempty"`
 	Project  string `bson:"branch" json:"branch,omitempty"`
 	Revision string `bson:"gitspec" json:"gitspec"`
-	Priority int    `bson:"priority" json:"priority"`
+	Priority int64  `bson:"priority" json:"priority"`
 
 	// only relevant if the task is running.  the time of the last heartbeat
 	// sent back by the agent
@@ -1022,7 +1022,7 @@ func (t *Task) UpdateHeartbeat() error {
 	)
 }
 
-func (t *Task) SetPriority(priority int) error {
+func (t *Task) SetPriority(priority int64) error {
 	t.Priority = priority
 	modifier := bson.M{TaskPriorityKey: priority}
 

@@ -29,7 +29,7 @@ type restTask struct {
 	Version             string                `json:"version"`
 	Project             string                `json:"project"`
 	Revision            string                `json:"revision"`
-	Priority            int                   `json:"priority"`
+	Priority            int64                 `json:"priority"`
 	LastHeartbeat       time.Time             `json:"last_heartbeat"`
 	Activated           bool                  `json:"activated"`
 	BuildId             string                `json:"build_id"`

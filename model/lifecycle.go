@@ -187,7 +187,7 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 }
 
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
-func SetBuildPriority(buildId string, priority int) error {
+func SetBuildPriority(buildId string, priority int64) error {
 	modifier := bson.M{TaskPriorityKey: priority}
 	//blacklisted - these tasks should never run, so unschedule now
 	if priority < 0 {
@@ -202,7 +202,7 @@ func SetBuildPriority(buildId string, priority int) error {
 }
 
 // SetVersionPriority updates the priority field of all tasks associated with the given build id.
-func SetVersionPriority(versionId string, priority int) error {
+func SetVersionPriority(versionId string, priority int64) error {
 	modifier := bson.M{TaskPriorityKey: priority}
 	//blacklisted - these tasks should never run, so unschedule now
 	if priority < 0 {

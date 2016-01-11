@@ -105,7 +105,7 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		Action   string `json:"action"`
 		Active   bool   `json:"active"`
 		Abort    bool   `json:"abort"`
-		Priority int    `json:"priority"`
+		Priority int64  `json:"priority"`
 	}{}
 	err := util.ReadJSONInto(r.Body, &jsonMap)
 	if err != nil {

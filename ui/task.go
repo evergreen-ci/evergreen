@@ -46,7 +46,7 @@ type uiTaskData struct {
 	FinishTime       int64                   `json:"finish_time"`
 	Requester        string                  `json:"r"`
 	ExpectedDuration time.Duration           `json:"expected_duration"`
-	Priority         int                     `json:"priority"`
+	Priority         int64                   `json:"priority"`
 	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
@@ -623,7 +623,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, "Task successfully activated")
 		return
 	case "set_priority":
-		priority, err := strconv.Atoi(putParams.Priority)
+		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {
 			http.Error(w, "Bad priority value, must be int", http.StatusBadRequest)
 			return

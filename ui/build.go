@@ -127,7 +127,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, "Successfully marked tasks as aborted")
 		return
 	case "set_priority":
-		priority, err := strconv.Atoi(putParams.Priority)
+		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {
 			http.Error(w, "Bad priority value; must be int", http.StatusBadRequest)
 			return
