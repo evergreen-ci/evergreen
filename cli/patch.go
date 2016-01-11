@@ -26,7 +26,7 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
            Link : {{.Link}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
-        Summary : 
+        Summary :
 {{range .Patch.Patches}}{{if not (eq .ModuleName "") }}Module:{{.ModuleName}}{{end}}
 	Base Commit : {{.Githash}}
 	{{range .PatchSet.Summary}}+{{.Additions}} -{{.Deletions}} {{.Name}}
@@ -502,6 +502,7 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 func gitDiff(base string, diffArgs ...string) (string, error) {
 	args := make([]string, 0, 2+len(diffArgs))
 	args = append(args, "diff")
+	args = append(args, "--no-ext-diff")
 	if base != "" {
 		args = append(args, base)
 	}
