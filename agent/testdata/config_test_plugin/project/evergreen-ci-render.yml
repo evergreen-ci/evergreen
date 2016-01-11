@@ -328,33 +328,26 @@ buildvariants:
   - name: failing_task
   - name: push
 
-build_variant_matrix:
-  template:
-    name: windows${version}
-    display_name: Windows ${version}
-    modules:
-    - recursive
-    run_on:
-    - rhel55
-    expansions:
-      expandme: "qux"
-      buildvar_exp: BUILDVAR_EXP
-      push_path: windows${version}
-      push_bucket: build-push-testing
-      push_name: windows${version}
-      push_arch: x86_64
-      compile_flags: --sharedclient -j$(grep -c ^processor /proc/cpuinfo) --release
-      test_flags: --continue-on-failure
-      buildvariant_pushes: true
-    tasks:
-    - name: aggregation
-    - name: normal_task
-    - name: very_slow_task
-    - name: failing_task
-    - name: push
-  matrix_parameters:
-  - name: version
-    values:
-    - value: "8"
-      expansions:
-        buildvariant_pushes: false
+- name: windows8
+  display_name: Windows 8
+  modules:
+  - recursive
+  run_on:
+  - rhel55
+  expansions:
+    expandme: "qux"
+    buildvar_exp: BUILDVAR_EXP
+    push_path: windows8
+    push_bucket: build-push-testing
+    push_name: windows8
+    push_arch: x86_64
+    compile_flags: --sharedclient -j$(grep -c ^processor /proc/cpuinfo) --release
+    test_flags: --continue-on-failure
+    buildvariant_pushes: true
+  tasks:
+  - name: aggregation
+  - name: normal_task
+  - name: very_slow_task
+  - name: failing_task
+  - name: push
+
