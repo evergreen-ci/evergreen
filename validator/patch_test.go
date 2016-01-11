@@ -81,7 +81,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	configPatch := &patch.Patch{
 		Id:            "52549c143122",
 		Project:       patchedProject,
-		BuildVariants: []string{"all"},
+		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
 		Patches: []patch.ModulePatch{
 			{
@@ -127,7 +127,7 @@ func resetProjectlessPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	configPatch := &patch.Patch{
 		Id:            "52549c143123",
 		Project:       patchedProject,
-		BuildVariants: []string{"all"},
+		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
 		Patches: []patch.ModulePatch{
 			{

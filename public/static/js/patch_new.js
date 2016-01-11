@@ -29,8 +29,6 @@ function PatchController($scope, $filter, $window, notificationService) {
 
     var allVariantsModels = [];
     var allVariantsModelsOriginal = [];
-    var selectAllVariants = (patch.BuildVariants && patch.BuildVariants[0] == "all");
-    var selectAllTasks = (patch.Tasks && patch.Tasks[0] == "all");
     for (var variantId in allVariants) {
       var variant = {
         "name": allVariants[variantId].DisplayName,
@@ -39,7 +37,7 @@ function PatchController($scope, $filter, $window, notificationService) {
           return task.Name;
         })
       };
-      if ($.inArray(variant.id, patch.BuildVariants) >= 0 || selectAllVariants)  {
+      if ($.inArray(variant.id, patch.BuildVariants) >= 0)  {
         variant.checked = true;
       }
       allVariantsModels.push(variant);
@@ -63,7 +61,7 @@ function PatchController($scope, $filter, $window, notificationService) {
     var allTasksModelsOriginal = [];
     for (var i = 0; i < allTasks.length; ++i) {
       task = allTasks[i];
-      if (task.Name === "compile" || $.inArray(task.Name, patch.Tasks) >= 0 || selectAllTasks) {
+      if (task.Name === "compile" || $.inArray(task.Name, patch.Tasks) >= 0) {
         task.checked = true;
       }
       allTasksModels.push(task);

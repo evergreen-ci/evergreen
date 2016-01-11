@@ -271,10 +271,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update variant and tasks to include dependencies
-	apiRequest.BuildVariants, apiRequest.Tasks = model.IncludePatchDependencies(
-		project, apiRequest.BuildVariants, apiRequest.Tasks)
-
 	createTime := time.Now()
 
 	// create a new object ID to use as reference for the patch data
@@ -330,6 +326,28 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 	patchDoc.PatchedConfig = string(projectYamlBytes)
 	patchDoc.ClearPatchData()
+
+	//expand tasks and build variants and include dependencies
+	buildVariants := patchDoc.BuildVariants
+	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
+		buildVariants = make([]string, 0)
+		for _, buildVariant := range patchedProject.BuildVariants {
+			if buildVariant.Disabled {
+				continue
+			}
+			buildVariants = append(buildVariants, buildVariant.Name)
+		}
+	}
+	tasks := patchDoc.Tasks
+	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
+		tasks = make([]string, 0)
+		for _, t := range patchedProject.Tasks {
+			tasks = append(tasks, t.Name)
+		}
+	}
+	// update variant and tasks to include dependencies
+	patchDoc.BuildVariants, patchDoc.Tasks = model.IncludePatchDependencies(
+		project, buildVariants, tasks)
 
 	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))
