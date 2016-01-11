@@ -3,25 +3,29 @@ package render
 import (
 	"bytes"
 	"encoding/json"
-	"html/template"
+	htmlTemplate "html/template"
 	"io"
 	"net/http"
 	"path/filepath"
 	"strings"
 	"sync"
+	textTemplate "text/template"
 )
 
 // Render maintains a template cache and exposes methods for rendering JSON or sets of templates
 // to an HTTP response.
 type Render struct {
-	cache      map[string]*template.Template
-	cacheMutex sync.Mutex
-	opts       Options
+	htmlCache      map[string]*htmlTemplate.Template
+	htmlCacheMutex sync.Mutex
+	textCache      map[string]*textTemplate.Template
+	textCacheMutex sync.Mutex
+	opts           Options
 }
 
 type Options struct {
 	// A set of functions that are available for templates to call during execution
-	Funcs template.FuncMap
+	TextFuncs textTemplate.FuncMap
+	HtmlFuncs htmlTemplate.FuncMap
 
 	// The root directory to load templates from.
 	Directory string
@@ -41,41 +45,42 @@ func New(opts Options) *Render {
 	}
 
 	return &Render{
-		opts:  opts,
-		cache: map[string]*template.Template{},
+		opts:      opts,
+		textCache: map[string]*textTemplate.Template{},
+		htmlCache: map[string]*htmlTemplate.Template{},
 	}
 }
 
-// Returns a template for the given set of filenames by loading it from cache if available,
+// Returns an HTML template for the given set of filenames by loading it from cache if available,
 // or loading and parsing the files from disk. Returns the template if found or an error if
 // the template couldn't be loaded.
-func (r *Render) getTemplate(filenames ...string) (*template.Template, error) {
+func (r *Render) getHTMLTemplate(filenames ...string) (*htmlTemplate.Template, error) {
 
 	var cacheKey string
 	if !r.opts.DisableCache {
 		// generate a cache key by joining filenames with null byte (can't appear in filenames)
 		cacheKey = strings.Join(filenames, "\x00")
-		if template, ok := r.cache[cacheKey]; ok {
+		if template, ok := r.htmlCache[cacheKey]; ok {
 			return template, nil
 		}
 	}
 
 	// cache miss (or cache is turned off) - try to load the templates from the filesystem
-	r.cacheMutex.Lock()
-	defer r.cacheMutex.Unlock()
+	r.htmlCacheMutex.Lock()
+	defer r.htmlCacheMutex.Unlock()
 	paths := make([]string, 0, len(filenames))
 	for _, v := range filenames {
 		paths = append(paths, filepath.Join(r.opts.Directory, v))
 	}
 
-	tmpl := template.New(cacheKey).Funcs(r.opts.Funcs)
+	tmpl := htmlTemplate.New(cacheKey).Funcs(r.opts.HtmlFuncs)
 	tmpl, err := tmpl.ParseFiles(paths...)
 	if err != nil {
 		return nil, err
 	}
 
 	if !r.opts.DisableCache {
-		r.cache[cacheKey] = tmpl
+		r.htmlCache[cacheKey] = tmpl
 	}
 	return tmpl, nil
 }
@@ -84,7 +89,7 @@ func (r *Render) getTemplate(filenames ...string) (*template.Template, error) {
 // the context data, writing the result to out. Returns error if the template could not be
 // loaded or if executing the template failed.
 func (r *Render) HTML(out io.Writer, data interface{}, entryPoint string, files ...string) error {
-	t, err := r.getTemplate(files...)
+	t, err := r.getHTMLTemplate(files...)
 	if err != nil {
 		return err
 	}
@@ -119,6 +124,67 @@ func (r *Render) StreamHTML(w http.ResponseWriter, status int, data interface{},
 	w.Header().Set("Content-Type", "text/html; charset="+r.opts.Encoding)
 	w.WriteHeader(status)
 	err := r.HTML(w, data, entryPoint, files...)
+	return err
+}
+
+// Returns a text template for the given set of filenames by loading it from cache if available,
+// or loading and parsing the files from disk. Returns the template if found or an error if
+// the template couldn't be loaded.
+func (r *Render) getTextTemplate(filenames ...string) (*textTemplate.Template, error) {
+
+	var cacheKey string
+	if !r.opts.DisableCache {
+		// generate a cache key by joining filenames with null byte (can't appear in filenames)
+		cacheKey = strings.Join(filenames, "\x00")
+		if template, ok := r.textCache[cacheKey]; ok {
+			return template, nil
+		}
+	}
+
+	// cache miss (or cache is turned off) - try to load the templates from the filesystem
+	r.textCacheMutex.Lock()
+	defer r.textCacheMutex.Unlock()
+	paths := make([]string, 0, len(filenames))
+	for _, v := range filenames {
+		paths = append(paths, filepath.Join(r.opts.Directory, v))
+	}
+
+	tmpl := textTemplate.New(cacheKey).Funcs(r.opts.TextFuncs)
+	tmpl, err := tmpl.ParseFiles(paths...)
+	if err != nil {
+		return nil, err
+	}
+
+	if !r.opts.DisableCache {
+		r.textCache[cacheKey] = tmpl
+	}
+	return tmpl, nil
+}
+
+// Text loads the given set of template files and executes the template named entryPoint against
+// the context data, writing the result to out. Returns error if the template could not be
+// loaded or if executing the template failed.
+func (r *Render) Text(out io.Writer, data interface{}, entryPoint string, files ...string) error {
+	t, err := r.getTextTemplate(files...)
+	if err != nil {
+		return err
+	}
+	err = t.ExecuteTemplate(out, entryPoint, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// StreamText calls Text() on its args and writes the output directly to the response with a text/plain Content-Type.
+// It calls Text() so that it can accept go text templates rather than simply accepting text.
+// Does not buffer the executed template before rendering, so it can be used for writing
+// really large responses without consuming memory. If executing the template fails, the status
+// code is not changed; it will remain set to the provided value.
+func (r *Render) StreamText(w http.ResponseWriter, status int, data interface{}, entryPoint string, files ...string) error {
+	w.Header().Set("Content-Type", "text/plain; charset="+r.opts.Encoding)
+	w.WriteHeader(status)
+	err := r.Text(w, data, entryPoint, files...)
 	return err
 }
 

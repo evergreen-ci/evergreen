@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"html/template"
 	"io"
 	"net/url"
 	"regexp"
@@ -43,8 +42,8 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 }
 
 // MakeTemplateFuncs creates and registers all of our built-in template functions.
-func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (template.FuncMap, error) {
-	r := template.FuncMap{
+func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interface{}, error) {
+	r := map[string]interface{}{
 		// IsSuperUser returns true if the given user Id has super user privileges.
 		"IsSuperUser": func(userName string) bool {
 			return len(superUsers) == 0 || util.SliceContains(superUsers, userName)

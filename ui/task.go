@@ -533,21 +533,25 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	templateToUse := "task_log.html"
-	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		templateToUse = "task_log_raw.html"
-	}
-
 	channel, err := model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting log data: %s", err))
 		return
 	}
-	err = uis.StreamHTML(w, http.StatusOK,
-		struct {
-			Data chan model.LogMessage
-			User *user.DBUser
-		}{channel, GetUser(r)}, "base", templateToUse)
+
+	type logTemplateData struct {
+		Data chan model.LogMessage
+		User *user.DBUser
+	}
+
+	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
+		err = uis.StreamText(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html")
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, err.Error())
+		}
+		return
+	}
+	err = uis.StreamHTML(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, err.Error())
 	}

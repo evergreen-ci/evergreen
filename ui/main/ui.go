@@ -13,9 +13,11 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/sessions"
 	"gopkg.in/tylerb/graceful.v1"
+	htmlTemplate "html/template"
 	"net/http"
 	"os"
 	"path/filepath"
+	textTemplate "text/template"
 	"time"
 )
 
@@ -72,6 +74,9 @@ func main() {
 	functionOptions := ui.FuncOptions{webHome, settings.Ui.HelpUrl, true, router}
 
 	functions, err := ui.MakeTemplateFuncs(functionOptions, settings.SuperUsers)
+	htmlFunctions := htmlTemplate.FuncMap(functions)
+	textFunctions := textTemplate.FuncMap(functions)
+
 	if err != nil {
 		fmt.Println("Failed to create template function map:", err)
 		os.Exit(1)
@@ -80,7 +85,8 @@ func main() {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, ui.WebRootPath, ui.Templates),
 		DisableCache: !settings.Ui.CacheTemplates,
-		Funcs:        functions,
+		HtmlFuncs:    htmlFunctions,
+		TextFuncs:    textFunctions,
 	})
 	err = uis.InitPlugins()
 	if err != nil {

@@ -45,7 +45,6 @@ func TestGetRecentVersions(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 
 	router, err := uis.NewRouter()
@@ -251,7 +250,6 @@ func TestGetVersionInfo(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 
 	router, err := uis.NewRouter()
@@ -355,7 +353,6 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 
 	router, err := uis.NewRouter()
@@ -449,7 +446,6 @@ func TestActivateVersion(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 
 	router, err := uis.NewRouter()
@@ -593,7 +589,6 @@ func TestGetVersionStatus(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 
 	router, err := uis.NewRouter()

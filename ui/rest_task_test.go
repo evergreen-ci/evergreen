@@ -45,7 +45,6 @@ func TestGetTaskInfo(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
@@ -285,7 +284,6 @@ func TestGetTaskStatus(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 
 	router, err := uis.NewRouter()

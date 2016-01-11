@@ -218,7 +218,8 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	qp.render = render.New(render.Options{
 		Directory:    filepath.Join(home, "alerts", "templates"),
 		DisableCache: !config.Ui.CacheTemplates,
-		Funcs:        nil,
+		TextFuncs:    nil,
+		HtmlFuncs:    nil,
 	})
 
 	if len(qp.config.SuperUsers) == 0 {

@@ -33,7 +33,6 @@ func TestGetProjectInfo(t *testing.T) {
 	uis.Render = render.New(render.Options{
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
-		Funcs:        nil,
 	})
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "error setting up router")
