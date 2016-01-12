@@ -1,4 +1,4 @@
-mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestService) {
+mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDistroRestService) {
 
   $scope.distros = $window.distros;
 
@@ -51,9 +51,34 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
 
   $scope.modalOpen = false;
 
-  if ($scope.distros != null) {
-    $scope.activeDistro = $scope.distros[0];
-  }
+  $scope.$on('$locationChangeStart', function(event) {
+    $scope.hashLoad();
+  });
+
+  $scope.hashLoad = function() {
+    var distroHash = $location.hash();
+    if (distroHash) {
+      // If the distro exists, load it.
+      var distro = $scope.getDistroById(distroHash);
+      if (distro) {
+        $scope.activeDistro = distro;
+        return;
+      }
+    }
+    // Default to the first distro.
+    $scope.setActiveDistro($scope.distros[0]);
+  };
+
+  $scope.setActiveDistro = function(distro) {
+    $scope.activeDistro = distro;
+    $location.hash(distro._id);
+  };
+
+  $scope.getDistroById = function(id) {
+    return _.find($scope.distros, function(distro) {
+        return distro._id === id;
+    });
+  };
 
   $scope.initOptions = function() {
     var keys = [];
@@ -76,10 +101,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
 
   $scope.isUnique = function(id) {
     return $scope.ids.indexOf(id) == -1;
-  };
-
-  $scope.setActiveDistro = function(distro) {
-    $scope.activeDistro = distro;
   };
 
   $scope.setKeyValue = function(key, value) {
@@ -248,7 +269,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, mciDistroRestServi
   $scope.checkPortRange = function(min, max) {
     if ($scope.form.portRange.minPort.$invalid || $scope.form.portRange.maxPort.$invalid) {
         return false
-    } 
+    }
     return (!min && !max) || (min >= 0 && min <= max);
   }
 
