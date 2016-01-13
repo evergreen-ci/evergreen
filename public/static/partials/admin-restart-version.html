@@ -11,7 +11,7 @@
    </div>
    <ul style="max-height:250px; overflow-y:scroll">
      <li ng-repeat="build in version.Builds" style="list-style:none;" >
-       <h4 ng-click="collapsedBuilds[build.Build._id] = !collapsedBuilds[build.Build._id]"><i ng-class="collapsedBuilds[build.Build._id] | conditional:'icon-caret-down':'icon-caret-right'"></i> [[build.Build.display_name]]
+       <h4 ng-click="collapsedBuilds[build.Build._id] = !collapsedBuilds[build.Build._id]"><i class="fa" style="cursor:pointer" ng-class="collapsedBuilds[build.Build._id] | conditional:'fa-caret-down':'fa-caret-right'"></i> [[build.Build.display_name]]
          <span class="muted">[[numToBeRestarted(build.Build._id)]] of [[build.Build.tasks.length]] selected</span>
        </h4>
        <ul ng-show="collapsedBuilds[build.Build._id]">
