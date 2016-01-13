@@ -1121,6 +1121,9 @@ textarea {
   left: 30px;
   max-width: 270px;
 }
+.no-word-wrap {
+  white-space: nowrap;
+}
 .active-label {
   float: right;
 }

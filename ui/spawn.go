@@ -30,10 +30,11 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Flashes     []interface{}
-	}{projCtx, GetUser(r), flashes}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+		ProjectData     projectContext
+		User            *user.DBUser
+		Flashes         []interface{}
+		MaxHostsPerUser int
+	}{projCtx, GetUser(r), flashes, spawn.MaxPerUser}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {

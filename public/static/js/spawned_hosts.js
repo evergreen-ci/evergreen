@@ -13,6 +13,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.extensionLength = {};
     $scope.curHostData;
     $scope.hostExtensionLengths = {};
+    $scope.maxHostsPerUser = $window.maxHostsPerUser;
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24*7;
@@ -106,6 +107,11 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $timeout($scope.fetchSpawnedHosts, 5000);
     setInterval(function(){$scope.fetchSpawnedHosts();}, 60000);
 
+    // Returns true if the user can spawn another host. If hosts has not been initialized it
+    // assumes true.
+    $scope.availableHosts = function() {
+      return ($scope.hosts == null) || ($scope.hosts.length < $scope.maxHostsPerUser)
+    }
 
     $scope.fetchSpawnableDistros = function() {
       mciSpawnRestService.getSpawnableDistros(

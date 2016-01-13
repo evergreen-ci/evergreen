@@ -5,6 +5,7 @@
 {{end}}
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};
+  window.maxHostsPerUser = {{$.MaxHostsPerUser}}
 </script>
 {{end}}
 
@@ -59,28 +60,28 @@ Evergreen - My Hosts
           <div style="clear: both"></div>
           <thead>
             <tr>
-              <th class="col-lg-2">Host</th>
-              <th class="col-lg-2">Distro</th>
-              <th class="col-lg-2">Status</th>
-              <th class="col-lg-2">Expires In</th>
-              <th class="col-lg-2">Uptime</th>
+              <th class="col-lg-2 no-word-wrap">Host</th>
+              <th class="col-lg-2 no-word-wrap">Distro</th>
+              <th class="col-lg-2 no-word-wrap">Status</th>
+              <th class="col-lg-2 no-word-wrap">Expires In</th>
+              <th class="col-lg-2 no-word-wrap">Uptime</th>
             </tr>
           </thead>
           <tbody>
             <tr ng-repeat="host in hosts | orderBy:sortBy.by" ng-click="setSelected(host)" ng-class="host.selected">
-              <td class="col-lg-2">
+              <td class="col-lg-2 no-word-wrap">
                 [[host.id]]
               </td>
-              <td class="col-lg-2">
+              <td class="col-lg-2 no-word-wrap">
                 [[host.distro._id]]
               </td>
               <td class="col-sm-2">
-                <span ng-class="getSpawnStatusLabel(host)" style="margin-right: 5px">[[host.status]]</span>
+                <span class= "no-word-wrap" ng-class="getSpawnStatusLabel(host)" style="margin-right: 5px">[[host.status]]</span>
               </td>
-              <td class="col-lg-2">
+              <td class="col-lg-2 no-word-wrap">
                 [[host.expires_in]]
               </td>
-              <td class="col-lg-2">
+              <td class="col-lg-2 no-word-wrap">
                 [[host.uptime]]
                 <i class="fa fa-trash pointer" ng-show="host.status!='terminated'" style="float: right" ng-click="openSpawnModal('terminateHost')"></i>
               </td>
@@ -89,9 +90,12 @@ Evergreen - My Hosts
         </table>
       </div>
     </div>
-    <button type="button" class="btn btn-info" ng-click="openSpawnModal('spawnHost')">
+    <button type="button" class="btn btn-info" ng-click="openSpawnModal('spawnHost')" ng-disabled="!availableHosts()" ng-cloak>
       Spawn Host
     </button>
+    <em ng-class="{'text-muted': availableHosts(), 'text-error': !availableHosts()}" style="margin-left: 5px;" ng-cloak>
+      Limit [[maxHostsPerUser]] [[maxHostsPerUser | pluralize:'Host']]
+    </em>
   </div>
   <div>
     <user-host-details class="col-lg-6" ng-show="curHostData"></user-host-details>
