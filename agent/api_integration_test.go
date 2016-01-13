@@ -115,7 +115,7 @@ func createAgent(testServer *apiserver.TestServer, testTask *model.Task) (*Agent
 func TestBasicEndpoints(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", NoPatch, t)
+		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -206,7 +206,7 @@ func TestHeartbeatSignals(t *testing.T) {
 
 	for tlsString, tlsConfig := range tlsConfigs {
 
-		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", NoPatch, t)
+		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -229,7 +229,7 @@ func TestHeartbeatSignals(t *testing.T) {
 
 func TestSecrets(t *testing.T) {
 	setupTlsConfigs(t)
-	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", NoPatch, t)
+	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 	testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
@@ -262,7 +262,7 @@ func TestTaskSuccess(t *testing.T) {
 				Convey(testSetup.testSpec, t, func() {
 					Convey("With agent running 'compile' step and live API server over "+
 						tlsString+" with variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, "compile", variant, NoPatch, t)
+						testTask, _, err := setupAPITestData(testConfig, "compile", variant, "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test task: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -335,7 +335,7 @@ func TestTaskSuccess(t *testing.T) {
 
 					Convey("With agent running a regular test and live API server over "+
 						tlsString+" on variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, NoPatch, t)
+						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -388,7 +388,7 @@ func TestTaskFailures(t *testing.T) {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a failing test and live API server over "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, "failing_task",
-						"linux-64", NoPatch, t)
+						"linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -435,7 +435,7 @@ func TestTaskAbortion(t *testing.T) {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a slow test and live API server over "+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", NoPatch, t)
+					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Failed to find test task")
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -480,7 +480,7 @@ func TestTaskTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -513,7 +513,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With an agent with callback_timeout_secs=1 and a live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -552,7 +552,7 @@ func TestTaskExecTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -581,10 +581,43 @@ func TestTaskExecTimeout(t *testing.T) {
 	}
 }
 
+func TestProjectTaskExecTimeout(t *testing.T) {
+	setupTlsConfigs(t)
+	for tlsString, tlsConfig := range tlsConfigs {
+		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
+			testTask, _, err := setupAPITestData(testConfig, "project_exec_timeout_task", "linux-64", "testdata/config_test_plugin/project/project-timeout-test.yml", NoPatch, t)
+			testutil.HandleTestingErr(err, t, "Failed to find test task")
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			So(err, ShouldBeNil)
+			So(testAgent, ShouldNotBeNil)
+
+			Convey("after the slow test runs beyond the project timeout threshold", func() {
+				// actually run the task.
+				// this function won't return until the whole thing is done.
+				testAgent.RunTask()
+				testAgent.APILogger.Flush()
+				time.Sleep(5 * time.Second)
+				printLogsForTask(testTask.Id)
+				Convey("the test should be marked as failed and timed out", func() {
+					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					testTask, err = model.FindTask(testTask.Id)
+					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
+					So(testTask.Details.TimedOut, ShouldBeTrue)
+					So(testTask.Details.Description, ShouldEqual, "shell.exec")
+				})
+			})
+		})
+	}
+}
+
 func TestTaskEndEndpoint(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, "random", "linux-64", NoPatch, t)
+		testTask, _, err := setupAPITestData(testConfig, "random", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -657,8 +690,8 @@ func printLogsForTask(taskId string) {
 }
 
 func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
-	variant string, patchMode patchTestMode, t *testing.T) (*model.Task, *build.Build, error) {
-	//ignore errs here because the ns might just not exist.
+	variant string, projectFile string, patchMode patchTestMode, t *testing.T) (*model.Task, *build.Build, error) {
+	// Ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
 		model.TasksCollection, build.Collection, host.Collection,
@@ -666,23 +699,51 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 		manifest.Collection, model.ProjectRefCollection}
 	testutil.HandleTestingErr(dbutil.ClearCollections(testCollections...), t, clearDataMsg)
+
+	// Read in the project configuration
+	projectConfig, err := ioutil.ReadFile(projectFile)
+	testutil.HandleTestingErr(err, t, "failed to read project config")
+
+	// Unmarshall the project configuration into a struct
+	project := &model.Project{}
+	testutil.HandleTestingErr(yaml.Unmarshal(projectConfig, project), t, "failed to unmarshal project config")
+
+	// Marshall the project YAML for storage
+	projectYamlBytes, err := yaml.Marshal(project)
+	testutil.HandleTestingErr(err, t, "failed to marshall project config")
+
+	// Create the ref for the project
+	projectRef := &model.ProjectRef{
+		Identifier:  project.DisplayName,
+		Owner:       project.Owner,
+		Repo:        project.Repo,
+		RepoKind:    project.RepoKind,
+		Branch:      project.Branch,
+		Enabled:     project.Enabled,
+		BatchTime:   project.BatchTime,
+		LocalConfig: string(projectConfig),
+	}
+	testutil.HandleTestingErr(projectRef.Insert(), t, "failed to insert projectRef")
+
+	// Save the project variables
 	projectVars := &model.ProjectVars{
-		Id: "evergreen-ci-render",
+		Id: project.DisplayName,
 		Vars: map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,
 			"aws_secret": testConfig.Providers.AWS.Secret,
 			"fetch_key":  "fetch_expansion_value",
 		},
 	}
-	_, err := projectVars.Upsert()
+	_, err = projectVars.Upsert()
 	testutil.HandleTestingErr(err, t, clearDataMsg)
 
+	// Create and insert two tasks
 	taskOne := &model.Task{
 		Id:           "testTaskId",
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
 		BuildVariant: variant,
-		Project:      "evergreen-ci-render",
+		Project:      project.DisplayName,
 		DisplayName:  taskDisplayName,
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",
@@ -690,30 +751,28 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		Status:       evergreen.TaskDispatched,
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
+	if patchMode != NoPatch {
+		taskOne.Requester = evergreen.PatchVersionRequester
+	}
+	testutil.HandleTestingErr(taskOne.Insert(), t, "failed to insert taskOne")
 
 	taskTwo := &model.Task{
 		Id:           "testTaskIdTwo",
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
 		BuildVariant: variant,
-		Project:      "evergreen-ci-render",
+		Project:      project.DisplayName,
 		DisplayName:  taskDisplayName,
 		HostId:       "",
 		Secret:       "testTaskSecret",
-		Activated:    true,
 		Version:      "testVersionId",
 		Status:       evergreen.TaskUndispatched,
 		Requester:    evergreen.RepotrackerVersionRequester,
+		Activated:    true,
 	}
-
-	if patchMode != NoPatch {
-		taskOne.Requester = evergreen.PatchVersionRequester
-	}
-
-	testutil.HandleTestingErr(taskOne.Insert(), t, "failed to insert taskOne")
 	testutil.HandleTestingErr(taskTwo.Insert(), t, "failed to insert taskTwo")
 
-	// set up task queue for task end tests
+	// Set up a task queue for task end tests
 	taskQueue := &model.TaskQueue{
 		Distro: "test-distro-one",
 		Queue: []model.TaskQueueItem{
@@ -724,9 +783,30 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		},
 	}
 	testutil.HandleTestingErr(taskQueue.Save(), t, "failed to insert taskqueue")
+
+	// Insert the version document
+	v := &version.Version{
+		Id:       "testVersionId",
+		BuildIds: []string{taskOne.BuildId},
+		Config:   string(projectYamlBytes),
+	}
+	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version")
+
+	// Insert the build that contains the tasks
+	build := &build.Build{
+		Id: "testBuildId",
+		Tasks: []build.TaskCache{
+			build.NewTaskCache(taskOne.Id, taskOne.DisplayName, true),
+			build.NewTaskCache(taskTwo.Id, taskTwo.DisplayName, true),
+		},
+		Version: v.Id,
+	}
+	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build")
+
 	workDir, err := ioutil.TempDir("", "agent_test_")
 	testutil.HandleTestingErr(err, t, "failed to create working directory")
 
+	// Insert the host info for running the tests
 	host := &host.Host{
 		Id:   "testHost",
 		Host: "testHost",
@@ -735,90 +815,11 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 			WorkDir:    workDir,
 			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
 		},
-		RunningTask:   "testTaskId",
+		RunningTask:   taskOne.Id,
 		StartedBy:     evergreen.User,
 		AgentRevision: agentRevision,
 	}
 	testutil.HandleTestingErr(host.Insert(), t, "failed to insert host")
-
-	// read in the project configuration
-	projectFile := "testdata/config_test_plugin/project/evergreen-ci-render.yml"
-	projectConfig, err := ioutil.ReadFile(projectFile)
-	testutil.HandleTestingErr(err, t, "failed to read project config")
-
-	projectRef := &model.ProjectRef{
-		Identifier: "evergreen-ci-render",
-		Owner:      "evergreen-ci",
-		Repo:       "render",
-		RepoKind:   "github",
-		Branch:     "master",
-		Enabled:    true,
-		BatchTime:  180,
-	}
-
-	testutil.HandleTestingErr(projectRef.Insert(), t, "failed to insert projectRef")
-
-	err = testutil.CreateTestLocalConfig(testConfig, "evergreen-ci-render", "testdata/config_test_plugin/project/evergreen-ci-render.yml")
-	testutil.HandleTestingErr(err, t, "failed to marshall project config")
-
-	// unmarshall the project configuration into a struct
-	project := &model.Project{}
-	testutil.HandleTestingErr(yaml.Unmarshal(projectConfig, project), t, "failed to unmarshal project config")
-
-	// now then marshall the project YAML for storage
-	projectYamlBytes, err := yaml.Marshal(project)
-	testutil.HandleTestingErr(err, t, "failed to marshall project config")
-
-	// insert the version document
-	v := &version.Version{
-		Id:       "testVersionId",
-		BuildIds: []string{taskOne.BuildId},
-		Config:   string(projectYamlBytes),
-	}
-
-	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version")
-	if patchMode != NoPatch {
-		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
-		testutil.HandleTestingErr(err, t, "failed to read test patch file")
-		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
-		testutil.HandleTestingErr(err, t, "failed to read test module patch file")
-
-		ptch := &patch.Patch{
-			Status:  evergreen.PatchCreated,
-			Version: v.Id,
-		}
-		if patchMode == InlinePatch {
-			ptch.Patches = []patch.ModulePatch{
-				{
-					ModuleName: "",
-					Githash:    "1e5232709595db427893826ce19289461cba3f75",
-					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
-				},
-				{
-					ModuleName: "recursive",
-					Githash:    "1e5232709595db427893826ce19289461cba3f75",
-					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
-				},
-			}
-		} else {
-			p1Id, p2Id := bson.NewObjectId().Hex(), bson.NewObjectId().Hex()
-			So(dbutil.WriteGridFile(patch.GridFSPrefix, p1Id, strings.NewReader(string(mainPatchContent))), ShouldBeNil)
-			So(dbutil.WriteGridFile(patch.GridFSPrefix, p2Id, strings.NewReader(string(modulePatchContent))), ShouldBeNil)
-			ptch.Patches = []patch.ModulePatch{
-				{
-					ModuleName: "",
-					Githash:    "1e5232709595db427893826ce19289461cba3f75",
-					PatchSet:   patch.PatchSet{PatchFileId: p1Id},
-				},
-				{
-					ModuleName: "recursive",
-					Githash:    "1e5232709595db427893826ce19289461cba3f75",
-					PatchSet:   patch.PatchSet{PatchFileId: p2Id},
-				},
-			}
-		}
-		testutil.HandleTestingErr(ptch.Insert(), t, "failed to insert patch")
-	}
 
 	session, _, err := dbutil.GetGlobalSessionFactory().GetSession()
 	testutil.HandleTestingErr(err, t, "couldn't get db session!")
@@ -828,17 +829,47 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 		RemoveAll(bson.M{"t_id": bson.M{"$in": []string{taskOne.Id, taskTwo.Id}}})
 	testutil.HandleTestingErr(err, t, "failed to remove logs")
 
-	build := &build.Build{
-		Id: "testBuildId",
-		Tasks: []build.TaskCache{
-			build.NewTaskCache(taskOne.Id, taskOne.DisplayName, true),
-			build.NewTaskCache(taskTwo.Id, taskTwo.DisplayName, true),
-		},
-		Version: "testVersionId",
+	return taskOne, build, nil
+}
+
+type patchRequest struct {
+	moduleName string
+	filePath   string
+	githash    string
+}
+
+func setupPatches(patchMode patchTestMode, b *build.Build, t *testing.T, patches ...patchRequest) {
+	if patchMode == NoPatch {
+		return
 	}
 
-	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build")
-	return taskOne, build, nil
+	ptch := &patch.Patch{
+		Status:  evergreen.PatchCreated,
+		Version: b.Version,
+		Patches: []patch.ModulePatch{},
+	}
+
+	for _, p := range patches {
+		patchContent, err := ioutil.ReadFile(p.filePath)
+		testutil.HandleTestingErr(err, t, "failed to read test patch file")
+
+		if patchMode == InlinePatch {
+			ptch.Patches = append(ptch.Patches, patch.ModulePatch{
+				ModuleName: p.moduleName,
+				Githash:    p.githash,
+				PatchSet:   patch.PatchSet{Patch: string(patchContent)},
+			})
+		} else {
+			pId := bson.NewObjectId().Hex()
+			So(dbutil.WriteGridFile(patch.GridFSPrefix, pId, strings.NewReader(string(patchContent))), ShouldBeNil)
+			ptch.Patches = append(ptch.Patches, patch.ModulePatch{
+				ModuleName: p.moduleName,
+				Githash:    p.githash,
+				PatchSet:   patch.PatchSet{PatchFileId: pId},
+			})
+		}
+	}
+	testutil.HandleTestingErr(ptch.Insert(), t, "failed to insert patch")
 }
 
 // prependConfigToVersion modifies the project config with the given id

@@ -1,4 +1,4 @@
-display_name: evergreen-ci-render
+display_name: project-timeout-test
 owner: evergreen-ci
 repo: render
 repokind: github
@@ -6,6 +6,7 @@ branch: master
 enabled: true
 batch_time: 180
 stepback: true
+exec_timeout_secs: 3
 
 functions:
   "list of commands":
@@ -67,8 +68,6 @@ timeout:
         sleep 5 #for testing callback timeouts
 
 tasks:
-- name: aggregation
-  commands: ~
 - name: compile
   depends_on: []
   commands:
@@ -149,38 +148,7 @@ tasks:
     - func: "silent shell test"
       type: "system"
 
-- name: normal_task
-  depends_on:
-  - name: compile
-  commands:
-    - func: "predefined command test"
-    - command: s3.get
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        remote_file: unittest/blah.tgz
-        bucket: mci-test-uploads
-        extract_to: src
-
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-            set -o verbose
-            set -o errexit
-            echo "starting normal_task!"
-            echo "here is some log output to stdout"
-            cat "readme2.md"
-            grep $(date +"%m-%d-%y") jstests/date.txt
-            grep $(hostname) jstests/hostname.txt
-            [ ! -e "jstests/dont_archive_me_test.pdb" ]
-            echo "here is some log output to stderr" 1>&2
-            echo "done with normal_task!"
-            echo '{"results":[' > report.json
-            echo '{"status":"success","test_file":"t1", "url":"url","exit_code":0,"start":0, "end":10}' >> report.json
-            echo "]}" >> report.json
-
-- name: very_slow_task
+- name: project_exec_timeout_task
   depends_on:
   - name: compile
   commands:
@@ -189,57 +157,13 @@ tasks:
         script: |
             set -o verbose
             set -o errexit
-            echo "starting very_slow_task!"
-            sleep 10000
-            echo "done with very slow task!"
-
-- name: failing_task
-  depends_on:
-  - name: compile
-  commands:
-    - command: shell.exec
-      display_name: "failing shell command"
-      type: "system"
-      params:
-        working_dir: src
-        script: |
-            set -o verbose
-            set -o errexit
-            echo "starting failing_task!"
-            false
-            echo "done with failing" "task!"
-
-- name: timeout_task
-  depends_on:
-  - name: compile
-  commands:
-    - command: shell.exec
-      timeout_secs: 3
-      params:
-        script: |
-            set -o verbose
-            set -o errexit
-            echo "starting slow task!"
-            sleep 10000
-            echo "done with slow" "task!"
-
-- name: exec_timeout_task
-  depends_on:
-  - name: compile
-  exec_timeout_secs: 3
-  commands:
-    - command: shell.exec
-      params:
-        script: |
-            set -o verbose
-            set -o errexit
-            echo "starting slow task with output!"
-            for i in `seq 1 100`;
+            echo "starting project_exec_timeout_task!"
+            for i in `seq 1 10`;
             do
-                sleep 100
+                sleep 1
                 echo $i
             done
-            echo "done with slow" "task with output!"
+            echo "done with project_exec_timeout_task!"
 
 - name: push
   depends_on:
@@ -323,10 +247,6 @@ buildvariants:
     test_flags: --continue-on-failure
     buildvariant_pushes: true
   tasks:
-  - name: aggregation
-  - name: normal_task
-  - name: very_slow_task
-  - name: failing_task
   - name: push
 
 - name: windows8
@@ -346,9 +266,5 @@ buildvariants:
     test_flags: --continue-on-failure
     buildvariant_pushes: true
   tasks:
-  - name: aggregation
-  - name: normal_task
-  - name: very_slow_task
-  - name: failing_task
   - name: push
 

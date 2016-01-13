@@ -23,7 +23,7 @@ func TestAgentDebugHandler(t *testing.T) {
 			})
 		})
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)

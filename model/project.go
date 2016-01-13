@@ -44,6 +44,7 @@ type Project struct {
 	BuildVariants   []BuildVariant             `yaml:"buildvariants,omitempty" bson:"build_variants"`
 	Functions       map[string]*YAMLCommandSet `yaml:"functions,omitempty" bson:"functions"`
 	Tasks           []ProjectTask              `yaml:"tasks,omitempty" bson:"tasks"`
+	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
 
 	// Flag that indicates a project as requiring user authentication
 	Private bool `yaml:"private,omitempty" bson:"private"`

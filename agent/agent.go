@@ -420,8 +420,12 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 	name := taskConfig.Task.DisplayName
 	pt := taskConfig.Project.FindProjectTask(name)
 	if pt.ExecTimeoutSecs == 0 {
-		// if unspecified in the project, use the default value
-		pt.ExecTimeoutSecs = DefaultExecTimeoutSecs
+		// if unspecified in the project task and the project, use the default value
+		if taskConfig.Project.ExecTimeoutSecs != 0 {
+			pt.ExecTimeoutSecs = taskConfig.Project.ExecTimeoutSecs
+		} else {
+			pt.ExecTimeoutSecs = DefaultExecTimeoutSecs
+		}
 	}
 	execTimeout := time.Duration(pt.ExecTimeoutSecs) * time.Second
 	// Set master task timeout, only if included in the taskConfig
