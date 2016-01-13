@@ -1,6 +1,7 @@
 mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) {
 
   $scope.availableTriggers = $window.availableTriggers
+  $scope.isSuperUser = $window.isSuperUser;
 
   $scope.refreshTrackedProjects = function(trackedProjects) {
     $scope.trackedProjects = trackedProjects

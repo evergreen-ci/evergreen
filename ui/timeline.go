@@ -26,6 +26,10 @@ func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	if projCtx.Project == nil {
+		uis.ProjectNotFound(projCtx, w, r)
+		return
+	}
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		User        *user.DBUser
@@ -48,6 +52,12 @@ func (uis *UIServer) userPatchesTimeline(w http.ResponseWriter, r *http.Request)
 
 func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+
+	if projCtx.Project == nil {
+		uis.ProjectNotFound(projCtx, w, r)
+		return
+	}
+
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		User        *user.DBUser
@@ -71,6 +81,7 @@ func (uis *UIServer) userPatchTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+
 	pageNum, err := strconv.Atoi(r.FormValue("page"))
 	if err != nil {
 		pageNum = 0

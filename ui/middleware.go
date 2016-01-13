@@ -312,6 +312,11 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 
+	err := proj.populateProjectRefs(user != nil)
+	if err != nil {
+		return *proj, err
+	}
+
 	projectId, err := proj.populateTaskBuildVersion(taskId, buildId, versionId)
 	if err != nil {
 		return *proj, err
@@ -331,17 +336,21 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		projectId = vars["project_id"]
 	}
 
+	usingDefault := false
+
 	// Still don't have a project ID to use, check if the user's cookie contains one
 	if len(projectId) == 0 {
 		cookie, err := r.Cookie(ProjectCookieName)
 		if err == nil {
 			projectId = cookie.Value
 		}
+		usingDefault = true
 	}
 
 	// Still no project ID found anywhere, just use the default one according to config.
 	if len(projectId) == 0 {
 		projectId = uis.Settings.Ui.DefaultProject
+		usingDefault = true
 	}
 
 	// Try to load project for the ID we found, and set cookie with it for subsequent requests
@@ -351,6 +360,15 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		if err != nil {
 			return *proj, err
 		}
+
+		// If we used the default project or a cookie to choose the project,
+		// but that project doesn't exist, choose the first one in the list.
+		if usingDefault && proj.ProjectRef == nil {
+			if len(proj.AllProjects) > 0 {
+				proj.ProjectRef = &proj.AllProjects[0]
+			}
+		}
+
 		if proj.ProjectRef != nil {
 			proj.Project, err = model.FindProject("", proj.ProjectRef)
 			if err != nil {
@@ -368,10 +386,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 			}
 		}
-	}
-	err = proj.populateProjectRefs(user != nil)
-	if err != nil {
-		return *proj, err
 	}
 
 	proj.AuthRedirect = uis.UserManager.IsRedirect()

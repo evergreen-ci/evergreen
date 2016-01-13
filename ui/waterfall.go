@@ -411,7 +411,7 @@ func countOnPreviousPage(skip int, numVersionElements int,
 func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Project == nil {
-		http.Error(w, "Project not found", http.StatusNotFound)
+		uis.ProjectNotFound(projCtx, w, r)
 		return
 	}
 

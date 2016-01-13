@@ -19,7 +19,8 @@ var (
 func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Project == nil {
-		http.Error(w, "Project not found", http.StatusNotFound)
+		uis.ProjectNotFound(projCtx, w, r)
+		return
 	}
 
 	// If no version was specified in the URL, grab the latest version on the project
