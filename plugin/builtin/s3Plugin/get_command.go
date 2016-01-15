@@ -39,14 +39,14 @@ type S3GetCommand struct {
 
 	// BuildVariants stores a list of MCI build variants to run the command for.
 	// If the list is empty, it runs for all build variants.
-	BuildVariants []string `mapstructure:"build_variants"`
+	BuildVariants []string `mapstructure:"build_variants" plugin:"expand"`
 
 	// Only one of these two should be specified. local_file indicates that the
 	// s3 resource should be downloaded as-is to the specified file, and
 	// extract_to indicates that the remote resource is a .tgz file to be
 	// downloaded to the specified directory.
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
-	ExtractTo string `mapstructure:"extract_to"`
+	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 }
 
 func (self *S3GetCommand) Name() string {

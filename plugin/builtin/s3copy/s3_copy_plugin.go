@@ -79,7 +79,7 @@ type s3CopyFile struct {
 	// BuildVariants is a slice of build variants for which
 	// a specified file is to be copied. An empty slice indicates it is to be
 	// copied for all build variants
-	BuildVariants []string `mapstructure:"build_variants"`
+	BuildVariants []string `mapstructure:"build_variants" plugin:"expand"`
 
 	//DisplayName is the name of the file
 	DisplayName string `mapstructure:"display_name" plugin:"expand"`

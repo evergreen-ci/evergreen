@@ -13,9 +13,9 @@ import (
 // Plugin command responsible for unpacking a tgz archive.
 type TarGzUnpackCommand struct {
 	// the tgz file to unpack
-	Source string `mapstructure:"source"`
+	Source string `mapstructure:"source" plugin:"expand"`
 	// the directory that the unpacked contents should be put into
-	DestDir string `mapstructure:"dest_dir"`
+	DestDir string `mapstructure:"dest_dir" plugin:"expand"`
 }
 
 func (self *TarGzUnpackCommand) Name() string {
@@ -55,6 +55,10 @@ func (self *TarGzUnpackCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
+
+	if err := plugin.ExpandValues(self, conf.Expansions); err != nil {
+		return fmt.Errorf("error expanding params: %v", err)
+	}
 
 	errChan := make(chan error)
 	go func() {

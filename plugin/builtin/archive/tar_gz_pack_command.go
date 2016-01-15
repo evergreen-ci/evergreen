@@ -14,18 +14,18 @@ import (
 // Plugin command responsible for creating a tgz archive.
 type TarGzPackCommand struct {
 	// the tgz file that will be created
-	Target string `mapstructure:"target"`
+	Target string `mapstructure:"target" plugin:"expand"`
 
 	// the directory to compress
-	SourceDir string `mapstructure:"source_dir"`
+	SourceDir string `mapstructure:"source_dir" plugin:"expand"`
 
 	// a list of filename blobs to include,
 	// e.g. "*.tgz", "file.txt", "test_*"
-	Include []string `mapstructure:"include"`
+	Include []string `mapstructure:"include" plugin:"expand"`
 
 	// a list of filename blobs to exclude,
 	// e.g. "*.zip", "results.out", "ignore/**"
-	ExcludeFiles []string `mapstructure:"exclude_files"`
+	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
 }
 
 func (self *TarGzPackCommand) Name() string {
@@ -68,6 +68,10 @@ func (self *TarGzPackCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
+
+	if err := plugin.ExpandValues(self, conf.Expansions); err != nil {
+		return fmt.Errorf("error expanding params: %v", err)
+	}
 
 	// if the source dir is a relative path, join it to the working dir
 	if !filepath.IsAbs(self.SourceDir) {
