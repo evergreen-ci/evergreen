@@ -193,7 +193,7 @@ Evergreen - Distros
                       <tr>
                         <td style="padding-left: 10px;"><input required name="devName" type="text" ng-model="mount_point.device_name" class="col-md-10"></td>
                         <td><input  ng-required="!mount_point.size" name="virtName" type="text" ng-model="mount_point.virtual_name" class="col-md-10"></td>
-                        <td><input ng-required="!mount_point.virtual_name" name="devSize" type="text" ng-model="mount_point.size" class="col-md-10">
+                        <td><input type="number" ng-required="!mount_point.virtual_name" name="devSize" type="text" ng-model="mount_point.size" class="col-md-10">
                           &nbsp;<a ng-click="form.$setDirty();removeMount(mount_point)"><i class="fa fa-trash distro-trash-icon"></i></a>
                         </td>
                       </tr>
