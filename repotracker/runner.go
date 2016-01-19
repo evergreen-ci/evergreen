@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"sync"
 	"time"
 )
 
@@ -47,24 +48,30 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		return evergreen.Logger.Errorf(slogger.ERROR, "Error finding tracked projects %v", err)
 	}
 
-	for _, projectRef := range allProjects {
-		tracker := &RepoTracker{
-			config,
-			&projectRef,
-			NewGithubRepositoryPoller(&projectRef, config.Credentials["github"]),
-		}
-
-		numNewRepoRevisionsToFetch := config.RepoTracker.NumNewRepoRevisionsToFetch
-		if numNewRepoRevisionsToFetch <= 0 {
-			numNewRepoRevisionsToFetch = DefaultNumNewRepoRevisionsToFetch
-		}
-
-		err = tracker.FetchRevisions(numNewRepoRevisionsToFetch)
-		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error fetching revisions: %v", err)
-			continue
-		}
+	numNewRepoRevisionsToFetch := config.RepoTracker.NumNewRepoRevisionsToFetch
+	if numNewRepoRevisionsToFetch <= 0 {
+		numNewRepoRevisionsToFetch = DefaultNumNewRepoRevisionsToFetch
 	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(allProjects))
+	for _, projectRef := range allProjects {
+		go func(projectRef model.ProjectRef) {
+			defer wg.Done()
+
+			tracker := &RepoTracker{
+				config,
+				&projectRef,
+				NewGithubRepositoryPoller(&projectRef, config.Credentials["github"]),
+			}
+
+			err = tracker.FetchRevisions(numNewRepoRevisionsToFetch)
+			if err != nil {
+				evergreen.Logger.Errorf(slogger.ERROR, "Error fetching revisions: %v", err)
+			}
+		}(projectRef)
+	}
+	wg.Wait()
 
 	runtime := time.Now().Sub(startTime)
 	if err = model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
