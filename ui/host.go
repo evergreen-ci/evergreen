@@ -58,9 +58,9 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-	task := &model.Task{}
+	runningTask := &model.Task{}
 	if h.RunningTask != "" {
-		task, err = model.FindTask(h.RunningTask)
+		runningTask, err = model.FindTask(h.RunningTask)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -75,7 +75,7 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		RunningTask *model.Task
 		User        *user.DBUser
 		ProjectData projectContext
-	}{flashes, events, h, task, GetUser(r), projCtx},
+	}{flashes, events, h, runningTask, GetUser(r), projCtx},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
