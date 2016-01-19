@@ -848,6 +848,37 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, allProjs)
 }
 
+func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["projectId"]
+	projectRef, err := model.FindOneProjectRef(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	project, err := model.FindProject("", projectRef)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	as.WriteJSON(w, http.StatusOK, project.Tasks)
+}
+func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["projectId"]
+	projectRef, err := model.FindOneProjectRef(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	project, err := model.FindProject("", projectRef)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	as.WriteJSON(w, http.StatusOK, project.BuildVariants)
+}
+
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
@@ -949,6 +980,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	apiRootOld.HandleFunc("/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
 	apiRootOld.HandleFunc("/validate", as.validateProjectConfig).Methods("POST")
 	apiRootOld.HandleFunc("/projects", requireUser(as.listProjects)).Methods("GET")
+	apiRootOld.HandleFunc("/tasks/{projectId}", requireUser(as.listTasks)).Methods("GET")
+	apiRootOld.HandleFunc("/variants/{projectId}", requireUser(as.listVariants)).Methods("GET")
 
 	// Client auto-update routes
 	apiRootOld.HandleFunc("/update", as.getUpdate).Methods("GET")

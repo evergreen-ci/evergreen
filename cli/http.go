@@ -229,6 +229,36 @@ func (ac *APIClient) ListProjects() ([]model.ProjectRef, error) {
 	return projs, nil
 }
 
+func (ac *APIClient) ListTasks(project string) ([]model.ProjectTask, error) {
+	resp, err := ac.get(fmt.Sprintf("tasks/%v", project), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	tasks := []model.ProjectTask{}
+	if err := util.ReadJSONInto(resp.Body, &tasks); err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+func (ac *APIClient) ListVariants(project string) ([]model.BuildVariant, error) {
+	resp, err := ac.get(fmt.Sprintf("variants/%v", project), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	variants := []model.BuildVariant{}
+	if err := util.ReadJSONInto(resp.Body, &variants); err != nil {
+		return nil, err
+	}
+	return variants, nil
+}
+
 // PutPatch submits a new patch for the given project to the API server. If successful, returns
 // the patch object itself.
 func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, error) {

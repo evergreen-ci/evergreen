@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -61,6 +62,18 @@ type ListPatchesCommand struct {
 
 type ListProjectsCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
+}
+
+type ListVariantsCommand struct {
+	GlobalOpts *Options `no-flag:"true"`
+	Project    string   `short:"p" long:"project" description:"project whose variants should be listed"`
+	File       string   `short:"f" long:"file" description:"path to config file whose variants should be listed"`
+}
+
+type ListTasksCommand struct {
+	GlobalOpts *Options `no-flag:"true"`
+	Project    string   `short:"p" long:"project" description:"project whose variants should be listed"`
+	File       string   `short:"f" long:"file" description:"path to config file whose variants should be listed"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -337,6 +350,86 @@ func (lp *ListProjectsCommand) Execute(args []string) error {
 	}
 	w.Flush()
 	return nil
+}
+
+// LoadLocalConfig loads the local project config into a project
+func loadLocalConfig(filepath string) (*model.Project, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	project := &model.Project{}
+	err = util.ReadYAMLInto(f, project)
+	if err != nil {
+		return nil, err
+	}
+	return project, nil
+}
+
+func (lt *ListTasksCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(lt.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+	var tasks []model.ProjectTask
+	if lt.Project != "" {
+		tasks, err = ac.ListTasks(lt.Project)
+		if err != nil {
+			return err
+		}
+	} else if lt.File != "" {
+		project, err := loadLocalConfig(lt.File)
+		if err != nil {
+			return err
+		}
+		tasks = project.Tasks
+	} else {
+		return fmt.Errorf("must specify a project with -p/--project or a path to a config file with -f/--file")
+	}
+	fmt.Println(len(tasks), "tasks:")
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	for _, t := range tasks {
+		line := fmt.Sprintf("\t%v\t", t.Name)
+		fmt.Fprintln(w, line)
+	}
+	w.Flush()
+	return nil
+
+}
+
+func (lv *ListVariantsCommand) Execute(args []string) error {
+	ac, _, err := getAPIClient(lv.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+	var variants []model.BuildVariant
+	if lv.Project != "" {
+		variants, err = ac.ListVariants(lv.Project)
+		if err != nil {
+			return err
+		}
+	} else if lv.File != "" {
+		project, err := loadLocalConfig(lv.File)
+		if err != nil {
+			return err
+		}
+		variants = project.BuildVariants
+	} else {
+		return fmt.Errorf("no project or file specified")
+	}
+	fmt.Println(len(variants), "variants:")
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
+	for _, t := range variants {
+		line := fmt.Sprintf("\t%v\t", t.Name)
+		fmt.Fprintln(w, line)
+	}
+	w.Flush()
+	return nil
+
 }
 
 // Performs validation for patch or patch-file

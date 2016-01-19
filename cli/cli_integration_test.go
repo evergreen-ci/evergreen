@@ -164,6 +164,20 @@ func TestCLIFunctions(t *testing.T) {
 					})
 				})
 			})
+			Convey("Listing variants or tasks for a project should list all variants", func() {
+				tasks, err := ac.ListTasks("sample")
+				So(err, ShouldBeNil)
+				So(tasks, ShouldNotBeEmpty)
+				So(len(tasks), ShouldEqual, 4)
+			})
+			Convey("Listing variants for a project should list all variants", func() {
+
+				variants, err := ac.ListVariants("sample")
+				So(err, ShouldBeNil)
+				So(variants, ShouldNotBeEmpty)
+				So(len(variants), ShouldEqual, 2)
+			})
+
 		})
 	})
 }
