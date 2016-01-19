@@ -261,24 +261,30 @@ func TestTaskSetPriority(t *testing.T) {
 			Task{
 				Id:        "one",
 				DependsOn: []Dependency{{"two", ""}, {"three", ""}, {"four", ""}},
+				Activated: true,
 			},
 			Task{
-				Id:       "two",
-				Priority: 5,
+				Id:        "two",
+				Priority:  5,
+				Activated: true,
 			},
 			Task{
 				Id:        "three",
 				DependsOn: []Dependency{{"five", ""}},
+				Activated: true,
 			},
 			Task{
 				Id:        "four",
 				DependsOn: []Dependency{{"five", ""}},
+				Activated: true,
 			},
 			Task{
-				Id: "five",
+				Id:        "five",
+				Activated: true,
 			},
 			Task{
-				Id: "six",
+				Id:        "six",
+				Activated: true,
 			},
 		}
 
@@ -325,6 +331,53 @@ func TestTaskSetPriority(t *testing.T) {
 			So(task.Id, ShouldEqual, "six")
 			So(task.Priority, ShouldEqual, 0)
 
+		})
+
+		Convey("decreasing priority should update the task but not its dependencies", func() {
+
+			So(tasks[0].SetPriority(1), ShouldBeNil)
+			So(tasks[0].Activated, ShouldEqual, true)
+			So(tasks[0].SetPriority(-1), ShouldBeNil)
+			So(tasks[0].Priority, ShouldEqual, -1)
+
+			task, err := FindTask("one")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Priority, ShouldEqual, -1)
+			So(task.Activated, ShouldEqual, false)
+
+			task, err = FindTask("two")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Priority, ShouldEqual, 5)
+			So(task.Activated, ShouldEqual, true)
+
+			task, err = FindTask("three")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Priority, ShouldEqual, 1)
+			So(task.Activated, ShouldEqual, true)
+
+			task, err = FindTask("four")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Id, ShouldEqual, "four")
+			So(task.Priority, ShouldEqual, 1)
+			So(task.Activated, ShouldEqual, true)
+
+			task, err = FindTask("five")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Id, ShouldEqual, "five")
+			So(task.Priority, ShouldEqual, 1)
+			So(task.Activated, ShouldEqual, true)
+
+			task, err = FindTask("six")
+			So(err, ShouldBeNil)
+			So(task, ShouldNotBeNil)
+			So(task.Id, ShouldEqual, "six")
+			So(task.Priority, ShouldEqual, 0)
+			So(task.Activated, ShouldEqual, true)
 		})
 	})
 

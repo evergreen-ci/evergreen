@@ -1036,11 +1036,14 @@ func (t *Task) SetPriority(priority int64) error {
 		return fmt.Errorf("error getting task dependencies: %v", err)
 	}
 
+	// We want to be able to lower the priority of this task, but don't want to lower the
+	// priorities of dependencies.
 	_, err = UpdateAllTasks(
-		bson.M{
-			TaskIdKey:       bson.M{"$in": ids},
-			TaskPriorityKey: bson.M{"$lt": priority},
-		},
+		bson.M{"$or": []bson.M{
+			bson.M{TaskIdKey: t.Id},
+			bson.M{TaskIdKey: bson.M{"$in": ids},
+				TaskPriorityKey: bson.M{"$lt": priority}},
+		}},
 		bson.M{"$set": modifier},
 	)
 	return err
