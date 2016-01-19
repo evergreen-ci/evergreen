@@ -1,6 +1,6 @@
 <div class="eventlog">
-  <div class="timestamp col-lg-3">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
-  <div class="event_details col-lg-9" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
+  <div class="timestamp col-lg-2 col-md-3 col-sm-4" style="min-width: 250px;">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
+  <div class="event_details col-lg-9 col-md-8 col-sm-7" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
     <span ng-switch-when="HOST_CREATED">Host created</span>
     <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> </span>
     <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>

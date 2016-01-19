@@ -54,62 +54,62 @@ Evergreen - Host {{.Host.Id}}
     </div>
   </header>
   <div class="row">
-    <div class="col-lg-7">
+    <div class="col-lg-7 col-md-7">
       <div class="mci-pod">
         <div class="row">
-          <div class="host-info col-lg-3"><b>User</b> </div>
-          <div class="host-info col-lg-9">[[host.user]]</div>
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>User</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.user]]</div>
         </div>
         <div class="row">
-          <div class="host-info col-lg-3"><b>Hostname</b> </div>
-          <div class="host-info col-lg-9">[[host.host]]</div>
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Hostname</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.host]]</div>
         </div>
         <div class="row">
-          <div class="host-info col-lg-3" style="margin-top: 5px;"><b>SSH Command</b> </div>
-          <div class="entry col-lg-9" ng-show="!host.isTerminated && host.host.length > 0">
+          <div class="host-info col-lg-3 col-md-3 col-sm-3" style="margin-top: 5px;"><b>SSH Command</b> </div>
+          <div class="entry col-lg-9 col-md-9 col-sm-9" ng-show="!host.isTerminated && host.host.length > 0">
             <pre readonly>ssh [[host.user]]@[[host.host]]</pre>
           </div>
         </div>
       </div>
     </div>
-    <div class="col-lg-5">
+    <div class="col-lg-5 col-md-5">
       <div class="mci-pod">
         <div class="row">
-          <div class="host-info col-lg-4"><b>Started By</b> </div>
-          <div class="host-info col-lg-8">[[host.started_by]]</div>
+          <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Started By</b> </div>
+          <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.started_by]]</div>
         </div>
         <div class="row">
-          <div class="host-info col-lg-4"><b>Cloud Provider</b> </div>
-          <div class="host-info col-lg-8">[[host.host_type]]</div>
+          <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Cloud Provider</b> </div>
+          <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.host_type]]</div>
         </div>
         <div class="row">
-          <div class="host-info col-lg-4"><b>Distro</b> </div>
-          <div class="host-info col-lg-8">[[host.distro._id]]</div>
+          <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Distro</b> </div>
+          <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.distro._id]]</div>
         </div>
       </div>
       </div>
   </div>
   <div class="row">
-    <div class="col-lg-7" ng-show="(running_task && running_task.id) || host.elapsed != 'N/A' || host.uptime != 'N/A'">
+    <div class="col-lg-7 col-md-7" ng-show="(running_task && running_task.id) || host.elapsed != 'N/A' || host.uptime != 'N/A'">
       <div class="mci-pod">
         <div class="row" ng-show="running_task && running_task.id">
-          <div class="host-info col-lg-3"><b>Running Task</b> </div>
-          <div class="host-info col-lg-9">
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Running Task</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">
           <a ng-href="/task/[[running_task.id]]"> [[running_task.display_name]]</a>
           <span class="muted">| [[running_task.branch]]</span>
         </div>
         </div>
         <div class="row" ng-show="host.elapsed != 'N/A'">
-          <div class="host-info col-lg-3"><b>Elapsed</b> </div>
-          <div class="host-info col-lg-9">[[host.elapsed]]</div>
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Elapsed</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.elapsed]]</div>
         </div>
         <div class="row" ng-show="host.uptime != 'N/A'">
-          <div class="host-info col-lg-3"><b>Uptime</b> </div>
-          <div class="host-info col-lg-9">[[host.uptime]]</div>
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Uptime</b> </div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.uptime]]</div>
         </div>
         <div class="row" ng-show="host.termination_time > 0">
-          <div class="host-info col-lg-3"><b>Terminated at</b></div>
-          <div class="host-info col-lg-9">[[host.termination_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</div>
+          <div class="host-info col-lg-3 col-md-3 col-sm-3"><b>Terminated at</b></div>
+          <div class="host-info col-lg-9 col-md-9 col-sm-9">[[host.termination_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</div>
         </div>
       </div>
     </div>
