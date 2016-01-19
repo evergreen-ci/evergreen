@@ -20,6 +20,8 @@ const (
 	OnDemandProviderName = "ec2"
 	SpotProviderName     = "ec2-spot"
 	NameTimeFormat       = "20060102150405"
+	SpawnHostExpireDays  = 90
+	MciHostExpireDays    = 30
 )
 
 type MountPoint struct {
@@ -142,6 +144,12 @@ func ec2StatusToEvergreenStatus(ec2Status string) cloud.CloudStatus {
 	}
 }
 
+// expireInDays creates an expire-on string in the format YYYY-MM-DD for numDays days
+// in the future.
+func expireInDays(numDays int) string {
+	return time.Now().AddDate(0, 0, numDays).Format("2006-01-02")
+}
+
 //makeTags populates a map of tags based on a host object, which contain keys
 //for the user, owner, hostname, and if it's a spawnhost or not.
 func makeTags(intentHost *host.Host) map[string]string {
@@ -160,6 +168,17 @@ func makeTags(intentHost *host.Host) map[string]string {
 		username = user.Name
 	}
 
+	// The expire-on tag is required by MongoDB's AWS reaping policy.
+	// The reaper is an external script that scans every ec2 instance for an expire-on tag,
+	// and if that tag is passed the reaper terminates the host. This reaping occurs to
+	// ensure that any hosts that we forget about or that fail to terminate do not stay alive
+	// forever.
+	expireOn := expireInDays(MciHostExpireDays)
+	if intentHost.UserHost {
+		// If this is a spawn host, use a different expiration date.
+		expireOn = expireInDays(SpawnHostExpireDays)
+	}
+
 	tags := map[string]string{
 		"Name":       intentHost.Id,
 		"distro":     intentHost.Distro.Id,
@@ -168,6 +187,7 @@ func makeTags(intentHost *host.Host) map[string]string {
 		"owner":      intentHost.StartedBy,
 		"mode":       "production",
 		"start-time": intentHost.CreationTime.Format(NameTimeFormat),
+		"expire-on":  expireOn,
 	}
 
 	if intentHost.UserHost {
