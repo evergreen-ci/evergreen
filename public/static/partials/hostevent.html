@@ -1,15 +1,15 @@
 <div class="eventlog">
-  <div class="timestamp">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
-  <div class="event_details" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
+  <div class="timestamp col-lg-3">[[eventLogObj.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
+  <div class="event_details col-lg-9" ng-switch="eventLogObj.event_type" ng-init="showlogs = false">
     <span ng-switch-when="HOST_CREATED">Host created</span>
     <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> </span>
     <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>
     <span ng-switch-when="HOST_PROVISIONED">Marked as <b>provisioned</b></span>
-    <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id]]</a></span>
-    <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id]]</a></span>
+    <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
+    <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
     <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.task_pid]]</b></span>
-    <span ng-switch-when="HOST_MONITOR_FLAG">Flagged for termination because: 
-      <span ng-switch="eventLogObj.data.monitor"> 
+    <span ng-switch-when="HOST_MONITOR_FLAG">Flagged for termination because:
+      <span ng-switch="eventLogObj.data.monitor">
         <strong ng-switch-when="decommissioned">host was decommissioned.</strong>
         <strong ng-switch-when="idle">host was idle.</strong>
         <strong ng-switch-when="excess">pool exceeded maximum hosts limit.</strong>

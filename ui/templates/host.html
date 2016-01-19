@@ -1,4 +1,7 @@
 {{define "scripts"}}
+<style type="text/css">
+  body{ background: #f5f6f7; }
+</style>
 <script type="text/javascript" src="{{Static "js" "host.js"}}?hash={{ StaticsMD5 }}"></script>
 {{if .User }}
 <script type="text/javascript" src="{{Static "js" "host_admin.js"}}?hash={{ StaticsMD5 }}"></script>
@@ -7,6 +10,7 @@
   var host = {{.Host}}
   var events = {{.Events}}.reverse()
   var userTz = {{GetTimezone $.User}}
+  var runningTask = {{.RunningTask}}
 </script>
 {{end}}
 
@@ -18,8 +22,17 @@ Evergreen - Host {{.Host.Id}}
 <div id="content" class="container-fluid" ng-controller="HostCtrl">
   {{template "flash" . }}
   <header class="clearfix">
-    <h1>Evergreen Host: <strong>[[host.id]]</strong></h1>
-
+  <div class="row">
+    <div class="col-lg-12">
+    <h1>
+      <span class="label status-label" ng-class="getStatusLabel(host)" style="margin-right: 10px">
+        [[host.status]]
+      </span>
+      Host:
+      <strong>
+        [[host.id]]
+      </strong>
+    </h1>
     {{if .User }}
       <div ng-controller="AdminOptionsCtrl" ng-init="setHost(host)" class="pull-right page-actions">
         <div id="admin-dropdown" class="dropdown pull-right">
@@ -37,30 +50,81 @@ Evergreen - Host {{.Host.Id}}
         </admin-modal>
       </div>
     {{end}}
+      </div>
+    </div>
   </header>
-
-  <div class="entry" ng-show="!host.isTerminated && host.host.length > 0">
-    <b class="h4">Login Command:</b>
-    <pre readonly>ssh [[host.user]]@[[host.host]]</pre>
+  <div class="row">
+    <div class="col-lg-7">
+      <div class="mci-pod">
+        <div class="row">
+          <div class="host-info col-lg-3"><b>User</b> </div>
+          <div class="host-info col-lg-9">[[host.user]]</div>
+        </div>
+        <div class="row">
+          <div class="host-info col-lg-3"><b>Hostname</b> </div>
+          <div class="host-info col-lg-9">[[host.host]]</div>
+        </div>
+        <div class="row">
+          <div class="host-info col-lg-3" style="margin-top: 5px;"><b>SSH Command</b> </div>
+          <div class="entry col-lg-9" ng-show="!host.isTerminated && host.host.length > 0">
+            <pre readonly>ssh [[host.user]]@[[host.host]]</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="mci-pod">
+        <div class="row">
+          <div class="host-info col-lg-4"><b>Started By</b> </div>
+          <div class="host-info col-lg-8">[[host.started_by]]</div>
+        </div>
+        <div class="row">
+          <div class="host-info col-lg-4"><b>Cloud Provider</b> </div>
+          <div class="host-info col-lg-8">[[host.host_type]]</div>
+        </div>
+        <div class="row">
+          <div class="host-info col-lg-4"><b>Distro</b> </div>
+          <div class="host-info col-lg-8">[[host.distro._id]]</div>
+        </div>
+      </div>
+      </div>
   </div>
-  <div><b class="h4">User:</b> [[host.user]]</div>
-  <div><b class="h4">DNS Name:</b> [[host.host]]</div>
-  <div><b class="h4">Status:</b> [[host.status]]</div>
-  <div><b class="h4">Started by:</b> <span>[[host.started_by]]</div></span>
-  <div><b class="h4">Distro:</b> [[host.distro._id]]</div>
-  <div><b class="h4">Uptime:</b> [[host.uptime]]</div>
-  <div><b class="h4">Cloud Provider:</b> [[host.host_type]]</div>
-  <div ng-show="host.termination_time > 0"><b>Terminated at:</b> [[host.termination_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</div>
-  <hr/>
-
-  <div>
-    <span class="h3">Recent Events</span>
-    &nbsp;<a ng-href="/event_log/host/[[host.id]]">view all&hellip;</a>
+  <div class="row">
+    <div class="col-lg-7" ng-show="(running_task && running_task.id) || host.elapsed != 'N/A' || host.uptime != 'N/A'">
+      <div class="mci-pod">
+        <div class="row" ng-show="running_task && running_task.id">
+          <div class="host-info col-lg-3"><b>Running Task</b> </div>
+          <div class="host-info col-lg-9">
+          <a ng-href="/task/[[running_task.id]]"> [[running_task.display_name]]</a>
+          <span class="muted">| [[running_task.branch]]</span>
+        </div>
+        </div>
+        <div class="row" ng-show="host.elapsed != 'N/A'">
+          <div class="host-info col-lg-3"><b>Elapsed</b> </div>
+          <div class="host-info col-lg-9">[[host.elapsed]]</div>
+        </div>
+        <div class="row" ng-show="host.uptime != 'N/A'">
+          <div class="host-info col-lg-3"><b>Uptime</b> </div>
+          <div class="host-info col-lg-9">[[host.uptime]]</div>
+        </div>
+        <div class="row" ng-show="host.termination_time > 0">
+          <div class="host-info col-lg-3"><b>Terminated at</b></div>
+          <div class="host-info col-lg-9">[[host.termination_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div>
-    <div ng-repeat="event in events">
-       <hostevent event="event" tz="userTz"></hostevent>
+  <div class="mci-pod">
+    <div>
+      <span class="h3">Recent Events</span>
+      &nbsp;<a ng-href="/event_log/host/[[host.id]]">view all&hellip;</a>
+    </div>
+
+    <div>
+      <div ng-repeat="event in events">
+         <hostevent event="event" tz="userTz"></hostevent>
+      </div>
     </div>
   </div>
 

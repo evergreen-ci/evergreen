@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -57,15 +58,24 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+	task := &model.Task{}
+	if h.RunningTask != "" {
+		task, err = model.FindTask(h.RunningTask)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
 
 	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Flashes     []interface{}
 		Events      []event.Event
 		Host        *host.Host
+		RunningTask *model.Task
 		User        *user.DBUser
 		ProjectData projectContext
-	}{flashes, events, h, GetUser(r), projCtx},
+	}{flashes, events, h, task, GetUser(r), projCtx},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 

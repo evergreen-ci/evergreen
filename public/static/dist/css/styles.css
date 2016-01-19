@@ -181,6 +181,7 @@ h3.section-heading {
   font-size: 18px;
   padding: 5px 10px;
   text-align: center;
+  vertical-align: middle;
 }
 .status-success {
   color: #0ed400;
@@ -878,6 +879,21 @@ ul.tooltip-tasks li.tooltip-task {
 .active-host {
   background-color: #5F923B;
   color: white;
+}
+.host-info {
+  font-size: 1.2em;
+}
+.host-running {
+  background-color: #5cb85c;
+}
+.host-terminated {
+  background-color: #d9534f;
+}
+.host-unreachable {
+  background-color: #bfbfbe;
+}
+.host-starting {
+  background-color: #ffb618;
 }
 .host-type-icon {
   display: inline-block;

@@ -16,7 +16,7 @@ Events
 {{end}}
 
 {{define "content"}}
-<div id="content" class="container" ng-controller="LogController">
+<div id="content" class="container-fluid" ng-controller="LogController">
     <div ng-repeat="event in events">
         <div ng-show="event.data.resource_type == 'HOST'">
           <hostevent event="event" tz="userTz"></hostevent>
