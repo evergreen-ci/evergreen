@@ -35,7 +35,7 @@ func TestPatchTask(t *testing.T) {
 							testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 							testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-							testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+							testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 
 							// actually run the task.
 							// this function won't return until the whole thing is done.

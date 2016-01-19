@@ -39,7 +39,7 @@ func main() {
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	tlsConfig, err := util.MakeTlsConfig(settings.Expansions["api_httpscert"], settings.Api.HttpsKey)
+	tlsConfig, err := util.MakeTlsConfig(settings.Api.HttpsCert, settings.Api.HttpsKey)
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Failed to make TLS config: %v", err)
 		os.Exit(1)

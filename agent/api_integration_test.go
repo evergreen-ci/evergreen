@@ -90,7 +90,7 @@ func setupTlsConfigs(t *testing.T) {
 		var err error
 		tlsConfig.Certificates = make([]tls.Certificate, 1)
 		tlsConfig.Certificates[0], err =
-			tls.X509KeyPair([]byte(testConfig.Expansions["api_httpscert"]),
+			tls.X509KeyPair([]byte(testConfig.Api.HttpsCert),
 				[]byte(testConfig.Api.HttpsKey))
 		if err != nil {
 			testutil.HandleTestingErr(err, t, "X509KeyPair failed during test initialization: %v", err)
@@ -103,7 +103,7 @@ func setupTlsConfigs(t *testing.T) {
 }
 
 func createAgent(testServer *apiserver.TestServer, testTask *model.Task) (*Agent, error) {
-	testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+	testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 	if err != nil {
 		return nil, err
 	}
@@ -484,7 +484,7 @@ func TestTaskTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -517,7 +517,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 			prependConfigToVersion(t, testTask.Version, "callback_timeout_secs: 1\n")
@@ -556,7 +556,7 @@ func TestTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -589,7 +589,7 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Expansions["api_httpscert"])
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 

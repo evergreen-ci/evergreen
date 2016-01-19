@@ -30,6 +30,10 @@ api:
         -----BEGIN RSA PRIVATE KEY-----
         ...generated RSA private HTTPS key...
         -----END RSA PRIVATE KEY-----
+    httpscert: |
+            -----BEGIN CERTIFICATE-----
+            certificate
+            -----END CERTIFICATE-----
 
 ui:
     secret: "here is my secret"
@@ -42,13 +46,9 @@ repotracker:
     numnewreporevisionstofetch: 10
     maxreporevisionstosearch: 50
 
-expansions: 
+expansions:
     github_private_key: |-
         -----BEGIN RSA PRIVATE KEY-----
         private key
         -----END RSA PRIVATE KEY-----
     github_public_key: paste your private key here
-    api_httpscert: |
-            -----BEGIN CERTIFICATE-----
-            certificate
-            -----END CERTIFICATE-----

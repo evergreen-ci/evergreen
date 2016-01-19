@@ -78,6 +78,7 @@ type APIConfig struct {
 	HttpListenAddr  string
 	HttpsListenAddr string
 	HttpsKey        string
+	HttpsCert       string
 }
 
 // UIConfig holds relevant settings for the UI server.
