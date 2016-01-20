@@ -213,6 +213,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
 
   $scope.removeAlert = function(triggerId, index){
     $scope.settingsFormData.alert_config[triggerId].splice(index, 1)
+    $scope.isDirty = true;
   }
 
   $scope.setLastRevision = function() {
