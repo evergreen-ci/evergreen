@@ -208,8 +208,8 @@ Evergreen - Distros
               </div>
             </div>
             <div ng-show="activeDistro.provider != 'static'">
-              <label class="distro-label">Max Pool Size:</label>
-              <input type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Maximum number of hosts allowed for this distro">
+              <label class="distro-label">Maximum number of hosts allowed:</label>
+              <input type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
               <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">&nbsp;Numeric pool size is required</div>
             </div>
             <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
