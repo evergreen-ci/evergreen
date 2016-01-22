@@ -20,13 +20,11 @@
 {{end}}
 
 {{define "title"}}
-{{/*
-  {{ if .Data.PatchInfo }}
-Evergreen - Build of Patch {{.Data.PatchInfo.Patch.PatchNumber}} by {{.Data.PatchInfo.Patch.Author}} on {{.Data.Build.DisplayName}}
+  {{ if .Build.PatchInfo }}
+Evergreen - Build of Patch {{.Build.PatchInfo.Patch.PatchNumber}} by {{.Build.PatchInfo.Patch.Author}} on {{.Build.Build.DisplayName}}
   {{ else }}
-Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName}}
+Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayName}}
   {{end}}
-*/}}
 {{end}}
 
 {{define "content"}}
@@ -197,7 +195,7 @@ Evergreen - Build {{Trunc .Data.Build.Revision 10}} on {{.Data.Build.DisplayName
             </tr>
           </tbody>
         </table>
-      </div> 
+      </div>
         {{range .PluginContent.Panels.Right}}
             {{.}}
         {{end}}
