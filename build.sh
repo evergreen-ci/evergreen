@@ -1,5 +1,10 @@
 #!/bin/sh
-set -o errexit
+if [ "Windows_NT" = "$OS" ]
+then
+    set -o igncr
+fi
+
+set -e
 
 # make sure we're in the directory where the script lives
 SCRIPT_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)"
@@ -13,8 +18,8 @@ mkdir -p bin
 export GOBIN=bin
 
 for i in apiserver ui runner cli; do
-	echo "Building ${i}..."
-	go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "$i/main/$i.go" 
+  echo "Building ${i}..."
+  go install $1 -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "$i/main/$i.go"
 done
 
 # rename API/UI servers and Evergreen runner

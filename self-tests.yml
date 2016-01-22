@@ -177,6 +177,42 @@ tasks:
     - func: "upload coverage html report"
     - func: "upload coverage txt report"
 
+- name: compile
+  tags: ["nodb"]
+  commands:
+    - func: "fetch source"
+    - func: "apply patches"
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        script: |
+          echo "running process compile sanity check"
+          set -e
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          bash build.sh ${compiler_flag}
+          echo "running agent compile sanity check"
+          . ./set_gopath.sh
+          # don't use githash BuildRevision for patches
+          if [ "${is_patch}" = "true" ]; then
+            export REV="PATCH(${task_id})"
+          else
+            export REV=`git rev-parse HEAD`
+          fi
+          go build -o main ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=$REV" agent/main/agent.go
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: main${extension}
+        remote_file: mci/agent/${task_id}/main${extension}
+        bucket: mciuploads
+        permissions: public-read
+        content_type: application/octet-stream
+        display_name: Evergreen Agent
+
 - name: client-integration
   commands:
     - func: "fetch source"
@@ -220,7 +256,7 @@ tasks:
             export GOBIN=`pwd`/bin
           fi
           echo "using GOBIN $GOBIN"
-          go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`" cli/main/cli.go
+          go install ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`" cli/main/cli.go
     - command: s3.put
       params:
         aws_key: ${aws_key}
@@ -786,7 +822,6 @@ tasks:
 
 - name: util
   commands:
-    - func: "start mongod"
     - func: "fetch source"
     - func: "apply patches"
     - command: shell.exec
@@ -801,8 +836,8 @@ tasks:
           export EVGHOME=${EVGHOME_cmd}
           cd util
           mkfifo test_pipe
-          tee < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          tee -a util.suite < test_pipe&
+          go test -coverprofile=coverage.out -v > test_pipe
     - command: shell.exec
       params:
         working_dir: src
@@ -888,6 +923,15 @@ buildvariants:
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
       tasks:
       - "*"
+    - name: ppc
+      display_name: Ubuntu PowerPC GCCGO
+      run_on:
+      - ubuntu-1504-power8-build
+      expansions:
+        EVGHOME_cmd: "`pwd`"
+        compiler_flag: "-compiler=gccgo"
+      tasks:
+      - ".nodb"
     - name: osx
       display_name: OSX
       run_on:
