@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -51,4 +52,69 @@ func (as *APIServer) lateRuntimes(w http.ResponseWriter, r *http.Request) {
 		timeoutResponse.Status = "SUCCESS"
 	}
 	as.WriteJSON(w, http.StatusOK, timeoutResponse)
+}
+
+func (as *APIServer) getTaskQueueSizes(w http.ResponseWriter, r *http.Request) {
+
+	distroNames := make(map[string]int)
+	taskQueues, err := model.FindAllTaskQueues()
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	for _, queue := range taskQueues {
+		distroNames[queue.Distro] = queue.Length()
+	}
+	taskQueueResponse := struct {
+		Distros map[string]int
+	}{distroNames}
+
+	as.WriteJSON(w, http.StatusOK, taskQueueResponse)
+}
+
+// getTaskQueueSize returns a JSON response with a SUCCESS flag if all task queues have a size
+// less than the size indicated. If a distro's task queue has size greater than or equal to the size given,
+// there will be an ERROR flag along with a map of the distro name to the size of the task queue.
+// If the size is 0 or the size is not sent, the JSON response will be SUCCESS with a list of all distros and their
+// task queue sizes.
+func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) {
+	size, err := util.GetIntValue(r, "size", 0)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	distro := r.FormValue("distro")
+
+	distroNames := make(map[string]int)
+	status := "SUCCESS"
+
+	if distro != "" {
+		taskQueue, err := model.FindTaskQueueForDistro(distro)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		if taskQueue.Length() >= size {
+			distroNames[distro] = taskQueue.Length()
+			status = "ERROR"
+		}
+	} else {
+		taskQueues, err := model.FindAllTaskQueues()
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+		for _, queue := range taskQueues {
+			if queue.Length() >= size {
+				distroNames[queue.Distro] = queue.Length()
+				status = "ERROR"
+			}
+		}
+	}
+	growthResponse := struct {
+		Status  string
+		Distros map[string]int
+	}{status, distroNames}
+
+	as.WriteJSON(w, http.StatusOK, growthResponse)
 }

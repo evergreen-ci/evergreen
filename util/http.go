@@ -3,8 +3,10 @@ package util
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -64,4 +66,17 @@ func MountHandler(r *mux.Router, prefix string, h http.Handler) http.Handler {
 			http.StripPrefix(strip, h).ServeHTTP(w, rq)
 		}))
 	return r
+}
+
+// GetIntValue returns a form value as an integer
+func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error) {
+	val := r.FormValue(valueKey)
+	if val == "" {
+		return defaultValue, nil
+	}
+	intVal, err := strconv.Atoi(val)
+	if err != nil {
+		return 0, fmt.Errorf("%v: cannot convert %v to integer: %v", valueKey, val, err.Error())
+	}
+	return intVal, nil
 }
