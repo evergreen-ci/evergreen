@@ -560,7 +560,11 @@ func validatePatchSize(diff *localDiff, allowLarge bool) error {
 // The branch argument is used to determine where to generate the merge base from, and any extra
 // arguments supplied are passed directly in as additional args to git diff.
 func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
-	mergeBase, err := gitMergeBase("origin/"+branch, "HEAD")
+	// branch@{upstream} refers to the branch that the branch specified by branchname is set to
+	// build on top of. This allows automatically detecting a branch based on the correct remote,
+	// if the user's repo is a fork, for example.
+	// For details see: https://git-scm.com/docs/gitrevisions
+	mergeBase, err := gitMergeBase(branch+"@{upstream}", "HEAD")
 	if err != nil {
 		return nil, fmt.Errorf("Error getting merge base: %v", err)
 	}
