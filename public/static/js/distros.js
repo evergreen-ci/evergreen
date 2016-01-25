@@ -210,6 +210,8 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
         }
       );
     }
+    // this will reset the location hash to the new one in case the _id is changed.
+    $scope.setActiveDistro($scope.activeDistro)
   };
 
   $scope.removeConfiguration = function() {
@@ -243,8 +245,31 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     }
     $scope.setActiveDistro($scope.distros[0]);
     $('#distros-list-container').animate({ scrollTop: 0 }, 'slow');
-    $('#identifier').focus();
+    $anchorScroll();
   };
+
+  $scope.copyDistro = function(){
+    if (!$scope.hasNew) {
+      var newDistro = {
+        'arch': $scope.activeDistro.arch, 
+        'work_dir': $scope.activeDistro.work_dir,
+        'provider': $scope.activeDistro.provider, 
+        'new': true, 
+        'user': $scope.activeDistro.user,
+        'ssh_key': $scope.activeDistro.ssh_key,
+        'ssh_options': $scope.activeDistro.ssh_options,
+        'setup': $scope.activeDistro.setup,
+        'pool_size': $scope.activeDistro.pool_size
+      }
+      newDistro.settings = _.clone($scope.activeDistro.settings);
+      $scope.distros.unshift(newDistro);
+      $scope.hasNew = true;
+      $scope.setActiveDistro($scope.distros[0]);
+      $('#distros-list-container').animate({ scrollTop: 0 }, 'slow');
+      $anchorScroll();
+      }
+    }
+  
 
   $scope.openConfirmationModal = function(option) {
     $scope.confirmationOption = option;

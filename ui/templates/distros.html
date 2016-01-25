@@ -41,14 +41,15 @@ Evergreen - Distros
     <div class="col-lg-6 col-lg-offset-1" ng-show="distros.length != 0">
       <div ng-init="initOptions()">
         <div ng-show="activeDistro">
-          <h2>Configure
+          <h2 style="display:inline-block; padding-right:15px">Configure
           </h2>
+            <a ng-click="copyDistro()" ng-hide="hasNew"> make a copy... </a>
         </div>
         <div style="padding-top: -25px;" class="panel-body panel-default">
           <div>
             <label class="distro-label">Identifier:</label>
             <input required ng-readonly="!activeDistro.new" id="identifier" name="id" type="text" class="form-control" ng-model="activeDistro._id" placeholder="Unique identifier for this distro">
-            <label class="icon fa fa-warning distro-error" ng-show="form.id.$dirty && form.id.$error.required">&nbsp;Distro identifier is required<br></label>
+            <label class="icon fa fa-warning distro-error" ng-show="form.id.$error.required">&nbsp;Distro identifier is required<br></label>
             <label class="icon fa fa-warning distro-error" ng-show="form.id.$dirty && form.id.$error.unsique || (activeDistro.new && form.id.$error.unique)">&nbsp;Distro identifier already exists</label>
           </div>
           <br>
