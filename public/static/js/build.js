@@ -169,6 +169,7 @@ function BuildViewController($scope, $http, $timeout, $rootScope, mciTime, $wind
   };
 
   $rootScope.$on("build_updated", function(e, newBuild){
+    newBuild.PatchInfo = $scope.build.PatchInfo
     $scope.setBuild(newBuild);
   });
 
