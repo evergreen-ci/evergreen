@@ -3,7 +3,7 @@ package scheduler
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Function run before sorting all the tasks.  Used to fetch and store
@@ -14,21 +14,21 @@ type sortSetupFunc func(prioritizer *CmpBasedTaskPrioritizer) error
 // them appropriately.
 func cachePreviousTasks(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 	// get the relevant previous completed tasks
-	prioritizer.previousTasksCache = make(map[string]task.Task)
-	for _, t := range prioritizer.tasks {
-		prevTask := &task.Task{}
+	prioritizer.previousTasksCache = make(map[string]model.Task)
+	for _, task := range prioritizer.tasks {
+		prevTask := &model.Task{}
 
 		// only relevant for repotracker tasks
-		if t.Requester == evergreen.RepotrackerVersionRequester {
-			prevTask, err = t.PreviousCompletedTask(t.Project, []string{})
+		if task.Requester == evergreen.RepotrackerVersionRequester {
+			prevTask, err = model.PreviousCompletedTask(&task, task.Project, []string{})
 			if err != nil {
 				return fmt.Errorf("cachePreviousTasks: %v", err)
 			}
 			if prevTask == nil {
-				prevTask = &task.Task{}
+				prevTask = &model.Task{}
 			}
 		}
-		prioritizer.previousTasksCache[t.Id] = *prevTask
+		prioritizer.previousTasksCache[task.Id] = *prevTask
 	}
 
 	return nil

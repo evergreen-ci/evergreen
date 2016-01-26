@@ -6,10 +6,10 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -50,7 +50,7 @@ type uiTaskData struct {
 	PushTime         time.Time               `json:"push_time"`
 	TimeTaken        time.Duration           `json:"time_taken"`
 	TaskEndDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	TestResults      []task.TestResult       `json:"test_results"`
+	TestResults      []model.TestResult      `json:"test_results"`
 	Aborted          bool                    `json:"abort"`
 	MinQueuePos      int                     `json:"min_queue_pos"`
 	DependsOn        []uiDep                 `json:"depends_on"`
@@ -136,22 +136,31 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		oldTaskId := fmt.Sprintf("%v_%v", projCtx.Task.Id, executionStr)
-		taskFromDb, err := task.FindOneOld(task.ById(oldTaskId))
+		taskFromDb, err := model.FindOneOldTask(bson.M{"_id": oldTaskId}, db.NoProjection, db.NoSort)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
 		archived = true
-
 		if taskFromDb == nil {
-			if execution != projCtx.Task.Execution {
+			// for backwards compatibility with tasks without an execution
+			if execution == 0 {
+				taskFromDb, err = model.FindOneTask(bson.M{
+					"$and": []bson.M{
+						bson.M{"_id": projCtx.Task.Id},
+						bson.M{"$or": []bson.M{bson.M{"execution": 0}, bson.M{"execution": nil}}}}},
+					db.NoProjection,
+					db.NoSort)
+			} else {
+				taskFromDb, err = model.FindOneTask(bson.M{"_id": projCtx.Task.Id, "execution": execution},
+					db.NoProjection, db.NoSort)
+			}
+			if err != nil {
 				uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finding old task: %v", err))
 				return
 			}
-
-		} else {
-			projCtx.Task = taskFromDb
 		}
+		projCtx.Task = taskFromDb
 	}
 
 	// Build a struct containing the subset of task data needed for display in the UI
@@ -250,7 +259,7 @@ type taskHistoryPageData struct {
 	TaskName    string
 	Tasks       []bson.M
 	Variants    []string
-	FailedTests map[string][]task.TestResult
+	FailedTests map[string][]model.TestResult
 	Versions    []version.Version
 
 	// Flags that indicate whether the beginning/end of history has been reached
@@ -290,13 +299,25 @@ func getTaskLogs(taskId string, execution int, limit int, logType string,
 
 // getTaskDependencies returns the uiDeps for the task and its status (either its original status,
 // "blocked", or "pending")
-func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
+func getTaskDependencies(task *model.Task) ([]uiDep, string, error) {
 	depIds := []string{}
-	for _, dep := range t.DependsOn {
+	for _, dep := range task.DependsOn {
 		depIds = append(depIds, dep.TaskId)
 	}
-	dependencies, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey,
-		task.ActivatedKey, task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	dependencies, err := model.FindAllTasks(
+		bson.M{
+			"_id": bson.M{"$in": depIds},
+		},
+		bson.M{
+			"display_name":     1,
+			"status":           1,
+			"activated":        1,
+			"status_details":   1,
+			"build_variant":    1,
+			"task_end_details": 1,
+			"depends_on":       1,
+		}, []string{}, 0, 0)
+
 	if err != nil {
 		return nil, "", err
 	}
@@ -304,7 +325,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 	idToUiDep := make(map[string]uiDep)
 	// match each task with its dependency requirements
 	for _, depTask := range dependencies {
-		for _, dep := range t.DependsOn {
+		for _, dep := range task.DependsOn {
 			if dep.TaskId == depTask.Id {
 				idToUiDep[depTask.Id] = uiDep{
 					Id:             depTask.Id,
@@ -320,7 +341,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 		}
 	}
 
-	idToDep := make(map[string]task.Task)
+	idToDep := make(map[string]model.Task)
 	for _, dep := range dependencies {
 		idToDep[dep.Id] = dep
 	}
@@ -333,7 +354,7 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 
 	// set the status for each of the uiDeps as "blocked" or "pending" if appropriate
 	// and get the status for task
-	status := setBlockedOrPending(*t, idToDep, idToUiDep)
+	status := setBlockedOrPending(*task, idToDep, idToUiDep)
 
 	uiDeps := make([]uiDep, 0, len(idToUiDep))
 	for _, dep := range idToUiDep {
@@ -345,15 +366,15 @@ func getTaskDependencies(t *task.Task) ([]uiDep, string, error) {
 // addRecDeps recursively finds all dependencies of tasks and adds them to tasks and uiDeps.
 // done is a hashtable of task IDs whose dependencies we have found.
 // TODO EVG-614: delete this function once Task.DependsOn includes all recursive dependencies.
-func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[string]bool) error {
+func addRecDeps(tasks map[string]model.Task, uiDeps map[string]uiDep, done map[string]bool) error {
 	curTask := make(map[string]bool)
 	depIds := make([]string, 0)
-	for _, t := range tasks {
-		if _, ok := done[t.Id]; !ok {
-			for _, dep := range t.DependsOn {
+	for _, task := range tasks {
+		if _, ok := done[task.Id]; !ok {
+			for _, dep := range task.DependsOn {
 				depIds = append(depIds, dep.TaskId)
 			}
-			curTask[t.Id] = true
+			curTask[task.Id] = true
 		}
 	}
 
@@ -361,8 +382,19 @@ func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[st
 		return nil
 	}
 
-	deps, err := task.Find(task.ByIds(depIds).WithFields(task.DisplayNameKey, task.StatusKey, task.ActivatedKey,
-		task.BuildVariantKey, task.DetailsKey, task.DependsOnKey))
+	deps, err := model.FindAllTasks(
+		bson.M{
+			"_id": bson.M{"$in": depIds},
+		},
+		bson.M{
+			"display_name":     1,
+			"status":           1,
+			"activated":        1,
+			"status_details":   1,
+			"build_variant":    1,
+			"task_end_details": 1,
+			"depends_on":       1,
+		}, []string{}, 0, 0)
 
 	if err != nil {
 		return err
@@ -372,9 +404,9 @@ func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[st
 		tasks[dep.Id] = dep
 	}
 
-	for _, t := range tasks {
-		if _, ok := curTask[t.Id]; ok {
-			for _, dep := range t.DependsOn {
+	for _, task := range tasks {
+		if _, ok := curTask[task.Id]; ok {
+			for _, dep := range task.DependsOn {
 				if uid, ok := uiDeps[dep.TaskId]; !ok ||
 					// only replace if the current uiDep is not strict and not recursive
 					(uid.RequiredStatus == model.AllStatuses && !uid.Recursive) {
@@ -391,7 +423,7 @@ func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[st
 					}
 				}
 			}
-			done[t.Id] = true
+			done[task.Id] = true
 		}
 	}
 
@@ -402,10 +434,10 @@ func addRecDeps(tasks map[string]task.Task, uiDeps map[string]uiDep, done map[st
 // and returns "blocked", "pending", or the original status of task as appropriate.
 // A task is blocked if some recursive dependency is in an undesirable state.
 // A task is pending if some dependency has not finished.
-func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[string]uiDep) string {
+func setBlockedOrPending(task model.Task, tasks map[string]model.Task, uiDeps map[string]uiDep) string {
 	blocked := false
 	pending := false
-	for _, dep := range t.DependsOn {
+	for _, dep := range task.DependsOn {
 		depTask := tasks[dep.TaskId]
 
 		uid := uiDeps[depTask.Id]
@@ -561,25 +593,26 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "restart":
-		if err := model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, projCtx.Project, nil); err != nil {
+		if err := projCtx.Task.TryReset(authName, evergreen.UIPackage, projCtx.Project, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
 		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	case "abort":
-		if err := model.AbortTask(projCtx.Task.Id, authName, true); err != nil {
+		if err := projCtx.Task.Abort(authName, true); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
+
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
 
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -588,14 +621,14 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case "set_active":
 		active := putParams.Active
-		if err := model.SetActiveState(projCtx.Task.Id, authName, active); err != nil {
+		if err := model.SetTaskActivated(projCtx.Task.Id, authName, active); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return
 		}
 
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}
@@ -612,7 +645,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Reload the task from db, send it back
-		projCtx.Task, err = task.FindOne(task.ById(projCtx.Task.Id))
+		projCtx.Task, err = model.FindTask(projCtx.Task.Id)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		}

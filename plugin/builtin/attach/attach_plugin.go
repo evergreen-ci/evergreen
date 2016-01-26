@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -157,14 +156,14 @@ func SendJSONLogs(taskConfig *model.TaskConfig, pluginLogger plugin.Logger,
 //XXX remove this once the transition is complete...
 //AttachResultsHandler is an API hook for receiving and updating test results
 func AttachResultsHandler(w http.ResponseWriter, r *http.Request) {
-	t := plugin.GetTask(r)
-	if t == nil {
+	task := plugin.GetTask(r)
+	if task == nil {
 		message := "Cannot find task for attach results request"
 		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
-	results := &task.TestResults{}
+	results := &model.TestResults{}
 	err := util.ReadJSONInto(r.Body, results)
 	if err != nil {
 		message := fmt.Sprintf("error reading test results: %v", err)
@@ -173,8 +172,8 @@ func AttachResultsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// set test result of task
-	if err := t.SetResults(results.Results); err != nil {
-		message := fmt.Sprintf("Error calling set results on task %v: %v", t.Id, err)
+	if err := task.SetResults(results.Results); err != nil {
+		message := fmt.Sprintf("Error calling set results on task %v: %v", task.Id, err)
 		evergreen.Logger.Errorf(slogger.ERROR, message)
 		http.Error(w, message, http.StatusInternalServerError)
 		return

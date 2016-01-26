@@ -6,9 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
@@ -141,8 +141,8 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, owner string, us
 		Tag:              instanceName,
 		CreationTime:     time.Now(),
 		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
+		TerminationTime:  model.ZeroTime,
+		TaskDispatchTime: model.ZeroTime,
 		Provider:         evergreen.HostTypeEC2,
 		InstanceType:     ec2Settings.InstanceType,
 		StartedBy:        owner,

@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
@@ -48,11 +47,11 @@ func MockPluginEcho(w http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	newTask := plugin.GetTask(request)
-	if newTask != nil {
+	task := plugin.GetTask(request)
+	if task != nil {
 		//task should have been populated for us, by the API server
 		plugin.WriteJSON(w, http.StatusOK, map[string]string{
-			"echo": fmt.Sprintf("%v/%v/%v", arg1, arg2, newTask.Id),
+			"echo": fmt.Sprintf("%v/%v/%v", arg1, arg2, task.Id),
 		})
 		return
 	}
@@ -164,8 +163,8 @@ func TestRegistry(t *testing.T) {
 			project := &model.Project{}
 			err = yaml.Unmarshal(data, project)
 			Convey("all commands in project file should load parse successfully", func() {
-				for _, newTask := range project.Tasks {
-					for _, command := range newTask.Commands {
+				for _, task := range project.Tasks {
+					for _, command := range task.Commands {
 						pluginCmds, err := registry.GetCommands(command, project.Functions)
 						testutil.HandleTestingErr(err, t, "Got error getting plugin commands: %v")
 						So(pluginCmds, ShouldNotBeNil)
@@ -195,8 +194,8 @@ func TestPluginFunctions(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
 			Convey("all commands in project file should parse successfully", func() {
-				for _, newTask := range taskConfig.Project.Tasks {
-					for _, command := range newTask.Commands {
+				for _, task := range taskConfig.Project.Tasks {
+					for _, command := range task.Commands {
 						pluginCmd, err := registry.GetCommands(command, taskConfig.Project.Functions)
 						testutil.HandleTestingErr(err, t, "Got error getting plugin command: %v")
 						So(pluginCmd, ShouldNotBeNil)
@@ -212,9 +211,9 @@ func TestPluginFunctions(t *testing.T) {
 			Convey("all commands in test project should execute successfully", func() {
 				sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 				logger := agent.NewTestLogger(sliceAppender)
-				for _, newTask := range taskConfig.Project.Tasks {
-					So(len(newTask.Commands), ShouldNotEqual, 0)
-					for _, command := range newTask.Commands {
+				for _, task := range taskConfig.Project.Tasks {
+					So(len(task.Commands), ShouldNotEqual, 0)
+					for _, command := range task.Commands {
 						pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 						testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 						So(pluginCmds, ShouldNotBeNil)
@@ -255,9 +254,9 @@ func TestPluginExecution(t *testing.T) {
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
-			for _, newTask := range taskConfig.Project.Tasks {
-				So(len(newTask.Commands), ShouldNotEqual, 0)
-				for _, command := range newTask.Commands {
+			for _, task := range taskConfig.Project.Tasks {
+				So(len(task.Commands), ShouldNotEqual, 0)
+				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
@@ -277,7 +276,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	clearDataMsg := "Failed to clear test data collection"
 	testutil.HandleTestingErr(
 		db.ClearCollections(
-			task.Collection, model.ProjectVarsCollection),
+			model.TasksCollection, model.ProjectVarsCollection),
 		t, clearDataMsg)
 
 	data, err := ioutil.ReadFile(filename)
@@ -305,7 +304,7 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		return nil, err
 	}
 
-	testTask := &task.Task{
+	testTask := &model.Task{
 		Id:           "mocktaskid",
 		BuildId:      "testBuildId",
 		BuildVariant: "linux-64",
@@ -333,13 +332,13 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	return model.NewTaskConfig(testDistro, testProject, testTask, testProjectRef)
 }
 
-func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, error) {
+func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 
 	testutil.HandleTestingErr(
 		db.ClearCollections(
-			task.Collection, build.Collection, host.Collection,
+			model.TasksCollection, build.Collection, host.Collection,
 			version.Collection, patch.Collection),
 		t, clearDataMsg)
 
@@ -351,7 +350,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	}
 	testutil.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 
-	newTask := &task.Task{
+	task := &model.Task{
 		Id:           "testTaskId",
 		BuildId:      "testBuildId",
 		DistroId:     "rhel55",
@@ -366,14 +365,14 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	}
 
 	if isPatch {
-		newTask.Requester = evergreen.PatchVersionRequester
+		task.Requester = evergreen.PatchVersionRequester
 	}
 
-	testutil.HandleTestingErr(newTask.Insert(), t, "failed to insert task")
+	testutil.HandleTestingErr(task.Insert(), t, "failed to insert task")
 
 	v := &version.Version{
 		Id:       "testVersionId",
-		BuildIds: []string{newTask.BuildId},
+		BuildIds: []string{task.BuildId},
 	}
 	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
 	if isPatch {
@@ -407,19 +406,19 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	testutil.HandleTestingErr(err, t, "couldn't get db session!")
 
 	//Remove any logs for our test task from previous runs.
-	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": newTask.Id})
+	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": task.Id})
 	testutil.HandleTestingErr(err, t, "failed to remove logs")
 
 	build := &build.Build{
 		Id: "testBuildId",
 		Tasks: []build.TaskCache{
-			build.NewTaskCache(newTask.Id, newTask.DisplayName, true),
+			build.NewTaskCache(task.Id, task.DisplayName, true),
 		},
 		Version: "testVersionId",
 	}
 
 	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
-	return newTask, build, nil
+	return task, build, nil
 }
 
 func TestPluginSelfRegistration(t *testing.T) {

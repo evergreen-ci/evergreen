@@ -3,7 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -81,43 +80,43 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 	versionEndBoundary := versions[len(versions)-1]
 
 	matchFilter := bson.M{
-		task.RequesterKey:    evergreen.RepotrackerVersionRequester,
-		task.BuildVariantKey: self.BuildVariantInTask,
-		task.ProjectKey:      self.ProjectName,
+		TaskRequesterKey:    evergreen.RepotrackerVersionRequester,
+		TaskBuildVariantKey: self.BuildVariantInTask,
+		TaskProjectKey:      self.ProjectName,
 	}
 
 	if beforeCommit != nil {
-		matchFilter[task.RevisionOrderNumberKey] = bson.M{
+		matchFilter[TaskRevisionOrderNumberKey] = bson.M{
 			"$gte": versionEndBoundary.RevisionOrderNumber,
 			"$lt":  beforeCommit.RevisionOrderNumber,
 		}
 	} else {
-		matchFilter[task.RevisionOrderNumberKey] = bson.M{
+		matchFilter[TaskRevisionOrderNumberKey] = bson.M{
 			"$gte": versionEndBoundary.RevisionOrderNumber,
 		}
 	}
 
-	pipeline := dbobj.C(task.Collection).Pipe(
+	pipeline := dbobj.C(TasksCollection).Pipe(
 		[]bson.M{
 			{"$match": matchFilter},
-			bson.M{"$sort": bson.D{{task.RevisionOrderNumberKey, 1}}},
+			bson.M{"$sort": bson.D{{TaskRevisionOrderNumberKey, 1}}},
 			bson.M{
 				"$group": bson.M{
-					"_id":   "$" + task.RevisionKey,
-					"order": bson.M{"$first": "$" + task.RevisionOrderNumberKey},
+					"_id":   "$" + TaskRevisionKey,
+					"order": bson.M{"$first": "$" + TaskRevisionOrderNumberKey},
 					"tasks": bson.M{
 						"$push": bson.M{
-							"_id":              "$" + task.IdKey,
-							"status":           "$" + task.StatusKey,
-							"task_end_details": "$" + task.DetailsKey,
-							"activated":        "$" + task.ActivatedKey,
-							"time_taken":       "$" + task.TimeTakenKey,
-							"display_name":     "$" + task.DisplayNameKey,
+							"_id":              "$" + TaskIdKey,
+							"status":           "$" + TaskStatusKey,
+							"task_end_details": "$" + TaskDetailsKey,
+							"activated":        "$" + TaskActivatedKey,
+							"time_taken":       "$" + TaskTimeTakenKey,
+							"display_name":     "$" + TaskDisplayNameKey,
 						},
 					},
 				},
 			},
-			bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1, task.DisplayNameKey: 1}},
+			bson.M{"$sort": bson.M{TaskRevisionOrderNumberKey: -1, TaskDisplayNameKey: 1}},
 		},
 	)
 

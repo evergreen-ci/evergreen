@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
@@ -588,9 +587,9 @@ func getDisplayName(buildVariant string) (displayName string) {
 // get the failed task(s) for a given build
 func getFailedTasks(current *build.Build, notificationName string) (failedTasks []build.TaskCache) {
 	if util.SliceContains(buildFailureKeys, notificationName) {
-		for _, t := range current.Tasks {
-			if t.Status == evergreen.TaskFailed {
-				failedTasks = append(failedTasks, t)
+		for _, task := range current.Tasks {
+			if task.Status == evergreen.TaskFailed {
+				failedTasks = append(failedTasks, task)
 			}
 		}
 	}
@@ -598,7 +597,7 @@ func getFailedTasks(current *build.Build, notificationName string) (failedTasks 
 }
 
 // get the specific failed test(s) for this task
-func getFailedTests(current *task.Task, notificationName string) (failedTests []task.TestResult) {
+func getFailedTests(current *model.Task, notificationName string) (failedTests []model.TestResult) {
 	if util.SliceContains(taskFailureKeys, notificationName) {
 		for _, test := range current.TestResults {
 			if test.Status == "fail" {
@@ -657,18 +656,16 @@ func getRecentlyFinishedBuilds(notificationKey *NotificationKey) (builds []build
 }
 
 // This is used to pull recently finished tasks
-func getRecentlyFinishedTasks(notificationKey *NotificationKey) (tasks []task.Task, err error) {
+func getRecentlyFinishedTasks(notificationKey *NotificationKey) (tasks []model.Task, err error) {
 	if cachedProjectRecords[notificationKey.String()] == nil {
-
-		tasks, err = task.Find(task.ByRecentlyFinished(lastProjectNotificationTime[notificationKey.Project],
-			notificationKey.Project, notificationKey.NotificationRequester))
+		tasks, err = model.RecentlyFinishedTasks(lastProjectNotificationTime[notificationKey.Project], notificationKey.Project, notificationKey.NotificationRequester)
 		if err != nil {
 			return nil, err
 		}
 		cachedProjectRecords[notificationKey.String()] = tasks
 		return tasks, err
 	}
-	return cachedProjectRecords[notificationKey.String()].([]task.Task), nil
+	return cachedProjectRecords[notificationKey.String()].([]model.Task), nil
 }
 
 // gets the type of notification - we support build/task level notification

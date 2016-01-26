@@ -3,13 +3,13 @@ package scheduler
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
 // takes in the task prioritizer because it may need access to additional info
 //  beyond just what's in the tasks
-type taskPriorityCmp func(task.Task, task.Task, *CmpBasedTaskPrioritizer) (
+type taskPriorityCmp func(model.Task, model.Task, *CmpBasedTaskPrioritizer) (
 	int, error)
 
 // Importance comparison functions for tasks.  Used to prioritize tasks by the
@@ -18,7 +18,7 @@ type taskPriorityCmp func(task.Task, task.Task, *CmpBasedTaskPrioritizer) (
 // byPriority compares the explicit Priority field of the Task documents for
 // each Task.  The Task whose Priority field is higher will be considered
 // more important.
-func byPriority(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+func byPriority(t1, t2 model.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 	error) {
 	if t1.Priority > t2.Priority {
 		return 1, nil
@@ -34,7 +34,7 @@ func byPriority(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 // The returned function will consider a Task to be more important if its
 // DisplayName field is equal to the stage name passed into byStageName.
 func byStageName(stageName string) taskPriorityCmp {
-	return func(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+	return func(t1, t2 model.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 		error) {
 		if t1.DisplayName == stageName && t2.DisplayName != stageName {
 			return 1, nil
@@ -49,7 +49,7 @@ func byStageName(stageName string) taskPriorityCmp {
 // byNumDeps compares the NumDependents field of the Task documents for
 // each Task.  The Task whose NumDependents field is higher will be considered
 // more important.
-func byNumDeps(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+func byNumDeps(t1, t2 model.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 	error) {
 	if t1.NumDependents > t2.NumDependents {
 		return 1, nil
@@ -65,7 +65,7 @@ func byNumDeps(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 // and considers the one with the higher RevisionOrderNumber to be more important.
 // byRevisionOrderNumber short circuits if the two tasks are not of the same
 // project, since RevisionOrderNumber is meaningless across projects.
-func byRevisionOrderNumber(t1, t2 task.Task,
+func byRevisionOrderNumber(t1, t2 model.Task,
 	prioritizer *CmpBasedTaskPrioritizer) (int, error) {
 
 	if t1.Project != t2.Project {
@@ -84,7 +84,7 @@ func byRevisionOrderNumber(t1, t2 task.Task,
 // the task with the later CreateTime to be more important.  byCreateTime
 // short-circuits if the two tasks are from the same project, since
 // RevisionOrderNumber is a more reliable indicator on the same project.
-func byCreateTime(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+func byCreateTime(t1, t2 model.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 	error) {
 
 	if t1.Project == t2.Project {
@@ -103,7 +103,7 @@ func byCreateTime(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 // byRecentlyFailing compares the results of the previous executions of each
 // Task, and considers one more important if its previous execution resulted in
 // failure.
-func byRecentlyFailing(t1, t2 task.Task,
+func byRecentlyFailing(t1, t2 model.Task,
 	prioritizer *CmpBasedTaskPrioritizer) (int, error) {
 	firstPrev, present := prioritizer.previousTasksCache[t1.Id]
 	if !present {
@@ -132,7 +132,7 @@ func byRecentlyFailing(t1, t2 task.Task,
 // more important if it has a greater number of failed tasks with the same
 // revision, project, display name and requester (but in one or more
 // buildvariants) that failed.
-func bySimilarFailing(t1, t2 task.Task,
+func bySimilarFailing(t1, t2 model.Task,
 	prioritizer *CmpBasedTaskPrioritizer) (int, error) {
 	// this comparator only applies to tasks within the same revision
 	if t1.Revision != t2.Revision {

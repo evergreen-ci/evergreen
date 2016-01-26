@@ -4,8 +4,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -142,13 +142,13 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		// Stage 1: Get the most recent completed tasks - looking back as far as
 		// depth versions - on this project.
 		{"$match": bson.M{
-			task.RevisionOrderNumberKey: bson.M{
+			model.TaskRevisionOrderNumberKey: bson.M{
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
 			},
-			task.ProjectKey:   current.Identifier,
-			task.RequesterKey: evergreen.RepotrackerVersionRequester,
-			task.StatusKey: bson.M{
+			model.TaskProjectKey:   current.Identifier,
+			model.TaskRequesterKey: evergreen.RepotrackerVersionRequester,
+			model.TaskStatusKey: bson.M{
 				"$in": []string{
 					evergreen.TaskFailed,
 					evergreen.TaskSucceeded,
@@ -157,14 +157,14 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		}},
 		// Stage 2: Sort the tasks by the most recently completed.
 		{"$sort": bson.M{
-			task.RevisionOrderNumberKey: -1,
+			model.TaskRevisionOrderNumberKey: -1,
 		}},
 		// Stage 3: Project only relevant fields.
 		{"$project": bson.M{
-			task.DisplayNameKey:  1,
-			task.BuildVariantKey: 1,
-			task.TestResultsKey:  1,
-			task.IdKey:           1,
+			model.TaskDisplayNameKey:  1,
+			model.TaskBuildVariantKey: 1,
+			model.TaskTestResultsKey:  1,
+			model.TaskIdKey:           1,
 		}},
 		// Stage 4: Group these tasks by display name and buildvariant -
 		// this returns the most recently completed grouped by task display name
@@ -172,20 +172,20 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		// id) for each task/variant group.
 		{"$group": bson.M{
 			"_id": bson.M{
-				"t": "$" + task.DisplayNameKey,
-				"v": "$" + task.BuildVariantKey,
+				"t": "$" + model.TaskDisplayNameKey,
+				"v": "$" + model.TaskBuildVariantKey,
 			},
 			"l": bson.M{
-				"$first": "$" + task.TestResultsKey,
+				"$first": "$" + model.TaskTestResultsKey,
 			},
 			"tid": bson.M{
-				"$first": "$" + task.IdKey,
+				"$first": "$" + model.TaskIdKey,
 			},
 		}},
 		// Stage 5: For each group, filter out those task/variant combinations
 		// that don't have at least one test failure in them.
 		{"$match": bson.M{
-			"l." + task.TestResultStatusKey: evergreen.TestFailedStatus,
+			"l." + model.TestResultStatusKey: evergreen.TestFailedStatus,
 		}},
 		// Stage 6: Rewrite each task/variant combination from the _id into the
 		// top-level. Project only the test name and status for all tests, and
@@ -195,8 +195,8 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 			"tid": 1,
 			"t":   "$_id.t",
 			"v":   "$_id.v",
-			"l." + task.TestResultStatusKey:   1,
-			"l." + task.TestResultTestFileKey: 1,
+			"l." + model.TestResultStatusKey:   1,
+			"l." + model.TestResultTestFileKey: 1,
 			"status": bson.M{
 				"$literal": evergreen.TestFailedStatus,
 			},
@@ -218,7 +218,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		// Stage 8: We no longer need the status fields so project only fields
 		// we want to return.
 		{"$project": bson.M{
-			"f":   "$l." + task.TestResultTestFileKey,
+			"f":   "$l." + model.TestResultTestFileKey,
 			"_id": 0,
 			"tid": 1,
 			"t":   1,
@@ -244,7 +244,7 @@ func FetchFailures(current version.Version, depth int) (Failures, error) {
 		}},
 	}
 	failures := Failures{}
-	return failures, db.Aggregate(task.Collection, pipeline, &failures)
+	return failures, db.Aggregate(model.TasksCollection, pipeline, &failures)
 }
 
 // FetchRevisionOrderFailures returns the most recent test failures
@@ -254,49 +254,49 @@ func FetchRevisionOrderFailures(current version.Version, depth int) (RevisionFai
 		// Stage 1: Get the most recent completed tasks - looking back as far as
 		// depth versions - on this project.
 		{"$match": bson.M{
-			task.RevisionOrderNumberKey: bson.M{
+			model.TaskRevisionOrderNumberKey: bson.M{
 				"$lte": current.RevisionOrderNumber,
 				"$gte": (current.RevisionOrderNumber - depth),
 			},
-			task.ProjectKey:   current.Identifier,
-			task.RequesterKey: evergreen.RepotrackerVersionRequester,
+			model.TaskProjectKey:   current.Identifier,
+			model.TaskRequesterKey: evergreen.RepotrackerVersionRequester,
 		}},
 		// Stage 2: Project only relevant fields.
 		{"$project": bson.M{
-			task.DisplayNameKey:  1,
-			task.RevisionKey:     1,
-			task.BuildVariantKey: 1,
-			task.IdKey:           1,
-			"l":                  "$" + task.TestResultsKey,
+			model.TaskDisplayNameKey:  1,
+			model.TaskRevisionKey:     1,
+			model.TaskBuildVariantKey: 1,
+			model.TaskIdKey:           1,
+			"l":                       "$" + model.TaskTestResultsKey,
 		}},
 		// Stage 3: Flatten out the test results
 		{"$unwind": "$l"},
 		// Stage 4: Take only failed test results
 		{"$match": bson.M{
-			"l." + task.TestResultStatusKey: evergreen.TestFailedStatus,
+			"l." + model.TestResultStatusKey: evergreen.TestFailedStatus,
 		}},
 		// Stage 5: Project only relevant fields including just the test file key
 		{"$project": bson.M{
-			task.RevisionKey:     1,
-			task.BuildVariantKey: 1,
-			task.DisplayNameKey:  1,
-			task.IdKey:           1,
-			"f":                  "$l." + task.TestResultTestFileKey,
+			model.TaskRevisionKey:     1,
+			model.TaskBuildVariantKey: 1,
+			model.TaskDisplayNameKey:  1,
+			model.TaskIdKey:           1,
+			"f":                       "$l." + model.TestResultTestFileKey,
 		}},
 		// Stage 6: Group by revision. For each one include the
 		// variant name, task name, task id and test name
 		{"$group": bson.M{
-			"_id": "$" + task.RevisionKey,
+			"_id": "$" + model.TaskRevisionKey,
 			"a": bson.M{
 				"$push": bson.M{
-					"n":   "$" + task.BuildVariantKey,
+					"n":   "$" + model.TaskBuildVariantKey,
 					"i":   "$f",
-					"t":   "$" + task.DisplayNameKey,
-					"tid": "$" + task.IdKey,
+					"t":   "$" + model.TaskDisplayNameKey,
+					"tid": "$" + model.TaskIdKey,
 				},
 			},
 		}},
 	}
 	taskFailures := RevisionFailures{}
-	return taskFailures, db.Aggregate(task.Collection, pipeline, &taskFailures)
+	return taskFailures, db.Aggregate(model.TasksCollection, pipeline, &taskFailures)
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"net/http"
@@ -96,7 +95,7 @@ type ExecTracker interface {
 type TaskCommunicator interface {
 	Start(pid string) error
 	End(detail *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error)
-	GetTask() (*task.Task, error)
+	GetTask() (*model.Task, error)
 	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
 	GetProjectConfig() (*model.Project, error)

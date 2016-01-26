@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
@@ -29,7 +29,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		testCommand := GitApplyPatchCommand{"dir"}
 		_, _, err = plugintest.SetupAPITestData("testTask", true, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
-		testTask, err := task.FindOne(task.ById("testTaskId"))
+		testTask, err := model.FindTask("testTaskId")
 		testutil.HandleTestingErr(err, t, "Couldn't set up test patch task")
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
@@ -57,7 +57,7 @@ func TestPatchPluginAPI(t *testing.T) {
 				"unable to clear versions collection")
 		})
 		Convey("calls to existing tasks without patches should fail", func() {
-			noPatchTask := task.Task{Id: "noPatchTask", BuildId: "a"}
+			noPatchTask := model.Task{Id: "noPatchTask", BuildId: "a"}
 			testutil.HandleTestingErr(noPatchTask.Insert(), t, "Couldn't insert patch task")
 			noPatchVersion := version.Version{Id: "noPatchVersion", BuildIds: []string{"a"}}
 			testutil.HandleTestingErr(noPatchVersion.Insert(), t, "Couldn't insert patch version")

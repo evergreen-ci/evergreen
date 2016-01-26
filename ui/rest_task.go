@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"net/http"
 	"time"
 )
@@ -35,7 +35,7 @@ type restTask struct {
 	BuildId             string                `json:"build_id"`
 	DistroId            string                `json:"distro"`
 	BuildVariant        string                `json:"build_variant"`
-	DependsOn           []task.Dependency     `json:"depends_on"`
+	DependsOn           []model.Dependency    `json:"depends_on"`
 	DisplayName         string                `json:"display_name"`
 	HostId              string                `json:"host_id"`
 	Restarts            int                   `json:"restarts"`

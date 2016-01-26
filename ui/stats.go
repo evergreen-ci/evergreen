@@ -3,9 +3,9 @@ package ui
 import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
@@ -157,8 +157,8 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	} else {
 		foundTask := false
 
-		for _, t := range bv.Tasks {
-			if t.Name == taskName {
+		for _, task := range bv.Tasks {
+			if task.Name == taskName {
 				foundTask = true
 				break
 			}
@@ -168,60 +168,34 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("no task named '%v'", taskName))
 			return
 		}
-		var tasks []task.Task
 
-		fields := []string{task.CreateTimeKey, task.DispatchTimeKey, task.PushTimeKey,
-			task.ScheduledTimeKey, task.StartTimeKey, task.FinishTimeKey,
-			task.VersionKey, task.HostIdKey, task.StatusKey, task.HostIdKey,
-			task.DistroIdKey}
-
-		if beforeTaskId != "" {
-			t, err := task.FindOne(task.ById(beforeTaskId))
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusNotFound, err)
-				return
-			}
-			if t == nil {
-				uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("Task %v not found", beforeTaskId))
-				return
-			}
-
-			tasks, err = task.Find(task.ByBeforeRevisionWithStatusesAndRequester(t.RevisionOrderNumber, evergreen.CompletedStatuses,
-				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...))
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusNotFound, err)
-				return
-			}
-
-		} else {
-			tasks, err = task.Find(task.ByStatuses(evergreen.CompletedStatuses,
-				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...))
-			if err != nil {
-				uis.LoggedError(w, r, http.StatusNotFound, err)
-				return
-			}
+		tasks, err := model.FindCompletedTasksByVariantAndName(projCtx.Project.Identifier,
+			buildVariant, taskName, request, limit, beforeTaskId)
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusNotFound, err)
+			return
 		}
 
 		uiTasks := []*UITask{}
 		versionIds = make([]string, 0, len(tasks))
 		// get the versions for every single task that was returned
-		for _, t := range tasks {
+		for _, task := range tasks {
 			// create a UITask
-			uiTask := &UITask{
-				Id:            t.Id,
-				CreateTime:    t.CreateTime,
-				DispatchTime:  t.DispatchTime,
-				PushTime:      t.PushTime,
-				ScheduledTime: t.ScheduledTime,
-				StartTime:     t.StartTime,
-				FinishTime:    t.FinishTime,
-				Version:       t.Version,
-				Status:        t.Status,
-				Host:          t.HostId,
-				Distro:        t.DistroId,
+			t := &UITask{
+				Id:            task.Id,
+				CreateTime:    task.CreateTime,
+				DispatchTime:  task.DispatchTime,
+				PushTime:      task.PushTime,
+				ScheduledTime: task.ScheduledTime,
+				StartTime:     task.StartTime,
+				FinishTime:    task.FinishTime,
+				Version:       task.Version,
+				Status:        task.Status,
+				Host:          task.HostId,
+				Distro:        task.DistroId,
 			}
-			uiTasks = append(uiTasks, uiTask)
-			versionIds = append(versionIds, t.Version)
+			uiTasks = append(uiTasks, t)
+			versionIds = append(versionIds, task.Version)
 		}
 		data.Tasks = uiTasks
 	}

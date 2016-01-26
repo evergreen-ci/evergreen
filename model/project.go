@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
@@ -269,7 +268,7 @@ type TaskConfig struct {
 	Distro       *distro.Distro
 	ProjectRef   *ProjectRef
 	Project      *Project
-	Task         *task.Task
+	Task         *Task
 	BuildVariant *BuildVariant
 	Expansions   *command.Expansions
 	WorkDir      string
@@ -359,7 +358,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func NewTaskConfig(d *distro.Distro, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
+func NewTaskConfig(d *distro.Distro, p *Project, t *Task, r *ProjectRef) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, fmt.Errorf("project for task with branch %v is empty", t.Project)
@@ -379,7 +378,7 @@ func NewTaskConfig(d *distro.Distro, p *Project, t *task.Task, r *ProjectRef) (*
 	return &TaskConfig{d, r, p, t, bv, e, d.WorkDir}, nil
 }
 
-func populateExpansions(d *distro.Distro, bv *BuildVariant, t *task.Task) *command.Expansions {
+func populateExpansions(d *distro.Distro, bv *BuildVariant, t *Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)

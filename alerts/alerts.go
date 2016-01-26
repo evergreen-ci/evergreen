@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/render"
@@ -36,12 +36,12 @@ type Deliverer interface {
 type AlertContext struct {
 	AlertRequest *alert.AlertRequest
 	ProjectRef   *model.ProjectRef
-	Task         *task.Task
+	Task         *model.Task
 	Build        *build.Build
 	Version      *version.Version
 	Patch        *patch.Patch
 	Host         *host.Host
-	FailedTests  []task.TestResult
+	FailedTests  []model.TestResult
 	Settings     *evergreen.Settings
 }
 
@@ -70,13 +70,13 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 	}
 	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
 	if len(taskId) > 0 {
-		aCtx.Task, err = task.FindOne(task.ById(taskId))
+		aCtx.Task, err = model.FindTask(taskId)
 		if err != nil {
 			return nil, err
 		}
 		if aCtx.Task != nil && aCtx.Task.Execution != a.Execution {
 			oldTaskId := fmt.Sprintf("%s_%v", taskId, a.Execution)
-			aCtx.Task, err = task.FindOneOld(task.ById(oldTaskId))
+			aCtx.Task, err = model.FindOneOldTask(bson.M{"_id": oldTaskId}, db.NoProjection, db.NoSort)
 			if err != nil {
 				return nil, err
 			}
@@ -87,7 +87,7 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 			buildId = aCtx.Task.BuildId
 			versionId = aCtx.Task.Version
 			projectId = aCtx.Task.Project
-			aCtx.FailedTests = []task.TestResult{}
+			aCtx.FailedTests = []model.TestResult{}
 			for _, test := range aCtx.Task.TestResults {
 				if test.Status == "fail" {
 					aCtx.FailedTests = append(aCtx.FailedTests, test)

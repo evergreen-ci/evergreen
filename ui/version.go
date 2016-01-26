@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -68,14 +67,11 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		buildAsUI := uiBuild{Build: build}
 
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
-		for _, t := range build.Tasks {
+		for _, task := range build.Tasks {
 			uiTasks = append(uiTasks,
-				uiTask{
-					Task: task.Task{
-						Id: t.Id, Activated: t.Activated, StartTime: t.StartTime, TimeTaken: t.TimeTaken,
-						Status: t.Status, Details: t.StatusDetails, DisplayName: t.DisplayName,
-					}})
-			if t.Activated {
+				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated, StartTime: task.StartTime, TimeTaken: task.TimeTaken,
+					Status: task.Status, Details: task.StatusDetails, DisplayName: task.DisplayName}})
+			if task.Activated {
 				versionAsUI.ActiveTasks++
 			}
 		}
@@ -170,14 +166,12 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
-		for _, t := range build.Tasks {
+		for _, task := range build.Tasks {
 			uiTasks = append(uiTasks,
-				uiTask{
-					Task: task.Task{Id: t.Id, Activated: t.Activated,
-						StartTime: t.StartTime, TimeTaken: t.TimeTaken, Status: t.Status,
-						Details: t.StatusDetails, DisplayName: t.DisplayName},
-				})
-			if t.Activated {
+				uiTask{Task: model.Task{Id: task.Id, Activated: task.Activated,
+					StartTime: task.StartTime, TimeTaken: task.TimeTaken, Status: task.Status,
+					Details: task.StatusDetails, DisplayName: task.DisplayName}})
+			if task.Activated {
 				versionAsUI.ActiveTasks++
 			}
 		}
@@ -224,17 +218,17 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		for _, b := range dbBuilds {
 			buildAsUI := uiBuild{Build: b}
 			uiTasks := make([]uiTask, 0, len(b.Tasks))
-			for _, t := range b.Tasks {
+			for _, task := range b.Tasks {
 				uiTasks = append(uiTasks,
 					uiTask{
-						Task: task.Task{
-							Id:          t.Id,
-							Status:      t.Status,
-							Activated:   t.Activated,
-							DisplayName: t.DisplayName,
+						Task: model.Task{
+							Id:          task.Id,
+							Status:      task.Status,
+							Activated:   task.Activated,
+							DisplayName: task.DisplayName,
 						},
 					})
-				if t.Activated {
+				if task.Activated {
 					versionAsUI.ActiveTasks++
 				}
 			}

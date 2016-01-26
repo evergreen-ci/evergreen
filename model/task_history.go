@@ -5,7 +5,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -21,7 +20,7 @@ type taskHistoryIterator struct {
 type TaskHistoryChunk struct {
 	Tasks       []bson.M
 	Versions    []version.Version
-	FailedTests map[string][]task.TestResult
+	FailedTests map[string][]TestResult
 	Exhausted   ExhaustedIterator
 }
 
@@ -122,7 +121,7 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 	chunk := TaskHistoryChunk{
 		Tasks:       []bson.M{},
 		Versions:    []version.Version{},
-		FailedTests: map[string][]task.TestResult{},
+		FailedTests: map[string][]TestResult{},
 	}
 
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
@@ -150,43 +149,43 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 	// should be included in the results.
 	versionStartBoundary, versionEndBoundary := versions[0], versions[len(versions)-1]
 
-	pipeline := database.C(task.Collection).Pipe(
+	pipeline := database.C(TasksCollection).Pipe(
 		[]bson.M{
 			{"$match": bson.M{
-				task.RequesterKey:    evergreen.RepotrackerVersionRequester,
-				task.ProjectKey:      iter.ProjectName,
-				task.DisplayNameKey:  iter.TaskName,
-				task.BuildVariantKey: bson.M{"$in": iter.BuildVariants},
-				task.RevisionOrderNumberKey: bson.M{
+				TaskRequesterKey:    evergreen.RepotrackerVersionRequester,
+				TaskProjectKey:      iter.ProjectName,
+				TaskDisplayNameKey:  iter.TaskName,
+				TaskBuildVariantKey: bson.M{"$in": iter.BuildVariants},
+				TaskRevisionOrderNumberKey: bson.M{
 					"$gte": versionEndBoundary.RevisionOrderNumber,
 					"$lte": versionStartBoundary.RevisionOrderNumber,
 				},
 			}},
 			{"$project": bson.M{
-				task.IdKey:                  1,
-				task.StatusKey:              1,
-				task.DetailsKey:             1,
-				task.ActivatedKey:           1,
-				task.TimeTakenKey:           1,
-				task.BuildVariantKey:        1,
-				task.RevisionKey:            1,
-				task.RevisionOrderNumberKey: 1,
+				TaskIdKey:                  1,
+				TaskStatusKey:              1,
+				TaskDetailsKey:             1,
+				TaskActivatedKey:           1,
+				TaskTimeTakenKey:           1,
+				TaskBuildVariantKey:        1,
+				TaskRevisionKey:            1,
+				TaskRevisionOrderNumberKey: 1,
 			}},
 			{"$group": bson.M{
-				"_id":   fmt.Sprintf("$%v", task.RevisionKey),
-				"order": bson.M{"$first": fmt.Sprintf("$%v", task.RevisionOrderNumberKey)},
+				"_id":   fmt.Sprintf("$%v", TaskRevisionKey),
+				"order": bson.M{"$first": fmt.Sprintf("$%v", TaskRevisionOrderNumberKey)},
 				"tasks": bson.M{
 					"$push": bson.M{
-						task.IdKey:           fmt.Sprintf("$%v", task.IdKey),
-						task.StatusKey:       fmt.Sprintf("$%v", task.StatusKey),
-						task.DetailsKey:      fmt.Sprintf("$%v", task.DetailsKey),
-						task.ActivatedKey:    fmt.Sprintf("$%v", task.ActivatedKey),
-						task.TimeTakenKey:    fmt.Sprintf("$%v", task.TimeTakenKey),
-						task.BuildVariantKey: fmt.Sprintf("$%v", task.BuildVariantKey),
+						TaskIdKey:           fmt.Sprintf("$%v", TaskIdKey),
+						TaskStatusKey:       fmt.Sprintf("$%v", TaskStatusKey),
+						TaskDetailsKey:      fmt.Sprintf("$%v", TaskDetailsKey),
+						TaskActivatedKey:    fmt.Sprintf("$%v", TaskActivatedKey),
+						TaskTimeTakenKey:    fmt.Sprintf("$%v", TaskTimeTakenKey),
+						TaskBuildVariantKey: fmt.Sprintf("$%v", TaskBuildVariantKey),
 					},
 				},
 			}},
-			{"$sort": bson.M{task.RevisionOrderNumberKey: -1}},
+			{"$sort": bson.M{TaskRevisionOrderNumberKey: -1}},
 		},
 	)
 
@@ -208,18 +207,18 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	defer session.Close()
 
-	pipeline := db.C(task.Collection).Pipe(
+	pipeline := db.C(TasksCollection).Pipe(
 		[]bson.M{
 			{
 				"$match": bson.M{
-					task.BuildVariantKey: bson.M{"$in": self.BuildVariants},
-					task.DisplayNameKey:  self.TaskName,
+					TaskBuildVariantKey: bson.M{"$in": self.BuildVariants},
+					TaskDisplayNameKey:  self.TaskName,
 				},
 			},
-			bson.M{"$sort": bson.D{{task.RevisionOrderNumberKey, -1}}},
+			bson.M{"$sort": bson.D{{TaskRevisionOrderNumberKey, -1}}},
 			bson.M{"$limit": numCommits},
-			bson.M{"$unwind": fmt.Sprintf("$%v", task.TestResultsKey)},
-			bson.M{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", task.TestResultsKey, task.TestResultTestFileKey)}},
+			bson.M{"$unwind": fmt.Sprintf("$%v", TaskTestResultsKey)},
+			bson.M{"$group": bson.M{"_id": fmt.Sprintf("$%v.%v", TaskTestResultsKey, TestResultTestFileKey)}},
 		},
 	)
 
@@ -239,7 +238,7 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 
 // GetFailedTests returns a mapping of task id to a slice of failed tasks
 // extracted from a pipeline of aggregated tasks
-func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[string][]task.TestResult, error) {
+func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[string][]TestResult, error) {
 	// get the ids of the failed task
 	var failedTaskIds []string
 	var taskHistory TaskHistory
@@ -261,8 +260,21 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 	}
 
 	// find all the relevant failed tests
-	failedTestsMap := make(map[string][]task.TestResult)
-	tasks, err := task.Find(task.ByIds(failedTaskIds).WithFields(task.IdKey, task.TestResultsKey))
+	failedTestsMap := make(map[string][]TestResult)
+	tasks, err := FindAllTasks(
+		bson.M{
+			TaskIdKey: bson.M{
+				"$in": failedTaskIds,
+			},
+		},
+		bson.M{
+			TaskIdKey:          1,
+			TaskTestResultsKey: 1,
+		},
+		db.NoSort,
+		db.NoSkip,
+		db.NoLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -103,7 +102,7 @@ func setupTlsConfigs(t *testing.T) {
 	}
 }
 
-func createAgent(testServer *apiserver.TestServer, testTask *task.Task) (*Agent, error) {
+func createAgent(testServer *apiserver.TestServer, testTask *model.Task) (*Agent, error) {
 	testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 	if err != nil {
 		return nil, err
@@ -158,7 +157,7 @@ func TestBasicEndpoints(t *testing.T) {
 					Convey("calling start should flip the task's status to started", func() {
 						err := testAgent.Start("1")
 						testutil.HandleTestingErr(err, t, "Couldn't start task: %v", err)
-						testTask, err := task.FindOne(task.ById(testTask.Id))
+						testTask, err := model.FindTask(testTask.Id)
 						testutil.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 						testHost, err := host.FindOne(host.ByRunningTaskId(testTask.Id))
@@ -178,7 +177,7 @@ func TestBasicEndpoints(t *testing.T) {
 						}
 						testAgent.End(details)
 						time.Sleep(100 * time.Millisecond)
-						taskUpdate, err := task.FindOne(task.ById(testTask.Id))
+						taskUpdate, err := model.FindTask(testTask.Id)
 						So(err, ShouldBeNil)
 						So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
 						So(taskUpdate.Details.Description, ShouldEqual, description)
@@ -310,7 +309,7 @@ func TestTaskSuccess(t *testing.T) {
 							// Check that logging output is only flushing on a newline
 							So(scanLogsForTask(testTask.Id, "this should be on the same line...as this."), ShouldBeTrue)
 
-							testTask, err = task.FindOne(task.ById(testTask.Id))
+							testTask, err = model.FindTask(testTask.Id)
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
 							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
@@ -356,12 +355,12 @@ func TestTaskSuccess(t *testing.T) {
 							So(scanLogsForTask(testTask.Id, "starting normal_task!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "done with normal_task!"), ShouldBeTrue)
 
-							testTask, err = task.FindOne(task.ById(testTask.Id))
+							testTask, err = model.FindTask(testTask.Id)
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
 							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
-							expectedResults := []task.TestResult{
-								task.TestResult{
+							expectedResults := []model.TestResult{
+								model.TestResult{
 									Status:    "success",
 									TestFile:  "t1",
 									URL:       "url",
@@ -413,7 +412,7 @@ func TestTaskFailures(t *testing.T) {
 						})
 
 						Convey("the tasks's final status should be FAILED", func() {
-							testTask, err = task.FindOne(task.ById(testTask.Id))
+							testTask, err = model.FindTask(testTask.Id)
 							testutil.HandleTestingErr(err, t, "Failed to find test task")
 							So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 							So(testTask.Details.Status, ShouldEqual, evergreen.TaskFailed)
@@ -447,7 +446,7 @@ func TestTaskAbortion(t *testing.T) {
 						go func() {
 							// Wait for a few seconds, then switch the task to aborted!
 							time.Sleep(3 * time.Second)
-							err := model.AbortTask(testTask.Id, "", true)
+							err := testTask.Abort("", true)
 							testutil.HandleTestingErr(err, t, "Failed to abort test task")
 							fmt.Println("aborted task.")
 						}()
@@ -466,7 +465,7 @@ func TestTaskAbortion(t *testing.T) {
 							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "Received abort signal - stopping."), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "done with very_slow_task!"), ShouldBeFalse)
-							testTask, err = task.FindOne(task.ById(testTask.Id))
+							testTask, err = model.FindTask(testTask.Id)
 							testutil.HandleTestingErr(err, t, "Failed to find test task")
 							So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
 						})
@@ -500,7 +499,7 @@ func TestTaskTimeout(t *testing.T) {
 					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
-					testTask, err = task.FindOne(task.ById(testTask.Id))
+					testTask, err = model.FindTask(testTask.Id)
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
 					So(testTask.Details.Description, ShouldEqual, "shell.exec")
@@ -535,7 +534,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
-					testTask, err = task.FindOne(task.ById(testTask.Id))
+					testTask, err = model.FindTask(testTask.Id)
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
 					So(testTask.Details.Description, ShouldEqual, "shell.exec")
@@ -572,7 +571,7 @@ func TestTaskExecTimeout(t *testing.T) {
 					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
-					testTask, err = task.FindOne(task.ById(testTask.Id))
+					testTask, err = model.FindTask(testTask.Id)
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
 					So(testTask.Details.Description, ShouldEqual, "shell.exec")
@@ -605,7 +604,7 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
-					testTask, err = task.FindOne(task.ById(testTask.Id))
+					testTask, err = model.FindTask(testTask.Id)
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
 					So(testTask.Details.Description, ShouldEqual, "shell.exec")
@@ -637,7 +636,7 @@ func TestTaskEndEndpoint(t *testing.T) {
 				time.Sleep(1 * time.Second)
 				So(err, ShouldBeNil)
 
-				taskUpdate, err := task.FindOne(task.ById(testTask.Id))
+				taskUpdate, err := model.FindTask(testTask.Id)
 				So(err, ShouldBeNil)
 				So(taskUpdate.Status, ShouldEqual, evergreen.TaskSucceeded)
 
@@ -645,7 +644,7 @@ func TestTaskEndEndpoint(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(testHost.RunningTask, ShouldEqual, subsequentTaskId)
 
-				taskUpdate, err = task.FindOne(task.ById(subsequentTaskId))
+				taskUpdate, err = model.FindTask(subsequentTaskId)
 				So(err, ShouldBeNil)
 				So(taskUpdate.Status, ShouldEqual, evergreen.TaskDispatched)
 
@@ -691,11 +690,11 @@ func printLogsForTask(taskId string) {
 }
 
 func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
-	variant string, projectFile string, patchMode patchTestMode, t *testing.T) (*task.Task, *build.Build, error) {
+	variant string, projectFile string, patchMode patchTestMode, t *testing.T) (*model.Task, *build.Build, error) {
 	// Ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
-		task.Collection, build.Collection, host.Collection,
+		model.TasksCollection, build.Collection, host.Collection,
 		distro.Collection, version.Collection, patch.Collection,
 		model.PushlogCollection, model.ProjectVarsCollection, model.TaskQueuesCollection,
 		manifest.Collection, model.ProjectRefCollection}
@@ -739,7 +738,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	testutil.HandleTestingErr(err, t, clearDataMsg)
 
 	// Create and insert two tasks
-	taskOne := &task.Task{
+	taskOne := &model.Task{
 		Id:           "testTaskId",
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
@@ -757,7 +756,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	}
 	testutil.HandleTestingErr(taskOne.Insert(), t, "failed to insert taskOne")
 
-	taskTwo := &task.Task{
+	taskTwo := &model.Task{
 		Id:           "testTaskIdTwo",
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -27,7 +26,7 @@ func init() {
 
 func reset(t *testing.T) {
 	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, artifact.Collection), t,
+		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
 		"error clearing test collections")
 }
 
@@ -72,7 +71,7 @@ func TestValidateS3BucketName(t *testing.T) {
 
 func TestS3PutAndGet(t *testing.T) {
 	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, artifact.Collection), t,
+		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
 		"error clearing test collections")
 
 	conf := evergreen.TestConfig()

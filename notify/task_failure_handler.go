@@ -3,7 +3,7 @@ package notify
 import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/web"
 )
 
@@ -52,5 +52,5 @@ func (self *TaskFailureHandler) TemplateNotification(ae *web.App, configName str
 
 func (self *TaskFailureHandler) GetChangeInfo(
 	notification *TriggeredTaskNotification) ([]ChangeInfo, error) {
-	return self.constructChangeInfo([]task.Task{*notification.Current}, &notification.Key)
+	return self.constructChangeInfo([]model.Task{*notification.Current}, &notification.Key)
 }

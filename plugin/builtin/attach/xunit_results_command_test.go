@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -42,9 +41,9 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
-			for _, projTask := range taskConfig.Project.Tasks {
-				So(len(projTask.Commands), ShouldNotEqual, 0)
-				for _, command := range projTask.Commands {
+			for _, task := range taskConfig.Project.Tasks {
+				So(len(task.Commands), ShouldNotEqual, 0)
+				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
@@ -52,9 +51,9 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
-					testTask, err := task.FindOne(task.ById(httpCom.TaskId))
+					task, err := model.FindTask(httpCom.TaskId)
 					testutil.HandleTestingErr(err, t, "Couldn't find task")
-					So(testTask, ShouldNotBeNil)
+					So(task, ShouldNotBeNil)
 				}
 			}
 			Convey("and the tests should be present in the db", customTests)
@@ -64,7 +63,7 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 
 // dBTests are the database verification tests for standard one file execution
 func dBTests() {
-	task, err := task.FindOne(task.ById("mocktaskid"))
+	task, err := model.FindTask("mocktaskid")
 	So(err, ShouldBeNil)
 	So(len(task.TestResults), ShouldNotEqual, 0)
 
@@ -81,7 +80,7 @@ func dBTests() {
 
 // dBTestsWildcard are the database verification tests for globbed file execution
 func dBTestsWildcard() {
-	task, err := task.FindOne(task.ById("mocktaskid"))
+	task, err := model.FindTask("mocktaskid")
 	So(err, ShouldBeNil)
 	So(len(task.TestResults), ShouldEqual, TotalResultCount)
 

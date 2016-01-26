@@ -3,7 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -49,11 +48,11 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			t := &task.Task{
+			task := &Task{
 				Id: "taskId",
 			}
 
-			pushLog := NewPushLog(versionOne, t, fileLoc)
+			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
 			versionTwo := &version.Version{
@@ -75,11 +74,11 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			t := &task.Task{
+			task := &Task{
 				Id: "taskId",
 			}
 
-			pushLog := NewPushLog(versionOne, t, fileLoc)
+			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
 			pushLog, err := FindPushLogAfter(fileLoc, versionOne.RevisionOrderNumber)
@@ -96,11 +95,11 @@ func TestFindPushLogAfter(t *testing.T) {
 				RevisionOrderNumber: 500,
 			}
 
-			t := &task.Task{
+			task := &Task{
 				Id: "taskId",
 			}
 
-			pushLog := NewPushLog(versionOne, t, fileLoc)
+			pushLog := NewPushLog(versionOne, task, fileLoc)
 			So(pushLog.Insert(), ShouldBeNil)
 
 			versionTwo := &version.Version{
