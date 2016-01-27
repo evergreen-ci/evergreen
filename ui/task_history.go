@@ -413,6 +413,10 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if projCtx.Version == nil {
+		http.Error(w, fmt.Errorf("no version available"), http.StatusBadRequest)
+		return
+	}
 	// get the versions in the requested window
 	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Identifier,
 		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
