@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"math"
@@ -205,8 +206,8 @@ func computeRunningTasksDuration(existingDistroHosts []host.Host,
 		return
 	}
 
-	runningTasksMap := make(map[string]model.Task)
-	runningTasks, err := model.FindTasksByIds(runningTaskIds)
+	runningTasksMap := make(map[string]task.Task)
+	runningTasks, err := task.Find(task.ByIds(runningTaskIds))
 	if err != nil {
 		return runningTasksDuration, err
 	}

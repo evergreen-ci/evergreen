@@ -8,11 +8,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"testing"
@@ -48,7 +48,7 @@ func clearAll(t *testing.T) {
 			patch.Collection,
 			version.Collection,
 			build.Collection,
-			model.TasksCollection,
+			task.Collection,
 			distro.Collection,
 		), t, "Error clearing test collection: %v")
 }
@@ -199,12 +199,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 2)
-				tasks, err := model.FindAllTasks(bson.M{},
-					db.NoProjection,
-					db.NoSort,
-					db.NoSkip,
-					db.NoLimit,
-				)
+				tasks, err := task.Find(task.All)
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 2)
 			})
@@ -229,12 +224,7 @@ func TestFinalizePatch(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(builds), ShouldEqual, 1)
 				So(len(builds[0].Tasks), ShouldEqual, 1)
-				tasks, err := model.FindAllTasks(bson.M{},
-					db.NoProjection,
-					db.NoSort,
-					db.NoSkip,
-					db.NoLimit,
-				)
+				tasks, err := task.Find(task.All)
 				So(err, ShouldBeNil)
 				So(len(tasks), ShouldEqual, 1)
 			})

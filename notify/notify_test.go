@@ -5,9 +5,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
 	"testing"
 	"time"
 )
@@ -289,7 +289,7 @@ func TestNotify(t *testing.T) {
 				Subscription{"patch_project", []string{}, []string{}},
 			}
 
-			fakeTask, err := model.FindOneTask(bson.M{"_id": "task8"}, bson.M{}, []string{})
+			fakeTask, err := task.FindOne(task.ById("task8"))
 
 			notificationKey := NotificationKey{"project", "task_failure", "task", "gitter_request"}
 
@@ -492,7 +492,7 @@ func insertBuild(id, project, display_name, buildVariant, status string, createT
 func insertTask(id, project, display_name, buildVariant, status string, createTime,
 	finishTime, pushTime time.Time, timeTaken time.Duration, activated bool,
 	requester string, order int) {
-	task := &model.Task{
+	newTask := &task.Task{
 		Id:                  id,
 		Project:             project,
 		DisplayName:         display_name,
@@ -508,7 +508,7 @@ func insertTask(id, project, display_name, buildVariant, status string, createTi
 		BuildId:             "build1",
 		Version:             "version",
 	}
-	So(task.Insert(), ShouldBeNil)
+	So(newTask.Insert(), ShouldBeNil)
 }
 
 func insertVersions() {
@@ -536,7 +536,7 @@ func insertVersions() {
 
 func cleanupdb() {
 	err := db.ClearCollections(
-		model.TasksCollection,
+		task.Collection,
 		model.NotifyTimesCollection,
 		model.NotifyHistoryCollection,
 		build.Collection,

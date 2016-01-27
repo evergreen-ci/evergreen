@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -28,7 +29,7 @@ type (
 
 	projectContext struct {
 		// The task specified in the request, if applicable.
-		Task *model.Task
+		Task *task.Task
 		// The build associated with the request, if applicable.
 		Build *build.Build
 		// The version associated with the request, if applicable.
@@ -211,7 +212,7 @@ func (pc *projectContext) populateTaskBuildVersion(taskId, buildId, versionId st
 	var err error
 	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
 	if len(taskId) > 0 {
-		pc.Task, err = model.FindTask(taskId)
+		pc.Task, err = task.FindOne(task.ById(taskId))
 		if err != nil {
 			return "", err
 		}

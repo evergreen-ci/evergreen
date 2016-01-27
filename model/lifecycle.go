@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
@@ -24,7 +25,7 @@ const (
 )
 
 // cacheFromTask is helper for creating a build.TaskCache from a real Task model.
-func cacheFromTask(t Task) build.TaskCache {
+func cacheFromTask(t task.Task) build.TaskCache {
 	return build.TaskCache{
 		Id:            t.Id,
 		DisplayName:   t.DisplayName,
@@ -61,36 +62,36 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 
 	// If activating a task, set the ActivatedBy field to be the caller
 	if active {
-		_, err = UpdateAllTasks(
+		_, err = task.UpdateAll(
 			bson.M{
-				TaskBuildIdKey: buildId,
-				TaskStatusKey:  evergreen.TaskUndispatched,
+				task.BuildIdKey: buildId,
+				task.StatusKey:  evergreen.TaskUndispatched,
 			},
-			bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
+			bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 		)
 	} else {
 
 		// if trying to deactivate a task then only deactivate tasks that have not been activated by a user.
 		// if the caller is the default task activator,
 		// only deactivate tasks that are activated by the default task activator
-		if build.IsSystemActivator(caller) {
-			_, err = UpdateAllTasks(
+		if evergreen.IsSystemActivator(caller) {
+			_, err = task.UpdateAll(
 				bson.M{
-					TaskBuildIdKey:     buildId,
-					TaskStatusKey:      evergreen.TaskUndispatched,
-					TaskActivatedByKey: caller,
+					task.BuildIdKey:     buildId,
+					task.StatusKey:      evergreen.TaskUndispatched,
+					task.ActivatedByKey: caller,
 				},
-				bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
+				bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 			)
 
 		} else {
 			// update all tasks if the caller is not evergreen.
-			_, err = UpdateAllTasks(
+			_, err = task.UpdateAll(
 				bson.M{
-					TaskBuildIdKey: buildId,
-					TaskStatusKey:  evergreen.TaskUndispatched,
+					task.BuildIdKey: buildId,
+					task.StatusKey:  evergreen.TaskUndispatched,
 				},
-				bson.M{"$set": bson.M{TaskActivatedKey: active, TaskActivatedByKey: caller}},
+				bson.M{"$set": bson.M{task.ActivatedKey: active, task.ActivatedByKey: caller}},
 			)
 		}
 	}
@@ -104,29 +105,10 @@ func SetBuildActivation(buildId string, active bool, caller string) error {
 	return RefreshTasksCache(buildId)
 }
 
-// AbortTask sets the "abort" flag on a given task ID, if it is currently in a state which allows
-// abort to be triggered.
-func AbortTask(taskId string) error {
-	err := UpdateOneTask(
-		bson.M{
-			TaskIdKey:     taskId,
-			TaskStatusKey: bson.M{"$in": evergreen.AbortableStatuses},
-		},
-		bson.M{"$set": bson.M{TaskAbortedKey: true}},
-	)
-	return err
-}
-
 // AbortBuild sets the abort flag on all tasks associated with the build which are in an abortable
 // state, and marks the build as deactivated.
 func AbortBuild(buildId string, caller string) error {
-	_, err := UpdateAllTasks(
-		bson.M{
-			TaskBuildIdKey: buildId,
-			TaskStatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
-		},
-		bson.M{"$set": bson.M{TaskAbortedKey: true}},
-	)
+	err := task.AbortBuild(buildId)
 	if err != nil {
 		return err
 	}
@@ -136,12 +118,12 @@ func AbortBuild(buildId string, caller string) error {
 // AbortVersion sets the abort flag on all tasks associated with the version which are in an
 // abortable state
 func AbortVersion(versionId string) error {
-	_, err := UpdateAllTasks(
+	_, err := task.UpdateAll(
 		bson.M{
-			TaskVersionKey: versionId,
-			TaskStatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+			task.VersionKey: versionId,
+			task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 		},
-		bson.M{"$set": bson.M{TaskAbortedKey: true}},
+		bson.M{"$set": bson.M{task.AbortedKey: true}},
 	)
 	return err
 }
@@ -188,29 +170,30 @@ func MarkVersionCompleted(versionId string, finishTime time.Time) error {
 
 // SetBuildPriority updates the priority field of all tasks associated with the given build id.
 func SetBuildPriority(buildId string, priority int64) error {
-	modifier := bson.M{TaskPriorityKey: priority}
+	modifier := bson.M{task.PriorityKey: priority}
 	//blacklisted - these tasks should never run, so unschedule now
 	if priority < 0 {
-		modifier[TaskActivatedKey] = false
+		modifier[task.ActivatedKey] = false
 	}
 
-	_, err := UpdateAllTasks(
-		bson.M{TaskBuildIdKey: buildId},
+	_, err := task.UpdateAll(
+		bson.M{task.BuildIdKey: buildId},
 		bson.M{"$set": modifier},
 	)
 	return err
 }
 
 // SetVersionPriority updates the priority field of all tasks associated with the given build id.
+
 func SetVersionPriority(versionId string, priority int64) error {
-	modifier := bson.M{TaskPriorityKey: priority}
+	modifier := bson.M{task.PriorityKey: priority}
 	//blacklisted - these tasks should never run, so unschedule now
 	if priority < 0 {
-		modifier[TaskActivatedKey] = false
+		modifier[task.ActivatedKey] = false
 	}
 
-	_, err := UpdateAllTasks(
-		bson.M{TaskVersionKey: versionId},
+	_, err := task.UpdateAll(
+		bson.M{task.VersionKey: versionId},
 		bson.M{"$set": modifier},
 	)
 	return err
@@ -220,23 +203,8 @@ func SetVersionPriority(versionId string, priority int64) error {
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartVersion(versionId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the version
-	allTasks, err := FindAllTasks(
-		bson.M{
-			TaskIdKey:           bson.M{"$in": taskIds},
-			TaskVersionKey:      versionId,
-			TaskDispatchTimeKey: bson.M{"$ne": ZeroTime},
-			TaskStatusKey: bson.M{
-				"$in": []string{
-					evergreen.TaskSucceeded,
-					evergreen.TaskFailed,
-				},
-			},
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-	)
+	allTasks, err := task.Find(task.ByDispatchedWithIdsVersionAndStatus(taskIds, versionId, task.CompletedStatuses))
+
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -249,23 +217,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	}
 
 	// Set all the task fields to indicate restarted
-	_, err = UpdateAllTasks(
-		bson.M{TaskIdKey: bson.M{"$in": taskIds}},
-		bson.M{
-			"$set": bson.M{
-				TaskActivatedKey:     true,
-				TaskSecretKey:        util.RandomString(),
-				TaskStatusKey:        evergreen.TaskUndispatched,
-				TaskDispatchTimeKey:  ZeroTime,
-				TaskStartTimeKey:     ZeroTime,
-				TaskScheduledTimeKey: ZeroTime,
-				TaskFinishTimeKey:    ZeroTime,
-				TaskTestResultsKey:   []TestResult{},
-			},
-			"$unset": bson.M{
-				TaskDetailsKey: "",
-			},
-		})
+	err = task.ResetTasks(taskIds)
 	if err != nil {
 		return err
 	}
@@ -297,13 +249,13 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 	if abortInProgress {
 		// abort in-progress tasks in this build
-		_, err = UpdateAllTasks(
+		_, err = task.UpdateAll(
 			bson.M{
-				TaskVersionKey: versionId,
-				TaskIdKey:      bson.M{"$in": taskIds},
-				TaskStatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
+				task.VersionKey: versionId,
+				task.IdKey:      bson.M{"$in": taskIds},
+				task.StatusKey:  bson.M{"$in": evergreen.AbortableStatuses},
 			},
-			bson.M{"$set": bson.M{TaskAbortedKey: true}},
+			bson.M{"$set": bson.M{task.AbortedKey: true}},
 		)
 		if err != nil {
 			return err
@@ -325,48 +277,33 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 // If abortInProgress is true, it also sets the abort flag on any in-progress tasks.
 func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller string) error {
 	// restart all the 'not in-progress' tasks for the build
-	allTasks, err := FindAllTasks(
-		bson.M{
-			TaskIdKey:      bson.M{"$in": taskIds},
-			TaskBuildIdKey: buildId,
-			TaskStatusKey: bson.M{
-				"$in": []string{
-					evergreen.TaskSucceeded,
-					evergreen.TaskFailed,
-				},
-			},
-		},
-		db.NoProjection,
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-	)
+	allTasks, err := task.Find(task.ByIdsBuildAndStatus(taskIds, buildId, task.CompletedStatuses))
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
 
-	for _, task := range allTasks {
-		if task.DispatchTime != ZeroTime {
-			err = task.reset()
+	for _, t := range allTasks {
+		if t.DispatchTime != util.ZeroTime {
+			err = resetTask(t.Id)
 			if err != nil {
 				return fmt.Errorf("Restarting build %v failed, could not task.reset on task: %v",
-					buildId, task.Id, err)
+					buildId, t.Id, err)
 			}
 		}
 	}
 
 	if abortInProgress {
 		// abort in-progress tasks in this build
-		_, err = UpdateAllTasks(
+		_, err = task.UpdateAll(
 			bson.M{
-				TaskBuildIdKey: buildId,
-				TaskStatusKey: bson.M{
+				task.BuildIdKey: buildId,
+				task.StatusKey: bson.M{
 					"$in": evergreen.AbortableStatuses,
 				},
 			},
 			bson.M{
 				"$set": bson.M{
-					TaskAbortedKey: true,
+					task.AbortedKey: true,
 				},
 			},
 		)
@@ -378,7 +315,7 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	return build.UpdateActivation(buildId, true, caller)
 }
 
-func CreateTasksCache(tasks []Task) []build.TaskCache {
+func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
 	cache := make([]build.TaskCache, 0, len(tasks))
 	for _, task := range tasks {
@@ -390,28 +327,12 @@ func CreateTasksCache(tasks []Task) []build.TaskCache {
 // RefreshTasksCache updates a build document so that the tasks cache reflects the correct current
 // state of the tasks it represents.
 func RefreshTasksCache(buildId string) error {
-	tasks, err := FindAllTasks(
-		bson.M{TaskBuildIdKey: buildId},
-		bson.M{
-			TaskIdKey:          1,
-			TaskDisplayNameKey: 1,
-			TaskStatusKey:      1,
-			TaskDetailsKey:     1,
-			TaskStartTimeKey:   1,
-			TaskTimeTakenKey:   1,
-			TaskActivatedKey:   1,
-			TaskDependsOnKey:   1,
-		},
-		db.NoSort,
-		db.NoSkip,
-		db.NoLimit,
-	)
+	tasks, err := task.Find(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
+		task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, task.DependsOnKey))
 	if err != nil {
 		return err
 	}
-
 	cache := CreateTasksCache(tasks)
-
 	return build.SetTasksCache(buildId, cache)
 }
 
@@ -507,7 +428,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 	}
 
 	// create task caches for all of the tasks, and place them into the build
-	tasks := make([]Task, 0, len(tasksForBuild))
+	tasks := make([]task.Task, 0, len(tasksForBuild))
 	for _, taskP := range tasksForBuild {
 		tasks = append(tasks, *taskP)
 	}
@@ -527,7 +448,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 // The slice of tasks will be in the same order as the project's specified tasks
 // appear in the specified build variant.
 func createTasksForBuild(project *Project, buildVariant *BuildVariant,
-	b *build.Build, v *version.Version, tt TaskIdTable, taskNames []string) ([]*Task, error) {
+	b *build.Build, v *version.Version, tt TaskIdTable, taskNames []string) ([]*task.Task, error) {
 
 	// the list of tasks we should create.  if tasks are passed in, then
 	// use those, else use the default set
@@ -563,26 +484,26 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 	}
 
 	// create and insert all of the actual tasks
-	tasks := make([]*Task, 0, len(tasksToCreate))
-	for _, task := range tasksToCreate {
-		newTask := createOneTask(tt.GetId(b.BuildVariant, task.Name), task, project, buildVariant, b, v)
+	tasks := make([]*task.Task, 0, len(tasksToCreate))
+	for _, t := range tasksToCreate {
+		newTask := createOneTask(tt.GetId(b.BuildVariant, t.Name), t, project, buildVariant, b, v)
 
 		// set Tags based on the spec
-		newTask.Tags = project.GetSpecForTask(task.Name).Tags
+		newTask.Tags = project.GetSpecForTask(t.Name).Tags
 
 		// set the new task's dependencies
 		// TODO encapsulate better
-		if len(task.DependsOn) == 1 &&
-			task.DependsOn[0].Name == AllDependencies &&
-			task.DependsOn[0].Variant != AllVariants {
+		if len(t.DependsOn) == 1 &&
+			t.DependsOn[0].Name == AllDependencies &&
+			t.DependsOn[0].Variant != AllVariants {
 			// the task depends on all of the other tasks in the build
-			newTask.DependsOn = make([]Dependency, 0, len(tasksToCreate)-1)
+			newTask.DependsOn = make([]task.Dependency, 0, len(tasksToCreate)-1)
 			for _, dep := range tasksToCreate {
 				status := evergreen.TaskSucceeded
-				if task.DependsOn[0].Status != "" {
-					status = task.DependsOn[0].Status
+				if t.DependsOn[0].Status != "" {
+					status = t.DependsOn[0].Status
 				}
-				newDep := Dependency{
+				newDep := task.Dependency{
 					TaskId: tt.GetId(b.BuildVariant, dep.Name),
 					Status: status,
 				}
@@ -592,8 +513,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 			}
 		} else {
 			// the task has specific dependencies
-			newTask.DependsOn = make([]Dependency, 0, len(task.DependsOn))
-			for _, dep := range task.DependsOn {
+			newTask.DependsOn = make([]task.Dependency, 0, len(t.DependsOn))
+			for _, dep := range t.DependsOn {
 				// only add as a dependency if the dependency is valid/exists
 				status := evergreen.TaskSucceeded
 				if dep.Status != "" {
@@ -604,7 +525,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 					bv = dep.Variant
 				}
 
-				newDeps := []Dependency{}
+				newDeps := []task.Dependency{}
 
 				if dep.Variant == AllVariants {
 					// for * case, we need to add all variants of the task
@@ -616,16 +537,16 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 						ids = tt.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
 					}
 					for _, id := range ids {
-						newDeps = append(newDeps, Dependency{TaskId: id, Status: status})
+						newDeps = append(newDeps, task.Dependency{TaskId: id, Status: status})
 					}
 				} else {
 					// general case
-					newDep := Dependency{
+					newDep := task.Dependency{
 						TaskId: tt.GetId(bv, dep.Name),
 						Status: status,
 					}
 					if newDep.TaskId != "" {
-						newDeps = []Dependency{newDep}
+						newDeps = []task.Dependency{newDep}
 					}
 				}
 
@@ -648,8 +569,8 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 // setNumDeps sets NumDependents for each task in tasks.
 // NumDependents is the number of tasks depending on the task. Only tasks created at the same time
 // and in the same variant are included.
-func setNumDeps(tasks []*Task) {
-	idToTask := make(map[string]*Task)
+func setNumDeps(tasks []*task.Task) {
+	idToTask := make(map[string]*task.Task)
 	for i, task := range tasks {
 		idToTask[task.Id] = tasks[i]
 	}
@@ -664,7 +585,7 @@ func setNumDeps(tasks []*Task) {
 
 // setNumDepsRec recursively finds all tasks that task depends on and increments their NumDependents field.
 // tasks not in idToTasks are not affected.
-func setNumDepsRec(task *Task, idToTasks map[string]*Task, seen map[string]bool) {
+func setNumDepsRec(task *task.Task, idToTasks map[string]*task.Task, seen map[string]bool) {
 	for _, dep := range task.DependsOn {
 		// Check whether this dependency is included in the tasks we're currently creating
 		if depTask, ok := idToTasks[dep.TaskId]; ok {
@@ -715,8 +636,8 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 
 // createOneTask is a helper to create a single task.
 func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
-	buildVariant *BuildVariant, b *build.Build, v *version.Version) *Task {
-	return &Task{
+	buildVariant *BuildVariant, b *build.Build, v *version.Version) *task.Task {
+	return &task.Task{
 		Id:                  id,
 		Secret:              util.RandomString(),
 		DisplayName:         buildVarTask.Name,
@@ -724,11 +645,11 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 		BuildVariant:        buildVariant.Name,
 		CreateTime:          b.CreateTime,
 		PushTime:            b.PushTime,
-		ScheduledTime:       ZeroTime,
-		StartTime:           ZeroTime, // Certain time fields must be initialized
-		FinishTime:          ZeroTime, // to our own ZeroTime value (which is
-		DispatchTime:        ZeroTime, // Unix epoch 0, not Go's time.Time{})
-		LastHeartbeat:       ZeroTime,
+		ScheduledTime:       util.ZeroTime,
+		StartTime:           util.ZeroTime, // Certain time fields must be initialized
+		FinishTime:          util.ZeroTime, // to our own util.ZeroTime value (which is
+		DispatchTime:        util.ZeroTime, // Unix epoch 0, not Go's time.Time{})
+		LastHeartbeat:       util.ZeroTime,
 		Status:              evergreen.TaskUndispatched,
 		Activated:           b.Activated,
 		RevisionOrderNumber: v.RevisionOrderNumber,
@@ -743,7 +664,7 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 // DeleteBuild removes any record of the build by removing it and all of the tasks that
 // are a part of it from the database.
 func DeleteBuild(id string) error {
-	err := RemoveAllTasks(bson.M{TaskBuildIdKey: id})
+	err := task.RemoveAllWithBuild(id)
 	if err != nil && err != mgo.ErrNotFound {
 		return err
 	}
@@ -753,16 +674,16 @@ func DeleteBuild(id string) error {
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,
 // and alphabetically sorting within groups.
 // All tasks with cross-variant dependencies are at the far right.
-func sortTasks(tasks []Task) []Task {
+func sortTasks(tasks []task.Task) []task.Task {
 	// Separate out tasks with cross-variant dependencies
 	taskPresent := make(map[string]bool)
 	for _, task := range tasks {
 		taskPresent[task.Id] = true
 	}
 	// depMap is a map from a task ID to the tasks that depend on it
-	depMap := make(map[string][]Task)
+	depMap := make(map[string][]task.Task)
 	// crossVariantTasks will contain all tasks with cross-variant dependencies
-	crossVariantTasks := make(map[string]Task)
+	crossVariantTasks := make(map[string]task.Task)
 	for _, task := range tasks {
 		for _, dep := range task.DependsOn {
 			if taskPresent[dep.TaskId] {
@@ -778,17 +699,17 @@ func sortTasks(tasks []Task) []Task {
 		}
 	}
 	// normalTasks will contain all tasks with no cross-variant dependencies
-	normalTasks := make(map[string]Task)
-	for _, task := range tasks {
-		if _, ok := crossVariantTasks[task.Id]; !ok {
-			normalTasks[task.Id] = task
+	normalTasks := make(map[string]task.Task)
+	for _, t := range tasks {
+		if _, ok := crossVariantTasks[t.Id]; !ok {
+			normalTasks[t.Id] = t
 		}
 	}
 
 	// Construct a map of task Id to DisplayName, used to sort both sets of tasks
 	idToDisplayName := make(map[string]string)
-	for _, task := range tasks {
-		idToDisplayName[task.Id] = task.DisplayName
+	for _, t := range tasks {
+		idToDisplayName[t.Id] = t.DisplayName
 	}
 
 	// All tasks with cross-variant dependencies appear to the right
@@ -799,7 +720,7 @@ func sortTasks(tasks []Task) []Task {
 
 // addDepChildren recursively adds task and all tasks depending on it to tasks
 // depMap is a map from a task ID to the tasks that depend on it
-func addDepChildren(task Task, tasks map[string]Task, depMap map[string][]Task) {
+func addDepChildren(task task.Task, tasks map[string]task.Task, depMap map[string][]task.Task) {
 	if _, ok := tasks[task.Id]; !ok {
 		tasks[task.Id] = task
 		for _, dep := range depMap[task.Id] {
@@ -810,9 +731,9 @@ func addDepChildren(task Task, tasks map[string]Task, depMap map[string][]Task) 
 
 // sortTasksHelper sorts the tasks, assuming they all have cross-variant dependencies, or none have
 // cross-variant dependencies
-func sortTasksHelper(tasks map[string]Task, idToDisplayName map[string]string) []Task {
+func sortTasksHelper(tasks map[string]task.Task, idToDisplayName map[string]string) []task.Task {
 	layers := layerTasks(tasks)
-	sortedTasks := make([]Task, 0, len(tasks))
+	sortedTasks := make([]task.Task, 0, len(tasks))
 	for _, layer := range layers {
 		sortedTasks = append(sortedTasks, sortLayer(layer, idToDisplayName)...)
 	}
@@ -822,11 +743,11 @@ func sortTasksHelper(tasks map[string]Task, idToDisplayName map[string]string) [
 // layerTasks sorts the tasks into layers
 // Layer n contains all tasks whose dependencies are contained in layers 0 through n-1, or are not
 // included in tasks (for tasks with cross-variant dependencies)
-func layerTasks(tasks map[string]Task) [][]Task {
-	layers := make([][]Task, 0)
+func layerTasks(tasks map[string]task.Task) [][]task.Task {
+	layers := make([][]task.Task, 0)
 	for len(tasks) > 0 {
 		// Create a new layer
-		layer := make([]Task, 0)
+		layer := make([]task.Task, 0)
 		for _, task := range tasks {
 			// Check if all dependencies are included in previous layers (or were not in tasks)
 			if allDepsProcessed(task, tasks) {
@@ -844,7 +765,7 @@ func layerTasks(tasks map[string]Task) [][]Task {
 }
 
 // allDepsProcessed checks whether any dependencies of task are in unprocessedTasks
-func allDepsProcessed(task Task, unprocessedTasks map[string]Task) bool {
+func allDepsProcessed(task task.Task, unprocessedTasks map[string]task.Task) bool {
 	for _, dep := range task.DependsOn {
 		if _, unprocessed := unprocessedTasks[dep.TaskId]; unprocessed {
 			return false
@@ -854,14 +775,14 @@ func allDepsProcessed(task Task, unprocessedTasks map[string]Task) bool {
 }
 
 // sortLayer groups tasks by common dependencies, sorting alphabetically within each group
-func sortLayer(layer []Task, idToDisplayName map[string]string) []Task {
+func sortLayer(layer []task.Task, idToDisplayName map[string]string) []task.Task {
 	sortKeys := make([]string, 0, len(layer))
-	sortKeyToTask := make(map[string]Task)
-	for _, task := range layer {
+	sortKeyToTask := make(map[string]task.Task)
+	for _, t := range layer {
 		// Construct a key to sort by, consisting of all dependency names, sorted alphabetically,
 		// followed by the task name
-		sortKeyWords := make([]string, 0, len(task.DependsOn)+1)
-		for _, dep := range task.DependsOn {
+		sortKeyWords := make([]string, 0, len(t.DependsOn)+1)
+		for _, dep := range t.DependsOn {
 			depName, ok := idToDisplayName[dep.TaskId]
 			// Cross-variant dependencies will not be included in idToDisplayName
 			if !ok {
@@ -870,13 +791,13 @@ func sortLayer(layer []Task, idToDisplayName map[string]string) []Task {
 			sortKeyWords = append(sortKeyWords, depName)
 		}
 		sort.Strings(sortKeyWords)
-		sortKeyWords = append(sortKeyWords, task.DisplayName)
+		sortKeyWords = append(sortKeyWords, t.DisplayName)
 		sortKey := strings.Join(sortKeyWords, " ")
 		sortKeys = append(sortKeys, sortKey)
-		sortKeyToTask[sortKey] = task
+		sortKeyToTask[sortKey] = t
 	}
 	sort.Strings(sortKeys)
-	sortedLayer := make([]Task, 0, len(layer))
+	sortedLayer := make([]task.Task, 0, len(layer))
 	for _, sortKey := range sortKeys {
 		sortedLayer = append(sortedLayer, sortKeyToTask[sortKey])
 	}

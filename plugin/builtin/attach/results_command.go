@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
@@ -78,7 +79,7 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 			errChan <- fmt.Errorf("Couldn't open report file: '%v'", err)
 			return
 		}
-		results := &model.TestResults{}
+		results := &task.TestResults{}
 		if err = util.ReadJSONInto(reportFile, results); err != nil {
 			errChan <- fmt.Errorf("Couldn't read report file: '%v'", err)
 			return
@@ -103,7 +104,7 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 // specified file to the API Server
 func SendJSONResults(taskConfig *model.TaskConfig,
 	pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicator,
-	results *model.TestResults) error {
+	results *task.TestResults) error {
 
 	pluginLogger.LogExecution(slogger.INFO, "Attaching test results")
 	err := pluginCom.TaskPostResults(results)

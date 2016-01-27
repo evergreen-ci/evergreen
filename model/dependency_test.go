@@ -2,6 +2,7 @@ package model
 
 import (
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
@@ -11,7 +12,7 @@ import (
 // We have to define a wrapper for the dependencies,
 // since you can't marshal BSON straight into a slice.
 type depTask struct {
-	DependsOn []Dependency `bson:"depends_on"`
+	DependsOn []task.Dependency `bson:"depends_on"`
 }
 
 func TestDependencyBSON(t *testing.T) {
@@ -39,7 +40,7 @@ func TestDependencyBSON(t *testing.T) {
 		})
 
 		Convey("representing the current dependency format", func() {
-			inputDeps := depTask{[]Dependency{
+			inputDeps := depTask{[]task.Dependency{
 				{TaskId: "t1", Status: evergreen.TaskSucceeded},
 				{TaskId: "t2", Status: "*"},
 				{TaskId: "t3", Status: evergreen.TaskFailed},

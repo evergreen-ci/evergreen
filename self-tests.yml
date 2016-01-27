@@ -408,7 +408,7 @@ tasks:
             export exitcode=1
           fi
           #TODO coverage reports for other model packages
-          for i in patch host event artifact build; do 
+          for i in patch host event artifact build task; do 
             echo "running $i suite"
             mkfifo $i.pipe
             tee -a $i.suite < $i.pipe& 

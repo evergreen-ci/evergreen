@@ -7,8 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -50,21 +50,21 @@ func TestGetTaskInfo(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding info on a particular task", t, func() {
-		testutil.HandleTestingErr(db.Clear(model.TasksCollection), t,
-			"Error clearing '%v' collection", model.TasksCollection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t,
+			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
 		versionId := "my-version"
 		projectName := "project_test"
 
-		testResult := model.TestResult{
+		testResult := task.TestResult{
 			Status:    "success",
 			TestFile:  "some-test",
 			URL:       "some-url",
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		task := &model.Task{
+		testTask := &task.Task{
 			Id:                  taskId,
 			CreateTime:          time.Now().Add(-20 * time.Minute),
 			ScheduledTime:       time.Now().Add(-15 * time.Minute),
@@ -81,7 +81,7 @@ func TestGetTaskInfo(t *testing.T) {
 			BuildId:             "some-build-id",
 			DistroId:            "some-distro-id",
 			BuildVariant:        "some-build-variant",
-			DependsOn:           []model.Dependency{{"some-other-task", ""}},
+			DependsOn:           []task.Dependency{{"some-other-task", ""}},
 			DisplayName:         "My task",
 			HostId:              "some-host-id",
 			Restarts:            0,
@@ -97,10 +97,10 @@ func TestGetTaskInfo(t *testing.T) {
 			Aborted:          false,
 			TimeTaken:        time.Duration(100 * time.Millisecond),
 			ExpectedDuration: time.Duration(99 * time.Millisecond),
-			TestResults:      []model.TestResult{testResult},
+			TestResults:      []task.TestResult{testResult},
 			MinQueuePos:      0,
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(testTask.Insert(), ShouldBeNil)
 
 		file := artifact.File{
 			Name: "Some Artifact",
@@ -135,79 +135,79 @@ func TestGetTaskInfo(t *testing.T) {
 			err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
 			So(err, ShouldBeNil)
 
-			So(jsonBody["id"], ShouldEqual, task.Id)
+			So(jsonBody["id"], ShouldEqual, testTask.Id)
 
 			var createTime time.Time
 			err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
 			So(err, ShouldBeNil)
-			So(createTime, ShouldHappenWithin, TimePrecision, task.CreateTime)
+			So(createTime, ShouldHappenWithin, TimePrecision, testTask.CreateTime)
 
 			var scheduledTime time.Time
 			err = json.Unmarshal(*rawJsonBody["scheduled_time"], &scheduledTime)
 			So(err, ShouldBeNil)
-			So(scheduledTime, ShouldHappenWithin, TimePrecision, task.ScheduledTime)
+			So(scheduledTime, ShouldHappenWithin, TimePrecision, testTask.ScheduledTime)
 
 			var dispatchTime time.Time
 			err = json.Unmarshal(*rawJsonBody["dispatch_time"], &dispatchTime)
 			So(err, ShouldBeNil)
-			So(dispatchTime, ShouldHappenWithin, TimePrecision, task.DispatchTime)
+			So(dispatchTime, ShouldHappenWithin, TimePrecision, testTask.DispatchTime)
 
 			var startTime time.Time
 			err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
 			So(err, ShouldBeNil)
-			So(startTime, ShouldHappenWithin, TimePrecision, task.StartTime)
+			So(startTime, ShouldHappenWithin, TimePrecision, testTask.StartTime)
 
 			var finishTime time.Time
 			err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
-			So(finishTime, ShouldHappenWithin, TimePrecision, task.FinishTime)
+			So(finishTime, ShouldHappenWithin, TimePrecision, testTask.FinishTime)
 
 			var pushTime time.Time
 			err = json.Unmarshal(*rawJsonBody["push_time"], &pushTime)
 			So(err, ShouldBeNil)
-			So(pushTime, ShouldHappenWithin, TimePrecision, task.PushTime)
+			So(pushTime, ShouldHappenWithin, TimePrecision, testTask.PushTime)
 
-			So(jsonBody["version"], ShouldEqual, task.Version)
-			So(jsonBody["project"], ShouldEqual, task.Project)
-			So(jsonBody["revision"], ShouldEqual, task.Revision)
-			So(jsonBody["priority"], ShouldEqual, task.Priority)
+			So(jsonBody["version"], ShouldEqual, testTask.Version)
+			So(jsonBody["project"], ShouldEqual, testTask.Project)
+			So(jsonBody["revision"], ShouldEqual, testTask.Revision)
+			So(jsonBody["priority"], ShouldEqual, testTask.Priority)
 
 			var lastHeartbeat time.Time
 			err = json.Unmarshal(*rawJsonBody["last_heartbeat"], &lastHeartbeat)
 			So(err, ShouldBeNil)
-			So(lastHeartbeat, ShouldHappenWithin, TimePrecision, task.LastHeartbeat)
+			So(lastHeartbeat, ShouldHappenWithin, TimePrecision, testTask.LastHeartbeat)
 
-			So(jsonBody["activated"], ShouldEqual, task.Activated)
-			So(jsonBody["build_id"], ShouldEqual, task.BuildId)
-			So(jsonBody["distro"], ShouldEqual, task.DistroId)
-			So(jsonBody["build_variant"], ShouldEqual, task.BuildVariant)
+			So(jsonBody["activated"], ShouldEqual, testTask.Activated)
+			So(jsonBody["build_id"], ShouldEqual, testTask.BuildId)
+			So(jsonBody["distro"], ShouldEqual, testTask.DistroId)
+			So(jsonBody["build_variant"], ShouldEqual, testTask.BuildVariant)
 
-			var dependsOn []model.Dependency
+			var dependsOn []task.Dependency
 			So(rawJsonBody["depends_on"], ShouldNotBeNil)
 			err = json.Unmarshal(*rawJsonBody["depends_on"], &dependsOn)
 			So(err, ShouldBeNil)
-			So(dependsOn, ShouldResemble, task.DependsOn)
+			So(dependsOn, ShouldResemble, testTask.DependsOn)
 
-			So(jsonBody["display_name"], ShouldEqual, task.DisplayName)
-			So(jsonBody["host_id"], ShouldEqual, task.HostId)
-			So(jsonBody["restarts"], ShouldEqual, task.Restarts)
-			So(jsonBody["execution"], ShouldEqual, task.Execution)
-			So(jsonBody["archived"], ShouldEqual, task.Archived)
-			So(jsonBody["order"], ShouldEqual, task.RevisionOrderNumber)
-			So(jsonBody["requester"], ShouldEqual, task.Requester)
-			So(jsonBody["status"], ShouldEqual, task.Status)
+			So(jsonBody["display_name"], ShouldEqual, testTask.DisplayName)
+			So(jsonBody["host_id"], ShouldEqual, testTask.HostId)
+			So(jsonBody["restarts"], ShouldEqual, testTask.Restarts)
+			So(jsonBody["execution"], ShouldEqual, testTask.Execution)
+			So(jsonBody["archived"], ShouldEqual, testTask.Archived)
+			So(jsonBody["order"], ShouldEqual, testTask.RevisionOrderNumber)
+			So(jsonBody["requester"], ShouldEqual, testTask.Requester)
+			So(jsonBody["status"], ShouldEqual, testTask.Status)
 
 			_jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
 			jsonStatusDetails, ok := _jsonStatusDetails.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonStatusDetails["timed_out"], ShouldEqual, task.Details.TimedOut)
-			So(jsonStatusDetails["timeout_stage"], ShouldEqual, task.Details.Description)
+			So(jsonStatusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
+			So(jsonStatusDetails["timeout_stage"], ShouldEqual, testTask.Details.Description)
 
-			So(jsonBody["aborted"], ShouldEqual, task.Aborted)
-			So(jsonBody["time_taken"], ShouldEqual, task.TimeTaken)
-			So(jsonBody["expected_duration"], ShouldEqual, task.ExpectedDuration)
+			So(jsonBody["aborted"], ShouldEqual, testTask.Aborted)
+			So(jsonBody["time_taken"], ShouldEqual, testTask.TimeTaken)
+			So(jsonBody["expected_duration"], ShouldEqual, testTask.ExpectedDuration)
 
 			_jsonTestResults, ok := jsonBody["test_results"]
 			So(ok, ShouldBeTrue)
@@ -230,7 +230,7 @@ func TestGetTaskInfo(t *testing.T) {
 
 			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
 
-			So(jsonBody["min_queue_pos"], ShouldEqual, task.MinQueuePos)
+			So(jsonBody["min_queue_pos"], ShouldEqual, testTask.MinQueuePos)
 
 			var jsonFiles []map[string]interface{}
 			err = json.Unmarshal(*rawJsonBody["files"], &jsonFiles)
@@ -290,19 +290,19 @@ func TestGetTaskStatus(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
 
 	Convey("When finding the status of a particular task", t, func() {
-		testutil.HandleTestingErr(db.Clear(model.TasksCollection), t,
-			"Error clearing '%v' collection", model.TasksCollection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t,
+			"Error clearing '%v' collection", task.Collection)
 
 		taskId := "my-task"
 
-		testResult := model.TestResult{
+		testResult := task.TestResult{
 			Status:    "success",
 			TestFile:  "some-test",
 			URL:       "some-url",
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		task := &model.Task{
+		testTask := &task.Task{
 			Id:          taskId,
 			DisplayName: "My task",
 			Status:      "success",
@@ -310,9 +310,9 @@ func TestGetTaskStatus(t *testing.T) {
 				TimedOut:    false,
 				Description: "some-stage",
 			},
-			TestResults: []model.TestResult{testResult},
+			TestResults: []task.TestResult{testResult},
 		}
-		So(task.Insert(), ShouldBeNil)
+		So(testTask.Insert(), ShouldBeNil)
 
 		url, err := router.Get("task_status").URL("task_id", taskId)
 		So(err, ShouldBeNil)
@@ -336,17 +336,17 @@ func TestGetTaskStatus(t *testing.T) {
 			err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
 			So(err, ShouldBeNil)
 
-			So(jsonBody["task_id"], ShouldEqual, task.Id)
-			So(jsonBody["task_name"], ShouldEqual, task.DisplayName)
-			So(jsonBody["status"], ShouldEqual, task.Status)
+			So(jsonBody["task_id"], ShouldEqual, testTask.Id)
+			So(jsonBody["task_name"], ShouldEqual, testTask.DisplayName)
+			So(jsonBody["status"], ShouldEqual, testTask.Status)
 
 			_jsonStatusDetails, ok := jsonBody["status_details"]
 			So(ok, ShouldBeTrue)
 			jsonStatusDetails, ok := _jsonStatusDetails.(map[string]interface{})
 			So(ok, ShouldBeTrue)
 
-			So(jsonStatusDetails["timed_out"], ShouldEqual, task.Details.TimedOut)
-			So(jsonStatusDetails["timeout_stage"], ShouldEqual, task.Details.Description)
+			So(jsonStatusDetails["timed_out"], ShouldEqual, testTask.Details.TimedOut)
+			So(jsonStatusDetails["timeout_stage"], ShouldEqual, testTask.Details.Description)
 
 			_jsonTestResults, ok := jsonBody["tests"]
 			So(ok, ShouldBeTrue)

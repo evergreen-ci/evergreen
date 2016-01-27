@@ -6,8 +6,8 @@ import (
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -20,7 +20,7 @@ import (
 func reset(t *testing.T) {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 	testutil.HandleTestingErr(
-		db.ClearCollections(model.TasksCollection, artifact.Collection), t,
+		db.ClearCollections(task.Collection, artifact.Collection), t,
 		"error clearing test collections")
 }
 
@@ -38,7 +38,7 @@ func TestAttachFilesApi(t *testing.T) {
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		logger := agent.NewTestLogger(sliceAppender)
 
-		testTask := model.Task{Id: "test1", DisplayName: "TASK!!!", BuildId: "build1"}
+		testTask := task.Task{Id: "test1", DisplayName: "TASK!!!", BuildId: "build1"}
 		testutil.HandleTestingErr(testTask.Insert(), t, "couldn't insert test task")
 		taskConfig.Task = &testTask
 

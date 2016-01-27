@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -20,12 +21,12 @@ import (
 // getUiTaskCache takes a build object and returns a slice of
 // uiTask objects suitable for front-end
 func getUiTaskCache(build *build.Build) ([]uiTask, error) {
-	tasks, err := model.FindTasksForBuild(build.Id)
+	tasks, err := task.Find(task.ById(build.Id))
 	if err != nil {
 		return nil, err
 	}
 
-	idToTask := make(map[string]model.Task)
+	idToTask := make(map[string]task.Task)
 	for _, task := range tasks {
 		idToTask[task.Id] = task
 	}
@@ -63,7 +64,6 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
-
 	buildAsUI.Tasks = uiTasks
 
 	if projCtx.Build.Requester == evergreen.PatchVersionRequester {

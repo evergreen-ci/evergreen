@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"time"
@@ -15,7 +16,7 @@ import (
 //	This is a temporary package for storing host-related interactions that involve multiple models.
 
 // NextTaskForHost the next task that should be run on the host.
-func NextTaskForHost(h *host.Host) (*Task, error) {
+func NextTaskForHost(h *host.Host) (*task.Task, error) {
 	taskQueue, err := FindTaskQueueForDistro(h.Distro.Id)
 	if err != nil {
 		return nil, err
@@ -26,7 +27,7 @@ func NextTaskForHost(h *host.Host) (*Task, error) {
 	}
 
 	nextTaskId := taskQueue.Queue[0].Id
-	fullTask, err := FindTask(nextTaskId)
+	fullTask, err := task.FindOne(task.ById(nextTaskId))
 	if err != nil {
 		return nil, err
 	}
