@@ -105,6 +105,31 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 func SendJSONResults(taskConfig *model.TaskConfig,
 	pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicator,
 	results *task.TestResults) error {
+	for i, res := range results.Results {
+
+		if res.LogRaw != "" {
+			pluginLogger.LogExecution(slogger.INFO, "Attaching raw test logs")
+			testLogs := &model.TestLog{
+				Name:          res.TestFile,
+				Task:          taskConfig.Task.Id,
+				TaskExecution: taskConfig.Task.Execution,
+				Lines:         []string{res.LogRaw},
+			}
+
+			id, err := pluginCom.TaskPostTestLog(testLogs)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Error posting raw logs from results: %v", err)
+			} else {
+				results.Results[i].LogId = id
+			}
+
+			// clear the logs from the TestResult struct after it has been saved in the test logs. Since they are
+			// being saved in the test_logs collection, we can clear them to prevent them from being saved in the task
+			// collection.
+			results.Results[i].LogRaw = ""
+
+		}
+	}
 
 	pluginLogger.LogExecution(slogger.INFO, "Attaching test results")
 	err := pluginCom.TaskPostResults(results)

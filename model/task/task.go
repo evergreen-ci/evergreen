@@ -143,6 +143,9 @@ type TestResult struct {
 	ExitCode  int     `json:"exit_code" bson:"exit_code"`
 	StartTime float64 `json:"start" bson:"start"`
 	EndTime   float64 `json:"end" bson:"end"`
+
+	// LogRaw is not saved in the task
+	LogRaw string `json:"log_raw" bson:"log_raw,omitempty"`
 }
 
 var (
