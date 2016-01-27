@@ -5,7 +5,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -63,7 +62,7 @@ func TestParseOutputFiles(t *testing.T) {
 			logger := agent.NewTestLogger(sliceAppender)
 
 			// mock up a task config
-			taskConfig := &model.TaskConfig{Task: &task.Task{Id: "taskOne", Execution: 1}}
+			taskConfig := &model.TaskConfig{Task: &model.Task{Id: "taskOne", Execution: 1}}
 
 			// the files we want to parse
 			files := []string{

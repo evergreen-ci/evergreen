@@ -1,13 +1,11 @@
-package task
+package model
 
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"testing"
@@ -36,14 +34,14 @@ var depTaskIds = []Dependency{
 func updateTestDepTasks(t *testing.T) {
 	// cases for success/default
 	for _, depTaskId := range depTaskIds[:3] {
-		testutil.HandleTestingErr(UpdateOne(
+		testutil.HandleTestingErr(UpdateOneTask(
 			bson.M{"_id": depTaskId.TaskId},
 			bson.M{"$set": bson.M{"status": evergreen.TaskSucceeded}},
 		), t, "Error setting task status")
 	}
 	// cases for * and failure
 	for _, depTaskId := range depTaskIds[3:] {
-		testutil.HandleTestingErr(UpdateOne(
+		testutil.HandleTestingErr(UpdateOneTask(
 			bson.M{"_id": depTaskId.TaskId},
 			bson.M{"$set": bson.M{"status": evergreen.TaskFailed}},
 		), t, "Error setting task status")
@@ -72,7 +70,7 @@ func TestDependenciesMet(t *testing.T) {
 			&Task{Id: depTaskIds[4].TaskId, Status: evergreen.TaskUndispatched},
 		}
 
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(TasksCollection), ShouldBeNil)
 		for _, depTask := range depTasks {
 			So(depTask.Insert(), ShouldBeNil)
 		}
@@ -89,7 +87,7 @@ func TestDependenciesMet(t *testing.T) {
 			" successfully, then it should not think its dependencies are met",
 			func() {
 				task.DependsOn = depTaskIds
-				So(UpdateOne(
+				So(UpdateOneTask(
 					bson.M{"_id": depTaskIds[0].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -148,7 +146,7 @@ func TestDependenciesMet(t *testing.T) {
 
 		Convey("extraneous tasks in the dependency cache should be ignored",
 			func() {
-				So(UpdateOne(
+				So(UpdateOneTask(
 					bson.M{"_id": depTaskIds[0].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -156,7 +154,7 @@ func TestDependenciesMet(t *testing.T) {
 						},
 					},
 				), ShouldBeNil)
-				So(UpdateOne(
+				So(UpdateOneTask(
 					bson.M{"_id": depTaskIds[1].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -164,7 +162,7 @@ func TestDependenciesMet(t *testing.T) {
 						},
 					},
 				), ShouldBeNil)
-				So(UpdateOne(
+				So(UpdateOneTask(
 					bson.M{"_id": depTaskIds[2].TaskId},
 					bson.M{
 						"$set": bson.M{
@@ -193,12 +191,12 @@ func TestDependenciesMet(t *testing.T) {
 func TestSetTasksScheduledTime(t *testing.T) {
 	Convey("With some tasks", t, func() {
 
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(TasksCollection), ShouldBeNil)
 
 		tasks := []Task{
-			{Id: "t1", ScheduledTime: util.ZeroTime},
-			{Id: "t2", ScheduledTime: util.ZeroTime},
-			{Id: "t3", ScheduledTime: util.ZeroTime},
+			{Id: "t1", ScheduledTime: ZeroTime},
+			{Id: "t2", ScheduledTime: ZeroTime},
+			{Id: "t3", ScheduledTime: ZeroTime},
 		}
 		for _, task := range tasks {
 			So(task.Insert(), ShouldBeNil)
@@ -208,7 +206,7 @@ func TestSetTasksScheduledTime(t *testing.T) {
 			So(SetTasksScheduledTime(tasks[1:], testTime), ShouldBeNil)
 
 			Convey("the tasks should be updated in memory", func() {
-				So(tasks[0].ScheduledTime, ShouldResemble, util.ZeroTime)
+				So(tasks[0].ScheduledTime, ShouldResemble, ZeroTime)
 				So(tasks[1].ScheduledTime, ShouldResemble, testTime)
 				So(tasks[2].ScheduledTime, ShouldResemble, testTime)
 
@@ -217,13 +215,13 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					// because of minor differences between how mongo
 					// and golang store dates. The date from the db
 					// can be interpreted as being a few nanoseconds off
-					t1, err := FindOne(ById("t1"))
+					t1, err := FindTask("t1")
 					So(err, ShouldBeNil)
-					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, util.ZeroTime)
-					t2, err := FindOne(ById("t2"))
+					So(t1.ScheduledTime.Round(oneMs), ShouldResemble, ZeroTime)
+					t2, err := FindTask("t2")
 					So(err, ShouldBeNil)
 					So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-					t3, err := FindOne(ById("t3"))
+					t3, err := FindTask("t3")
 					So(err, ShouldBeNil)
 					So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 				})
@@ -234,13 +232,13 @@ func TestSetTasksScheduledTime(t *testing.T) {
 					So(SetTasksScheduledTime(tasks, newTime), ShouldBeNil)
 
 					Convey("only unset scheduled times should be updated", func() {
-						t1, err := FindOne(ById("t1"))
+						t1, err := FindTask("t1")
 						So(err, ShouldBeNil)
 						So(t1.ScheduledTime.Round(oneMs), ShouldResemble, newTime)
-						t2, err := FindOne(ById("t2"))
+						t2, err := FindTask("t2")
 						So(err, ShouldBeNil)
 						So(t2.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
-						t3, err := FindOne(ById("t3"))
+						t3, err := FindTask("t3")
 						So(err, ShouldBeNil)
 						So(t3.ScheduledTime.Round(oneMs), ShouldResemble, testTime)
 					})
@@ -256,8 +254,8 @@ func TestTaskSetPriority(t *testing.T) {
 
 	Convey("With a task", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
-			" '%v' collection", Collection)
+		testutil.HandleTestingErr(db.Clear(TasksCollection), t, "Error clearing"+
+			" '%v' collection", TasksCollection)
 
 		tasks := []Task{
 			Task{
@@ -300,34 +298,34 @@ func TestTaskSetPriority(t *testing.T) {
 			So(tasks[0].SetPriority(1), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, 1)
 
-			task, err := FindOne(ById("one"))
+			task, err := FindTask("one")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("two"))
+			task, err = FindTask("two")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 5)
 
-			task, err = FindOne(ById("three"))
+			task, err = FindTask("three")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("four"))
+			task, err = FindTask("four")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Id, ShouldEqual, "four")
 			So(task.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("five"))
+			task, err = FindTask("five")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Id, ShouldEqual, "five")
 			So(task.Priority, ShouldEqual, 1)
 
-			task, err = FindOne(ById("six"))
+			task, err = FindTask("six")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Id, ShouldEqual, "six")
@@ -342,39 +340,39 @@ func TestTaskSetPriority(t *testing.T) {
 			So(tasks[0].SetPriority(-1), ShouldBeNil)
 			So(tasks[0].Priority, ShouldEqual, -1)
 
-			task, err := FindOne(ById("one"))
+			task, err := FindTask("one")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, -1)
 			So(task.Activated, ShouldEqual, false)
 
-			task, err = FindOne(ById("two"))
+			task, err = FindTask("two")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 5)
 			So(task.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("three"))
+			task, err = FindTask("three")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Priority, ShouldEqual, 1)
 			So(task.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("four"))
+			task, err = FindTask("four")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Id, ShouldEqual, "four")
 			So(task.Priority, ShouldEqual, 1)
 			So(task.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("five"))
+			task, err = FindTask("five")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Id, ShouldEqual, "five")
 			So(task.Priority, ShouldEqual, 1)
 			So(task.Activated, ShouldEqual, true)
 
-			task, err = FindOne(ById("six"))
+			task, err = FindTask("six")
 			So(err, ShouldBeNil)
 			So(task, ShouldNotBeNil)
 			So(task.Id, ShouldEqual, "six")
@@ -387,7 +385,7 @@ func TestTaskSetPriority(t *testing.T) {
 
 func TestFindTasksByIds(t *testing.T) {
 	Convey("When calling FindTasksByIds...", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(TasksCollection), ShouldBeNil)
 		Convey("only tasks with the specified ids should be returned", func() {
 
 			tasks := []Task{
@@ -406,7 +404,7 @@ func TestFindTasksByIds(t *testing.T) {
 				So(task.Insert(), ShouldBeNil)
 			}
 
-			dbTasks, err := Find(ByIds([]string{"one", "two"}))
+			dbTasks, err := FindTasksByIds([]string{"one", "two"})
 			So(err, ShouldBeNil)
 			So(len(dbTasks), ShouldEqual, 2)
 			So(dbTasks[0].Id, ShouldNotEqual, "three")
@@ -417,7 +415,7 @@ func TestFindTasksByIds(t *testing.T) {
 
 func TestCountSimilarFailingTasks(t *testing.T) {
 	Convey("When calling CountSimilarFailingTasks...", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(TasksCollection), ShouldBeNil)
 		Convey("only failed tasks with the same project, requester, display "+
 			"name and revision but different buildvariants should be returned",
 			func() {
@@ -518,16 +516,184 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 	})
 }
 
+func TestSetTaskActivated(t *testing.T) {
+
+	Convey("With a task activated by evergreen and build", t, func() {
+
+		testutil.HandleTestingErr(
+			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
+			t, "Error clearing test collections")
+
+		taskId := "t1"
+		buildId := "b1"
+		testTime := time.Now()
+
+		task := &Task{
+			Id:            taskId,
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+			DependsOn: []Dependency{
+				{"t2", evergreen.TaskSucceeded},
+				{"t3", evergreen.TaskSucceeded},
+			},
+			ActivatedBy: evergreen.DefaultTaskActivator,
+		}
+
+		b := &build.Build{
+			Id: buildId,
+			Tasks: []build.TaskCache{
+				{Id: taskId}, {Id: "t2"}, {Id: "t3"},
+			},
+		}
+
+		dep1 := &Task{
+			Id:            "t2",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		dep2 := &Task{
+			Id:            "t3",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		So(dep1.Insert(), ShouldBeNil)
+		So(dep2.Insert(), ShouldBeNil)
+
+		So(task.Insert(), ShouldBeNil)
+		So(b.Insert(), ShouldBeNil)
+
+		Convey("setting the test to active will update relevant db fields", func() {
+			So(SetTaskActivated(taskId, "", true), ShouldBeNil)
+			dbTask, err := FindTask(taskId)
+			So(err, ShouldBeNil)
+			So(dbTask.Activated, ShouldBeTrue)
+			So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
+
+			// make sure the dependencies were activated
+			dbDepOne, err := FindTask(dep1.Id)
+			So(err, ShouldBeNil)
+			So(dbDepOne.Activated, ShouldBeTrue)
+			dbDepTwo, err := FindTask(dep2.Id)
+			So(err, ShouldBeNil)
+			So(dbDepTwo.Activated, ShouldBeTrue)
+
+			Convey("and setting active to false will reset the relevant fields", func() {
+				So(SetTaskActivated(taskId, "", false), ShouldBeNil)
+				dbTask, err := FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeFalse)
+				So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, ZeroTime)
+
+			})
+		})
+	})
+	Convey("With a task activated by a user and build", t, func() {
+
+		testutil.HandleTestingErr(
+			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
+			t, "Error clearing test collections")
+
+		taskId := "t1"
+		buildId := "b1"
+		testTime := time.Now()
+		user := "user1"
+
+		task := &Task{
+			Id:            taskId,
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+			DependsOn: []Dependency{
+				{"t2", evergreen.TaskSucceeded},
+				{"t3", evergreen.TaskSucceeded},
+			},
+		}
+
+		b := &build.Build{
+			Id: buildId,
+			Tasks: []build.TaskCache{
+				{Id: taskId}, {Id: "t2"}, {Id: "t3"},
+			},
+		}
+
+		dep1 := &Task{
+			Id:            "t2",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		dep2 := &Task{
+			Id:            "t3",
+			ScheduledTime: testTime,
+			BuildId:       buildId,
+		}
+		So(dep1.Insert(), ShouldBeNil)
+		So(dep2.Insert(), ShouldBeNil)
+
+		So(task.Insert(), ShouldBeNil)
+		So(b.Insert(), ShouldBeNil)
+
+		Convey("setting the test to active will update relevant db fields", func() {
+			So(SetTaskActivated(taskId, user, true), ShouldBeNil)
+			dbTask, err := FindTask(taskId)
+			So(err, ShouldBeNil)
+			So(dbTask.Activated, ShouldBeTrue)
+			So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
+			So(dbTask.ActivatedBy, ShouldEqual, user)
+
+			// make sure the dependencies were activated
+			dbDepOne, err := FindTask(dep1.Id)
+			So(err, ShouldBeNil)
+			So(dbDepOne.Activated, ShouldBeTrue)
+			So(dbDepOne.ActivatedBy, ShouldEqual, user)
+			dbDepTwo, err := FindTask(dep2.Id)
+			So(err, ShouldBeNil)
+			So(dbDepTwo.Activated, ShouldBeTrue)
+			So(dbDepTwo.ActivatedBy, ShouldEqual, user)
+
+			Convey("and setting active to false will not reset the fields if the caller is evergreen or the apiserver", func() {
+				So(SetTaskActivated(taskId, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				dbTask, err := FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				So(dbTask.ActivatedBy, ShouldEqual, user)
+
+				// make sure the dependencies were activated
+				dbDepOne, err := FindTask(dep1.Id)
+				So(err, ShouldBeNil)
+				So(dbDepOne.Activated, ShouldBeTrue)
+				So(dbDepOne.ActivatedBy, ShouldEqual, user)
+				dbDepTwo, err := FindTask(dep2.Id)
+				So(err, ShouldBeNil)
+				So(dbDepTwo.Activated, ShouldBeTrue)
+				So(dbDepTwo.ActivatedBy, ShouldEqual, user)
+
+				So(SetTaskActivated(taskId, evergreen.APIServerTaskActivator, false), ShouldBeNil)
+				dbTask, err = FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeTrue)
+				So(dbTask.ActivatedBy, ShouldEqual, user)
+
+			})
+			Convey("and setting active to false will not reset the fields if the caller is not evergreen", func() {
+				So(SetTaskActivated(taskId, user, false), ShouldBeNil)
+				dbTask, err := FindTask(taskId)
+				So(err, ShouldBeNil)
+				So(dbTask.Activated, ShouldBeFalse)
+				So(dbTask.ActivatedBy, ShouldEqual, user)
+				So(dbTask.ScheduledTime, ShouldHappenWithin, oneMs, ZeroTime)
+			})
+		})
+	})
+}
+
 func TestMarkAsDispatched(t *testing.T) {
 
 	var (
-		taskId   string
-		hostId   string
-		buildId  string
-		distroId string
-		task     *Task
-		myHost   *host.Host
-		b        *build.Build
+		taskId  string
+		hostId  string
+		buildId string
+		task    *Task
+		myHost  *host.Host
+		b       *build.Build
 	)
 
 	Convey("With a task", t, func() {
@@ -535,7 +701,6 @@ func TestMarkAsDispatched(t *testing.T) {
 		taskId = "t1"
 		hostId = "h1"
 		buildId = "b1"
-		distroId = "d1"
 
 		task = &Task{
 			Id:      taskId,
@@ -543,8 +708,7 @@ func TestMarkAsDispatched(t *testing.T) {
 		}
 
 		myHost = &host.Host{
-			Id:     hostId,
-			Distro: distro.Distro{Id: distroId},
+			Id: hostId,
 		}
 
 		b = &build.Build{
@@ -555,7 +719,7 @@ func TestMarkAsDispatched(t *testing.T) {
 		}
 
 		testutil.HandleTestingErr(
-			db.ClearCollections(Collection, build.Collection, host.Collection),
+			db.ClearCollections(TasksCollection, build.Collection, host.Collection),
 			t, "Error clearing test collections")
 
 		So(task.Insert(), ShouldBeNil)
@@ -567,20 +731,25 @@ func TestMarkAsDispatched(t *testing.T) {
 			" should be set to reflect this", func() {
 
 			// mark the task as dispatched
-			So(task.MarkAsDispatched(myHost.Id, myHost.Distro.Id, time.Now()), ShouldBeNil)
+			So(task.MarkAsDispatched(myHost, time.Now()), ShouldBeNil)
 
-			// make sure the task's fields were updated, both in ©memory and
+			// make sure the task's fields were updated, both in memory and
 			// in the db
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(task.HostId, ShouldEqual, myHost.Id)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
-			task, err := FindOne(ById(taskId))
+			task, err := FindTask(taskId)
 			So(err, ShouldBeNil)
 			So(task.DispatchTime, ShouldNotResemble, time.Unix(0, 0))
 			So(task.Status, ShouldEqual, evergreen.TaskDispatched)
 			So(task.HostId, ShouldEqual, myHost.Id)
 			So(task.LastHeartbeat, ShouldResemble, task.DispatchTime)
+
+			// make sure the build's fields were updated in the db
+			b, err = build.FindOne(build.ById(buildId))
+			So(err, ShouldBeNil)
+			So(b.Tasks[0].Status, ShouldEqual, evergreen.TaskDispatched)
 
 		})
 
@@ -590,7 +759,7 @@ func TestMarkAsDispatched(t *testing.T) {
 
 func TestTimeAggregations(t *testing.T) {
 	Convey("With multiple tasks with different times", t, func() {
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(TasksCollection), ShouldBeNil)
 		task1 := Task{Id: "bogus",
 			ScheduledTime: time.Unix(1000, 0),
 			StartTime:     time.Unix(1010, 0),
@@ -612,10 +781,10 @@ func TestTimeAggregations(t *testing.T) {
 
 		Convey("on an aggregation on FinishTime - StartTime", func() {
 			timeMap, err := AverageTaskTimeDifference(
-				StartTimeKey,
-				FinishTimeKey,
-				DistroIdKey,
-				util.ZeroTime)
+				TaskStartTimeKey,
+				TaskFinishTimeKey,
+				TaskDistroIdKey,
+				ZeroTime)
 			So(err, ShouldBeNil)
 
 			Convey("the proper averages should be computed", func() {
@@ -628,10 +797,10 @@ func TestTimeAggregations(t *testing.T) {
 
 		Convey("on an aggregation on StartTime - ScheduledTime", func() {
 			timeMap, err := AverageTaskTimeDifference(
-				ScheduledTimeKey,
-				StartTimeKey,
-				DistroIdKey,
-				util.ZeroTime)
+				TaskScheduledTimeKey,
+				TaskStartTimeKey,
+				TaskDistroIdKey,
+				ZeroTime)
 			So(err, ShouldBeNil)
 
 			Convey("the proper averages should be computed", func() {
@@ -646,30 +815,145 @@ func TestTimeAggregations(t *testing.T) {
 
 			Convey("most cases should return an empty map", func() {
 				timeMap, err := AverageTaskTimeDifference(
-					IdKey,
-					DistroIdKey,
-					DistroIdKey,
-					util.ZeroTime)
+					TaskIdKey,
+					TaskDistroIdKey,
+					TaskDistroIdKey,
+					ZeroTime)
 				So(len(timeMap), ShouldEqual, 0)
 				So(err, ShouldBeNil)
 				timeMap, err = AverageTaskTimeDifference(
-					DistroIdKey,
-					SecretKey,
-					DistroIdKey,
-					util.ZeroTime)
+					TaskDistroIdKey,
+					TaskSecretKey,
+					TaskDistroIdKey,
+					ZeroTime)
 				So(len(timeMap), ShouldEqual, 0)
 				So(err, ShouldBeNil)
 			})
 
 			Convey("special key cases should cause real agg errors", func() {
 				timeMap, err := AverageTaskTimeDifference(
-					StartTimeKey,
+					TaskStartTimeKey,
 					"$$$$$$",
-					DistroIdKey,
-					util.ZeroTime)
+					TaskDistroIdKey,
+					ZeroTime)
 				So(len(timeMap), ShouldEqual, 0)
 				So(err, ShouldNotBeNil)
 			})
 		})
+	})
+}
+
+func TestFindTasksForHostIds(t *testing.T) {
+	Convey("Should return all tasks for hosts", t, func() {
+		So(db.Clear(TasksCollection), ShouldBeNil)
+		task1 := Task{
+			Id:        "t1",
+			HostId:    "h1",
+			Status:    evergreen.TaskSucceeded,
+			Requester: "r1",
+		}
+		task2 := Task{
+			Id:        "t2",
+			HostId:    "h2",
+			Status:    evergreen.TaskFailed,
+			Requester: "r1",
+		}
+		task3 := Task{
+			Id:        "t3",
+			HostId:    "h3",
+			Status:    evergreen.TaskSucceeded,
+			Requester: "r2",
+		}
+		task4 := Task{
+			Id:        "t4",
+			HostId:    "h1",
+			Status:    evergreen.TaskDispatched,
+			Requester: "r2",
+		}
+		So(task1.Insert(), ShouldBeNil)
+		So(task2.Insert(), ShouldBeNil)
+		So(task3.Insert(), ShouldBeNil)
+		So(task4.Insert(), ShouldBeNil)
+
+		result, err := FindTasksForHostIds([]string{"h1", "h2"})
+		So(err, ShouldBeNil)
+		So(len(result), ShouldEqual, 2)
+		So(result[0].Id == "t1" || result[1].Id == "t1", ShouldBeTrue)
+		So(result[0].Id == "t2" || result[1].Id == "t2", ShouldBeTrue)
+		So(result[0].Requester, ShouldEqual, "r1")
+		So(result[1].Requester, ShouldEqual, "r1")
+	})
+}
+
+func TestGetStepback(t *testing.T) {
+	Convey("When the project has a stepback policy set to true", t, func() {
+		_true, _false := true, false
+		project := &Project{
+			Stepback: true,
+			BuildVariants: []BuildVariant{
+				BuildVariant{
+					Name: "sbnil",
+				},
+				BuildVariant{
+					Name:     "sbtrue",
+					Stepback: &_true,
+				},
+				BuildVariant{
+					Name:     "sbfalse",
+					Stepback: &_false,
+				},
+			},
+			Tasks: []ProjectTask{
+				ProjectTask{Name: "nil"},
+				ProjectTask{Name: "true", Stepback: &_true},
+				ProjectTask{Name: "false", Stepback: &_false},
+				ProjectTask{Name: "bvnil"},
+				ProjectTask{Name: "bvtrue"},
+				ProjectTask{Name: "bvfalse"},
+			},
+		}
+
+		Convey("if the task does not override the setting", func() {
+			task := &Task{DisplayName: "nil"}
+			Convey("then the value should be true", func() {
+				So(task.getStepback(project), ShouldBeTrue)
+			})
+		})
+
+		Convey("if the task overrides the setting with true", func() {
+			task := &Task{DisplayName: "true"}
+			Convey("then the value should be true", func() {
+				So(task.getStepback(project), ShouldBeTrue)
+			})
+		})
+
+		Convey("if the task overrides the setting with false", func() {
+			task := &Task{DisplayName: "false"}
+			Convey("then the value should be false", func() {
+				So(task.getStepback(project), ShouldBeFalse)
+			})
+		})
+
+		Convey("if the buildvariant does not override the setting", func() {
+			task := &Task{DisplayName: "bvnil", BuildVariant: "sbnil"}
+			Convey("then the value should be true", func() {
+				So(task.getStepback(project), ShouldBeTrue)
+			})
+		})
+
+		Convey("if the buildvariant overrides the setting with true", func() {
+			task := &Task{DisplayName: "bvtrue", BuildVariant: "sbtrue"}
+			Convey("then the value should be true", func() {
+				So(task.getStepback(project), ShouldBeTrue)
+			})
+		})
+
+		Convey("if the buildvariant overrides the setting with false", func() {
+			task := &Task{DisplayName: "bvfalse", BuildVariant: "sbfalse"}
+			Convey("then the value should be false", func() {
+				So(task.getStepback(project), ShouldBeFalse)
+			})
+		})
+
 	})
 }

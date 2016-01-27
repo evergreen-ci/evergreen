@@ -5,7 +5,6 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
 	"io"
@@ -237,8 +236,8 @@ func RunAndParseTests(conf TestConfig, parser Parser,
 
 // ToModelTestResults converts the implementation of TestResults native
 // to the gotest plugin to the implementation used by MCI tasks
-func ToModelTestResults(t *task.Task, results []TestResult) task.TestResults {
-	var modelResults []task.TestResult
+func ToModelTestResults(task *model.Task, results []TestResult) model.TestResults {
+	var modelResults []model.TestResult
 	for _, res := range results {
 		// start and end are times that we don't know,
 		// represented as a 64bit floating point (epoch time fraction)
@@ -255,7 +254,7 @@ func ToModelTestResults(t *task.Task, results []TestResult) task.TestResults {
 		case FAIL:
 			status = evergreen.TestFailedStatus
 		}
-		convertedResult := task.TestResult{
+		convertedResult := model.TestResult{
 			TestFile:  res.Name,
 			Status:    status,
 			StartTime: start,
@@ -265,5 +264,5 @@ func ToModelTestResults(t *task.Task, results []TestResult) task.TestResults {
 		}
 		modelResults = append(modelResults, convertedResult)
 	}
-	return task.TestResults{modelResults}
+	return model.TestResults{modelResults}
 }

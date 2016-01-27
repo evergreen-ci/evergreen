@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -21,7 +20,7 @@ import (
 func resetTasks(t *testing.T) {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
 	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, model.TestLogCollection), t,
+		db.ClearCollections(model.TasksCollection, model.TestLogCollection), t,
 		"error clearing test collections")
 }
 
@@ -46,9 +45,9 @@ func TestAttachResults(t *testing.T) {
 		logger := agent.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
-			for _, projTask := range taskConfig.Project.Tasks {
-				So(len(projTask.Commands), ShouldNotEqual, 0)
-				for _, command := range projTask.Commands {
+			for _, task := range taskConfig.Project.Tasks {
+				So(len(task.Commands), ShouldNotEqual, 0)
+				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
@@ -56,18 +55,18 @@ func TestAttachResults(t *testing.T) {
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
-					testTask, err := task.FindOne(task.ById(httpCom.TaskId))
+					task, err := model.FindTask(httpCom.TaskId)
 					testutil.HandleTestingErr(err, t, "Couldn't find task")
-					So(testTask, ShouldNotBeNil)
+					So(task, ShouldNotBeNil)
 					// ensure test results are exactly as expected
 					// attempt to open the file
 					reportFile, err := os.Open(resultsLoc)
 					testutil.HandleTestingErr(err, t, "Couldn't open report file: '%v'", err)
-					results := &task.TestResults{}
+					results := &model.TestResults{}
 					err = util.ReadJSONInto(reportFile, results)
 					testutil.HandleTestingErr(err, t, "Couldn't read report file: '%v'", err)
 					testResults := *results
-					So(testTask.TestResults, ShouldResemble, testResults.Results)
+					So(task.TestResults, ShouldResemble, testResults.Results)
 					testutil.HandleTestingErr(err, t, "Couldn't clean up test temp dir")
 				}
 			}

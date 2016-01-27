@@ -4,7 +4,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -30,7 +29,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 	var projects []string
 	var taskIds []string
 	var timeTaken []time.Duration
-	var runnableTasks []task.Task
+	var runnableTasks []model.Task
 
 	Convey("With a DBTaskDurationEstimator...", t,
 		func() {
@@ -50,11 +49,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 				"display names, same project and buildvariant, should be "+
 				"distinct",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 0/7 are from the same project and buildvariant
 						// and have different display names - expected duration
 						// should not be averaged between these two
-						task.Task{
+						model.Task{
 							Id:           taskIds[0],
 							DisplayName:  displayNames[0],
 							BuildVariant: buildVariants[0],
@@ -63,7 +62,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[7],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[0],
@@ -74,11 +73,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -110,12 +109,12 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 				"name same project but different buildvariant should be "+
 				"distinct",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 1/4 are from the same project but from different
 						// buildvariants and have the same display names -
 						// expected duration should not be averaged between
 						// these two
-						task.Task{
+						model.Task{
 							Id:           taskIds[1],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[3],
@@ -124,7 +123,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[4],
@@ -135,11 +134,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							" insert task")
 					}
 
@@ -177,12 +176,12 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 				"name same buildvariant and from same project should be "+
 				"averaged",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 2/3 are from the same buildvariant, have the
 						// same display name amd are from same projects -
 						// expected duration should be average across those
 						// projects
-						task.Task{
+						model.Task{
 							Id:           taskIds[3],
 							DisplayName:  displayNames[3],
 							BuildVariant: buildVariants[3],
@@ -191,7 +190,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[3],
 							BuildVariant: buildVariants[3],
@@ -202,11 +201,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -240,12 +239,12 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 				"name same buildvariant but from different project should be "+
 				"distinct",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 4/5 are from the same buildvariant, have the
 						// same display name but are from different projects -
 						// expected duration should be distinct across those
 						// projects
-						task.Task{
+						model.Task{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -254,7 +253,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -265,11 +264,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -313,12 +312,12 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 			Convey("the expected task duration for tasks should only pick up "+
 				"tasks that are completed",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 4/5 are from the same buildvariant, have the
 						// same display name and are from the same project -
 						// however task 4 is not yet dispatched so shouldn't
 						// count toward the expected duration
-						task.Task{
+						model.Task{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -327,7 +326,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskUndispatched,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -338,11 +337,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -375,13 +374,13 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 			Convey("the expected task duration for tasks should only pick up "+
 				"tasks that are completed within the specified window",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 4/5 are from the same buildvariant, have the
 						// same display name and are from the same project -
 						// however task 4 did not finish within the specified
 						// window and should thus, not count toward the expected
 						//  duration
-						task.Task{
+						model.Task{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -392,7 +391,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 								Add(-model.TaskCompletionEstimateWindow).
 								Add(-model.TaskCompletionEstimateWindow),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -403,11 +402,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 
@@ -442,12 +441,12 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 				"several buildvariants/tasks should ignore uncompleted tasks "+
 				"and average tasks with the same display name",
 				func() {
-					runnableTasks = []task.Task{
+					runnableTasks = []model.Task{
 						// task 0/7 are from the same project and buildvariant
 						// and have different display names - expected duration
 						// should thus be averaged between these two - even
 						// though task 0 succeeded and 7 failed
-						task.Task{
+						model.Task{
 							Id:           taskIds[0],
 							DisplayName:  displayNames[0],
 							BuildVariant: buildVariants[0],
@@ -456,7 +455,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[7],
 							DisplayName:  displayNames[0],
 							BuildVariant: buildVariants[0],
@@ -468,7 +467,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 1 is the only runnable task with this project,
 						// buildvariant & display name
 						// should be exactly equal to its time taken
-						task.Task{
+						model.Task{
 							Id:           taskIds[1],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -480,7 +479,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 2 is the only runnable task with this project,
 						// buildvariant & display name - so the expected
 						// duration should be exactly equal to its time taken
-						task.Task{
+						model.Task{
 							Id:           taskIds[2],
 							DisplayName:  displayNames[2],
 							BuildVariant: buildVariants[2],
@@ -492,7 +491,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 3/6 are from the same project and buildvariant
 						// but have different display names - expected duration
 						// should thus not be averaged between these two
-						task.Task{
+						model.Task{
 							Id:           taskIds[3],
 							DisplayName:  displayNames[3],
 							BuildVariant: buildVariants[3],
@@ -501,7 +500,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskSucceeded,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[6],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[3],
@@ -513,7 +512,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 4/5 are from the same project and buildvariant
 						// and have the same display name - expected duration
 						// should thus be averaged between these two
-						task.Task{
+						model.Task{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[4],
@@ -522,7 +521,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							Status:       evergreen.TaskFailed,
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						model.Task{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[4],
@@ -534,7 +533,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 9 is undispatched so shouldn't
 						// count toward the expected duration for
 						// project/buildvariant/display name 4
-						task.Task{
+						model.Task{
 							Id:           taskIds[8],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[4],
@@ -545,11 +544,11 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						},
 					}
 
-					So(db.Clear(task.Collection), ShouldBeNil)
+					So(db.Clear(model.TasksCollection), ShouldBeNil)
 
 					// insert all the test tasks
-					for _, testTask := range runnableTasks {
-						testutil.HandleTestingErr(testTask.Insert(), t, "failed to "+
+					for _, task := range runnableTasks {
+						testutil.HandleTestingErr(task.Insert(), t, "failed to "+
 							"insert task")
 					}
 

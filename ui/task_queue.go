@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
+	"gopkg.in/mgo.v2/bson"
 	"net/http"
 	"strconv"
 	"time"
@@ -60,7 +61,7 @@ type uiTaskTimeStatistic struct {
 }
 
 // taskTimeStatisticsHandler is a handler for task time aggretations.
-// it essentially acts as a wrapper for task.AverageTaskTimeDifference
+// it essentially acts as a wrapper for model.AverageTaskTimeDifference
 func (uis *UIServer) taskTimeStatisticsHandler(w http.ResponseWriter, r *http.Request) {
 	field1 := mux.Vars(r)["field1"]
 	field2 := mux.Vars(r)["field2"]
@@ -81,7 +82,7 @@ func (uis *UIServer) taskTimeStatisticsHandler(w http.ResponseWriter, r *http.Re
 		cutoff = time.Now().Add(time.Duration(-1*cutoffDays) * time.Hour * 24)
 	}
 
-	timeMap, err := task.AverageTaskTimeDifference(field1, field2, groupyBy, cutoff)
+	timeMap, err := model.AverageTaskTimeDifference(field1, field2, groupyBy, cutoff)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error computing time stats: %v", err))
 		return
@@ -139,7 +140,21 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// find all the relevant tasks
-		tasks, err := task.Find(task.ByIds(taskIds).WithFields(task.VersionKey, task.BuildIdKey))
+		tasks, err := model.FindAllTasks(
+			bson.M{
+				model.TaskIdKey: bson.M{
+					"$in": taskIds,
+				},
+			},
+			bson.M{
+				model.TaskVersionKey: 1,
+				model.TaskBuildIdKey: 1,
+			},
+			db.NoSort,
+			db.NoSkip,
+			db.NoLimit,
+		)
+
 		if err != nil {
 			msg := fmt.Sprintf("Error finding tasks: %v", err)
 			evergreen.Logger.Errorf(slogger.ERROR, msg)

@@ -61,6 +61,12 @@ func (b *Build) IsFinished() bool {
 		b.Status == evergreen.BuildSucceeded
 }
 
+// IsSystemTaskActivator returns true when the task activator is Evergreen.
+func IsSystemActivator(caller string) bool {
+	return caller == evergreen.DefaultTaskActivator ||
+		caller == evergreen.APIServerTaskActivator
+}
+
 // Find
 
 // FindBuildOnBaseCommit returns the build that a patch build is based on.
@@ -92,7 +98,7 @@ func (b *Build) PreviousSuccessful() (*Build, error) {
 // to the given activation setting.
 func UpdateActivation(buildId string, active bool, caller string) error {
 	var err error
-	if !active && (evergreen.IsSystemActivator(caller)) {
+	if !active && (IsSystemActivator(caller)) {
 		_, err = UpdateAllBuilds(
 			bson.M{IdKey: buildId,
 				ActivatedByKey: caller,

@@ -10,9 +10,11 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
 	evergreen.SetLogger("/tmp/version_test.log")
 }
+
+var versionTestSettings = evergreen.TestConfig()
 
 func TestLastKnownGoodConfig(t *testing.T) {
 	Convey("When calling LastKnownGoodConfig..", t, func() {

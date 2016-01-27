@@ -93,10 +93,10 @@ func TestXMLToModelConversion(t *testing.T) {
 		res, err := ParseXMLResults(file)
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)
-		testTask := &task.Task{Id: "TEST", Execution: 5}
+		testTask := &model.Task{Id: "TEST", Execution: 5}
 
 		Convey("when converting the results to model struct", func() {
-			tests := []task.TestResult{}
+			tests := []model.TestResult{}
 			logs := []*model.TestLog{}
 			for _, testCase := range res[0].TestCases {
 				test, log := testCase.ToModelTestResultAndLog(testTask)

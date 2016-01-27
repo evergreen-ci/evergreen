@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"gopkg.in/mgo.v2/bson"
@@ -32,7 +31,7 @@ func (_ *MockLogger) GetTaskLogWriter(level slogger.Level) io.Writer            
 
 func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) {
 	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, model.ProjectVarsCollection),
+		db.ClearCollections(model.TasksCollection, model.ProjectVarsCollection),
 		t, "Failed to clear test data collection")
 
 	data, err := ioutil.ReadFile(filename)
@@ -46,7 +45,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 		return nil, err
 	}
 
-	testTask := &task.Task{
+	testTask := &model.Task{
 		Id:           "mocktaskid",
 		BuildId:      "testBuildId",
 		BuildVariant: "linux-64",
@@ -105,10 +104,10 @@ func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) 
 	return agentCommunicator
 }
 
-func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, error) {
+func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*model.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, build.Collection,
+		db.ClearCollections(model.TasksCollection, build.Collection,
 			host.Collection, version.Collection, patch.Collection),
 		t, "Failed to clear test collections")
 
@@ -120,7 +119,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	}
 	testutil.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
 
-	task := &task.Task{
+	task := &model.Task{
 		Id:           "testTaskId",
 		BuildId:      "testBuildId",
 		DistroId:     "rhel55",

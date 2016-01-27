@@ -3,14 +3,14 @@ package scheduler
 import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // TaskFinder finds all tasks that are ready to be run.
 type TaskFinder interface {
 	// Returns a slice of tasks that are ready to be run, and an error if
 	// appropriate.
-	FindRunnableTasks() ([]task.Task, error)
+	FindRunnableTasks() ([]model.Task, error)
 }
 
 // DBTaskFinder fetches tasks from the database. Implements TaskFinder.
@@ -19,17 +19,17 @@ type DBTaskFinder struct{}
 // FindRunnableTasks finds all tasks that are ready to be run.
 // This works by fetching all undispatched tasks from the database,
 // and filtering out any whose dependencies are not met.
-func (self *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
+func (self *DBTaskFinder) FindRunnableTasks() ([]model.Task, error) {
 
 	// find all of the undispatched tasks
-	undispatchedTasks, err := task.Find(task.IsUndispatched)
+	undispatchedTasks, err := model.FindUndispatchedTasks()
 	if err != nil {
 		return nil, err
 	}
 
 	// filter out any tasks whose dependencies are not met
-	runnableTasks := make([]task.Task, 0, len(undispatchedTasks))
-	dependencyCaches := make(map[string]task.Task)
+	runnableTasks := make([]model.Task, 0, len(undispatchedTasks))
+	dependencyCaches := make(map[string]model.Task)
 	for _, task := range undispatchedTasks {
 		depsMet, err := task.DependenciesMet(dependencyCaches)
 		if err != nil {

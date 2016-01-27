@@ -5,7 +5,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
 	"time"
@@ -27,15 +27,15 @@ type TaskNotificationForTemplate struct {
 	Notification *TriggeredTaskNotification
 	LogsUrl      string
 	Details      apimodels.TaskEndDetail
-	FailedTests  []task.TestResult
+	FailedTests  []model.TestResult
 	Subject      string
 }
 
 // convenience wrapper about everything we want to know about a task
 // notification before it goes off for templating.
 type TriggeredTaskNotification struct {
-	Current    *task.Task
-	Previous   *task.Task
+	Current    *model.Task
+	Previous   *model.Task
 	Info       []ChangeInfo
 	Key        NotificationKey
 	Preface    string
@@ -107,7 +107,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	case 0:
 		if current.Details.TimedOut {
 			testFailureMessage = TimeOutMessage
-			if current.Details.Description == task.AgentHeartbeat {
+			if current.Details.Description == model.AgentHeartbeat {
 				testFailureMessage = UnresponsiveMessage
 			}
 		} else {
@@ -137,7 +137,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	return
 }
 
-func (self *TaskNotificationHandler) constructChangeInfo(allTasks []task.Task,
+func (self *TaskNotificationHandler) constructChangeInfo(allTasks []model.Task,
 	key *NotificationKey) ([]ChangeInfo, error) {
 	changeInfoSlice := make([]ChangeInfo, 0)
 

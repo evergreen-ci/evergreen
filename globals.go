@@ -177,9 +177,3 @@ func TestConfig() *Settings {
 	}
 	return settings
 }
-
-// IsSystemActivator returns true when the task activator is Evergreen.
-func IsSystemActivator(caller string) bool {
-	return caller == DefaultTaskActivator ||
-		caller == APIServerTaskActivator
-}

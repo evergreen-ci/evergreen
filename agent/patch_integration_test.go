@@ -5,7 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -58,7 +58,7 @@ func TestPatchTask(t *testing.T) {
 								So(scanLogsForTask(testTask.Id, "i am compiling!"), ShouldBeTrue)
 								So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
 
-								testTask, err = task.FindOne(task.ById(testTask.Id))
+								testTask, err = model.FindTask(testTask.Id)
 								testutil.HandleTestingErr(err, t, "Error finding test task: %v", err)
 								So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 							})

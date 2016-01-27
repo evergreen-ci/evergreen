@@ -4,8 +4,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
@@ -71,7 +71,7 @@ func TestPushTask(t *testing.T) {
 								"https://s3.amazonaws.com/build-push-testing/pushtest/unittest-DISTRO_EXP-BUILDVAR_EXP-FILE_EXP-latest.txt")
 						})
 
-						testTask, err = task.FindOne(task.ById(testTask.Id))
+						testTask, err = model.FindTask(testTask.Id)
 						testutil.HandleTestingErr(err, t, "Error finding test task: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 

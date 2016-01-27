@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"math"
 	"time"
@@ -110,16 +109,16 @@ func (self *Scheduler) Schedule() error {
 		}
 
 		// track scheduled time for prioritized tasks
-		scheduledTime := time.Now()
-		err = task.SetTasksScheduledTime(prioritizedTasks, scheduledTime)
+		err = model.SetTasksScheduledTime(prioritizedTasks, time.Now())
 		if err != nil {
 			return fmt.Errorf("Error setting scheduled time for prioritized "+
 				"tasks: %v", err)
 		}
+
 		taskQueueItems[d.Id] = queuedTasks
 	}
 
-	err = task.UpdateMinQueuePos(taskIdToMinQueuePos)
+	err = model.UpdateMinQueuePos(taskIdToMinQueuePos)
 	if err != nil {
 		return fmt.Errorf("Error updating tasks with queue positions: %v", err)
 	}
@@ -213,9 +212,9 @@ func (self *Scheduler) updateVersionBuildVarMap(versionStr string,
 // Returns a map of distro name -> tasks that can be run on that distro
 // and a map of task id -> distros that the task can be run on (for tasks
 // that can be run on multiple distro)
-func (self *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
-	map[string][]task.Task, map[string][]string, error) {
-	tasksByDistro := make(map[string][]task.Task)
+func (self *Scheduler) splitTasksByDistro(tasksToSplit []model.Task) (
+	map[string][]model.Task, map[string][]string, error) {
+	tasksByDistro := make(map[string][]model.Task)
 	taskRunDistros := make(map[string][]string)
 
 	// map of versionBuildVariant -> build variant

@@ -3,7 +3,7 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
@@ -25,7 +25,7 @@ func TestTaskImportanceComparators(t *testing.T) {
 
 	var taskPrioritizer *CmpBasedTaskPrioritizer
 	var taskIds []string
-	var tasks []task.Task
+	var tasks []model.Task
 
 	Convey("When using the task importance comparators", t, func() {
 
@@ -33,9 +33,9 @@ func TestTaskImportanceComparators(t *testing.T) {
 
 		taskIds = []string{"t1", "t2"}
 
-		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
+		tasks = []model.Task{
+			model.Task{Id: taskIds[0]},
+			model.Task{Id: taskIds[1]},
 		}
 
 		Convey("the explicit priority comparator should prioritize a task"+
@@ -184,9 +184,9 @@ func TestTaskImportanceComparators(t *testing.T) {
 
 			prevTaskIds := []string{"pt1", "pt2"}
 
-			prevTasks := map[string]task.Task{
-				taskIds[0]: task.Task{Id: prevTaskIds[0]},
-				taskIds[1]: task.Task{Id: prevTaskIds[1]},
+			prevTasks := map[string]model.Task{
+				taskIds[0]: model.Task{Id: prevTaskIds[0]},
+				taskIds[1]: model.Task{Id: prevTaskIds[1]},
 			}
 
 			taskPrioritizer.previousTasksCache = prevTasks

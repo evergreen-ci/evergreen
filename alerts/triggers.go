@@ -5,7 +5,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -37,8 +36,8 @@ type Trigger interface {
 type triggerContext struct {
 	projectRef        *model.ProjectRef
 	version           *version.Version
-	task              *task.Task
-	previousCompleted *task.Task
+	task              *model.Task
+	previousCompleted *model.Task
 	host              *host.Host
 }
 

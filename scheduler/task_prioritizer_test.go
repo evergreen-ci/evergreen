@@ -3,7 +3,7 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -24,7 +24,7 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 
 	var taskPrioritizer *CmpBasedTaskPrioritizer
 	var taskIds []string
-	var tasks []task.Task
+	var tasks []model.Task
 
 	Convey("With a CmpBasedTaskPrioritizer", t, func() {
 
@@ -32,27 +32,27 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 
 		taskIds = []string{"t1", "t2"}
 
-		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
+		tasks = []model.Task{
+			model.Task{Id: taskIds[0]},
+			model.Task{Id: taskIds[1]},
 		}
 
-		alwaysEqual := func(t1, t2 task.Task, p *CmpBasedTaskPrioritizer) (
+		alwaysEqual := func(t1, t2 model.Task, p *CmpBasedTaskPrioritizer) (
 			int, error) {
 			return 0, nil
 		}
 
-		alwaysMoreImportant := func(t1, t2 task.Task,
+		alwaysMoreImportant := func(t1, t2 model.Task,
 			p *CmpBasedTaskPrioritizer) (int, error) {
 			return 1, nil
 		}
 
-		alwaysLessImportant := func(t1, t2 task.Task,
+		alwaysLessImportant := func(t1, t2 model.Task,
 			p *CmpBasedTaskPrioritizer) (int, error) {
 			return -1, nil
 		}
 
-		idComparator := func(t1, t2 task.Task, p *CmpBasedTaskPrioritizer) (
+		idComparator := func(t1, t2 model.Task, p *CmpBasedTaskPrioritizer) (
 			int, error) {
 			if t1.Id > t2.Id {
 				return 1, nil
@@ -156,12 +156,12 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 		taskPrioritizer = NewCmpBasedTaskPrioritizer()
 
 		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
-		tasks := []task.Task{
-			task.Task{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
-			task.Task{Id: taskIds[1], Requester: evergreen.PatchVersionRequester},
-			task.Task{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
-			task.Task{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
-			task.Task{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
+		tasks := []model.Task{
+			model.Task{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
+			model.Task{Id: taskIds[1], Requester: evergreen.PatchVersionRequester},
+			model.Task{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
+			model.Task{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
+			model.Task{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
 		}
 
 		repoTrackerTasks, patchTasks := taskPrioritizer.splitTasksByRequester(tasks)
@@ -178,22 +178,22 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 	Convey("Merging tasks should merge the lists of repotracker and patch tasks, taking the toggle into account", t, func() {
 
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5", "t6", "t7"}
-		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
-			task.Task{Id: taskIds[2]},
-			task.Task{Id: taskIds[3]},
-			task.Task{Id: taskIds[4]},
-			task.Task{Id: taskIds[5]},
-			task.Task{Id: taskIds[6]},
+		tasks = []model.Task{
+			model.Task{Id: taskIds[0]},
+			model.Task{Id: taskIds[1]},
+			model.Task{Id: taskIds[2]},
+			model.Task{Id: taskIds[3]},
+			model.Task{Id: taskIds[4]},
+			model.Task{Id: taskIds[5]},
+			model.Task{Id: taskIds[6]},
 		}
 
 		Convey("With no patch tasks, the list of repotracker tasks should be returned", func() {
 			tasks[0].Requester = evergreen.RepotrackerVersionRequester
 			tasks[1].Requester = evergreen.RepotrackerVersionRequester
 			tasks[2].Requester = evergreen.RepotrackerVersionRequester
-			repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
-			patchTasks := []task.Task{}
+			repoTrackerTasks := []model.Task{tasks[0], tasks[1], tasks[2]}
+			patchTasks := []model.Task{}
 
 			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
 			So(len(mergedTasks), ShouldEqual, 3)
@@ -206,8 +206,8 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			tasks[0].Requester = evergreen.PatchVersionRequester
 			tasks[1].Requester = evergreen.PatchVersionRequester
 			tasks[2].Requester = evergreen.PatchVersionRequester
-			repoTrackerTasks := []task.Task{}
-			patchTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
+			repoTrackerTasks := []model.Task{}
+			patchTasks := []model.Task{tasks[0], tasks[1], tasks[2]}
 
 			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
 			So(len(mergedTasks), ShouldEqual, 3)
@@ -221,8 +221,8 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			Convey("A MergeToggle of 2 should interleave tasks evenly", func() {
 
 				taskPrioritizerTestConf.Scheduler.MergeToggle = 2
-				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
-				patchTasks := []task.Task{tasks[3], tasks[4], tasks[5]}
+				repoTrackerTasks := []model.Task{tasks[0], tasks[1], tasks[2]}
+				patchTasks := []model.Task{tasks[3], tasks[4], tasks[5]}
 
 				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
 				So(len(mergedTasks), ShouldEqual, 6)
@@ -238,8 +238,8 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			Convey("A MergeToggle of 3 should interleave a patch task every third task", func() {
 
 				taskPrioritizerTestConf.Scheduler.MergeToggle = 3
-				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3]}
-				patchTasks := []task.Task{tasks[4], tasks[5]}
+				repoTrackerTasks := []model.Task{tasks[0], tasks[1], tasks[2], tasks[3]}
+				patchTasks := []model.Task{tasks[4], tasks[5]}
 
 				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
 				So(len(mergedTasks), ShouldEqual, 6)
@@ -257,8 +257,8 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 		Convey("With a lot of patch tasks, the extras should be added on the end", func() {
 
 			taskPrioritizerTestConf.Scheduler.MergeToggle = 2
-			repoTrackerTasks := []task.Task{tasks[0], tasks[1]}
-			patchTasks := []task.Task{tasks[2], tasks[3], tasks[4], tasks[5]}
+			repoTrackerTasks := []model.Task{tasks[0], tasks[1]}
+			patchTasks := []model.Task{tasks[2], tasks[3], tasks[4], tasks[5]}
 
 			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
 			So(len(mergedTasks), ShouldEqual, 6)
@@ -273,8 +273,8 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 		Convey("With a lot of repotracker tasks, the extras should be added on the end", func() {
 
 			taskPrioritizerTestConf.Scheduler.MergeToggle = 2
-			repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]}
-			patchTasks := []task.Task{tasks[5]}
+			repoTrackerTasks := []model.Task{tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]}
+			patchTasks := []model.Task{tasks[5]}
 
 			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
 			So(len(mergedTasks), ShouldEqual, 6)

@@ -5,7 +5,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -123,7 +123,7 @@ func TestResultsConversion(t *testing.T) {
 		}
 
 		Convey("and their converted form", func() {
-			fakeTask := &task.Task{Id: "taskID"}
+			fakeTask := &model.Task{Id: "taskID"}
 			newRes := ToModelTestResults(fakeTask, results)
 			So(len(newRes.Results), ShouldEqual, len(results))
 

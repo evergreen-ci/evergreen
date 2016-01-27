@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"time"
 )
 
@@ -127,23 +126,23 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 }
 
 // clean up a task whose heartbeat has timed out
-func cleanUpTimedOutHeartbeat(t task.Task, project model.Project, host *host.Host) error {
+func cleanUpTimedOutHeartbeat(task model.Task, project model.Project, host *host.Host) error {
 	// mock up the failure details of the task
 	detail := &apimodels.TaskEndDetail{
-		Description: task.AgentHeartbeat,
+		Description: model.AgentHeartbeat,
 		TimedOut:    true,
 		Status:      evergreen.TaskFailed,
 	}
 
 	// try to reset the task
-	if err := model.TryResetTask(t.Id, "", RunnerName, &project, detail); err != nil {
-		return fmt.Errorf("error trying to reset task %v: %v", t.Id, err)
+	if err := task.TryReset("", RunnerName, &project, detail); err != nil {
+		return fmt.Errorf("error trying to reset task %v: %v", task.Id, err)
 	}
 
 	// clear out the host's running task
-	if err := host.UpdateRunningTask(t.Id, "", time.Now()); err != nil {
+	if err := host.UpdateRunningTask(task.Id, "", time.Now()); err != nil {
 		return fmt.Errorf("error clearing running task %v from host %v: %v",
-			t.Id, host.Id, err)
+			task.Id, host.Id, err)
 	}
 
 	// success

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
@@ -310,7 +309,7 @@ func (uis *UIServer) taskHistoryPickaxe(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	last, err := task.Find(db.Query(query).Project(projection))
+	last, err := model.FindAllTasks(query, projection, []string{}, 0, 0)
 
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error querying tasks: `%s`", err.Error()), http.StatusInternalServerError)
@@ -510,13 +509,26 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 	for _, v := range versions {
 		orderNumbers = append(orderNumbers, v.RevisionOrderNumber)
 	}
+	revisionCriteria := bson.M{"$in": orderNumbers}
 
-	revisionSort := task.RevisionOrderNumberKey
+	revisionSort := model.TaskRevisionOrderNumberKey
 	if reverseOrder {
 		revisionSort = "-" + revisionSort
 	}
 
-	tasks, err := task.Find(task.ByOrderNumbersForNameAndVariant(orderNumbers, displayName, variant).Sort([]string{revisionSort}))
+	tasks, err := model.FindAllTasks(
+		bson.M{
+			model.TaskRevisionOrderNumberKey: revisionCriteria,
+			model.TaskDisplayNameKey:         displayName,
+			model.TaskBuildVariantKey:        variant,
+		},
+		db.NoProjection,
+		[]string{
+			revisionSort,
+		},
+		db.NoSkip,
+		db.NoLimit,
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("error getting sibling tasks: %v", err)
@@ -526,7 +538,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 
 // Given versions and the appropriate tasks within them, sorted by build
 // variant, create sibling groups for the tasks.
-func createSiblingTaskGroups(tasks []task.Task, versions []version.Version) []taskDrawerItem {
+func createSiblingTaskGroups(tasks []model.Task, versions []version.Version) []taskDrawerItem {
 	// version id -> group
 	groupsByVersion := map[string]taskDrawerItem{}
 

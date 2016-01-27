@@ -6,7 +6,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 	"net/http"
 	"testing"
@@ -43,8 +42,8 @@ func (mc *MockCommunicator) End(details *apimodels.TaskEndDetail) (*apimodels.Ta
 	return nil, nil
 }
 
-func (*MockCommunicator) GetTask() (*task.Task, error) {
-	return &task.Task{}, nil
+func (*MockCommunicator) GetTask() (*model.Task, error) {
+	return &model.Task{}, nil
 }
 
 func (*MockCommunicator) GetDistro() (*distro.Distro, error) {

@@ -3,7 +3,6 @@ package model
 import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"path"
 	"strings"
 )
@@ -47,10 +46,6 @@ type TestStatusDiff struct {
 	Patch    string     `json:"patch"`
 }
 
-var (
-	TestLogPath = "/test_log/"
-)
-
 // StatusDiffBuilds takes two builds and returns a diff of their results
 // for easy comparison and analysis.
 func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
@@ -87,19 +82,9 @@ func StatusDiffBuilds(original, patch *build.Build) BuildStatusDiff {
 	return diff
 }
 
-// getTestUrl returns the correct relative URL to a test log, given a
-// TestResult structure
-func getTestUrl(tr *task.TestResult) string {
-	// Return url if it exists. If there is no test, return empty string.
-	if tr.URL != "" || tr.LogId == "" { // If LogId is empty, URL must also be empty
-		return tr.URL
-	}
-	return TestLogPath + tr.LogId
-}
-
 // StatusDiffTasks takes two tasks and returns a diff of their results
 // for easy comparison and analysis.
-func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
+func StatusDiffTasks(original *Task, patch *Task) TaskStatusDiff {
 	// return an empty diff if one of tasks is nonexistant
 	// this is likely to occur after adding a new buildvariant or task
 	if original == nil || patch == nil {
@@ -118,7 +103,7 @@ func StatusDiffTasks(original *task.Task, patch *task.Task) TaskStatusDiff {
 	}
 
 	// build maps of test statuses, for matching
-	originalTests := make(map[string]task.TestResult)
+	originalTests := make(map[string]TestResult)
 	for _, test := range original.TestResults {
 		originalTests[test.TestFile] = test
 	}
