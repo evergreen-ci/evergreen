@@ -929,7 +929,7 @@ buildvariants:
       - ubuntu-1504-power8-build
       expansions:
         EVGHOME_cmd: "`pwd`"
-        compiler_flag: "-compiler=gccgo"
+        compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
       tasks:
       - ".nodb"
     - name: osx
