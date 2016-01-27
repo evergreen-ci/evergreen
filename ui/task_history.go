@@ -414,7 +414,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projCtx.Version == nil {
-		http.Error(w, fmt.Errorf("no version available"), http.StatusBadRequest)
+		http.Error(w, "no version available", http.StatusBadRequest)
 		return
 	}
 	// get the versions in the requested window
