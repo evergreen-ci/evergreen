@@ -56,6 +56,8 @@ Evergreen - Waterfall
             </span>
             [[version.create_time]]
           </div>
+          <i ng-show="version.errors[0].messages.length" class="fa fa-ban error-text" data-element-tooltip="body">&nbsp;</i>
+          <i ng-show="version.warnings[0].messages.length" class="fa fa-warning warning-text" data-element-tooltip="body">&nbsp;</i>
           <strong>[[version.author]] - </strong>
               [[version.message]]<!--
           --><span ng-show="version.messages[0].length > 35"><!--

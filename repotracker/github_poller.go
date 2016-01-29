@@ -100,6 +100,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 
 	var foundLatest bool
 	var commits []thirdparty.GithubCommit
+	var firstCommit *thirdparty.GithubCommit // we track this for later error handling
 	var header http.Header
 	commitURL := getCommitURL(gRepoPoller.ProjectRef)
 	revisions := []model.Revision{}
@@ -111,12 +112,16 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 			return nil, err
 		}
 
-		for _, commit := range commits {
-			if isLastRevision(revision, &commit) {
+		for i := range commits {
+			commit := &commits[i]
+			if firstCommit == nil {
+				firstCommit = commit
+			}
+			if isLastRevision(revision, commit) {
 				foundLatest = true
 				break
 			}
-			revisions = append(revisions, githubCommitToRevision(&commit))
+			revisions = append(revisions, githubCommitToRevision(commit))
 		}
 
 		// stop querying for commits if we've found the latest commit or got back no commits
@@ -139,7 +144,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 			gRepoPoller.ProjectRef.Owner,
 			gRepoPoller.ProjectRef.Repo,
 			revision,
-			&commits[0],
+			firstCommit,
 		)
 		if err != nil {
 			// unable to get merge base commit so set projectRef revision details with a blank base revision

@@ -33,6 +33,7 @@ var (
 	ProjectNameKey         = bsonutil.MustHaveTag(Version{}, "Branch")
 	RepoKindKey            = bsonutil.MustHaveTag(Version{}, "RepoKind")
 	ErrorsKey              = bsonutil.MustHaveTag(Version{}, "Errors")
+	WarningsKey            = bsonutil.MustHaveTag(Version{}, "Warnings")
 	IdentifierKey          = bsonutil.MustHaveTag(Version{}, "Identifier")
 	RemoteKey              = bsonutil.MustHaveTag(Version{}, "Remote")
 	RemoteURLKey           = bsonutil.MustHaveTag(Version{}, "RemotePath")

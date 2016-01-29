@@ -52,7 +52,8 @@ type RepoPoller interface {
 }
 
 type projectConfigError struct {
-	errors []string
+	Errors   []string
+	Warnings []string
 }
 
 func (p projectConfigError) Error() string {
@@ -281,15 +282,22 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		if err != nil {
 			projectError, isProjectError := err.(projectConfigError)
 			if isProjectError {
-				// Store just the stub version with the project errors
-				v.Errors = projectError.errors
-				if err := v.Insert(); err != nil {
-					evergreen.Logger.Logf(slogger.ERROR,
-						"Failed storing stub version for project %v: %v", ref.Identifier, err)
-					return nil, err
+				if len(projectError.Warnings) > 0 {
+					// Store the warnings and keep going. If we don't have
+					// any true errors, the version will still be created.
+					v.Warnings = projectError.Warnings
 				}
-				newestVersion = v
-				continue
+				if len(projectError.Errors) > 0 {
+					// Store just the stub version with the project errors
+					v.Errors = projectError.Errors
+					if err := v.Insert(); err != nil {
+						evergreen.Logger.Logf(slogger.ERROR,
+							"Failed storing stub version for project %v: %v", ref.Identifier, err)
+						return nil, err
+					}
+					newestVersion = v
+					continue
+				}
 			} else {
 				// Fatal error - don't store the stub
 				evergreen.Logger.Logf(slogger.INFO,
@@ -326,15 +334,14 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 // GetProjectConfig fetches the project configuration for a given repository
 // returning a remote config if the project references a remote repository
 // configuration file - via the Identifier. Otherwise it defaults to the local
-// project file
-func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
-	project *model.Project, err error) {
+// project file. An erroneous project file may be returned along with an error.
+func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Project, error) {
 	projectRef := repoTracker.ProjectRef
 	if projectRef.LocalConfig != "" {
 		// return the Local config from the project Ref.
 		return model.FindProject("", projectRef)
 	}
-	project, err = repoTracker.GetRemoteConfig(revision)
+	project, err := repoTracker.GetRemoteConfig(revision)
 	if err != nil {
 		// Only create a stub version on API request errors that pertain
 		// to actually fetching a config. Those errors currently include:
@@ -351,7 +358,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 				"data at revision “%v” (remote path=“%v”): %v",
 				projectRef.Identifier, revision, projectRef.RemotePath, err)
 			evergreen.Logger.Logf(slogger.ERROR, message)
-			return nil, projectConfigError{[]string{message}}
+			return nil, projectConfigError{[]string{message}, nil}
 		}
 		// If we get here then we have an infrastructural error - e.g.
 		// a thirdparty.APIUnmarshalError (indicating perhaps an API has
@@ -378,16 +385,29 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (
 	if len(errs) != 0 {
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user
-		var message string
-		var projectParseErrors []string
-		for _, configError := range errs {
-			message += fmt.Sprintf("\n\t=> %v", configError)
-			projectParseErrors = append(projectParseErrors, configError.Error())
+		var errMessage, warnMessage string
+		var projectErrors, projectWarnings []string
+		for _, e := range errs {
+			if e.Level == validator.Warning {
+				warnMessage += fmt.Sprintf("\n\t=> %v", e)
+				projectWarnings = append(projectWarnings, e.Error())
+			} else {
+				errMessage += fmt.Sprintf("\n\t=> %v", e)
+				projectErrors = append(projectErrors, e.Error())
+			}
 		}
-		evergreen.Logger.Logf(slogger.ERROR, "error validating project '%v' "+
-			"configuration at revision '%v': %v", projectRef.Identifier,
-			revision, message)
-		return nil, projectConfigError{projectParseErrors}
+		if len(projectErrors) > 0 {
+			evergreen.Logger.Logf(slogger.ERROR, "Error validating project '%v' "+
+				"configuration at revision '%v': %v", projectRef.Identifier,
+				revision, errMessage)
+		}
+		if len(projectWarnings) > 0 {
+			evergreen.Logger.Logf(slogger.ERROR, "Warning while validating project '%v' "+
+				"configuration at revision '%v': %v", projectRef.Identifier,
+				revision, warnMessage)
+		}
+
+		return project, projectConfigError{projectErrors, projectWarnings}
 	}
 	return project, nil
 }

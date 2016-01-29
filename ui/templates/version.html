@@ -104,11 +104,17 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
              {{else}}
                <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
              {{end}}
-             <div ng-show="[[version.Version.errors.length]]">
-               <i class="fa fa-warning" style="color:red"></i>
+             <div class="error-text" ng-show="[[version.Version.errors.length]]">
+               <i class="fa fa-ban"></i>
                [[version.Version.errors.length]]  [[version.Version.errors.length | pluralize:'error']] in configuration file
-               <div style="color:red" ng-repeat="error in version.Version.errors">- [[error]]</div>
+               <div ng-repeat="error in version.Version.errors">- [[error]]</div>
              </div>
+             <div class="warning-text" ng-show="[[version.Version.warnings.length]]">
+               <i class="fa fa-warning"></i>
+               [[version.Version.warnings.length]]  [[version.Version.warnings.length | pluralize:'warning']] in configuration file
+               <div ng-repeat="warning in version.Version.warnings">- [[warning]]</div>
+             </div>
+
            </div>
            <table id="build-info-elements">
              <tr ng-show="makeSpanMS != 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the version has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>

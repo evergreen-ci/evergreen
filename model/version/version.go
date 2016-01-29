@@ -40,7 +40,8 @@ type Version struct {
 	// version errors - this is used to keep track of any errors that were
 	// encountered in the process of creating a version. If there are no errors
 	// this field is omitted in the database
-	Errors []string `bson:"errors,omitempty" json:"errors,omitempty"`
+	Errors   []string `bson:"errors,omitempty" json:"errors,omitempty"`
+	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
 }
 
 func TotalVersions(query interface{}) (int, error) {

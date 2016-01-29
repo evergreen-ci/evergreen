@@ -122,6 +122,9 @@ func GetGithubFile(oauthToken, fileURL string) (
 }
 
 func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string, currentCommit *GithubCommit) (string, error) {
+	if currentCommit == nil {
+		return "", fmt.Errorf("no recent commit found")
+	}
 	url := fmt.Sprintf("%v/repos/%v/%v/compare/%v:%v...%v:%v",
 		GithubAPIBase,
 		repoOwner,

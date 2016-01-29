@@ -27,6 +27,7 @@ type ValidationError struct {
 }
 
 // mapping of all valid distros
+// TODO stop using a package variable for this
 var (
 	distroIds []string
 )
@@ -371,6 +372,7 @@ func ensureReferentialIntegrity(project *model.Project) []ValidationError {
 								"include: \n\t- %v", task.Name,
 								buildVariant.Name, project.Identifier,
 								distroId, strings.Join(distroIds, "\n\t- ")),
+							Level: Warning,
 						},
 					)
 				}
@@ -385,6 +387,7 @@ func ensureReferentialIntegrity(project *model.Project) []ValidationError {
 							"Valid distros include: \n\t- %v",
 							buildVariant.Name, project.Identifier, distroId,
 							strings.Join(distroIds, "\n\t- ")),
+						Level: Warning,
 					},
 				)
 			}

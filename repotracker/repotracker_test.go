@@ -171,17 +171,29 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 			},
 		)
 
-		Convey("We should handle invalid configuration files gracefully by storing a stub version",
-			func() {
-				errStrs := []string{"Someone dun' goof'd"}
-				poller.setNextError(projectConfigError{errStrs})
-				stubVersion, err := repoTracker.StoreRevisions(revisions)
-				// We want this error to get swallowed so a config error
-				// doesn't stop additional versions from getting created
-				So(err, ShouldBeNil)
-				So(stubVersion.Errors, ShouldResemble, errStrs)
-			},
-		)
+		Convey("We should handle invalid configuration files gracefully by storing a stub version", func() {
+			errStrs := []string{"Someone dun' goof'd"}
+			poller.setNextError(projectConfigError{errStrs, []string{}})
+			stubVersion, err := repoTracker.StoreRevisions(revisions)
+			// We want this error to get swallowed so a config error
+			// doesn't stop additional versions from getting created
+			So(err, ShouldBeNil)
+			So(stubVersion.Errors, ShouldResemble, errStrs)
+			So(len(stubVersion.BuildVariants), ShouldEqual, 0)
+		})
+
+		Convey("Project configuration files with missing distros should still create versions", func() {
+			poller.addBadDistro("Cray-Y-MP")
+			v, err := repoTracker.StoreRevisions(revisions)
+			So(err, ShouldBeNil)
+			So(v, ShouldNotBeNil)
+			So(len(v.BuildVariants), ShouldBeGreaterThan, 0)
+
+			Convey("and log a warning", func() {
+				So(len(v.Warnings), ShouldEqual, 1)
+				So(v.Errors, ShouldBeNil)
+			})
+		})
 
 		Convey("If there is an error other than a config error while fetching a config, we should fail hard",
 			func() {

@@ -12,6 +12,7 @@ type mockRepoPoller struct {
 
 	ConfigGets uint
 	nextError  error
+	badDistro  string
 }
 
 // Creates a new MockRepo poller with the given project settings
@@ -25,15 +26,24 @@ func (d *mockRepoPoller) setNextError(err error) {
 	d.nextError = err
 }
 
+func (d *mockRepoPoller) addBadDistro(distro string) {
+	d.badDistro = distro
+}
+
 func (d *mockRepoPoller) clearError() (err error) {
 	err, d.nextError = d.nextError, nil
-	return
+	return err
 }
 
 func (d *mockRepoPoller) GetRemoteConfig(revision string) (*model.Project, error) {
 	d.ConfigGets++
 	if d.nextError != nil {
 		return nil, d.clearError()
+	}
+	if d.badDistro != "" {
+		// change the target distros if we've called addBadDistro, creating a validation warning
+		d.project.BuildVariants[0].RunOn = append(d.project.BuildVariants[0].RunOn, d.badDistro)
+		d.badDistro = ""
 	}
 	return d.project, nil
 }
