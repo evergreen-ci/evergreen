@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+var noProjectError = fmt.Errorf("must specify a project with -p/--project or a path to a config file with -f/--file")
+
 // Above this size, the user must explicitly use --large to submit the patch (or confirm)
 const largePatchThreshold = 1024 * 1024 * 16
 
@@ -60,20 +62,13 @@ type ListPatchesCommand struct {
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
 }
 
-type ListProjectsCommand struct {
+type ListCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-}
-
-type ListVariantsCommand struct {
-	GlobalOpts *Options `no-flag:"true"`
-	Project    string   `short:"p" long:"project" description:"project whose variants should be listed"`
-	File       string   `short:"f" long:"file" description:"path to config file whose variants should be listed"`
-}
-
-type ListTasksCommand struct {
-	GlobalOpts *Options `no-flag:"true"`
-	Project    string   `short:"p" long:"project" description:"project whose variants should be listed"`
-	File       string   `short:"f" long:"file" description:"path to config file whose variants should be listed"`
+	Project    string   `short:"p" long:"project" description:"project whose variants or tasks should be listed (use with --variants/--tasks)"`
+	File       string   `short:"f" long:"file" description:"path to config file whose variants or tasks should be listed (use with --variants/--tasks)"`
+	Projects   bool     `long:"projects" description:"list all available projects"`
+	Variants   bool     `long:"variants" description:"list all variants for a project"`
+	Tasks      bool     `long:"tasks" description:"list all tasks for a project"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -316,8 +311,25 @@ func (fpc *FinalizePatchCommand) Execute(args []string) error {
 	return nil
 }
 
-func (lp *ListProjectsCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(lp.GlobalOpts)
+func (lc *ListCommand) Execute(args []string) error {
+	// stop the user from using > 1 type flag
+	if (lc.Projects && (lc.Variants || lc.Tasks)) || (lc.Tasks && lc.Variants) {
+		return fmt.Errorf("list command takes only one of --projects, --variants, or --tasks")
+	}
+	if lc.Projects {
+		return lc.listProjects()
+	}
+	if lc.Tasks {
+		return lc.listTasks()
+	}
+	if lc.Variants {
+		return lc.listVariants()
+	}
+	return fmt.Errorf("must specify one of --projects, --variants, or --tasks")
+}
+
+func (lc *ListCommand) listProjects() error {
+	ac, _, err := getAPIClient(lc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -366,26 +378,26 @@ func loadLocalConfig(filepath string) (*model.Project, error) {
 	return project, nil
 }
 
-func (lt *ListTasksCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(lt.GlobalOpts)
-	if err != nil {
-		return err
-	}
-	notifyUserUpdate(ac)
+func (lc *ListCommand) listTasks() error {
 	var tasks []model.ProjectTask
-	if lt.Project != "" {
-		tasks, err = ac.ListTasks(lt.Project)
+	if lc.Project != "" {
+		ac, _, err := getAPIClient(lc.GlobalOpts)
 		if err != nil {
 			return err
 		}
-	} else if lt.File != "" {
-		project, err := loadLocalConfig(lt.File)
+		notifyUserUpdate(ac)
+		tasks, err = ac.ListTasks(lc.Project)
+		if err != nil {
+			return err
+		}
+	} else if lc.File != "" {
+		project, err := loadLocalConfig(lc.File)
 		if err != nil {
 			return err
 		}
 		tasks = project.Tasks
 	} else {
-		return fmt.Errorf("must specify a project with -p/--project or a path to a config file with -f/--file")
+		return noProjectError
 	}
 	fmt.Println(len(tasks), "tasks:")
 	w := new(tabwriter.Writer)
@@ -396,29 +408,28 @@ func (lt *ListTasksCommand) Execute(args []string) error {
 	}
 	w.Flush()
 	return nil
-
 }
 
-func (lv *ListVariantsCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(lv.GlobalOpts)
-	if err != nil {
-		return err
-	}
-	notifyUserUpdate(ac)
+func (lc *ListCommand) listVariants() error {
 	var variants []model.BuildVariant
-	if lv.Project != "" {
-		variants, err = ac.ListVariants(lv.Project)
+	if lc.Project != "" {
+		ac, _, err := getAPIClient(lc.GlobalOpts)
 		if err != nil {
 			return err
 		}
-	} else if lv.File != "" {
-		project, err := loadLocalConfig(lv.File)
+		notifyUserUpdate(ac)
+		variants, err = ac.ListVariants(lc.Project)
+		if err != nil {
+			return err
+		}
+	} else if lc.File != "" {
+		project, err := loadLocalConfig(lc.File)
 		if err != nil {
 			return err
 		}
 		variants = project.BuildVariants
 	} else {
-		return fmt.Errorf("no project or file specified")
+		return noProjectError
 	}
 	fmt.Println(len(variants), "variants:")
 	w := new(tabwriter.Writer)
@@ -429,7 +440,6 @@ func (lv *ListVariantsCommand) Execute(args []string) error {
 	}
 	w.Flush()
 	return nil
-
 }
 
 // Performs validation for patch or patch-file

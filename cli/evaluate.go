@@ -7,19 +7,11 @@ import (
 	"io/ioutil"
 )
 
-type evalMode string
-
-const (
-	All      evalMode = "all"
-	Tasks    evalMode = "tasks"
-	Variants evalMode = "variants"
-)
-
 // EvaluateCommand reads in a project config, expanding tags and matrix definitions,
 // then prints the expanded definitions back out as yaml.
 type EvaluateCommand struct {
-	// Mode defines which portions of the project to print
-	Mode evalMode
+	Tasks    bool `short:"t" long:"tasks" description:"only show task and function definitions"`
+	Variants bool `short:"v" long:"variants" description:"only show variant definitions"`
 }
 
 func (ec *EvaluateCommand) Execute(args []string) error {
@@ -43,16 +35,22 @@ func (ec *EvaluateCommand) Execute(args []string) error {
 	}
 
 	var out interface{}
-	switch ec.Mode {
-	case All:
-		out = p
-	case Tasks:
-		out = struct {
+	if ec.Tasks || ec.Variants {
+		tmp := struct {
 			Functions interface{} `yaml:"functions,omitempty"`
 			Tasks     interface{} `yaml:"tasks,omitempty"`
-		}{p.Functions, p.Tasks}
-	case Variants:
-		out = p.BuildVariants
+			Variants  interface{} `yaml:"buildvariants,omitempty`
+		}{}
+		if ec.Tasks {
+			tmp.Functions = p.Functions
+			tmp.Tasks = p.Tasks
+		}
+		if ec.Variants {
+			tmp.Variants = p.BuildVariants
+		}
+		out = tmp
+	} else {
+		out = p
 	}
 
 	outYAML, err := yaml.Marshal(out)
