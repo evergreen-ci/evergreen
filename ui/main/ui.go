@@ -56,7 +56,8 @@ func main() {
 	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
 
 	uis := ui.UIServer{
-		nil,             // render
+		nil, // render
+		home,
 		settings.Ui.Url, // RootURL
 		userManager,     // User Manager
 		*settings,       // mci settings

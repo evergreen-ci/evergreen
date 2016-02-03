@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-set -e
-
 # make sure we're in the directory where the script lives
 SCRIPT_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)"
 cd $SCRIPT_DIR
@@ -31,6 +29,7 @@ while read line; do
     package=${linearr[0]}
     version=${linearr[1]}
     pluginconf=${linearr[2]}
+    pluginname=${linearr[3]}
 
     if [[ "${pluginconf}" == "" ]]
     then 
@@ -64,6 +63,16 @@ while read line; do
     cd $SCRIPT_DIR/plugin/config
     $(rm $pluginconf || true)
     ln -s ../../$install_path/config/$pluginconf $pluginconf
+	if [ -d "../../$install_path/templates/" ]; then
+		echo "creating template links to ui/plugins/$pluginname"
+		mkdir -p $SCRIPT_DIR/ui/plugins/$pluginname
+		ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/ui/plugins/$pluginname/templates
+	fi
+	if [ -d "../../$install_path/static/" ]; then
+		echo "creating static links to ui/plugins/$pluginname"
+		mkdir -p $SCRIPT_DIR/ui/plugins/$pluginname
+		ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/ui/plugins/$pluginname/static
+	fi
     echo ">> Plugin successfully installed"
 
   ) 

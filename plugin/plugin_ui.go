@@ -11,20 +11,12 @@ import (
 	"github.com/gorilla/context"
 	"html/template"
 	"net/http"
-	"path"
-	"runtime"
+	"path/filepath"
 	"sort"
 )
 
 // PanelConfig stores all UI-related plugin hooks
 type PanelConfig struct {
-	// StaticRoot is a filesystem path to a folder to establish
-	// as the static web root for a plugin package. If this field is set,
-	// the UI server will set up a file serving route for the plugin at
-	//  /plugin/<plugin_name>/static
-	// See StaticWebRootFromSourceFile() as a shortcut for setting this up
-	StaticRoot string
-
 	// Handler is an http.Handler which receives plugin-specific HTTP requests from the UI
 	Handler http.Handler
 
@@ -336,16 +328,6 @@ func (errs *UIDataFunctionError) Error() string {
 	)
 }
 
-// StaticWebRootFromSourceFile is a helper for quickly grabbing
-// the folder of the source file that calls it. This makes it
-// very easy to establish a static root for a plugin, by simply
-// declaring:
-//  {StaticRoot: plugin.StaticWebRootFromSourceFile()}
-// in a plugin's PanelConfig definition.
-func StaticWebRootFromSourceFile() string {
-	_, file, _, ok := runtime.Caller(1)
-	if !ok {
-		panic("Error finding static web root from source file")
-	}
-	return path.Join(path.Dir(file), "static/")
+func TemplateRoot(name string) string {
+	return filepath.Join(evergreen.FindEvergreenHome(), "ui", "plugins", name, "templates")
 }

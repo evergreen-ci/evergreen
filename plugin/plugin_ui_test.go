@@ -42,17 +42,6 @@ func (self *MockUIPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 
 // ===== Tests =====
 
-func TestStaticWebRootHelper(t *testing.T) {
-	Convey("With a call to the web root function", t, func() {
-		path := plugin.StaticWebRootFromSourceFile()
-		So(path, ShouldNotBeBlank)
-
-		Convey("this source folder should be present in the returned path", func() {
-			So(path, ShouldContainSubstring, "plugin/static")
-		})
-	})
-}
-
 func TestPanelManagerRegistration(t *testing.T) {
 	var ppm plugin.PanelManager
 	Convey("With a simple plugin panel manager", t, func() {
@@ -66,9 +55,7 @@ func TestPanelManagerRegistration(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "config_with_no_panels",
-					Conf: &plugin.PanelConfig{
-						StaticRoot: "wooo",
-					},
+					Conf:     &plugin.PanelConfig{},
 				},
 			}
 			err := ppm.RegisterPlugins(uselessPlugins)
@@ -114,9 +101,7 @@ func TestPanelManagerRegistration(t *testing.T) {
 				},
 				&MockUIPlugin{
 					NickName: "a",
-					Conf: &plugin.PanelConfig{
-						StaticRoot: "root",
-					},
+					Conf:     &plugin.PanelConfig{},
 				},
 			}
 			err := ppm.RegisterPlugins(conflictingPlugins)

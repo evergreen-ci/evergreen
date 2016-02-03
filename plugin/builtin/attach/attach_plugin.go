@@ -77,7 +77,6 @@ func stripHiddenFiles(files []artifact.File, pluginUser *user.DBUser) []artifact
 // that will be added to the Task and Build pages.
 func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	return &plugin.PanelConfig{
-		StaticRoot: plugin.StaticWebRootFromSourceFile(),
 		Panels: []plugin.UIPanel{
 			{
 				Page:     plugin.TaskPage,

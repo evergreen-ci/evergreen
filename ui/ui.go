@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -27,6 +28,10 @@ const (
 // UIServer provides a web interface for Evergreen.
 type UIServer struct {
 	*render.Render
+
+	// Home is the root path on disk from which relative urls are constructed for loading
+	// plugins or other assets.
+	Home string
 
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
@@ -209,13 +214,13 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
 
 		// set up a fileserver in plugin's static root, if one is provided
-		if uiConf.StaticRoot != "" {
-			evergreen.Logger.Logf(slogger.INFO, "Registering static path for plugin '%v' in %v", pl.Name(), uiConf.StaticRoot)
-			plRouter.PathPrefix("/static/").Handler(
-				http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
-					http.FileServer(http.Dir(uiConf.StaticRoot))),
-			)
-		}
+		pluginStaticPath := filepath.Join(uis.Home, "ui", "plugins", pl.Name(), "static")
+
+		evergreen.Logger.Logf(slogger.INFO, "Registering static path for plugin '%v' in %v", pl.Name(), pluginStaticPath)
+		plRouter.PathPrefix("/static/").Handler(
+			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
+				http.FileServer(http.Dir(pluginStaticPath))),
+		)
 		pluginUIhandler := pl.GetUIHandler()
 		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
 	}

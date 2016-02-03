@@ -1,16 +1,13 @@
-# default command type
 command_type: system
 stepback: true
 functions:
   "fetch source" :
-    command: git.get_project
-    params:
-      directory: src
-
-  "apply patches" :
-    command: git.apply_patch
-    params:
-      directory: src
+    - command: git.get_project
+      params:
+        directory: src
+    - command: git.apply_patch
+      params:
+        directory: src
 
   "setup creds":
     command: shell.exec
@@ -19,58 +16,53 @@ functions:
         set -o verbose
         cp creds.yml src
 
-  "rewrite coverage report":
-    command: shell.exec
-    params:
-      working_dir: src
-      script: |
-        if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-        fi;
-        . ./set_gopath.sh
-        perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
+  "generate and upload coverage":
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+              set -o igncr
+          fi;
+          . ./set_gopath.sh
+          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          . ./set_gopath.sh
+          go tool cover -html=coverage_rewrite.out -o coverage.html
 
-  "generate coverage html":
-    command: shell.exec
-    params:
-      working_dir: src
-      script: |
-        set -o verbose
-        . ./set_gopath.sh
-        go tool cover -html=coverage_rewrite.out -o coverage.html
+    - command: shell.exec
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          . ./set_gopath.sh
+          go tool cover -func=coverage_rewrite.out -o coverage.txt
 
-  "generate coverage txt":
-    command: shell.exec
-    params:
-      working_dir: src
-      script: |
-        set -o verbose
-        . ./set_gopath.sh
-        go tool cover -func=coverage_rewrite.out -o coverage.txt
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/coverage.html
+        remote_file: mci/coverage/${task_id}.html
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/html
+        display_name: Coverage Report (HTML)
 
-  "upload coverage html report":
-    command: s3.put
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_file: src/coverage.html
-      remote_file: mci/coverage/${task_id}.html
-      bucket: mciuploads
-      permissions: public-read
-      content_type: text/html
-      display_name: Coverage Report (HTML)
-
-  "upload coverage txt report":
-    command: s3.put
-    params:
-      aws_key: ${aws_key}
-      aws_secret: ${aws_secret}
-      local_file: src/coverage.txt
-      remote_file: mci/coverage/${task_id}.txt
-      bucket: mciuploads
-      permissions: public-read
-      content_type: text/plain
-      display_name: Coverage Report (TXT)
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/coverage.txt
+        remote_file: mci/coverage/${task_id}.txt
+        bucket: mciuploads
+        permissions: public-read
+        content_type: text/plain
+        display_name: Coverage Report (TXT)
 
   "start mongod":
       - command: shell.exec
@@ -87,6 +79,7 @@ functions:
           script: |
             cd mongodb 
             ./mongo${extension} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
+            echo "mongod is up."
 
 pre:
   - command: shell.track
@@ -146,11 +139,44 @@ post:
 
 tasks:
 
+- name: make_deploy
+  tags: [deploy]
+  commands:
+    - func: "fetch source"
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        script: |
+          set -e
+          set -v
+          . ./set_gopath.sh
+          if [ "${use_prebuilt_toolchain}" = "true" ] ; then
+            curl https://s3.amazonaws.com/boxes.10gen.com/build/go-toolchain.tar.gz | tar xz
+          fi
+
+          echo "building Plugins file!"
+          cat > Plugins <<END_OF_PLUGINS
+          ${plugins_file}
+          END_OF_PLUGINS
+          cat Plugins
+          ${bin_builder_env} ./makedeploy.sh
+
+    - command: s3.put
+      params:
+        aws_key: ${aws_key}
+        aws_secret: ${aws_secret}
+        local_file: src/deploy.tgz
+        remote_file: mci/agents/${task_id}/deploy.tgz
+        bucket: mciuploads
+        permissions: public-read
+        content_type: application/gzip
+        display_name: Deployable Tarball (.TGZ)
+
 - name: alerts
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -171,17 +197,12 @@ tasks:
         script: |
           set -o verbose
           mv alerts/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: compile
   tags: ["nodb"]
   commands:
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -216,7 +237,6 @@ tasks:
 - name: client-integration
   commands:
     - func: "fetch source"
-    - func: "apply patches"
     - func: "setup creds"
     - func: "start mongod"
     - command: shell.exec
@@ -238,7 +258,6 @@ tasks:
   tags: ["nodb"]
   commands:
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -272,7 +291,6 @@ tasks:
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
       type: test
@@ -294,17 +312,12 @@ tasks:
         script: |
           set -o verbose
           mv agent/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: archive
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -325,17 +338,12 @@ tasks:
         script: |
           set -o verbose
           mv archive/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: db
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -356,17 +364,12 @@ tasks:
         script: |
           set -o verbose
           mv db/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: evergreen
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -380,17 +383,12 @@ tasks:
           mkfifo test_pipe
           tee -a evergreen.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: model
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -427,17 +425,12 @@ tasks:
         script: |
           set -o verbose
           mv model/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: monitor
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -458,17 +451,12 @@ tasks:
         script: |
           set -o verbose
           mv monitor/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: notify
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -489,17 +477,12 @@ tasks:
         script: |
           set -o verbose
           mv notify/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: plugin
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
       type: test
@@ -729,7 +712,6 @@ tasks:
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
       type: test
@@ -751,17 +733,12 @@ tasks:
         script: |
           set -o verbose
           mv repotracker/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: scheduler
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -782,17 +759,12 @@ tasks:
         script: |
           set -o verbose
           mv scheduler/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: thirdparty
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
       type: test
@@ -814,16 +786,11 @@ tasks:
         script: |
           set -o verbose
           mv thirdparty/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 - name: util
   commands:
     - func: "fetch source"
-    - func: "apply patches"
     - command: shell.exec
       type: test
       params:
@@ -837,55 +804,19 @@ tasks:
           cd util
           mkfifo test_pipe
           tee -a util.suite < test_pipe&
-          go test -coverprofile=coverage.out -v > test_pipe
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv util/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
-
-- name: ui
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "apply patches"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd ui
-          mkfifo test_pipe
-          tee -a ui.suite < test_pipe&
           go test -v -coverprofile=coverage.out > test_pipe
     - command: shell.exec
       params:
         working_dir: src
         script: |
           set -o verbose
-          mv ui/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+          mv util/coverage.out .
+    - func: "generate and upload coverage"
 
 - name: validator
   commands:
     - func: "start mongod"
     - func: "fetch source"
-    - func: "apply patches"
     - func: "setup creds"
     - command: shell.exec
       type: test
@@ -907,11 +838,7 @@ tasks:
         script: |
           set -o verbose
           mv validator/coverage.out .
-    - func: "rewrite coverage report"
-    - func: "generate coverage html"
-    - func: "generate coverage txt"
-    - func: "upload coverage html report"
-    - func: "upload coverage txt report"
+    - func: "generate and upload coverage"
 
 buildvariants:
     - name: ubuntu
@@ -921,6 +848,8 @@ buildvariants:
       expansions:
         EVGHOME_cmd: "`pwd`"
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
+        bin_builder_env: 'GOROOT="`pwd`/go" PATH="`pwd`/go/bin:$PATH"'
+        use_prebuilt_toolchain: "true"
       tasks:
       - "*"
     - name: ppc
@@ -939,6 +868,7 @@ buildvariants:
       expansions:
         EVGHOME_cmd: "`pwd`"
         mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
+        bin_builder_args: "dev"
       tasks:
       - "*"
     - name: windows-64
@@ -950,4 +880,4 @@ buildvariants:
         mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5.zip
         extension: .exe
       tasks:
-      - ".nodb"
+      - ".nodb !make_deploy"

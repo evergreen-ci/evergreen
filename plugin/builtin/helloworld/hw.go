@@ -61,7 +61,6 @@ func (self *HelloWorldPlugin) Configure(map[string]interface{}) error {
 // does not have any UI hooks.
 func (self *HelloWorldPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	return &plugin.PanelConfig{
-		StaticRoot: plugin.StaticWebRootFromSourceFile(),
 		Panels: []plugin.UIPanel{
 			{
 				Page:      plugin.TaskPage,

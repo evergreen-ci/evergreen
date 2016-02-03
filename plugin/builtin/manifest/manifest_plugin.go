@@ -58,7 +58,6 @@ func (m *ManifestPlugin) Configure(conf map[string]interface{}) error {
 // that will be added to the Version page.
 func (m *ManifestPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 	return &plugin.PanelConfig{
-		StaticRoot: plugin.StaticWebRootFromSourceFile(),
 		Panels: []plugin.UIPanel{
 			{
 				Page:      plugin.VersionPage,
