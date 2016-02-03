@@ -4,11 +4,15 @@ mciModule.controller('HostCtrl', function($scope, $window) {
   $scope.running_task = $window.runningTask;
   $scope.events = $window.events.reverse();
 
+  $scope.host.uptime = "N/A";
   if ($scope.host.host_type !== "static") {
-      var uptime = moment().diff($scope.host.creation_time, 'seconds');
+      var uptime;
+      if($scope.host.status == "terminated"){
+        uptime = moment($scope.host.termination_time).diff($scope.host.creation_time, 'seconds');
+      }else{
+        uptime = moment().diff($scope.host.creation_time, 'seconds');
+      }
       $scope.host.uptime = moment.duration(uptime, 'seconds').humanize();
-    } else {
-      $scope.host.uptime = "N/A";
   }
 
   // Determining the start and elapsed time should be done the same way as in hosts.js
