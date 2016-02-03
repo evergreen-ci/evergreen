@@ -256,19 +256,19 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
 
     $scope.sortOrders = [{
       name: 'Status',
-      by: 'status',
+      by: ['status', 'display_name'],
       reverse: false
     }, {
       name: 'Name',
-      by: 'display_name',
+      by: ['display_name'],
       reverse: false
     }, {
       name: 'Time Taken',
-      by: 'time_taken',
+      by: ['time_taken', 'display_name'],
       reverse: true
     }, {
       name: 'Sequence',
-      by: '',
+      by: [''],
       reverse: true
     }];
     (task.test_results || []).forEach(function(testResult) {
