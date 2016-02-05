@@ -112,6 +112,14 @@ func executableSubPath(id string) (string, error) {
 	return filepath.Join("snapshot", d.Arch, mainName), nil
 }
 
+func newCappedOutputLog() *util.CappedWriter {
+	// store up to 1MB of streamed command output to print if a command fails
+	return &util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+}
+
 // Prepare the remote machine to run a task.
 func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	hostObj host.Host, sshOptions []string, mciHome string) (string, error) {
@@ -123,10 +131,11 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	}
 
 	// first, create the necessary sandbox of directories on the remote machine
+	mkdirOutput := newCappedOutputLog()
 	makeShellCmd := &command.RemoteCommand{
 		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir),
-		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
-		Stderr:         ioutil.Discard,
+		Stdout:         mkdirOutput,
+		Stderr:         mkdirOutput,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
@@ -144,16 +153,18 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
 			makeShellCmd.Stop()
-			return "", fmt.Errorf("creating remote directories timed out")
+			return "", fmt.Errorf("creating remote directories timed out: %v", mkdirOutput.String())
 		}
-		return "", fmt.Errorf("error creating directories on remote machine: %v", err)
+		return "", fmt.Errorf(
+			"error creating directories on remote machine (%v): %v", err, mkdirOutput.String())
 	}
 
+	scpOutput := newCappedOutputLog()
 	scpConfigsCmd := &command.ScpCommand{
 		Source:         filepath.Join(mciHome, settings.ConfigDir),
 		Dest:           hostObj.Distro.WorkDir,
-		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
-		Stderr:         ioutil.Discard,
+		Stdout:         scpOutput,
+		Stderr:         scpOutput,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options: append([]string{"-P", hostInfo.Port, "-r"},
@@ -169,23 +180,24 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 		// if it timed out, kill the scp command
 		if err == util.ErrTimedOut {
 			scpConfigsCmd.Stop()
-			return "", fmt.Errorf("scp-ing config directory timed out")
+			return "", fmt.Errorf("scp-ing config directory timed out: %v", scpOutput.String())
 		}
-		return "", fmt.Errorf("error copying config directory to remote: "+
-			"machine %v", err)
+		return "", fmt.Errorf(
+			"error copying config directory to remote: machine (%v): %v", err, scpOutput.String())
 	}
 
 	// third, copy over the correct agent binary to the remote machine
-	var scpAgentCmdStderr bytes.Buffer
 	execSubPath, err := executableSubPath(hostObj.Distro.Id)
 	if err != nil {
 		return "", fmt.Errorf("error computing subpath to executable: %v", err)
 	}
+
+	scpAgentOutput := newCappedOutputLog()
 	scpAgentCmd := &command.ScpCommand{
 		Source:         filepath.Join(self.ExecutablesDir, execSubPath),
 		Dest:           hostObj.Distro.WorkDir,
-		Stdout:         ioutil.Discard, // TODO(EVG-233) change to real logging
-		Stderr:         &scpAgentCmdStderr,
+		Stdout:         scpAgentOutput,
+		Stderr:         scpAgentOutput,
 		RemoteHostName: hostInfo.Hostname,
 		User:           hostObj.User,
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
@@ -206,10 +218,10 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	if err != nil {
 		if err == util.ErrTimedOut {
 			scpAgentCmd.Stop()
-			return "", fmt.Errorf("scp-ing agent binary timed out")
+			return "", fmt.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
 		}
-		return "", fmt.Errorf("error (%v) copying agent binary to remote "+
-			"machine: %v", err, scpAgentCmdStderr.String())
+		return "", fmt.Errorf(
+			"error copying agent binary to remote machine (%v): %v", err, scpAgentOutput.String())
 	}
 
 	// get the agent's revision after scp'ing over the executable
