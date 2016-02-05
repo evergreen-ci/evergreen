@@ -72,6 +72,9 @@ function BuildViewController($scope, $http, $timeout, $rootScope, mciTime, $wind
   $scope.loading = false;
   $scope.lastUpdate = null;
 
+  var dateSorter = function(a, b){ return (+a) - (+b) }
+
+
   $scope.setBuild = function(build) {
     $scope.build = build;
     $scope.commit = {
@@ -146,8 +149,8 @@ function BuildViewController($scope, $http, $timeout, $rootScope, mciTime, $wind
     var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))}
 
     // extract the start an end times for the tasks in the build, discarding the zero times
-    var taskStartTimes = _.filter(build.Tasks.map(function(x){return new Date(x.Task.start_time)}).sort(), nonZeroTimeFilter)
-    var taskEndTimes = _.filter(build.Tasks.map(function(x){return  new Date(x.Task.finish_time)}).sort(), nonZeroTimeFilter)
+    var taskStartTimes = _.filter(build.Tasks.map(function(x){return new Date(x.Task.start_time)}).sort(dateSorter), nonZeroTimeFilter)
+    var taskEndTimes = _.filter(build.Tasks.map(function(x){return  new Date(x.Task.finish_time)}).sort(dateSorter), nonZeroTimeFilter)
 
     //  calculate the makespan by taking the difference of the first start time and last end time
     if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {

@@ -1,6 +1,7 @@
 function VersionController($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
   var nsPerMs = 1000000
 
+  var dateSorter = function(a, b){ return (+a) - (+b) }
   $scope.tab = 0
   $scope.version = {};
   $scope.taskStatuses = {};
@@ -98,14 +99,14 @@ function VersionController($scope, $rootScope, $location, $http, $filter, $now, 
     var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))};
 
     var tasks = version.Builds.map(function(x){ return _.pluck(x['Tasks'] || [], "Task") }).reduce(function(x,y){return x.concat(y)}, []);
-    var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort();
+    var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort(dateSorter);
     var taskEndTimes = _.filter(tasks.map(function(x){
         if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
             return new Date(0);
         }else{
             return new Date((+new Date(x.start_time)) + (x.time_taken/nsPerMs));
         }
-    }), nonZeroTimeFilter).sort();
+    }), nonZeroTimeFilter).sort(dateSorter);
 
     if(taskStartTimes.length == 0 || taskEndTimes.length == 0) {
         $scope.makeSpanMS = 0;
