@@ -540,6 +540,7 @@ button.alert-close {
   overflow: hidden;
 }
 #build-info-elements {
+  margin-top: 12px;
   font-size: 16px;
 }
 #build-info-elements i {
