@@ -2,9 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
-
+	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -12,6 +10,8 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"net/http"
+	"strings"
 )
 
 const (
