@@ -68,7 +68,7 @@ Evergreen - Grid
             </h4>
             <div ng-show="currentFailureView == consts.revisionFailuresView" class="version-header-expanded" style="margin-top:15px">
               <div>
-                <i ng-class="getToggleClass(failure.hidden)"></i>
+                <i class="fa" ng-class="getToggleClass(failure.hidden)"></i>
                 <span class="btn btn-default btn-hash history-item-revision">
                   <a href="/version/[[allVersions[failure.groupingField].id]]"> [[failure.groupingField.substring(0,5)]] </a>
                 </span>
