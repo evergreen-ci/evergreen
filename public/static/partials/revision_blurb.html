@@ -7,6 +7,8 @@
   <div class="col-lg-12 drawer-message-wrapper">
     <a ng-href="/[[linkType]]/[[linkId]]#[[$parent.$parent.tab]]" ng-if="revision.exec.status" class="history-item-info">
       <span class="btn btn-default btn-hash history-item-revision">[[ revision.revision.substring(0, 5) ]]</span>
+      <span class="error-text" ng-show="[[revision.errors.length]]"><i class="fa fa-ban"></i></span>
+      <span class="warning-text" ng-show="[[revision.warnings.length]]"><i class="fa fa-warning"></i></span>
       <span class="history-item-message" title="[[ revision.message ]]">[[ revision.message ]]</span>
     </a>
 

@@ -51,6 +51,8 @@ type versionDrawerItem struct {
 	Message  string    `json:"message"`
 	PushTime time.Time `json:"push_time"`
 	Id       string    `json:"version_id"`
+	Errors   []string  `json:"errors"`
+	Warnings []string  `json:"warnings"`
 }
 
 // Represents a small amount of information about a task - used as part of the
@@ -395,7 +397,8 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 
 	versionDrawerItems := []versionDrawerItem{}
 	for _, v := range versions {
-		versionDrawerItems = append(versionDrawerItems, versionDrawerItem{v.Revision, v.Message, v.CreateTime, v.Id})
+		versionDrawerItems = append(versionDrawerItems,
+			versionDrawerItem{v.Revision, v.Message, v.CreateTime, v.Id, v.Errors, v.Warnings})
 	}
 
 	uis.WriteJSON(w, http.StatusOK, struct {
@@ -496,8 +499,9 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 			version.RevisionKey,
 			version.MessageKey,
 			version.CreateTimeKey,
+			version.ErrorsKey,
+			version.WarningsKey,
 		).Sort(sortVersions).Limit(versionsToFetch))
-
 }
 
 // Given a task name and a slice of versions, return the appropriate sibling
