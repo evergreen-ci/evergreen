@@ -58,9 +58,15 @@ directives.patch.directive('patchDiffPanel', function() {
       };
 
       // helper for ranking status combinations
-      scope.getDiffStatus = function(statusDiff) {
+      scope.getDisplayInfo = function(diff) {
         // concat results for key lookup
-        key = statusDiff.diff.original + statusDiff.diff.patch;
+        if (diff.original.status) {
+          // task diffs have an extra layer we need to extract
+          key = diff.original.status + diff.patch.status;
+        } else {
+          // test diffs are simpler
+          key = diff.original + diff.patch;
+        }
         if (key in scope.diffTypes) {
             return scope.diffTypes[key];
         }
@@ -78,7 +84,7 @@ directives.patch.directive('patchDiffPanel', function() {
         _.each(scope.diffs, function(diff) {
           diff.originalLink = scope.baselink + diff.original;
           diff.patchLink = scope.baselink + diff.patch;
-          diff.displayInfo = scope.getDiffStatus(diff);
+          diff.displayInfo = scope.getDisplayInfo(diff.diff);
         });
       });
 
