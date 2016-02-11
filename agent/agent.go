@@ -203,6 +203,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 		if err != nil {
 			agt.logger.LogExecution(slogger.ERROR, "Error running post-task command: %v", err)
 		}
+
 		agt.logger.LogTask(slogger.INFO, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
 
@@ -246,6 +247,48 @@ func (sh *SignalHandler) awaitSignal() Signal {
 		return Completed
 	}
 	return sig
+}
+
+// CreatePidFile checks that the pid file does not already exist with a different pid
+// and creates one
+func (agt *Agent) CreatePidFile(pidFilePath string) error {
+
+	// create a file that will error out if there is another process writing to the file, add the read/write flag to
+	// indicate that reading and writing can happen.
+	pidFile, err := os.OpenFile(pidFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		// try opening the file normally and error out with the contents of the pid file for error
+		pidFile, err = os.OpenFile(pidFilePath, os.O_RDONLY, 0600)
+		if err != nil {
+			agt.logger.LogExecution(slogger.ERROR, "error opening agent pid file: %v", err)
+			return err
+		}
+		if err == nil {
+			defer pidFile.Close()
+		}
+
+		pidBytes := make([]byte, 64)
+		_, err = pidFile.Read(pidBytes)
+		if err != nil {
+			agt.logger.LogExecution(slogger.ERROR, "error reading existing pid file: %v", err)
+			return err
+		}
+
+		agt.logger.LogExecution(slogger.ERROR, "pid file already exists with contents: %v", string(pidBytes))
+		return fmt.Errorf("host already has a process id file: %v", string(pidBytes))
+
+	}
+
+	defer pidFile.Close()
+	intBytes := []byte(strconv.Itoa(os.Getpid()))
+	// write to pid file
+	_, err = pidFile.Write(intBytes)
+	if err != nil {
+		agt.logger.LogExecution(slogger.ERROR, "error writing pid file: %v", err.Error())
+		return fmt.Errorf("Error writing pid file: %v", err.Error())
+	}
+	agt.logger.LogExecution(slogger.INFO, "pid file written for process: %v", intBytes)
+	return nil
 }
 
 // HandleSignals listens on its signal channel and properly handles any signal received.
@@ -630,4 +673,15 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 		agt.maxExecTimeoutWatcher.NotifyTimeouts(agt.signalHandler.execTimeoutChan)
 	}
 	go signalHandler.HandleSignals(agt)
+}
+
+// ExitAgent removes the pid file and exits the process with the given exit code.
+func ExitAgent(exitCode int, pidFile string) {
+	err := os.Remove(pidFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error removing pid file: %v\n", err)
+		// exit with code 2 to indicate pid file removal error
+		os.Exit(2)
+	}
+	os.Exit(exitCode)
 }

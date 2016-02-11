@@ -27,6 +27,7 @@ func main() {
 	apiServer := flag.String("api_server", "", "URL of API server")
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
 	logPrefix := flag.String("log_prefix", "", "prefix for the agent's log filename")
+	pidFile := flag.String("pid_file", "", "path to pid file")
 	flag.Parse()
 
 	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
@@ -42,33 +43,42 @@ func main() {
 		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
 	}
+	if err := agt.CreatePidFile(*pidFile); err != nil {
+		fmt.Fprintf(os.Stderr, "error creating pidFile: %v\n", err)
+		os.Exit(1)
+	}
 
 	// enable debug traces on SIGQUIT signaling
 	go agent.DumpStackOnSIGQUIT(&agt)
 
+	exitCode := 0
 	// run all tasks until an API server's response has RunNext set to false
 	for {
 		resp, err := agt.RunTask()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error running task: %v\n", err)
-			os.Exit(1)
+			exitCode = 1
+			break
 		}
 
 		if resp == nil {
 			fmt.Fprintf(os.Stderr, "received nil response from API server\n")
-			os.Exit(1)
+			exitCode = 1
+			break
 		}
 
 		if !resp.RunNext {
-			os.Exit(0)
+			break
 		}
 
 		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, logFile, httpsCert)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
-			os.Exit(1)
+			exitCode = 1
+			break
 		}
 	}
+	agent.ExitAgent(exitCode, *pidFile)
 }
 
 // logSuffix generates a unique log filename suffic that is namespaced

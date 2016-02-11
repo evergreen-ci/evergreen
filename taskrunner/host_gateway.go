@@ -22,6 +22,7 @@ const (
 	SCPTimeout        = time.Minute
 	StartAgentTimeout = time.Second * 30
 	agentFile         = "agent"
+	pidFile           = ".pid"
 )
 
 // HostGateway is responsible for kicking off tasks on remote machines.
@@ -253,9 +254,9 @@ func (self *AgentBasedHostGateway) startAgentOnRemote(
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
-		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -log_prefix "%v" -https_cert "%v"`,
+		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -log_prefix "%v" -https_cert "%v" -pid_file "%v"`,
 		pathToExecutable, settings.ApiUrl, task.Id, task.Secret, filepath.Join(hostObj.Distro.WorkDir,
-			agentFile), settings.Expansions["api_httpscert_path"],
+			agentFile), settings.Expansions["api_httpscert_path"], filepath.Join(hostObj.Distro.WorkDir, pidFile),
 	)
 	evergreen.Logger.Logf(slogger.INFO, "%v", remoteCmd)
 
