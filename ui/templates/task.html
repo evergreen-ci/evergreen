@@ -149,7 +149,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td><i class="fa fa-clock-o"></i></td>
                 <td>[[timeTaken | stringifyNanoseconds]]<span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span></td>
               </tr>
-
+              <tr ng-show="baseTimeTaken">
+                <td><i class="fa fa-hourglass"></i></td>
+                <td>[[baseTimeTaken | stringifyNanoseconds]] on base commit</td>
+              </tr>
               <tr ng-show="task.execution > 0 || task.archived">
                 <td><i class="fa fa-rotate-left"></i></td>
 

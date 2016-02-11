@@ -67,6 +67,9 @@ type uiPatch struct {
 	Patch       patch.Patch
 	StatusDiffs interface{}
 
+	// only used on task pages
+	BaseTimeTaken time.Duration `json:"base_time_taken"`
+
 	// for linking to other pages
 	BaseVersionId string
 	BaseBuildId   string

@@ -308,6 +308,10 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
 
     $scope.timeTaken = $scope.task.time_taken
 
+    if ($scope.task.patch_info) {
+      $scope.baseTimeTaken = $scope.task.patch_info.base_time_taken;
+    }
+
     if ($scope.task.status === 'started' || $scope.task.status === 'dispatched') {
       updateFunc = function() {
         $scope.task.current_time += 1000000000; // 1 second
