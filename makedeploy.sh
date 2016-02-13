@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 echo "installing plugins."
 ./install_plugins.sh
 ./build_agent.sh "${1}"
