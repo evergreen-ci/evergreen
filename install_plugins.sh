@@ -66,12 +66,16 @@ while read line; do
 	if [ -d "../../$install_path/templates/" ]; then
 		echo "creating template links to ui/plugins/$pluginname"
 		mkdir -p $SCRIPT_DIR/ui/plugins/$pluginname
-		ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/ui/plugins/$pluginname/templates
+		# remove existing symlink if its already there
+		rm $SCRIPT_DIR/ui/plugins/$pluginname/templates || true
+		ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/ui/plugins/$pluginname/
 	fi
 	if [ -d "../../$install_path/static/" ]; then
 		echo "creating static links to ui/plugins/$pluginname"
 		mkdir -p $SCRIPT_DIR/ui/plugins/$pluginname
-		ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/ui/plugins/$pluginname/static
+		# remove existing symlink if its already there
+		rm $SCRIPT_DIR/ui/plugins/$pluginname/static
+		ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/ui/plugins/$pluginname/
 	fi
     echo ">> Plugin successfully installed"
 
