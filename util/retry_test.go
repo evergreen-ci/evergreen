@@ -3,7 +3,6 @@ package util
 import (
 	"errors"
 	. "github.com/smartystreets/goconvey/convey"
-	"math"
 	"testing"
 	"time"
 )
@@ -126,8 +125,7 @@ func TestArithmethicRetryUntilSuccess(t *testing.T) {
 }
 
 func TestGeometricRetryUntilSuccess(t *testing.T) {
-	Convey("With geometric backoff when retrying a function that succeeds "+
-		"after 3 tries", t, func() {
+	Convey("With geometric backoff when retrying a function that succeeds after 3 tries", t, func() {
 
 		tryCounter := TriesTillPass
 		retryPassingFunc := RetriableFunc(
@@ -145,18 +143,14 @@ func TestGeometricRetryUntilSuccess(t *testing.T) {
 			TestRetries, TestSleep)
 		end := time.Now()
 
-		Convey("calling it with RetryGeometricBackoff should not return "+
-			"any error", func() {
+		Convey("calling it with RetryGeometricBackoff should not return any error", func() {
 			So(err, ShouldBeNil)
 		})
 		Convey("the 'retried till failure' flag should be false", func() {
 			So(retryFail, ShouldBeFalse)
 		})
-		Convey("time spent should be geometric retry sleep * attempts "+
-			"needed to pass", func() {
-			sleepRetry := math.Pow(float64(TestSleep.Nanoseconds()),
-				TriesTillPass-1)
-			sleepDuration := time.Duration(sleepRetry)
+		Convey("time spent should be geometric retry sleep * attempts needed to pass", func() {
+			sleepDuration := TestSleep * 2 * 2 * 2 // 2^3
 			So(end, ShouldHappenOnOrAfter, start.Add(sleepDuration))
 		})
 	})

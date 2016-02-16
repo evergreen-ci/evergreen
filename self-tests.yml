@@ -1,5 +1,10 @@
 command_type: system
 stepback: true
+
+variables:
+    only_coverage: &ONLY_COVERAGE_VARIANTS
+      variants: ["ubuntu", "osx"]
+
 functions:
   "fetch source" :
     - command: git.get_project
@@ -190,14 +195,16 @@ tasks:
           cd alerts
           mkfifo test_pipe
           tee -a alerts.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv alerts/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: compile
   tags: ["nodb"]
@@ -252,7 +259,7 @@ tasks:
           mkfifo test_pipe
           tee -a client.suite < test_pipe&
           cd cli
-          go test -v -evergreen.all -evergreen.settingsOverride=../creds.yml > ../test_pipe
+          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > ../test_pipe
 
 - name: client
   tags: ["nodb"]
@@ -305,14 +312,16 @@ tasks:
           cd agent
           mkfifo test_pipe
           tee -a agent.suite < test_pipe&
-          go test -v -evergreen.all -evergreen.settingsOverride=../creds.yml -coverprofile=coverage.out > test_pipe 
+          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > test_pipe 
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv agent/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: archive
   commands:
@@ -331,14 +340,16 @@ tasks:
           cd archive
           mkfifo test_pipe
           tee -a archive.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe 
+          go test -v ${compiler_flag} ${test_flag} > test_pipe 
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv archive/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: db
   commands:
@@ -357,14 +368,16 @@ tasks:
           cd db
           mkfifo test_pipe
           tee -a db.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe 
+          go test -v ${compiler_flag} ${test_flag} > test_pipe 
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv db/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: evergreen
   commands:
@@ -382,8 +395,9 @@ tasks:
           export EVGHOME=${EVGHOME_cmd}
           mkfifo test_pipe
           tee -a evergreen.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: model
   commands:
@@ -402,7 +416,7 @@ tasks:
           cd model
           mkfifo test_pipe
           tee -a model.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
           if [ $? -ne 0 ]; then
             echo "models suite failed, will exit with error on finish"
             export exitcode=1
@@ -420,12 +434,14 @@ tasks:
           done
           exit $exitcode
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv model/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: monitor
   commands:
@@ -444,14 +460,16 @@ tasks:
           cd monitor
           mkfifo test_pipe
           tee -a monitor.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv monitor/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: notify
   commands:
@@ -470,14 +488,16 @@ tasks:
           cd notify
           mkfifo test_pipe
           tee -a notify.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv notify/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: plugin
   commands:
@@ -499,7 +519,7 @@ tasks:
           cd plugin
           mkfifo test_pipe
           tee -a $WORK_DIR/plugin.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
           if [ $? -ne 0 ]; then
             echo "plugin suite failed, will exit with error on finish"
             export exitcode=1
@@ -522,7 +542,8 @@ tasks:
           exit $exitcode
         
     - command: shell.exec
-      type: test
+      <<: *ONLY_COVERAGE_VARIANTS
+      type: system
       params:
         working_dir: src
         script: |
@@ -568,6 +589,7 @@ tasks:
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -578,6 +600,7 @@ tasks:
         content_type: text/plain
         display_name: Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -588,6 +611,7 @@ tasks:
         content_type: text/html
         display_name: Plugin Coverage Report (HTML)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -598,6 +622,7 @@ tasks:
         content_type: text/plain
         display_name: Attach Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -608,6 +633,7 @@ tasks:
         content_type: text/html
         display_name: Attach Plugin Coverage Report (HTML)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -618,6 +644,7 @@ tasks:
         content_type: text/plain
         display_name: Expansions Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -628,6 +655,7 @@ tasks:
         content_type: text/html
         display_name: Expansions Plugin Coverage Report (HTML)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -638,6 +666,7 @@ tasks:
         content_type: text/plain
         display_name: Git Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -648,6 +677,7 @@ tasks:
         content_type: text/html
         display_name: Git Plugin Coverage Report (HTML)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -658,6 +688,7 @@ tasks:
         content_type: text/plain
         display_name: Gotest Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -668,6 +699,7 @@ tasks:
         content_type: text/html
         display_name: Gotest Plugin Coverage Report (HTML)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -678,6 +710,7 @@ tasks:
         content_type: text/plain
         display_name: S3 Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -688,6 +721,7 @@ tasks:
         content_type: text/html
         display_name: S3 Plugin Coverage Report (HTML)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -698,6 +732,7 @@ tasks:
         content_type: text/plain
         display_name: S3Copy Plugin Coverage Report (TXT)
     - command: s3.put
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
@@ -726,14 +761,16 @@ tasks:
           cd repotracker
           mkfifo test_pipe
           tee -a repotracker.suite < test_pipe&
-          go test -v -evergreen.all -evergreen.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv repotracker/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: scheduler
   commands:
@@ -752,14 +789,16 @@ tasks:
           cd scheduler
           mkfifo test_pipe
           tee -a scheduler.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv scheduler/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: thirdparty
   commands:
@@ -779,14 +818,16 @@ tasks:
           cd thirdparty
           mkfifo test_pipe
           tee -a thirdparty.suite < test_pipe&
-          go test -v -evergreen.all -evergreen.settingsOverride="../creds.yml" -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv thirdparty/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: util
   commands:
@@ -804,14 +845,16 @@ tasks:
           cd util
           mkfifo test_pipe
           tee -a util.suite < test_pipe&
-          go test -v -coverprofile=coverage.out > test_pipe
+          go test -v ${compiler_flag} ${test_flag}  > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv util/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 - name: validator
   commands:
@@ -831,14 +874,16 @@ tasks:
           cd validator
           mkfifo test_pipe
           tee -a validator.suite < test_pipe&
-          go test -v -coverprofile=coverage.out -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
+          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
       params:
         working_dir: src
         script: |
           set -o verbose
           mv validator/coverage.out .
     - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
 
 buildvariants:
     - name: ubuntu
@@ -850,6 +895,7 @@ buildvariants:
         mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
         bin_builder_env: 'GOROOT="`pwd`/go" PATH="`pwd`/go/bin:$PATH"'
         use_prebuilt_toolchain: "true"
+        test_flag: "-coverprofile=coverage.out"
       tasks:
       - "*"
     - name: ppc
@@ -859,8 +905,9 @@ buildvariants:
       expansions:
         EVGHOME_cmd: "`pwd`"
         compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
+        mongo_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-ubuntu1504-3.3.1.tgz
       tasks:
-      - ".nodb"
+      - "!make_deploy"
     - name: osx
       display_name: OSX
       run_on:
@@ -869,6 +916,7 @@ buildvariants:
         EVGHOME_cmd: "`pwd`"
         mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
         bin_builder_args: "dev"
+        test_flag: "-coverprofile=coverage.out"
       tasks:
       - "*"
     - name: windows-64

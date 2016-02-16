@@ -143,8 +143,6 @@ func TestTaskSelectorEvaluation(t *testing.T) {
 			Convey("should evaluate single name selectors properly", func() {
 				taskSelectorShouldEval(tse, "red", []string{"red"})
 				taskSelectorShouldEval(tse, "white", []string{"white"})
-				taskSelectorShouldEval(tse, "red", []string{"red"})
-				taskSelectorShouldEval(tse, "white", []string{"white"})
 			})
 
 			Convey("should evaluate single tag selectors properly", func() {

@@ -12,9 +12,10 @@ github.com/gorilla/mux                          0ef595e787efa95d68151570ead5c85d
 github.com/gorilla/securecookie                 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b
 github.com/gorilla/sessions                     28f896870851935df0885fca3410114940d49e1b
 github.com/mitchellh/mapstructure               6fb2c832bcac61d01212ab1d172f7a14a8585b07
-github.com/smartystreets/assertions				      22fd8e1982688f4ff04e8e9ec6feae2c2459460d
-github.com/smartystreets/goconvey               6e8b6a6845c5dc7738d519162c9a9ff5c9cd5f48
+github.com/smartystreets/assertions				      287b4346dc4e71a038c346375a9d572453bc469b
+github.com/smartystreets/goconvey               bf58a9a1291224109919756b4dcc469c670cc7e4
 github.com/jacobsa/oglematchers                 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
+github.com/jtolds/gls                           8ddce2a84170772b95dd5d576c48d517b22cac63
 gopkg.in/yaml.v2                                49c95bdc21843256fb6c4e0d370a05f24a0bf213
 gopkg.in/mgo.v2			                            f4923a569136442e900b8cf5c1a706c0a8b0883c
 github.com/laher/goxc                           6629689d44fd183f8d29a3f2d1cd4e6174294299

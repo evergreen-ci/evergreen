@@ -1259,177 +1259,144 @@ func TestCheckProjectSemantics(t *testing.T) {
 }
 
 func TestEnsureHasNecessaryProjectFields(t *testing.T) {
-	Convey("When ensuring necessary project fields are set, ensure that",
-		t, func() {
-			Convey("projects validate all necessary fields exist", func() {
-
-				Convey("an error should be thrown if the batch_time field is "+
-					"set to a negative value", func() {
-					project := &model.Project{
-						Enabled:     true,
-						Identifier:  "identifier",
-						Owner:       "owner",
-						Repo:        "repo",
-						Branch:      "branch",
-						DisplayName: "test",
-						RepoKind:    "github",
-						BatchTime:   -10,
-					}
-					So(ensureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(ensureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
-				Convey("an error should be thrown if the command type "+
-					"field is invalid", func() {
-					project := &model.Project{
-						BatchTime:   10,
-						CommandType: "random",
-					}
-					So(ensureHasNecessaryProjectFields(project),
-						ShouldNotResemble, []ValidationError{})
-					So(len(ensureHasNecessaryProjectFields(project)),
-						ShouldEqual, 1)
-				})
+	Convey("When ensuring necessary project fields are set, ensure that", t, func() {
+		Convey("projects validate all necessary fields exist", func() {
+			Convey("an error should be thrown if the batch_time field is "+
+				"set to a negative value", func() {
+				project := &model.Project{
+					Enabled:     true,
+					Identifier:  "identifier",
+					Owner:       "owner",
+					Repo:        "repo",
+					Branch:      "branch",
+					DisplayName: "test",
+					RepoKind:    "github",
+					BatchTime:   -10,
+				}
+				So(ensureHasNecessaryProjectFields(project),
+					ShouldNotResemble, []ValidationError{})
+				So(len(ensureHasNecessaryProjectFields(project)),
+					ShouldEqual, 1)
+			})
+			Convey("an error should be thrown if the command type "+
+				"field is invalid", func() {
+				project := &model.Project{
+					BatchTime:   10,
+					CommandType: "random",
+				}
+				So(ensureHasNecessaryProjectFields(project),
+					ShouldNotResemble, []ValidationError{})
+				So(len(ensureHasNecessaryProjectFields(project)),
+					ShouldEqual, 1)
 			})
 		})
+	})
 }
 
 func TestEnsureHasNecessaryBVFields(t *testing.T) {
-	Convey("When ensuring necessary buildvariant fields are set, ensure that",
-		t, func() {
-			Convey("an error is thrown if no build variants exist", func() {
-				project := &model.Project{
-					Identifier: "test",
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("buildvariants with none of the necessary fields set "+
-				"throw errors", func() {
-				project := &model.Project{
-					Identifier:    "test",
-					BuildVariants: []model.BuildVariant{{}},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 2)
-			})
-			Convey("buildvariants with none of the necessary fields set "+
-				"throw errors", func() {
-				project := &model.Project{
-					Identifier:    "test",
-					BuildVariants: []model.BuildVariant{{}},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 2)
-			})
-			Convey("an error is thrown if the buildvariant does not have a "+
-				"name field set", func() {
-				project := &model.Project{
-					Identifier: "projectId",
-					BuildVariants: []model.BuildVariant{
-						{
-							RunOn: []string{"mongo"},
-							Tasks: []model.BuildVariantTask{{Name: "db"}},
-						},
+	Convey("When ensuring necessary buildvariant fields are set, ensure that", t, func() {
+		Convey("an error is thrown if no build variants exist", func() {
+			project := &model.Project{
+				Identifier: "test",
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldNotResemble, []ValidationError{})
+			So(len(ensureHasNecessaryBVFields(project)),
+				ShouldEqual, 1)
+		})
+		Convey("buildvariants with none of the necessary fields set throw errors", func() {
+			project := &model.Project{
+				Identifier:    "test",
+				BuildVariants: []model.BuildVariant{{}},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldNotResemble, []ValidationError{})
+			So(len(ensureHasNecessaryBVFields(project)),
+				ShouldEqual, 2)
+		})
+		Convey("an error is thrown if the buildvariant does not have a "+
+			"name field set", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						RunOn: []string{"mongo"},
+						Tasks: []model.BuildVariantTask{{Name: "db"}},
 					},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("an error is thrown if the buildvariant does not have any "+
-				"tasks set", func() {
-				project := &model.Project{
-					Identifier: "projectId",
-					BuildVariants: []model.BuildVariant{
-						{
-							Name:  "postal",
-							RunOn: []string{"service"},
-						},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldNotResemble, []ValidationError{})
+			So(len(ensureHasNecessaryBVFields(project)),
+				ShouldEqual, 1)
+		})
+		Convey("an error is thrown if the buildvariant does not have any tasks set", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "postal",
+						RunOn: []string{"service"},
 					},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("an error is thrown if the buildvariant does not have any "+
-				"tasks set", func() {
-				project := &model.Project{
-					Identifier: "projectId",
-					BuildVariants: []model.BuildVariant{
-						{
-							Name:  "import",
-							RunOn: []string{"export"},
-						},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldNotResemble, []ValidationError{})
+			So(len(ensureHasNecessaryBVFields(project)),
+				ShouldEqual, 1)
+		})
+		Convey("no error is thrown if the buildvariant has a run_on field set", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "import",
+						RunOn: []string{"export"},
+						Tasks: []model.BuildVariantTask{{Name: "db"}},
 					},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("no error is thrown if the buildvariant has a run_on field "+
-				"set", func() {
-				project := &model.Project{
-					Identifier: "projectId",
-					BuildVariants: []model.BuildVariant{
-						{
-							Name:  "import",
-							RunOn: []string{"export"},
-							Tasks: []model.BuildVariantTask{{Name: "db"}},
-						},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldResemble, []ValidationError{})
+		})
+		Convey("an error should be thrown if the buildvariant has no "+
+			"run_on field and at least one task has no distro field "+
+			"specified", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name:  "import",
+						Tasks: []model.BuildVariantTask{{Name: "db"}},
 					},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldResemble, []ValidationError{})
-			})
-			Convey("an error should be thrown if the buildvariant has no "+
-				"run_on field and at least one task has no distro field "+
-				"specified", func() {
-				project := &model.Project{
-					Identifier: "projectId",
-					BuildVariants: []model.BuildVariant{
-						{
-							Name:  "import",
-							Tasks: []model.BuildVariantTask{{Name: "db"}},
-						},
-					},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldNotResemble, []ValidationError{})
-				So(len(ensureHasNecessaryBVFields(project)),
-					ShouldEqual, 1)
-			})
-			Convey("no error should be thrown if the buildvariant does not "+
-				"have a run_on field specified but all tasks within it have a "+
-				"distro field specified", func() {
-				project := &model.Project{
-					Identifier: "projectId",
-					BuildVariants: []model.BuildVariant{
-						{
-							Name: "import",
-							Tasks: []model.BuildVariantTask{
-								{
-									Name: "silhouettes",
-									Distros: []string{
-										"echoes",
-									},
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldNotResemble, []ValidationError{})
+			So(len(ensureHasNecessaryBVFields(project)),
+				ShouldEqual, 1)
+		})
+		Convey("no error should be thrown if the buildvariant does not "+
+			"have a run_on field specified but all tasks within it have a "+
+			"distro field specified", func() {
+			project := &model.Project{
+				Identifier: "projectId",
+				BuildVariants: []model.BuildVariant{
+					{
+						Name: "import",
+						Tasks: []model.BuildVariantTask{
+							{
+								Name: "silhouettes",
+								Distros: []string{
+									"echoes",
 								},
 							},
 						},
 					},
-				}
-				So(ensureHasNecessaryBVFields(project),
-					ShouldResemble, []ValidationError{})
-			})
+				},
+			}
+			So(ensureHasNecessaryBVFields(project),
+				ShouldResemble, []ValidationError{})
 		})
+	})
 }
