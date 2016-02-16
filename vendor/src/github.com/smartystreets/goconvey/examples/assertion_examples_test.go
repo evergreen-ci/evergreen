@@ -40,15 +40,20 @@ func TestAssertionsAreAvailableFromConveyPackage(t *testing.T) {
 		So(1, ShouldBeLessThanOrEqualTo, 1)
 		So(1, ShouldBeBetween, 0, 2)
 		So(1, ShouldNotBeBetween, 2, 4)
+		So(1, ShouldBeBetweenOrEqual, 1, 2)
+		So(1, ShouldNotBeBetweenOrEqual, 2, 4)
 	})
 
 	Convey("Container assertions should be accessible", t, func() {
 		So([]int{1, 2, 3}, ShouldContain, 2)
 		So([]int{1, 2, 3}, ShouldNotContain, 4)
+		So(map[int]int{1: 1, 2: 2, 3: 3}, ShouldContainKey, 2)
+		So(map[int]int{1: 1, 2: 2, 3: 3}, ShouldNotContainKey, 4)
 		So(1, ShouldBeIn, []int{1, 2, 3})
 		So(4, ShouldNotBeIn, []int{1, 2, 3})
 		So([]int{}, ShouldBeEmpty)
 		So([]int{1}, ShouldNotBeEmpty)
+		So([]int{1, 2}, ShouldHaveLength, 2)
 	})
 
 	Convey("String assertions should be accessible", t, func() {

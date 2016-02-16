@@ -122,6 +122,13 @@ func (q *Query) AddCreateRequestTable(description TableDescriptionT) {
 		"WriteCapacityUnits": int(description.ProvisionedThroughput.WriteCapacityUnits),
 	}
 
+	if description.StreamSpecification.StreamEnabled {
+		b["StreamSpecification"] = msi{
+			"StreamEnabled":  "true",
+			"StreamViewType": description.StreamSpecification.StreamViewType,
+		}
+	}
+
 	localSecondaryIndexes := []interface{}{}
 
 	for _, ind := range description.LocalSecondaryIndexes {
@@ -302,6 +309,34 @@ func (q *Query) AddExpressionAttributes(attributes []Attribute) {
 	for key, val := range attributeList(attributes) {
 		existing[key] = val
 	}
+}
+
+func (q *Query) AddExclusiveStartStreamArn(arn string) {
+	q.buffer["ExclusiveStartStreamArn"] = arn
+}
+
+func (q *Query) AddStreamArn(arn string) {
+	q.buffer["StreamArn"] = arn
+}
+
+func (q *Query) AddExclusiveStartShardId(shardId string) {
+	q.buffer["ExclusiveStartShardId"] = shardId
+}
+
+func (q *Query) AddShardId(shardId string) {
+	q.buffer["ShardId"] = shardId
+}
+
+func (q *Query) AddShardIteratorType(shardIteratorType string) {
+	q.buffer["ShardIteratorType"] = shardIteratorType
+}
+
+func (q *Query) AddSequenceNumber(sequenceNumber string) {
+	q.buffer["SequenceNumber"] = sequenceNumber
+}
+
+func (q *Query) AddShardIterator(shardIterator string) {
+	q.buffer["ShardIterator"] = shardIterator
 }
 
 func attributeList(attributes []Attribute) msi {

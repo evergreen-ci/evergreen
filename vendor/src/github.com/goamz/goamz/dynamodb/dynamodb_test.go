@@ -136,7 +136,10 @@ func setUpAuth(c *C) {
 	}
 	if *local {
 		c.Log("Using local server")
-		dynamodb_region = aws.Region{DynamoDBEndpoint: "http://127.0.0.1:8000"}
+		dynamodb_region = aws.Region{
+			DynamoDBEndpoint:        "http://127.0.0.1:8000",
+			DynamoDBStreamsEndpoint: "http://127.0.0.1:8000",
+		}
 		dynamodb_auth = aws.Auth{AccessKey: "DUMMY_KEY", SecretKey: "DUMMY_SECRET"}
 	} else {
 		c.Log("Using REAL AMAZON SERVER")

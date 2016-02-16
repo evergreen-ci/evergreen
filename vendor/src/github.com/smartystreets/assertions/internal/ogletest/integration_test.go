@@ -127,7 +127,7 @@ func cleanOutput(o []byte, testPkg string) []byte {
 	o = stackFrameRe.ReplaceAll(o, []byte("\tsome_file.txt:0"))
 
 	// Replace full paths in failure messages with fake paths.
-	pathRe := regexp.MustCompile(`/\S+/(\w+\.go:\d+)`)
+	pathRe := regexp.MustCompile(`/\S+/(\w+\.(?:go|s):\d+)`)
 	o = pathRe.ReplaceAll(o, []byte("/some/path/$1"))
 
 	// Replace unstable timings in gotest fail messages.

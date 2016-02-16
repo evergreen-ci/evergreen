@@ -30,6 +30,13 @@ func NewQuery(queryParts []string) *Query {
 }
 */
 
+const (
+	// DynamoDBAPIPrefix is the versioned prefix for DynamoDB API commands.
+	DynamoDBAPIPrefix = "DynamoDB_20120810."
+	// DynamoDBStreamsAPIPrefix is the versioned prefix for DynamoDB Streams API commands.
+	DynamoDBStreamsAPIPrefix = "DynamoDBStreams_20120810."
+)
+
 // Specific error constants
 var ErrNotFound = errors.New("Item not found")
 
@@ -74,7 +81,13 @@ func buildError(r *http.Response, jsonBody []byte) error {
 
 func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
 	data := strings.NewReader(query.String())
-	hreq, err := http.NewRequest("POST", s.Region.DynamoDBEndpoint+"/", data)
+	var endpoint string
+	if isStreamsTarget(target) {
+		endpoint = s.Region.DynamoDBStreamsEndpoint
+	} else {
+		endpoint = s.Region.DynamoDBEndpoint
+	}
+	hreq, err := http.NewRequest("POST", endpoint+"/", data)
 	if err != nil {
 		return nil, err
 	}
@@ -117,5 +130,13 @@ func (s *Server) queryServer(target string, query *Query) ([]byte, error) {
 }
 
 func target(name string) string {
-	return "DynamoDB_20120810." + name
+	return DynamoDBAPIPrefix + name
+}
+
+func streamsTarget(name string) string {
+	return DynamoDBStreamsAPIPrefix + name
+}
+
+func isStreamsTarget(target string) bool {
+	return strings.HasPrefix(target, DynamoDBStreamsAPIPrefix)
 }

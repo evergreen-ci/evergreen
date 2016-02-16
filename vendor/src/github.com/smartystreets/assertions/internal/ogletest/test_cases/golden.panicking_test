@@ -7,7 +7,7 @@ panic: Panic in ExplicitPanic
 github.com/smartystreets/assertions/internal/ogletest/somepkg_test.(*PanickingTest).ExplicitPanic
 	some_file.txt:0
 runtime.call16
-	/usr/local/go/src/runtime/asm_amd64.s:401
+	/some/path/asm_amd64.s:401
 reflect.Value.call
 	some_file.txt:0
 reflect.Value.Call
@@ -25,7 +25,7 @@ github.com/smartystreets/assertions/internal/ogletest/somepkg_test.someFuncThatP
 github.com/smartystreets/assertions/internal/ogletest/somepkg_test.(*PanickingTest).ExplicitPanicInHelperFunction
 	some_file.txt:0
 runtime.call16
-	/usr/local/go/src/runtime/asm_amd64.s:401
+	/some/path/asm_amd64.s:401
 reflect.Value.call
 	some_file.txt:0
 reflect.Value.Call
@@ -41,7 +41,7 @@ panic: runtime error: invalid memory address or nil pointer dereference
 github.com/smartystreets/assertions/internal/ogletest/somepkg_test.(*PanickingTest).NilPointerDerefence
 	some_file.txt:0
 runtime.call16
-	/usr/local/go/src/runtime/asm_amd64.s:401
+	/some/path/asm_amd64.s:401
 reflect.Value.call
 	some_file.txt:0
 reflect.Value.Call

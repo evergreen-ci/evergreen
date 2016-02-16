@@ -464,8 +464,9 @@ type Container struct {
 
 // ContainerOverride encapsulates the container override data type
 type ContainerOverride struct {
-	Command []string `xml:"command>member"`
-	Name    string   `xml:"name"`
+	Command     []string       `xml:"command>member"`
+	Environment []KeyValuePair `xml:"environment>member"`
+	Name        string         `xml:"name"`
 }
 
 // TaskOverride encapsulates the task override data type
@@ -876,6 +877,10 @@ func (e *ECS) RunTask(req *RunTaskReq) (*RunTaskResp, error) {
 		params[fmt.Sprintf("%s.name", key)] = co.Name
 		for k, cmd := range co.Command {
 			params[fmt.Sprintf("%s.command.member.%d", key, k+1)] = cmd
+		}
+		for k, env := range co.Environment {
+			params[fmt.Sprintf("%s.environment.member.%d.name", key, k+1)] = env.Name
+			params[fmt.Sprintf("%s.environment.member.%d.value", key, k+1)] = env.Value
 		}
 	}
 

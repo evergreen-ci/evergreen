@@ -50,6 +50,11 @@ type ProvisionedThroughputT struct {
 	WriteCapacityUnits     int64
 }
 
+type StreamSpecificationT struct {
+	StreamEnabled  bool
+	StreamViewType string
+}
+
 type TableDescriptionT struct {
 	AttributeDefinitions   []AttributeDefinitionT
 	CreationDateTime       float64
@@ -58,9 +63,12 @@ type TableDescriptionT struct {
 	GlobalSecondaryIndexes []GlobalSecondaryIndexT
 	LocalSecondaryIndexes  []LocalSecondaryIndexT
 	ProvisionedThroughput  ProvisionedThroughputT
+	StreamSpecification    StreamSpecificationT
 	TableName              string
 	TableSizeBytes         int64
 	TableStatus            string
+	LatestStreamArn        string
+	LatestStreamLabel      string
 }
 
 type describeTableResponse struct {
@@ -225,6 +233,14 @@ func (s *Server) UpdateTable(tableDescription TableDescriptionT) (string, error)
 	}
 
 	return json.Get("TableDescription").Get("TableStatus").MustString(), nil
+}
+
+func (t *Table) ListStreams(startArn string) ([]StreamListItemT, error) {
+	return t.Server.ListTableStreams(t.Name, startArn)
+}
+
+func (t *Table) LimitedListStreams(startArn string, limit int64) ([]StreamListItemT, error) {
+	return t.Server.LimitedListTableStreams(t.Name, startArn, limit)
 }
 
 func keyParam(k *PrimaryKey, hashKey string, rangeKey string) string {

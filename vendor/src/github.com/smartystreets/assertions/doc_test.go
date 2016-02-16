@@ -32,6 +32,22 @@ func TestFailingAssertion(t *testing.T) {
 	}
 }
 
+func TestFailingGroupsOfAssertions(t *testing.T) {
+	fake := &FakeT{buffer: new(bytes.Buffer)}
+	assertion1 := New(fake)
+	assertion2 := New(fake)
+
+	assertion1.So(1, ShouldEqual, 2) // fail
+	assertion2.So(1, ShouldEqual, 1) // pass
+
+	if !assertion1.Failed() {
+		t.Error("Expected the first assertion to have been marked as failed.")
+	}
+	if assertion2.Failed() {
+		t.Error("Expected the second assertion to NOT have been marked as failed.")
+	}
+}
+
 type FakeT struct {
 	buffer *bytes.Buffer
 }
