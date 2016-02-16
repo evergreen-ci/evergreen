@@ -160,7 +160,7 @@ tasks:
           ${plugins_file}
           END_OF_PLUGINS
           cat Plugins
-          ${bin_builder_env} ./makedeploy.sh
+          ${bin_builder_env} ./makedeploy.sh ${bin_builder_args}
 
     - command: s3.put
       params:
