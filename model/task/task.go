@@ -729,11 +729,11 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return fmt.Errorf("task.Archive() failed: %v", err)
 	}
-	archive_task := *t
-	archive_task.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
-	archive_task.OldTaskId = t.Id
-	archive_task.Archived = true
-	err = db.Insert(OldCollection, &archive_task)
+	archiveTask := *t
+	archiveTask.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
+	archiveTask.OldTaskId = t.Id
+	archiveTask.Archived = true
+	err = db.Insert(OldCollection, &archiveTask)
 	if err != nil {
 		return fmt.Errorf("task.Archive() failed: %v", err)
 	}

@@ -155,9 +155,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build a struct containing the subset of task data needed for display in the UI
-
+	tId := projCtx.Task.Id
+	if archived {
+		tId = projCtx.Task.OldTaskId
+	}
 	task := uiTaskData{
-		Id:                  projCtx.Task.Id,
+		Id:                  tId,
 		DisplayName:         projCtx.Task.DisplayName,
 		Revision:            projCtx.Task.Revision,
 		Status:              projCtx.Task.Status,
