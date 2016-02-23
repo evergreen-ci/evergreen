@@ -510,6 +510,67 @@ func TestCheckDependencyGraph(t *testing.T) {
 	})
 }
 
+func TestVerifyTaskRequirements(t *testing.T) {
+	Convey("When validating a project's requirements", t, func() {
+		Convey("projects with requirements for non-existing tasks should error", func() {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "1", Requires: []model.TaskRequirement{{Name: "2"}}},
+					{Name: "X"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTask{
+						{Name: "1"},
+						{Name: "X", Requires: []model.TaskRequirement{{Name: "2"}}}},
+					},
+				},
+			}
+			So(verifyTaskRequirements(p), ShouldNotResemble, []ValidationError{})
+			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
+		})
+		Convey("projects with requirements for non-existing variants should error", func() {
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "1", Requires: []model.TaskRequirement{{Name: "X", Variant: "$"}}},
+					{Name: "X"},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: []model.BuildVariantTask{
+						{Name: "1"},
+						{Name: "X", Requires: []model.TaskRequirement{{Name: "1", Variant: "$"}}}},
+					},
+				},
+			}
+			So(verifyTaskRequirements(p), ShouldNotResemble, []ValidationError{})
+			So(len(verifyTaskRequirements(p)), ShouldEqual, 2)
+		})
+		Convey("projects with requirements for a normal project configuration should pass", func() {
+			all := []model.BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"},
+				{Name: "before"}, {Name: "after"}}
+			beforeDep := []model.TaskDependency{{Name: "before"}}
+			p := &model.Project{
+				Tasks: []model.ProjectTask{
+					{Name: "before", Requires: []model.TaskRequirement{{Name: "after"}}},
+					{Name: "1", DependsOn: beforeDep},
+					{Name: "2", DependsOn: beforeDep},
+					{Name: "3", DependsOn: beforeDep},
+					{Name: "after", DependsOn: []model.TaskDependency{
+						{Name: "before"},
+						{Name: "1", PatchOptional: true},
+						{Name: "2", PatchOptional: true},
+						{Name: "3", PatchOptional: true},
+					}},
+				},
+				BuildVariants: []model.BuildVariant{
+					{Name: "v1", Tasks: all},
+					{Name: "v2", Tasks: all},
+				},
+			}
+			So(verifyTaskRequirements(p), ShouldResemble, []ValidationError{})
+		})
+	})
+}
+
 func TestValidateBVNames(t *testing.T) {
 	Convey("When validating a project's build variants' names", t, func() {
 		Convey("if any variant has a duplicate entry, an error should be returned", func() {

@@ -35,6 +35,7 @@ var projectSyntaxValidators = []projectValidator{
 	validatePluginCommands,
 	ensureHasNecessaryProjectFields,
 	verifyTaskDependencies,
+	verifyTaskRequirements,
 	validateBVNames,
 	validateBVTaskNames,
 	checkAllDependenciesSpec,
@@ -586,6 +587,31 @@ func validateProjectTaskIdsAndTags(project *model.Project) []ValidationError {
 				errs = append(errs, ValidationError{
 					Message: fmt.Sprintf("task '%v' has invalid tag '%v': tag contains white space",
 						task.Name, tag)})
+			}
+		}
+	}
+	return errs
+}
+
+// Makes sure that the dependencies for the tasks have the correct fields,
+// and that the fields reference valid tasks.
+func verifyTaskRequirements(project *model.Project) []ValidationError {
+	errs := []ValidationError{}
+	for _, bvt := range project.FindAllBuildVariantTasks() {
+		for _, r := range bvt.Requires {
+			if project.FindProjectTask(r.Name) == nil {
+				if r.Name == model.AllDependencies {
+					errs = append(errs, ValidationError{Message: fmt.Sprintf(
+						"task '%v': * is not supported for requirement selectors", bvt.Name)})
+				} else {
+					errs = append(errs,
+						ValidationError{Message: fmt.Sprintf(
+							"task '%v' requires non-existent task '%v'", bvt.Name, r.Name)})
+				}
+			}
+			if r.Variant != "" && r.Variant != model.AllVariants && project.FindBuildVariant(r.Variant) == nil {
+				errs = append(errs, ValidationError{Message: fmt.Sprintf(
+					"task '%v' requires non-existent variant '%v'", bvt.Name, r.Variant)})
 			}
 		}
 	}

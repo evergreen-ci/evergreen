@@ -81,8 +81,9 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	configPatch := &patch.Patch{
 		Id:            "52549c143122",
 		Project:       patchedProject,
-		BuildVariants: []string{"linux-64-duroff"},
 		Githash:       patchedRevision,
+		Tasks:         []string{"taskTwo", "taskOne"},
+		BuildVariants: []string{"linux-64-duroff"},
 		Patches: []patch.ModulePatch{
 			{
 				Githash: "revision",

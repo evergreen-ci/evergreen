@@ -120,8 +120,7 @@ func TestIncludePatchDependencies(t *testing.T) {
 
 		Convey("a patch against v2/t5 should be pruned, since its dependeny is not patchable", func() {
 			variants, tasks := IncludePatchDependencies(p, []string{"v2"}, []string{"t5"})
-			So(len(variants), ShouldEqual, 1)
-			So(variants, ShouldContain, "v2")
+			So(len(variants), ShouldEqual, 0)
 			So(len(tasks), ShouldEqual, 0)
 		})
 	})
@@ -179,6 +178,121 @@ func TestIncludePatchDependencies(t *testing.T) {
 			So(tasks, ShouldContain, "t3")
 			So(tasks, ShouldContain, "t4")
 			So(tasks, ShouldContain, "t5")
+		})
+	})
+
+	Convey("With a project task config with required tasks", t, func() {
+		all := []BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"},
+			{Name: "before"}, {Name: "after"}}
+		beforeDep := []TaskDependency{{Name: "before"}}
+		p := &Project{
+			Tasks: []ProjectTask{
+				{Name: "before", Requires: []TaskRequirement{{Name: "after"}}},
+				{Name: "1", DependsOn: beforeDep},
+				{Name: "2", DependsOn: beforeDep},
+				{Name: "3", DependsOn: beforeDep},
+				{Name: "after", DependsOn: []TaskDependency{
+					{Name: "before"},
+					{Name: "1", PatchOptional: true},
+					{Name: "2", PatchOptional: true},
+					{Name: "3", PatchOptional: true},
+				}},
+			},
+			BuildVariants: []BuildVariant{
+				{Name: "v1", Tasks: all},
+				{Name: "v2", Tasks: all},
+			},
+		}
+
+		Convey("scheduling the 'before' task should also schedule 'after'", func() {
+			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"before"})
+			So(len(variants), ShouldEqual, 1)
+			So(variants, ShouldContain, "v1")
+			So(len(tasks), ShouldEqual, 2)
+			So(tasks, ShouldContain, "before")
+			So(tasks, ShouldContain, "after")
+		})
+		Convey("scheduling the middle tasks should include 'before' and 'after'", func() {
+			Convey("for '1'", func() {
+				variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1"})
+				So(len(variants), ShouldEqual, 1)
+				So(variants, ShouldContain, "v1")
+				So(len(tasks), ShouldEqual, 3)
+				So(tasks, ShouldContain, "before")
+				So(tasks, ShouldContain, "after")
+				So(tasks, ShouldContain, "1")
+			})
+			Convey("for '1' '2' '3'", func() {
+				variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1", "2", "3"})
+				So(len(variants), ShouldEqual, 1)
+				So(variants, ShouldContain, "v1")
+				So(len(tasks), ShouldEqual, 5)
+				So(tasks, ShouldContain, "before")
+				So(tasks, ShouldContain, "after")
+				So(tasks, ShouldContain, "1")
+				So(tasks, ShouldContain, "2")
+				So(tasks, ShouldContain, "3")
+			})
+		})
+	})
+	Convey("With a project task config with cyclical requirements", t, func() {
+		all := []BuildVariantTask{{Name: "1"}, {Name: "2"}, {Name: "3"}}
+		p := &Project{
+			Tasks: []ProjectTask{
+				{Name: "1", Requires: []TaskRequirement{{Name: "2"}, {Name: "3"}}},
+				{Name: "2", Requires: []TaskRequirement{{Name: "1"}, {Name: "3"}}},
+				{Name: "3", Requires: []TaskRequirement{{Name: "2"}, {Name: "1"}}},
+			},
+			BuildVariants: []BuildVariant{
+				{Name: "v1", Tasks: all},
+				{Name: "v2", Tasks: all},
+			},
+		}
+		Convey("all tasks should be scheduled no matter which is initially added", func() {
+			Convey("for '1'", func() {
+				variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1"})
+				So(len(variants), ShouldEqual, 1)
+				So(variants, ShouldContain, "v1")
+				So(len(tasks), ShouldEqual, 3)
+				So(tasks, ShouldContain, "1")
+				So(tasks, ShouldContain, "2")
+				So(tasks, ShouldContain, "3")
+			})
+			Convey("for '2'", func() {
+				variants, tasks := IncludePatchDependencies(p, []string{"v1", "v2"}, []string{"2"})
+				So(len(variants), ShouldEqual, 2)
+				So(variants, ShouldContain, "v1")
+				So(variants, ShouldContain, "v2")
+				So(len(tasks), ShouldEqual, 3)
+				So(tasks, ShouldContain, "1")
+				So(tasks, ShouldContain, "2")
+				So(tasks, ShouldContain, "3")
+			})
+			Convey("for '3'", func() {
+				variants, tasks := IncludePatchDependencies(p, []string{"v2"}, []string{"3"})
+				So(len(variants), ShouldEqual, 1)
+				So(variants, ShouldContain, "v2")
+				So(len(tasks), ShouldEqual, 3)
+				So(tasks, ShouldContain, "1")
+				So(tasks, ShouldContain, "2")
+				So(tasks, ShouldContain, "3")
+			})
+		})
+	})
+	Convey("With a project task config that requires a non-patchable task", t, func() {
+		p := &Project{
+			Tasks: []ProjectTask{
+				{Name: "1", Requires: []TaskRequirement{{Name: "2"}}},
+				{Name: "2", Patchable: new(bool)},
+			},
+			BuildVariants: []BuildVariant{
+				{Name: "v1", Tasks: []BuildVariantTask{{Name: "1"}, {Name: "2"}}},
+			},
+		}
+		Convey("the non-patchable task should not be added", func() {
+			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1"})
+			So(len(variants), ShouldEqual, 0)
+			So(len(tasks), ShouldEqual, 0)
 		})
 	})
 

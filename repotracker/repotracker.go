@@ -446,7 +446,7 @@ func NewVersionFromRevision(ref *model.ProjectRef, rev model.Revision) (*version
 // the given project config.
 func createVersionItems(v *version.Version, ref *model.ProjectRef, project *model.Project) error {
 	// generate all task Ids so that we can easily reference them for dependencies
-	taskIdTable := model.BuildTaskIdTable(project, v)
+	taskIdTable := model.NewTaskIdTable(project, v)
 
 	// create all builds for the version
 	for _, buildvariant := range project.BuildVariants {

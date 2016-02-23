@@ -349,7 +349,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// create the new tasks for the build
 	tasks, err := createTasksForBuild(
-		project, buildVariant, b, v, BuildTaskIdTable(project, v), taskNames)
+		project, buildVariant, b, v, NewTaskIdTable(project, v), taskNames)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tasks for build %v: %v",
 			b.Id, err)
@@ -492,7 +492,6 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		newTask.Tags = project.GetSpecForTask(t.Name).Tags
 
 		// set the new task's dependencies
-		// TODO encapsulate better
 		if len(t.DependsOn) == 1 &&
 			t.DependsOn[0].Name == AllDependencies &&
 			t.DependsOn[0].Variant != AllVariants {
@@ -503,13 +502,11 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 				if t.DependsOn[0].Status != "" {
 					status = t.DependsOn[0].Status
 				}
-				newDep := task.Dependency{
-					TaskId: tt.GetId(b.BuildVariant, dep.Name),
-					Status: status,
+				id := tt.GetId(b.BuildVariant, dep.Name)
+				if len(id) == 0 || dep.Name == newTask.DisplayName {
+					continue
 				}
-				if dep.Name != newTask.DisplayName {
-					newTask.DependsOn = append(newTask.DependsOn, newDep)
-				}
+				newTask.DependsOn = append(newTask.DependsOn, task.Dependency{TaskId: id, Status: status})
 			}
 		} else {
 			// the task has specific dependencies
@@ -531,22 +528,26 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 					// for * case, we need to add all variants of the task
 					var ids []string
 					if dep.Name != AllDependencies {
-						ids = tt.GetIdsForAllVariants(b.BuildVariant, dep.Name)
+						ids = tt.GetIdsForAllVariantsExcluding(
+							dep.Name,
+							TVPair{TaskName: newTask.DisplayName, Variant: newTask.BuildVariant},
+						)
 					} else {
 						// edge case where variant and task are both *
 						ids = tt.GetIdsForAllTasks(b.BuildVariant, newTask.DisplayName)
 					}
 					for _, id := range ids {
-						newDeps = append(newDeps, task.Dependency{TaskId: id, Status: status})
+						if len(id) != 0 {
+							newDeps = append(newDeps, task.Dependency{TaskId: id, Status: status})
+						}
 					}
 				} else {
 					// general case
-					newDep := task.Dependency{
-						TaskId: tt.GetId(bv, dep.Name),
-						Status: status,
-					}
-					if newDep.TaskId != "" {
-						newDeps = []task.Dependency{newDep}
+					id := tt.GetId(bv, dep.Name)
+					// only create the dependency if the task exists--it always will,
+					// except for patches with patch_optional dependencies.
+					if len(id) != 0 {
+						newDeps = []task.Dependency{task.Dependency{TaskId: id, Status: status}}
 					}
 				}
 

@@ -622,7 +622,7 @@ func TestCreateBuildFromVersion(t *testing.T) {
 			},
 		}
 
-		tt := BuildTaskIdTable(project, v)
+		tt := NewTaskIdTable(project, v)
 
 		Convey("the task id table should be well-formed", func() {
 			So(tt.GetId("buildVar", "taskA"), ShouldNotEqual, "")
