@@ -259,9 +259,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
         'ssh_key': $scope.activeDistro.ssh_key,
         'ssh_options': $scope.activeDistro.ssh_options,
         'setup': $scope.activeDistro.setup,
-        'pool_size': $scope.activeDistro.pool_size
+        'pool_size': $scope.activeDistro.pool_size,
+        'setup_as_sudo' : $scope.activeDistro.setup_as_sudo,
+
       }
       newDistro.settings = _.clone($scope.activeDistro.settings);
+      newDistro.expansions = _.clone($scope.activeDistro.expansions);
+
       $scope.distros.unshift(newDistro);
       $scope.hasNew = true;
       $scope.setActiveDistro($scope.distros[0]);
