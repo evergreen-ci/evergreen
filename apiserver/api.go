@@ -370,7 +370,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Requester != evergreen.PatchVersionRequester {
-		alerts.RunTaskFailureTriggers(t)
+		evergreen.Logger.Logf(slogger.INFO, "Processing alert triggers for task %v", t.Id)
+		err := alerts.RunTaskFailureTriggers(t.Id)
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error processing alert triggers for task %v: %v", t.Id, err)
+		}
 	} else {
 		//TODO(EVG-223) process patch-specific triggers
 	}

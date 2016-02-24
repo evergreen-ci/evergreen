@@ -38,7 +38,11 @@ func RunLastRevisionNotFoundTrigger(proj *model.ProjectRef, v *version.Version) 
 }
 
 // RunTaskTriggers queues alerts for any active triggers on the tasks's state change.
-func RunTaskFailureTriggers(t *task.Task) error {
+func RunTaskFailureTriggers(taskId string) error {
+	t, err := task.FindOne(task.ById(taskId))
+	if err != nil {
+		return err
+	}
 	ctx, err := getTaskTriggerContext(t)
 	if err != nil {
 		return err
@@ -132,7 +136,6 @@ func getTaskTriggerContext(t *task.Task) (*triggerContext, error) {
 	if t != nil {
 		ctx.previousCompleted = t
 	}
-
 	return &ctx, nil
 }
 
