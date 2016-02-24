@@ -195,7 +195,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 
 		} else {
 			tasks, err = task.Find(task.ByStatuses(evergreen.CompletedStatuses,
-				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...))
+				buildVariant, taskName, projCtx.Project.Identifier, request).Limit(limit).WithFields(fields...).Sort([]string{"-" + task.RevisionOrderNumberKey}))
 			if err != nil {
 				uis.LoggedError(w, r, http.StatusNotFound, err)
 				return
