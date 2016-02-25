@@ -866,6 +866,14 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// zero out the depends on and commands fields because they are
+	// unnecessary and may not get marshaled properly
+	for i, _ := range project.Tasks {
+		project.Tasks[i].DependsOn = []model.TaskDependency{}
+		project.Tasks[i].Commands = []model.PluginCommandConf{}
+
+	}
 	as.WriteJSON(w, http.StatusOK, project.Tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
