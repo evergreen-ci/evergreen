@@ -15,7 +15,7 @@ rm -rf vendor/pkg
 
 . ./set_gopath.sh
 mkdir -p bin
-export GOBIN=bin
+export GOBIN=`pwd`/bin
 
 for i in apiserver ui runner cli; do
   echo "Building ${i}..."

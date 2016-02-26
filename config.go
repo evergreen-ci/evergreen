@@ -97,6 +97,10 @@ type UIConfig struct {
 	// on every request. Note that if this is true, changes to HTML templates
 	// won't take effect until server restart.
 	CacheTemplates bool
+	// SecureCookies sets the "secure" flag on user tokens. Evergreen
+	// does not yet natively support SSL UI connections, but this option
+	// is available, for example, for deployments behind HTTPS load balancers.
+	SecureCookies bool
 }
 
 // MonitorConfig holds logging settings for the monitor process.

@@ -16,11 +16,12 @@ func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
 	uis.WriteHTML(w, http.StatusOK, nil, "base", "login.html", "base_angular.html")
 }
 
-func setLoginToken(token string, w http.ResponseWriter) {
+func (uis *UIServer) setLoginToken(token string, w http.ResponseWriter) {
 	authTokenCookie := &http.Cookie{
 		Name:     evergreen.AuthTokenCookie,
 		Value:    token,
 		HttpOnly: true,
+		Secure:   uis.Settings.Ui.SecureCookies,
 		Path:     "/",
 	}
 	http.SetCookie(w, authTokenCookie)
@@ -57,7 +58,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Invalid username/password: %v", err), http.StatusUnauthorized)
 		return
 	}
-	setLoginToken(token, w)
+	uis.setLoginToken(token, w)
 	uis.WriteJSON(w, http.StatusOK, map[string]string{})
 }
 
