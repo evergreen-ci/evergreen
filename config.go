@@ -282,13 +282,6 @@ var ConfigValidationRules = []ConfigValidator{
 	},
 
 	func(settings *Settings) error {
-		if settings.Providers.AWS.Secret == "" || settings.Providers.AWS.Id == "" {
-			return fmt.Errorf("AWS Secret and ID must not be empty")
-		}
-		return nil
-	},
-
-	func(settings *Settings) error {
 		if settings.ApiUrl == "" {
 			return fmt.Errorf("API hostname must not be empty")
 		}
