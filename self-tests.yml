@@ -229,7 +229,7 @@ tasks:
           else
             export REV=`git rev-parse HEAD`
           fi
-          go build -o main ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=$REV" agent/main/agent.go
+          go build -o main${extension} ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=$REV" agent/main/agent.go
     - command: s3.put
       params:
         aws_key: ${aws_key}
