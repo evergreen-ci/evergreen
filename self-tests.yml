@@ -234,7 +234,7 @@ tasks:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: main${extension}
+        local_file: src/main${extension}
         remote_file: mci/agent/${task_id}/main${extension}
         bucket: mciuploads
         permissions: public-read
