@@ -103,6 +103,13 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	patchUpdateReq.Variants, patchUpdateReq.Tasks = model.IncludePatchDependencies(
 		projCtx.Project, patchUpdateReq.Variants, patchUpdateReq.Tasks)
 
+	// update the description for both reconfigured and new patches
+	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError,
+			fmt.Errorf("Error setting description: %v", err))
+		return
+	}
+
 	if projCtx.Patch.Version != "" {
 		// This patch has already been finalized, just add the new builds and tasks
 		if projCtx.Version == nil {
@@ -138,12 +145,6 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				fmt.Errorf("Error setting patch variants and tasks: %v", err))
-			return
-		}
-
-		if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error setting description: %v", err))
 			return
 		}
 
