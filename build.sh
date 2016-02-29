@@ -2,6 +2,9 @@
 if [ "Windows_NT" = "$OS" ]
 then
     set -o igncr
+    export GOBIN=bin
+else
+    export GOBIN=`pwd`/bin
 fi
 
 set -e
@@ -15,7 +18,6 @@ rm -rf vendor/pkg
 
 . ./set_gopath.sh
 mkdir -p bin
-export GOBIN=`pwd`/bin
 
 for i in apiserver ui runner cli; do
   echo "Building ${i}..."
@@ -24,8 +26,8 @@ done
 
 # rename API/UI servers and Evergreen runner
 echo "Renaming API server..."
-mv bin/apiserver bin/evergreen_api_server
+mv $GOBIN/apiserver $GOBIN/evergreen_api_server
 echo "Renaming UI server..."
-mv bin/ui bin/evergreen_ui_server
+mv $GOBIN/ui $GOBIN/evergreen_ui_server
 echo "Renaming runner..."
-mv bin/runner bin/evergreen_runner
+mv $GOBIN/runner $GOBIN/evergreen_runner
