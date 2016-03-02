@@ -25,6 +25,7 @@
         <pre>[[eventLogObj.data.setup_log]]</pre>
       </div>
     </span>
+    <span ng-switch-when="HOST_TASK_FINISHED">Task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:'...']]</a> completed with status: <b>[[eventLogObj.data.task_status]]</b></span>
   </div>
   <div class="clearfix"></div>
 </div>

@@ -20,6 +20,7 @@ const (
 	EventHostRunningTaskCleared = "HOST_RUNNING_TASK_CLEARED"
 	EventHostTaskPidSet         = "HOST_TASK_PID_SET"
 	EventHostMonitorFlag        = "HOST_MONITOR_FLAG"
+	EventTaskFinished           = "HOST_TASK_FINISHED"
 )
 
 // implements EventData
@@ -27,13 +28,14 @@ type HostEventData struct {
 	// necessary for IsValid
 	ResourceType string `bson:"r_type" json:"resource_type"`
 
-	OldStatus string `bson:"o_s,omitempty" json:"old_status,omitempty"`
-	NewStatus string `bson:"n_s,omitempty" json:"new_status,omitempty"`
-	SetupLog  string `bson:"log,omitempty" json:"setup_log,omitempty"`
-	Hostname  string `bson:"hn,omitempty" json:"hostname,omitempty"`
-	TaskId    string `bson:"t_id,omitempty" json:"task_id,omitempty"`
-	TaskPid   string `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
-	MonitorOp string `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	OldStatus  string `bson:"o_s,omitempty" json:"old_status,omitempty"`
+	NewStatus  string `bson:"n_s,omitempty" json:"new_status,omitempty"`
+	SetupLog   string `bson:"log,omitempty" json:"setup_log,omitempty"`
+	Hostname   string `bson:"hn,omitempty" json:"hostname,omitempty"`
+	TaskId     string `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskPid    string `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	TaskStatus string `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	MonitorOp  string `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
 }
 
 func (self HostEventData) IsValid() bool {
