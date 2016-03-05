@@ -10,6 +10,9 @@ directives.patch.directive('patchCommitPanel', function() {
     link : function(scope, element, attrs) {
       scope.patchinfo = {};
       scope.basecommit = {};
+      if(attrs.hideDescription){
+        scope.hideDescription = true
+      }
       scope.$parent.$watch(attrs.basecommit, function(v) {
         scope.basecommit = v;
       });

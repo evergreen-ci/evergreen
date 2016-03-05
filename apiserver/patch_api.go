@@ -252,9 +252,24 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			tasks = append(tasks, t.Name)
 		}
 	}
+
+	var pairs []model.TVPair
+	for _, v := range patchDoc.BuildVariants {
+		for _, t := range patchDoc.Tasks {
+			if project.FindTaskForVariant(t, v) != nil {
+				pairs = append(pairs, model.TVPair{v, t})
+			}
+		}
+	}
+
 	// update variant and tasks to include dependencies
-	patchDoc.BuildVariants, patchDoc.Tasks = model.IncludePatchDependencies(
-		project, buildVariants, tasks)
+	pairs = model.IncludePatchDependencies(project, pairs)
+	for _, p := range pairs {
+		fmt.Println("pair is", p)
+	}
+
+	patchDoc.VariantsTasks = model.TVPairsToVariantTasks(pairs)
+	fmt.Printf("variantstasks is %#v\n", patchDoc.VariantsTasks)
 
 	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))

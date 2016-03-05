@@ -9,6 +9,7 @@ var mciModule = angular.module('MCI', [
   'directives.patch',
   'directives.spawn',
   'directives.events',
+  'directives.tristateCheckbox',
   'directives.svg',
   'directives.confirm',
   'mciServices.rest',
@@ -377,4 +378,7 @@ var mciModule = angular.module('MCI', [
   };
 
   return $time;
+}]).config(['$compileProvider', function ($compileProvider) {
+  //$compileProvider.debugInfoEnabled(false);
 }]);
+
