@@ -29,6 +29,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     'id': 'ppc_amd64',
     'display': 'PowerPC 64-bit'
   }, {
+    'id': 'linux_s390x',
+    'display': 'Linux zSeries'
+  }, {
     'id': 'windows_386',
     'display': 'Windows 32-bit'
   }, {
