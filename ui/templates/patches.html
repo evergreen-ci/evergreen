@@ -78,7 +78,7 @@ Evergreen - Patches
     </div>
 
     <ul ng-if="patch.Patch.Version">
-      <li ng-repeat="build in versionsMap[patch.Patch.Version].Builds" class="timeline-build">
+      <li ng-repeat="build in versionsMap[patch.Patch.Version].Builds | orderBy:'Build.display_name'" class="timeline-build">
         <a id="[[build.Build._id]]" class="build-link" ng-class="build.Build.tasks | buildStatus" ng-href="/build/[[build.Build._id]]">
           [[build.Build.display_name]]
         </a>
