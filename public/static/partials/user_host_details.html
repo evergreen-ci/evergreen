@@ -1,13 +1,15 @@
 <div class="panel">
   <div class="panel-heading">
-    <h2>
+    <h2 style="display:inline-block; padding-right:15px">
       <i class="fa fa-desktop" style="margin-right:10px"></i>Details
     </h2>
+      <a href="/host/[[host.id]]"> View Event Log... </a>
   </div>
   <div class="panel-body" style="min-height: 233px">
 
     <div class="entry">
-      <strong>ID:</strong> <span>[[curHostData.id]]</span>
+      <strong>ID:</strong> 
+      <span>[[curHostData.id]] </span>
     </div>
     <div class="entry">
       <strong>Started at:</strong> <span>[[curHostData.creation_time | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</span>
