@@ -70,7 +70,14 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// check that the resulting distro is valid
-	vErrs := validator.CheckDistro(&newDistro, &uis.Settings, false)
+	vErrs, err := validator.CheckDistro(&newDistro, &uis.Settings, false)
+	if err != nil {
+		message := fmt.Sprintf("error retrieving distroIds: %v", err)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+
 	if len(vErrs) != 0 {
 		for _, e := range vErrs {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(e.Error()))
@@ -159,7 +166,14 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 		d.Id = id
 	}
 
-	vErrs := validator.CheckDistro(&d, &uis.Settings, true)
+	vErrs, err := validator.CheckDistro(&d, &uis.Settings, true)
+	if err != nil {
+		message := fmt.Sprintf("error retrieving distroIds: %v", err)
+		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+
 	if len(vErrs) != 0 {
 		for _, e := range vErrs {
 			PushFlash(uis.CookieStore, r, w, NewErrorFlash(e.Error()))

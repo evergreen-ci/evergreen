@@ -56,10 +56,14 @@ func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Pro
 		}
 		// overwrite project fields with the project ref to disallow tracking a
 		// different project or doing other crazy things via config patches
-		errs := CheckProjectSyntax(project)
-		if len(errs) != 0 {
+		verrs, err := CheckProjectSyntax(project)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(verrs) != 0 {
 			var message string
-			for _, err := range errs {
+			for _, err := range verrs {
 				message += fmt.Sprintf("\n\t=> %v", err)
 			}
 			return nil, fmt.Errorf(message)

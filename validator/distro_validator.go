@@ -15,7 +15,6 @@ type distroValidator func(*distro.Distro, *evergreen.Settings) []ValidationError
 
 // Functions used to validate the syntax of a distro object.
 var distroSyntaxValidators = []distroValidator{
-	ensureUniqueId,
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
 	ensureValidExpansions,
@@ -23,21 +22,21 @@ var distroSyntaxValidators = []distroValidator{
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
 // a slice of any validation errors found.
-func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) []ValidationError {
-	// skip _id check for existing distro modifications.
-	if newDistro {
-		if err := populateDistroIds(); err != nil {
-			return []ValidationError{*err}
-		}
-	} else {
-		distroIds = []string{}
-	}
+func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]ValidationError, error) {
 
 	validationErrs := []ValidationError{}
+
+	// check ensureUniqueId separately and pass in distroIds list
+	distroIds, err := getDistroIds()
+	if err != nil {
+		return nil, err
+	}
+	validationErrs = append(validationErrs, ensureUniqueId(d, s, distroIds)...)
+
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(d, s)...)
 	}
-	return validationErrs
+	return validationErrs, nil
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
@@ -114,7 +113,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 }
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
-func ensureUniqueId(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+func ensureUniqueId(d *distro.Distro, s *evergreen.Settings, distroIds []string) []ValidationError {
 	if util.SliceContains(distroIds, d.Id) {
 		return []ValidationError{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}

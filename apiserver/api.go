@@ -909,7 +909,11 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		as.WriteJSON(w, http.StatusBadRequest, []validator.ValidationError{validationErr})
 		return
 	}
-	syntaxErrs := validator.CheckProjectSyntax(project)
+	syntaxErrs, err := validator.CheckProjectSyntax(project)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	semanticErrs := validator.CheckProjectSemantics(project)
 	if len(syntaxErrs)+len(semanticErrs) != 0 {
 		as.WriteJSON(w, http.StatusBadRequest, append(syntaxErrs, semanticErrs...))

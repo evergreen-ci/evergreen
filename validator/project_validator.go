@@ -26,12 +26,6 @@ type ValidationError struct {
 	Message string               `json:"message"`
 }
 
-// mapping of all valid distros
-// TODO stop using a package variable for this
-var (
-	distroIds []string
-)
-
 // Functions used to validate the syntax of a project configuration file. Any
 // validation errors here for remote configuration files are fatal and will
 // cause stubs to be created for the project.
@@ -46,7 +40,6 @@ var projectSyntaxValidators = []projectValidator{
 	checkAllDependenciesSpec,
 	validateProjectTaskNames,
 	validateProjectTaskIdsAndTags,
-	ensureReferentialIntegrity,
 }
 
 // Functions used to validate the semantics of a project configuration file.
@@ -61,30 +54,23 @@ func (vr ValidationError) Error() string {
 }
 
 // create a slice of all valid distro names
-func populateDistroIds() *ValidationError {
+func getDistroIds() ([]string, error) {
 	// create a slice of all known distros
 	distros, err := distro.Find(distro.All)
 	if err != nil {
-		return &ValidationError{
-			Message: fmt.Sprintf("error finding distros: %v", err),
-			Level:   Error,
-		}
+		return nil, err
 	}
-	distroIds = []string{}
+	distroIds := []string{}
 	for _, d := range distros {
 		if !util.SliceContains(distroIds, d.Id) {
 			distroIds = append(distroIds, d.Id)
 		}
 	}
-	return nil
+	return distroIds, nil
 }
 
 // verify that the project configuration semantics is valid
 func CheckProjectSemantics(project *model.Project) []ValidationError {
-
-	if err := populateDistroIds(); err != nil {
-		return []ValidationError{*err}
-	}
 
 	validationErrs := []ValidationError{}
 	for _, projectSemanticValidator := range projectSemanticValidators {
@@ -95,18 +81,21 @@ func CheckProjectSemantics(project *model.Project) []ValidationError {
 }
 
 // verify that the project configuration syntax is valid
-func CheckProjectSyntax(project *model.Project) []ValidationError {
-
-	if err := populateDistroIds(); err != nil {
-		return []ValidationError{*err}
-	}
+func CheckProjectSyntax(project *model.Project) ([]ValidationError, error) {
 
 	validationErrs := []ValidationError{}
 	for _, projectSyntaxValidator := range projectSyntaxValidators {
 		validationErrs = append(validationErrs,
 			projectSyntaxValidator(project)...)
 	}
-	return validationErrs
+
+	// get distroIds for ensureReferentialIntegrity validation
+	distroIds, err := getDistroIds()
+	if err != nil {
+		return nil, err
+	}
+	validationErrs = append(validationErrs, ensureReferentialIntegrity(project, distroIds)...)
+	return validationErrs, nil
 }
 
 // ensure that if any task spec references 'model.AllDependencies', it
@@ -249,7 +238,6 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 // fields required for any buildvariant definition are present
 func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
-
 	if len(project.BuildVariants) == 0 {
 		return []ValidationError{
 			ValidationError{
@@ -289,9 +277,8 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 				ValidationError{
 					Message: fmt.Sprintf("buildvariant '%v' in project '%v' "+
 						"must either specify run_on field or have every task "+
-						"specify a distro.\nValid distros include: \n\t- %v",
-						buildVariant.Name, project.Identifier, strings.Join(
-							distroIds, "\n\t- ")),
+						"specify a distro.",
+						buildVariant.Name, project.Identifier),
 				},
 			)
 		}
@@ -330,7 +317,7 @@ func ensureHasNecessaryProjectFields(project *model.Project) []ValidationError {
 // 1. a referenced task within a buildvariant task object exists in
 // the set of project tasks
 // 2. any referenced distro exists within the current setting's distro directory
-func ensureReferentialIntegrity(project *model.Project) []ValidationError {
+func ensureReferentialIntegrity(project *model.Project, distroIds []string) []ValidationError {
 	errs := []ValidationError{}
 	// create a set of all the task names
 	allTaskNames := map[string]bool{}

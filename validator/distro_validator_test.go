@@ -32,8 +32,9 @@ func TestCheckDistro(t *testing.T) {
 					"mount_points":   nil,
 				},
 			}
-
-			So(CheckDistro(d, conf, true), ShouldResemble, []ValidationError{})
+			verrs, err := CheckDistro(d, conf, true)
+			So(err, ShouldBeNil)
+			So(verrs, ShouldResemble, []ValidationError{})
 		})
 
 		Convey("if a new distro fails a validation test, an error should be returned", func() {
@@ -50,7 +51,9 @@ func TestCheckDistro(t *testing.T) {
 			// simulate duplicate id
 			dupe := distro.Distro{Id: "a"}
 			So(dupe.Insert(), ShouldBeNil)
-			So(CheckDistro(d, conf, true), ShouldNotResemble, []ValidationError{})
+			verrs, err := CheckDistro(d, conf, true)
+			So(err, ShouldBeNil)
+			So(verrs, ShouldNotResemble, []ValidationError{})
 		})
 
 		Convey("if an existing distro passes all of the validation tests, no errors should be returned", func() {
@@ -64,8 +67,9 @@ func TestCheckDistro(t *testing.T) {
 					"mount_points":   nil,
 				},
 			}
-
-			So(CheckDistro(d, conf, false), ShouldResemble, []ValidationError{})
+			verrs, err := CheckDistro(d, conf, false)
+			So(err, ShouldBeNil)
+			So(verrs, ShouldResemble, []ValidationError{})
 		})
 
 		Convey("if an existing distro fails a validation test, an error should be returned", func() {
@@ -79,8 +83,10 @@ func TestCheckDistro(t *testing.T) {
 					"mount_points":   nil,
 				},
 			}
+			verrs, err := CheckDistro(d, conf, false)
+			So(err, ShouldBeNil)
+			So(verrs, ShouldNotResemble, []ValidationError{})
 			// empty ami for provider
-			So(CheckDistro(d, conf, false), ShouldNotResemble, []ValidationError{})
 		})
 
 		Reset(func() {
@@ -90,16 +96,16 @@ func TestCheckDistro(t *testing.T) {
 }
 
 func TestEnsureUniqueId(t *testing.T) {
+
 	Convey("When validating a distros' ids...", t, func() {
+		distroIds := []string{"a", "b", "c"}
 		Convey("if a distro has a duplicate id, an error should be returned", func() {
-			distroIds = []string{"a", "b", "c"}
-			err := ensureUniqueId(&distro.Distro{Id: "c"}, conf)
+			err := ensureUniqueId(&distro.Distro{Id: "c"}, conf, distroIds)
 			So(err, ShouldNotResemble, []ValidationError{})
 			So(len(err), ShouldEqual, 1)
 		})
 		Convey("if a distro doesn't have a duplicate id, no error should be returned", func() {
-			distroIds = []string{"a", "b", "c"}
-			err := ensureUniqueId(&distro.Distro{Id: "d"}, conf)
+			err := ensureUniqueId(&distro.Distro{Id: "d"}, conf, distroIds)
 			So(err, ShouldBeNil)
 		})
 	})

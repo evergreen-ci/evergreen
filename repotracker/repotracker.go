@@ -381,13 +381,16 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 	}
 
 	// check if project config is valid
-	errs := validator.CheckProjectSyntax(project)
-	if len(errs) != 0 {
+	verrs, err := validator.CheckProjectSyntax(project)
+	if err != nil {
+		return nil, err
+	}
+	if len(verrs) != 0 {
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user
 		var errMessage, warnMessage string
 		var projectErrors, projectWarnings []string
-		for _, e := range errs {
+		for _, e := range verrs {
 			if e.Level == validator.Warning {
 				warnMessage += fmt.Sprintf("\n\t=> %v", e)
 				projectWarnings = append(projectWarnings, e.Error())

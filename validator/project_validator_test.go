@@ -748,6 +748,7 @@ func TestCheckTaskCommands(t *testing.T) {
 
 func TestEnsureReferentialIntegrity(t *testing.T) {
 	Convey("When validating a project", t, func() {
+		distroIds := []string{"rhel55"}
 		Convey("an error should be thrown if a referenced task for a "+
 			"buildvariant does not exist", func() {
 			project := &model.Project{
@@ -765,9 +766,9 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project), ShouldNotResemble,
+			So(ensureReferentialIntegrity(project, distroIds), ShouldNotResemble,
 				[]ValidationError{})
-			So(len(ensureReferentialIntegrity(project)), ShouldEqual, 1)
+			So(len(ensureReferentialIntegrity(project, distroIds)), ShouldEqual, 1)
 		})
 
 		Convey("no error should be thrown if a referenced task for a "+
@@ -785,7 +786,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project), ShouldResemble,
+			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble,
 				[]ValidationError{})
 		})
 
@@ -799,12 +800,10 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project), ShouldNotResemble,
+			So(ensureReferentialIntegrity(project, distroIds), ShouldNotResemble,
 				[]ValidationError{})
-			So(len(ensureReferentialIntegrity(project)), ShouldEqual, 1)
+			So(len(ensureReferentialIntegrity(project, distroIds)), ShouldEqual, 1)
 		})
-
-		distroIds = []string{"rhel55"}
 
 		Convey("no error should be thrown if a referenced distro for a "+
 			"buildvariant does exist", func() {
@@ -816,7 +815,7 @@ func TestEnsureReferentialIntegrity(t *testing.T) {
 					},
 				},
 			}
-			So(ensureReferentialIntegrity(project), ShouldResemble, []ValidationError{})
+			So(ensureReferentialIntegrity(project, distroIds), ShouldResemble, []ValidationError{})
 		})
 	})
 }
@@ -1220,7 +1219,9 @@ func TestCheckProjectSyntax(t *testing.T) {
 
 			project, err := model.FindProject("", projectRef)
 			So(err, ShouldBeNil)
-			So(CheckProjectSyntax(project), ShouldResemble, []ValidationError{})
+			verrs, err := CheckProjectSyntax(project)
+			So(err, ShouldBeNil)
+			So(verrs, ShouldResemble, []ValidationError{})
 		})
 
 		Reset(func() {
