@@ -5,6 +5,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -26,86 +27,103 @@ type PatchAPIResponse struct {
 
 // PatchAPIRequest in the input struct with which we process patch requests
 type PatchAPIRequest struct {
-	ProjectFileName string
+	ProjectId string
 	ModuleName      string
 	Githash         string
 	PatchContent    string
 	BuildVariants   []string
 	Tasks           []string
+	Description     string
 }
 
-// PatchMetadata stores relevant patch information that is not
-// strictly part of the patch data.
-type PatchMetadata struct {
-	Githash       string
-	Project       *model.Project
-	Module        *model.Module
-	BuildVariants []string
-	Summaries     []thirdparty.Summary
-}
-
-// Validate checks an API request to see if it is safe and sane.
-// Returns the relevant patch metadata and any errors that occur.
-func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
+// CreatePatch checks an API request to see if it is safe and sane.
+// Returns the relevant patch metadata, the patch document, and any errors that occur.
+func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
+	settings *evergreen.Settings) (*model.Project, *patch.Patch, error) {
 	var repoOwner, repo string
 	var module *model.Module
-	projectRef, err := model.FindOneProjectRef(pr.ProjectFileName)
+
+	projectRef, err := model.FindOneProjectRef(pr.ProjectId)
 	if err != nil {
-		return nil, fmt.Errorf("Could not find project ref %v : %v", pr.ProjectFileName, err)
+		return nil, nil, fmt.Errorf("Could not find project ref %v : %v", pr.ProjectId, err)
 	}
 
 	repoOwner = projectRef.Owner
 	repo = projectRef.Repo
 
-	// validate the project file
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		return nil, fmt.Errorf("Could not find project file %v: %v",
-			pr.ProjectFileName, err)
+	if len(pr.Githash) != 40 {
+		return nil, nil, fmt.Errorf("invalid githash")
 	}
-	if project == nil {
-		return nil, fmt.Errorf("No such project file named %v", pr.ProjectFileName)
+
+	gitCommit, err := thirdparty.GetCommitEvent(oauthToken, repoOwner, repo, pr.Githash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not find base revision %v for project %v: %v",
+			pr.Githash, projectRef.Identifier, err)
+
+	}
+	if gitCommit == nil {
+		return nil, nil, fmt.Errorf("commit hash %v doesn't seem to exist", pr.Githash)
+	}
+
+	gitOutput, err := thirdparty.GitApplyNumstat(pr.PatchContent)
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't validate patch: %v", err)
+	}
+	if gitOutput == nil {
+		return nil, nil, fmt.Errorf("couldn't validate patch: git apply --numstat returned empty")
+	}
+
+	summaries, err := thirdparty.ParseGitSummary(gitOutput)
+	if err != nil {
+		return nil, nil, fmt.Errorf("couldn't validate patch: %v", err)
+	}
+
+	if len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "" {
+		return nil, nil, fmt.Errorf("no buildvariants specified")
+	}
+
+	createTime := time.Now()
+
+	// create a new object ID to use as reference for the patch data
+	patchFileId := bson.NewObjectId().Hex()
+	patchDoc := &patch.Patch{
+		Id:            bson.NewObjectId(),
+		Description:   pr.Description,
+		Author:        dbUser.Id,
+		Project:       pr.ProjectId,
+		Githash:       pr.Githash,
+		CreateTime:    createTime,
+		Status:        evergreen.PatchCreated,
+		BuildVariants: pr.BuildVariants,
+		Tasks:         pr.Tasks,
+		Patches: []patch.ModulePatch{
+			patch.ModulePatch{
+				ModuleName: "",
+				Githash:    pr.Githash,
+				PatchSet: patch.PatchSet{
+					Patch:       pr.PatchContent,
+					PatchFileId: patchFileId,
+					Summary:     summaries,
+				},
+			},
+		},
+	}
+
+	// Get and validate patched config and add it to the patch document
+	project, err := validator.GetPatchedProject(patchDoc, settings)
+	if err != nil {
+		return nil, nil, fmt.Errorf("invalid patched config: %v", err)
 	}
 
 	if pr.ModuleName != "" {
 		// is there a module? validate it.
 		module, err = project.GetModuleByName(pr.ModuleName)
 		if err != nil {
-			return nil, fmt.Errorf("could not find module %v: %v", pr.ModuleName, err)
+			return nil, nil, fmt.Errorf("could not find module %v: %v", pr.ModuleName, err)
 		}
 		if module == nil {
-			return nil, fmt.Errorf("no module named %v", pr.ModuleName)
+			return nil, nil, fmt.Errorf("no module named %v", pr.ModuleName)
 		}
-		repoOwner, repo = module.GetRepoOwnerAndName()
-	}
-
-	if len(pr.Githash) != 40 {
-		return nil, fmt.Errorf("invalid githash")
-	}
-	gitCommit, err := thirdparty.GetCommitEvent(oauthToken, repoOwner, repo, pr.Githash)
-	if err != nil {
-		return nil, fmt.Errorf("could not find base revision %v for project %v: %v",
-			pr.Githash, projectRef.Identifier, err)
-	}
-	if gitCommit == nil {
-		return nil, fmt.Errorf("commit hash %v doesn't seem to exist", pr.Githash)
-	}
-
-	gitOutput, err := thirdparty.GitApplyNumstat(pr.PatchContent)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't validate patch: %v", err)
-	}
-	if gitOutput == nil {
-		return nil, fmt.Errorf("couldn't validate patch: git apply --numstat returned empty")
-	}
-
-	summaries, err := thirdparty.ParseGitSummary(gitOutput)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't validate patch: %v", err)
-	}
-
-	if len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "" {
-		return nil, fmt.Errorf("no buildvariants specified")
 	}
 
 	// verify that all variants exists
@@ -115,7 +133,7 @@ func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
 		}
 		bv := project.FindBuildVariant(buildVariant)
 		if bv == nil {
-			return nil, fmt.Errorf("No such buildvariant: %v", buildVariant)
+			return nil, nil, fmt.Errorf("No such buildvariant: %v", buildVariant)
 		}
 	}
 
@@ -126,10 +144,133 @@ func (pr *PatchAPIRequest) Validate(oauthToken string) (*PatchMetadata, error) {
 		}
 		bv := project.FindProjectTask(tName)
 		if bv == nil {
-			return nil, fmt.Errorf("No such task: %v", tName)
+			return nil, nil, fmt.Errorf("No such task: %v", tName)
 		}
 	}
-	return &PatchMetadata{pr.Githash, project, module, pr.BuildVariants, summaries}, nil
+
+	// write the patch content into a GridFS file under a new ObjectId after validating.
+	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(pr.PatchContent))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to write patch file to db: %v", err)
+	}
+
+
+	// add the project config
+	projectYamlBytes, err := yaml.Marshal(project)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error marshalling patched config: %v", err)
+	}
+
+	// set the patch number based on patch author
+	patchDoc.PatchNumber, err = dbUser.IncPatchNumber()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error computing patch num %v", err)
+	}
+	patchDoc.PatchedConfig = string(projectYamlBytes)
+
+	patchDoc.ClearPatchData()
+
+	return project, patchDoc, nil
+}
+
+// submitPatch creates the Patch document, adds the patched project config to it,
+// and saves the patches to GridFS to be retrieved
+func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
+	dbUser := MustHaveUser(r)
+	var apiRequest PatchAPIRequest
+	var finalize bool
+	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+		patchContent := r.FormValue("patch")
+		if patchContent == "" {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
+			return
+		}
+		apiRequest = PatchAPIRequest{
+			ProjectId: r.FormValue("project"),
+			ModuleName:      r.FormValue("module"),
+			Githash:         r.FormValue("githash"),
+			PatchContent:    r.FormValue("patch"),
+			BuildVariants:   strings.Split(r.FormValue("buildvariants"), ","),
+			Description:     r.FormValue("desc"),
+		}
+		finalize = strings.ToLower(r.FormValue("finalize")) == "true"
+	} else {
+		data := struct {
+			Description string   `json:"desc"`
+			Project     string   `json:"project"`
+			Patch       string   `json:"patch"`
+			Githash     string   `json:"githash"`
+			Variants    string   `json:"buildvariants"`
+			Tasks       []string `json:"tasks"`
+			Finalize    bool     `json:"finalize"`
+		}{}
+		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+			as.LoggedError(w, r, http.StatusBadRequest, err)
+			return
+		}
+		if len(data.Patch) > patch.SizeLimit {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Patch is too large."))
+		}
+		if len(data.Patch) == 0 {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
+			return
+		}
+		finalize = data.Finalize
+
+		apiRequest = PatchAPIRequest{
+			ProjectId: data.Project,
+			ModuleName:      r.FormValue("module"),
+			Githash:         data.Githash,
+			PatchContent:    data.Patch,
+			BuildVariants:   strings.Split(data.Variants, ","),
+			Tasks:           data.Tasks,
+			Description:     data.Description,
+		}
+	}
+
+	project, patchDoc, err := apiRequest.CreatePatch(as.Settings.Credentials["github"], dbUser, &as.Settings)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
+		return
+	}
+
+
+
+	//expand tasks and build variants and include dependencies
+	buildVariants := patchDoc.BuildVariants
+	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
+		buildVariants = make([]string, 0)
+		for _, buildVariant := range project.BuildVariants {
+			if buildVariant.Disabled {
+				continue
+			}
+			buildVariants = append(buildVariants, buildVariant.Name)
+		}
+	}
+	tasks := patchDoc.Tasks
+	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
+		tasks = make([]string, 0)
+		for _, t := range project.Tasks {
+			tasks = append(tasks, t.Name)
+		}
+	}
+	// update variant and tasks to include dependencies
+	patchDoc.BuildVariants, patchDoc.Tasks = model.IncludePatchDependencies(
+		project, buildVariants, tasks)
+
+	if err = patchDoc.Insert(); err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))
+		return
+	}
+
+	if finalize {
+		if _, err = model.FinalizePatch(patchDoc, &as.Settings); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
+	}
+
+	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
 }
 
 // Get the patch with the specified request it
@@ -156,213 +297,6 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 	return existingPatch, nil
 }
 
-func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
-	var apiRequest PatchAPIRequest
-	var projId, description string
-	var finalize bool
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
-		patchContent := r.FormValue("patch")
-		if patchContent == "" {
-			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
-			return
-		}
-		apiRequest = PatchAPIRequest{
-			ProjectFileName: r.FormValue("project"),
-			ModuleName:      r.FormValue("module"),
-			Githash:         r.FormValue("githash"),
-			PatchContent:    r.FormValue("patch"),
-			BuildVariants:   strings.Split(r.FormValue("buildvariants"), ","),
-		}
-		projId = r.FormValue("project")
-		description = r.FormValue("desc")
-		finalize = strings.ToLower(r.FormValue("finalize")) == "true"
-	} else {
-		data := struct {
-			Description string   `json:"desc"`
-			Project     string   `json:"project"`
-			Patch       string   `json:"patch"`
-			Githash     string   `json:"githash"`
-			Variants    string   `json:"buildvariants"`
-			Tasks       []string `json:"tasks"`
-			Finalize    bool     `json:"finalize"`
-		}{}
-		if err := util.ReadJSONInto(r.Body, &data); err != nil {
-			as.LoggedError(w, r, http.StatusBadRequest, err)
-			return
-		}
-		if len(data.Patch) > patch.SizeLimit {
-			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Patch is too large."))
-		}
-		if len(data.Patch) == 0 {
-			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
-			return
-		}
-		description = data.Description
-		projId = data.Project
-		finalize = data.Finalize
-
-		apiRequest = PatchAPIRequest{
-			ProjectFileName: data.Project,
-			ModuleName:      r.FormValue("module"),
-			Githash:         data.Githash,
-			PatchContent:    data.Patch,
-			BuildVariants:   strings.Split(data.Variants, ","),
-			Tasks:           data.Tasks,
-		}
-	}
-
-	projectRef, err := model.FindOneProjectRef(projId)
-	if err != nil {
-		message := fmt.Errorf("Error locating project ref '%v': %v",
-			projId, err)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
-		return
-	}
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		message := fmt.Errorf("Error locating project '%v' from '%v': %v",
-			projId, as.Settings.ConfigDir, err)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
-		return
-	}
-
-	if project == nil {
-		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("project %v not found", projId))
-		return
-	}
-
-	patchMetadata, err := apiRequest.Validate(as.Settings.Credentials["github"])
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
-		return
-	}
-
-	if patchMetadata == nil {
-		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("patch metadata is empty"))
-		return
-	}
-
-	if apiRequest.ModuleName != "" {
-		as.WriteJSON(w, http.StatusBadRequest,
-			"module not allowed when creating new patches (must be added in a subsequent request)")
-		return
-	}
-	patchProjectRef, err := model.FindOneProjectRef(patchMetadata.Project.Identifier)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid projectRef: %v", err))
-		return
-	}
-	if patchProjectRef == nil {
-		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("Empty patch project Ref"))
-		return
-	}
-
-	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials["github"],
-		patchProjectRef.Owner,
-		patchProjectRef.Repo,
-		apiRequest.Githash)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if commitInfo == nil {
-		as.WriteJSON(w, http.StatusBadRequest, "That commit doesn't seem to exist.")
-		return
-	}
-
-	createTime := time.Now()
-
-	// create a new object ID to use as reference for the patch data
-	patchFileId := bson.NewObjectId().Hex()
-
-	patchDoc := &patch.Patch{
-		Id:            bson.NewObjectId(),
-		Description:   description,
-		Author:        user.Id,
-		Project:       apiRequest.ProjectFileName,
-		Githash:       apiRequest.Githash,
-		CreateTime:    createTime,
-		Status:        evergreen.PatchCreated,
-		BuildVariants: apiRequest.BuildVariants,
-		Tasks:         apiRequest.Tasks,
-		Patches: []patch.ModulePatch{
-			patch.ModulePatch{
-				ModuleName: "",
-				Githash:    apiRequest.Githash,
-				PatchSet: patch.PatchSet{
-					PatchFileId: patchFileId,
-					Summary:     patchMetadata.Summaries,
-				},
-			},
-		},
-	}
-
-	// write the patch content into a GridFS file under a new ObjectId.
-	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(apiRequest.PatchContent))
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("failed to write patch file to db: %v", err))
-		return
-	}
-
-	// Get and validate patched config and add it to the patch document
-	patchedProject, err := validator.GetPatchedProject(patchDoc, &as.Settings)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("invalid patched config: %v", err))
-		return
-	}
-
-	projectYamlBytes, err := yaml.Marshal(patchedProject)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error marshalling patched config: %v", err))
-		return
-	}
-
-	// set the patch number based on patch author
-	patchDoc.PatchNumber, err = user.IncPatchNumber()
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error computing patch num %v", err))
-		return
-	}
-	patchDoc.PatchedConfig = string(projectYamlBytes)
-	patchDoc.ClearPatchData()
-
-	//expand tasks and build variants and include dependencies
-	buildVariants := patchDoc.BuildVariants
-	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-		buildVariants = make([]string, 0)
-		for _, buildVariant := range patchedProject.BuildVariants {
-			if buildVariant.Disabled {
-				continue
-			}
-			buildVariants = append(buildVariants, buildVariant.Name)
-		}
-	}
-	tasks := patchDoc.Tasks
-	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-		tasks = make([]string, 0)
-		for _, t := range patchedProject.Tasks {
-			tasks = append(tasks, t.Name)
-		}
-	}
-	// update variant and tasks to include dependencies
-	patchDoc.BuildVariants, patchDoc.Tasks = model.IncludePatchDependencies(
-		project, buildVariants, tasks)
-
-	if err = patchDoc.Insert(); err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))
-		return
-	}
-
-	if finalize {
-		if _, err = model.FinalizePatch(patchDoc, &as.Settings); err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-	}
-
-	as.WriteJSON(w, http.StatusCreated, PatchAPIResponse{Patch: patchDoc})
-}
 
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
@@ -471,27 +405,27 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 // listPatches returns a user's "n" most recent patches.
 func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
+	dbUser := MustHaveUser(r)
 	n, err := util.GetIntValue(r, "n", 0)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("cannot read value n: %v", err))
 		return
 	}
-	query := patch.ByUser(user.Id).Sort([]string{"-" + patch.CreateTimeKey})
+	query := patch.ByUser(dbUser.Id).Sort([]string{"-" + patch.CreateTimeKey})
 	if n > 0 {
 		query = query.Limit(n)
 	}
 	patches, err := patch.Find(query)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
-			fmt.Errorf("error finding patches for user %v: %v", user.Id, err))
+			fmt.Errorf("error finding patches for user %v: %v", dbUser.Id, err))
 		return
 	}
 	as.WriteJSON(w, http.StatusOK, patches)
 }
 
 func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request) {
-	user := MustHaveUser(r)
+	dbUser := MustHaveUser(r)
 
 	p, err := getPatchFromRequest(r)
 	if err != nil {
@@ -554,7 +488,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 
 		as.WriteJSON(w, http.StatusOK, "patch finalized")
 	case "cancel":
-		err = model.CancelPatch(p, user.Id)
+		err = model.CancelPatch(p, dbUser.Id)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

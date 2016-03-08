@@ -258,11 +258,6 @@ func getDeps(task string, variant string, p *Project) ([]string, []string, bool)
 // with the patch applied
 func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 	*Project, error) {
-	// Dereference all the patch data so that we can use it to write temp files
-	err := p.FetchPatchFiles()
-	if err != nil {
-		return nil, err
-	}
 	for _, patchPart := range p.Patches {
 		// we only need to patch the main project and not any other modules
 		if patchPart.ModuleName != "" {
