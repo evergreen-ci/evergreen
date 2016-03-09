@@ -131,8 +131,8 @@ func (ac *APIClient) FinalizePatch(patchId string) error {
 }
 
 // GetPatches requests a list of the user's patches from the API and returns them as a list
-func (ac *APIClient) GetPatches() ([]patch.Patch, error) {
-	resp, err := ac.get("patches/mine", nil)
+func (ac *APIClient) GetPatches(n int) ([]patch.Patch, error) {
+	resp, err := ac.get(fmt.Sprintf("patches/mine?n=%v", n), nil)
 	if err != nil {
 		return nil, err
 	}

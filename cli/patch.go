@@ -38,6 +38,8 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 {{end}}
 `))
 
+var defaultPatchesReturned = 5
+
 type localDiff struct {
 	fullPatch    string
 	patchSummary string
@@ -60,6 +62,7 @@ type ListPatchesCommand struct {
 	Variants    []string `short:"v" long:"variants" description:"variants to run the patch on. may be specified multiple times, or use the value 'all'"`
 	PatchId     string   `short:"i" description:"show details for only the patch with this ID"`
 	ShowSummary bool     `short:"s" long:"show-summary" description:"show a summary of the diff for each patch"`
+	Number      *int     `short:"n" long:"number" description:"number of patches to show (0 for all patches)"`
 }
 
 type ListCommand struct {
@@ -145,8 +148,10 @@ func (lpc *ListPatchesCommand) Execute(args []string) error {
 		return err
 	}
 	notifyUserUpdate(ac)
-
-	patches, err := ac.GetPatches()
+	if lpc.Number == nil {
+		lpc.Number = &defaultPatchesReturned
+	}
+	patches, err := ac.GetPatches(*lpc.Number)
 	if err != nil {
 		return err
 	}

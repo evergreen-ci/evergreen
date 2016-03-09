@@ -469,9 +469,19 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// listPatches returns a user's "n" most recent patches.
 func (as *APIServer) listPatches(w http.ResponseWriter, r *http.Request) {
 	user := MustHaveUser(r)
-	patches, err := patch.Find(patch.ByUser(user.Id))
+	n, err := util.GetIntValue(r, "n", 0)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("cannot read value n: %v", err))
+		return
+	}
+	query := patch.ByUser(user.Id).Sort([]string{"-" + patch.CreateTimeKey})
+	if n > 0 {
+		query = query.Limit(n)
+	}
+	patches, err := patch.Find(query)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError,
 			fmt.Errorf("error finding patches for user %v: %v", user.Id, err))
