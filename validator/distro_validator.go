@@ -23,13 +23,15 @@ var distroSyntaxValidators = []distroValidator{
 // CheckDistro checks if the distro configuration syntax is valid. Returns
 // a slice of any validation errors found.
 func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]ValidationError, error) {
-
 	validationErrs := []ValidationError{}
-
-	// check ensureUniqueId separately and pass in distroIds list
-	distroIds, err := getDistroIds()
-	if err != nil {
-		return nil, err
+	distroIds := []string{}
+	var err error
+	if newDistro {
+		// check ensureUniqueId separately and pass in distroIds list
+		distroIds, err = getDistroIds()
+		if err != nil {
+			return nil, err
+		}
 	}
 	validationErrs = append(validationErrs, ensureUniqueId(d, s, distroIds)...)
 
