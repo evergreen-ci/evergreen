@@ -64,6 +64,7 @@
 
         $('.log-line').each(function(i, el) {
           $(el).html(ansi_up.ansi_to_html($(el).html()));
+          $(el).html(ansi_up.linkify($(el).html()));
         });
       });
     </script>

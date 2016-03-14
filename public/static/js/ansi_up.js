@@ -50,7 +50,7 @@
     };
 
     Ansi_Up.prototype.linkify = function (txt) {
-      return txt.replace(/(https?:\/\/[^\s]+)/gm, function(str) {
+      return txt.replace(/(http|https):\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:\/~\+#]*[\w\-\@?^=%&amp;\/~\+#])?/ig, function(str) {
         return "<a href=\"" + str + "\">" + str + "</a>";
       });
     };
