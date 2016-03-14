@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"log"
@@ -40,11 +41,15 @@ type (
 		Project    *model.Project
 		ProjectRef *model.ProjectRef
 
-		// A list of all available projects. If user is logged in, will include private projects.
-		AllProjects []model.ProjectRef
+		// A list of all available projects, with only fields necessary for displaying project names.
+		// If user is logged in, will include private projects.
+		AllProjects []UIProjectFields
 
 		// Determining whether or not to redirect during authentication
 		AuthRedirect bool
+
+		// Determines whether or not a user is an admin for any project of all projectRefs
+		IsAdmin bool
 	}
 )
 
@@ -94,10 +99,10 @@ func MustHaveUser(r *http.Request) *user.DBUser {
 }
 
 // ToPluginContext creates a UIContext from the projectContext data.
-func (pc projectContext) ToPluginContext(settings evergreen.Settings, user *user.DBUser) plugin.UIContext {
+func (pc projectContext) ToPluginContext(settings evergreen.Settings, dbUser *user.DBUser) plugin.UIContext {
 	return plugin.UIContext{
 		Settings:   settings,
-		User:       user,
+		User:       dbUser,
 		Task:       pc.Task,
 		Build:      pc.Build,
 		Version:    pc.Version,
@@ -121,6 +126,24 @@ func withPluginUser(next http.Handler) http.HandlerFunc {
 	}
 }
 
+// requireAdmin takes in a request handler and returns a wrapped version which verifies that requests are
+// authenticated and that the user is either a super user or is part of the project context's project's admins.
+func (uis *UIServer) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// get the project context
+		projCtx := MustHaveProjectContext(r)
+		if dbUser := GetUser(r); dbUser != nil {
+			if uis.isSuperUser(dbUser) || isAdmin(dbUser, projCtx.ProjectRef) {
+				next(w, r)
+				return
+			}
+		}
+
+		uis.RedirectToLogin(w, r)
+		return
+	}
+}
+
 // requireUser takes a request handler and returns a wrapped version which verifies that requests
 // request are authenticated before proceeding. For a request which is not authenticated, it will
 // be redirected to the login page instead.
@@ -139,7 +162,7 @@ func (uis *UIServer) requireUser(next http.HandlerFunc) http.HandlerFunc {
 // request will be redirected to the login page instead.
 func (uis *UIServer) requireSuperUser(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if len(uis.Settings.SuperUsers) == 0 { // All users are superusers (default)
+		if len(uis.Settings.SuperUsers) == 0 {
 			f := uis.requireUser(next) // Still must be user to proceed
 			f(w, r)
 			return
@@ -166,16 +189,22 @@ func (uis *UIServer) isSuperUser(u *user.DBUser) bool {
 	if u == nil {
 		return false
 	}
-	if len(uis.Settings.SuperUsers) == 0 { // All users are superusers (default)
+	if util.SliceContains(uis.Settings.SuperUsers, u.Id) ||
+		len(uis.Settings.SuperUsers) == 0 {
 		return true
 	}
-	for _, id := range uis.Settings.SuperUsers {
-		if id == u.Id {
-			return true
-		}
-	}
+
 	return false
 
+}
+
+// isAdmin returns false if the user is nil or if its id is not
+// located in ProjectRef's Admins field.
+func isAdmin(u *user.DBUser, project *model.ProjectRef) bool {
+	if u == nil {
+		return false
+	}
+	return util.SliceContains(project.Admins, u.Id)
 }
 
 // RedirectToLogin forces a redirect to the login page. The redirect param is set on the query
@@ -271,19 +300,28 @@ func (pc *projectContext) populateTaskBuildVersion(taskId, buildId, versionId st
 
 // populateProjectRefs loads all project refs into the context. If includePrivate is true,
 // all available projects will be included, otherwise only public projects will be loaded.
-func (pc *projectContext) populateProjectRefs(includePrivate bool) error {
+// Sets IsAdmin to true if the user id is located in a project's admin list.
+func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, dbUser *user.DBUser) error {
 	allProjs, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
 		return err
 	}
-	pc.AllProjects = make([]model.ProjectRef, 0, len(allProjs))
+	pc.AllProjects = make([]UIProjectFields, 0, len(allProjs))
 	// User is not logged in, so only include public projects.
 	for _, p := range allProjs {
 		if !p.Enabled {
 			continue
 		}
 		if !p.Private || includePrivate {
-			pc.AllProjects = append(pc.AllProjects, p)
+			uiProj := UIProjectFields{
+				DisplayName: p.DisplayName,
+				Identifier:  p.Identifier,
+			}
+			pc.AllProjects = append(pc.AllProjects, uiProj)
+		}
+
+		if includePrivate && (isSuperUser || isAdmin(dbUser, &p)) {
+			pc.IsAdmin = true
 		}
 	}
 	return nil
@@ -323,7 +361,7 @@ func (pc *projectContext) populatePatch(patchId string) error {
 // This is done by reading in specific variables and inferring other required
 // context variables when necessary (e.g. loading a project based on the task).
 func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request) (projectContext, error) {
-	user := GetUser(r)
+	dbUser := GetUser(r)
 	vars := mux.Vars(r)
 
 	proj := &projectContext{}
@@ -333,7 +371,8 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 
-	err := proj.populateProjectRefs(user != nil)
+	isSuperUser := (dbUser != nil) && uis.isSuperUser(dbUser)
+	err := proj.populateProjectRefs(dbUser != nil, isSuperUser, dbUser)
 	if err != nil {
 		return *proj, err
 	}
@@ -386,7 +425,10 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		// but that project doesn't exist, choose the first one in the list.
 		if usingDefault && proj.ProjectRef == nil {
 			if len(proj.AllProjects) > 0 {
-				proj.ProjectRef = &proj.AllProjects[0]
+				proj.ProjectRef, err = model.FindOneProjectRef(proj.AllProjects[0].Identifier)
+				if err != nil {
+					return *proj, err
+				}
 			}
 		}
 
@@ -438,14 +480,14 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		}
 
 		if len(token) > 0 {
-			user, err := um.GetUserByToken(token)
+			dbUser, err := um.GetUserByToken(token)
 			if err != nil {
 				evergreen.Logger.Logf(slogger.INFO, "Error getting user: %v", err)
 			} else {
 				// Get the user's full details from the DB or create them if they don't exists
-				dbUser, err := model.GetOrCreateUser(user.Username(), user.DisplayName(), user.Email())
+				dbUser, err := model.GetOrCreateUser(dbUser.Username(), dbUser.DisplayName(), dbUser.Email())
 				if err != nil {
-					evergreen.Logger.Logf(slogger.INFO, "Error looking up user %v: %v", user.Username(), err)
+					evergreen.Logger.Logf(slogger.INFO, "Error looking up user %v: %v", dbUser.Username(), err)
 				} else {
 					context.Set(r, myUserKey, dbUser)
 				}

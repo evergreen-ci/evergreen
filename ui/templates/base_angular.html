@@ -49,11 +49,12 @@
         <script type="text/javascript">
         {{if .ProjectData}}
             {{if .ProjectData.Project}}
-                var project = {{.ProjectData.ProjectRef.Identifier}}
-                var projectName = {{.ProjectData.ProjectRef.DisplayName}} 
+                var project = {{.ProjectData.ProjectRef.Identifier}};
+                var projectName = {{.ProjectData.ProjectRef.DisplayName}};
             {{end}}
-                var allProjects = {{.ProjectData.AllProjects}}
-                var redirect = {{.ProjectData.AuthRedirect}}
+                // allProjects only has the identifier and display name properties
+                var allProjects = {{.ProjectData.AllProjects}};
+                var redirect = {{.ProjectData.AuthRedirect}};
         {{end}}
         </script>
     </head>

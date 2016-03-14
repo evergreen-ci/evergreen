@@ -1,7 +1,10 @@
 {{ define "menu"}}
 
 <script type="text/javascript">
-  var user = {{$.User}}
+{{if .User}}
+ window.isSuperUser = {{IsSuperUser .User.Id}};
+ window.user = {{.User}};
+{{end}}
 </script>
 
 <div id="nav" class="navbar navbar-inverse navbar-fixed-top">
@@ -58,6 +61,8 @@
               {{if IsSuperUser .User.Id}}
               <li><a ng-href="/distros">Distros</a></li>
               <li class="divider"></li>
+              {{end}}
+              {{if .ProjectData.IsAdmin}}
               <li><a ng-href="/projects##[[project]]">Projects</a></li>
               <li class="divider"></li>
               {{end}}

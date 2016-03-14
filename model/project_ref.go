@@ -26,6 +26,9 @@ type ProjectRef struct {
 	//Tracked determines whether or not the project is discoverable in the UI
 	Tracked bool `bson:"tracked" json:"tracked"`
 
+	// Admins contain a list of users who are able to access the projects page.
+	Admins []string `bson:"admins" json:"admins"`
+
 	// The "Alerts" field is a map of trigger (e.g. 'task-failed') to
 	// the set of alert deliveries to be processed for that trigger.
 	Alerts map[string][]AlertConfig `bson:"alert_settings" json:"alert_config,omitempty"`
@@ -72,6 +75,7 @@ var (
 	ProjectRefLocalConfig           = bsonutil.MustHaveTag(ProjectRef{}, "LocalConfig")
 	ProjectRefAlertsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Alerts")
 	ProjectRefRepotrackerError      = bsonutil.MustHaveTag(ProjectRef{}, "RepotrackerError")
+	ProjectRefAdminsKey             = bsonutil.MustHaveTag(ProjectRef{}, "Admins")
 )
 
 const (
@@ -173,6 +177,7 @@ func (projectRef *ProjectRef) Upsert() error {
 				ProjectRefLocalConfig:           projectRef.LocalConfig,
 				ProjectRefAlertsKey:             projectRef.Alerts,
 				ProjectRefRepotrackerError:      projectRef.RepotrackerError,
+				ProjectRefAdminsKey:             projectRef.Admins,
 			},
 		},
 	)

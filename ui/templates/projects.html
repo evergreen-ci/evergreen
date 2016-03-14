@@ -1,7 +1,14 @@
 {{define "scripts"}}
 <script>
-window.allTrackedProjects = {{.AllProjects}}
-window.availableTriggers = {{.AvailableTriggers}}
+  window.allTrackedProjects = {{.AllProjects}}
+  window.availableTriggers = {{.AvailableTriggers}}
+  {{if .User}}
+  window.isSuperUser = {{IsSuperUser .User.Id}};
+  window.user = {{.User}};
+  window.isAdmin = {{.ProjectData.IsAdmin}}
+  {{else}}
+  window.isSuperUser = false;
+  {{end}}
 </script>
 <script type="text/javascript" src="{{Static "js" "tablesorter.js"}}"></script>
 <script type="text/javascript" src="{{Static "js" "alerts.js"}}?hash={{ StaticsMD5 }}"></script>
@@ -11,162 +18,191 @@ window.availableTriggers = {{.AvailableTriggers}}
 Evergreen Projects
 {{end}}
 {{define "content"}}
-<div id="content" class="container-fluid row" ng-controller="ProjectCtrl">
-    <div class="col-lg-2 col-lg-offset-1">
-        <h1> Projects</h1>
-        <div class="row">
-            <div class="col-lg-12">
-            <button class="btn btn-primary" ng-click="openAdminModal('newProject')"> New Project </button>
-            <label>[[newProjectMessage]] </label>
-            </div>
-        </div>
-        <div class="row">
-        <h3 class="col-lg-12" ng-show="showProject(enabledProjects)" > Enabled </h3>
-        </div>
-        <div class="row">
-        <ul class="list-unstyled col-lg-offset-1" id="projects-table">
-            <li ng-repeat="project in enabledProjects | orderBy:'identifier'" style="padding:3px">
-                <a ng-click="loadProject(project.identifier)"  ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px;">
-                    [[project.identifier]]
-                </a>
-            </li>
-        </ul>
-        </div>
-        <div class="row">
-            <h3 class="col-lg-12" ng-show="showProject(disabledProjects)"> Disabled </h3>
-        </div>
-        <div class="row">
-        <ul class="list-unstyled col-lg-offset-1">
-            <li ng-repeat="project in disabledProjects | orderBy : 'identifier'" style="padding:3px">
-                <a ng-click="loadProject(project.identifier)" ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px">
-                    [[project.identifier]]
-                </a>
-            </li>  
-        </ul>
-        </div>
-        <admin-modal>
-            <admin-new-project></admin-new-project>
-        </admin-modal>
+<div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-hide="isAdmin">
+  <div class="row" style="text-align: center; margin-top:50px;" ng-cloak>
+    <h1>Looks like you're not an admin... awkward.</h1>
+    <h2> If you need access, please contact your Evergreen administrator. </h2>
+  </div>
+</div>
+<div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-show="isAdmin">
+  <div class="col-lg-2 col-lg-offset-1">
+    <h1> Projects</h1>
+    <div class="row">
+      <div class="col-lg-12">
+        <button class="btn btn-primary" ng-click="openAdminModal('newProject')"> New Project </button>
+        <label>[[newProjectMessage]] </label>
       </div>
-      <div class="col-lg-8" ng-show="projectView">
-      <div class="form-horizontal">
-        <h2> Settings for [[displayName]]</h2>
-        <div class="col-lg-8">
-          <div class="panel panel-danger" ng-show="settingsFormData.repotracker_error.exists">
-              <div class="panel-heading">
-                <i class="fa fa-exclamation-circle"></i> 
-                The current base revision ([[settingsFormData.repotracker_error.invalid_revision]]) cannot be found on branch, [[settingsFormData.branch_name]]. In order to resume tracking the repository, please confirm or enter a new base revision.
-              </div>
-              <div class="panel-body">
-                <div class="form-group">
-                  <div class="col-lg-3 col-header">
-                      <label class="control-label"> New Merge Base Revision </label>
-                  </div>
-                  <div class="col-lg-6">
-                      <input class="form-control" type="text" ng-model="settingsFormData.repotracker_error.merge_base_revision">
-                  </div>    
-                <div class="col-lg-2">
-                    <button class="form-control btn btn-primary" type="button" ng-click="setLastRevision()">
-                      <i class="fa fa-check"></i>
-                    </button>
-                </div>  
-              </div>
+    </div>
+    <div class="row">
+      <h3 class="col-lg-12" ng-show="showProject(enabledProjects)" > Enabled </h3>
+    </div>
+    <div class="row">
+      <ul class="list-unstyled col-lg-offset-1" id="projects-table">
+        <li ng-repeat="project in enabledProjects | orderBy:'identifier'" style="padding:3px">
+          <a ng-click="loadProject(project.identifier)"  ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px;">
+            [[project.identifier]]
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="row">
+      <h3 class="col-lg-12" ng-show="showProject(disabledProjects)"> Disabled </h3>
+    </div>
+    <div class="row">
+      <ul class="list-unstyled col-lg-offset-1">
+        <li ng-repeat="project in disabledProjects | orderBy : 'identifier'" style="padding:3px">
+          <a ng-click="loadProject(project.identifier)" ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px">
+            [[project.identifier]]
+          </a>
+        </li>  
+      </ul>
+    </div>
+    <admin-modal>
+    <admin-new-project></admin-new-project>
+  </admin-modal>
+</div>
+<div class="col-lg-8" ng-show="projectView">
+  <div class="form-horizontal">
+    <h2> Settings for [[displayName]]</h2>
+    <div class="col-lg-8">
+      <div class="panel panel-danger" ng-show="settingsFormData.repotracker_error.exists">
+        <div class="panel-heading">
+          <i class="fa fa-exclamation-circle"></i> 
+          The current base revision ([[settingsFormData.repotracker_error.invalid_revision]]) cannot be found on branch, [[settingsFormData.branch_name]]. In order to resume tracking the repository, please confirm or enter a new base revision.
+        </div>
+        <div class="panel-body">
+          <div class="form-group">
+            <div class="col-lg-3 col-header">
+              <label class="control-label"> New Merge Base Revision </label>
+            </div>
+            <div class="col-lg-6">
+              <input class="form-control" type="text" ng-model="settingsFormData.repotracker_error.merge_base_revision">
             </div>    
+            <div class="col-lg-2">
+              <button class="form-control btn btn-primary" type="button" ng-click="setLastRevision()">
+                <i class="fa fa-check"></i>
+              </button>
+            </div>  
+          </div>
+        </div>    
+      </div>
+    </div>
+    <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
+      <div class ="form-group">
+        <div class="col-lg-8">
+          <div class="radio">
+            <label class="control-label">
+              <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> <strong> Enabled </strong>
+            </label> <br>
+            <label class="muted col-lg-offset-1"> Track incoming commits to the repo and create/schedule its tasks.</label>
+          </div>
+          <div class="radio">
+            <label class="control-label"> 
+              <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong> 
+            </label> <br>
+            <label class="muted col-lg-offset-1">Don&#39;t track any new commits until re-enabled.</label>
+          </div>
         </div>
       </div>
+
+      <div class="form-group">
+        <div class="col-lg-2 col-header"> 
+          <label class="control-label"> Display Name</label>
+        </div>
+        <div class="col-lg-4">
+          <input class="form-control" type="text" ng-model="settingsFormData.display_name">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-lg-2 col-header"> 
+          <label class="control-label"> Config File</label>
+        </div>
+        <div class="col-lg-4">
+          <input class="form-control" type="text" ng-model="settingsFormData.remote_path" placeholder=".evergreen.yml">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-lg-2 col-header"> 
+          <label class="control-label">Batch Time</label>
+        </div>
+        <div class="col-lg-4">
+          <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
+          <label class="icon fa fa-warning project-error" ng-show="!isBatchTimeValid(settingsFormData.batch_time)">&nbsp;Batch time must be a number, &gt;=0.</label>
+        </div>
+      </div>
+
+      <div id="github-info">
+        <div class="h3"> Repository Info </div>
+        <div class="form-group">
+          <div class="col-lg-3 col-header"> 
+            <label class="control-label">Owner</label>
+          </div>
+          <div class="col-lg-5">
+            <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="col-lg-3 col-header"> 
+            <label class="control-label">Repo Name</label>
+          </div>
+          <div class="col-lg-6">
+            <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
+          </div>
+        </div>
+        <div class="form-group">
+          <div class="col-lg-3 col-header"> 
+            <label class="control-label">Branch Name</label>
+          </div>
+          <div class="col-lg-6">
+            <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" placeholder="master">
+          </div>
+        </div>
+      </div>
+
+      <div id="access-info">
+        <div class="h3">Access Settings</div>
         <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
-        <div class ="form-group">
+          <div class ="form-group">
             <div class="col-lg-8">
-                <div class="radio">
-                    <label class="control-label">
-                    <input type="radio" ng-model="settingsFormData.enabled" ng-value="true"> <strong> Enabled </strong>
-                    </label> <br>
-                    <label class="muted col-lg-offset-1"> Track incoming commits to the repo and create/schedule its tasks.</label>
-                </div>
-                <div class="radio">
-                    <label class="control-label"> 
-                        <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong> 
-                    </label> <br>
-                    <label class="muted col-lg-offset-1">Don&#39;t track any new commits until re-enabled.</label>
-                </div>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Display Name</label>
-            </div>
-            <div class="col-lg-4">
-                <input class="form-control" type="text" ng-model="settingsFormData.display_name">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <div class="col-lg-2 col-header"> 
-                <label class="control-label"> Config File</label>
-            </div>
-            <div class="col-lg-4">
-                <input class="form-control" type="text" ng-model="settingsFormData.remote_path" placeholder=".evergreen.yml">
-            </div>
-        </div>
-
-        <div class="form-group">
-            <div class="col-lg-2 col-header"> 
-                <label class="control-label">Batch Time</label>
-            </div>
-            <div class="col-lg-4">
-            <input class="form-control" type="text" ng-model="settingsFormData.batch_time">
-            <label class="icon fa fa-warning project-error" ng-show="!isBatchTimeValid(settingsFormData.batch_time)">&nbsp;Batch time must be a number, &gt;=0.</label>
-            </div>
-        </div>
-
-        <div id="github-info">
-          <div class="h3"> Repository Info </div>
-          <div class="form-group">
-            <div class="col-lg-3 col-header"> 
-              <label class="control-label">Owner</label>
-            </div>
-            <div class="col-lg-5">
-              <input class="form-control" type="text" ng-model="settingsFormData.owner_name">
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="col-lg-3 col-header"> 
-              <label class="control-label">Repo Name</label>
-            </div>
-            <div class="col-lg-6">
-              <input class="form-control" type="text" ng-model="settingsFormData.repo_name">
-            </div>
-          </div>
-          <div class="form-group">
-            <div class="col-lg-3 col-header"> 
-              <label class="control-label">Branch Name</label>
-            </div>
-            <div class="col-lg-6">
-              <input  class="form-control" type="textarea" ng-model="settingsFormData.branch_name" placeholder="master">
-            </div>
-          </div>
-        </div>
-
-        <div id="access-info">
-          <div class="h3">Access Settings</div>
-          <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
-            <div class ="form-group">
-              <div class="col-lg-8">
-                <div class="radio">
-                  <label class="control-label">
-                    <input type="radio" ng-model="settingsFormData.private" ng-value="true"> <strong> Private </strong>
-                  </label> <br>
-                  <label class="muted col-lg-offset-1">Users must be logged in to see this project.</label>
-                </div>
-                <div class="radio">
-                  <label class="control-label"> 
-                    <input type="radio" ng-model="settingsFormData.private" ng-value="false"> <strong> Public </strong> 
-                  </label> <br>
-                  <label class="muted col-lg-offset-1">Anyone can see this project.</label>
-                </div>
+              <div class="radio">
+                <label class="control-label">
+                  <input type="radio" ng-model="settingsFormData.private" ng-value="true"> <strong> Private </strong>
+                </label> <br>
+                <label class="muted col-lg-offset-1">Users must be logged in to see this project.</label>
+              </div>
+              <div class="radio">
+                <label class="control-label"> 
+                  <input type="radio" ng-model="settingsFormData.private" ng-value="false"> <strong> Public </strong> 
+                </label> <br>
+                <label class="muted col-lg-offset-1">Anyone can see this project.</label>
               </div>
             </div>
+          </div>
+        </div>
+        <div class="admins">
+          <div class="form-group">
+            <div class="col-header col-lg-4 form-control-static"> <h3> Admins </h3></div>
+          </div>
+          <div id="adminsList" class="form-group" ng-repeat="(index, admin) in settingsFormData.admins">
+            <div class="col-lg-4"> <label class="control-label">[[admin]]</label> </div>  
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeAdmin(index)">
+                <i class="fa fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-4">
+              <input ng-model="admin_name" class="form-control" type="text" placeholder="username">
+            </div>
+            <div class="col-lg-2">
+              <button class="plus-button btn btn-primary " ng-disabled="!(admin_name)" id="admin-add" type="button" ng-click="addAdmin()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+          </div>
         </div>
 
 
@@ -196,10 +232,10 @@ Evergreen Projects
                     <li ng-repeat="alertConfig in getProjectAlertConfig(trigger.id)" class="action-config">&nbsp;&bull;&nbsp;[[getAlertDisplay(alertConfig)]] <div class="btn btn-danger btn-xs pull-right" ng-click="removeAlert(trigger.id, $index)"><i class="fa fa-trash" style="font-size:1.3em;">&nbsp;</i></div><div class="clearfix"/></li>
                     <!-- TODO only email for now. More providers can be supported by adding more options to this form. -->
                     <div ng-show="editing==true" class="editalert-form">
-                        <label>Send alert to:</label>
-                        <input type="text" ng-model="email" ng-required/>
-                        <div class="btn btn-primary btn-xs" ng-click="addAlert(this, trigger)">Add</div>
-                        <div class="btn btn-default btn-xs" ng-click="editing=false">Cancel</div>
+                      <label>Send alert to:</label>
+                      <input type="text" ng-model="email" ng-required/>
+                      <div class="btn btn-primary btn-xs" ng-click="addAlert(this, trigger)">Add</div>
+                      <div class="btn btn-default btn-xs" ng-click="editing=false">Cancel</div>
                     </div>
                     <div ng-show="getProjectAlertConfig(trigger.id).length==0 && !editing" class="do-nothing">do nothing.</div>
                   </ul>
@@ -212,48 +248,48 @@ Evergreen Projects
 
 
         <div class="variables">
-            <div class="form-group">
-                <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
+          <div class="form-group">
+            <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
+          </div>
+          <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
+            <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>  
+            <div class="col-lg-4" > 
+              <textarea class="form-control" style="font-family:monospace;" readonly>[[key]]</textarea> 
             </div>
-            <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
-                <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>  
-                <div class="col-lg-4" > 
-                    <textarea class="form-control" style="font-family:monospace;" readonly>[[key]]</textarea> 
-                </div>
-                <div class="col-lg-2">
-                    <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
-                        <i class="fa fa-trash"></i>
-                    </button>
-                </div>
+            <div class="col-lg-2">
+              <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
+                <i class="fa fa-trash"></i>
+              </button>
             </div>
-            <div class="form-group">
-                <div class="col-lg-2">
-                    <input ng-model="proj_var.name" class="form-control" type="text" placeholder="variable name">
-                </div>
-                <div class="col-lg-4">
-                    <textarea ng-model="proj_var.value" class="form-control" placeholder="variable" style="font-family:monospace;"></textarea>
-                </div>
-                <div class="col-lg-2">
-                    <button class="plus-button btn btn-primary " ng-disabled="!(proj_var.name && proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
-                        <i class="fa fa-plus"></i>
-                    </button>
-                </div>
+          </div>
+          <div class="form-group">
+            <div class="col-lg-2">
+              <input ng-model="proj_var.name" class="form-control" type="text" placeholder="variable name">
             </div>
+            <div class="col-lg-4">
+              <textarea ng-model="proj_var.value" class="form-control" placeholder="variable" style="font-family:monospace;"></textarea>
+            </div>
+            <div class="col-lg-2">
+              <button class="plus-button btn btn-primary " ng-disabled="!(proj_var.name && proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">
+                <i class="fa fa-plus"></i>
+              </button>
+            </div>
+          </div>
         </div>
         <br>
         <div class="row">
-        <div class="col-lg-2"> 
+          <div class="col-lg-2"> 
             <label>[[saveMessage]]</label>
-        </div>
-        <div class="col-lg-4">
+          </div>
+          <div class="col-lg-4">
             <input class="btn btn-primary" input ng-disabled="!isDirty || !isBatchTimeValid(settingsFormData.batch_time)" type="submit" value="Save Changes">
-        </div>
+          </div>
         </div>
         <confirm-on-exit confirm-on-exit="isDirty"
-            confirm-message-window="All your changes will be lost." 
-            confirm-message-route="All your changes will be lost. Are you sure you want to exit?">
-        </confirm-on-exit>
-        </form>
-      </div>
+        confirm-message-window="All your changes will be lost." 
+        confirm-message-route="All your changes will be lost. Are you sure you want to exit?">
+      </confirm-on-exit>
+    </form>
+  </div>
 </div>
 {{end}}

@@ -48,7 +48,6 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interfac
 		"IsSuperUser": func(userName string) bool {
 			return len(superUsers) == 0 || util.SliceContains(superUsers, userName)
 		},
-
 		// Gravatar returns a Gravatar URL for the given email string.
 		"Gravatar": func(email string) string {
 			h := md5.New()
