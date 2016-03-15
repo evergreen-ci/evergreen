@@ -5,8 +5,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -27,13 +27,13 @@ type PatchAPIResponse struct {
 
 // PatchAPIRequest in the input struct with which we process patch requests
 type PatchAPIRequest struct {
-	ProjectId string
-	ModuleName      string
-	Githash         string
-	PatchContent    string
-	BuildVariants   []string
-	Tasks           []string
-	Description     string
+	ProjectId     string
+	ModuleName    string
+	Githash       string
+	PatchContent  string
+	BuildVariants []string
+	Tasks         []string
+	Description   string
 }
 
 // CreatePatch checks an API request to see if it is safe and sane.
@@ -154,7 +154,6 @@ func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
 		return nil, nil, fmt.Errorf("failed to write patch file to db: %v", err)
 	}
 
-
 	// add the project config
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
@@ -186,12 +185,12 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		apiRequest = PatchAPIRequest{
-			ProjectId: r.FormValue("project"),
-			ModuleName:      r.FormValue("module"),
-			Githash:         r.FormValue("githash"),
-			PatchContent:    r.FormValue("patch"),
-			BuildVariants:   strings.Split(r.FormValue("buildvariants"), ","),
-			Description:     r.FormValue("desc"),
+			ProjectId:     r.FormValue("project"),
+			ModuleName:    r.FormValue("module"),
+			Githash:       r.FormValue("githash"),
+			PatchContent:  r.FormValue("patch"),
+			BuildVariants: strings.Split(r.FormValue("buildvariants"), ","),
+			Description:   r.FormValue("desc"),
 		}
 		finalize = strings.ToLower(r.FormValue("finalize")) == "true"
 	} else {
@@ -218,23 +217,21 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		finalize = data.Finalize
 
 		apiRequest = PatchAPIRequest{
-			ProjectId: data.Project,
-			ModuleName:      r.FormValue("module"),
-			Githash:         data.Githash,
-			PatchContent:    data.Patch,
-			BuildVariants:   strings.Split(data.Variants, ","),
-			Tasks:           data.Tasks,
-			Description:     data.Description,
+			ProjectId:     data.Project,
+			ModuleName:    r.FormValue("module"),
+			Githash:       data.Githash,
+			PatchContent:  data.Patch,
+			BuildVariants: strings.Split(data.Variants, ","),
+			Tasks:         data.Tasks,
+			Description:   data.Description,
 		}
 	}
 
 	project, patchDoc, err := apiRequest.CreatePatch(as.Settings.Credentials["github"], dbUser, &as.Settings)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Invalid patch: %v", err))
+		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Invalid patch: %v", err))
 		return
 	}
-
-
 
 	//expand tasks and build variants and include dependencies
 	buildVariants := patchDoc.BuildVariants
@@ -296,7 +293,6 @@ func getPatchFromRequest(r *http.Request) (*patch.Patch, error) {
 
 	return existingPatch, nil
 }
-
 
 func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 	p, err := getPatchFromRequest(r)
