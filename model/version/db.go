@@ -1,6 +1,7 @@
 package version
 
 import (
+	"fmt"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
@@ -68,6 +69,16 @@ func ByProjectIdAndRevision(projectId, revision string) db.Q {
 		bson.M{
 			IdentifierKey: projectId,
 			RevisionKey:   revision,
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
+		})
+}
+
+func ByProjectIdAndRevisionPrefix(projectId, revisionPrefix string) db.Q {
+	lengthHash := (40 - len(revisionPrefix))
+	return db.Query(
+		bson.M{
+			IdentifierKey: projectId,
+			RevisionKey:   bson.M{"$regex": fmt.Sprintf("^%s[0-9a-f]{%d}$", revisionPrefix, lengthHash)},
 			RequesterKey:  evergreen.RepotrackerVersionRequester,
 		})
 }

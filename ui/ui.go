@@ -107,6 +107,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/version/{version_id}", uis.loadCtx(uis.versionPage)).Methods("GET")
 	r.HandleFunc("/version/{version_id}", uis.requireUser(uis.loadCtx(uis.modifyVersion))).Methods("PUT")
 	r.HandleFunc("/json/version_history/{version_id}", uis.loadCtx(uis.versionHistory))
+	r.HandleFunc("/version/{project_id}/{revision}", uis.loadCtx(uis.versionFind)).Methods("GET")
 
 	// Hosts
 	r.HandleFunc("/hosts", uis.loadCtx(uis.hostsPage)).Methods("GET")

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 	"net/http"
 )
 
@@ -247,4 +248,29 @@ func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.Builds = uiBuilds
 	}
 	uis.WriteJSON(w, http.StatusOK, versions)
+}
+
+//versionFind redirects to the correct version page based on the gitHash and versionId given.
+//It finds the version associated with the versionId and gitHash and redirects to /version/{version_id}.
+func (uis *UIServer) versionFind(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["project_id"]
+	revision := mux.Vars(r)["revision"]
+	if len(revision) < 5 {
+		http.Error(w, "revision not long enough: must be at least 5 characters", http.StatusBadRequest)
+		return
+	}
+	foundVersions, err := version.Find(version.ByProjectIdAndRevisionPrefix(id, revision).Limit(2))
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if len(foundVersions) == 0 {
+		uis.WriteJSON(w, http.StatusNotFound, fmt.Sprintf("Version Not Found: %v - %v", id, revision))
+		return
+	}
+	if len(foundVersions) > 1 {
+		uis.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Multiple versions found: %v - %v", id, revision))
+		return
+	}
+	http.Redirect(w, r, fmt.Sprintf("/version/%v", foundVersions[0].Id), http.StatusFound)
 }
