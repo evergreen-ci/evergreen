@@ -6,6 +6,7 @@
   var variants = {{.Variants}}
   var tasks = {{.Tasks}}
   var patch= {{.ProjectData.Patch}}
+  var canEdit= {{.CanEdit}}
 </script>
 {{end}}
 
@@ -58,9 +59,9 @@ Evergreen - Configure Patch
                       mci-mouseleave="selectedVariant.set('')">
                     <div  class="highlight-wrapper"
                           ng-class="{true:'highlight-bg-no-border', false:''}[variantRunsTask(variant, selectedTask.get())]">
-                      <label ng-class="{true:'muted', false:''}[!!patch.Version && allVariantsOriginal[$index].checked]">
+                      <label ng-class="{true:'muted', false:''}[(!!patch.Version && allVariantsOriginal[$index].checked) || !canEdit]">
                         <input  type="checkbox"
-                                ng-disabled="!!patch.Version && allVariantsOriginal[$index].checked"
+                                ng-disabled="(!!patch.Version && allVariantsOriginal[$index].checked) || !canEdit"
                                 ng-checked="variant.checked"
                                 ng-click="toggleCheck(variant)">
                         [[variant.name]]
@@ -92,9 +93,9 @@ Evergreen - Configure Patch
                     mci-mouseleave="selectedTask.set('')">
                   <div  class="highlight-wrapper"
                         ng-class="{true:'highlight-bg-no-border', false:''}[taskRunsOnVariant(task.Name, selectedVariant.get())]">
-                    <label ng-class="{true:'muted', false:''}[!!patch.Version && allTasksOriginal[$index].checked]">
+                    <label ng-class="{true:'muted', false:''}[(!!patch.Version && allVariantsOriginal[$index].checked) || !canEdit]">
                       <input  type="checkbox"
-                              ng-disabled="!!patch.Version && allTasksOriginal[$index].checked"
+                              ng-disabled="(!!patch.Version && allVariantsOriginal[$index].checked) || !canEdit"
                               ng-checked="task.checked"
                               ng-click="toggleCheck(task)">
                       [[task.Name]]
@@ -117,7 +118,7 @@ Evergreen - Configure Patch
       </div>
       <div class="row" ng-show="true" style="padding-bottom:10px">
         <div class="col-lg-3 col-lg-offset-3">
-          <div ng-click="scheduleBuilds(variantsTasksForm)" class="btn btn-primary btn-large" ng-disabled="variantsCount == 0">
+          <div ng-click="scheduleBuilds(variantsTasksForm)" class="btn btn-primary btn-large" ng-disabled="variantsCount == 0 || !canEdit">
             Schedule Builds Now
             <br/>
             <span style="font-size:.7em;">

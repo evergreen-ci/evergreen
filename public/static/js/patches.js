@@ -33,6 +33,10 @@ mciModule.controller('PatchesController', function($scope, $filter, $http, $wind
       $scope.versionsMap = data['VersionsMap'];
       $scope.uiPatches = data['UIPatches'];
 
+      _.each($scope.uiPatches, function(patch) {
+          patch.canEdit = ($window.user.Id === patch.Patch.Author ) || $window.isSuperUser
+      });
+
       _.each($scope.versionsMap, function(version) {
         _.each(version.Builds, function(build) {
           build.taskResults = [];

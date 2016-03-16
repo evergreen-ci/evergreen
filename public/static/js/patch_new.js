@@ -1,5 +1,6 @@
 function PatchController($scope, $filter, $window, notificationService) {
   $scope.userTz = $window.userTz;
+  $scope.canEdit = $window.canEdit;
 
   $scope.selectedTask = {
     v: "",

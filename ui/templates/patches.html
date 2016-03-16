@@ -1,6 +1,7 @@
 {{define "scripts"}}
 <script type="text/javascript">
   window.userTz = {{GetTimezone .User}};
+  window.isSuperUser = {{IsSuperUser .User.Id}};
 
   {{if .Author}}
     window.patchesForUsername = '{{.Author}}';
@@ -51,11 +52,13 @@ Evergreen - Patches
       <a ng-href="/version/[[patch.Patch.Version]]">
         Activated
       </a>
-      [&nbsp;
-      <a ng-href="/patch/[[patch.Patch.Id]]" class="semi-muted">
-        Reconfigure
-      </a>
-      &nbsp;]
+        <span ng-show="patch.canEdit">
+        [&nbsp;
+        <a ng-href="/patch/[[patch.Patch.Id]]" class="semi-muted">
+          Reconfigure
+        </a>
+        &nbsp;]
+      </span>
     </span>
     <span ng-if="!patch.Patch.Version">
       <a ng-href="/patch/[[patch.Patch.Id]]" class="btn btn-info btn-sm">

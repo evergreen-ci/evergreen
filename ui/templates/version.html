@@ -4,6 +4,7 @@
 </style>
 <script type="text/javascript">
   window.version = {{ .Version }};
+  window.canEdit = {{ .CanEdit }};
   window.plugins = {{.PluginContent.Data}}
 </script>
 <script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
@@ -81,7 +82,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                </a>
 
                <ul class="dropdown-menu" role="menu">
-                 <li><a ng-show="version.PatchInfo.Patch.Id" ng-href="/patch/[[version.PatchInfo.Patch.Id]]">Reconfigure Tasks/Variants</a></li>
+                 <li><a ng-show="version.PatchInfo.Patch.Id && canEdit" ng-href="/patch/[[version.PatchInfo.Patch.Id]]">Reconfigure Tasks/Variants</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('schedule')">Schedule all</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('unschedule')">Unschedule all</a></li>
                  <li><a tabindex="-1" href="#" ng-click="openAdminModal('restart')">Restart</a></li>

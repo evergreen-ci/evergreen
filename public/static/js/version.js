@@ -1,5 +1,6 @@
 function VersionController($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
   var nsPerMs = 1000000
+  $scope.canEdit = $window.canEdit
 
   var dateSorter = function(a, b){ return (+a) - (+b) }
   $scope.tab = 0

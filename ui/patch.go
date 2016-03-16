@@ -56,13 +56,15 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	currentUser := GetUser(r)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		User        *user.DBUser
 		Version     *uiVersion
 		Variants    map[string]model.BuildVariant
 		Tasks       []interface{}
-	}{projCtx, GetUser(r), versionAsUI, variantMappings, tasksList}, "base",
+		CanEdit     bool
+	}{projCtx, currentUser, versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch)}, "base",
 		"patch_version.html", "base_angular.html", "menu.html")
 }
 
@@ -72,7 +74,11 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "patch not found", http.StatusNotFound)
 		return
 	}
-
+	curUser := GetUser(r)
+	if !uis.canEditPatch(curUser, projCtx.Patch) {
+		http.Error(w, "Not authorized to schedule patch", http.StatusUnauthorized)
+		return
+	}
 	// grab patch again, as the diff  was excluded
 	var err error
 	projCtx.Patch, err = patch.FindOne(patch.ById(projCtx.Patch.Id))

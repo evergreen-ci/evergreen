@@ -33,8 +33,10 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	var canEditPatch bool
+	currentUser := GetUser(r)
 	if projCtx.Patch != nil {
+		canEditPatch = uis.canEditPatch(currentUser, projCtx.Patch)
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
 		baseBuilds, err := build.Find(build.ByRevision(projCtx.Version.Revision))
@@ -94,7 +96,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		Flashes       []interface{}
 		Version       *uiVersion
 		PluginContent pluginData
-	}{projCtx, GetUser(r), flashes, &versionAsUI, pluginContent}, "base",
+		CanEdit       bool
+	}{projCtx, currentUser, flashes, &versionAsUI, pluginContent, canEditPatch}, "base",
 		"version.html", "base_angular.html", "menu.html")
 }
 
