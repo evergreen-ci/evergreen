@@ -475,21 +475,19 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		}
 
 		var activateAt time.Time
-		var activated bool
 		if lastActivation == nil {
-			// if we don't have a last activation time then activate now.
+			// if we don't have a last activation time then prepare to activate it immediately.
 			activateAt = time.Now()
-			activated = true
 		} else {
 			activateAt = lastActivation.Add(time.Minute * time.Duration(ref.GetBatchTime(&buildvariant)))
-			evergreen.Logger.Logf(slogger.INFO, "Going to activate bv %v for project %v, version %v at %v",
-				buildvariant.Name, ref.Identifier, v.Id, activateAt)
 		}
+		evergreen.Logger.Logf(slogger.INFO, "Going to activate bv %v for project %v, version %v at %v",
+			buildvariant.Name, ref.Identifier, v.Id, activateAt)
 
 		v.BuildIds = append(v.BuildIds, buildId)
 		v.BuildVariants = append(v.BuildVariants, version.BuildStatus{
 			BuildVariant: buildvariant.Name,
-			Activated:    activated,
+			Activated:    false,
 			ActivateAt:   activateAt,
 			BuildId:      buildId,
 		})

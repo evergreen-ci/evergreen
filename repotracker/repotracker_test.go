@@ -213,7 +213,6 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 }
 
 func TestBatchTimes(t *testing.T) {
-	dropTestDB(t)
 	Convey("When deciding whether or not to activate variants for the most recently stored version", t, func() {
 		// We create a version with an activation time of now so that all the bvs have a last activation time of now.
 		previouslyActivatedVersion := version.Version{
@@ -356,6 +355,61 @@ func TestBatchTimes(t *testing.T) {
 			So(found, ShouldBeTrue)
 			So(bv2, ShouldNotBeNil)
 			So(bv2.Activated, ShouldBeFalse)
+		})
+
+		Reset(func() {
+			dropTestDB(t)
+		})
+	})
+
+	Convey("If the new revision adds a variant", t, func() {
+		previouslyActivatedVersion := version.Version{
+			Id:         "previously activated",
+			Identifier: "testproject",
+			BuildVariants: []version.BuildStatus{
+				{
+					BuildVariant: "bv1",
+					Activated:    true,
+					ActivateAt:   time.Now(),
+				},
+				// "bv2" will be added in a later revision
+			},
+			RevisionOrderNumber: 0,
+			Requester:           evergreen.RepotrackerVersionRequester,
+		}
+		So(previouslyActivatedVersion.Insert(), ShouldBeNil)
+		// insert distros used in testing.
+		d := distro.Distro{Id: "test-distro-one"}
+		So(d.Insert(), ShouldBeNil)
+		d.Id = "test-distro-two"
+		So(d.Insert(), ShouldBeNil)
+		zero := 0
+		project := createTestProject(&zero, nil)
+		revisions := []model.Revision{
+			*createTestRevision("garply", time.Now()),
+		}
+		repoTracker := RepoTracker{
+			testConfig,
+			&model.ProjectRef{
+				Identifier: "testproject",
+				BatchTime:  60,
+			},
+			NewMockRepoPoller(project, revisions),
+		}
+		version, err := repoTracker.StoreRevisions(revisions)
+		So(version, ShouldNotBeNil)
+		So(err, ShouldBeNil)
+
+		Convey("the new variant should activate immediately", func() {
+			So(repoTracker.activateElapsedBuilds(version), ShouldBeNil)
+			bv1, found := findStatus(version, "bv1")
+			So(found, ShouldBeTrue)
+			So(bv1.Activated, ShouldBeTrue)
+			bv2, found := findStatus(version, "bv2")
+			So(found, ShouldBeTrue)
+			So(bv2, ShouldNotBeNil)
+			So(bv2.Activated, ShouldBeTrue)
+			So(bv2.ActivateAt, ShouldResemble, bv1.ActivateAt)
 		})
 
 		Reset(func() {
