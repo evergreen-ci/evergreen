@@ -5,6 +5,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"strconv"
 	"time"
 )
@@ -91,6 +92,30 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 		evergreen.Logger.Logf(slogger.INFO, "Warning needs to be sent for threshold"+
 			" '%v' for host %v", thresholdKey, h.Id)
 
+		// fetch information about the user we are notifying
+		userToNotify, err := user.FindOne(user.ById(h.StartedBy))
+		if err != nil {
+			return nil, fmt.Errorf("error finding user to notify by Id %v: %v", h.StartedBy, err)
+
+		}
+
+		// if we didn't find a user (in the case of testing) set the timezone to ""
+		// to avoid triggering a nil pointer exception
+		timezone := ""
+		if userToNotify != nil {
+			timezone = userToNotify.Settings.Timezone
+		}
+
+		var expirationTimeFormatted string
+		// use our fetched information to load proper time zone to notify the user with
+		// (if time zone is empty, defaults to UTC)
+		loc, err := time.LoadLocation(timezone)
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error loading timezone for email format with user_id %v: %v", userToNotify.Id, err)
+			expirationTimeFormatted = h.ExpirationTime.Format(time.RFC1123)
+		} else {
+			expirationTimeFormatted = h.ExpirationTime.In(loc).Format(time.RFC1123)
+		}
 		// we need to send a notification for the threshold for this host
 		hostNotification := notification{
 			recipient: h.StartedBy,
@@ -98,7 +123,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 			message: fmt.Sprintf("Your %v host with id %v will be terminated"+
 				" at %v, in %v minutes. Visit %v to extend its lifetime.",
 				h.Distro.Id, h.Id,
-				h.ExpirationTime.Format(time.RFC850),
+				expirationTimeFormatted,
 				h.ExpirationTime.Sub(time.Now()),
 				settings.Ui.Url+"/ui/spawn"),
 			threshold: thresholdKey,
