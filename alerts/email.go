@@ -141,33 +141,61 @@ func (es *EmailDeliverer) getBody(alertCtx AlertContext) (string, error) {
 	return out.String(), nil
 }
 
+// taskFailureSubject creates an email subject for a task failure in the style of
+//  Test Failures: Task_name on Variant (test1, test2) // ProjectName @ githash
+// based on the given AlertContext.
+func taskFailureSubject(ctx AlertContext) string {
+	subj := &bytes.Buffer{}
+	failed := []string{}
+	for _, test := range ctx.Task.TestResults {
+		if test.Status == evergreen.TestFailedStatus {
+			failed = append(failed, cleanTestName(test.TestFile))
+		}
+	}
+	switch {
+	case ctx.Task.Details.TimedOut:
+		subj.WriteString("Task Timed Out: ")
+	case ctx.Task.Details.Type == model.SystemCommandType:
+		subj.WriteString("Task System Failure: ")
+	case len(failed) == 1:
+		subj.WriteString("Test Failure: ")
+	case len(failed) > 1:
+		subj.WriteString("Test Failures: ")
+	default:
+		subj.WriteString("Task Failed: ")
+	}
+
+	fmt.Fprintf(subj, "%s on %s ", ctx.Task.DisplayName, ctx.Build.DisplayName)
+
+	// include test names if <= 4 failed, otherwise print two plus the number remaining
+	if len(failed) > 0 {
+		subj.WriteString("(")
+		if len(failed) <= 4 {
+			subj.WriteString(strings.Join(failed, ", "))
+		} else {
+			fmt.Fprintf(subj, "%s, %s, +%v more", failed[0], failed[1], len(failed)-2)
+		}
+		subj.WriteString(") ")
+	}
+
+	fmt.Fprintf(subj, "// %s @ %s", ctx.ProjectRef.DisplayName, ctx.Version.Revision[0:8])
+	return subj.String()
+}
+
 // getSubject generates a subject line for an e-mail for the given alert.
 func getSubject(alertCtx AlertContext) string {
 	switch alertCtx.AlertRequest.Trigger {
 	case alertrecord.FirstVersionFailureId:
-		return fmt.Sprintf("First Task Failure %s in %s @ %s: '%s' on %s",
-			alertCtx.ProjectRef.DisplayName,
-			alertCtx.Version.Revision[0:5],
+		return fmt.Sprintf("First Task Failure: %s on %s // %s @ %s",
 			alertCtx.Task.DisplayName,
-			alertCtx.Build.DisplayName)
+			alertCtx.Build.DisplayName,
+			alertCtx.ProjectRef.DisplayName,
+			alertCtx.Version.Revision[0:8])
 	case alertrecord.FirstVariantFailureId:
-		return fmt.Sprintf("Variant '%s' has failures (%s @ %s)",
+		return fmt.Sprintf("Variant Failure: %s // %s @ %s",
 			alertCtx.Build.DisplayName,
 			alertCtx.ProjectRef.DisplayName,
-			alertCtx.Version.Revision[0:5],
-		)
-	case alertrecord.FirstTaskTypeFailureId:
-		return fmt.Sprintf("Task '%s' has failures (%s @ %s)",
-			alertCtx.Task.DisplayName,
-			alertCtx.ProjectRef.DisplayName,
-			alertCtx.Version.Revision[0:5],
-		)
-	case alertrecord.TaskFailTransitionId:
-		return fmt.Sprintf("Task '%s' status transitioned to failure on %s (%s @ %s)",
-			alertCtx.Task.DisplayName,
-			alertCtx.Build.DisplayName,
-			alertCtx.ProjectRef.DisplayName,
-			alertCtx.Version.Revision[0:5],
+			alertCtx.Version.Revision[0:8],
 		)
 	case alertrecord.SpawnHostTwoHourWarning:
 		return fmt.Sprintf("Your %s host (%s) will expire in two hours.",
@@ -177,16 +205,30 @@ func getSubject(alertCtx AlertContext) string {
 			alertCtx.Host.Distro, alertCtx.Host.Id)
 		// TODO(EVG-224) alertrecord.SpawnHostExpired:
 	}
-
-	return fmt.Sprintf("%s on %s (%s @ %s)",
-		alertCtx.Task.DisplayName,
-		alertCtx.Build.DisplayName,
-		alertCtx.ProjectRef.DisplayName,
-		alertCtx.Version.Revision[0:5])
-
+	return taskFailureSubject(alertCtx)
 }
 
 func encodeRFC2047(String string) string {
 	addr := mail.Address{String, ""}
 	return strings.Trim(addr.String(), " <>")
+}
+
+// cleanTestName returns the last item of a test's path.
+//   TODO: stop accomodating this.
+func cleanTestName(path string) string {
+	if unixIdx := strings.LastIndex(path, "/"); unixIdx != -1 {
+		// if the path ends in a slash, remove it and try again
+		if unixIdx == len(path)-1 {
+			return cleanTestName(path[:len(path)-1])
+		}
+		return path[unixIdx+1:]
+	}
+	if windowsIdx := strings.LastIndex(path, `\`); windowsIdx != -1 {
+		// if the path ends in a slash, remove it and try again
+		if windowsIdx == len(path)-1 {
+			return cleanTestName(path[:len(path)-1])
+		}
+		return path[windowsIdx+1:]
+	}
+	return path
 }
