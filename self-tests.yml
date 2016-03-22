@@ -29,7 +29,7 @@ functions:
           if [ "Windows_NT" = "$OS" ]; then
               set -o igncr
           fi;
-          . ./set_gopath.sh
+          . ./set_gopath.given 
           perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
     - command: shell.exec
       params:
@@ -195,7 +195,7 @@ tasks:
           cd alerts
           mkfifo test_pipe
           tee -a alerts.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -220,7 +220,7 @@ tasks:
           if [ "Windows_NT" = "$OS" ]; then
             set -o igncr
           fi;
-          bash build.sh ${compiler_flag}
+          ${goroot_vars} bash build.sh ${compiler_flag}
           echo "running agent compile sanity check"
           . ./set_gopath.sh
           # don't use githash BuildRevision for patches
@@ -229,7 +229,7 @@ tasks:
           else
             export REV=`git rev-parse HEAD`
           fi
-          go build -o main${extension} ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=$REV" agent/main/agent.go
+          ${goroot_vars} go build -o main${extension} ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=$REV" agent/main/agent.go
     - command: s3.put
       params:
         aws_key: ${aws_key}
@@ -259,7 +259,7 @@ tasks:
           mkfifo test_pipe
           tee -a client.suite < test_pipe&
           cd cli
-          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > ../test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > ../test_pipe
 
 - name: client
   tags: ["nodb"]
@@ -282,7 +282,7 @@ tasks:
             export GOBIN=`pwd`/bin
           fi
           echo "using GOBIN $GOBIN"
-          go install ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`" cli/main/cli.go
+          ${goroot_vars} go install ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision `git rev-parse HEAD`" cli/main/cli.go
     - command: s3.put
       params:
         aws_key: ${aws_key}
@@ -312,7 +312,7 @@ tasks:
           cd agent
           mkfifo test_pipe
           tee -a agent.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > test_pipe 
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > test_pipe 
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -340,7 +340,7 @@ tasks:
           cd archive
           mkfifo test_pipe
           tee -a archive.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe 
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe 
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -368,7 +368,7 @@ tasks:
           cd db
           mkfifo test_pipe
           tee -a db.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe 
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe 
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -395,7 +395,7 @@ tasks:
           export EVGHOME=${EVGHOME_cmd}
           mkfifo test_pipe
           tee -a evergreen.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
 
@@ -416,7 +416,7 @@ tasks:
           cd model
           mkfifo test_pipe
           tee -a model.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
           if [ $? -ne 0 ]; then
             echo "models suite failed, will exit with error on finish"
             export exitcode=1
@@ -426,7 +426,7 @@ tasks:
             echo "running $i suite"
             mkfifo $i.pipe
             tee -a $i.suite < $i.pipe& 
-            go test -v ./$i > $i.pipe
+            ${goroot_vars} go test -v ${compiler_flag} ${test_flag} ./$i > $i.pipe
             if [ $? -ne 0 ]; then
                 echo "$i suite failed, will exit with error on finish"
                 export exitcode=1
@@ -460,7 +460,7 @@ tasks:
           cd monitor
           mkfifo test_pipe
           tee -a monitor.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -488,7 +488,7 @@ tasks:
           cd notify
           mkfifo test_pipe
           tee -a notify.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -519,7 +519,7 @@ tasks:
           cd plugin
           mkfifo test_pipe
           tee -a $WORK_DIR/plugin.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
           if [ $? -ne 0 ]; then
             echo "plugin suite failed, will exit with error on finish"
             export exitcode=1
@@ -532,7 +532,7 @@ tasks:
             cd $i
             mkfifo $i.pipe
             tee -a $WORK_DIR/$i.suite < $i.pipe& 
-            go test -v > $i.pipe
+            ${goroot_vars} go test -v > $i.pipe
             if [ $? -ne 0 ]; then
                 echo "$i suite failed, will exit with error on finish"
                 export exitcode=1
@@ -761,7 +761,7 @@ tasks:
           cd repotracker
           mkfifo test_pipe
           tee -a repotracker.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -789,7 +789,7 @@ tasks:
           cd scheduler
           mkfifo test_pipe
           tee -a scheduler.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -818,7 +818,7 @@ tasks:
           cd thirdparty
           mkfifo test_pipe
           tee -a thirdparty.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -845,7 +845,7 @@ tasks:
           cd util
           mkfifo test_pipe
           tee -a util.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag}  > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag}  > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -874,7 +874,7 @@ tasks:
           cd validator
           mkfifo test_pipe
           tee -a validator.suite < test_pipe&
-          go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
@@ -899,13 +899,14 @@ buildvariants:
       tasks:
       - "*"
     - name: ppc
-      display_name: Ubuntu PowerPC GCCGO
+      display_name: RHEL 7.1 PowerPC GCCGO
       run_on:
-      - ubuntu-1504-power8-build
+      - rhel71-power8-test
       expansions:
+        goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
         EVGHOME_cmd: "`pwd`"
         compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
-        mongo_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-ubuntu1504-3.3.1.tgz
+        mongo_url: https://s3.amazonaws.com/mciuploads/mongodb-mongo-master/enterprise-rhel-71-ppc64le/622707b5ce4bde79cbf6df07bafc98038d5c7e8d/binaries/mongo-mongodb_mongo_master_enterprise_rhel_71_ppc64le_622707b5ce4bde79cbf6df07bafc98038d5c7e8d_16_03_22_15_23_09.tgz
       tasks:
       - "!make_deploy"
     - name: osx
