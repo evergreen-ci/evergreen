@@ -31,12 +31,8 @@ type EC2SpotManager struct {
 }
 
 type EC2SpotSettings struct {
-	AMI           string       `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
-	InstanceType  string       `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
-	SecurityGroup string       `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
-	KeyName       string       `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
-	MountPoints   []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
-	BidPrice      float64      `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
+	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
+	EC2ProviderSettings
 }
 
 func (self *EC2SpotSettings) Validate() error {
@@ -258,6 +254,13 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 		InstanceType:   ec2Settings.InstanceType,
 		SecurityGroups: ec2.SecurityGroupNames(ec2Settings.SecurityGroup),
 		BlockDevices:   blockDevices,
+	}
+
+	// if the spot instance is a vpc then set the appropriate fields
+	if ec2Settings.IsVpc {
+		spotRequest.SecurityGroups = ec2.SecurityGroupIds(ec2Settings.SecurityGroup)
+		spotRequest.AssociatePublicIpAddress = true
+		spotRequest.SubnetId = ec2Settings.SubnetId
 	}
 
 	spotResp, err := ec2Handle.RequestSpotInstances(spotRequest)

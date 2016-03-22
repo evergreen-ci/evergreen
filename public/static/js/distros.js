@@ -57,6 +57,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   $scope.modalOpen = false;
 
+
   $scope.$on('$locationChangeStart', function(event) {
     $scope.hashLoad();
   });
@@ -308,6 +309,33 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     return (!min && !max) || (min >= 0 && min <= max);
   }
 
+  // checks that the form is valid for the given active distro
+  $scope.validForm = function() {
+    if ($scope.activeDistro.provider == 'ec2'){
+      return $scope.validSecurityGroup() && $scope.validSubnetId;
+    }
+  }
+
+  // if a security group is in a vpc it needs to be the id which starts with 'sg-'
+  $scope.validSecurityGroup = function(){
+    if ($scope.activeDistro){
+      if ($scope.activeDistro.settings.is_vpc){
+       return $scope.activeDistro.settings.security_group.substring(0,3) == 'sg-';
+     }
+   }
+   return true
+ };
+
+    // if a security group is in a vpc it needs to be the id which starts with 'subnet-'
+    $scope.validSubnetId = function(){
+      if ($scope.activeDistro){
+        if ($scope.activeDistro.settings.is_vpc) {
+          return $scope.activeDistro.settings.subnet_id.substring(0,7) == 'subnet-';
+        }
+      }
+      return true
+    };
+
   // scroll to top of window on page reload
   $(window).on('beforeunload', function() {
     $(window).scrollTop(0);
@@ -361,3 +389,4 @@ mciModule.directive('unique', function() {
     }
   };
 });
+

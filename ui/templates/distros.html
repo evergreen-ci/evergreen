@@ -175,9 +175,16 @@ Evergreen - Distros
                 <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">&nbsp;EC2 key name is required</div>
               </div>
               <div>
+                <label class="distro-label"><input style="margin-right:10px;" type="checkbox" name="is_vpc" ng-model="activeDistro.settings.is_vpc">Use security group in an EC2 VPC </label> <br>
                 <label class="distro-label">Security Group:</label>
-                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="securityGroup" class="form-control" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)">
+                <input type="text" ng-required="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="EC2 security group (must already exist)" class="form-control">
                 <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">&nbsp;Security group is required</div>
+                <div class="icon fa fa-warning distro-error" ng-show="!validSecurityGroup()">&nbsp;Security group for EC2 VPC must be the id (starts with 'sg-')</div>
+              </div>
+              <div ng-show="activeDistro.settings.is_vpc">
+                <label class="distro-label"> Subnet Id</label>
+                <input type="text" name="subnet_id" class="form-control" ng-model="activeDistro.settings.subnet_id" placeholder="EC2 subnet id (must already exist) e.g subnet-xxxx" ng-required="activeDistro.settings.is_vpc">
+                <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.subnet_id.$error.required || form.subnet_id.$invalid || !validSubnetId()"> Subnet Id is required for EC2 VPC (must start with 'subnet-')</div>
               </div>
               <div ng-show="activeDistro.provider == 'ec2' || activeDistro.provider == 'ec2-spot'">
                 <div id="mounts-table" class="distro-table-scroll">
@@ -195,7 +202,7 @@ Evergreen - Distros
                         <td style="padding-left: 10px;"><input required name="devName" type="text" ng-model="mount_point.device_name" class="col-md-10"></td>
                         <td><input  ng-required="!mount_point.size" name="virtName" type="text" ng-model="mount_point.virtual_name" class="col-md-10"></td>
                         <td><input type="number" ng-required="!mount_point.virtual_name" name="devSize" type="text" ng-model="mount_point.size" class="col-md-10">
-                          &nbsp;<a ng-click="form.$setDirty();removeMount(mount_point)"><i class="fa fa-trash distro-trash-icon"></i></a>
+                          <a ng-click="form.$setDirty();removeMount(mount_point)"><i class="fa fa-trash distro-trash-icon"></i></a>
                         </td>
                       </tr>
                     </tbody>
@@ -203,18 +210,18 @@ Evergreen - Distros
                 </div>
               </div>
               <div>
-                <div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.devName.$error.required">&nbsp;Device name is required<br /></div>
-                <div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.virtName.$error.required && mountPoints.devSize.$error.required">&nbsp;Must specify either virtual device name or device size<br /></div>
-                <button type="button" ng-disabled="mountPoints.devName.$dirty && mountPoints.$invalid || mountPoints.devName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addMount()"><i class="fa fa-plus"></i>&nbsp;Add Mount Point</button>
+                <div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.devName.$error.required">Device name is required<br /></div>
+                <div class="icon fa fa-warning distro-error" ng-show="mountPoints.devName.$dirty && mountPoints.virtName.$error.required && mountPoints.devSize.$error.required">Must specify either virtual device name or device size<br /></div>
+                <button type="button" ng-disabled="mountPoints.devName.$dirty && mountPoints.$invalid || mountPoints.devName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addMount()"><i class="fa fa-plus"></i>Add Mount Point</button>
               </div>
             </div>
             <div ng-show="activeDistro.provider != 'static'">
               <label class="distro-label">Maximum number of hosts allowed:</label>
               <input type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
-              <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">&nbsp;Numeric pool size is required</div>
+              <div class="icon fa fa-warning distro-error" ng-show="form.poolSize.$dirty && form.poolSize.$error.required || form.poolSize.$invalid">Numeric pool size is required</div>
             </div>
             <div ng-form name="hostProviderForm" ng-show="activeDistro.provider == 'static'">
-              <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">&nbsp;([[activeDistro.settings.hosts.length]])</span>:</label>
+              <label class="distro-label">Hosts<span ng-show="activeDistro.settings.hosts && activeDistro.settings.hosts.length != 0">([[activeDistro.settings.hosts.length]])</span>:</label>
               <div id="hosts-table" class="distro-table-scroll">
                 <table style="margin-left: -8px;" class="table table-bordered distro-table" ng-show="activeDistro.settings.hosts">
                   <tbody id="hosts-table" ng-repeat="host in activeDistro.settings.hosts">
@@ -225,7 +232,7 @@ Evergreen - Distros
                 </table>
               </div>
               <div>
-                <div class="icon fa fa-warning distro-error" ng-show="hostProviderForm.hostName.$dirty && hostProviderForm.hostName.$error.required">&nbsp;Static host can not be blank<br /></div>
+                <div class="icon fa fa-warning distro-error" ng-show="hostProviderForm.hostName.$dirty && hostProviderForm.hostName.$error.required">Static host can not be blank<br /></div>
                 <br />
                 <button type="button" ng-disabled="hostProviderForm.hostName.$dirty && hostProviderForm.$invalid || hostProviderForm.hostName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addHost()"><i class="fa fa-plus"></i>&nbsp;Add Host</button>
               </div>
@@ -234,7 +241,7 @@ Evergreen - Distros
           <div>
             <label class="distro-label">User:</label>
             <input required name="userName" type="text" class="form-control" ng-model="activeDistro.user" placeholder="Username with which to SSH into host machine">
-            <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">&nbsp;SSH user is required</div><br>
+            <div class="icon fa fa-warning distro-error" ng-show="form.userName.$dirty && form.userName.$error.required || form.userName.$invalid">SSH user is required</div><br>
           </div>
           <div class="dropdown">
             <span class="distro-menu-title">SSH Key:</span>
@@ -245,7 +252,7 @@ Evergreen - Distros
               <li required name="sshKeyForm" ng-click="form.$setDirty();setKeyValue('ssh_key', key.name)" ng-repeat="key in keys" role="presentation"><a role="menuitem" tabindex="-1">[[key.name]] - [[key.location]]</a></li>
             </ul>
             <br>
-            <div class="icon fa fa-warning distro-error" ng-show="!activeDistro.ssh_key">&nbsp;SSH keys must be configured</div>
+            <div class="icon fa fa-warning distro-error" ng-show="!activeDistro.ssh_key">SSH keys must be configured</div>
           </div>
           <div ng-form name="sshForm">
             <label class="distro-label">SSH Options:</label>
@@ -258,8 +265,8 @@ Evergreen - Distros
                 </tbody>
               </table>
             </div>
-            <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">&nbsp;SSH option can not be blank<br /></div>
-            <button type="button" class="btn btn-primary" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required" ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>&nbsp;Add SSH Option</button>
+            <div class="icon fa fa-warning distro-error" ng-show="sshForm.opt.$dirty && sshForm.opt.$error.required">SSH option can not be blank<br /></div>
+            <button type="button" class="btn btn-primary" ng-disabled="sshForm.opt.$dirty && sshForm.$invalid || sshForm.opt.$error.required" ng-click="form.$setDirty();addSSHOption()"><i class="fa fa-plus"></i>Add SSH Option</button>
           </div>
           <div>
             <div>
@@ -288,7 +295,7 @@ Evergreen - Distros
                 </table>
               </div>
               <div>
-                <div class="icon fa fa-warning distro-error" ng-show="expansions.expKey.$dirty && expansions.expKey.$error.required">&nbsp;Expansion key can not be blank<br /></div>
+                <div class="icon fa fa-warning distro-error" ng-show="expansions.expKey.$dirty && expansions.expKey.$error.required">Expansion key can not be blank<br /></div>
                 <button type="button" ng-disabled="(expansions.expKey.$dirty && expansions.$invalid) || expansions.expKey.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addExpansion()"><i class="fa fa-plus"></i>&nbsp;Add Expansion</button>
               </div>
             </div>
@@ -299,7 +306,7 @@ Evergreen - Distros
         </div>
         <div>
           <br><br>
-          <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid)" ng-click="saveConfiguration()">Save Configuration</button>
+          <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()" ng-click="saveConfiguration()">Save Configuration</button>
           <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-click="openConfirmationModal('removeDistro')" ng-disabled="activeDistro.new">Remove Configuration</button>
           <admin-modal>
             <remove-distro ng-show="confirmationOption == 'removeDistro'"></remove-distro>

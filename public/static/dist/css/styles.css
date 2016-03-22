@@ -656,6 +656,7 @@ button.alert-close {
   color: red;
   font-size: 12px;
   margin-top: 10px;
+  margin-left: 10px;
   font-weight: bold;
 }
 .distro-trash-icon {
