@@ -29,7 +29,7 @@ functions:
           if [ "Windows_NT" = "$OS" ]; then
               set -o igncr
           fi;
-          . ./set_gopath.given 
+          . ./set_gopath.sh
           perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
     - command: shell.exec
       params:
