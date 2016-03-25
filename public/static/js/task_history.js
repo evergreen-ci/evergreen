@@ -290,7 +290,6 @@ mciModule.controller('TaskHistoryController', function($scope, $window, $http,
       $scope.firstVersion = $scope.versions[0].revision;
       $scope.lastVersion = $scope.versions[numVersions - 1].revision;
     }
-    console.log($scope.taskHistoryFilter.filter.tests)
   };
 
   function buildVersionsByRevisionMap(versions, before) {
@@ -474,6 +473,7 @@ $scope.getGridClass = function(cell) {
 
 
 $scope.loadMore = function(before) {
+  $scope.taskHistoryFilter.testsLoading = true;
   var revision = $scope.firstVersion;
   if (before) {
     revision = $scope.lastVersion;

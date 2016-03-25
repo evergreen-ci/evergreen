@@ -23,8 +23,11 @@ Evergreen - Task History
       <div class="task-history-gridtable gridtable-small" style="padding-top: 60px">
         <div class="col-lg-1">
           <button type="button" class="btn btn-info" ng-click="loadMore(false)"
-                  ng-hide="exhaustedAfter">
-            Load Newer Entries
+            ng-disabled="taskHistoryFilter.testsLoading" ng-hide="exhaustedAfter">
+            <span ng-hide="taskHistoryFilter.testsLoading"> Load Newer Entries </span>
+            <span ng-show="taskHistoryFilter.testsLoading">
+              Loading <span class="spinner"><i class="fa fa-spin fa-circle-o-notch"></i></span>
+            </span>
           </button>
         </div>
         <div class="top-header-row locked" style="margin-top: -124px; padding-top: 124px; width: 60%">
@@ -161,16 +164,19 @@ Evergreen - Task History
               [[ variant ]]
             </div>
           </div>
-          <div ng-show="taskHistoryFilter.testsLoading">
-            <div class="label label-info">Loading...</div>
-          </div>
         </div>
       </div>
     </div>
   </div>
   <div class="row" style="margin-top: 10px">
     <div class="col-lg-3">
-      <button type="button" class="btn btn-info" ng-click="loadMore(true)" ng-hide="exhaustedBefore">Load Older Entries</button>
+      <button type="button" class="btn btn-info" ng-click="loadMore(true)"
+        ng-hide="exhaustedBefore" ng-disabled="taskHistoryFilter.testsLoading">
+        <span ng-hide="taskHistoryFilter.testsLoading"> Load Older Entries </span>
+        <span ng-show="taskHistoryFilter.testsLoading">
+          Loading <span class="spinner"><i class="fa fa-spin fa-circle-o-notch"></i></span>
+        </span>
+      </button>
       <notify-box ng-init="destination='errorNearButton'"></notify-box>
     </div>
   </div>
