@@ -14,6 +14,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     $scope.curHostData;
     $scope.hostExtensionLengths = {};
     $scope.maxHostsPerUser = $window.maxHostsPerUser;
+    $scope.spawnReqSent = false;
 
     // max of 7 days time to expiration
     $scope.maxHoursToExpiration = 24*7;
@@ -140,6 +141,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     };
 
     $scope.spawnHost = function() {
+      $scope.spawnReqSent = true;
       $scope.spawnInfo.spawnKey = $scope.selectedKey;
       $scope.spawnInfo.saveKey = $scope.saveKey;
       $scope.spawnInfo.userData = $scope.userData.text;
@@ -149,6 +151,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.reload(true);
           },
           error: function(jqXHR, status, errorThrown) {
+            $scope.spawnReqSent = false;
             notificationService.pushNotification('Error spawning host: ' + jqXHR,'errorHeader');
           }
         }
