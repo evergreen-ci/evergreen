@@ -215,6 +215,12 @@ tasks:
       params:
         working_dir: src
         script: |
+          echo "building Plugins file!"
+          cat > Plugins <<END_OF_PLUGINS
+          ${plugins_file}
+          END_OF_PLUGINS
+          cat Plugins
+          ./install_plugins.sh
           echo "running process compile sanity check"
           set -e
           if [ "Windows_NT" = "$OS" ]; then
@@ -898,6 +904,17 @@ buildvariants:
         test_flag: "-coverprofile=coverage.out"
       tasks:
       - "*"
+    - name: zseries
+      display_name: RHEL 7.1 zSeries GCCGO
+      run_on:
+      - rhel72-zseries-test
+      expansions:
+        goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
+        EVGHOME_cmd: "`pwd`"
+        compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
+        #mongo_url: https://s3.amazonaws.com/mciuploads/mongodb-mongo-master/enterprise-rhel-71-ppc64le/622707b5ce4bde79cbf6df07bafc98038d5c7e8d/binaries/mongo-mongodb_mongo_master_enterprise_rhel_71_ppc64le_622707b5ce4bde79cbf6df07bafc98038d5c7e8d_16_03_22_15_23_09.tgz
+      tasks:
+      - ".nodb !make_deploy"
     - name: ppc
       display_name: RHEL 7.1 PowerPC GCCGO
       run_on:
