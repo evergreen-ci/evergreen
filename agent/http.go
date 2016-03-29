@@ -233,7 +233,7 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.Task
 	}
 	if err != nil {
 		if retryFail {
-			bodyMsg := ""
+			var bodyMsg []byte
 			if resp != nil {
 				bodyMsg, _ = ioutil.ReadAll(resp.Body)
 			}
