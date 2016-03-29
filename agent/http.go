@@ -233,8 +233,12 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.Task
 	}
 	if err != nil {
 		if retryFail {
-			errMsg := fmt.Errorf("task end failed after %v tries: %v",
-				h.MaxAttempts, err)
+			bodyMsg := ""
+			if resp != nil {
+				bodyMsg, _ = ioutil.ReadAll(resp.Body)
+			}
+			errMsg := fmt.Errorf("task end failed after %v tries (%v): %v",
+				h.MaxAttempts, err, bodyMsg)
 			h.Logger.Logf(slogger.ERROR, errMsg.Error())
 			return nil, errMsg
 		} else {
