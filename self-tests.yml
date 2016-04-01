@@ -929,7 +929,7 @@ buildvariants:
     - name: osx
       display_name: OSX
       run_on:
-      - osx-108
+      - osx-1010
       expansions:
         EVGHOME_cmd: "`pwd`"
         mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
