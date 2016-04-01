@@ -25,8 +25,6 @@ const (
 	TrackCmd        = "track"
 )
 
-var trackedTask = ""
-
 // ShellPlugin runs arbitrary shell code on the agent's machine.
 type ShellPlugin struct{}
 
@@ -66,7 +64,8 @@ func (cc *TrackCommand) ParseParams(params map[string]interface{}) error {
 // Execute starts the shell with its given parameters.
 func (cc *TrackCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
-	trackedTask = conf.Task.Id
+	pluginLogger.LogExecution(slogger.WARN,
+		"WARNING: shell.track is deprecated. Process tracking is now enabled by default.")
 	return nil
 }
 
@@ -87,22 +86,9 @@ func (cc *CleanupCommand) ParseParams(params map[string]interface{}) error {
 
 // Execute starts the shell with its given parameters.
 func (cc *CleanupCommand) Execute(pluginLogger plugin.Logger,
-	pluginCom plugin.PluginCommunicator,
-	conf *model.TaskConfig,
-	stop chan bool) error {
-	defer func() {
-		trackedTask = ""
-	}()
-	if trackedTask == "" && trackedTask != conf.Task.Id {
-		pluginLogger.LogExecution(slogger.WARN, "Process tracking was not enabled for task, skipping cleanup.")
-		return nil
-	}
-
-	pluginLogger.LogExecution(slogger.INFO, "Running process cleanup...")
-
-	// Clean up all shell processes spawned during the execution of this task by this agent,
-	// by calling the platform-specific "cleanup" function
-	cleanup(conf.Task.Id, pluginLogger)
+	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
+	pluginLogger.LogExecution(slogger.WARN,
+		"WARNING: shell.cleanup is deprecated. Process cleanup is now enabled by default.")
 	return nil
 }
 
@@ -199,9 +185,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 			// Call the platform's process-tracking function. On some OSes this will be a noop,
 			// on others this may need to do some additional work to track the process so that
 			// it can be cleaned up later.
-			if trackedTask != "" && trackedTask == conf.Task.Id {
-				trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
-			}
+			trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
 
 			if !self.Background {
 				err = localCmd.Cmd.Wait()
@@ -296,4 +280,11 @@ func envHasMarkers(env []string, pidMarker, taskMarker string) bool {
 		}
 	}
 	return hasPidMarker && hasTaskMarker
+}
+
+// KillSpawnedProcs cleans up any tasks that were spawned by the given task.
+func KillSpawnedProcs(taskId string, pluginLogger plugin.Logger) error {
+	// Clean up all shell processes spawned during the execution of this task by this agent,
+	// by calling the platform-specific "cleanup" function
+	return cleanup(taskId, pluginLogger)
 }

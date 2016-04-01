@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"net/http"
 	"os"
@@ -203,8 +204,18 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 		if err != nil {
 			agt.logger.LogExecution(slogger.ERROR, "Error running post-task command: %v", err)
 		}
-
 		agt.logger.LogTask(slogger.INFO, "Finished running post-task commands in %v.", time.Since(start).String())
+	}
+
+	t := agt.taskConfig.Project.FindProjectTask(agt.taskConfig.Task.DisplayName)
+	if t.DisableCleanup {
+		agt.logger.LogExecution(slogger.INFO, "Skipping process cleanup.")
+	} else {
+		agt.logger.LogExecution(slogger.INFO, "Running process cleanup.")
+		err := shell.KillSpawnedProcs(agt.taskConfig.Task.Id, agt.logger)
+		if err != nil {
+			agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes: %v", err)
+		}
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)

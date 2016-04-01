@@ -267,6 +267,7 @@ type ProjectTask struct {
 	Name            string              `yaml:"name,omitempty" bson:"name"`
 	Priority        int64               `yaml:"priority,omitempty" bson:"priority"`
 	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs,omitempty" bson:"exec_timeout_secs"`
+	DisableCleanup  bool                `yaml:"disable_cleanup,omitempty" bson:"disable_cleanup,omitempty"`
 	DependsOn       []TaskDependency    `yaml:"depends_on,omitempty" bson:"depends_on"`
 	Requires        []TaskRequirement   `yaml:"requires,omitempty" bson:"requires"`
 	Commands        []PluginCommandConf `yaml:"commands,omitempty" bson:"commands"`
