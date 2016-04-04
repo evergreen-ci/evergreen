@@ -912,9 +912,9 @@ buildvariants:
         goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
         EVGHOME_cmd: "`pwd`"
         compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
-        #mongo_url: https://s3.amazonaws.com/mciuploads/mongodb-mongo-master/enterprise-rhel-71-ppc64le/622707b5ce4bde79cbf6df07bafc98038d5c7e8d/binaries/mongo-mongodb_mongo_master_enterprise_rhel_71_ppc64le_622707b5ce4bde79cbf6df07bafc98038d5c7e8d_16_03_22_15_23_09.tgz
+        mongo_url: https://s3.amazonaws.com/mciuploads/mongodb-mongo-master/enterprise-rhel-72-s390x/7bc77b9f6db91f0f66dc77e41c9c6212c944bf91/binaries/mongo-mongodb_mongo_master_enterprise_rhel_72_s390x_7bc77b9f6db91f0f66dc77e41c9c6212c944bf91_16_04_02_17_29_56.tgz
       tasks:
-      - ".nodb !make_deploy"
+      - "!make_deploy"
     - name: ppc
       display_name: RHEL 7.1 PowerPC GCCGO
       run_on:
