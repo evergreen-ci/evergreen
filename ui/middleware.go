@@ -316,6 +316,8 @@ func (pc *projectContext) populateProjectRefs(includePrivate, isSuperUser bool, 
 			uiProj := UIProjectFields{
 				DisplayName: p.DisplayName,
 				Identifier:  p.Identifier,
+				Repo:        p.Repo,
+				Owner:       p.Owner,
 			}
 			pc.AllProjects = append(pc.AllProjects, uiProj)
 		}

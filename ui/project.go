@@ -22,6 +22,8 @@ type projectSettings struct {
 type UIProjectFields struct {
 	Identifier  string `json:"identifier"`
 	DisplayName string `json:"display_name"`
+	Repo        string `json:"repo_name"`
+	Owner       string `json:"owner_name"`
 }
 
 // filterAuthorizedProjects iterates through a list of projects and returns a list of all the projects that a user
