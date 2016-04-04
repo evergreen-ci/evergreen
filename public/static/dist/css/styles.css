@@ -820,6 +820,9 @@ ul.tooltip-tasks li.tooltip-task {
   width: 20px;
   height: 20px;
 }
+.gridtable-scroll {
+  overflow: scroll;
+}
 .cell {
   background: transparent;
 }
