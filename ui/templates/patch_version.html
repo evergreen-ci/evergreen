@@ -93,9 +93,9 @@ Evergreen - Configure Patch
                     mci-mouseleave="selectedTask.set('')">
                   <div  class="highlight-wrapper"
                         ng-class="{true:'highlight-bg-no-border', false:''}[taskRunsOnVariant(task.Name, selectedVariant.get())]">
-                    <label ng-class="{true:'muted', false:''}[(!!patch.Version && allVariantsOriginal[$index].checked) || !canEdit]">
+                    <label ng-class="{true:'muted', false:''}[(!!patch.Version && allTasksOriginal[$index].checked) || !canEdit]">
                       <input  type="checkbox"
-                              ng-disabled="(!!patch.Version && allVariantsOriginal[$index].checked) || !canEdit"
+                              ng-disabled="(!!patch.Version && allTasksOriginal[$index].checked) || !canEdit"
                               ng-checked="task.checked"
                               ng-click="toggleCheck(task)">
                       [[task.Name]]
