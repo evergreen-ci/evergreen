@@ -156,29 +156,12 @@ func FindTaskLogsBeforeTime(taskId string, execution int, ts time.Time, limit in
 	}
 	defer session.Close()
 
-	// TODO(EVG-227)
-	var query bson.M
-	if execution == 0 {
-		query = bson.M{"$and": []bson.M{
-			bson.M{
-				TaskLogTaskIdKey: taskId,
-				TaskLogTimestampKey: bson.M{
-					"$lt": ts,
-				},
-			},
-			bson.M{"$or": []bson.M{
-				bson.M{TaskLogExecutionKey: 0},
-				bson.M{TaskLogExecutionKey: nil},
-			}}}}
-	} else {
-		query = bson.M{
-			TaskLogTaskIdKey:    taskId,
-			TaskLogExecutionKey: execution,
-			TaskLogTimestampKey: bson.M{
-				"$lt": ts,
-			},
-		}
-
+	query := bson.M{
+		TaskLogTaskIdKey:    taskId,
+		TaskLogExecutionKey: execution,
+		TaskLogTimestampKey: bson.M{
+			"$lt": ts,
+		},
 	}
 
 	result := []TaskLog{}
