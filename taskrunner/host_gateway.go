@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	MakeShellTimeout  = time.Second * 10
+	MakeShellTimeout  = time.Second * 30
 	SCPTimeout        = time.Minute
 	StartAgentTimeout = time.Second * 30
 	agentFile         = "agent"
