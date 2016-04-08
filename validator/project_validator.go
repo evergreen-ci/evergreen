@@ -21,6 +21,16 @@ const (
 	Warning
 )
 
+func (vel ValidationErrorLevel) String() string {
+	switch vel {
+	case Error:
+		return "ERROR"
+	case Warning:
+		return "WARNING"
+	}
+	return "?"
+}
+
 type ValidationError struct {
 	Level   ValidationErrorLevel `json:"level"`
 	Message string               `json:"message"`
@@ -389,17 +399,38 @@ func ensureReferentialIntegrity(project *model.Project, distroIds []string) []Va
 func validateBVNames(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 	buildVariantNames := map[string]bool{}
+	displayNames := map[string]int{}
+
 	for _, buildVariant := range project.BuildVariants {
 		if _, ok := buildVariantNames[buildVariant.Name]; ok {
 			errs = append(errs,
 				ValidationError{
-					Message: fmt.Sprintf("project '%v' buildvariant "+
-						"'%v' already exists", project.Identifier,
-						buildVariant.Name),
+					Message: fmt.Sprintf("project '%v' buildvariant '%v' already exists",
+						project.Identifier, buildVariant.Name),
 				},
 			)
 		}
 		buildVariantNames[buildVariant.Name] = true
+		dispName := buildVariant.DisplayName
+		if dispName == "" { // Default display name to the actual name (identifier)
+			dispName = buildVariant.Name
+		}
+		displayNames[dispName] = displayNames[dispName] + 1
+	}
+	// don't bother checking for the warnings if we already found errors
+	if len(errs) > 0 {
+		return errs
+	}
+	for k, v := range displayNames {
+		if v > 1 {
+			errs = append(errs,
+				ValidationError{
+					Level:   Warning,
+					Message: fmt.Sprintf("%v build variants share the same display name: '%v'", v, k),
+				},
+			)
+
+		}
 	}
 	return errs
 }

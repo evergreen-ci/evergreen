@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -215,12 +216,22 @@ func (vc *ValidateCommand) Execute(args []string) error {
 	if err != nil {
 		return nil
 	}
+	numErrors, numWarnings := 0, 0
 	if len(projErrors) > 0 {
-		fmt.Println("Project has", len(projErrors), "error(s)")
 		for i, e := range projErrors {
-			fmt.Printf("%v) %v\n\n", i+1, e.Message)
+			if e.Level == validator.Warning {
+				numWarnings++
+			} else if e.Level == validator.Error {
+				numErrors++
+			}
+			fmt.Printf("%v) %v: %v\n\n", i+1, e.Level, e.Message)
 		}
-		return fmt.Errorf("Invalid project file!")
+		if numErrors > 0 {
+			return fmt.Errorf("Invalid project file!")
+		}
+		if numWarnings > 0 {
+			fmt.Printf("Project file has %v warnings, 0 errors.\n", numWarnings)
+		}
 	}
 	fmt.Println("Valid!")
 	return nil

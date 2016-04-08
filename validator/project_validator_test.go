@@ -61,8 +61,7 @@ func TestVerifyTaskDependencies(t *testing.T) {
 			So(len(verifyTaskDependencies(project)), ShouldEqual, 0)
 		})
 
-		Convey("if any dependencies have an invalid name field, an error"+
-			" should be returned", func() {
+		Convey("if any dependencies have an invalid name field, an error should be returned", func() {
 
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
@@ -580,8 +579,33 @@ func TestValidateBVNames(t *testing.T) {
 					{Name: "linux"},
 				},
 			}
-			So(validateBVNames(project), ShouldNotResemble, []ValidationError{})
-			So(len(validateBVNames(project)), ShouldEqual, 1)
+			validationResults := validateBVNames(project)
+			So(validationResults, ShouldNotResemble, []ValidationError{})
+			So(len(validationResults), ShouldEqual, 1)
+			So(validationResults[0].Level, ShouldEqual, Error)
+		})
+
+		Convey("if two variants have the same display name, a warning should be returned, but no errors", func() {
+			project := &model.Project{
+				BuildVariants: []model.BuildVariant{
+					{Name: "linux1", DisplayName: "foo"},
+					{Name: "linux", DisplayName: "foo"},
+				},
+			}
+
+			validationResults := validateBVNames(project)
+			numErrors, numWarnings := 0, 0
+			for _, val := range validationResults {
+				if val.Level == Error {
+					numErrors++
+				} else if val.Level == Warning {
+					numWarnings++
+				}
+			}
+
+			So(numWarnings, ShouldEqual, 1)
+			So(numErrors, ShouldEqual, 0)
+			So(len(validationResults), ShouldEqual, 1)
 		})
 
 		Convey("if several buildvariants have duplicate entries, all errors "+
