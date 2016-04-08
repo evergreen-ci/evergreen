@@ -82,7 +82,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
                 var uptime = moment().diff(host.creation_time, 'seconds');
                 host.uptime = moment.duration(uptime, 'seconds').humanize();
                 var expiretime = moment().diff(host.expiration_time, 'seconds');
-                host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+                if(+new Date(host.expiration_time) > +new Date("0001-01-01T00:00:00Z")){
+                  host.expires_in = moment.duration(expiretime, 'seconds').humanize();
+                }
               }
               if ($scope.lastSelected && $scope.lastSelected.id == host.id) {
                 $scope.setSelected(host);
