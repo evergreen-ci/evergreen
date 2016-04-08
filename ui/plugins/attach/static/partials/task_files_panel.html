@@ -2,7 +2,7 @@
 <div class="mci-pod files-panel">
   <div class="row">
     <div class="col-lg-12">
-      <div ng-repeat="file in files | orderBy:'name'">
+      <div ng-repeat="file in files | orderBy:'name'" class="files-list">
         <strong><a ng-href="[[file.link]]">[[file.name]]</a></strong>
       </div>
     </div>
