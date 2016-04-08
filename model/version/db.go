@@ -50,6 +50,9 @@ func ByIds(ids []string) db.Q {
 	return db.Query(bson.M{IdKey: bson.M{"$in": ids}})
 }
 
+// All is a query for all versions.
+var All = db.Query(bson.D{})
+
 // ByLastKnownGoodConfig filters on versions with valid (i.e., have no errors) config for the given
 // project. Does not apply a limit, so should generally be used with a FindOne.
 func ByLastKnownGoodConfig(projectId string) db.Q {

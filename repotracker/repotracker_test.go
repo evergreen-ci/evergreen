@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
 	"testing"
 	"time"
 )
@@ -50,7 +49,7 @@ func TestFetchRevisions(t *testing.T) {
 			"limit of 4 commits where only 3 exist", func() {
 			testutil.HandleTestingErr(repoTracker.FetchRevisions(4), t,
 				"Error running repository process %v")
-			numVersions, err := version.TotalVersions(bson.M{})
+			numVersions, err := version.Count(version.All)
 			testutil.HandleTestingErr(err, t, "Error finding all versions")
 			So(numVersions, ShouldEqual, 3)
 		})
@@ -59,7 +58,7 @@ func TestFetchRevisions(t *testing.T) {
 			"limit of 2 commits where 3 exist", func() {
 			testutil.HandleTestingErr(repoTracker.FetchRevisions(2), t,
 				"Error running repository process %v")
-			numVersions, err := version.TotalVersions(bson.M{})
+			numVersions, err := version.Count(version.All)
 			testutil.HandleTestingErr(err, t, "Error finding all versions")
 			So(numVersions, ShouldEqual, 2)
 		})

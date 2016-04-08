@@ -44,10 +44,6 @@ type Version struct {
 	Warnings []string `bson:"warnings,omitempty" json:"warnings,omitempty"`
 }
 
-func TotalVersions(query interface{}) (int, error) {
-	return db.Count(Collection, query)
-}
-
 func (self *Version) UpdateBuildVariants() error {
 	return UpdateOne(
 		bson.M{IdKey: self.Id},
