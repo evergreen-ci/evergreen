@@ -821,6 +821,11 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 				FinishTimeKey: bson.M{
 					"$gte": time.Now().Add(-window),
 				},
+				StartTimeKey: bson.M{
+					// make sure all documents have a valid start time so we don't
+					// return tasks with runtimes of multiple years
+					"$gt": util.ZeroTime,
+				},
 			},
 		},
 		{
