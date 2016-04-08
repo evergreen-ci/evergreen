@@ -533,7 +533,7 @@ tasks:
 
           cd builtin
           #TODO coverage reports for other model packages
-          for i in attach expansions git gotest s3Plugin s3copy manifest; do 
+          for i in attach expansions git gotest s3 s3copy manifest; do 
             echo "running $i suite"
             cd $i
             mkfifo $i.pipe
@@ -584,7 +584,7 @@ tasks:
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
 
-          cd ../s3Plugin
+          cd ../s3
           perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
           go tool cover -html=coverage_rewrite.out -o coverage.html
           go tool cover -func=coverage_rewrite.out -o coverage.txt
@@ -709,7 +709,7 @@ tasks:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/s3Plugin/coverage.txt
+        local_file: src/plugin/builtin/s3/coverage.txt
         remote_file: mci/coverage/${task_id}/s3.txt
         bucket: mciuploads
         permissions: public-read
@@ -720,7 +720,7 @@ tasks:
       params:
         aws_key: ${aws_key}
         aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/s3Plugin/coverage.html
+        local_file: src/plugin/builtin/s3/coverage.html
         remote_file: mci/coverage/${task_id}/s3.html
         bucket: mciuploads
         permissions: public-read

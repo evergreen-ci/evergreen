@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/plugin/builtin/s3Plugin"
+	"github.com/evergreen-ci/evergreen/plugin/builtin/s3"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/s3copy"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -28,7 +28,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 		s3CopyPlugin := &S3CopyPlugin{}
 		testutil.HandleTestingErr(registry.Register(s3CopyPlugin), t, "failed to register s3Copy plugin")
-		testutil.HandleTestingErr(registry.Register(&s3Plugin.S3Plugin{}), t, "failed to register S3 plugin")
+		testutil.HandleTestingErr(registry.Register(&s3.S3Plugin{}), t, "failed to register S3 plugin")
 		testutil.HandleTestingErr(
 			db.ClearCollections(model.PushlogCollection, version.Collection), t,
 			"error clearing test collections")

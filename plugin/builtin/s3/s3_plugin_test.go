@@ -1,4 +1,4 @@
-package s3Plugin
+package s3
 
 import (
 	"github.com/evergreen-ci/evergreen"
