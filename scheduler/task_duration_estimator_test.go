@@ -61,6 +61,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[0],
 							Project:      projects[0],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[0]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -70,6 +71,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[0],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
 					}
@@ -122,6 +124,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[2],
 							Project:      projects[2],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[2]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -131,6 +134,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[0],
 							Project:      projects[2],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[0]),
 							FinishTime:   time.Now(),
 						},
 					}
@@ -189,6 +193,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[3],
 							Project:      projects[3],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[3]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -198,6 +203,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[3],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
 					}
@@ -252,6 +258,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -261,6 +268,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[5],
 							Project:      projects[5],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[5]),
 							FinishTime:   time.Now(),
 						},
 					}
@@ -325,6 +333,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
 							Status:       evergreen.TaskUndispatched,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -334,6 +343,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[5],
 							Project:      projects[4],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[5]),
 							FinishTime:   time.Now(),
 						},
 					}
@@ -388,6 +398,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime: time.Now().
 								Add(-model.TaskCompletionEstimateWindow).
 								Add(-model.TaskCompletionEstimateWindow),
@@ -399,6 +410,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[3],
 							Project:      projects[4],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[3]),
 							FinishTime:   time.Now(),
 						},
 					}
@@ -454,6 +466,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[0],
 							Project:      projects[0],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[0]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -463,6 +476,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[0],
 							Status:       evergreen.TaskFailed,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
 						// task 1 is the only runnable task with this project,
@@ -475,6 +489,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[1],
 							Project:      projects[1],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[1]),
 							FinishTime:   time.Now(),
 						},
 						// task 2 is the only runnable task with this project,
@@ -487,6 +502,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[2],
 							Project:      projects[2],
 							Status:       evergreen.TaskFailed,
+							StartTime:    time.Now().Add(-timeTaken[2]),
 							FinishTime:   time.Now(),
 						},
 						// task 3/6 are from the same project and buildvariant
@@ -499,6 +515,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[3],
 							Project:      projects[3],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[3]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -508,6 +525,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[5],
 							Project:      projects[3],
 							Status:       evergreen.TaskSucceeded,
+							StartTime:    time.Now().Add(-timeTaken[5]),
 							FinishTime:   time.Now(),
 						},
 						// task 4/5 are from the same project and buildvariant
@@ -520,6 +538,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[4],
 							Project:      projects[4],
 							Status:       evergreen.TaskFailed,
+							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
 						task.Task{
@@ -529,6 +548,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[5],
 							Project:      projects[4],
 							Status:       evergreen.TaskFailed,
+							StartTime:    time.Now().Add(-timeTaken[5]),
 							FinishTime:   time.Now(),
 						},
 						// task 9 is undispatched so shouldn't
@@ -541,6 +561,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							TimeTaken:    timeTaken[5],
 							Project:      projects[4],
 							Status:       evergreen.TaskUndispatched,
+							StartTime:    time.Now().Add(-timeTaken[5]),
 							FinishTime:   time.Now(),
 						},
 					}
