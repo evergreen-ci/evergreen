@@ -17,6 +17,8 @@ import (
 
 const NumRecentVersions = 10
 
+const configFormValue = "config"
+
 type recentVersionsContent struct {
 	Project  string            `json:"project"`
 	Versions []versionLessInfo `json:"versions"`
@@ -56,6 +58,7 @@ type restVersion struct {
 	Remote              bool      `json:"remote"`
 	RemotePath          string    `json:"remote_path"`
 	Requester           string    `json:"requester"`
+	Config              string    `json:"config,omitempty"`
 }
 
 type versionLessInfo struct {
@@ -87,7 +90,7 @@ type versionStatusByTask map[string]versionStatus
 type versionStatusByBuild map[string]versionStatus
 
 // copyVersion copies the fields of a Version struct into a restVersion struct
-func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
+func copyVersion(srcVersion *version.Version, destVersion *restVersion, includeConfig bool) {
 	destVersion.Id = srcVersion.Id
 	destVersion.CreateTime = srcVersion.CreateTime
 	destVersion.StartTime = srcVersion.StartTime
@@ -108,6 +111,7 @@ func copyVersion(srcVersion *version.Version, destVersion *restVersion) {
 	destVersion.Remote = srcVersion.Remote
 	destVersion.RemotePath = srcVersion.RemotePath
 	destVersion.Requester = srcVersion.Requester
+	destVersion.Config = srcVersion.Config
 }
 
 // Returns a JSON response of an array with the NumRecentVersions
@@ -196,7 +200,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	destVersion := &restVersion{}
-	copyVersion(srcVersion, destVersion)
+	copyVersion(srcVersion, destVersion, r.FormValue(configFormValue) != "")
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)
 		evergreen.Logger.Logf(slogger.ERROR, "adding BuildVariant %v", buildStatus.BuildVariant)
@@ -228,7 +232,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 	}
 
 	destVersion := &restVersion{}
-	copyVersion(srcVersion, destVersion)
+	copyVersion(srcVersion, destVersion, r.FormValue(configFormValue) != "")
 
 	for _, buildStatus := range srcVersion.BuildVariants {
 		destVersion.BuildVariants = append(destVersion.BuildVariants, buildStatus.BuildVariant)

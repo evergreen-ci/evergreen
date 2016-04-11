@@ -135,7 +135,7 @@ type RemoveModuleCommand struct {
 // getAPIClient loads the user settings and creates an APIClient configured for the API/UI
 // endpoints defined in the settings file.
 func getAPIClient(o *Options) (*APIClient, *Settings, error) {
-	settings, err := loadSettings(o)
+	settings, err := LoadSettings(o)
 	if err != nil {
 		return nil, nil, err
 	}

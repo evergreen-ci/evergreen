@@ -183,6 +183,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// REST routes
 	rest := restAPI{uis}
 	restRouter := r.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
+	restRouter.HandleFunc("/projects", uis.loadCtx(rest.getProjectIds)).Name("project_list").Methods("GET")
 	restRouter.HandleFunc("/projects/{project_id}", uis.loadCtx(rest.getProject)).Name("project_info").Methods("GET")
 	restRouter.HandleFunc("/projects/{project_id}/versions", uis.loadCtx(rest.getRecentVersions)).Name("recent_versions").Methods("GET")
 	restRouter.HandleFunc("/projects/{project_id}/revisions/{revision}", uis.loadCtx(rest.getVersionInfoViaRevision)).Name("version_info_via_revision").Methods("GET")

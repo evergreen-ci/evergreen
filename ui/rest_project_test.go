@@ -23,7 +23,7 @@ func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectTestConfig))
 }
 
-func TestGetProjectInfo(t *testing.T) {
+func TestProjectRoutes(t *testing.T) {
 	uis := UIServer{
 		RootURL:     projectTestConfig.Ui.Url,
 		Settings:    *projectTestConfig,
@@ -47,8 +47,10 @@ func TestGetProjectInfo(t *testing.T) {
 		publicId := "pub"
 		public := &model.ProjectRef{
 			Identifier:  publicId,
+			Enabled:     true,
 			Repo:        "repo1",
 			LocalConfig: "buildvariants:\n - name: ubuntu",
+			Admins:      []string{},
 		}
 		So(public.Insert(), ShouldBeNil)
 
@@ -74,6 +76,20 @@ func TestGetProjectInfo(t *testing.T) {
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
 			So(outRef, ShouldResemble, public)
 		})
+		Convey("and be visible to the project_list route", func() {
+			url, err := router.Get("project_list").URL()
+			So(err, ShouldBeNil)
+			request, err := http.NewRequest("GET", url.String(), nil)
+			So(err, ShouldBeNil)
+			n.ServeHTTP(response, request)
+			out := struct {
+				Projects []string `json:"projects"`
+			}{}
+			So(response.Code, ShouldEqual, http.StatusOK)
+			So(json.Unmarshal(response.Body.Bytes(), &out), ShouldBeNil)
+			So(len(out.Projects), ShouldEqual, 1)
+			So(out.Projects[0], ShouldEqual, public.Identifier)
+		})
 	})
 
 	Convey("When loading a private project", t, func() {
@@ -83,17 +99,19 @@ func TestGetProjectInfo(t *testing.T) {
 		privateId := "priv"
 		private := &model.ProjectRef{
 			Identifier: privateId,
+			Enabled:    true,
 			Private:    true,
 			Repo:       "repo1",
+			Admins:     []string{},
 		}
 		So(private.Insert(), ShouldBeNil)
+		response := httptest.NewRecorder()
 
 		Convey("users who are not logged in should be denied with a 302", func() {
 			url, err := router.Get("project_info").URL("project_id", privateId)
 			So(err, ShouldBeNil)
 			request, err := http.NewRequest("GET", url.String(), nil)
 			So(err, ShouldBeNil)
-			response := httptest.NewRecorder()
 			n.ServeHTTP(response, request)
 
 			So(response.Code, ShouldEqual, http.StatusFound)
@@ -106,13 +124,38 @@ func TestGetProjectInfo(t *testing.T) {
 			So(err, ShouldBeNil)
 			// add auth cookie--this can be anything if we are using a MockUserManager
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
-			response := httptest.NewRecorder()
 			n.ServeHTTP(response, request)
 
 			outRef := &model.ProjectRef{}
 			So(response.Code, ShouldEqual, http.StatusOK)
 			So(json.Unmarshal(response.Body.Bytes(), outRef), ShouldBeNil)
 			So(outRef, ShouldResemble, private)
+		})
+		Convey("and it should be visible to the project_list route", func() {
+			url, err := router.Get("project_list").URL()
+			So(err, ShouldBeNil)
+			request, err := http.NewRequest("GET", url.String(), nil)
+			So(err, ShouldBeNil)
+			Convey("for credentialed users", func() {
+				request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
+				n.ServeHTTP(response, request)
+				out := struct {
+					Projects []string `json:"projects"`
+				}{}
+				So(response.Code, ShouldEqual, http.StatusOK)
+				So(json.Unmarshal(response.Body.Bytes(), &out), ShouldBeNil)
+				So(len(out.Projects), ShouldEqual, 1)
+				So(out.Projects[0], ShouldEqual, private.Identifier)
+			})
+			Convey("but not public users", func() {
+				n.ServeHTTP(response, request)
+				out := struct {
+					Projects []string `json:"projects"`
+				}{}
+				So(response.Code, ShouldEqual, http.StatusOK)
+				So(json.Unmarshal(response.Body.Bytes(), &out), ShouldBeNil)
+				So(len(out.Projects), ShouldEqual, 0)
+			})
 		})
 	})
 

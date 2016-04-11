@@ -4,6 +4,7 @@ MCI API v1
 ### Contents
 
   - [A note on authentication](#a-note-on-authentication)
+  - [Retrieve a list of active projects](#retrieve-a-list-of-active-projects)
   - [Retrieve info on a particular project](#retrieve-info-on-a-particular-project)
   - [Retrieve the most recent revisions for a particular project](#retrieve-the-most-recent-revisions-for-a-particular-project)
   - [Retrieve info on a particular version](#retrieve-info-on-a-particular-version)
@@ -29,6 +30,27 @@ Authenticated REST access requires setting two headers, `Auth-Username` and `Api
 
 ```bash
     curl -H Auth-Username:my.name -H Api-Key:21312mykey12312 https://localhost:9090/rest/v1/projects/my_private_project
+```
+#### Retrieve a list of active project IDs
+
+    GET /rest/v1/projects
+
+_Note that you must use API credentials to see private projects._
+
+##### Request
+
+    curl https://localhost:9090/rest/v1/projects
+
+##### Response
+
+```json
+{
+  "projects": [
+    "mci",
+    "mongodb-mongo-master-sanitize",
+    "mongo-c-driver"
+  ]
+}
 ```
 
 #### Retrieve info on a particular project
@@ -110,6 +132,10 @@ _Note that you must use API credentials to see private projects._
 #### Retrieve info on a particular version by its revision
 
     GET /rest/v1/projects/{project_id}/revisions/{revision}
+     
+     or
+
+    GET /rest/v1/projects/{project_id}/revisions/{revision}?config=1
 
 _Note that the revision is equivalent to the git hash._
 
@@ -158,10 +184,16 @@ _Note that the revision is equivalent to the git hash._
 #### Retrieve info on a particular version
 
     GET /rest/v1/versions/{version_id}
+      
+      or
+
+    GET /rest/v1/versions/{version_id}?config=1
 
 ##### Request
 
     curl https://localhost:9090/rest/v1/versions/mongodb_mongo_master_d477da53e119b207de45880434ccef1e47084652
+
+If `?config=1` is added to the end of the request, the version's copy of its project configuration will be included.
 
 ##### Response
 

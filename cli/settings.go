@@ -41,8 +41,8 @@ func confirm(message string, defaultYes bool) bool {
 	}
 }
 
-// loadSettings attempts to load the settings file
-func loadSettings(opts *Options) (*Settings, error) {
+// LoadSettings attempts to load the settings file
+func LoadSettings(opts *Options) (*Settings, error) {
 	confPath := opts.ConfFile
 	if confPath == "" {
 		u, err := user.Current()

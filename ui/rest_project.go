@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"fmt"
+	"github.com/evergreen-ci/evergreen/model"
 	"net/http"
 )
 
@@ -15,5 +17,28 @@ func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 	// unset alerts so we don't expose emails through the API
 	ref.Alerts = nil
 	restapi.WriteJSON(w, http.StatusOK, ref)
+	return
+}
+
+// getProjectsIds returns a JSON response of an array of active project Ids.
+// Users must use credentials to see private projects.
+func (restapi restAPI) getProjectsIds(w http.ResponseWriter, r *http.Request) {
+	u := GetUser(r)
+	refs, err := model.FindAllProjectRefs()
+	if err != nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{
+			Message: fmt.Sprintf("error finding projects: %v", err),
+		})
+		return
+	}
+	projects := []string{}
+	for _, r := range refs {
+		if r.Enabled && (!r.Private || u != nil) {
+			projects = append(projects, r.Identifier)
+		}
+	}
+	restapi.WriteJSON(w, http.StatusOK, struct {
+		Projects []string `json:"projects"`
+	}{projects})
 	return
 }
