@@ -20,7 +20,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	case event.ResourceTypeTask:
 		eventQuery = event.MostRecentTaskEvents(resourceId, 100)
 	case event.ResourceTypeHost:
-		eventQuery = event.MostRecentHostEvents(resourceId, 100)
+		eventQuery = event.MostRecentHostEvents(resourceId, 5000)
 	default:
 		http.Error(w, fmt.Sprintf("Unknown resource: %v", resourceType), http.StatusBadRequest)
 		return
