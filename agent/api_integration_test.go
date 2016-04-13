@@ -23,6 +23,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -45,6 +47,8 @@ var tlsConfigs map[string]*tls.Config
 // the revision we'll assume is the current one for the agent. this is the
 // same as appears in testdata/executables/version
 var agentRevision = "xxx"
+
+var testDirectory string
 
 // NoopSignal is a signal handler that ignores all signals, so that we can
 // intercept and check for them directly in the test instead
@@ -116,7 +120,7 @@ func createAgent(testServer *apiserver.TestServer, testTask *task.Task) (*Agent,
 func TestBasicEndpoints(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+		testTask, _, err := setupAPITestData(testConfig, "task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -207,7 +211,7 @@ func TestHeartbeatSignals(t *testing.T) {
 
 	for tlsString, tlsConfig := range tlsConfigs {
 
-		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -228,9 +232,99 @@ func TestHeartbeatSignals(t *testing.T) {
 	}
 }
 
+func TestAgentDirectorySuccess(t *testing.T) {
+	setupTlsConfigs(t)
+	for tlsString, tlsConfig := range tlsConfigs {
+		Convey("With agent printing directory and live API server over "+tlsString, t, func() {
+			testTask, _, err := setupAPITestData(testConfig, "print_dir_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
+			testutil.HandleTestingErr(err, t, "Failed to find test task")
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			So(err, ShouldBeNil)
+			So(testAgent, ShouldNotBeNil)
+
+			dir, err := os.Getwd()
+
+			testutil.HandleTestingErr(err, t, "Failed to read current directory")
+
+			testAgent.RunTask()
+			printLogsForTask(testTask.Id)
+			distro, err := testAgent.GetDistro()
+
+			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
+			dirName := fmt.Sprintf("%s/%s_0", distro.WorkDir, testTask.Id)
+			Convey("Then the directory should have been set and printed", func() {
+				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeTrue)
+				So(scanLogsForTask(testTask.Id, dirName), ShouldBeTrue)
+			})
+			Convey("Then the directory should have been deleted", func() {
+				files, err := ioutil.ReadDir("./")
+				testutil.HandleTestingErr(err, t, "Failed to read current directory")
+				for _, f := range files {
+					So(f.Name(), ShouldNotEqual, dirName)
+				}
+			})
+			err = os.Chdir(dir)
+			testutil.HandleTestingErr(err, t, "Failed to change directory back to main dir")
+		})
+	}
+}
+func TestAgentDirectoryFailure(t *testing.T) {
+	setupTlsConfigs(t)
+	for tlsString, tlsConfig := range tlsConfigs {
+		Convey("With agent printing directory and live API server over "+tlsString, t, func() {
+			testTask, _, err := setupAPITestData(testConfig, "print_dir_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
+			testutil.HandleTestingErr(err, t, "Failed to find test task")
+			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			So(err, ShouldBeNil)
+			So(testAgent, ShouldNotBeNil)
+
+			dir, err := os.Getwd()
+
+			testutil.HandleTestingErr(err, t, "Failed to read current directory")
+
+			distro, err := testAgent.GetDistro()
+			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
+
+			dirName := fmt.Sprintf("%s/%s_0", distro.WorkDir, testTask.Id)
+			_, err = os.Create(dirName)
+			testutil.HandleTestingErr(err, t, "Couldn't create file: %v", err)
+
+			_, err = testAgent.RunTask()
+			Convey("Then the agent should have errored", func() {
+				So(err, ShouldNotBeNil)
+			})
+
+			printLogsForTask(testTask.Id)
+			Convey("Then the task should not have been run", func() {
+				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeFalse)
+				So(scanLogsForTask(testTask.Id, dirName), ShouldBeFalse)
+			})
+			<-testAgent.KillChan
+			Convey("Then the taskDetail type should have been set to SystemCommandType and have status failed", func() {
+				select {
+				case detail := <-testAgent.endChan:
+					So(detail.Type, ShouldEqual, model.SystemCommandType)
+					So(detail.Status, ShouldEqual, evergreen.TaskFailed)
+				default:
+					t.Errorf("unable to read from the endChan")
+				}
+			})
+			err = os.Chdir(dir)
+			testutil.HandleTestingErr(err, t, "Failed to change directory back to main dir")
+
+			err = os.Remove(dirName)
+			testutil.HandleTestingErr(err, t, "Failed to remove dummy directory file")
+		})
+	}
+}
+
 func TestSecrets(t *testing.T) {
 	setupTlsConfigs(t)
-	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+	testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 	testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 	for tlsString, tlsConfig := range tlsConfigs {
@@ -263,7 +357,7 @@ func TestTaskSuccess(t *testing.T) {
 				Convey(testSetup.testSpec, t, func() {
 					Convey("With agent running 'compile' step and live API server over "+
 						tlsString+" with variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, "compile", variant, "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+						testTask, _, err := setupAPITestData(testConfig, "compile", variant, filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test task: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -336,7 +430,7 @@ func TestTaskSuccess(t *testing.T) {
 
 					Convey("With agent running a regular test and live API server over "+
 						tlsString+" on variant "+variant, func() {
-						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+						testTask, _, err := setupAPITestData(testConfig, "normal_task", variant, filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 						testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 						testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -389,7 +483,7 @@ func TestTaskFailures(t *testing.T) {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a failing test and live API server over "+tlsString, func() {
 					testTask, _, err := setupAPITestData(testConfig, "failing_task",
-						"linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+						"linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -436,7 +530,7 @@ func TestTaskAbortion(t *testing.T) {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a slow test and live API server over "+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+					testTask, _, err := setupAPITestData(testConfig, "very_slow_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Failed to find test task")
 					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -481,7 +575,7 @@ func TestTaskTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -514,7 +608,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With an agent with callback_timeout_secs=1 and a live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -553,7 +647,7 @@ func TestTaskExecTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "exec_timeout_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -586,7 +680,7 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "project_exec_timeout_task", "linux-64", "testdata/config_test_plugin/project/project-timeout-test.yml", NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "project_exec_timeout_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/project-timeout-test.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -618,7 +712,7 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 func TestTaskEndEndpoint(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
-		testTask, _, err := setupAPITestData(testConfig, "random", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", NoPatch, t)
+		testTask, _, err := setupAPITestData(testConfig, "random", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
@@ -884,4 +978,15 @@ func prependConfigToVersion(t *testing.T, versionId, configData string) {
 	v.Config = configData + v.Config
 	testutil.HandleTestingErr(dbutil.ClearCollections(version.Collection), t, "couldnt reset version")
 	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version")
+}
+
+func TestMain(m *testing.M) {
+	var err error
+	testDirectory, err = os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+	exitCode := m.Run()
+	os.Chdir(testDirectory)
+	os.Exit(exitCode)
 }

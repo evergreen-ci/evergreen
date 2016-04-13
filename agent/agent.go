@@ -13,6 +13,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -39,6 +40,9 @@ const (
 	// Completed indicates that the task completed without incident. This signal is
 	// used internally to shut down the signal handler.
 	Completed
+	// Directory Failure indicates that the task failed due to a problem for the agent
+	// creating or moving into a new directory.
+	DirectoryFailure
 )
 
 const (
@@ -112,7 +116,7 @@ type TaskCommunicator interface {
 // script when a task finishes, and reports its results back to the API server.
 type SignalHandler struct {
 	// signal channels for each background process
-	heartbeatChan, idleTimeoutChan, execTimeoutChan, communicatorChan chan Signal
+	directoryChan, heartbeatChan, idleTimeoutChan, execTimeoutChan, communicatorChan chan Signal
 
 	// a single channel for stopping all background processes
 	stopBackgroundChan chan struct{}
@@ -172,6 +176,10 @@ type Agent struct {
 
 	// Registry manages plugins available for the agent.
 	Registry plugin.Registry
+
+	// currentTaskDir holds the absolute path of the directory that the agent has
+	// created for executing the current task.
+	currentTaskDir string
 }
 
 // finishAndAwaitCleanup sends the returned TaskEndResponse and error
@@ -217,6 +225,12 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 			agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes: %v", err)
 		}
 	}
+	err := agt.removeTaskDirectory()
+	if err != nil {
+		detail.Type = model.SystemCommandType
+		detail.Status = evergreen.TaskFailed
+	}
+	//modify the detail, status = system
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 	ret, err := agt.End(detail)
@@ -246,6 +260,7 @@ func (sh *SignalHandler) makeChannels() {
 	sh.idleTimeoutChan = make(chan Signal, 1)
 	sh.execTimeoutChan = make(chan Signal, 1)
 	sh.communicatorChan = make(chan Signal, 1)
+	sh.directoryChan = make(chan Signal, 1)
 	sh.stopBackgroundChan = make(chan struct{})
 }
 
@@ -257,6 +272,7 @@ func (sh *SignalHandler) awaitSignal() Signal {
 	case sig = <-sh.idleTimeoutChan:
 	case sig = <-sh.execTimeoutChan:
 	case sig = <-sh.communicatorChan:
+	case sig = <-sh.directoryChan:
 	case <-sh.stopBackgroundChan:
 		return Completed
 	}
@@ -323,6 +339,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	case AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
+	case DirectoryFailure:
+		detail.Status = evergreen.TaskFailed
+		detail.Type = model.SystemCommandType
+		agt.logger.LogTask(slogger.ERROR, "Directory creation failure - stopping.")
 	case IdleTimeout:
 		agt.logger.LogTask(slogger.ERROR, "Task timed out: '%v'", detail.Description)
 		detail.TimedOut = true
@@ -471,7 +491,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	taskConfig, err := agt.GetTaskConfig()
 	if err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "error fetching task configuration: %v", err)
+		agt.logger.LogExecution(slogger.ERROR, "Error fetching task configuration: %v", err)
 		return nil, err
 	}
 
@@ -505,6 +525,12 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	// start the heartbeater, timeout watcher, system stats collector, and signal listener
 	agt.StartBackgroundActions(agt.signalHandler)
+
+	err = agt.createTaskDirectory(taskConfig)
+	if err != nil {
+		agt.signalHandler.directoryChan <- DirectoryFailure
+		return nil, err
+	}
 
 	// register plugins needed for execution
 	if err = registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
@@ -687,6 +713,52 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 		agt.maxExecTimeoutWatcher.NotifyTimeouts(agt.signalHandler.execTimeoutChan)
 	}
 	go signalHandler.HandleSignals(agt)
+}
+
+// createTaskDirectory makes a directory for the agent to execute
+// the current task within. It changes the necessary variables
+// so that all of the agent's operations will use this folder.
+func (agt *Agent) createTaskDirectory(taskConfig *model.TaskConfig) error {
+	newDir := filepath.Join(taskConfig.Distro.WorkDir,
+		fmt.Sprintf("%s_%d", taskConfig.Task.Id, taskConfig.Task.Execution))
+
+	agt.logger.LogExecution(slogger.INFO, "Making new folder for task execution: %v", newDir)
+	err := os.Mkdir(newDir, 0777)
+	if err != nil {
+		agt.logger.LogExecution(slogger.ERROR, "Error creating task directory: %v", err)
+		return err
+	}
+
+	agt.logger.LogExecution(slogger.INFO, "Changing into task directory: %v", newDir)
+	err = os.Chdir(newDir)
+	if err != nil {
+		agt.logger.LogExecution(slogger.ERROR, "Error changing into task directory: %v", err)
+		return err
+	}
+	agt.currentTaskDir = newDir
+
+	taskConfig.WorkDir = agt.currentTaskDir
+	return nil
+}
+
+// removeTaskDirectory removes the folder the agent created for the
+// task it was executing.
+func (agt *Agent) removeTaskDirectory() error {
+	agt.logger.LogExecution(slogger.INFO, "Changing directory back to distro working directory.")
+	err := os.Chdir(agt.taskConfig.Distro.WorkDir)
+	if err != nil {
+		agt.logger.LogExecution(slogger.ERROR, "Error changing directory out of task directory: %v", err)
+		return err
+	}
+
+	agt.logger.LogExecution(slogger.INFO, "Deleting directory for completed task.")
+	err = os.RemoveAll(agt.currentTaskDir)
+	if err != nil {
+		agt.logger.LogExecution(slogger.ERROR, "Error removing working directory for the task: %v", err)
+		return err
+	}
+	agt.currentTaskDir = ""
+	return nil
 }
 
 // ExitAgent removes the pid file and exits the process with the given exit code.

@@ -221,6 +221,18 @@ tasks:
             sleep 10000
             echo "done with slow" "task!"
 
+- name: print_dir_task 
+  depends_on:
+  - name: compile
+  commands:
+    - command: shell.exec
+      params:
+        script: |
+            set -o verbose
+            set -o errexit
+            echo "printing current directory"
+            pwd
+
 - name: exec_timeout_task
   depends_on:
   - name: compile
@@ -347,6 +359,7 @@ buildvariants:
   - name: aggregation
   - name: normal_task
   - name: very_slow_task
+  - name: print_dir_task
   - name: failing_task
   - name: push
 

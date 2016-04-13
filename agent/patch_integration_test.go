@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -25,12 +26,12 @@ func TestPatchTask(t *testing.T) {
 				Convey("With agent running a patched 'compile'"+tlsString, func() {
 					for _, mode := range patchModes {
 						Convey(fmt.Sprintf("Using patch mode %v", mode.String()), func() {
-							testTask, b, err := setupAPITestData(testConfig, "compile", "linux-64", "testdata/config_test_plugin/project/evergreen-ci-render.yml", mode, t)
+							testTask, b, err := setupAPITestData(testConfig, "compile", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), mode, t)
 
 							githash := "1e5232709595db427893826ce19289461cba3f75"
 							setupPatches(mode, b, t,
-								patchRequest{"", "testdata/test.patch", githash},
-								patchRequest{"recursive", "testdata/testmodule.patch", githash})
+								patchRequest{"", filepath.Join(testDirectory, "testdata/test.patch"), githash},
+								patchRequest{"recursive", filepath.Join(testDirectory, "testdata/testmodule.patch"), githash})
 
 							testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 							testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)

@@ -318,7 +318,7 @@ tasks:
           cd agent
           mkfifo test_pipe
           tee -a agent.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > test_pipe 
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=$EVGHOME/creds.yml > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
       params:
