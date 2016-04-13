@@ -103,7 +103,8 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
                 success: function(data, status) {
                     $scope.closeAdminModal();
                     $rootScope.$broadcast("build_updated", data);
-                    notifier.pushNotification("Build marked as scheduled.", 'notifyHeader', 'success');
+                    var notifyString = "Build marked as " + (active ? "scheduled." : "unscheduled.");
+                    notifier.pushNotification(notifyString, 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
                     notifier.pushNotification('Error scheduling build: ' + jqXHR,'errorModal');
