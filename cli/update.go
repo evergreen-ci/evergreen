@@ -20,7 +20,7 @@ import (
 // the current one.
 type GetUpdateCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
-	Install    bool    `long:"install" description:"after downloading update, overwrite old binary with new one"`
+	Install    bool     `long:"install" description:"after downloading update, overwrite old binary with new one"`
 }
 
 // VersionCommand prints the revision that the CLI binary was built with.
@@ -139,7 +139,7 @@ func checkUpdate(ac *APIClient, silent bool) (updateStatus, error) {
 		return updateStatus{nil, true, clients.LatestRevision}, nil
 	}
 
-	fmt.Fprintf(outLog, "Update to version %v found at %v\n", evergreen.BuildRevision, binarySource.URL)
+	fmt.Fprintf(outLog, "Update to version %v found at %v\n", clients.LatestRevision, binarySource.URL)
 	return updateStatus{binarySource, true, clients.LatestRevision}, nil
 }
 
