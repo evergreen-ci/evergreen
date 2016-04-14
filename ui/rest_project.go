@@ -22,7 +22,7 @@ func (restapi restAPI) getProject(w http.ResponseWriter, r *http.Request) {
 
 // getProjectsIds returns a JSON response of an array of active project Ids.
 // Users must use credentials to see private projects.
-func (restapi restAPI) getProjectsIds(w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getProjectIds(w http.ResponseWriter, r *http.Request) {
 	u := GetUser(r)
 	refs, err := model.FindAllProjectRefs()
 	if err != nil {
