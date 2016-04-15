@@ -14,17 +14,23 @@ const (
 	FAIL = "FAIL"
 	SKIP = "SKIP"
 
-	// Match the start prefix and save the group of non-space characters
-	// following the word "RUN"
-	StartRegexString = `=== RUN (\S+)`
+	// Match the start prefix and save the group of non-space characters following the word "RUN"
+	StartRegexString = `=== RUN\s+(\S+)`
 
-	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value
-	// for number of seconds
+	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
 	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+[ ]*s)`
+
+	// Match the start prefix and save the group of non-space characters following the word "RUN"
+	GocheckStartRegexString = `START: .*.go:[0-9]+: (\S+)`
+
+	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
+	GocheckEndRegexString = `(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9.]+[ ]*s)?`
 )
 
 var startRegex = regexp.MustCompile(StartRegexString)
 var endRegex = regexp.MustCompile(EndRegexString)
+var gocheckStartRegex = regexp.MustCompile(GocheckStartRegexString)
+var gocheckEndRegex = regexp.MustCompile(GocheckEndRegexString)
 
 // Parser is an interface for parsing go test output, producing
 // test logs and test results
@@ -69,90 +75,99 @@ type TestResult struct {
 	LogId string
 }
 
-// VanillaParser parses tests following regular go test output format.
+// VanillaParser parses tests following go test output format.
 // This should cover regular go tests as well as those written with the
-// popular testing package "goconvey". The package"GoCheck" hides most
-// test output, so it might be nice to add support for that at some
-// point by building another parser.
+// popular testing packages goconvey and gocheck.
 type VanillaParser struct {
 	Suite   string
 	logs    []string
 	results []TestResult
+	// map for storing tests during parsing
+	tests map[string]TestResult
 }
 
 // Logs returns an array of logs captured during test execution.
-func (self *VanillaParser) Logs() []string {
-	return self.logs
+func (vp *VanillaParser) Logs() []string {
+	return vp.logs
 }
 
 // Results returns an array of test results parsed during test execution.
-func (self *VanillaParser) Results() []TestResult {
-	return self.results
+func (vp *VanillaParser) Results() []TestResult {
+	return vp.results
 }
 
 // Parse reads in a test's output and stores the results and logs.
-func (self *VanillaParser) Parse(testOutput io.Reader) error {
-	curTest := TestResult{}
+func (vp *VanillaParser) Parse(testOutput io.Reader) error {
 	testScanner := bufio.NewScanner(testOutput)
-
-	// main parse loop
+	vp.tests = map[string]TestResult{}
 	for testScanner.Scan() {
-		// handle errors first
 		if err := testScanner.Err(); err != nil {
 			return fmt.Errorf("error reading test output: %v", err)
 		}
-
 		// logs are appended at the start of the loop, allowing
-		// len(self.logs) to represent the current line number [1...]
+		// len(vp.logs) to represent the current line number [1...]
 		logLine := testScanner.Text()
-		self.logs = append(self.logs, logLine)
-
-		// This is gross, and could all go away with the resolution of
-		// https://code.google.com/p/go/issues/detail?id=2981
-		switch {
-		case startRegex.MatchString(logLine):
-			newTestName, err := startInfoFromLogLine(logLine)
-			if err != nil {
-				return fmt.Errorf("error parsing start line '%v': %v", logLine, err)
-			}
-			// sanity check that we aren't already parsing a test
-			if curTest.Name != "" {
-				return fmt.Errorf("never read end line of test %v", curTest.Name)
-			}
-			curTest = TestResult{
-				Name:      newTestName,
-				SuiteName: self.Suite,
-				StartLine: len(self.logs),
-			}
-		case endRegex.MatchString(logLine):
-			name, status, duration, err := endInfoFromLogLine(logLine)
-			if err != nil {
-				return fmt.Errorf("error parsing end line '%v': %v", logLine, err)
-			}
-			// sanity check on test name
-			if name != curTest.Name {
-				return fmt.Errorf(
-					"name of test end line (%v) does not match start line (%v)",
-					name,
-					curTest.Name,
-				)
-			}
-			curTest.Status = status
-			curTest.RunTime = duration
-			curTest.EndLine = len(self.logs)
-			self.results = append(self.results, curTest)
-			curTest = TestResult{}
+		vp.logs = append(vp.logs, logLine)
+		if err := vp.handleLine(logLine); err != nil {
+			return err
 		}
 	}
+	return nil
+}
 
+// handleLine attempts to parse and store any test updates from the given line.
+func (vp *VanillaParser) handleLine(line string) error {
+	// This is gross, and could all go away with the resolution of
+	// https://code.google.com/p/go/issues/detail?id=2981
+	switch {
+	case startRegex.MatchString(line):
+		return vp.handleStart(line, startRegex)
+	case gocheckStartRegex.MatchString(line):
+		return vp.handleStart(line, gocheckStartRegex)
+	case endRegex.MatchString(line):
+		return vp.handleEnd(line, endRegex)
+	case gocheckEndRegex.MatchString(line):
+		return vp.handleEnd(line, gocheckEndRegex)
+	}
+	return nil
+}
+
+// handleEnd gets the end data from an ending line and stores it.
+func (vp *VanillaParser) handleEnd(line string, rgx *regexp.Regexp) error {
+	name, status, duration, err := endInfoFromLogLine(line, rgx)
+	if err != nil {
+		return fmt.Errorf("error parsing end line '%v': %v", line, err)
+	}
+	t := vp.tests[name]
+	if t.Name == "" {
+		return fmt.Errorf("found exit for test without start line: %v", line)
+	}
+	t.Status = status
+	t.RunTime = duration
+	t.EndLine = len(vp.logs)
+	vp.results = append(vp.results, t)
+	return nil
+}
+
+// handleStart gets the data from a start line and stores it.
+func (vp *VanillaParser) handleStart(line string, rgx *regexp.Regexp) error {
+	name, err := startInfoFromLogLine(line, rgx)
+	if err != nil {
+		return fmt.Errorf("error parsing start line '%v': %v", line, err)
+	}
+	vp.tests[name] = TestResult{
+		Name:      name,
+		SuiteName: vp.Suite,
+		StartLine: len(vp.logs),
+	}
 	return nil
 }
 
 // startInfoFromLogLine gets the test name from a log line
 // indicating the start of a test. Returns test name
 // and an error if one occurs.
-func startInfoFromLogLine(line string) (string, error) {
-	matches := startRegex.FindStringSubmatch(line)
+func startInfoFromLogLine(line string, rgx *regexp.Regexp) (string, error) {
+	matches := rgx.FindStringSubmatch(line)
 	if len(matches) < 2 {
 		// futureproofing -- this can't happen as long as we
 		// check Match() before calling startInfoFromLogLine
@@ -165,8 +180,8 @@ func startInfoFromLogLine(line string) (string, error) {
 // endInfoFromLogLine gets the test name, result status, and Duration
 // from a log line. Returns those matched elements, as well as any error
 // in regex or duration parsing.
-func endInfoFromLogLine(line string) (string, string, time.Duration, error) {
-	matches := endRegex.FindStringSubmatch(line)
+func endInfoFromLogLine(line string, rgx *regexp.Regexp) (string, string, time.Duration, error) {
+	matches := rgx.FindStringSubmatch(line)
 	if len(matches) < 4 {
 		// this block should never be reached if we call endRegex.Match()
 		// before entering this function
@@ -175,9 +190,13 @@ func endInfoFromLogLine(line string) (string, string, time.Duration, error) {
 	}
 	status := matches[1]
 	name := matches[2]
-	duration, err := time.ParseDuration(strings.Replace(matches[3], " ", "", -1))
-	if err != nil {
-		return "", "", 0, fmt.Errorf("error parsing test runtime: %v", err)
+	var duration time.Duration
+	if matches[3] != "" {
+		var err error
+		duration, err = time.ParseDuration(strings.Replace(matches[3], " ", "", -1))
+		if err != nil {
+			return "", "", 0, fmt.Errorf("error parsing test runtime: %v", err)
+		}
 	}
 	return name, status, duration, nil
 }
