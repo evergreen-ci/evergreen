@@ -22,11 +22,9 @@ const (
 	AttachPluginName      = "attach"
 	AttachResultsCmd      = "results"
 	AttachXunitResultsCmd = "xunit_results"
-	AttachTaskFilesCmd    = "task_files"
 
-	AttachResultsAPIEndpoint   = "results"
-	AttachLogsAPIEndpoint      = "test_logs"
-	AttachTaskFilesAPIEndpoint = "task_files"
+	AttachResultsAPIEndpoint = "results"
+	AttachLogsAPIEndpoint    = "test_logs"
 
 	AttachResultsPostRetries   = 5
 	AttachResultsRetrySleepSec = 10 * time.Second
@@ -44,7 +42,6 @@ func (self *AttachPlugin) Name() string {
 
 func (self *AttachPlugin) GetAPIHandler() http.Handler {
 	r := http.NewServeMux()
-	r.HandleFunc(fmt.Sprintf("/%v", AttachTaskFilesAPIEndpoint), AttachFilesHandler)
 	r.HandleFunc(fmt.Sprintf("/%v", AttachResultsAPIEndpoint), AttachResultsHandler)
 	r.HandleFunc("/", http.NotFound) // 404 any request not routable to these endpoints
 	return r
@@ -131,8 +128,6 @@ func (self *AttachPlugin) NewCommand(cmdName string) (plugin.Command,
 		return &AttachResultsCommand{}, nil
 	case AttachXunitResultsCmd:
 		return &AttachXUnitResultsCommand{}, nil
-	case AttachTaskFilesCmd:
-		return &AttachTaskFilesCommand{}, nil
 	default:
 		return nil, fmt.Errorf("No such %v command: %v",
 			AttachPluginName, cmdName)
