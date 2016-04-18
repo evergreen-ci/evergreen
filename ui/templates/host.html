@@ -84,7 +84,9 @@ Evergreen - Host {{.Host.Id}}
         </div>
         <div class="row">
           <div class="host-info col-lg-4 col-md-4 col-sm-3"><b>Distro</b> </div>
-          <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.distro._id]]</div>
+          <a ng-href="/distros##[[host.distro._id]]">
+            <div class="host-info col-lg-8 col-md-8 col-sm-9">[[host.distro._id]]</div>
+          <a>
         </div>
       </div>
       </div>

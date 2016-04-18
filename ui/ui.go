@@ -116,11 +116,10 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/host/{host_id}", uis.requireUser(uis.loadCtx(uis.modifyHost))).Methods("PUT")
 
 	// Distros
-	r.HandleFunc("/distros", uis.requireSuperUser(uis.loadCtx(uis.distrosPage))).Methods("GET")
-
+	r.HandleFunc("/distros", uis.requireUser(uis.loadCtx(uis.distrosPage))).Methods("GET")
 	r.HandleFunc("/distros", uis.requireSuperUser(uis.loadCtx(uis.addDistro))).Methods("PUT")
+	r.HandleFunc("/distros/{distro_id}", uis.requireUser(uis.loadCtx(uis.getDistro))).Methods("GET")
 	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.addDistro))).Methods("PUT")
-	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.getDistro))).Methods("GET")
 	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.modifyDistro))).Methods("POST")
 	r.HandleFunc("/distros/{distro_id}", uis.requireSuperUser(uis.loadCtx(uis.removeDistro))).Methods("DELETE")
 

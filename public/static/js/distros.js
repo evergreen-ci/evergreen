@@ -1,5 +1,7 @@
 mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDistroRestService) {
 
+  $scope.readOnly = !$window.isSuperUser;
+
   $scope.distros = $window.distros;
   for (var i = 0; i < $scope.distros.length; i++) {
     $scope.distros[i].pool_size = $scope.distros[i].pool_size || 0;

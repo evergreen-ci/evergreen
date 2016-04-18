@@ -58,10 +58,8 @@
             <ul class="dropdown-menu">
               <li><a href="/settings">Settings</a></li>
               <li class="divider"></li>
-              {{if IsSuperUser .User.Id}}
               <li><a ng-href="/distros">Distros</a></li>
               <li class="divider"></li>
-              {{end}}
               {{if .ProjectData.IsAdmin}}
               <li><a ng-href="/projects##[[project]]">Projects</a></li>
               <li class="divider"></li>
