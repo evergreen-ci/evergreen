@@ -171,8 +171,6 @@ tasks:
             echo "starting normal_task!"
             echo "here is some log output to stdout"
             cat "readme2.md"
-            grep $(date +"%m-%d-%y") jstests/date.txt
-            grep $(hostname) jstests/hostname.txt
             [ ! -e "jstests/dont_archive_me_test.pdb" ]
             echo "here is some log output to stderr" 1>&2
             echo "done with normal_task!"
