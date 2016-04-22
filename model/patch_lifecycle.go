@@ -238,7 +238,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (
 	}
 
 	patchVersion = &version.Version{
-		Id:            fmt.Sprintf("%v_%v", p.Id.Hex(), 0),
+		Id:            p.Id.Hex(),
 		CreateTime:    time.Now(),
 		Identifier:    p.Project,
 		Revision:      p.Githash,
