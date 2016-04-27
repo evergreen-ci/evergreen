@@ -208,7 +208,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 	}
 
 	t := agt.taskConfig.Project.FindProjectTask(agt.taskConfig.Task.DisplayName)
-	if t.DisableCleanup {
+	if agt.taskConfig.Project.DisableCleanup || (t != nil && t.DisableCleanup) {
 		agt.logger.LogExecution(slogger.INFO, "Skipping process cleanup.")
 	} else {
 		agt.logger.LogExecution(slogger.INFO, "Running process cleanup.")
