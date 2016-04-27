@@ -29,6 +29,7 @@ const (
 type Project struct {
 	Enabled         bool                       `yaml:"enabled,omitempty" bson:"enabled"`
 	Stepback        bool                       `yaml:"stepback,omitempty" bson:"stepback"`
+	DisableCleanup  bool                       `yaml:"disable_cleanup,omitempty" bson:"disable_cleanup,omitempty"`
 	BatchTime       int                        `yaml:"batchtime,omitempty" bson:"batch_time"`
 	Owner           string                     `yaml:"owner,omitempty" bson:"owner_name"`
 	Repo            string                     `yaml:"repo,omitempty" bson:"repo_name"`

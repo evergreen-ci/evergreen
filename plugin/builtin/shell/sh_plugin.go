@@ -185,12 +185,16 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 			// Call the platform's process-tracking function. On some OSes this will be a noop,
 			// on others this may need to do some additional work to track the process so that
 			// it can be cleaned up later.
-			trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
+			projTask := conf.Project.FindProjectTask(conf.Task.DisplayName)
+			if conf.Project.DisableCleanup || (projTask != nil && projTask.DisableCleanup) {
+				pluginLogger.LogSystem(slogger.DEBUG, "skipping process tracking for pid %v", localCmd.Cmd.Process.Pid)
+			} else {
+				trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
+			}
 
 			if !self.Background {
 				err = localCmd.Cmd.Wait()
 			}
-
 		} else {
 			pluginLogger.LogSystem(slogger.DEBUG, "error spawning shell process: %v", err)
 		}
