@@ -32,7 +32,18 @@ type EC2SpotManager struct {
 
 type EC2SpotSettings struct {
 	BidPrice float64 `mapstructure:"bid_price" json:"bid_price,omitempty" bson:"bid_price,omitempty"`
-	EC2ProviderSettings
+
+	AMI          string       `mapstructure:"ami" json:"ami,omitempty" bson:"ami,omitempty"`
+	InstanceType string       `mapstructure:"instance_type" json:"instance_type,omitempty" bson:"instance_type,omitempty"`
+	KeyName      string       `mapstructure:"key_name" json:"key_name,omitempty" bson:"key_name,omitempty"`
+	MountPoints  []MountPoint `mapstructure:"mount_points" json:"mount_points,omitempty" bson:"mount_points,omitempty"`
+
+	// this is the security group name in EC2 classic and the security group ID in VPC (eg. sg-xxxx)
+	SecurityGroup string `mapstructure:"security_group" json:"security_group,omitempty" bson:"security_group,omitempty"`
+	// only set in VPC (eg. subnet-xxxx)
+	SubnetId string `mapstructure:"subnet_id" json:"subnet_id,omitempty" bson:"subnet_id,omitempty"`
+	// this is set to true if the security group is part of a vpc
+	IsVpc bool `mapstructure:"is_vpc" json:"is_vpc,omitempty" bson:"is_vpc,omitempty"`
 }
 
 func (self *EC2SpotSettings) Validate() error {
