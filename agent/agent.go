@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
@@ -227,10 +229,8 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 	}
 	err := agt.removeTaskDirectory()
 	if err != nil {
-		detail.Type = model.SystemCommandType
-		detail.Status = evergreen.TaskFailed
+		agt.logger.LogExecution(slogger.ERROR, "Error removing task directory: %v", err)
 	}
-	//modify the detail, status = system
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 	ret, err := agt.End(detail)
@@ -719,8 +719,11 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 // the current task within. It changes the necessary variables
 // so that all of the agent's operations will use this folder.
 func (agt *Agent) createTaskDirectory(taskConfig *model.TaskConfig) error {
+	h := md5.New()
+	h.Write([]byte(taskConfig.Task.Id))
+	hashedTaskId := hex.EncodeToString(h.Sum(nil))
 	newDir := filepath.Join(taskConfig.Distro.WorkDir,
-		fmt.Sprintf("%s_%d", taskConfig.Task.Id, taskConfig.Task.Execution))
+		fmt.Sprintf("%s_%d", hashedTaskId, os.Getpid()))
 
 	agt.logger.LogExecution(slogger.INFO, "Making new folder for task execution: %v", newDir)
 	err := os.Mkdir(newDir, 0777)

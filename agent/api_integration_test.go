@@ -1,7 +1,9 @@
 package agent
 
 import (
+	"crypto/md5"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
@@ -253,7 +255,13 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			distro, err := testAgent.GetDistro()
 
 			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
-			dirName := fmt.Sprintf("%s/%s_0", distro.WorkDir, testTask.Id)
+
+			h := md5.New()
+			h.Write([]byte(testTask.Id))
+			hashedTaskId := hex.EncodeToString(h.Sum(nil))
+			dirName := filepath.Join(distro.WorkDir,
+				fmt.Sprintf("%s_%d", hashedTaskId, os.Getpid()))
+
 			Convey("Then the directory should have been set and printed", func() {
 				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeTrue)
 				So(scanLogsForTask(testTask.Id, dirName), ShouldBeTrue)
@@ -289,7 +297,11 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			distro, err := testAgent.GetDistro()
 			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
 
-			dirName := fmt.Sprintf("%s/%s_0", distro.WorkDir, testTask.Id)
+			h := md5.New()
+			h.Write([]byte(testTask.Id))
+			hashedTaskId := hex.EncodeToString(h.Sum(nil))
+			dirName := filepath.Join(distro.WorkDir,
+				fmt.Sprintf("%s_%d", hashedTaskId, os.Getpid()))
 			_, err = os.Create(dirName)
 			testutil.HandleTestingErr(err, t, "Couldn't create file: %v", err)
 
