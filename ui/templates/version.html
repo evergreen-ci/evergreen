@@ -124,7 +124,7 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
            </table>
          </div>
 
-         <div class="mci-pod row">
+         <div class="mci-pod row" ng-hide="[[version.Version.errors.length]]">
            <ul class="nav nav-tabs">
              <li ng-class="{active:tab==0}"><a href="#" ng-click="setTab(0)">By Variant</a></li>
              <li ng-class="{active:tab==1}"><a href="#" ng-click="setTab(1)">Grid</a></li>
