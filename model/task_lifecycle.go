@@ -154,7 +154,7 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	return err
 }
 
-func AbortTask(taskId, caller string, aborted bool) error {
+func AbortTask(taskId, caller string) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return err
@@ -165,13 +165,13 @@ func AbortTask(taskId, caller string, aborted bool) error {
 			" in this status", t.Id, t.Status)
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Setting abort=%v for task %v", aborted, t.Id)
+	evergreen.Logger.Logf(slogger.DEBUG, "Aborting task %v", t.Id)
 	// set the active state and then set the abort
 	if err = SetActiveState(t.Id, caller, false); err != nil {
 		return err
 	}
 	event.LogTaskAbortRequest(t.Id, caller)
-	return t.SetAborted(aborted)
+	return t.SetAborted()
 }
 
 // Deactivate any previously activated but undispatched

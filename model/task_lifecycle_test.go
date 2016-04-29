@@ -516,14 +516,14 @@ func TestAbortTask(t *testing.T) {
 		So(testTask.Insert(), ShouldBeNil)
 		So(finishedTask.Insert(), ShouldBeNil)
 		Convey("with a task that has started, aborting a task should work", func() {
-			So(AbortTask(testTask.Id, userName, true), ShouldBeNil)
+			So(AbortTask(testTask.Id, userName), ShouldBeNil)
 			testTask, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldEqual, false)
 			So(testTask.Aborted, ShouldEqual, true)
 		})
 		Convey("a task that is finished should error when aborting", func() {
-			So(AbortTask(finishedTask.Id, userName, true), ShouldNotBeNil)
+			So(AbortTask(finishedTask.Id, userName), ShouldNotBeNil)
 		})
 	})
 

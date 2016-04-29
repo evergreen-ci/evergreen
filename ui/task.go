@@ -578,7 +578,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	case "abort":
-		if err := model.AbortTask(projCtx.Task.Id, authName, true); err != nil {
+		if err := model.AbortTask(projCtx.Task.Id, authName); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}

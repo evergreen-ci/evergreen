@@ -401,15 +401,15 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 }
 
 // SetAborted sets the abort field of task to aborted
-func (t *Task) SetAborted(aborted bool) error {
-	t.Aborted = aborted
+func (t *Task) SetAborted() error {
+	t.Aborted = true
 	return UpdateOne(
 		bson.M{
 			IdKey: t.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				AbortedKey: aborted,
+				AbortedKey: true,
 			},
 		},
 	)
