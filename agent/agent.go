@@ -531,6 +531,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 		agt.signalHandler.directoryChan <- DirectoryFailure
 		return nil, err
 	}
+	taskConfig.Expansions.Put("workdir", agt.WorkDir)
 
 	// register plugins needed for execution
 	if err = registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
