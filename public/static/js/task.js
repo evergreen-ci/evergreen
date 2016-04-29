@@ -312,13 +312,16 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
       $scope.baseTimeTaken = $scope.task.patch_info.base_time_taken;
     }
 
-    if ($scope.task.status === 'started' || $scope.task.status === 'dispatched') {
+    if ($scope.task.status != 'failed' && $scope.task.status != 'success') {
       updateFunc = function() {
         $scope.task.current_time += 1000000000; // 1 second
         $scope.timeTaken = $scope.task.current_time - $scope.task.start_time;
         $scope.timeToCompletion = $scope.task.expected_duration - ($scope.task.current_time - $scope.task.start_time);
         if ($scope.timeToCompletion < 0) {
           $scope.timeToCompletion = 'unknown';
+        }
+        if ($scope.task.status === 'undispatched'){
+          $scope.timeToCompletion = $scope.task.expected_duration;
         }
       }
       updateFunc();

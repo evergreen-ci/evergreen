@@ -145,9 +145,13 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 <td><i class="fa fa-sort-numeric-asc"></i></td>
                 <td><strong>[[task.min_queue_pos | ordinalNum]]</strong> in queue</td>
               </tr>
-              <tr ng-show="task.status != 'undispatched'">
+              <tr>
                 <td><i class="fa fa-clock-o"></i></td>
-                <td>[[timeTaken | stringifyNanoseconds]]<span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span></td>
+                <td>
+                  <span ng-hide="task.status == 'undispatched'">[[timeTaken | stringifyNanoseconds]]</span>
+                  <span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
+                 <span ng-show="task.status == 'undispatched'"> Estimated Runtime: [[timeToCompletion | stringifyNanoseconds]]</span>
+                </td>
               </tr>
               <tr ng-show="baseTimeTaken">
                 <td><i class="fa fa-hourglass"></i></td>
