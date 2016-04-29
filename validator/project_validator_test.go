@@ -811,15 +811,9 @@ func TestCheckTaskCommands(t *testing.T) {
 							Name: "compile",
 							Commands: []model.PluginCommandConf{
 								{
-									Command: "gotest.run",
+									Command: "gotest.parse_files",
 									Params: map[string]interface{}{
-										"working_dir": "key",
-										"tests": []interface{}{
-											map[string]interface{}{
-												"dir":  "key",
-												"args": "sec",
-											},
-										},
+										"files": []interface{}{"test"},
 									},
 								},
 							},
@@ -930,8 +924,10 @@ func TestValidatePluginCommands(t *testing.T) {
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
-							Command: "gotest.run",
-							Params:  map[string]interface{}{},
+							Command: "gotest.parse_files",
+							Params: map[string]interface{}{
+								"blah": []interface{}{"test"},
+							},
 						},
 					},
 				},
@@ -944,15 +940,9 @@ func TestValidatePluginCommands(t *testing.T) {
 				Functions: map[string]*model.YAMLCommandSet{
 					"funcOne": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
-							Command: "gotest.run",
+							Command: "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},
@@ -967,29 +957,17 @@ func TestValidatePluginCommands(t *testing.T) {
 					"a": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},
 					"b": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
-							Command: "gotest.run",
+							Command: "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},
@@ -1005,15 +983,9 @@ func TestValidatePluginCommands(t *testing.T) {
 					"a": &model.YAMLCommandSet{
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},
@@ -1028,7 +1000,7 @@ func TestValidatePluginCommands(t *testing.T) {
 				Pre: &model.YAMLCommandSet{
 					MultiCommand: []model.PluginCommandConf{
 						{
-							Command: "gotest.run",
+							Command: "gotest.parse_files",
 							Params:  map[string]interface{}{},
 						},
 					},
@@ -1043,15 +1015,9 @@ func TestValidatePluginCommands(t *testing.T) {
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Function: "",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},
@@ -1065,7 +1031,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Function: "",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params:   map[string]interface{}{},
 						},
 					},
@@ -1080,15 +1046,9 @@ func TestValidatePluginCommands(t *testing.T) {
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Function: "",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},
@@ -1102,7 +1062,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Function: "",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params:   map[string]interface{}{},
 						},
 					},
@@ -1117,15 +1077,9 @@ func TestValidatePluginCommands(t *testing.T) {
 					MultiCommand: []model.PluginCommandConf{
 						{
 							Function: "",
-							Command:  "gotest.run",
+							Command:  "gotest.parse_files",
 							Params: map[string]interface{}{
-								"working_dir": "key",
-								"tests": []interface{}{
-									map[string]interface{}{
-										"dir":  "key",
-										"args": "sec",
-									},
-								},
+								"files": []interface{}{"test"},
 							},
 						},
 					},

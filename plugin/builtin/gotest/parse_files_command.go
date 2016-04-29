@@ -3,12 +3,15 @@ package gotest
 import (
 	"fmt"
 	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // ParseFilesCommand is a struct implementing plugin.Command. It is used to parse a file or
@@ -197,5 +200,37 @@ func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 
 	}
 	return logs, results, nil
+}
 
+// ToModelTestResults converts the implementation of TestResults native
+// to the gotest plugin to the implementation used by MCI tasks
+func ToModelTestResults(t *task.Task, results []TestResult) task.TestResults {
+	var modelResults []task.TestResult
+	for _, res := range results {
+		// start and end are times that we don't know,
+		// represented as a 64bit floating point (epoch time fraction)
+		var start float64 = float64(time.Now().Unix())
+		var end float64 = start + res.RunTime.Seconds()
+		var status string
+		switch res.Status {
+		// as long as we use a regex, it should be impossible to
+		// get an incorrect status code
+		case PASS:
+			status = evergreen.TestSucceededStatus
+		case SKIP:
+			status = evergreen.TestSkippedStatus
+		case FAIL:
+			status = evergreen.TestFailedStatus
+		}
+		convertedResult := task.TestResult{
+			TestFile:  res.Name,
+			Status:    status,
+			StartTime: start,
+			EndTime:   end,
+			LineNum:   res.StartLine - 1,
+			LogId:     res.LogId,
+		}
+		modelResults = append(modelResults, convertedResult)
+	}
+	return task.TestResults{modelResults}
 }

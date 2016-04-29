@@ -9,6 +9,7 @@ import (
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"time"
 )
 
 func TestAllOutputFiles(t *testing.T) {
@@ -83,4 +84,39 @@ func TestParseOutputFiles(t *testing.T) {
 
 	})
 
+}
+
+func TestResultConversion(t *testing.T) {
+	Convey("With a set of results", t, func() {
+		results := []TestResult{
+			{
+				Name:    "TestNothing",
+				RunTime: 244 * time.Millisecond,
+				Status:  PASS,
+			},
+			{
+				Name:    "TestTwo",
+				RunTime: 5000 * time.Millisecond,
+				Status:  SKIP,
+			},
+		}
+
+		Convey("and their converted form", func() {
+			fakeTask := &task.Task{Id: "taskID"}
+			newRes := ToModelTestResults(fakeTask, results)
+			So(len(newRes.Results), ShouldEqual, len(results))
+
+			Convey("fields should be transformed correctly", func() {
+				So(newRes.Results[0].TestFile, ShouldEqual, results[0].Name)
+				So(newRes.Results[0].Status, ShouldEqual, evergreen.TestSucceededStatus)
+				So(newRes.Results[0].StartTime, ShouldBeLessThan, newRes.Results[0].EndTime)
+				So(newRes.Results[0].EndTime-newRes.Results[0].StartTime,
+					ShouldBeBetween, .243, .245) //floating point weirdness
+				So(newRes.Results[1].TestFile, ShouldEqual, results[1].Name)
+				So(newRes.Results[1].Status, ShouldEqual, evergreen.TestSkippedStatus)
+				So(newRes.Results[1].StartTime, ShouldBeLessThan, newRes.Results[1].EndTime)
+				So(newRes.Results[1].EndTime-newRes.Results[1].StartTime, ShouldBeBetween, 4.9, 5.1)
+			})
+		})
+	})
 }

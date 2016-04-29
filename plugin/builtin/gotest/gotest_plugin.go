@@ -12,7 +12,6 @@ func init() {
 
 const (
 	GotestPluginName      = "gotest"
-	RunTestCommandName    = "run"
 	ParseFilesCommandName = "parse_files"
 	ResultsAPIEndpoint    = "gotest_results"
 	TestLogsAPIEndpoint   = "gotest_logs"
@@ -28,8 +27,6 @@ func (self *GotestPlugin) Name() string {
 
 func (self *GotestPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	switch cmdName {
-	case RunTestCommandName:
-		return &RunTestCommand{}, nil
 	case ParseFilesCommandName:
 		return &ParseFilesCommand{}, nil
 	default:
