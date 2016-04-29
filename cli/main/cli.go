@@ -1,19 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"github.com/evergreen-ci/evergreen/cli"
 	"github.com/jessevdk/go-flags"
 	"os"
 )
-
-type deprecatedCommand struct{ broken, working string }
-
-func (dc *deprecatedCommand) Execute(_ []string) error {
-	return fmt.Errorf(
-		"Command `%v` is no longer supported.\nPlease use `%v` instead",
-		dc.broken, dc.working)
-}
 
 func main() {
 	opts := cli.Options{}
@@ -32,16 +23,6 @@ func main() {
 	parser.AddCommand("list", "list available projects, tasks, or variants", "", &cli.ListCommand{GlobalOpts: &opts})
 	parser.AddCommand("validate", "validate a config file", "", &cli.ValidateCommand{GlobalOpts: &opts})
 	parser.AddCommand("evaluate", "display a project file's evaluated and expanded form", "", &cli.EvaluateCommand{})
-	parser.AddCommand("evaluate-tasks", "deprecated. Use `evaluate --tasks`", "",
-		&deprecatedCommand{"evaluate-tasks", "evaluate --tasks"})
-	parser.AddCommand("evaluate-variants", "deprecated. Use `evaluate --variants`", "",
-		&deprecatedCommand{"evaluate-variants", "evaluate --variants"})
-	parser.AddCommand("list-projects", "deprecated. Use `list --projects`", "",
-		&deprecatedCommand{"list-projects", "list --projects"})
-	parser.AddCommand("list-variants", "deprecated. Use `list --variants`", "",
-		&deprecatedCommand{"list-variants", "list --variants"})
-	parser.AddCommand("list-tasks", "deprecated. Use `list --tasks`", "",
-		&deprecatedCommand{"list-tasks", "list --tasks"})
 	_, err := parser.Parse()
 	if err != nil {
 		os.Exit(1)
