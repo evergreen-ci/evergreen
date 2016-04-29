@@ -13,6 +13,9 @@ mciModule.controller('ProjectController', function($scope, $window) {
   $scope.project = $window.project;
   $scope.allProjects = $window.allProjects;
   $scope.projectName = $window.projectName;
+  if ($window.appPlugins){
+    $scope.appPlugins = $window.appPlugins;
+  }
 
   // groupedProject is an array of arrays representing key-value pairs,
   // where the key is a github repository, and the value is a list

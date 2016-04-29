@@ -51,10 +51,10 @@ func New(opts Options) *Render {
 	}
 }
 
-// Returns an HTML template for the given set of filenames by loading it from cache if available,
+// GetHTMLTemplate returns an HTML template for the given set of filenames by loading it from cache if available,
 // or loading and parsing the files from disk. Returns the template if found or an error if
 // the template couldn't be loaded.
-func (r *Render) getHTMLTemplate(filenames ...string) (*htmlTemplate.Template, error) {
+func (r *Render) GetHTMLTemplate(filenames ...string) (*htmlTemplate.Template, error) {
 
 	var cacheKey string
 	if !r.opts.DisableCache {
@@ -89,7 +89,7 @@ func (r *Render) getHTMLTemplate(filenames ...string) (*htmlTemplate.Template, e
 // the context data, writing the result to out. Returns error if the template could not be
 // loaded or if executing the template failed.
 func (r *Render) HTML(out io.Writer, data interface{}, entryPoint string, files ...string) error {
-	t, err := r.getHTMLTemplate(files...)
+	t, err := r.GetHTMLTemplate(files...)
 	if err != nil {
 		return err
 	}

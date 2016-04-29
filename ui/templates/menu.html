@@ -2,20 +2,19 @@
 
 <script type="text/javascript">
 {{if .User}}
- window.isSuperUser = {{IsSuperUser .User.Id}};
- window.user = {{.User}};
+  window.isSuperUser = {{IsSuperUser .User.Id}};
+  window.user = {{.User}};
 {{end}}
 </script>
 
 <div id="nav" class="navbar navbar-inverse navbar-fixed-top">
   <div class="container-fluid">
     <div class="navbar-header">
-		<a class="navbar-brand" href="/" style="padding:0px">
-			<img style="margin-top: 5px;" height="80%" src="/static/img/evergreen_green.png">
-		</a>
+      <a class="navbar-brand" href="/" style="padding:0px">
+        <img style="margin-top: 5px;" height="80%" src="/static/img/evergreen_green.png">
+      </a>
       <button type="button" class="navbar-toggle" data-toggle="collapse"
-        data-target="#navbar-collapse-content">
-      </button>
+        data-target="#navbar-collapse-content"> </button>
     </div>
 
     <div id="navbar-collapse-content" class="collapse navbar-collapse">
@@ -26,55 +25,63 @@
         <li><a ng-href="/patches/project/[[project]]">Patches</a></li>
         <li><a ng-href="/hosts">Hosts</a></li>
         <li><a ng-href="/task_timing/[[project]]">Stats</a></li>
+        <li ng-show="appPlugins.length > 0" class="dropdown">
+        {{if .User}}
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Plugins </a>
+        <ul class="dropdown-menu"> 
+          <li ng-repeat="plugin in appPlugins"> <a ng-href="/plugin/[[plugin]]/app"> [[plugin]] </a> </li>
+        </ul> 
+        </li>
+        {{end}}
       </ul>
 
       <ul class="nav navbar-nav navbar-right">
         <li class="dropdown" ng-show="!!allProjects" ng-cloak>
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a> 
-            <ul class="dropdown-menu project-dropdown">
-                <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.projects" placeholder="Filter projects" />
-                <span ng-repeat-start="kv in groupedProjects | orderBy:getGroupName"></span>
-                <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
-                    <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[ kv[0] ]]</b>
-                    <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
-                      <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i> 
-                      [[getName(p)]]
-                    </a>
-                </li> 
-                <li class="repo-div" ng-show="[[!$last]]"></li>
-                <span ng-repeat-end></span>
-            </ul>
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a> 
+        <ul class="dropdown-menu project-dropdown">
+          <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.projects" placeholder="Filter projects" />
+          <span ng-repeat-start="kv in groupedProjects | orderBy:getGroupName"></span>
+          <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
+          <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[ kv[0] ]]</b>
+          <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
+            <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i> 
+            [[getName(p)]]
+          </a>
+          </li> 
+          <li class="repo-div" ng-show="[[!$last]]"></li>
+          <span ng-repeat-end></span>
+        </ul>
         </li>
         <li>
-          <a id="help-btn" href='{{HelpUrl}}'><i class="fa fa-question-circle"></i></a>
+        <a id="help-btn" href='{{HelpUrl}}'><i class="fa fa-question-circle"></i></a>
         </li>
         {{if .User }}
-          <li class="dropdown">
-            <a  style="cursor: pointer"
-                class="dropdown-toggle"
-                data-toggle="dropdown">
-              {{.User.DisplayName}} <b class="caret"></b>
-            </a>
-            <ul class="dropdown-menu">
-              <li><a href="/settings">Settings</a></li>
-              <li class="divider"></li>
-              <li><a ng-href="/distros">Distros</a></li>
-              <li class="divider"></li>
-              {{if .ProjectData.IsAdmin}}
-              <li><a ng-href="/projects##[[project]]">Projects</a></li>
-              <li class="divider"></li>
-              {{end}}
-              <li><a href="/spawn">Hosts</a></li>
-              <li class="divider"></li>
-              <li><a href="/patches/mine">Patches</a></li>
-              <li class="divider"></li>
-              <li><a href="/logout">Logout</a></li>
-            </ul>
-          </li>
+        <li class="dropdown">
+        <a  style="cursor: pointer"
+          class="dropdown-toggle"
+          data-toggle="dropdown">
+          {{.User.DisplayName}} <b class="caret"></b>
+        </a>
+        <ul class="dropdown-menu">
+          <li><a href="/settings">Settings</a></li>
+          <li class="divider"></li>
+          <li><a ng-href="/distros">Distros</a></li>
+          <li class="divider"></li>
+          {{if .ProjectData.IsAdmin}}
+          <li><a ng-href="/projects##[[project]]">Projects</a></li>
+          <li class="divider"></li>
+          {{end}}
+          <li><a href="/spawn">Hosts</a></li>
+          <li class="divider"></li>
+          <li><a href="/patches/mine">Patches</a></li>
+          <li class="divider"></li>
+          <li><a href="/logout">Logout</a></li>
+        </ul>
+        </li>
         {{else}}
-          <li ng-controller="LoginModalCtrl">
-            <a href="javascript:;" ng-click="openLoginModal()">Log in</a>
-          </li>
+        <li ng-controller="LoginModalCtrl">
+        <a href="javascript:;" ng-click="openLoginModal()">Log in</a>
+        </li>
         {{end}}
       </ul>
     </div>
