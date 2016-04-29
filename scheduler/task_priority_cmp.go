@@ -30,22 +30,6 @@ func byPriority(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 	return 0, nil
 }
 
-// byStageName returns a dynamically generated importance comparator function.
-// The returned function will consider a Task to be more important if its
-// DisplayName field is equal to the stage name passed into byStageName.
-func byStageName(stageName string) taskPriorityCmp {
-	return func(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
-		error) {
-		if t1.DisplayName == stageName && t2.DisplayName != stageName {
-			return 1, nil
-		}
-		if t2.DisplayName == stageName && t1.DisplayName != stageName {
-			return -1, nil
-		}
-		return 0, nil
-	}
-}
-
 // byNumDeps compares the NumDependents field of the Task documents for
 // each Task.  The Task whose NumDependents field is higher will be considered
 // more important.

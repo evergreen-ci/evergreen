@@ -44,7 +44,6 @@ func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
 		},
 		comparators: []taskPriorityCmp{
 			byPriority,
-			byStageName(evergreen.CompileStage),
 			byNumDeps,
 			byRevisionOrderNumber,
 			byCreateTime,

@@ -61,34 +61,6 @@ func TestTaskImportanceComparators(t *testing.T) {
 			So(cmpResult, ShouldEqual, -1)
 		})
 
-		Convey("the stage name comparator should prioritize the appropriate"+
-			" specific stage", func() {
-
-			prioritizeCompile := byStageName(evergreen.CompileStage)
-			cmpResult, err := prioritizeCompile(tasks[0], tasks[1],
-				taskPrioritizer)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 0)
-
-			tasks[0].DisplayName = evergreen.CompileStage
-			cmpResult, err = prioritizeCompile(tasks[0], tasks[1],
-				taskPrioritizer)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 1)
-
-			cmpResult, err = prioritizeCompile(tasks[1], tasks[0],
-				taskPrioritizer)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, -1)
-
-			tasks[1].DisplayName = evergreen.CompileStage
-			cmpResult, err = prioritizeCompile(tasks[0], tasks[1],
-				taskPrioritizer)
-			So(err, ShouldBeNil)
-			So(cmpResult, ShouldEqual, 0)
-
-		})
-
 		Convey("the dependent count comparator should prioritize a task"+
 			" if its number of dependents is higher", func() {
 
