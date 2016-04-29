@@ -125,7 +125,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		// TODO: switch this to be a query on the builds TaskCache
 		builds, err := build.Find(build.ByProjectAndVariant(projCtx.Project.Identifier, buildVariant, request).
 			WithFields(build.IdKey, build.CreateTimeKey, build.VersionKey,
-			build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
+				build.TimeTakenKey, build.TasksKey, build.FinishTimeKey, build.StartTimeKey, build.StatusKey).
 			Sort([]string{"-" + build.RevisionOrderNumberKey}).
 			Limit(limit))
 		if err != nil {
@@ -230,7 +230,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	if request == evergreen.RepotrackerVersionRequester {
 		versions, err := version.Find(version.ByIds(versionIds).
 			WithFields(version.IdKey, version.CreateTimeKey, version.MessageKey,
-			version.AuthorKey, version.RevisionKey, version.RevisionOrderNumberKey).
+				version.AuthorKey, version.RevisionKey, version.RevisionOrderNumberKey).
 			Sort([]string{"-" + version.RevisionOrderNumberKey}))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusBadRequest, err)

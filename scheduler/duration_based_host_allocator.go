@@ -142,7 +142,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	for _, d := range distros {
 		newHostsNeeded[d.Id], err = self.
 			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
-			distroScheduleData, settings)
+				distroScheduleData, settings)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "Error getting num hosts for distro: %v", err)
 			return nil, err
