@@ -71,11 +71,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         'hosts', {}, {
           success: function(hosts, status) {
             _.each(hosts, function(host) {
-              host.isTerminated = false;
+              host.isTerminated = host.status == 'terminated';
               var terminateTime = moment(host.termination_time);
               // check if the host is terminated to determine uptime
               if (terminateTime > epochTime) {
-                host.isTerminated = true;
                 var uptime = terminateTime.diff(host.creation_time, 'seconds');
                 host.uptime = moment.duration(uptime, 'seconds').humanize();
               } else {
@@ -311,7 +310,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       host.cPassword = '';
       $scope.lastSelected = host;
       $scope.curHostData = host;
-      $scope.curHostData.isTerminated = $scope.curHostData.isTerminated;
+      $scope.curHostData.isTerminated = host.isTerminated;
       // check if this is a windows host
       $scope.curHostData.isWinHost = false;
       if (host.distro.arch.indexOf('win') != -1) {
