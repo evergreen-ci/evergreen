@@ -327,6 +327,7 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   };
 
  $rootScope.$on("task_updated", function(e, newTask){
+    newTask.version_id = $scope.task.version_id;
     newTask.message = $scope.task.message;
     newTask.author = $scope.task.author;
     newTask.author_email = $scope.task.author_email;
