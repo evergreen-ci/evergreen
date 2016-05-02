@@ -553,7 +553,7 @@ func TestTaskAbortion(t *testing.T) {
 						go func() {
 							// Wait for a few seconds, then switch the task to aborted!
 							time.Sleep(3 * time.Second)
-							err := model.AbortTask(testTask.Id, "", true)
+							err := model.AbortTask(testTask.Id, "")
 							testutil.HandleTestingErr(err, t, "Failed to abort test task")
 							fmt.Println("aborted task.")
 						}()
