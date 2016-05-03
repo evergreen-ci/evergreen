@@ -313,9 +313,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   // checks that the form is valid for the given active distro
   $scope.validForm = function() {
-    if ($scope.activeDistro.provider == 'ec2'){
+    if ($scope.activeDistro.provider == 'ec2' || $scope.activeDistro.provider == 'ec2-spot'){
       return $scope.validSecurityGroup() && $scope.validSubnetId;
     }
+    return true;
   }
 
   // if a security group is in a vpc it needs to be the id which starts with 'sg-'
