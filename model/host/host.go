@@ -2,6 +2,8 @@ package host
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -10,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 type Host struct {

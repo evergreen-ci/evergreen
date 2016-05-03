@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
@@ -12,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 const (

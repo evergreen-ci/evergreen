@@ -2,9 +2,10 @@ package util
 
 import (
 	"errors"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 const TestRetries = 10

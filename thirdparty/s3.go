@@ -8,8 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,6 +17,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/goamz/goamz/aws"
+	"github.com/goamz/goamz/s3"
 )
 
 var s3ParamsToSign = map[string]bool{

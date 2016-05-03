@@ -2,6 +2,13 @@ package git
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
@@ -12,12 +19,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 // GitApplyPatchCommand is a command to pull a patch from the api server

@@ -2,10 +2,11 @@ package agent
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
-	"time"
 )
 
 // StatsCollector samples machine statistics and logs them

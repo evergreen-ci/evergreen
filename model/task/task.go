@@ -2,13 +2,14 @@ package task
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 var (

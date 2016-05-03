@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io"
 	"io/ioutil"
+
+	"gopkg.in/yaml.v2"
 )
 
 // ReadYAMLInto reads data for the given io.ReadCloser - until it hits an error

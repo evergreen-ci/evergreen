@@ -1,8 +1,9 @@
 package ui
 
 import (
-	"github.com/evergreen-ci/evergreen"
 	"net/http"
+
+	"github.com/evergreen-ci/evergreen"
 )
 
 type RouteInfo struct {

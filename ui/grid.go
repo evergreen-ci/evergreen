@@ -2,13 +2,14 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/grid"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strconv"
 )
 
 var (

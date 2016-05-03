@@ -2,12 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strings"
 )
 
 func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {

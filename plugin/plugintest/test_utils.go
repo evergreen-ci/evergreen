@@ -1,6 +1,11 @@
 package plugintest
 
 import (
+	"io"
+	"io/ioutil"
+	"testing"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
@@ -15,10 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
-	"io"
-	"io/ioutil"
-	"testing"
-	"time"
 )
 
 type MockLogger struct{}

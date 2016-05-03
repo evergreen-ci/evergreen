@@ -1,10 +1,11 @@
 package attach
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/user"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestFileVisibility(t *testing.T) {

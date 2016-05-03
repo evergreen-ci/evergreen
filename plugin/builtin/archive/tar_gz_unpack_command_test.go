@@ -1,14 +1,15 @@
 package archive_test
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 func TestTarGzUnpackParseParams(t *testing.T) {

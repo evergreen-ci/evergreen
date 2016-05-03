@@ -1,9 +1,10 @@
 package auth
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/crowd"
 	"github.com/evergreen-ci/evergreen"
-	"net/http"
 )
 
 // CrowdUserManager handles authentication with Atlassian Crowd.

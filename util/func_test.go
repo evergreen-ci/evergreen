@@ -2,9 +2,10 @@ package util
 
 import (
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestRunFunctionWithTimeout(t *testing.T) {

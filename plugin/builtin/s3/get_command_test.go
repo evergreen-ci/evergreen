@@ -1,10 +1,11 @@
 package s3
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestS3GetValidateParams(t *testing.T) {

@@ -1,12 +1,13 @@
 package xunit
 
 import (
+	"os"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"os"
-	"testing"
 )
 
 func TestXMLParsing(t *testing.T) {

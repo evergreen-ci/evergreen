@@ -1,8 +1,9 @@
 package command
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestExpansions(t *testing.T) {

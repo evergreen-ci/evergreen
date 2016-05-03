@@ -2,6 +2,10 @@ package agent
 
 import (
 	"fmt"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
@@ -9,9 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func TestPatchTask(t *testing.T) {

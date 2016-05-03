@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
 	"io"
 	"io/ioutil"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"runtime"
 	"syscall"
 	"time"
+
+	"github.com/evergreen-ci/evergreen"
 )
 
 const FilenameTimestamp = "2006-01-02_15_04_05"

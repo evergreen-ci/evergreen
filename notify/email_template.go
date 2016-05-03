@@ -3,9 +3,10 @@ package notify
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/web"
-	"path/filepath"
 )
 
 const (

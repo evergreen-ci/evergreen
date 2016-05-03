@@ -1,10 +1,11 @@
 package notify
 
 import (
+	"strings"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"strings"
 )
 
 // Interface around an email that may be sent as a notification. Provides

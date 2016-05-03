@@ -4,15 +4,16 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
 	"html/template"
 	"io"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 type timePeriod struct {

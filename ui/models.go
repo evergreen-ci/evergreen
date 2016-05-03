@@ -2,6 +2,9 @@ package ui
 
 import (
 	"fmt"
+	"html/template"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,8 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"gopkg.in/mgo.v2/bson"
-	"html/template"
-	"time"
 )
 
 type timelineData struct {

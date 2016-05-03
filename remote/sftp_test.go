@@ -1,9 +1,10 @@
 package remote
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestSFTPGateway(t *testing.T) {

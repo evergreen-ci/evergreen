@@ -2,10 +2,11 @@ package command
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 var (

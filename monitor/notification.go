@@ -2,12 +2,13 @@ package monitor
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"strconv"
-	"time"
 )
 
 // the warning thresholds for spawned hosts, in decreasing order of recency

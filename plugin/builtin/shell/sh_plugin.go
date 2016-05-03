@@ -2,16 +2,17 @@ package shell
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strconv"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"os"
-	"path/filepath"
-	"strconv"
 )
 
 func init() {

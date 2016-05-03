@@ -2,8 +2,9 @@ package auth
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
 	"net/http"
+
+	"github.com/evergreen-ci/evergreen"
 )
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager depending on what type of authentication (Crowd or Naive) is used.

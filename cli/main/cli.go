@@ -1,9 +1,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/evergreen-ci/evergreen/cli"
 	"github.com/jessevdk/go-flags"
-	"os"
 )
 
 func main() {

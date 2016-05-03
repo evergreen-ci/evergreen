@@ -2,6 +2,9 @@ package apiserver
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
@@ -13,8 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"io/ioutil"
-	"net/http"
 )
 
 type spawnRequest struct {

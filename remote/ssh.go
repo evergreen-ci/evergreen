@@ -2,9 +2,10 @@ package remote
 
 import (
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"io"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 var (

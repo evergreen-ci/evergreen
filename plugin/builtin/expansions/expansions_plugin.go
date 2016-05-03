@@ -2,12 +2,13 @@ package expansions
 
 import (
 	"fmt"
+	"net/http"
+	"path/filepath"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
-	"net/http"
-	"path/filepath"
 )
 
 func init() {

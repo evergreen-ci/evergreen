@@ -2,9 +2,10 @@ package model
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/db"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 var (

@@ -2,11 +2,12 @@ package s3
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/s3"
-	"regexp"
-	"strings"
 )
 
 func init() {

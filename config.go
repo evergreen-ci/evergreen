@@ -3,9 +3,10 @@ package evergreen
 import (
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Should be specified with -ldflags at build time

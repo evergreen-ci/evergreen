@@ -3,10 +3,6 @@ package cli
 import (
 	"bytes"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/evergreen-ci/evergreen/validator"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -15,6 +11,11 @@ import (
 	"text/tabwriter"
 	"text/template"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/evergreen-ci/evergreen/validator"
 )
 
 var noProjectError = fmt.Errorf("must specify a project with -p/--project or a path to a config file with -f/--file")

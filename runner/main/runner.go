@@ -5,17 +5,18 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/notify"
-	. "github.com/evergreen-ci/evergreen/runner"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"text/template"
 	"time"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/notify"
+	. "github.com/evergreen-ci/evergreen/runner"
 )
 
 func init() {

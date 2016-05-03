@@ -1,11 +1,12 @@
 package util
 
 import (
-	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen/testutil"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestWriteToTempFile(t *testing.T) {

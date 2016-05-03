@@ -2,8 +2,9 @@ package ui
 
 import (
 	"encoding/gob"
-	"github.com/gorilla/sessions"
 	"net/http"
+
+	"github.com/gorilla/sessions"
 )
 
 const (

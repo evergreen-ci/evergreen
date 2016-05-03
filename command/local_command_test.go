@@ -1,12 +1,13 @@
 package command
 
 import (
-	"github.com/evergreen-ci/evergreen"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestLocalCommands(t *testing.T) {

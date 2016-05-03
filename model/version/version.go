@@ -1,10 +1,11 @@
 package version
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 type Version struct {

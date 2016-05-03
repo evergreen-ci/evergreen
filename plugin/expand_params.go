@@ -2,10 +2,11 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/util"
 	"reflect"
 	"strings"
+
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 const (

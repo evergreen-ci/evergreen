@@ -2,13 +2,14 @@ package apiserver
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 // Returns a list of all processes with runtime entries, i.e. all processes being tracked.

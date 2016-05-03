@@ -2,13 +2,14 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
-	"net/http"
-	"strconv"
 )
 
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {

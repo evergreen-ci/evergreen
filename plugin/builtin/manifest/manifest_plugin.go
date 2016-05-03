@@ -3,12 +3,13 @@ package manifest
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
-	"net/http"
 )
 
 const (

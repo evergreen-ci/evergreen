@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
@@ -8,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 const (

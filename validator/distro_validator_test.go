@@ -1,13 +1,14 @@
 package validator
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 var (

@@ -1,9 +1,10 @@
 package testutil
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"net/http"
 )
 
 // MockUserManager is used for testing the servers.

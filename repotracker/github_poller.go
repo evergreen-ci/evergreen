@@ -3,10 +3,11 @@ package repotracker
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"net/http"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 )
 
 // GithubRepositoryPoller is a struct that implements Github specific behavior

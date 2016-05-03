@@ -1,6 +1,9 @@
 package git_test
 
 import (
+	"os"
+	"testing"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
@@ -11,8 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"os"
-	"testing"
 )
 
 func init() {

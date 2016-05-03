@@ -1,8 +1,9 @@
 package evergreen
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 //Checks that the test settings file can be parsed

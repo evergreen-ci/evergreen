@@ -2,6 +2,11 @@ package plugin
 
 import (
 	"fmt"
+	"html/template"
+	"net/http"
+	"path/filepath"
+	"sort"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -10,10 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/context"
-	"html/template"
-	"net/http"
-	"path/filepath"
-	"sort"
 )
 
 // PanelConfig stores all UI-related plugin hooks

@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"

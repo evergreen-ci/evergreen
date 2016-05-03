@@ -3,8 +3,6 @@ package cli
 import (
 	//"bytes"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/kardianos/osext"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,6 +12,9 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/kardianos/osext"
 )
 
 // GetUpdateCommand attempts to fetch the latest version of the client binary and install it over

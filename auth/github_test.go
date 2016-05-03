@@ -1,9 +1,10 @@
 package auth
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestGithubAuthManager(t *testing.T) {

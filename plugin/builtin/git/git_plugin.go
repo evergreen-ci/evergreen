@@ -1,9 +1,10 @@
 package git
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
-	"net/http"
 )
 
 func init() {

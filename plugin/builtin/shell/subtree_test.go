@@ -3,11 +3,12 @@ package shell
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	. "github.com/smartystreets/goconvey/convey"
-	"os"
-	"testing"
 )
 
 func TestSubtreeCleanup(t *testing.T) {

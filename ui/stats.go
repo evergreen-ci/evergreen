@@ -2,6 +2,9 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -9,8 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
-	"net/http"
-	"time"
 )
 
 // UIBuildVariant contains the name of the build variant and the tasks associated with that build variant.

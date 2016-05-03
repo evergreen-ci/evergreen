@@ -3,6 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	htmlTemplate "html/template"
+	"net/http"
+	"os"
+	"path/filepath"
+	textTemplate "text/template"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
@@ -13,12 +20,6 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/sessions"
 	"gopkg.in/tylerb/graceful.v1"
-	htmlTemplate "html/template"
-	"net/http"
-	"os"
-	"path/filepath"
-	textTemplate "text/template"
-	"time"
 )
 
 const UIPort = ":9090"

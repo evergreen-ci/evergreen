@@ -2,8 +2,9 @@ package util
 
 import (
 	"bytes"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestCappedWriter(t *testing.T) {

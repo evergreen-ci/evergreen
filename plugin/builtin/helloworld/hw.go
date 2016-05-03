@@ -2,9 +2,10 @@ package git
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/render"
-	"net/http"
 )
 
 func init() {

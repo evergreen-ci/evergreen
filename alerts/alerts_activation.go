@@ -1,13 +1,14 @@
 package alerts
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 func RunLastRevisionNotFoundTrigger(proj *model.ProjectRef, v *version.Version) error {

@@ -1,6 +1,8 @@
 package s3copy_test
 
 import (
+	"testing"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
@@ -14,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestS3CopyPluginExecution(t *testing.T) {

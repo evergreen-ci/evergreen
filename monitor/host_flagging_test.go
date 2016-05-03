@@ -1,6 +1,9 @@
 package monitor
 
 import (
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
@@ -9,8 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"time"
 )
 
 func TestFlaggingDecommissionedHosts(t *testing.T) {

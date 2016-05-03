@@ -1,11 +1,12 @@
 package host
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestDecommissionInactiveStaticHosts(t *testing.T) {

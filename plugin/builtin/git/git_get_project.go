@@ -2,14 +2,15 @@ package git
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 // GitGetProjectCommand is a command that fetches source code from git for the project

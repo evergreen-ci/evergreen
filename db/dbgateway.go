@@ -1,10 +1,11 @@
 package db
 
 import (
-	"github.com/evergreen-ci/evergreen"
-	"gopkg.in/mgo.v2"
 	"sync"
 	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"gopkg.in/mgo.v2"
 )
 
 var (

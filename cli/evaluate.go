@@ -2,9 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"io/ioutil"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 )
 
 // EvaluateCommand reads in a project config, expanding tags and matrix definitions,

@@ -1,14 +1,15 @@
 package agent
 
 import (
-	"github.com/evergreen-ci/evergreen/apiserver"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/apiserver"
+	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/testutil"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestAgentDebugHandler(t *testing.T) {

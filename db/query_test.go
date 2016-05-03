@@ -1,9 +1,10 @@
 package db
 
 import (
+	"testing"
+
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
-	"testing"
 )
 
 func TestQueryExecution(t *testing.T) {

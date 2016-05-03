@@ -2,11 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
-	"net/http"
 )
 
 func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {

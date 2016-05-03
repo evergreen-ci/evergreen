@@ -2,12 +2,13 @@ package notify
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
-	"time"
 )
 
 // "Base class" for all build_*_handler.go structs. Contains code that's common

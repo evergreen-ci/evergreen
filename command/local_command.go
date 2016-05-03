@@ -1,12 +1,13 @@
 package command
 
 import (
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
 )
 
 type LocalCommand struct {

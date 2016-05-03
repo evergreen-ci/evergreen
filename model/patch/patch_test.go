@@ -1,10 +1,11 @@
 package patch
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestConfigChanged(t *testing.T) {

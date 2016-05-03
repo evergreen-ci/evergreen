@@ -1,10 +1,11 @@
 package remote
 
 import (
-	"github.com/evergreen-ci/evergreen/command"
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/command"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestSSHCommand(t *testing.T) {

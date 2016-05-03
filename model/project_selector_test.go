@@ -2,9 +2,10 @@ package model
 
 import (
 	"fmt"
-	. "github.com/smartystreets/goconvey/convey"
 	"reflect"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 // helper for comparing a selector string with its expected output

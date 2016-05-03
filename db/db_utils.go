@@ -2,11 +2,12 @@ package db
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io"
 )
 
 var (

@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -9,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 type taskHistoryIterator struct {

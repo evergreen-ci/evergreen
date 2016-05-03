@@ -2,12 +2,13 @@ package agent
 
 import (
 	"errors"
+	"os"
+	"strings"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
-	"os"
-	"strings"
 )
 
 // AgentCommand encapsulates a running local command and streams logs

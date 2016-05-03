@@ -1,11 +1,12 @@
 package expansions_test
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestExpansionsPlugin(t *testing.T) {

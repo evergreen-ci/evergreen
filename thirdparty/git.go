@@ -3,15 +3,16 @@ package thirdparty
 import (
 	"bytes"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
 	"io"
 	"io/ioutil"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes

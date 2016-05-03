@@ -1,12 +1,13 @@
 package build
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 // IdTimeLayout is used time time.Time.Format() to produce timestamps for our ids.

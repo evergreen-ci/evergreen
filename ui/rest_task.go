@@ -2,12 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"net/http"
-	"time"
 )
 
 type taskStatusContent struct {

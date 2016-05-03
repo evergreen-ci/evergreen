@@ -1,13 +1,14 @@
 package thirdparty
 
 import (
+	"io/ioutil"
+	"strings"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	. "github.com/smartystreets/goconvey/convey"
-	"io/ioutil"
-	"strings"
-	"testing"
 )
 
 var (

@@ -1,9 +1,10 @@
 package alerts
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
-	"time"
 )
 
 // Host Triggers

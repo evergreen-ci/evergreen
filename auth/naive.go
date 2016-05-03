@@ -3,8 +3,9 @@ package auth
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
 	"net/http"
+
+	"github.com/evergreen-ci/evergreen"
 )
 
 // NaiveUserManager implements the UserManager interface and has a list of AuthUsers{UserName, DisplayName, Password, Email string}

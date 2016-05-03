@@ -4,12 +4,13 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen/util"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 // TarContentsFile represents a tar file on disk.

@@ -2,10 +2,11 @@ package user
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 type DBUser struct {

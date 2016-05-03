@@ -2,6 +2,11 @@ package digitalocean
 
 import (
 	"fmt"
+	"math"
+	"math/rand"
+	"strconv"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	digo "github.com/dynport/gocloud/digitalocean"
 	"github.com/evergreen-ci/evergreen"
@@ -12,10 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"math"
-	"math/rand"
-	"strconv"
-	"time"
 )
 
 const (

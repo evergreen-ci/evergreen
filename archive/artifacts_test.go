@@ -1,13 +1,14 @@
 package archive
 
 import (
+	"io/ioutil"
+	"os"
+	"testing"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"io/ioutil"
-	"os"
-	"testing"
 )
 
 var logger *slogger.Logger

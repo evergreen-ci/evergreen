@@ -1,13 +1,14 @@
 package db
 
 import (
+	"io/ioutil"
+	"strings"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"strings"
-	"testing"
 )
 
 var (

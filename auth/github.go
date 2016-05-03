@@ -3,13 +3,14 @@ package auth
 import (
 	"crypto/md5"
 	"fmt"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"net/http"
-	"net/url"
-	"time"
 )
 
 // GithubAuthManager implements the UserManager with GitHub authentication using Oauth authentication.

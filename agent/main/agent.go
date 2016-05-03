@@ -4,10 +4,11 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/agent"
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/agent"
 )
 
 func init() {

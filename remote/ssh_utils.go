@@ -2,8 +2,9 @@ package remote
 
 import (
 	"fmt"
-	"golang.org/x/crypto/ssh"
 	"io/ioutil"
+
+	"golang.org/x/crypto/ssh"
 )
 
 // Given a path to a file containing a PEM-encoded private key,

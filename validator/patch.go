@@ -3,6 +3,7 @@ package validator
 import (
 	"encoding/base64"
 	"fmt"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"

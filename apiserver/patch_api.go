@@ -2,6 +2,10 @@ package apiserver
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,9 +17,6 @@ import (
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
-	"net/http"
-	"strings"
-	"time"
 )
 
 // PatchAPIResponse is returned by all patch-related API calls

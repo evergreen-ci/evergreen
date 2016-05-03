@@ -2,6 +2,12 @@ package ec2
 
 import (
 	"fmt"
+	"math"
+	"math/rand"
+	"os"
+	"os/user"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -9,11 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
-	"math"
-	"math/rand"
-	"os"
-	"os/user"
-	"time"
 )
 
 const (

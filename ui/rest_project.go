@@ -2,8 +2,9 @@ package ui
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model"
 	"net/http"
+
+	"github.com/evergreen-ci/evergreen/model"
 )
 
 // Returns a JSON response of an array with the ref information for the requested project_id.

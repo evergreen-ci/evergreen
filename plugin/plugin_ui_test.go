@@ -3,12 +3,13 @@ package plugin_test
 import (
 	"bytes"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/plugin"
-	. "github.com/smartystreets/goconvey/convey"
 	"html/template"
 	"net/http"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/plugin"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 // ===== Mock UI Plugin =====

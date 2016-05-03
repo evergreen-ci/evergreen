@@ -1,11 +1,12 @@
 package hostutil
 
 import (
+	"io/ioutil"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
-	"io/ioutil"
-	"time"
 )
 
 const HostCheckTimeout = 10 * time.Second

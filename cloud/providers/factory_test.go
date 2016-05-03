@@ -1,6 +1,8 @@
 package providers
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/digitalocean"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
@@ -8,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestGetCloudManager(t *testing.T) {

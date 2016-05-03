@@ -3,9 +3,10 @@ package event
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 const (

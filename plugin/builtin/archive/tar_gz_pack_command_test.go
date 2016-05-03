@@ -1,16 +1,17 @@
 package archive_test
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 var (

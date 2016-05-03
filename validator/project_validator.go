@@ -2,14 +2,15 @@ package validator
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/util"
-	"strconv"
-	"strings"
 )
 
 type projectValidator func(*model.Project) []ValidationError

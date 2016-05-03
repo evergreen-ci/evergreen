@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/codegangsta/inject"
-	"github.com/evergreen-ci/evergreen"
 	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/codegangsta/inject"
+	"github.com/evergreen-ci/evergreen"
 )
 
 const JSONMarshalError = "Could not marshal data to JSON"

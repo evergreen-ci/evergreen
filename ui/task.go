@@ -3,6 +3,11 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -15,10 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 const (

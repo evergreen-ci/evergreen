@@ -1,6 +1,9 @@
 package cli
 
 import (
+	"io/ioutil"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
@@ -12,8 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"testing"
 )
 
 var testConfig = evergreen.TestConfig()

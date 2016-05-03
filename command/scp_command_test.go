@@ -1,14 +1,15 @@
 package command
 
 import (
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/util"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestScpCommand(t *testing.T) {

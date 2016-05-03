@@ -2,11 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/gorilla/mux"
-	"net/http"
 )
 
 const (

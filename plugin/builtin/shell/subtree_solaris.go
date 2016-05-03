@@ -2,12 +2,13 @@ package shell
 
 import (
 	"fmt"
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
+	"github.com/evergreen-ci/evergreen/plugin"
 )
 
 // This is a regex used to extract environment variables from the output of pargs -e

@@ -3,6 +3,11 @@ package taskrunner
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -11,10 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
-	"io/ioutil"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const (

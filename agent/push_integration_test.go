@@ -1,6 +1,11 @@
 package agent
 
 import (
+	"io/ioutil"
+	"path/filepath"
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
@@ -11,10 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/goamz/goamz/aws"
 	. "github.com/smartystreets/goconvey/convey"
-	"io/ioutil"
-	"path/filepath"
-	"testing"
-	"time"
 )
 
 func TestPushTask(t *testing.T) {

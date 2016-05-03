@@ -3,9 +3,10 @@ package apiserver
 import (
 	"crypto/tls"
 	"fmt"
+	"net"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"net"
 )
 
 var port = 8181

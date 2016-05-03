@@ -2,6 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
@@ -16,11 +22,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"log"
-	"net/http"
-	"net/url"
-	"os"
-	"time"
 )
 
 type (

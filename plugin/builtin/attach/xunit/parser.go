@@ -3,12 +3,13 @@ package xunit
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"io"
 	"strings"
 	"time"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 )
 
 type XUnitResults []TestSuite

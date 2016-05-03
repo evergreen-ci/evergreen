@@ -1,7 +1,5 @@
 package command
 
-import ()
-
 // generic implementations of io.Writer
 
 // A trivial implementation of io.Writer that saves the last thing written.

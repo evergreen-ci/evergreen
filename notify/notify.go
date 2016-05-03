@@ -2,6 +2,13 @@ package notify
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/mail"
+	"path"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,12 +20,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/web"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"net/mail"
-	"path"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const (

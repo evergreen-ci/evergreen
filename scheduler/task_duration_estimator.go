@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"fmt"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 )

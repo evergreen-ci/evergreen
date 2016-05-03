@@ -1,6 +1,10 @@
 package scheduler
 
 import (
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -8,9 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
-	"strconv"
-	"testing"
-	"time"
 )
 
 var (

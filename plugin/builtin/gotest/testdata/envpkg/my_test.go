@@ -1,9 +1,10 @@
 package envpkg
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestPass(t *testing.T) {

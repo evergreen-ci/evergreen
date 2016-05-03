@@ -4,6 +4,12 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
@@ -29,11 +35,6 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 type key int

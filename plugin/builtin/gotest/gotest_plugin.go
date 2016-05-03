@@ -2,8 +2,9 @@ package gotest
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/plugin"
 )
 
 func init() {

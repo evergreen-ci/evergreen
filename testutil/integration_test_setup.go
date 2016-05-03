@@ -3,12 +3,13 @@ package testutil
 import (
 	"flag"
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
+	"gopkg.in/yaml.v2"
 )
 
 var (

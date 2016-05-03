@@ -3,10 +3,11 @@ package ui
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/auth"
 	"html/template"
 	"io"
 	"os/exec"
+
+	"github.com/evergreen-ci/evergreen/auth"
 )
 
 const (

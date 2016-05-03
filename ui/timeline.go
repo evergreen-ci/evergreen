@@ -2,13 +2,14 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
-	"net/http"
-	"strconv"
 )
 
 func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {

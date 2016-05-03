@@ -2,6 +2,8 @@ package ui
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -10,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"net/http"
 )
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {

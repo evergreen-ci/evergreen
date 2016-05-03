@@ -2,12 +2,13 @@ package model
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/thirdparty"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 var (

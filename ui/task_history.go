@@ -3,6 +3,11 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"sort"
+	"strconv"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -13,10 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
-	"sort"
-	"strconv"
-	"time"
 )
 
 const (

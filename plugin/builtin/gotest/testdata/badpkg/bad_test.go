@@ -1,9 +1,10 @@
 package bad_test
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 	"time"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestFail01(t *testing.T) {

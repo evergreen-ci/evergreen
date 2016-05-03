@@ -1,13 +1,14 @@
 package patch
 
 import (
+	"io/ioutil"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"time"
 )
 
 // Hard limit on patch size.

@@ -4,6 +4,11 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/archive"
 	"github.com/evergreen-ci/evergreen/model"
@@ -12,10 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/mitchellh/mapstructure"
-	"io"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 var (

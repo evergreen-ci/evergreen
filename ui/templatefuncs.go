@@ -3,13 +3,14 @@ package ui
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
 	"io"
 	"net/url"
 	"regexp"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 )
 
 const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"

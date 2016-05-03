@@ -2,6 +2,11 @@ package plugin_test
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"testing"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
@@ -25,10 +30,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"testing"
 )
 
 var Port = 8181

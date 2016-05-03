@@ -1,8 +1,9 @@
 package model
 
 import (
-	"github.com/evergreen-ci/evergreen/model/task"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/model/task"
 )
 
 const (

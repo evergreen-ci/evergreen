@@ -2,6 +2,7 @@ package notify
 
 import (
 	"fmt"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"

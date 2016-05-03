@@ -2,12 +2,13 @@ package model
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 // AddUserPublicKey adds a public key to a user's saved key list

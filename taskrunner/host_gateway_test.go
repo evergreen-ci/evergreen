@@ -2,17 +2,17 @@ package taskrunner
 
 import (
 	"fmt"
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 var (

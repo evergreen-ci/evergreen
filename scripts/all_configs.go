@@ -14,11 +14,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/cli"
-	"github.com/jessevdk/go-flags"
 	"io"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/evergreen-ci/evergreen/cli"
+	"github.com/jessevdk/go-flags"
 )
 
 // uiClient handles requests against the UI server.

@@ -2,6 +2,9 @@ package scheduler
 
 import (
 	"fmt"
+	"math"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -10,8 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"math"
-	"time"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro

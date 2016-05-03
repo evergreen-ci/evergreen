@@ -1,9 +1,10 @@
 package plugin
 
 import (
+	"testing"
+
 	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestIsExpandable(t *testing.T) {

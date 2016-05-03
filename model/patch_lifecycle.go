@@ -2,6 +2,12 @@ package model
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
@@ -12,11 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 // Given a patch version and a list of task names, creates a new task with

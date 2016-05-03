@@ -3,11 +3,12 @@ package thirdparty
 import (
 	"bytes"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/testutil"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"net/http"
 	"testing"
+
+	"github.com/evergreen-ci/evergreen/testutil"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 type stubHttp struct {

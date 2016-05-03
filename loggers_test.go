@@ -1,9 +1,10 @@
 package evergreen
 
 import (
+	"testing"
+
 	"github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 func TestLoggingWriter(t *testing.T) {

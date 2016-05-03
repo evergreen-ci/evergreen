@@ -2,12 +2,13 @@ package taskrunner
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 var (

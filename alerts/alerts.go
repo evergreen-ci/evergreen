@@ -2,6 +2,8 @@ package alerts
 
 import (
 	"fmt"
+	"path/filepath"
+
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -14,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/render"
 	"gopkg.in/mgo.v2/bson"
-	"path/filepath"
 )
 
 // QueueProcessor handles looping over any unprocessed alerts in the queue and delivers them

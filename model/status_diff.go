@@ -1,11 +1,12 @@
 package model
 
 import (
+	"path"
+	"strings"
+
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"path"
-	"strings"
 )
 
 // StatusDiff stores a pairing of status strings

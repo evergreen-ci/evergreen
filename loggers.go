@@ -2,8 +2,9 @@ package evergreen
 
 import (
 	"bytes"
-	"github.com/10gen-labs/slogger/v1"
 	"strings"
+
+	"github.com/10gen-labs/slogger/v1"
 )
 
 //SliceAppender is a slogger.Appender implemenation that just adds every

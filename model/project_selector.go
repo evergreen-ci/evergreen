@@ -3,9 +3,10 @@ package model
 import (
 	"bytes"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/util"
 	"reflect"
 	"strings"
+
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 // Selectors are used in a project file to select groups of tasks/axes based on user-defined tags.

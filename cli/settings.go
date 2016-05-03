@@ -3,13 +3,14 @@ package cli
 import (
 	"bufio"
 	"fmt"
-	"github.com/evergreen-ci/evergreen/util"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	"github.com/evergreen-ci/evergreen/util"
+	"gopkg.in/yaml.v2"
 )
 
 // prompt writes a prompt to the user on stdout, reads a newline-terminated response from stdin,

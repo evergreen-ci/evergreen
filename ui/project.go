@@ -2,14 +2,15 @@ package ui
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"net/http"
 )
 
 type projectSettings struct {
