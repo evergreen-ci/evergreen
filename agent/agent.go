@@ -235,7 +235,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 	ret, err := agt.End(detail)
-	if !ret.RunNext {
+	if ret != nil && !ret.RunNext {
 		agt.logger.LogExecution(slogger.INFO, "No new tasks to run. Agent will shut down.")
 	}
 	agt.APILogger.FlushAndWait() // ensure we send any logs from End()
