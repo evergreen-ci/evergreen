@@ -304,7 +304,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			dirName := hex.EncodeToString(h.Sum(nil))
 			newDir := filepath.Join(distro.WorkDir, dirName)
 
-			_, err = os.Create(dirName)
+			_, err = os.Create(newDir)
 			testutil.HandleTestingErr(err, t, "Couldn't create file: %v", err)
 
 			_, err = testAgent.RunTask()
