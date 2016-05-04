@@ -722,10 +722,11 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 // so that all of the agent's operations will use this folder.
 func (agt *Agent) createTaskDirectory(taskConfig *model.TaskConfig) error {
 	h := md5.New()
-	h.Write([]byte(taskConfig.Task.Id))
-	hashedTaskId := hex.EncodeToString(h.Sum(nil))
-	newDir := filepath.Join(taskConfig.Distro.WorkDir,
-		fmt.Sprintf("%s_%d", hashedTaskId, os.Getpid()))
+
+	h.Write([]byte(
+		fmt.Sprintf("%s_%d_%d", taskConfig.Task.Id, taskConfig.Task.Execution, os.Getpid())))
+	dirName := hex.EncodeToString(h.Sum(nil))
+	newDir := filepath.Join(taskConfig.Distro.WorkDir, dirName)
 
 	agt.logger.LogExecution(slogger.INFO, "Making new folder for task execution: %v", newDir)
 	err := os.Mkdir(newDir, 0777)

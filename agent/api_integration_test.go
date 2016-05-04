@@ -258,20 +258,20 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
 
 			h := md5.New()
-			h.Write([]byte(testTask.Id))
-			hashedTaskId := hex.EncodeToString(h.Sum(nil))
-			dirName := filepath.Join(distro.WorkDir,
-				fmt.Sprintf("%s_%d", hashedTaskId, os.Getpid()))
+			h.Write([]byte(
+				fmt.Sprintf("%s_%d_%d", testTask.Id, 0, os.Getpid())))
+			dirName := hex.EncodeToString(h.Sum(nil))
+			newDir := filepath.Join(distro.WorkDir, dirName)
 
 			Convey("Then the directory should have been set and printed", func() {
 				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeTrue)
-				So(scanLogsForTask(testTask.Id, dirName), ShouldBeTrue)
+				So(scanLogsForTask(testTask.Id, newDir), ShouldBeTrue)
 			})
 			Convey("Then the directory should have been deleted", func() {
 				files, err := ioutil.ReadDir("./")
 				testutil.HandleTestingErr(err, t, "Failed to read current directory")
 				for _, f := range files {
-					So(f.Name(), ShouldNotEqual, dirName)
+					So(f.Name(), ShouldNotEqual, newDir)
 				}
 			})
 			err = os.Chdir(dir)
@@ -299,10 +299,11 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
 
 			h := md5.New()
-			h.Write([]byte(testTask.Id))
-			hashedTaskId := hex.EncodeToString(h.Sum(nil))
-			dirName := filepath.Join(distro.WorkDir,
-				fmt.Sprintf("%s_%d", hashedTaskId, os.Getpid()))
+			h.Write([]byte(
+				fmt.Sprintf("%s_%d_%d", testTask.Id, 0, os.Getpid())))
+			dirName := hex.EncodeToString(h.Sum(nil))
+			newDir := filepath.Join(distro.WorkDir, dirName)
+
 			_, err = os.Create(dirName)
 			testutil.HandleTestingErr(err, t, "Couldn't create file: %v", err)
 
@@ -314,7 +315,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			printLogsForTask(testTask.Id)
 			Convey("Then the task should not have been run", func() {
 				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeFalse)
-				So(scanLogsForTask(testTask.Id, dirName), ShouldBeFalse)
+				So(scanLogsForTask(testTask.Id, newDir), ShouldBeFalse)
 			})
 			<-testAgent.KillChan
 			Convey("Then the taskDetail type should have been set to SystemCommandType and have status failed", func() {
@@ -329,7 +330,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			err = os.Chdir(dir)
 			testutil.HandleTestingErr(err, t, "Failed to change directory back to main dir")
 
-			err = os.Remove(dirName)
+			err = os.Remove(newDir)
 			testutil.HandleTestingErr(err, t, "Failed to remove dummy directory file")
 		})
 	}
