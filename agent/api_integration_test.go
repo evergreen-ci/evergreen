@@ -402,7 +402,6 @@ func TestTaskSuccess(t *testing.T) {
 								ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "i am compiling!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "Skipping command 'git.apply_patch' on variant"), ShouldBeTrue)
 
 							// Check that functions with args are working correctly
 							So(scanLogsForTask(testTask.Id, "arg1 is FOO"), ShouldBeTrue)
