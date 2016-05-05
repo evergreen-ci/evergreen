@@ -2,7 +2,6 @@ package agent
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -25,7 +24,8 @@ func TestAgentDebugHandler(t *testing.T) {
 			})
 		})
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "timeout_task", "linux-64",
+				filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -37,35 +37,23 @@ func TestAgentDebugHandler(t *testing.T) {
 				// run the slow task and take a debug trace during.
 				var stack []byte
 				var task, command string
+				done := make(chan struct{})
 				go func() {
 					time.Sleep(time.Second)
 					task, command = taskAndCommand(testAgent)
 					stack = trace()
 					dumpToLogs(task, command, stack, testAgent)
+					done <- struct{}{}
 				}()
 				testAgent.RunTask()
 				testAgent.APILogger.Flush()
-				time.Sleep(5 * time.Second)
+				<-done
 				So(task, ShouldEqual, testTask.Id)
 				So(command, ShouldEqual, "shell.exec")
-				// we need to check for two kinds of stacktrace forms, to support GC and GCCGO traces
-				gcExecute := "(*ShellExecCommand).Execute"
-				gccExecute := "evergreen_plugin_builtin_shell.Execute"
-				gcAgent := "(*Agent).RunTask"
-				gccAgent := "agent.Agent"
-				executeIdx := strings.Index(string(stack), gcExecute) + strings.Index(string(stack), gccExecute)
-				So(executeIdx, ShouldBeGreaterThan, 0)
-				agentIdx := strings.Index(string(stack), gcAgent) + strings.Index(string(stack), gccAgent)
-				So(agentIdx, ShouldBeGreaterThan, 0)
+				gcTesting := "testing.RunTests" // we know this will be present in the trace
+				So(string(stack), ShouldContainSubstring, gcTesting)
 				Convey("which should also be present in the logs", func() {
-					So(
-						scanLogsForTask(testTask.Id, gcExecute) || scanLogsForTask(testTask.Id, gccExecute),
-						ShouldBeTrue,
-					)
-					So(
-						scanLogsForTask(testTask.Id, gcAgent) || scanLogsForTask(testTask.Id, gccAgent),
-						ShouldBeTrue,
-					)
+					So(scanLogsForTask(testTask.Id, gcTesting), ShouldBeTrue)
 				})
 			})
 		})
