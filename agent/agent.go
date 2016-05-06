@@ -311,14 +311,14 @@ func (agt *Agent) CreatePidFile(pidFilePath string) error {
 	}
 
 	defer pidFile.Close()
-	intBytes := []byte(strconv.Itoa(os.Getpid()))
+	pid := os.Getpid()
 	// write to pid file
-	_, err = pidFile.Write(intBytes)
+	_, err = pidFile.Write([]byte(strconv.Itoa(pid)))
 	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "error writing pid file: %v", err.Error())
 		return fmt.Errorf("Error writing pid file: %v", err.Error())
 	}
-	agt.logger.LogExecution(slogger.INFO, "pid file written for process: %v", intBytes)
+	agt.logger.LogExecution(slogger.INFO, "pid file written for process: %v", pid)
 	return nil
 }
 
