@@ -200,6 +200,43 @@ func TestGetAllRevisions(t *testing.T) {
 	})
 }
 
+func TestGetChangedFiles(t *testing.T) {
+	dropTestDB(t)
+	var grp GithubRepositoryPoller
+
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestGetAllRevisions")
+
+	Convey("When fetching changed files from evergreen-ci/evergreen ", t, func() {
+		grp.ProjectRef = evgProjectRef
+		grp.OauthToken = testConfig.Credentials[grp.ProjectRef.RepoKind]
+
+		r1 := "b11fcb25624c6a0649dd35b895f5b550d649a128"
+		Convey("the revision "+r1+" should have 8 files", func() {
+			files, err := grp.GetChangedFiles(r1)
+			So(err, ShouldBeNil)
+			So(len(files), ShouldEqual, 8)
+			So(files, ShouldContain, "cloud/providers/ec2/ec2.go")
+			So(files, ShouldContain, "public/static/dist/css/styles.css")
+			// ...probably don't need to check all 8
+		})
+
+		r2 := "3c0133dbd4b35418c11df7b6e3a1ae31f966de42"
+		Convey("the revision "+r2+" should have 1 file", func() {
+			files, err := grp.GetChangedFiles(r2)
+			So(err, ShouldBeNil)
+			So(len(files), ShouldEqual, 1)
+			So(files, ShouldContain, "ui/rest_project.go")
+		})
+
+		Convey("a revision that does not exist should fail", func() {
+			files, err := grp.GetChangedFiles("00000000000000000000000000")
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "Not Found")
+			So(files, ShouldBeNil)
+		})
+	})
+}
+
 func TestIsLastRevision(t *testing.T) {
 	Convey("When calling isLastRevision...", t, func() {
 		Convey("it should return false if the commit SHA does not match "+

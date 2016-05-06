@@ -115,6 +115,12 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
                [[version.Version.warnings.length]]  [[version.Version.warnings.length | pluralize:'warning']] in configuration file
                <div ng-repeat="warning in version.Version.warnings">- [[warning]]</div>
              </div>
+             <div class="semi-muted" ng-show="[[version.Version.ignored]]">
+               <i class="fa fa-eye-slash"></i>
+               This revision will not be automatically scheduled, because only
+               <a href="https://github.com/evergreen-ci/evergreen/wiki/Project-Files#ignoring-changes-to-certain-files">ignored files</a> are changed. 
+               It may still be scheduled manually, or on failure stepback.
+             </div>
 
            </div>
            <table id="build-info-elements">

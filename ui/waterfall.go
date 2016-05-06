@@ -89,6 +89,7 @@ type waterfallVersion struct {
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
 	Warnings []waterfallVersionError `json:"warnings"`
+	Ignoreds []bool                  `json:"ignoreds"`
 }
 
 type waterfallVersionError struct {
@@ -172,6 +173,8 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 					lastRolledUpVersion.Warnings, waterfallVersionError{version.Warnings})
 				lastRolledUpVersion.Messages = append(
 					lastRolledUpVersion.Messages, version.Message)
+				lastRolledUpVersion.Ignoreds = append(
+					lastRolledUpVersion.Ignoreds, version.Ignored)
 				lastRolledUpVersion.CreateTimes = append(
 					lastRolledUpVersion.CreateTimes, version.CreateTime)
 				lastRolledUpVersion.Revisions = append(
@@ -202,6 +205,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 				Revisions:   []string{version.Revision},
 				Errors:      []waterfallVersionError{{version.Errors}},
 				Warnings:    []waterfallVersionError{{version.Warnings}},
+				Ignoreds:    []bool{version.Ignored},
 			}
 
 			// add the builds to the version
@@ -276,6 +280,7 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 			version.RevisionKey,
 			version.ErrorsKey,
 			version.WarningsKey,
+			version.IgnoredKey,
 			version.MessageKey,
 			version.AuthorKey,
 			version.RevisionOrderNumberKey,

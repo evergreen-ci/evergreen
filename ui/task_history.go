@@ -54,6 +54,7 @@ type versionDrawerItem struct {
 	Id       string    `json:"version_id"`
 	Errors   []string  `json:"errors"`
 	Warnings []string  `json:"warnings"`
+	Ignored  bool      `json:"ignored"`
 }
 
 // Represents a small amount of information about a task - used as part of the
@@ -398,8 +399,8 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 
 	versionDrawerItems := []versionDrawerItem{}
 	for _, v := range versions {
-		versionDrawerItems = append(versionDrawerItems,
-			versionDrawerItem{v.Revision, v.Message, v.CreateTime, v.Id, v.Errors, v.Warnings})
+		versionDrawerItems = append(versionDrawerItems, versionDrawerItem{
+			v.Revision, v.Message, v.CreateTime, v.Id, v.Errors, v.Warnings, v.Ignored})
 	}
 
 	uis.WriteJSON(w, http.StatusOK, struct {
@@ -502,6 +503,7 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 			version.CreateTimeKey,
 			version.ErrorsKey,
 			version.WarningsKey,
+			version.IgnoredKey,
 		).Sort(sortVersions).Limit(versionsToFetch))
 }
 

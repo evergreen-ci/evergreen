@@ -226,6 +226,52 @@ func TestPopulateBVT(t *testing.T) {
 	})
 }
 
+func TestIgnoresAllFiles(t *testing.T) {
+	Convey("With test Project.Ignore setups and a list of.py, .yml, and .md files", t, func() {
+		files := []string{
+			"src/cool/test.py",
+			"etc/other_config.yml",
+			"README.md",
+		}
+		Convey("a project with an empty ignore field should never ignore files", func() {
+			p := &Project{Ignore: []string{}}
+			So(p.IgnoresAllFiles(files), ShouldBeFalse)
+		})
+		Convey("a project with a * ignore field should always ignore files", func() {
+			p := &Project{Ignore: []string{"*"}}
+			So(p.IgnoresAllFiles(files), ShouldBeTrue)
+		})
+		Convey("a project that ignores .py files should not ignore all files", func() {
+			p := &Project{Ignore: []string{"*.py"}}
+			So(p.IgnoresAllFiles(files), ShouldBeFalse)
+		})
+		Convey("a project that ignores .py, .yml, and .md files should ignore all files", func() {
+			p := &Project{Ignore: []string{"*.py", "*.yml", "*.md"}}
+			So(p.IgnoresAllFiles(files), ShouldBeTrue)
+		})
+		Convey("a project that ignores all files by name should ignore all files", func() {
+			p := &Project{Ignore: []string{
+				"src/cool/test.py",
+				"etc/other_config.yml",
+				"README.md",
+			}}
+			So(p.IgnoresAllFiles(files), ShouldBeTrue)
+		})
+		Convey("a project that ignores all files by dir should ignore all files", func() {
+			p := &Project{Ignore: []string{"src/*", "etc/*", "README.md"}}
+			So(p.IgnoresAllFiles(files), ShouldBeTrue)
+		})
+		Convey("a project with negations should not ignore all files", func() {
+			p := &Project{Ignore: []string{"*", "!src/cool/*"}}
+			So(p.IgnoresAllFiles(files), ShouldBeFalse)
+		})
+		Convey("a project with a negated filetype should not ignore all files", func() {
+			p := &Project{Ignore: []string{"src/*", "!*.py", "*yml", "*.md"}}
+			So(p.IgnoresAllFiles(files), ShouldBeFalse)
+		})
+	})
+}
+
 func boolPtr(b bool) *bool {
 	return &b
 }

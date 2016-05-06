@@ -20,6 +20,7 @@ const (
 	// determines the default maximum number of revisions to fetch for a newly tracked repo
 	// if not specified in configuration file
 	DefaultNumNewRepoRevisionsToFetch = 200
+	DefaultMaxRepoRevisionsToSearch   = 50
 )
 
 // RepoTracker is used to manage polling repository changes and storing such
@@ -35,8 +36,11 @@ type RepoTracker struct {
 // implementations
 type RepoPoller interface {
 	// Fetches the contents of a remote repository's configuration data as at
-	// the given revision
+	// the given revision.
 	GetRemoteConfig(revision string) (*model.Project, error)
+
+	// Fetches a list of all filepaths modified by a given revision.
+	GetChangedFiles(revision string) ([]string, error)
 
 	// Fetches all changes since the 'revision' specified - with the most recent
 	// revision appearing as the first element in the slice.
@@ -106,8 +110,11 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 				return nil
 			}
 		}
-		revisions, err = repoTracker.GetRevisionsSince(lastRevision,
-			settings.RepoTracker.MaxRepoRevisionsToSearch)
+		max := settings.RepoTracker.MaxRepoRevisionsToSearch
+		if max <= 0 {
+			max = DefaultMaxRepoRevisionsToSearch
+		}
+		revisions, err = repoTracker.GetRevisionsSince(lastRevision, max)
 	}
 
 	if err != nil {
@@ -117,10 +124,8 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 		return nil
 	}
 
-	var lastVersion *version.Version
-
 	if len(revisions) > 0 {
-		lastVersion, err = repoTracker.StoreRevisions(revisions)
+		lastVersion, err := repoTracker.StoreRevisions(revisions)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "error storing revisions for "+
 				"repository %v: %v", projectRef, err)
@@ -132,22 +137,21 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 				"repository %v: %v", projectRef, err)
 			return err
 		}
-	} else {
-		lastVersion, err = version.FindOne(version.ByMostRecentForRequester(projectIdentifier, evergreen.RepotrackerVersionRequester))
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "error getting most recent version for "+
-				"repository %v: %v", projectRef, err)
-			return err
-		}
 	}
 
-	if lastVersion == nil {
+	// fetch the most recent, non-ignored version version to activate
+	activateVersion, err := version.FindOne(version.ByMostRecentNonignored(projectIdentifier))
+	if err != nil {
+		evergreen.Logger.Logf(slogger.ERROR, "error getting most recent version for "+
+			"repository %v: %v", projectRef, err)
+		return err
+	}
+	if activateVersion == nil {
 		evergreen.Logger.Logf(slogger.WARN, "no version to activate for repository %v", projectIdentifier)
 		return nil
 	}
 
-	err = repoTracker.activateElapsedBuilds(lastVersion)
-
+	err = repoTracker.activateElapsedBuilds(activateVersion)
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "error activating variants: %v", err)
 		return err
@@ -204,6 +208,10 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 	err error) {
 	// Send a notification to the MCI team
+	max := settings.RepoTracker.MaxRepoRevisionsToSearch
+	if max <= 0 {
+		max = DefaultMaxRepoRevisionsToSearch
+	}
 	projectRef := repoTracker.ProjectRef
 	settings := repoTracker.Settings
 	subject := fmt.Sprintf(notify.RepotrackerFailurePreface,
@@ -211,8 +219,7 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 	url := fmt.Sprintf("%v/%v/%v/commits/%v", thirdparty.GithubBase,
 		projectRef.Owner, projectRef.Repo, projectRef.Branch)
 	message := fmt.Sprintf("Could not find last known revision '%v' "+
-		"within the most recent %v revisions at %v: %v", lastRevision,
-		settings.RepoTracker.MaxRepoRevisionsToSearch, url, err)
+		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)
 	nErr := notify.NotifyAdmins(subject, message, settings)
 	if nErr != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "error sending email: %v", nErr)
@@ -314,6 +321,17 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		}
 		v.Config = string(projectYamlBytes)
 
+		// "Ignore" a version if all changes are to ignored files
+		if len(project.Ignore) > 0 {
+			filenames, err := repoTracker.GetChangedFiles(revision)
+			if err != nil {
+				return nil, fmt.Errorf("error checking GitHub for ignored files: %v", err)
+			}
+			if project.IgnoresAllFiles(filenames) {
+				v.Ignored = true
+			}
+		}
+
 		// We rebind newestVersion each iteration, so the last binding will be the newest version
 		err = createVersionItems(v, ref, project)
 		if err != nil {
@@ -321,15 +339,9 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 				v.Id, ref.Identifier, err)
 			return nil, err
 		}
-
 		newestVersion = v
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Unable to store revision %v for project %v: %v:",
-				revision, ref.Identifier, err)
-			return nil, err
-		}
 	}
-	return
+	return newestVersion, nil
 }
 
 // GetProjectConfig fetches the project configuration for a given repository

@@ -30,6 +30,7 @@ var (
 	RevisionOrderNumberKey = bsonutil.MustHaveTag(Version{}, "RevisionOrderNumber")
 	RequesterKey           = bsonutil.MustHaveTag(Version{}, "Requester")
 	ConfigKey              = bsonutil.MustHaveTag(Version{}, "Config")
+	IgnoredKey             = bsonutil.MustHaveTag(Version{}, "Ignored")
 	OwnerNameKey           = bsonutil.MustHaveTag(Version{}, "Owner")
 	RepoKey                = bsonutil.MustHaveTag(Version{}, "Repo")
 	ProjectNameKey         = bsonutil.MustHaveTag(Version{}, "Branch")
@@ -98,13 +99,15 @@ func ByProjectIdAndOrder(projectId string, revisionOrderNumber int) db.Q {
 		})
 }
 
-// ByLastVariantActivation finds the most recent non-patch versions in a project that have
-// a particular variant activated.
+// ByLastVariantActivation finds the most recent non-patch, non-ignored
+// versions in a project that have a particular variant activated.
 func ByLastVariantActivation(projectId, variant string) db.Q {
 	return db.Query(
 		bson.M{
 			IdentifierKey: projectId,
-			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			// TODO make this `Ignored: false` after EVG-764  has time to burn in
+			IgnoredKey:   bson.M{"$ne": true},
+			RequesterKey: evergreen.RepotrackerVersionRequester,
 			BuildVariantsKey: bson.M{
 				"$elemMatch": bson.M{
 					BuildStatusActivatedKey: true,
@@ -131,6 +134,18 @@ func ByMostRecentForRequester(projectId, requester string) db.Q {
 		bson.M{
 			RequesterKey:  requester,
 			IdentifierKey: projectId,
+		},
+	).Sort([]string{"-" + RevisionOrderNumberKey})
+}
+
+// ByMostRecentNonignored finds all non-ignored versions within a project,
+// ordered by most recently created to oldest.
+func ByMostRecentNonignored(projectId string) db.Q {
+	return db.Query(
+		bson.M{
+			RequesterKey:  evergreen.RepotrackerVersionRequester,
+			IdentifierKey: projectId,
+			IgnoredKey:    bson.M{"$ne": true},
 		},
 	).Sort([]string{"-" + RevisionOrderNumberKey})
 }

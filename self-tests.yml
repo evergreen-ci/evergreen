@@ -1,5 +1,7 @@
 command_type: system
 stepback: true
+ignore: 
+    - "*.md" # don't schedule tests if a commit only changes markdown files
 
 variables:
     only_coverage: &ONLY_COVERAGE_VARIANTS
