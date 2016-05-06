@@ -46,6 +46,7 @@ func cleanup(key string, log plugin.Logger) error {
 
 	// Look through the output of the "ps" command and find the processes we need to kill.
 	for _, line := range lines {
+		line = strings.TrimSpace(line)
 		// Use the regexes to extract the fields look for our 'tracer' variables
 		matchTask := taskEnvRegex.FindStringSubmatch(line)
 		matchAgent := agentPidRegex.FindStringSubmatch(line)
