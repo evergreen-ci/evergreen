@@ -28,6 +28,7 @@ var (
 	FinishTimeKey    = bsonutil.MustHaveTag(Patch{}, "FinishTime")
 	BuildVariantsKey = bsonutil.MustHaveTag(Patch{}, "BuildVariants")
 	TasksKey         = bsonutil.MustHaveTag(Patch{}, "Tasks")
+	VariantsTasksKey = bsonutil.MustHaveTag(Patch{}, "VariantsTasks")
 	PatchesKey       = bsonutil.MustHaveTag(Patch{}, "Patches")
 	ActivatedKey     = bsonutil.MustHaveTag(Patch{}, "Activated")
 	PatchedConfigKey = bsonutil.MustHaveTag(Patch{}, "PatchedConfig")

@@ -192,6 +192,58 @@ func TestCLIFunctions(t *testing.T) {
 				So(variants, ShouldNotBeEmpty)
 				So(len(variants), ShouldEqual, 2)
 			})
+			Convey("Creating a patch using 'all' as variants should schedule all variants", func() {
+				patchSub := patchSubmission{"sample",
+					testPatch,
+					"sample patch #2",
+					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					"all",
+					[]string{"failing_test"},
+					false}
+
+				_, err := ac.PutPatch(patchSub)
+				So(err, ShouldBeNil)
+
+				Convey("Newly created patch should be fetchable via API", func() {
+					patches, err := ac.GetPatches(1)
+					So(err, ShouldBeNil)
+					So(len(patches), ShouldEqual, 1)
+					So(len(patches[0].BuildVariants), ShouldEqual, 2)
+					So(patches[0].BuildVariants, ShouldContain, "osx-108")
+					So(patches[0].BuildVariants, ShouldContain, "ubuntu")
+					So(len(patches[0].Tasks), ShouldEqual, 2)
+					So(patches[0].Tasks, ShouldContain, "failing_test")
+					Convey("and have expanded dependencies", func() {
+						So(patches[0].Tasks, ShouldContain, "compile")
+					})
+				})
+			})
+
+			Convey("Creating a patch using 'all' as tasks should schedule all tasks", func() {
+				patchSub := patchSubmission{"sample",
+					testPatch,
+					"sample patch #2",
+					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					"osx-108",
+					[]string{"all"},
+					false}
+
+				_, err := ac.PutPatch(patchSub)
+				So(err, ShouldBeNil)
+
+				Convey("Newly created patch should be fetchable via API", func() {
+					patches, err := ac.GetPatches(1)
+					So(err, ShouldBeNil)
+					So(len(patches), ShouldEqual, 1)
+					So(len(patches[0].BuildVariants), ShouldEqual, 1)
+					So(patches[0].BuildVariants[0], ShouldEqual, "osx-108")
+					So(len(patches[0].Tasks), ShouldEqual, 4)
+					So(patches[0].Tasks, ShouldContain, "compile")
+					So(patches[0].Tasks, ShouldContain, "passing_test")
+					So(patches[0].Tasks, ShouldContain, "failing_test")
+					So(patches[0].Tasks, ShouldContain, "timeout_test")
+				})
+			})
 
 		})
 	})

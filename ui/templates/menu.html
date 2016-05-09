@@ -35,7 +35,7 @@
                 <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.projects" placeholder="Filter projects" />
                 <span ng-repeat-start="kv in groupedProjects | orderBy:getGroupName"></span>
                 <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
-                    <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[kv.0]]</b>
+                    <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[ kv[0] ]]</b>
                     <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
                       <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i> 
                       [[getName(p)]]

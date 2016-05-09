@@ -74,6 +74,32 @@ func TestMakePatchedConfig(t *testing.T) {
 	})
 }
 
+// shouldContainPair returns a blank string if its arguments resemble each other, and returns a
+// list of pretty-printed diffs between the objects if they do not match.
+func shouldContainPair(actual interface{}, expected ...interface{}) string {
+	actualPairsList, ok := actual.([]TVPair)
+
+	if !ok {
+		return fmt.Sprintf("Assertion requires a list of TVPair objects")
+	}
+
+	if len(expected) != 1 {
+		return fmt.Sprintf("Assertion requires 1 expected value, you provided %v", len(expected))
+	}
+
+	expectedPair, ok := expected[0].(TVPair)
+	if !ok {
+		return fmt.Sprintf("Assertion requires expected value to be an instance of TVPair")
+	}
+
+	for _, ap := range actualPairsList {
+		if ap.Variant == expectedPair.Variant && ap.TaskName == expectedPair.TaskName {
+			return ""
+		}
+	}
+	return fmt.Sprintf("Expected list to contain pair '%v', but it didn't", expectedPair)
+}
+
 func TestIncludePatchDependencies(t *testing.T) {
 	Convey("With a project task config with cross-variant dependencies", t, func() {
 		p := &Project{
@@ -92,37 +118,29 @@ func TestIncludePatchDependencies(t *testing.T) {
 		}
 
 		Convey("a patch against v1/t1 should remain unchanged", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"t1"})
-			So(len(variants), ShouldEqual, 1)
-			So(variants, ShouldContain, "v1")
-			So(len(tasks), ShouldEqual, 1)
-			So(tasks, ShouldContain, "t1")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "t1"}})
+			So(len(pairs), ShouldEqual, 1)
+			So(pairs[0], ShouldResemble, TVPair{"v1", "t1"})
 		})
 
 		Convey("a patch against v1/t2 should add t1", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"t2"})
-			So(len(variants), ShouldEqual, 1)
-			So(variants, ShouldContain, "v1")
-			So(len(tasks), ShouldEqual, 2)
-			So(tasks, ShouldContain, "t1")
-			So(tasks, ShouldContain, "t2")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "t2"}})
+			So(len(pairs), ShouldEqual, 2)
+			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
 		})
 
 		Convey("a patch against v2/t3 should add t1,t2, and v1", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v2"}, []string{"t3"})
-			So(len(variants), ShouldEqual, 2)
-			So(variants, ShouldContain, "v1")
-			So(variants, ShouldContain, "v2")
-			So(len(tasks), ShouldEqual, 3)
-			So(tasks, ShouldContain, "t1")
-			So(tasks, ShouldContain, "t2")
-			So(tasks, ShouldContain, "t3")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v2", "t3"}})
+			So(len(pairs), ShouldEqual, 3)
+			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t3"})
 		})
 
-		Convey("a patch against v2/t5 should be pruned, since its dependeny is not patchable", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v2"}, []string{"t5"})
-			So(len(variants), ShouldEqual, 0)
-			So(len(tasks), ShouldEqual, 0)
+		Convey("a patch against v2/t5 should be pruned, since its dependency is not patchable", func() {
+			pairs := IncludePatchDependencies(p, []TVPair{{"v2", "t5"}})
+			So(len(pairs), ShouldEqual, 0)
 		})
 	})
 
@@ -144,41 +162,41 @@ func TestIncludePatchDependencies(t *testing.T) {
 		}
 
 		Convey("a patch against v1/t3 should include t2 and t1", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"t3"})
-			So(len(variants), ShouldEqual, 1)
-			So(variants, ShouldContain, "v1")
-			So(len(tasks), ShouldEqual, 3)
-			So(tasks, ShouldContain, "t1")
-			So(tasks, ShouldContain, "t2")
-			So(tasks, ShouldContain, "t3")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "t3"}})
+			So(len(pairs), ShouldEqual, 3)
+			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t3"})
 		})
 
 		Convey("a patch against v3/t4 should include v1, v2, t3, t2, and t1", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v3"}, []string{"t4"})
-			So(len(variants), ShouldEqual, 3)
-			So(variants, ShouldContain, "v1")
-			So(variants, ShouldContain, "v2")
-			So(variants, ShouldContain, "v3")
-			So(len(tasks), ShouldEqual, 4)
-			So(tasks, ShouldContain, "t1")
-			So(tasks, ShouldContain, "t2")
-			So(tasks, ShouldContain, "t3")
-			So(tasks, ShouldContain, "t4")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v3", "t4"}})
+			So(len(pairs), ShouldEqual, 7)
+
+			So(pairs, shouldContainPair, TVPair{"v3", "t4"})
+			// requires t3 on the other variants
+			So(pairs, shouldContainPair, TVPair{"v1", "t3"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t3"})
+
+			// t3 requires all the others
+			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t1"})
+
 		})
 
 		Convey("a patch against v4/t5 should include v1, v2, v3, t4, t3, t2, and t1", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v4"}, []string{"t5"})
-			So(len(variants), ShouldEqual, 4)
-			So(variants, ShouldContain, "v1")
-			So(variants, ShouldContain, "v2")
-			So(variants, ShouldContain, "v3")
-			So(variants, ShouldContain, "v4")
-			So(len(tasks), ShouldEqual, 5)
-			So(tasks, ShouldContain, "t1")
-			So(tasks, ShouldContain, "t2")
-			So(tasks, ShouldContain, "t3")
-			So(tasks, ShouldContain, "t4")
-			So(tasks, ShouldContain, "t5")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v4", "t5"}})
+			So(len(pairs), ShouldEqual, 8)
+			So(pairs, shouldContainPair, TVPair{"v4", "t5"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t1"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v1", "t3"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t1"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t2"})
+			So(pairs, shouldContainPair, TVPair{"v2", "t3"})
+			So(pairs, shouldContainPair, TVPair{"v3", "t4"})
 		})
 	})
 
@@ -206,33 +224,28 @@ func TestIncludePatchDependencies(t *testing.T) {
 		}
 
 		Convey("scheduling the 'before' task should also schedule 'after'", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"before"})
-			So(len(variants), ShouldEqual, 1)
-			So(variants, ShouldContain, "v1")
-			So(len(tasks), ShouldEqual, 2)
-			So(tasks, ShouldContain, "before")
-			So(tasks, ShouldContain, "after")
+			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "before"}})
+			So(len(pairs), ShouldEqual, 2)
+			So(pairs, shouldContainPair, TVPair{"v1", "before"})
+			So(pairs, shouldContainPair, TVPair{"v1", "after"})
 		})
 		Convey("scheduling the middle tasks should include 'before' and 'after'", func() {
 			Convey("for '1'", func() {
-				variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1"})
-				So(len(variants), ShouldEqual, 1)
-				So(variants, ShouldContain, "v1")
-				So(len(tasks), ShouldEqual, 3)
-				So(tasks, ShouldContain, "before")
-				So(tasks, ShouldContain, "after")
-				So(tasks, ShouldContain, "1")
+				pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
+				So(len(pairs), ShouldEqual, 3)
+				So(pairs, shouldContainPair, TVPair{"v1", "before"})
+				So(pairs, shouldContainPair, TVPair{"v1", "after"})
+				So(pairs, shouldContainPair, TVPair{"v1", "1"})
 			})
 			Convey("for '1' '2' '3'", func() {
-				variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1", "2", "3"})
-				So(len(variants), ShouldEqual, 1)
-				So(variants, ShouldContain, "v1")
-				So(len(tasks), ShouldEqual, 5)
-				So(tasks, ShouldContain, "before")
-				So(tasks, ShouldContain, "after")
-				So(tasks, ShouldContain, "1")
-				So(tasks, ShouldContain, "2")
-				So(tasks, ShouldContain, "3")
+				pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}, {"v1", "2"}, {"v1", "3"}})
+
+				So(len(pairs), ShouldEqual, 5)
+				So(pairs, shouldContainPair, TVPair{"v1", "before"})
+				So(pairs, shouldContainPair, TVPair{"v1", "1"})
+				So(pairs, shouldContainPair, TVPair{"v1", "2"})
+				So(pairs, shouldContainPair, TVPair{"v1", "3"})
+				So(pairs, shouldContainPair, TVPair{"v1", "after"})
 			})
 		})
 	})
@@ -251,32 +264,28 @@ func TestIncludePatchDependencies(t *testing.T) {
 		}
 		Convey("all tasks should be scheduled no matter which is initially added", func() {
 			Convey("for '1'", func() {
-				variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1"})
-				So(len(variants), ShouldEqual, 1)
-				So(variants, ShouldContain, "v1")
-				So(len(tasks), ShouldEqual, 3)
-				So(tasks, ShouldContain, "1")
-				So(tasks, ShouldContain, "2")
-				So(tasks, ShouldContain, "3")
+				pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
+				So(len(pairs), ShouldEqual, 3)
+				So(pairs, shouldContainPair, TVPair{"v1", "1"})
+				So(pairs, shouldContainPair, TVPair{"v1", "2"})
+				So(pairs, shouldContainPair, TVPair{"v1", "3"})
 			})
 			Convey("for '2'", func() {
-				variants, tasks := IncludePatchDependencies(p, []string{"v1", "v2"}, []string{"2"})
-				So(len(variants), ShouldEqual, 2)
-				So(variants, ShouldContain, "v1")
-				So(variants, ShouldContain, "v2")
-				So(len(tasks), ShouldEqual, 3)
-				So(tasks, ShouldContain, "1")
-				So(tasks, ShouldContain, "2")
-				So(tasks, ShouldContain, "3")
+				pairs := IncludePatchDependencies(p, []TVPair{{"v1", "2"}, {"v2", "2"}})
+				So(len(pairs), ShouldEqual, 6)
+				So(pairs, shouldContainPair, TVPair{"v1", "1"})
+				So(pairs, shouldContainPair, TVPair{"v1", "2"})
+				So(pairs, shouldContainPair, TVPair{"v1", "3"})
+				So(pairs, shouldContainPair, TVPair{"v2", "1"})
+				So(pairs, shouldContainPair, TVPair{"v2", "2"})
+				So(pairs, shouldContainPair, TVPair{"v2", "3"})
 			})
 			Convey("for '3'", func() {
-				variants, tasks := IncludePatchDependencies(p, []string{"v2"}, []string{"3"})
-				So(len(variants), ShouldEqual, 1)
-				So(variants, ShouldContain, "v2")
-				So(len(tasks), ShouldEqual, 3)
-				So(tasks, ShouldContain, "1")
-				So(tasks, ShouldContain, "2")
-				So(tasks, ShouldContain, "3")
+				pairs := IncludePatchDependencies(p, []TVPair{{"v2", "3"}})
+				So(len(pairs), ShouldEqual, 3)
+				So(pairs, shouldContainPair, TVPair{"v2", "1"})
+				So(pairs, shouldContainPair, TVPair{"v2", "2"})
+				So(pairs, shouldContainPair, TVPair{"v2", "3"})
 			})
 		})
 	})
@@ -291,9 +300,9 @@ func TestIncludePatchDependencies(t *testing.T) {
 			},
 		}
 		Convey("the non-patchable task should not be added", func() {
-			variants, tasks := IncludePatchDependencies(p, []string{"v1"}, []string{"1"})
-			So(len(variants), ShouldEqual, 0)
-			So(len(tasks), ShouldEqual, 0)
+			pairs := IncludePatchDependencies(p, []TVPair{{"v1", "1"}})
+
+			So(len(pairs), ShouldEqual, 0)
 		})
 	})
 

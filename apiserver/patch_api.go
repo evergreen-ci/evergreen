@@ -138,17 +138,6 @@ func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
 		}
 	}
 
-	// verify that all tasks exist
-	for _, tName := range pr.Tasks {
-		if tName == "all" {
-			continue
-		}
-		bv := project.FindProjectTask(tName)
-		if bv == nil {
-			return nil, nil, fmt.Errorf("No such task: %v", tName)
-		}
-	}
-
 	// write the patch content into a GridFS file under a new ObjectId after validating.
 	err = db.WriteGridFile(patch.GridFSPrefix, patchFileId, strings.NewReader(pr.PatchContent))
 	if err != nil {
@@ -235,26 +224,39 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//expand tasks and build variants and include dependencies
-	buildVariants := patchDoc.BuildVariants
 	if len(patchDoc.BuildVariants) == 1 && patchDoc.BuildVariants[0] == "all" {
-		buildVariants = make([]string, 0)
+		patchDoc.BuildVariants = []string{}
 		for _, buildVariant := range project.BuildVariants {
 			if buildVariant.Disabled {
 				continue
 			}
-			buildVariants = append(buildVariants, buildVariant.Name)
+			patchDoc.BuildVariants = append(patchDoc.BuildVariants, buildVariant.Name)
 		}
 	}
-	tasks := patchDoc.Tasks
+
 	if len(patchDoc.Tasks) == 1 && patchDoc.Tasks[0] == "all" {
-		tasks = make([]string, 0)
+		patchDoc.Tasks = []string{}
 		for _, t := range project.Tasks {
-			tasks = append(tasks, t.Name)
+			if t.Patchable != nil && !(*t.Patchable) {
+				continue
+			}
+			patchDoc.Tasks = append(patchDoc.Tasks, t.Name)
 		}
 	}
+
+	var pairs []model.TVPair
+	for _, v := range patchDoc.BuildVariants {
+		for _, t := range patchDoc.Tasks {
+			if project.FindTaskForVariant(t, v) != nil {
+				pairs = append(pairs, model.TVPair{v, t})
+			}
+		}
+	}
+
 	// update variant and tasks to include dependencies
-	patchDoc.BuildVariants, patchDoc.Tasks = model.IncludePatchDependencies(
-		project, buildVariants, tasks)
+	pairs = model.IncludePatchDependencies(project, pairs)
+
+	patchDoc.SyncVariantsTasks(model.TVPairsToVariantTasks(pairs))
 
 	if err = patchDoc.Insert(); err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error inserting patch: %v", err))

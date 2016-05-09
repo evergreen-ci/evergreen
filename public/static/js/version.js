@@ -1,4 +1,4 @@
-function VersionController($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
+mciModule.controller('VersionController', function($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
   var nsPerMs = 1000000
   $scope.canEdit = $window.canEdit
 
@@ -170,9 +170,10 @@ function VersionController($scope, $rootScope, $location, $http, $filter, $now, 
 
   $scope.setVersion($window.version);
   $scope.plugins = $window.plugins;
-}
+});
 
-function VersionHistoryDrawerCtrl($scope, $window, $filter, $timeout, historyDrawerService) {
+
+mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filter, $timeout, historyDrawerService) {
 
   // cache the task being displayed on the page
   $scope.version = $window.version;
@@ -395,4 +396,4 @@ function VersionHistoryDrawerCtrl($scope, $window, $filter, $timeout, historyDra
     }).join('\n');
   }
 
-}
+});
