@@ -29,10 +29,8 @@ func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
 	}
 
 	outPairs := []TVPair{}
-	for pair, shouldInclude := range di.included {
-		if shouldInclude {
-			outPairs = append(outPairs, pair)
-		}
+	for pair, _ := range di.included {
+		outPairs = append(outPairs, pair)
 	}
 	return outPairs
 }
@@ -55,7 +53,6 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 		di.included[pair] = false
 		return false // task not found in project--skip it.
 	}
-
 	if patchable := bvt.Patchable; patchable != nil && !*patchable {
 		di.included[pair] = false
 		return false // task cannot be patched, so skip it

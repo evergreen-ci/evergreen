@@ -300,22 +300,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		Requester:     evergreen.PatchVersionRequester,
 	}
 
-	var pairs []TVPair
-	if len(p.VariantsTasks) > 0 {
-		pairs = VariantTasksToTVPairs(p.VariantsTasks)
-	} else {
-		// handle case where the patch is being finalized but only has the old schema tasks/variants
-		// instead of the new one.
-		for _, v := range p.BuildVariants {
-			for _, t := range p.Tasks {
-				if project.FindTaskForVariant(t, v) != nil {
-					pairs = append(pairs, TVPair{v, t})
-				}
-			}
-		}
-		p.VariantsTasks = TVPairsToVariantTasks(pairs)
-	}
-
+	pairs := VariantTasksToTVPairs(p.VariantsTasks)
 	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
 	variantsProcessed := map[string]bool{}
 	for _, vt := range p.VariantsTasks {

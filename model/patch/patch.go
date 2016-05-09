@@ -101,11 +101,10 @@ func (p *Patch) FetchPatchFiles() error {
 	return nil
 }
 
-// SyncVariantsTasks updates the patch's Tasks and BuildVariants fields to match with the set
-// in the given list of VariantTasks. This is to ensure schema backwards compatibility for T shaped
-// patches. This mutates the patch in memory but does not update it in the database; for that, use
-// SetVariantsTasks.
-func (p *Patch) SyncVariantsTasks(variantsTasks []VariantTasks) {
+// Updates the variant/tasks pairs in the database.
+// Also updates the Tasks and Variants fields to maintain backwards compatibility between
+// the old and new fields.
+func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
 	taskSet := map[string]bool{}
 	variantSet := map[string]bool{}
 
@@ -130,20 +129,13 @@ func (p *Patch) SyncVariantsTasks(variantsTasks []VariantTasks) {
 	p.VariantsTasks = variantsTasks
 	p.Tasks = tasks
 	p.BuildVariants = variants
-}
-
-// Updates the variant/tasks pairs in the database.
-// Also updates the Tasks and Variants fields to maintain backwards compatibility between
-// the old and new fields.
-func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
-	p.SyncVariantsTasks(variantsTasks)
 	return UpdateOne(
 		bson.M{IdKey: p.Id},
 		bson.M{
 			"$set": bson.M{
 				VariantsTasksKey: variantsTasks,
-				BuildVariantsKey: p.BuildVariants,
-				TasksKey:         p.Tasks,
+				BuildVariantsKey: variants,
+				TasksKey:         tasks,
 			},
 		},
 	)
