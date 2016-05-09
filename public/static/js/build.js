@@ -1,4 +1,4 @@
-mciModule.controller('BuildVariantHistoryController', function($scope, $http, $filter, $timeout, $window) {
+function BuildVariantHistoryController($scope, $http, $filter, $timeout, $window) {
   $scope.userTz = $window.userTz;
   $scope.builds = [];
   $scope.buildId = "";
@@ -64,10 +64,9 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
         console.log("Error getting build history: " + data);
       });
   };
-});
+}
 
-
-mciModule.controller('BuildViewController', function($scope, $http, $timeout, $rootScope, mciTime, $window) {
+function BuildViewController($scope, $http, $timeout, $rootScope, mciTime, $window) {
   $scope.build = {};
   $scope.computed = {};
   $scope.loading = false;
@@ -181,4 +180,4 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
   $scope.setBuild($window.build);
   $scope.plugins = $window.plugins
 
-});
+}

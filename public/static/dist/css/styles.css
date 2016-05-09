@@ -475,20 +475,6 @@ button.alert-close {
 .error-text {
   color: #ed271c;
 }
-.noselect {
-  -webkit-touch-callout: none;
-  /* iOS Safari */
-  -webkit-user-select: none;
-  /* Chrome/Safari/Opera */
-  -khtml-user-select: none;
-  /* Konqueror */
-  -moz-user-select: none;
-  /* Firefox */
-  -ms-user-select: none;
-  /* IE/Edge */
-  user-select: none;
-  /* non-prefixed version, currently not supported by any browser */
-}
 .remove-version {
   margin: 10px;
 }
@@ -982,7 +968,7 @@ ul.tooltip-tasks li.tooltip-task {
 }
 #buildvariants > li {
   float: left;
-  width: 40%;
+  width: 50%;
 }
 #tasks > li {
   float: left;
@@ -1001,54 +987,11 @@ ul.tooltip-tasks li.tooltip-task {
 .highlight-bg-no-border {
   background-color: #fcf0c6;
 }
-.instructions {
-  padding: 120px;
-  width: 100%;
-  font-size: 2em;
-  text-align: center;
+#tasks li:hover {
+  background-color: #fcf0c6;
 }
-.patch-content {
-  position: absolute;
-  top: 50px;
-  bottom: 0;
-  right: 0;
-  left: 315px;
-  padding: 0 15px;
-  overflow-x: hidden;
-  overflow-y: scroll;
-}
-.variants-drawer {
-  width: 300px;
-  top: 60px;
-  bottom: 10px;
-  overflow-x: hidden;
-  overflow-y: hidden;
-  position: absolute;
-}
-.variants-list-panel {
-  width: 100%;
-  top: 0px;
-  bottom: 0px;
-  position: absolute;
-  overflow-y: scroll;
-}
-.variant-item {
-  cursor: default;
-}
-.change-all {
-  cursor: pointer;
-}
-.already-scheduled {
-  margin-top: 20px;
-  padding: 0px;
-  padding-left: 5px;
-  padding-right: 5px;
-}
-.task-name label {
-  overflow-x: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  white-space: nowrap;
+#buildvariants li:hover {
+  background-color: #fcf0c6;
 }
 .patch {
   overflow: auto;
@@ -1349,16 +1292,6 @@ textarea {
   overflow-x: hidden;
   overflow-y: hidden;
   border-right: 1px solid #dee0e3;
-  /*
-    position: absolute;
-    top: 50px;
-    bottom: 0;
-    left: 0;
-    width: 260px;
-    overflow-x: hidden;
-    overflow-y: hidden;
-    border-right: 1px solid @gray6;
-    */
 }
 #drawer-contents {
   position: absolute;

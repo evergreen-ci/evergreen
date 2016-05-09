@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -21,94 +20,82 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// VariantTasksToTVPairs takes a set of variants and tasks (from both the old and new
-// request formats) and builds a universal set of pairs
-// that can be used to expand the dependency tree.
-func VariantTasksToTVPairs(in []patch.VariantTasks) []TVPair {
-	out := []TVPair{}
-	for _, vt := range in {
-		for _, t := range vt.Tasks {
-			out = append(out, TVPair{vt.Variant, t})
+// Given a patch version and a list of task names, creates a new task with
+// the given name for each variant, if applicable.
+func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project,
+	taskNames []string) error {
+	// create new tasks for all of the added patch tasks
+	var newTasks []string
+	for _, taskName := range taskNames {
+		if !util.SliceContains(p.Tasks, taskName) {
+			newTasks = append(newTasks, taskName)
 		}
 	}
-	return out
-}
 
-// TVPairsToVariantTasks takes a list of TVPairs (task/variant pairs), groups the tasks
-// for the same variant together under a single list, and return all the variant groups
-// as a set of patch.VariantTasks.
-func TVPairsToVariantTasks(in []TVPair) []patch.VariantTasks {
-	vtMap := map[string]patch.VariantTasks{}
-	for _, pair := range in {
-		vt := vtMap[pair.Variant]
-		vt.Variant = pair.Variant
-		vt.Tasks = append(vt.Tasks, pair.TaskName)
-		vtMap[pair.Variant] = vt
+	// add tasks to the patch in the db
+	if err := p.AddTasks(taskNames); err != nil {
+		return err
 	}
-	vts := []patch.VariantTasks{}
-	for _, vt := range vtMap {
-		vts = append(vts, vt)
-	}
-	return vts
-}
 
-// ValidateTVPairs checks that all of a set of variant/task pairs exist in a given project.
-func ValidateTVPairs(p *Project, in []TVPair) error {
-	for _, pair := range in {
-		v := p.FindTaskForVariant(pair.TaskName, pair.Variant)
-		if v == nil {
-			return fmt.Errorf("does not exist: task %v, variant %v", pair.TaskName, pair.Variant)
+	// add new tasks to the build, if they exist
+	if len(newTasks) > 0 {
+		builds, err := build.Find(build.ByIds(patchVersion.BuildIds))
+		if err != nil {
+			return err
+		}
+
+		for _, b := range builds {
+			if _, err = AddTasksToBuild(&b, project, patchVersion, newTasks); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-// Given a patch version and a list of variant/task pairs, creates the set of new builds that
-// do not exist yet out of the set of pairs. No tasks are added for builds which already exist
-// (see AddNewTasksForPatch).
-func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
-	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
+// Given the patch version and a list of build variants, creates new builds
+// with the patch's tasks.
+func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project *Project,
+	buildVariants []string) (*version.Version, error) {
+
+	// compute a list of the newly added build variants
+	var newVariants []string
+	for _, variant := range buildVariants {
+		if !util.SliceContains(p.BuildVariants, variant) {
+			newVariants = append(newVariants, variant)
+		}
+	}
+
+	// update the patch
+	if err := p.AddBuildVariants(buildVariants); err != nil {
+		return nil, err
+	}
 
 	newBuildIds := make([]string, 0)
 	newBuildStatuses := make([]version.BuildStatus, 0)
-
-	existingBuilds, err := build.Find(build.ByVersion(patchVersion.Id).WithFields(build.BuildVariantKey, build.IdKey))
-	if err != nil {
-		return err
-	}
-	variantsProcessed := map[string]bool{}
-	for _, b := range existingBuilds {
-		variantsProcessed[b.BuildVariant] = true
-	}
-
-	for _, pair := range pairs {
-		if _, ok := variantsProcessed[pair.Variant]; ok { // skip variant that was already processed
-			continue
-		}
-		variantsProcessed[pair.Variant] = true
-		// Extract the unique set of task names for the variant we're about to create
-		taskNames := pairs.TaskNames(pair.Variant)
-		if len(taskNames) == 0 {
-			continue
-		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, pair.Variant, p.Activated, taskNames)
+	tt := NewPatchTaskIdTable(project, patchVersion, p)
+	for _, buildVariant := range newVariants {
 		evergreen.Logger.Logf(slogger.INFO,
 			"Creating build for version %v, buildVariant %v, activated = %v",
-			patchVersion.Id, pair.Variant, p.Activated)
+			patchVersion.Id, buildVariant, p.Activated)
+		buildId, err := CreateBuildFromVersion(
+			project, patchVersion, tt, buildVariant, p.Activated, p.Tasks)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		newBuildIds = append(newBuildIds, buildId)
+
 		newBuildStatuses = append(newBuildStatuses,
 			version.BuildStatus{
-				BuildVariant: pair.Variant,
+				BuildVariant: buildVariant,
 				BuildId:      buildId,
 				Activated:    p.Activated,
 			},
 		)
+		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 	}
 
-	return version.UpdateOne(
+	err := version.UpdateOne(
 		bson.M{version.IdKey: patchVersion.Id},
 		bson.M{
 			"$push": bson.M{
@@ -117,58 +104,22 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 			},
 		},
 	)
-	return nil
-}
-
-// Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
-// within the set of already existing builds.
-func AddNewTasksForPatch(p *patch.Patch, patchVersion *version.Version, project *Project, pairs TVPairSet) error {
-	builds, err := build.Find(build.ByIds(patchVersion.BuildIds).WithFields(build.IdKey, build.BuildVariantKey))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, b := range builds {
-		// Find the set of task names that already exist for the given build
-		tasksInBuild, err := task.Find(task.ByBuildId(b.Id).WithFields(task.DisplayNameKey))
-		if err != nil {
-			return err
-		}
-		// build an index to keep track of which tasks already exist
-		existingTasksIndex := map[string]bool{}
-		for _, t := range tasksInBuild {
-			existingTasksIndex[t.DisplayName] = true
-		}
-		// if the patch is activated, treat the build as activated
-		b.Activated = p.Activated
-
-		// build a list of tasks that haven't been created yet for the given variant, but have
-		// a record in the TVPairSet indicating that it should exist
-		tasksToAdd := []string{}
-		for _, taskname := range pairs.TaskNames(b.BuildVariant) {
-			if _, ok := existingTasksIndex[taskname]; ok {
-				continue
-			}
-			tasksToAdd = append(tasksToAdd, taskname)
-		}
-		if len(tasksToAdd) == 0 { // no tasks to add, so we do nothing.
-			continue
-		}
-		// Add the new set of tasks to the build.
-		if _, err = AddTasksToBuild(&b, project, patchVersion, tasksToAdd); err != nil {
-			return err
-		}
-	}
-	return nil
+	return patchVersion, nil
 }
 
-// IncludePatchDependencies takes a project and a slice of variant/task pairs names
-// and returns the expanded set of variant/task pairs to include all the dependencies/requirements
-// for the given set of tasks.
-// If any dependency is cross-variant, it will include the variant and task for that dependency.
-func IncludePatchDependencies(project *Project, tvpairs []TVPair) []TVPair {
-	di := &dependencyIncluder{Project: project}
-	return di.Include(tvpairs)
+// IncludePatchDependencies takes a project, slice of variant names, and a slice of task names,
+// and returns expanded lists of variants and tasks to include dependencies of the given tasks.
+// If a dependency is cross-variant, it will include the variant and task for that dependency.
+func IncludePatchDependencies(project *Project, variants, tasks []string) (vs, ts []string) {
+	// Construct a set of variants to include in patchUpdate.Variants
+	di := &dependencyIncluder{
+		Project: project,
+	}
+	return di.Include(variants, tasks)
 }
 
 // MakePatchedConfig takes in the path to a remote configuration a stringified version
@@ -259,10 +210,11 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 // Patches a remote project's configuration file if needed.
 // Creates a version for this patch and links it.
 // Creates builds based on the version.
-func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Version, error) {
+func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (
+	patchVersion *version.Version, err error) {
 	// unmarshal the project YAML for storage
 	project := &Project{}
-	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
+	err = yaml.Unmarshal([]byte(p.PatchedConfig), project)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"Error marshalling patched project config from repository revision “%v”: %v",
@@ -271,7 +223,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	gitCommit, err := thirdparty.GetCommitEvent(
@@ -282,10 +234,11 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		return nil, fmt.Errorf("Couldn't fetch commit information: %v", err)
 	}
 	if gitCommit == nil {
-		return nil, fmt.Errorf("Couldn't fetch commit information: git commit doesn't exist?")
+		return nil, fmt.Errorf("Couldn't fetch commit information: git commit" +
+			" doesn't exist?")
 	}
 
-	patchVersion := &version.Version{
+	patchVersion = &version.Version{
 		Id:            p.Id.Hex(),
 		CreateTime:    time.Now(),
 		Identifier:    p.Project,
@@ -300,21 +253,16 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		Requester:     evergreen.PatchVersionRequester,
 	}
 
-	pairs := VariantTasksToTVPairs(p.VariantsTasks)
-	tt := NewPatchTaskIdTable(project, patchVersion, pairs)
-	variantsProcessed := map[string]bool{}
-	for _, vt := range p.VariantsTasks {
-		if _, ok := variantsProcessed[vt.Variant]; ok {
-			continue
-		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, vt.Variant, true, vt.Tasks)
+	tt := NewPatchTaskIdTable(project, patchVersion, p)
+	for _, buildvariant := range p.BuildVariants {
+		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, buildvariant, true, p.Tasks)
 		if err != nil {
 			return nil, err
 		}
 		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 		patchVersion.BuildVariants = append(patchVersion.BuildVariants,
 			version.BuildStatus{
-				BuildVariant: vt.Variant,
+				BuildVariant: buildvariant,
 				Activated:    true,
 				BuildId:      buildId,
 			},

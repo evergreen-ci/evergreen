@@ -1,200 +1,155 @@
-mciModule.controller('PatchController', function($scope, $filter, $window, notificationService, $http) {
+function PatchController($scope, $filter, $window, notificationService) {
   $scope.userTz = $window.userTz;
   $scope.canEdit = $window.canEdit;
-  $scope.enabledTasks = _.pluck($window.tasks, "Name");
 
-  var checkedProp = _.property("checked");
-
-  // Event handler for when the user clicks on one of the variants 
-  // in the left panel. Also accounts for special toggle behavior when the user
-  // is holding shift/meta/ctrl when clicking.
-  $scope.selectVariant = function($event, index){
-    $event.preventDefault();
-    if ($event.ctrlKey || $event.metaKey) {
-      // Ctrl/Meta+Click: Toggle just the variant being clicked.
-      $scope.variants[index].checked = !$scope.variants[index].checked;
-    } else if ($event.shiftKey) {
-      // Shift+Click: Select everything between the first element 
-      // that's already selected element and the element being clicked on.
-      var firstCheckedIndex = _.findIndex($scope.variants, checkedProp);
-      firstCheckedIndex = Math.max(firstCheckedIndex, 0); // if nothing selected yet, start at 0.
-      var indexBounds = Array(firstCheckedIndex, index).sort(function(a, b){
-        return a-b;
-      })
-      for(var i=indexBounds[0]; i<=indexBounds[1]; i++){
-        $scope.variants[i].checked = true;
-      }
-    } else {
-      // Regular click: Select *only* the one being clicked, and unselect all others.
-      for(var i=0; i<$scope.variants.length;i++){
-        $scope.variants[i].checked = (i == index);
-      }
+  $scope.selectedTask = {
+    v: "",
+    get: function() {
+      return $scope.selectedTask.v;
+    },
+    set: function(val) {
+      $scope.selectedTask.v = val;
     }
-  }
+  };
 
-  // Returns an object containing the total number of tasks to be scheduled,
-  // and the number of variants with at least 1 task to be scheduled.
-  // Return value is in the format format {numVariants: 3, numTasks: 25}
-  $scope.selectionCount = function(){
-    var numVariants = _.filter($scope.variants, function(x){return _.filter(x.tasks, checkedProp).length > 0}).length;
-    var numTasks = _.reduce(_.map($scope.variants, function(x){return _.filter(x.tasks, checkedProp).length}), function(x, y){return x+y}, 0);
-    return {numVariants: numVariants, numTasks: numTasks};
-  }
-
-  // Returns the number of tasks checked only within the specified variant.
-  // Used to populate the count badge next to each variant in the left panel
-  $scope.numSetForVariant = function(variantId){
-    var v = _.find($scope.variants, function(x){return x.id == variantId});
-    return _.filter(_.pluck(v.tasks, "checked"), _.identity).length;
-  }
-
-  // Gets the subset of variants that are active by the user
-  $scope.selectedVariants = function(){
-    return _.filter($scope.variants, checkedProp);
-  }
-
-  $scope.isMac = function(){
-    return navigator.platform.toUpperCase().indexOf('MAC')>=0;
-  }
-
-    
-
-  // Gets the list of tasks that are active across all the list of currently
-  // selected variants, sorted by name. Used to populate the field of
-  // checkboxes in the main panel.
-  $scope.getActiveTasks = function(){
-    var selectedVariants = $scope.selectedVariants();
-
-    // return the union of the set of tasks shared by all of them, sorted by name
-    var tasksInSelectedVariants = _.uniq(_.flatten(_.map(_.pluck(selectedVariants, "tasks"), _.keys)));
-    return tasksInSelectedVariants.sort();
-  }
-
-  // Click handler for "all" and "none" links. Applies the given state to all
-  // tasks within the current set of active variants
-  $scope.changeStateAll = function(state){
-    var selectedVariantNames = _.object(_.map(_.pluck($scope.selectedVariants(), "id"), function(id){return [id, true]}));
-    var activeTasks = $scope.getActiveTasks();
-    for(var i=0;i<$scope.variants.length;i++){
-      var v = $scope.variants[i];
-      if(!(v.id in selectedVariantNames)){
-        continue;
-      }
-      _.each(activeTasks, function(taskName){
-        if(_.has(v.tasks, taskName)){
-          v.tasks[taskName].checked = state;
-        }
-      })
+  $scope.selectedVariant = {
+    v: "",
+    get: function() {
+      return $scope.selectedVariant.v;
+    },
+    set: function(val) {
+      $scope.selectedVariant.v = val;
     }
-  }
-
-  // Sends the current patch config to the server to save.
-  $scope.save = function(){
-    var data = {
-      "variants_tasks": _.filter(_.map($scope.variants, function(v){
-        return {
-          variant: v.id, 
-          tasks: _.keys(_.omit(v.tasks, function(v){return !v.checked})),
-        };
-      }), function(v){return v.tasks.length > 0})
-    }
-    $http.post('/patch/' + $scope.patch.Id, data).
-      success(function(data, status) {
-        window.location.replace("/version/" + data.version);
-      }).
-      error(function(data, status, errorThrown) {
-      	notificationService.pushNotification('Error retrieving logs: ' + JSON.stringify(data), 'errorHeader');
-      });
   };
 
   $scope.setPatchInfo = function() {
     $scope.patch = $window.patch;
-    $scope.patchContainer = {'Patch':$scope.patch};
     var patch = $scope.patch;
-    var variantsFilteredTasks = _.mapObject($window.variants, function(v, k){
-      v.Tasks = _.filter(v.Tasks, function(x){return _.contains($scope.enabledTasks, x.Name)});
-      return v;
-    })
-    $scope.variants = _.sortBy(_.map(variantsFilteredTasks, function(v, variantId){
-      return {
-        id: variantId, 
-        checked:false,
-        name: v.DisplayName,
-        tasks : _.object(_.map(_.pluck(v.Tasks, "Name"), function(t){
-          return [t, {checked:false}];
-        }))
-      };
-    }), "name");
+    var allTasks = _.sortBy($window.tasks, 'Name')
+    var allVariants = $window.variants;
 
-    // If there's only one variant, just pre-select it.
-    if($scope.variants.length == 1 ){
-      $scope.variants[0].checked = true;
+    var allVariantsModels = [];
+    var allVariantsModelsOriginal = [];
+    for (var variantId in allVariants) {
+      var variant = {
+        "name": allVariants[variantId].DisplayName,
+        "id": variantId,
+        "tasks": _.map(allVariants[variantId].Tasks, function(task) {
+          return task.Name;
+        })
+      };
+      if ($.inArray(variant.id, patch.BuildVariants) >= 0)  {
+        variant.checked = true;
+      }
+      allVariantsModels.push(variant);
+      allVariantsModelsOriginal.push(_.clone(variant));
     }
 
-    var allUniqueTaskNames = _.uniq(_.flatten(_.map(_.pluck($scope.variants, "tasks"), _.keys)));
-
-    $scope.tasks = _.object(_.map(allUniqueTaskNames, function(taskName){
-      // create a getter/setter for the state of the task
-      return [taskName, function(newValue){
-        var selectedVariants = $scope.selectedVariants();
-        if(!arguments.length){ // called with no args, act as a getter
-          var statusAcrossVariants = _.flatten(_.map(_.pluck($scope.selectedVariants(), "tasks"), function(o){return _.filter(o, function(v, k){return k==taskName})}));
-          var groupCountedStatus = _.countBy(statusAcrossVariants, function(x){return x.checked == true});
-          if(groupCountedStatus[true] == statusAcrossVariants.length ){
-            return true;
-          }else if(groupCountedStatus[false] == statusAcrossVariants.length ){
-            return false;
-          }
-          return null;
+    // Create a map from tasks to list of build variants that run that task
+    $scope.buildVariantsForTask = {};
+    _.each(allVariantsModelsOriginal, function(variant) {
+      _.each(variant.tasks, function(task) {
+        $scope.buildVariantsForTask[task] =
+          $scope.buildVariantsForTask[task] || [];
+        if (variant.id &&
+          $scope.buildVariantsForTask[task].indexOf(variant.id) == -1) {
+          $scope.buildVariantsForTask[task].push(variant.id);
         }
-
-        var selectedVariantNames = _.object(_.map(_.pluck(selectedVariants, "id"), function(id){return [id, true]}));
-        
-        // act as a setter
-        for(var i=0;i<$scope.variants.length;i++){
-          var v = $scope.variants[i];
-          if(!(v.id in selectedVariantNames)){
-            continue;
-          }
-          if(_.has(v.tasks, taskName)){
-            v.tasks[taskName].checked = newValue;
-          }
-        }
-        return newValue;
-      }];
-    }))
-  }
-
-  // Older patches may only have the fields "Variants" and "Tasks" but newer patches
-  // have a VariantsTasks field that has all pairs grouped together by variant.
-  // This function backfills the VariantsTasks field for older patches that were created
-  // before the schema change. 
-  if(!patch.VariantsTasks && (patch.Tasks || []).length > 0 && (patch.BuildVariants || []).length > 0){
-    patch.VariantsTasks = _.map(patch.BuildVariants, function(v){
-      // The _intersection limits the set of tasks to be included
-      // to just the ones that actually exist in the config for that variant.
-      return {Variant:v, Tasks: _.intersection(_.pluck($window.variants[v].Tasks, "Name"), patch.Tasks)};
+      });
     });
-  }
 
+    var allTasksModels = [];
+    var allTasksModelsOriginal = [];
+    for (var i = 0; i < allTasks.length; ++i) {
+      task = allTasks[i];
+      if (task.Name === "compile" || $.inArray(task.Name, patch.Tasks) >= 0) {
+        task.checked = true;
+      }
+      allTasksModels.push(task);
+      allTasksModelsOriginal.push(_.clone(task));
+    }
+    $scope.allTasks = allTasksModels;
+    $scope.allTasksOriginal = allTasksModelsOriginal;
+    $scope.allVariants = allVariantsModels;
+    $scope.allVariantsOriginal = allVariantsModelsOriginal;
+
+    $scope.$watch('allVariants', function(allVariants) {
+      $scope.variantsCount = 0;
+      _.forEach(allVariants, function(item) {
+        if (item.checked) {
+          $scope.variantsCount += 1;
+        }
+      });
+    }, true);
+
+    $scope.$watch('allTasks', function(allTasks) {
+      $scope.taskCount = 0;
+      _.forEach(allTasks, function(item) {
+        if (item.checked) {
+          $scope.taskCount += 1;
+        }
+      });
+    }, true);
+  };
   $scope.setPatchInfo();
 
-  // Populate the checkboxes in the UI according to the variants and tasks that
-  // were specified on the command line, or that may have already been created
-  // if the patch was finalized already.
-  if((patch.VariantsTasks || []).length>0){
-    for(var i=0;i<patch.VariantsTasks.length;i++){
-      var vt = patch.VariantsTasks[i];
-      var variantIndex = _.findIndex($scope.variants, function(x){return x.id == patch.VariantsTasks[i].Variant});
-      if(variantIndex >= 0 ){
-        _.each(vt.Tasks, function(x){
-          $scope.variants[variantIndex].tasks[x] = {checked:true};
-          if(!!patch.Version){
-            // if the task was already created, we can't uncheck the box
-            $scope.variants[variantIndex].tasks[x].disabled = true;
-          }
-        })
-      }
+  $scope.selectedVariants = function() {
+    return $filter('filter')($scope.allVariants, {
+      checked: true
+    });
+  };
+
+  $scope.selectedTasks = function() {
+    return $filter('filter')($scope.allTasks, {
+      checked: true
+    });
+  };
+
+  $scope.toggleCheck = function(x) {
+    x.checked = !x.checked;
+  };
+
+  $scope.variantRunsTask = function(variant, taskName) {
+    // Does this variant run the given task name?
+    return variant.tasks.indexOf(taskName) != -1;
+  };
+
+  $scope.taskRunsOnVariant = function(taskName, variant) {
+    // Does this task name run on the variant with the given name?
+    return ($scope.buildVariantsForTask[taskName] || []).indexOf(variant) != -1;
+  };
+}
+
+function PatchUpdateController($scope, $http) {
+  $scope.scheduleBuilds = function(form) {
+    var data = {
+      variants: [],
+      tasks: [],
+      description: $scope.patch.Description
+    };
+    var selectedVariants = $scope.selectedVariants();
+    var selectedTasks = $scope.selectedTasks();
+
+    for (var i = 0; i < selectedVariants.length; ++i) {
+      data.variants.push(selectedVariants[i].id);
     }
-  }
-})
+
+    for (var i = 0; i < selectedTasks.length; ++i) {
+      data.tasks.push(selectedTasks[i].Name);
+    }
+
+    $http.post('/patch/' + $scope.patch.Id, data).
+    success(function(data, status) {
+      window.location.replace("/version/" + data.version);
+    }).
+    error(function(data, status, errorThrown) {
+      alert("Failed to save changes: `" + data + "`",'errorHeader');
+    });
+  };
+
+  $scope.select = function(models, state) {
+    for (var i = 0; i < models.length; ++i) {
+      models[i].checked = state;
+    }
+  };
+}

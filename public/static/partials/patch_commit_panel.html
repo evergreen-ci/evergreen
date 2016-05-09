@@ -1,6 +1,7 @@
 <div class="patch">
   <span class="one-liner patch-header">
-    <span class="muted">By</span>
+    <span class="title">Patch Applied</span>
+    <span class="muted">by</span>
     <a href="/patches/user/[[patchinfo.Patch.Author]]">[[patchinfo.Patch.Author]]</a>
     <span class="muted">at [[patchinfo.Patch.CreateTime | convertDateToUserTimezone:timezone:"MMM D, YYYY h:mm:ss a"]]</span>
   </span>
@@ -10,8 +11,8 @@
     <a class="base-link" ng-href="[[baselink]]/[[base]]">[[basecommit.gitspec.substr(0, 10)]]</a>
   </div>
 
-  <div class="description-box" ng-show="!hideDescription && patchinfo.Patch.Description != ''">  
-    <p>[[patchinfo.Patch.Description]]</p>  
+  <div class="description-box" ng-show="patchinfo.Patch.Description != ''">
+    <p>[[patchinfo.Patch.Description]]</p>
   </div>
 
   <div class="patch" ng-init="showAllChanges = false;">
@@ -29,7 +30,7 @@
       <div class="patch-iterator" ng-repeat="patch in patchinfo.Patch.Patches">
         <div class="patch-message patch-changes-line">
           <span ng-show="patch.ModuleName">Changes on [[patch.ModuleName]] module:</span>
-          <span ng-show="!patch.ModuleName">Changes on [[patchinfo.Patch.Project]]:</span>
+          <span ng-show="!patch.ModuleName">Changes on [[patchinfo.Patch.Project]] project:</span>
           <span class="pull-right">
             View Diff:
             <a ng-href="/filediff/[[patchinfo.Patch.Id]]?patch_number=[[$index]]">HTML</a>

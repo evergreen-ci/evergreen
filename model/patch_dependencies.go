@@ -19,8 +19,20 @@ type patchDep struct {
 // add or removes tasks based on the dependency graph. Required and dependent tasks
 // are added; tasks that depend on unpatchable tasks are pruned. New slices
 // of variants and tasks are returned.
-func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
+func (di *dependencyIncluder) Include(variants, tasks []string) ([]string, []string) {
 	di.included = map[TVPair]bool{}
+	// we get all the BuildVariantTasks requested by the patch,
+	// so we can iterate through them at the finest grain.
+	initialDeps := []TVPair{}
+	for _, v := range variants {
+		for _, t := range di.Project.FindTasksForVariant(v) {
+			for _, task := range tasks {
+				if t == task {
+					initialDeps = append(initialDeps, TVPair{TaskName: t, Variant: v})
+				}
+			}
+		}
+	}
 
 	// handle each pairing, recursively adding and pruning based
 	// on the task's requirements and dependencies
@@ -28,11 +40,26 @@ func (di *dependencyIncluder) Include(initialDeps []TVPair) []TVPair {
 		di.handle(d)
 	}
 
-	outPairs := []TVPair{}
-	for pair, _ := range di.included {
-		outPairs = append(outPairs, pair)
+	// rewrite the list of task/variant pairs to create as a single list
+	// of tasks and a single list of variants.
+	// TODO: this can be removed to enable support for T-shaped patches!
+	var outTasks, outVariants []string
+	outTasksMap := map[string]struct{}{}
+	outVariantsMap := map[string]struct{}{}
+	for pair, ok := range di.included {
+		if ok {
+			outTasksMap[pair.TaskName] = struct{}{}
+			outVariantsMap[pair.Variant] = struct{}{}
+		}
 	}
-	return outPairs
+	for t := range outTasksMap {
+		outTasks = append(outTasks, t)
+	}
+	for v := range outVariantsMap {
+		outVariants = append(outVariants, v)
+	}
+	return outVariants, outTasks
+
 }
 
 // handle finds and includes all tasks that the given task/variant pair

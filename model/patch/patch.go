@@ -14,31 +14,24 @@ import (
 // Hard limit on patch size.
 const SizeLimit = 1024 * 1024 * 100
 
-// VariantTasks contains the variant ID and  the set of tasks to be scheduled for that variant
-type VariantTasks struct {
-	Variant string
-	Tasks   []string
-}
-
 // Stores all details related to a patch request
 type Patch struct {
-	Id            bson.ObjectId  `bson:"_id,omitempty"`
-	Description   string         `bson:"desc"`
-	Project       string         `bson:"branch"`
-	Githash       string         `bson:"githash"`
-	PatchNumber   int            `bson:"patch_number"`
-	Author        string         `bson:"author"`
-	Version       string         `bson:"version"`
-	Status        string         `bson:"status"`
-	CreateTime    time.Time      `bson:"create_time"`
-	StartTime     time.Time      `bson:"start_time"`
-	FinishTime    time.Time      `bson:"finish_time"`
-	BuildVariants []string       `bson:"build_variants"`
-	Tasks         []string       `bson:"tasks"`
-	VariantsTasks []VariantTasks `bson:"variants_tasks"`
-	Patches       []ModulePatch  `bson:"patches"`
-	Activated     bool           `bson:"activated"`
-	PatchedConfig string         `bson:"patched_config"`
+	Id            bson.ObjectId `bson:"_id,omitempty"`
+	Description   string        `bson:"desc"`
+	Project       string        `bson:"branch"`
+	Githash       string        `bson:"githash"`
+	PatchNumber   int           `bson:"patch_number"`
+	Author        string        `bson:"author"`
+	Version       string        `bson:"version"`
+	Status        string        `bson:"status"`
+	CreateTime    time.Time     `bson:"create_time"`
+	StartTime     time.Time     `bson:"start_time"`
+	FinishTime    time.Time     `bson:"finish_time"`
+	BuildVariants []string      `bson:"build_variants"`
+	Tasks         []string      `bson:"tasks"`
+	Patches       []ModulePatch `bson:"patches"`
+	Activated     bool          `bson:"activated"`
+	PatchedConfig string        `bson:"patched_config"`
 }
 
 // this stores request details for a patch
@@ -101,39 +94,16 @@ func (p *Patch) FetchPatchFiles() error {
 	return nil
 }
 
-// Updates the variant/tasks pairs in the database.
-// Also updates the Tasks and Variants fields to maintain backwards compatibility between
-// the old and new fields.
-func (p *Patch) SetVariantsTasks(variantsTasks []VariantTasks) error {
-	taskSet := map[string]bool{}
-	variantSet := map[string]bool{}
-
-	// TODO after fully switching over to new schema, remove support for standalone
-	// Variants and Tasks field
-	for _, v := range variantsTasks {
-		variantSet[v.Variant] = true
-		for _, t := range v.Tasks {
-			taskSet[t] = true
-		}
-	}
-	tasks := []string{}
-	variants := []string{}
-	for k, _ := range variantSet {
-		variants = append(variants, k)
-	}
-
-	for k, _ := range taskSet {
-		tasks = append(tasks, k)
-	}
-
-	p.VariantsTasks = variantsTasks
+func (p *Patch) SetVariantsAndTasks(variants []string,
+	tasks []string) error {
 	p.Tasks = tasks
 	p.BuildVariants = variants
 	return UpdateOne(
-		bson.M{IdKey: p.Id},
+		bson.M{
+			IdKey: p.Id,
+		},
 		bson.M{
 			"$set": bson.M{
-				VariantsTasksKey: variantsTasks,
 				BuildVariantsKey: variants,
 				TasksKey:         tasks,
 			},

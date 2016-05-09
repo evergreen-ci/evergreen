@@ -29,8 +29,7 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone  string `json:"timezone" bson:"timezone"`
-	PatchBeta bool   `json:"patchbeta" bson:"patchbeta"`
+	Timezone string `json:"timezone" bson:"timezone"`
 }
 
 func (u *DBUser) Username() string {

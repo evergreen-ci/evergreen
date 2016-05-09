@@ -12,21 +12,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type patchVariantsTasksRequest struct {
-	VariantsTasks []patch.VariantTasks `json:"variants_tasks,omitempty"` // new format
-	Variants      []string             `json:"variants"`                 // old format
-	Tasks         []string             `json:"tasks"`                    // old format
-	Description   string               `json:"description"`
-}
-
 func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Patch == nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-
-	currentUser := MustHaveUser(r)
 
 	var versionAsUI *uiVersion
 	if projCtx.Version != nil { // Patch is already finalized
@@ -66,11 +57,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	template := "patch_version.html"
-	if len(r.FormValue("beta")) == 0 && !currentUser.Settings.PatchBeta {
-		template = "patch_version_old.html"
-	}
-
+	currentUser := GetUser(r)
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		User        *user.DBUser
@@ -79,7 +66,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Tasks       []interface{}
 		CanEdit     bool
 	}{projCtx, currentUser, versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch)}, "base",
-		template, "base_angular.html", "menu.html")
+		"patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +95,11 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	}
 	projCtx.Project = project
 
-	patchUpdateReq := patchVariantsTasksRequest{}
+	patchUpdateReq := struct {
+		Variants    []string `json:"variants"`
+		Tasks       []string `json:"tasks"`
+		Description string   `json:"description"`
+	}{}
 
 	err = util.ReadJSONInto(r.Body, &patchUpdateReq)
 	if err != nil {
@@ -116,25 +107,8 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pairs []model.TVPair
-	if len(patchUpdateReq.VariantsTasks) > 0 {
-		pairs = model.VariantTasksToTVPairs(patchUpdateReq.VariantsTasks)
-	} else {
-		for _, v := range patchUpdateReq.Variants {
-			for _, t := range patchUpdateReq.Tasks {
-				if project.FindTaskForVariant(t, v) != nil {
-					pairs = append(pairs, model.TVPair{v, t})
-				}
-			}
-		}
-	}
-
-	pairs = model.IncludePatchDependencies(projCtx.Project, pairs)
-
-	if err = model.ValidateTVPairs(projCtx.Project, pairs); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	patchUpdateReq.Variants, patchUpdateReq.Tasks = model.IncludePatchDependencies(
+		projCtx.Project, patchUpdateReq.Variants, patchUpdateReq.Tasks)
 
 	// update the description for both reconfigured and new patches
 	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
@@ -143,35 +117,30 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the description for both reconfigured and new patches
-	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs)); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError,
-			fmt.Errorf("Error setting description: %v", err))
-		return
-	}
-
 	if projCtx.Patch.Version != "" {
-		projCtx.Patch.Activated = true
 		// This patch has already been finalized, just add the new builds and tasks
 		if projCtx.Version == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				fmt.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
 			return
 		}
-
 		// First add new tasks to existing builds, if necessary
-		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, pairs)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error creating new tasks: `%v` for version `%v`", err, projCtx.Version.Id))
-			return
+		if len(patchUpdateReq.Tasks) > 0 {
+			err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, patchUpdateReq.Tasks)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError,
+					fmt.Errorf("Error creating new tasks: `%v` for version `%v`", err, projCtx.Version.Id))
+				return
+			}
 		}
 
-		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, pairs)
-		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error creating new builds: `%v` for version `%v`", err, projCtx.Version.Id))
-			return
+		if len(patchUpdateReq.Variants) > 0 {
+			_, err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, patchUpdateReq.Variants)
+			if err != nil {
+				uis.LoggedError(w, r, http.StatusInternalServerError,
+					fmt.Errorf("Error creating new builds: `%v` for version `%v`", err, projCtx.Version.Id))
+				return
+			}
 		}
 
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Builds and tasks successfully added to patch."))
@@ -179,8 +148,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 			VersionId string `json:"version"`
 		}{projCtx.Version.Id})
 	} else {
-		projCtx.Patch.Activated = true
-		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs))
+		err = projCtx.Patch.SetVariantsAndTasks(patchUpdateReq.Variants, patchUpdateReq.Tasks)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
 				fmt.Errorf("Error setting patch variants and tasks: %v", err))
