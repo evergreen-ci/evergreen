@@ -1,4 +1,4 @@
-function TimelineController($scope, $timeline, $window, $location) {
+mciModule.controller('TimelineController', function($scope, $timeline, $window, $location) {
   $scope.data = $timeline;
   $scope.userTz = $window.userTz;
 
@@ -46,4 +46,4 @@ function TimelineController($scope, $timeline, $window, $location) {
     // return true if at least 1 of those tasks is activated.
     return _.some(_.pluck(result, "activated"));
   };
-}
+})
