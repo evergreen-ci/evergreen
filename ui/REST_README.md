@@ -1,4 +1,4 @@
-MCI API v1
+Evergreen REST API v1
 ----------
 
 ### Contents
