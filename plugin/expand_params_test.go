@@ -254,7 +254,7 @@ func TestExpandValues(t *testing.T) {
 
 		Convey("a recursive map expands properly", func() {
 			testmap := map[string]map[string]string{
-				"${a}": map[string]string{
+				"${a}": {
 					"deep": "${c}",
 					"no":   "same",
 				},

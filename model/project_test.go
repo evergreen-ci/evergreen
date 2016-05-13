@@ -68,15 +68,15 @@ func TestGetVariantMappings(t *testing.T) {
 
 			project := &Project{
 				BuildVariants: []BuildVariant{
-					BuildVariant{
+					{
 						Name:        "bv1",
 						DisplayName: "bv1",
 					},
-					BuildVariant{
+					{
 						Name:        "bv2",
 						DisplayName: "dsp2",
 					},
-					BuildVariant{
+					{
 						Name:        "blecch",
 						DisplayName: "blecchdisplay",
 					},
@@ -101,32 +101,20 @@ func TestGetVariantsWithTask(t *testing.T) {
 
 		project := &Project{
 			BuildVariants: []BuildVariant{
-				BuildVariant{
-					Name: "bv1",
-					Tasks: []BuildVariantTask{
-						BuildVariantTask{
-							Name: "suite1",
-						},
-					},
+				{
+					Name:  "bv1",
+					Tasks: []BuildVariantTask{{Name: "suite1"}},
 				},
-				BuildVariant{
+				{
 					Name: "bv2",
 					Tasks: []BuildVariantTask{
-						BuildVariantTask{
-							Name: "suite1",
-						},
-						BuildVariantTask{
-							Name: "suite2",
-						},
+						{Name: "suite1"},
+						{Name: "suite2"},
 					},
 				},
-				BuildVariant{
-					Name: "bv3",
-					Tasks: []BuildVariantTask{
-						BuildVariantTask{
-							Name: "suite2",
-						},
-					},
+				{
+					Name:  "bv3",
+					Tasks: []BuildVariantTask{{Name: "suite2"}},
 				},
 			},
 		}

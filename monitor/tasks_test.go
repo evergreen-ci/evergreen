@@ -54,7 +54,7 @@ func TestCleanupTask(t *testing.T) {
 				},
 			}
 			projects := map[string]model.Project{
-				"proj": model.Project{
+				"proj": {
 					Identifier: "proj",
 				},
 			}
@@ -103,7 +103,7 @@ func TestCleanupTask(t *testing.T) {
 				}
 
 				projects := map[string]model.Project{
-					"proj": model.Project{
+					"proj": {
 						Identifier: "proj",
 						Stepback:   false,
 					},
@@ -157,7 +157,7 @@ func TestCleanupTask(t *testing.T) {
 				}
 
 				projects := map[string]model.Project{
-					"proj": model.Project{
+					"proj": {
 						Identifier: "proj",
 						Stepback:   false,
 					},

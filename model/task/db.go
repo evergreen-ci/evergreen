@@ -83,7 +83,7 @@ var (
 		"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched},
 	}
 
-	FinishedOpts = []bson.M{bson.M{
+	FinishedOpts = []bson.M{{
 		StatusKey: bson.M{
 			"$in": []string{
 				evergreen.TaskFailed,

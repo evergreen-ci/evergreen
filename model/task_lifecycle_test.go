@@ -41,11 +41,7 @@ func TestSetActiveState(t *testing.T) {
 			Activated:     false,
 			BuildId:       b.Id,
 		}
-		b.Tasks = []build.TaskCache{
-			build.TaskCache{
-				Id: testTask.Id,
-			},
-		}
+		b.Tasks = []build.TaskCache{{Id: testTask.Id}}
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 
@@ -173,11 +169,11 @@ func TestActivatePreviousTask(t *testing.T) {
 			BuildId:             b.Id,
 		}
 		tc := []build.TaskCache{
-			build.TaskCache{
+			{
 				DisplayName: displayName,
 				Id:          previousTask.Id,
 			},
-			build.TaskCache{
+			{
 				DisplayName: displayName,
 				Id:          currentTask.Id,
 			},
@@ -227,11 +223,11 @@ func TestDeactivatePreviousTask(t *testing.T) {
 			Project:             "sample",
 		}
 		tc := []build.TaskCache{
-			build.TaskCache{
+			{
 				DisplayName: displayName,
 				Id:          previousTask.Id,
 			},
-			build.TaskCache{
+			{
 				DisplayName: displayName,
 				Id:          currentTask.Id,
 			},
@@ -281,11 +277,11 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 		}
 
 		b.Tasks = []build.TaskCache{
-			build.TaskCache{
+			{
 				Id:     testTask.Id,
 				Status: evergreen.TaskSucceeded,
 			},
-			build.TaskCache{
+			{
 				Id:     anotherTask.Id,
 				Status: evergreen.TaskFailed,
 			},
@@ -335,7 +331,7 @@ func TestMarkEnd(t *testing.T) {
 		}
 
 		b.Tasks = []build.TaskCache{
-			build.TaskCache{
+			{
 				Id:     testTask.Id,
 				Status: evergreen.TaskStarted,
 			},
@@ -386,7 +382,7 @@ func TestTryResetTask(t *testing.T) {
 			}
 
 			b.Tasks = []build.TaskCache{
-				build.TaskCache{
+				{
 					Id: testTask.Id,
 				},
 			}
@@ -450,10 +446,10 @@ func TestTryResetTask(t *testing.T) {
 				Status:      evergreen.TaskSucceeded,
 			}
 			b.Tasks = []build.TaskCache{
-				build.TaskCache{
+				{
 					Id: testTask.Id,
 				},
-				build.TaskCache{
+				{
 					Id: anotherTask.Id,
 				},
 			}
@@ -506,10 +502,10 @@ func TestAbortTask(t *testing.T) {
 			Status:      evergreen.TaskFailed,
 		}
 		b.Tasks = []build.TaskCache{
-			build.TaskCache{
+			{
 				Id: testTask.Id,
 			},
-			build.TaskCache{
+			{
 				Id: finishedTask.Id,
 			},
 		}
@@ -554,7 +550,7 @@ func TestMarkStart(t *testing.T) {
 		}
 
 		b.Tasks = []build.TaskCache{
-			build.TaskCache{
+			{
 				Id:     testTask.Id,
 				Status: evergreen.TaskUndispatched,
 			},
@@ -605,7 +601,7 @@ func TestMarkUndispatched(t *testing.T) {
 		}
 
 		b.Tasks = []build.TaskCache{
-			build.TaskCache{
+			{
 				Id:     testTask.Id,
 				Status: evergreen.TaskStarted,
 			},
@@ -648,7 +644,7 @@ func TestMarkDispatched(t *testing.T) {
 		}
 
 		b.Tasks = []build.TaskCache{
-			build.TaskCache{
+			{
 				Id:     testTask.Id,
 				Status: evergreen.TaskUndispatched,
 			},
@@ -677,25 +673,25 @@ func TestGetstepback(t *testing.T) {
 		project := &Project{
 			Stepback: true,
 			BuildVariants: []BuildVariant{
-				BuildVariant{
+				{
 					Name: "sbnil",
 				},
-				BuildVariant{
+				{
 					Name:     "sbtrue",
 					Stepback: &_true,
 				},
-				BuildVariant{
+				{
 					Name:     "sbfalse",
 					Stepback: &_false,
 				},
 			},
 			Tasks: []ProjectTask{
-				ProjectTask{Name: "nil"},
-				ProjectTask{Name: "true", Stepback: &_true},
-				ProjectTask{Name: "false", Stepback: &_false},
-				ProjectTask{Name: "bvnil"},
-				ProjectTask{Name: "bvtrue"},
-				ProjectTask{Name: "bvfalse"},
+				{Name: "nil"},
+				{Name: "true", Stepback: &_true},
+				{Name: "false", Stepback: &_false},
+				{Name: "bvnil"},
+				{Name: "bvtrue"},
+				{Name: "bvfalse"},
 			},
 		}
 

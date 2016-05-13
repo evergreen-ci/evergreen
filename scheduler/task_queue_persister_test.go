@@ -56,7 +56,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 		}
 
 		tasks = []task.Task{
-			task.Task{
+			{
 				Id:                  taskIds[0],
 				DisplayName:         displayNames[0],
 				BuildVariant:        buildVariants[0],
@@ -65,7 +65,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[0],
 				Project:             projects[0],
 			},
-			task.Task{
+			{
 				Id:                  taskIds[1],
 				DisplayName:         displayNames[1],
 				BuildVariant:        buildVariants[1],
@@ -74,7 +74,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[1],
 				Project:             projects[1],
 			},
-			task.Task{
+			{
 				Id:                  taskIds[2],
 				DisplayName:         displayNames[2],
 				BuildVariant:        buildVariants[2],
@@ -83,7 +83,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[2],
 				Project:             projects[2],
 			},
-			task.Task{
+			{
 				Id:                  taskIds[3],
 				DisplayName:         displayNames[3],
 				BuildVariant:        buildVariants[3],
@@ -92,7 +92,7 @@ func TestDBTaskQueuePersister(t *testing.T) {
 				Revision:            gitspecs[3],
 				Project:             projects[3],
 			},
-			task.Task{
+			{
 				Id:                  taskIds[4],
 				DisplayName:         displayNames[4],
 				BuildVariant:        buildVariants[4],
@@ -105,36 +105,36 @@ func TestDBTaskQueuePersister(t *testing.T) {
 
 		durationMappings := model.ProjectTaskDurations{
 			map[string]*model.BuildVariantTaskDurations{
-				projects[0]: &model.BuildVariantTaskDurations{
+				projects[0]: {
 					map[string]*model.TaskDurations{
-						buildVariants[0]: &model.TaskDurations{
+						buildVariants[0]: {
 							map[string]time.Duration{
 								displayNames[0]: durations[0],
 							},
 						},
 					},
 				},
-				projects[1]: &model.BuildVariantTaskDurations{
+				projects[1]: {
 					map[string]*model.TaskDurations{
-						buildVariants[1]: &model.TaskDurations{
+						buildVariants[1]: {
 							map[string]time.Duration{
 								displayNames[1]: durations[1],
 							},
 						},
 					},
 				},
-				projects[2]: &model.BuildVariantTaskDurations{
+				projects[2]: {
 					map[string]*model.TaskDurations{
-						buildVariants[2]: &model.TaskDurations{
+						buildVariants[2]: {
 							map[string]time.Duration{
 								displayNames[2]: durations[2],
 							},
 						},
 					},
 				},
-				projects[3]: &model.BuildVariantTaskDurations{
+				projects[3]: {
 					map[string]*model.TaskDurations{
-						buildVariants[3]: &model.TaskDurations{
+						buildVariants[3]: {
 							map[string]time.Duration{
 								displayNames[3]: durations[3],
 							},

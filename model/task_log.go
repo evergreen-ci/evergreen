@@ -190,10 +190,10 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 	var query bson.M
 	if execution == 0 {
 		query = bson.M{"$and": []bson.M{
-			bson.M{TaskLogTaskIdKey: taskId},
-			bson.M{"$or": []bson.M{
-				bson.M{TaskLogExecutionKey: 0},
-				bson.M{TaskLogExecutionKey: nil},
+			{TaskLogTaskIdKey: taskId},
+			{"$or": []bson.M{
+				{TaskLogExecutionKey: 0},
+				{TaskLogExecutionKey: nil},
 			}}}}
 	} else {
 		query = bson.M{

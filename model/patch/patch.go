@@ -119,11 +119,11 @@ func (p *Patch) SyncVariantsTasks(variantsTasks []VariantTasks) {
 	}
 	tasks := []string{}
 	variants := []string{}
-	for k, _ := range variantSet {
+	for k := range variantSet {
 		variants = append(variants, k)
 	}
 
-	for k, _ := range taskSet {
+	for k := range taskSet {
 		tasks = append(tasks, k)
 	}
 

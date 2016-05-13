@@ -450,23 +450,23 @@ func createTestRevision(revision string,
 func createTestProject(override1, override2 *int) *model.Project {
 	return &model.Project{
 		BuildVariants: []model.BuildVariant{
-			model.BuildVariant{
+			{
 				Name:        "bv1",
 				DisplayName: "bv1",
 				BatchTime:   override1,
 				Tasks: []model.BuildVariantTask{
-					model.BuildVariantTask{
+					{
 						Name:    "Unabhaengigkeitserklaerungen",
 						Distros: []string{"test-distro-one"},
 					},
 				},
 			},
-			model.BuildVariant{
+			{
 				Name:        "bv2",
 				DisplayName: "bv2",
 				BatchTime:   override2,
 				Tasks: []model.BuildVariantTask{
-					model.BuildVariantTask{
+					{
 						Name:    "Unabhaengigkeitserklaerungen",
 						Distros: []string{"test-distro-one"},
 					},
@@ -474,7 +474,7 @@ func createTestProject(override1, override2 *int) *model.Project {
 			},
 		},
 		Tasks: []model.ProjectTask{
-			model.ProjectTask{
+			{
 				Name:     "Unabhaengigkeitserklaerungen",
 				Commands: []model.PluginCommandConf{},
 			},

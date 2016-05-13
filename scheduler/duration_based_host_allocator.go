@@ -105,7 +105,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 
 	// Sanity check to ensure that we have a distro object for each item in the
 	// task queue. Also pulls the distros we need for sorting
-	for distroId, _ := range hostAllocatorData.taskQueueItems {
+	for distroId := range hostAllocatorData.taskQueueItems {
 		distro, ok := hostAllocatorData.distros[distroId]
 		if !ok {
 			return nil, fmt.Errorf("No distro info available for distro %v",

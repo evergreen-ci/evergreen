@@ -25,7 +25,7 @@ func (self *DeficitBasedHostAllocator) NewHostsNeeded(
 	newHostsNeeded := make(map[string]int)
 
 	// now, for each distro, see if we need to spin up any new hosts
-	for distroId, _ := range hostAllocatorData.taskQueueItems {
+	for distroId := range hostAllocatorData.taskQueueItems {
 		distro, ok := hostAllocatorData.distros[distroId]
 		if !ok {
 			return nil, fmt.Errorf("No distro info available for distro %v",

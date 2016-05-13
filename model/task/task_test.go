@@ -66,11 +66,11 @@ func TestDependenciesMet(t *testing.T) {
 		}
 
 		depTasks = []*Task{
-			&Task{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[2].TaskId, Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[3].TaskId, Status: evergreen.TaskUndispatched},
-			&Task{Id: depTaskIds[4].TaskId, Status: evergreen.TaskUndispatched},
+			{Id: depTaskIds[0].TaskId, Status: evergreen.TaskUndispatched},
+			{Id: depTaskIds[1].TaskId, Status: evergreen.TaskUndispatched},
+			{Id: depTaskIds[2].TaskId, Status: evergreen.TaskUndispatched},
+			{Id: depTaskIds[3].TaskId, Status: evergreen.TaskUndispatched},
+			{Id: depTaskIds[4].TaskId, Status: evergreen.TaskUndispatched},
 		}
 
 		So(db.Clear(Collection), ShouldBeNil)
@@ -261,31 +261,31 @@ func TestTaskSetPriority(t *testing.T) {
 			" '%v' collection", Collection)
 
 		tasks := []Task{
-			Task{
+			{
 				Id:        "one",
 				DependsOn: []Dependency{{"two", ""}, {"three", ""}, {"four", ""}},
 				Activated: true,
 			},
-			Task{
+			{
 				Id:        "two",
 				Priority:  5,
 				Activated: true,
 			},
-			Task{
+			{
 				Id:        "three",
 				DependsOn: []Dependency{{"five", ""}},
 				Activated: true,
 			},
-			Task{
+			{
 				Id:        "four",
 				DependsOn: []Dependency{{"five", ""}},
 				Activated: true,
 			},
-			Task{
+			{
 				Id:        "five",
 				Activated: true,
 			},
-			Task{
+			{
 				Id:        "six",
 				Activated: true,
 			},
@@ -392,13 +392,13 @@ func TestFindTasksByIds(t *testing.T) {
 		Convey("only tasks with the specified ids should be returned", func() {
 
 			tasks := []Task{
-				Task{
+				{
 					Id: "one",
 				},
-				Task{
+				{
 					Id: "two",
 				},
-				Task{
+				{
 					Id: "three",
 				},
 			}
@@ -429,7 +429,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 				revision := "asdf ;lkj asdf ;lkj "
 
 				tasks := []Task{
-					Task{
+					{
 						Id:           "one",
 						Project:      project,
 						DisplayName:  displayName,
@@ -437,7 +437,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Revision:     revision,
 						Requester:    requester,
 					},
-					Task{
+					{
 						Id:           "two",
 						Project:      project,
 						DisplayName:  displayName,
@@ -447,7 +447,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Status:       evergreen.TaskFailed,
 					},
 					// task succeeded so should not be returned
-					Task{
+					{
 						Id:           "three",
 						Project:      project,
 						DisplayName:  displayName,
@@ -457,7 +457,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Status:       evergreen.TaskSucceeded,
 					},
 					// same buildvariant so should not be returned
-					Task{
+					{
 						Id:           "four",
 						Project:      project,
 						DisplayName:  displayName,
@@ -467,7 +467,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Status:       evergreen.TaskFailed,
 					},
 					// different project so should not be returned
-					Task{
+					{
 						Id:           "five",
 						Project:      project + "1",
 						DisplayName:  displayName,
@@ -477,7 +477,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Status:       evergreen.TaskFailed,
 					},
 					// different requester so should not be returned
-					Task{
+					{
 						Id:           "six",
 						Project:      project,
 						DisplayName:  displayName,
@@ -487,7 +487,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Status:       evergreen.TaskFailed,
 					},
 					// different revision so should not be returned
-					Task{
+					{
 						Id:           "seven",
 						Project:      project,
 						DisplayName:  displayName,
@@ -497,7 +497,7 @@ func TestCountSimilarFailingTasks(t *testing.T) {
 						Status:       evergreen.TaskFailed,
 					},
 					// different display name so should not be returned
-					Task{
+					{
 						Id:           "eight",
 						Project:      project,
 						DisplayName:  displayName + "1",

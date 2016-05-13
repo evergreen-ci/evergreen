@@ -55,7 +55,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 0/7 are from the same project and buildvariant
 						// and have different display names - expected duration
 						// should not be averaged between these two
-						task.Task{
+						{
 							Id:           taskIds[0],
 							DisplayName:  displayNames[0],
 							BuildVariant: buildVariants[0],
@@ -65,7 +65,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[0]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[7],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[0],
@@ -118,7 +118,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// buildvariants and have the same display names -
 						// expected duration should not be averaged between
 						// these two
-						task.Task{
+						{
 							Id:           taskIds[1],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[3],
@@ -128,7 +128,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[2]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[4],
@@ -187,7 +187,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// same display name amd are from same projects -
 						// expected duration should be average across those
 						// projects
-						task.Task{
+						{
 							Id:           taskIds[3],
 							DisplayName:  displayNames[3],
 							BuildVariant: buildVariants[3],
@@ -197,7 +197,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[3]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[3],
 							BuildVariant: buildVariants[3],
@@ -252,7 +252,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// same display name but are from different projects -
 						// expected duration should be distinct across those
 						// projects
-						task.Task{
+						{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -262,7 +262,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -327,7 +327,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// same display name and are from the same project -
 						// however task 4 is not yet dispatched so shouldn't
 						// count toward the expected duration
-						task.Task{
+						{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -337,7 +337,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -392,7 +392,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// however task 4 did not finish within the specified
 						// window and should thus, not count toward the expected
 						//  duration
-						task.Task{
+						{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -404,7 +404,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 								Add(-model.TaskCompletionEstimateWindow).
 								Add(-model.TaskCompletionEstimateWindow),
 						},
-						task.Task{
+						{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -460,7 +460,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// and have different display names - expected duration
 						// should thus be averaged between these two - even
 						// though task 0 succeeded and 7 failed
-						task.Task{
+						{
 							Id:           taskIds[0],
 							DisplayName:  displayNames[0],
 							BuildVariant: buildVariants[0],
@@ -470,7 +470,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[0]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[7],
 							DisplayName:  displayNames[0],
 							BuildVariant: buildVariants[0],
@@ -483,7 +483,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 1 is the only runnable task with this project,
 						// buildvariant & display name
 						// should be exactly equal to its time taken
-						task.Task{
+						{
 							Id:           taskIds[1],
 							DisplayName:  displayNames[1],
 							BuildVariant: buildVariants[1],
@@ -496,7 +496,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 2 is the only runnable task with this project,
 						// buildvariant & display name - so the expected
 						// duration should be exactly equal to its time taken
-						task.Task{
+						{
 							Id:           taskIds[2],
 							DisplayName:  displayNames[2],
 							BuildVariant: buildVariants[2],
@@ -509,7 +509,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 3/6 are from the same project and buildvariant
 						// but have different display names - expected duration
 						// should thus not be averaged between these two
-						task.Task{
+						{
 							Id:           taskIds[3],
 							DisplayName:  displayNames[3],
 							BuildVariant: buildVariants[3],
@@ -519,7 +519,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[3]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[6],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[3],
@@ -532,7 +532,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 4/5 are from the same project and buildvariant
 						// and have the same display name - expected duration
 						// should thus be averaged between these two
-						task.Task{
+						{
 							Id:           taskIds[4],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[4],
@@ -542,7 +542,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 							StartTime:    time.Now().Add(-timeTaken[4]),
 							FinishTime:   time.Now(),
 						},
-						task.Task{
+						{
 							Id:           taskIds[5],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[4],
@@ -555,7 +555,7 @@ func TestDBTaskDurationEstimator(t *testing.T) {
 						// task 9 is undispatched so shouldn't
 						// count toward the expected duration for
 						// project/buildvariant/display name 4
-						task.Task{
+						{
 							Id:           taskIds[8],
 							DisplayName:  displayNames[4],
 							BuildVariant: buildVariants[4],

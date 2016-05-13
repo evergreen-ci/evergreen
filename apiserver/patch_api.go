@@ -98,7 +98,7 @@ func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
 		BuildVariants: pr.BuildVariants,
 		Tasks:         pr.Tasks,
 		Patches: []patch.ModulePatch{
-			patch.ModulePatch{
+			{
 				ModuleName: "",
 				Githash:    pr.Githash,
 				PatchSet: patch.PatchSet{

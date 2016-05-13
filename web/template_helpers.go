@@ -24,10 +24,10 @@ type timePeriod struct {
 }
 
 var Chunks = []timePeriod{
-	timePeriod{60 * 60 * 24, "day", "days", "d"},
-	timePeriod{60 * 60, "hour", "hours", "h"},
-	timePeriod{60, "min", "min", "m"},
-	timePeriod{1, "sec", "sec", "s"},
+	{60 * 60 * 24, "day", "days", "d"},
+	{60 * 60, "hour", "hours", "h"},
+	{60, "min", "min", "m"},
+	{1, "sec", "sec", "s"},
 }
 
 // Because Go's templating language for some reason doesn't allow assignments,

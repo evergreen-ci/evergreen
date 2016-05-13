@@ -200,10 +200,8 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 				Authors:     []string{version.Author},
 				CreateTimes: []time.Time{version.CreateTime},
 				Revisions:   []string{version.Revision},
-				Errors: []waterfallVersionError{
-					waterfallVersionError{version.Errors}},
-				Warnings: []waterfallVersionError{
-					waterfallVersionError{version.Warnings}},
+				Errors:      []waterfallVersionError{{version.Errors}},
+				Warnings:    []waterfallVersionError{{version.Warnings}},
 			}
 
 			// add the builds to the version
@@ -256,7 +254,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 
 	// create the list of display names for the build variants represented
 	buildVariants := []string{}
-	for name, _ := range bvSet {
+	for name := range bvSet {
 		displayName := buildVariantMappings[name]
 		if displayName == "" {
 			displayName = name + " (removed)"

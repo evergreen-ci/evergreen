@@ -205,11 +205,11 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 		Convey("Calling Log() should serialize/deserialize correctly", func() {
 			outgoingMessages := []model.LogMessage{
-				model.LogMessage{"S", "E", "message1", time.Now(), evergreen.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message2", time.Now(), evergreen.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message3", time.Now(), evergreen.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message4", time.Now(), evergreen.LogmessageCurrentVersion},
-				model.LogMessage{"S", "E", "message5", time.Now(), evergreen.LogmessageCurrentVersion},
+				{"S", "E", "message1", time.Now(), evergreen.LogmessageCurrentVersion},
+				{"S", "E", "message2", time.Now(), evergreen.LogmessageCurrentVersion},
+				{"S", "E", "message3", time.Now(), evergreen.LogmessageCurrentVersion},
+				{"S", "E", "message4", time.Now(), evergreen.LogmessageCurrentVersion},
+				{"S", "E", "message5", time.Now(), evergreen.LogmessageCurrentVersion},
 			}
 			incoming := &model.TaskLog{}
 			serveMux.HandleFunc("/task/mocktaskid/log",

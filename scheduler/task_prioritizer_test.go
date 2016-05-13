@@ -34,8 +34,8 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 		taskIds = []string{"t1", "t2"}
 
 		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
+			{Id: taskIds[0]},
+			{Id: taskIds[1]},
 		}
 
 		alwaysEqual := func(t1, t2 task.Task, p *CmpBasedTaskPrioritizer) (
@@ -158,11 +158,11 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 
 		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks := []task.Task{
-			task.Task{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
-			task.Task{Id: taskIds[1], Requester: evergreen.PatchVersionRequester},
-			task.Task{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
-			task.Task{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
-			task.Task{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
+			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
+			{Id: taskIds[1], Requester: evergreen.PatchVersionRequester},
+			{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
+			{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
+			{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
 		}
 
 		repoTrackerTasks, patchTasks := taskPrioritizer.splitTasksByRequester(tasks)
@@ -180,13 +180,13 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 
 		taskIds = []string{"t1", "t2", "t3", "t4", "t5", "t6", "t7"}
 		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
-			task.Task{Id: taskIds[2]},
-			task.Task{Id: taskIds[3]},
-			task.Task{Id: taskIds[4]},
-			task.Task{Id: taskIds[5]},
-			task.Task{Id: taskIds[6]},
+			{Id: taskIds[0]},
+			{Id: taskIds[1]},
+			{Id: taskIds[2]},
+			{Id: taskIds[3]},
+			{Id: taskIds[4]},
+			{Id: taskIds[5]},
+			{Id: taskIds[6]},
 		}
 
 		Convey("With no patch tasks, the list of repotracker tasks should be returned", func() {

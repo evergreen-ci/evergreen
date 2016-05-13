@@ -100,8 +100,8 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 	pipeline := dbobj.C(task.Collection).Pipe(
 		[]bson.M{
 			{"$match": matchFilter},
-			bson.M{"$sort": bson.D{{task.RevisionOrderNumberKey, 1}}},
-			bson.M{
+			{"$sort": bson.D{{task.RevisionOrderNumberKey, 1}}},
+			{
 				"$group": bson.M{
 					"_id":   "$" + task.RevisionKey,
 					"order": bson.M{"$first": "$" + task.RevisionOrderNumberKey},
@@ -117,7 +117,7 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 					},
 				},
 			},
-			bson.M{"$sort": bson.M{task.RevisionOrderNumberKey: -1, task.DisplayNameKey: 1}},
+			{"$sort": bson.M{task.RevisionOrderNumberKey: -1, task.DisplayNameKey: 1}},
 		},
 	)
 

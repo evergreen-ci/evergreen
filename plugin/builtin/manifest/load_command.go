@@ -32,7 +32,7 @@ func (mfc *ManifestLoadCommand) ParseParams(params map[string]interface{}) error
 // updateExpansions adds the expansions for the manifest's modules into the TaskConfig's Expansions.
 func (mfc *ManifestLoadCommand) updateExpansions(manifest *manifest.Manifest,
 	conf *model.TaskConfig) {
-	for moduleName, _ := range manifest.Modules {
+	for moduleName := range manifest.Modules {
 		// put the url for the module in the expansions
 		conf.Expansions.Put(fmt.Sprintf("%v_rev", moduleName), manifest.Modules[moduleName].Revision)
 	}

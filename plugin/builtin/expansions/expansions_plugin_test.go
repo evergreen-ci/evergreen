@@ -13,11 +13,11 @@ func TestExpansionsPlugin(t *testing.T) {
 	Convey("Should be able to update expansions", t, func() {
 		updateCommand := UpdateCommand{
 			Updates: []PutCommandParams{
-				PutCommandParams{
+				{
 					Key:   "base",
 					Value: "eggs",
 				},
-				PutCommandParams{
+				{
 					Key:    "topping",
 					Concat: ",sausage",
 				},

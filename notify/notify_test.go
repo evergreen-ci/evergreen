@@ -238,18 +238,18 @@ func TestNotify(t *testing.T) {
 			"notification keys", func() {
 			notificationSettings := &MCINotification{}
 			notificationSettings.Notifications = []Notification{
-				Notification{"task_failure", "project", []string{"user@mongodb"}, []string{}},
-				Notification{"task_success_to_failure", "project", []string{"user@mongodb"}, []string{}},
+				{"task_failure", "project", []string{"user@mongodb"}, []string{}},
+				{"task_success_to_failure", "project", []string{"user@mongodb"}, []string{}},
 			}
 			notificationSettings.Teams = []Team{
-				Team{
+				{
 					"myteam",
 					"myteam@me.com",
-					[]Subscription{Subscription{"task", []string{}, []string{"task_failure"}}},
+					[]Subscription{{"task", []string{}, []string{"task_failure"}}},
 				},
 			}
 			notificationSettings.PatchNotifications = []Subscription{
-				Subscription{"patch_project", []string{}, []string{}},
+				{"patch_project", []string{}, []string{}},
 			}
 
 			notificationKeyFailure := NotificationKey{"project", "task_failure", "task", "gitter_request"}
@@ -277,17 +277,17 @@ func TestNotify(t *testing.T) {
 		Convey("SendNotifications should send emails correctly", func() {
 			notificationSettings := &MCINotification{}
 			notificationSettings.Notifications = []Notification{
-				Notification{"task_failure", "project", []string{"user@mongodb"}, []string{}},
+				{"task_failure", "project", []string{"user@mongodb"}, []string{}},
 			}
 			notificationSettings.Teams = []Team{
-				Team{
+				{
 					"myteam",
 					"myteam@me.com",
-					[]Subscription{Subscription{"task", []string{}, []string{"task_failure"}}},
+					[]Subscription{{"task", []string{}, []string{"task_failure"}}},
 				},
 			}
 			notificationSettings.PatchNotifications = []Subscription{
-				Subscription{"patch_project", []string{}, []string{}},
+				{"patch_project", []string{}, []string{}},
 			}
 
 			fakeTask, err := task.FindOne(task.ById("task8"))

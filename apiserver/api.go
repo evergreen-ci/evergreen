@@ -870,7 +870,7 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 
 	// zero out the depends on and commands fields because they are
 	// unnecessary and may not get marshaled properly
-	for i, _ := range project.Tasks {
+	for i := range project.Tasks {
 		project.Tasks[i].DependsOn = []model.TaskDependency{}
 		project.Tasks[i].Commands = []model.PluginCommandConf{}
 

@@ -908,7 +908,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					{
 						Name: "compile",
 						Commands: []model.PluginCommandConf{
-							model.PluginCommandConf{
+							{
 								Function: "",
 								Command:  "a.b",
 								Params:   map[string]interface{}{},
@@ -923,7 +923,7 @@ func TestValidatePluginCommands(t *testing.T) {
 		Convey("an error should be thrown if a referenced function command is invalid (invalid params)", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
-					"funcOne": &model.YAMLCommandSet{
+					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
 							Params: map[string]interface{}{
@@ -939,7 +939,7 @@ func TestValidatePluginCommands(t *testing.T) {
 		Convey("no error should be thrown if a function plugin command is valid", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
-					"funcOne": &model.YAMLCommandSet{
+					"funcOne": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
 							Params: map[string]interface{}{
@@ -955,7 +955,7 @@ func TestValidatePluginCommands(t *testing.T) {
 			"any another function", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
-					"a": &model.YAMLCommandSet{
+					"a": {
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
 							Command:  "gotest.parse_files",
@@ -964,7 +964,7 @@ func TestValidatePluginCommands(t *testing.T) {
 							},
 						},
 					},
-					"b": &model.YAMLCommandSet{
+					"b": {
 						SingleCommand: &model.PluginCommandConf{
 							Command: "gotest.parse_files",
 							Params: map[string]interface{}{
@@ -981,7 +981,7 @@ func TestValidatePluginCommands(t *testing.T) {
 			"another function, 'b', which that does not exist", func() {
 			project := &model.Project{
 				Functions: map[string]*model.YAMLCommandSet{
-					"a": &model.YAMLCommandSet{
+					"a": {
 						SingleCommand: &model.PluginCommandConf{
 							Function: "b",
 							Command:  "gotest.parse_files",
@@ -1095,7 +1095,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					{
 						Name: "compile",
 						Commands: []model.PluginCommandConf{
-							model.PluginCommandConf{
+							{
 								Function: "",
 								Command:  "archive.targz_pack",
 								Params: map[string]interface{}{
@@ -1113,10 +1113,10 @@ func TestValidatePluginCommands(t *testing.T) {
 		Convey("no error should be thrown if a referenced plugin that exists contains unneeded parameters", func() {
 			project := &model.Project{
 				Tasks: []model.ProjectTask{
-					model.ProjectTask{
+					{
 						Name: "compile",
 						Commands: []model.PluginCommandConf{
-							model.PluginCommandConf{
+							{
 								Function: "",
 								Command:  "archive.targz_pack",
 								Params: map[string]interface{}{
@@ -1154,7 +1154,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					{
 						Name: "compile",
 						Commands: []model.PluginCommandConf{
-							model.PluginCommandConf{
+							{
 								Function: "",
 								Command:  "s3Copy.copy",
 								Params:   params,
@@ -1190,7 +1190,7 @@ func TestValidatePluginCommands(t *testing.T) {
 						{
 							Name: "compile",
 							Commands: []model.PluginCommandConf{
-								model.PluginCommandConf{
+								{
 									Function: "",
 									Command:  "s3Copy.copy",
 									Params:   params,
@@ -1224,7 +1224,7 @@ func TestValidatePluginCommands(t *testing.T) {
 					{
 						Name: "compile",
 						Commands: []model.PluginCommandConf{
-							model.PluginCommandConf{
+							{
 								Function: "",
 								Command:  "s3Copy.copy",
 								Params:   params,

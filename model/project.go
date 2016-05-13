@@ -360,7 +360,7 @@ func (tt TaskIdTable) GetIdsForAllVariants(taskName string) []string {
 // the specific task denoted by the task/variant pair.
 func (tt TaskIdTable) GetIdsForAllVariantsExcluding(taskName string, exclude TVPair) []string {
 	ids := []string{}
-	for pair, _ := range tt {
+	for pair := range tt {
 		if pair.TaskName == taskName && pair != exclude {
 			if id := tt[pair]; id != "" {
 				ids = append(ids, id)
@@ -374,7 +374,7 @@ func (tt TaskIdTable) GetIdsForAllVariantsExcluding(taskName string, exclude TVP
 // The current variant and task must be passed in to avoid cycle generation.
 func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []string {
 	ids := []string{}
-	for pair, _ := range tt {
+	for pair := range tt {
 		if !(pair.TaskName == taskName && pair.Variant == currentVariant) {
 			if id := tt[pair]; id != "" {
 				ids = append(ids, id)

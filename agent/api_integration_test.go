@@ -468,7 +468,7 @@ func TestTaskSuccess(t *testing.T) {
 							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
 							expectedResults := []task.TestResult{
-								task.TestResult{
+								{
 									Status:    "success",
 									TestFile:  "t1",
 									URL:       "url",
@@ -884,7 +884,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	taskQueue := &model.TaskQueue{
 		Distro: "test-distro-one",
 		Queue: []model.TaskQueueItem{
-			model.TaskQueueItem{
+			{
 				Id:          "testTaskIdTwo",
 				DisplayName: taskDisplayName,
 			},

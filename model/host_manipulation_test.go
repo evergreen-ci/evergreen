@@ -21,10 +21,7 @@ func TestHostFindNextTask(t *testing.T) {
 				task.Collection, TaskQueuesCollection), t,
 				"Error clearing test collections")
 
-			h := &host.Host{
-				Id:     "hostId",
-				Distro: distro.Distro{},
-			}
+			h := &host.Host{Id: "hostId", Distro: distro.Distro{}}
 			So(h.Insert(), ShouldBeNil)
 
 			Convey("if there is no task queue for the host's distro, no task"+
@@ -39,9 +36,7 @@ func TestHostFindNextTask(t *testing.T) {
 			Convey("if the task queue is empty, no task should be"+
 				" returned", func() {
 
-				tQueue := &TaskQueue{
-					Distro: h.Distro.Id,
-				}
+				tQueue := &TaskQueue{Distro: h.Distro.Id}
 				So(tQueue.Save(), ShouldBeNil)
 
 				nextTask, err := NextTaskForHost(h)
@@ -55,17 +50,11 @@ func TestHostFindNextTask(t *testing.T) {
 
 				tQueue := &TaskQueue{
 					Distro: h.Distro.Id,
-					Queue: []TaskQueueItem{
-						TaskQueueItem{
-							Id: "taskOne",
-						},
-					},
+					Queue:  []TaskQueueItem{{Id: "taskOne"}},
 				}
 				So(tQueue.Save(), ShouldBeNil)
 
-				task := &task.Task{
-					Id: "taskOne",
-				}
+				task := &task.Task{Id: "taskOne"}
 				So(task.Insert(), ShouldBeNil)
 
 				nextTask, err := NextTaskForHost(h)

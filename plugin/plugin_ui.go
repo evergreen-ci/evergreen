@@ -177,14 +177,14 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 	registered := map[string]bool{}
 	includesWithPair := map[PageScope][]pluginTemplatePair{}
 	panelHTMLWithPair := map[PageScope]map[pagePosition][]pluginTemplatePair{
-		TaskPage:    map[pagePosition][]pluginTemplatePair{},
-		BuildPage:   map[pagePosition][]pluginTemplatePair{},
-		VersionPage: map[pagePosition][]pluginTemplatePair{},
+		TaskPage:    {},
+		BuildPage:   {},
+		VersionPage: {},
 	}
 	dataFuncs := map[PageScope]map[string]UIDataFunction{
-		TaskPage:    map[string]UIDataFunction{},
-		BuildPage:   map[string]UIDataFunction{},
-		VersionPage: map[string]UIDataFunction{},
+		TaskPage:    {},
+		BuildPage:   {},
+		VersionPage: {},
 	}
 
 	for _, p := range plugins {
@@ -244,17 +244,17 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 		VersionPage: sortAndExtractHTML(includesWithPair[VersionPage]),
 	}
 	self.panelHTML = map[PageScope]PanelLayout{
-		TaskPage: PanelLayout{
+		TaskPage: {
 			Left:   sortAndExtractHTML(panelHTMLWithPair[TaskPage][PageLeft]),
 			Right:  sortAndExtractHTML(panelHTMLWithPair[TaskPage][PageRight]),
 			Center: sortAndExtractHTML(panelHTMLWithPair[TaskPage][PageCenter]),
 		},
-		BuildPage: PanelLayout{
+		BuildPage: {
 			Left:   sortAndExtractHTML(panelHTMLWithPair[BuildPage][PageLeft]),
 			Right:  sortAndExtractHTML(panelHTMLWithPair[BuildPage][PageRight]),
 			Center: sortAndExtractHTML(panelHTMLWithPair[BuildPage][PageCenter]),
 		},
-		VersionPage: PanelLayout{
+		VersionPage: {
 			Left:   sortAndExtractHTML(panelHTMLWithPair[VersionPage][PageLeft]),
 			Right:  sortAndExtractHTML(panelHTMLWithPair[VersionPage][PageRight]),
 			Center: sortAndExtractHTML(panelHTMLWithPair[VersionPage][PageCenter]),

@@ -203,7 +203,7 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 			}
 			// handle * case by grabbing all the variant's tasks that aren't the current one
 			if dn.TaskName == model.AllDependencies {
-				for n, _ := range visited {
+				for n := range visited {
 					if n.TaskName != node.TaskName && n.Variant == dn.Variant {
 						depNodes = append(depNodes, n)
 					}
@@ -216,14 +216,14 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 			// handle the all-variants case by adding all nodes that are
 			// of the same task (but not the current node)
 			if dep.Name != model.AllDependencies {
-				for n, _ := range visited {
+				for n := range visited {
 					if n.TaskName == dep.Name && (n != node) {
 						depNodes = append(depNodes, n)
 					}
 				}
 			} else {
 				// edge case where variant and task name are both *
-				for n, _ := range visited {
+				for n := range visited {
 					if n != node {
 						depNodes = append(depNodes, n)
 					}
@@ -252,7 +252,7 @@ func ensureHasNecessaryBVFields(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
 	if len(project.BuildVariants) == 0 {
 		return []ValidationError{
-			ValidationError{
+			{
 				Message: fmt.Sprintf("project '%v' must specify at least one "+
 					"buildvariant", project.Identifier),
 			},
