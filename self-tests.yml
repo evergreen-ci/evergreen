@@ -837,7 +837,7 @@ tasks:
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
 
-- name: ui
+- name: service
   commands:
     - func: "start mongod"
     - func: "fetch source"
@@ -851,9 +851,9 @@ tasks:
           fi;
           . ./set_gopath.sh
           export EVGHOME=${EVGHOME_cmd}
-          cd ui
+          cd service
           mkfifo test_pipe
-          tee -a ui.suite < test_pipe&
+          tee -a service.suite < test_pipe&
           ${goroot_vars} go test -v ${compiler_flag} ${test_flag}  > test_pipe
     - command: shell.exec
       <<: *ONLY_COVERAGE_VARIANTS
@@ -861,7 +861,7 @@ tasks:
         working_dir: src
         script: |
           set -o verbose
-          mv ui/coverage.out .
+          mv service/coverage.out .
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
 

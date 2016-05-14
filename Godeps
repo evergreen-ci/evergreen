@@ -29,3 +29,4 @@ github.com/jessevdk/go-flags                    5e118789801496c93ba210d34ef1f2ce
 github.com/kardianos/osext                      6e7f843663477789fac7c02def0d0909e969b4e5
 github.com/sabhiram/go-git-ignore               228fcfa2a06e870a3ef238d54c45ea847f492a37
 gopkg.in/tylerb/graceful.v1						49b853e77ab58c31be0d3ee87db62909b90ac93e
+github.com/dustin/go-humanize                   f3565c9525600a911af3bd34f8b535ea81b2a9e0

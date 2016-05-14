@@ -19,10 +19,16 @@ rm -rf vendor/pkg
 . ./set_gopath.sh
 mkdir -p bin
 
-for i in apiserver ui runner cli; do
-  echo "Building ${i}..."
-  go install $1 -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "$i/main/$i.go"
-done
+
+echo "Building runner..."
+go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "./runner/main/runner.go"
+echo "Building cli"
+go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "./cli/main/cli.go"
+echo "Building API server"
+go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "./service/api_main/apiserver.go"
+echo "Building UI server"
+go install -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" "./service/ui_main/ui.go"
+
 
 # rename API/UI servers and Evergreen runner
 echo "Renaming API server..."

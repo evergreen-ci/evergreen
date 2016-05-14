@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager depending on what type of authentication (Crowd or Naive) is used.
@@ -50,4 +51,20 @@ func setLoginToken(token string, w http.ResponseWriter) {
 		Path:     "/",
 	}
 	http.SetCookie(w, authTokenCookie)
+}
+
+// IsSuperUser verifies that a given user has super user permissions.
+// A user has these permission if they are in the super users list or if the list is empty,
+// in which case all users are super users.
+func IsSuperUser(settings evergreen.Settings, u User) bool {
+	if u == nil {
+		return false
+	}
+	if util.SliceContains(settings.SuperUsers, u.Username()) ||
+		len(settings.SuperUsers) == 0 {
+		return true
+	}
+
+	return false
+
 }

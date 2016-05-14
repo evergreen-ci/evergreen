@@ -6,12 +6,12 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -33,7 +33,7 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		taskConfig, err := plugintest.CreateTestConfig(configPath, t)

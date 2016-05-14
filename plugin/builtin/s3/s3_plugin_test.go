@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -218,7 +218,7 @@ func TestS3PutAndGet(t *testing.T) {
 				"content_type": "text/plain",
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			server, err := apiserver.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
 			pluginCom := &agent.TaskJSONCommunicator{"s3", httpCom}
 

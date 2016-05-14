@@ -1,9 +1,12 @@
 package util
 
 import (
+	"regexp"
 	"strings"
 	"unicode"
 )
+
+var cleanFileRegex = regexp.MustCompile("[^a-zA-Z0-9_\\-\\.]")
 
 // RemoveSuffix returns s with 'suffix' removed from end of string if present
 func RemoveSuffix(s, suffix string) string {
@@ -19,6 +22,10 @@ func Truncate(input string, outputLength int) string {
 		return input
 	}
 	return input[:outputLength]
+}
+
+func CleanForPath(name string) string {
+	return cleanFileRegex.ReplaceAllLiteralString(name, "_")
 }
 
 // CleanName returns a name with spaces and dashes replaced with safe underscores

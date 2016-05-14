@@ -64,18 +64,18 @@ while read line; do
     $(rm $pluginconf || true)
     ln -s ../../$install_path/config/$pluginconf $pluginconf
 	if [ -d "../../$install_path/templates/" ]; then
-		echo "creating template links to ui/plugins/$pluginname"
-		mkdir -p $SCRIPT_DIR/ui/plugins/$pluginname
+		echo "creating template links to service/plugins/$pluginname"
+		mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
 		# remove existing symlink if its already there
-		rm $SCRIPT_DIR/ui/plugins/$pluginname/templates || true
-		ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/ui/plugins/$pluginname/
+		rm $SCRIPT_DIR/service/plugins/$pluginname/templates || true
+		ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/service/plugins/$pluginname/
 	fi
 	if [ -d "../../$install_path/static/" ]; then
-		echo "creating static links to ui/plugins/$pluginname"
-		mkdir -p $SCRIPT_DIR/ui/plugins/$pluginname
+		echo "creating static links to service/plugins/$pluginname"
+		mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
 		# remove existing symlink if its already there
-		rm $SCRIPT_DIR/ui/plugins/$pluginname/static
-		ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/ui/plugins/$pluginname/
+		rm $SCRIPT_DIR/service/plugins/$pluginname/static
+		ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/service/plugins/$pluginname/
 	fi
     echo ">> Plugin successfully installed"
 

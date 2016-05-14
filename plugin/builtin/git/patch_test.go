@@ -6,13 +6,13 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -24,7 +24,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
-		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		taskConfig, _ := plugintest.CreateTestConfig("testdata/plugin_patch.yml", t)
 		testCommand := GitGetProjectCommand{Directory: "dir"}
@@ -91,7 +91,7 @@ func TestPatchPlugin(t *testing.T) {
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 

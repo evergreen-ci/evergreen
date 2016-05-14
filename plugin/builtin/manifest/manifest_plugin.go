@@ -93,7 +93,7 @@ func (m *ManifestPlugin) GetUIHandler() http.Handler {
 func (m *ManifestPlugin) GetAPIHandler() http.Handler {
 	r := http.NewServeMux()
 	r.HandleFunc(fmt.Sprintf("/%v", ManifestLoadAPIEndpoint), m.ManifestLoadHandler)
-	r.HandleFunc("/", http.NotFound) // 4                    04 any request not routable to these endpoints
+	r.HandleFunc("/", http.NotFound) // 404 any request not routable to these endpoints
 	return r
 }
 

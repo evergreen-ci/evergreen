@@ -157,7 +157,7 @@ func notifyUserUpdate(ac *APIClient) {
 }
 
 func (uc *GetUpdateCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(uc.GlobalOpts)
+	ac, _, _, err := getAPIClients(uc.GlobalOpts)
 	if err != nil {
 		return err
 	}

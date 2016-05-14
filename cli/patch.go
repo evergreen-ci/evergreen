@@ -133,19 +133,8 @@ type RemoveModuleCommand struct {
 	PatchId    string   `short:"i" description:"name of the module to remove from patch" required:"true" `
 }
 
-// getAPIClient loads the user settings and creates an APIClient configured for the API/UI
-// endpoints defined in the settings file.
-func getAPIClient(o *Options) (*APIClient, *Settings, error) {
-	settings, err := LoadSettings(o)
-	if err != nil {
-		return nil, nil, err
-	}
-	ac := &APIClient{APIRoot: settings.APIServerHost, User: settings.User, APIKey: settings.APIKey}
-	return ac, settings, nil
-}
-
 func (lpc *ListPatchesCommand) Execute(args []string) error {
-	ac, settings, err := getAPIClient(lpc.GlobalOpts)
+	ac, _, settings, err := getAPIClients(lpc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -185,7 +174,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 }
 
 func (rmc *RemoveModuleCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(rmc.GlobalOpts)
+	ac, _, _, err := getAPIClients(rmc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -203,7 +192,7 @@ func (vc *ValidateCommand) Execute(args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("must supply path to a file to validate.")
 	}
-	ac, _, err := getAPIClient(vc.GlobalOpts)
+	ac, _, _, err := getAPIClients(vc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -239,7 +228,7 @@ func (vc *ValidateCommand) Execute(args []string) error {
 }
 
 func (smc *SetModuleCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(smc.GlobalOpts)
+	ac, _, _, err := getAPIClients(smc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -299,7 +288,7 @@ func (pfc *PatchFileCommand) Execute(args []string) error {
 }
 
 func (cpc *CancelPatchCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(cpc.GlobalOpts)
+	ac, _, _, err := getAPIClients(cpc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -314,7 +303,7 @@ func (cpc *CancelPatchCommand) Execute(args []string) error {
 }
 
 func (fpc *FinalizePatchCommand) Execute(args []string) error {
-	ac, _, err := getAPIClient(fpc.GlobalOpts)
+	ac, _, _, err := getAPIClients(fpc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -346,7 +335,7 @@ func (lc *ListCommand) Execute(args []string) error {
 }
 
 func (lc *ListCommand) listProjects() error {
-	ac, _, err := getAPIClient(lc.GlobalOpts)
+	ac, _, _, err := getAPIClients(lc.GlobalOpts)
 	if err != nil {
 		return err
 	}
@@ -398,7 +387,7 @@ func loadLocalConfig(filepath string) (*model.Project, error) {
 func (lc *ListCommand) listTasks() error {
 	var tasks []model.ProjectTask
 	if lc.Project != "" {
-		ac, _, err := getAPIClient(lc.GlobalOpts)
+		ac, _, _, err := getAPIClients(lc.GlobalOpts)
 		if err != nil {
 			return err
 		}
@@ -430,7 +419,7 @@ func (lc *ListCommand) listTasks() error {
 func (lc *ListCommand) listVariants() error {
 	var variants []model.BuildVariant
 	if lc.Project != "" {
-		ac, _, err := getAPIClient(lc.GlobalOpts)
+		ac, _, _, err := getAPIClients(lc.GlobalOpts)
 		if err != nil {
 			return err
 		}
@@ -461,7 +450,7 @@ func (lc *ListCommand) listVariants() error {
 
 // Performs validation for patch or patch-file
 func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *Settings, ref *model.ProjectRef, err error) {
-	ac, settings, err = getAPIClient(params.GlobalOpts)
+	ac, _, settings, err = getAPIClients(params.GlobalOpts)
 	if err != nil {
 		return
 	}

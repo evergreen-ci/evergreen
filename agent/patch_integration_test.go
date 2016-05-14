@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -35,7 +35,7 @@ func TestPatchTask(t *testing.T) {
 								patchRequest{"recursive", filepath.Join(testDirectory, "testdata/testmodule.patch"), githash})
 
 							testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
-							testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+							testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 							testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 

@@ -10,7 +10,6 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -23,6 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
@@ -189,7 +189,7 @@ func TestPluginFunctions(t *testing.T) {
 			err = registry.Register(&expansions.ExpansionsPlugin{})
 			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 
-			testServer, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 			taskConfig, err := createTestConfig("testdata/plugin_project_functions.yml", t)
@@ -243,7 +243,7 @@ func TestPluginExecution(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
 
-		testServer, err := apiserver.CreateTestServer(evergreen.TestConfig(), nil, apiPlugins, false)
+		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, apiPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)

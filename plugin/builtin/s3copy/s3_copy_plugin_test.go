@@ -6,7 +6,6 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/builtin/s3"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/s3copy"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -37,7 +37,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)

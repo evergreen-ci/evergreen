@@ -352,5 +352,5 @@ func (errs *UIDataFunctionError) Error() string {
 }
 
 func TemplateRoot(name string) string {
-	return filepath.Join(evergreen.FindEvergreenHome(), "ui", "plugins", name, "templates")
+	return filepath.Join(evergreen.FindEvergreenHome(), "service", "plugins", name, "templates")
 }

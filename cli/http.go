@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 )
@@ -41,6 +42,31 @@ func NewAPIError(resp *http.Response) APIError {
 	bodyBytes, _ := ioutil.ReadAll(resp.Body) // ignore error, request has already failed anyway
 	bodyStr := string(bodyBytes)
 	return APIError{bodyStr, resp.Status}
+}
+
+// getAPIClients loads and returns user settings along with two APIClients: one configured for the API
+// server endpoints, and another for the REST api.
+func getAPIClients(o *Options) (*APIClient, *APIClient, *Settings, error) {
+	settings, err := LoadSettings(o)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// create a client for the regular API server
+	ac := &APIClient{APIRoot: settings.APIServerHost, User: settings.User, APIKey: settings.APIKey}
+
+	// create client for the REST api
+	apiUrl, err := url.Parse(settings.APIServerHost)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("Settings file contains an invalid url: %v", err)
+	}
+
+	rc := &APIClient{
+		APIRoot: apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v1",
+		User:    settings.User,
+		APIKey:  settings.APIKey,
+	}
+	return ac, rc, settings, nil
 }
 
 // doReq performs a request of the given method type against path.
@@ -163,18 +189,36 @@ func (ac *APIClient) GetProjectRef(projectId string) (*model.ProjectRef, error) 
 	return ref, nil
 }
 
-// generateTokenParam constructs the authentication token to be sent with API request in the format
-// expected by the server.
-func generateTokenParam(user, key string) (string, error) {
-	authData := struct {
-		Name   string `json:"auth_user"`
-		APIKey string `json:"api_key"`
-	}{user, key}
-	b, err := json.Marshal(authData)
+// GetPatch fetches the config requests project details from the API server for a given project ID.
+func (ac *APIClient) GetPatch(patchId string) (*service.RestPatch, error) {
+	resp, err := ac.get(fmt.Sprintf("patches/%v", patchId), nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(b), nil
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	ref := &service.RestPatch{}
+	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+// GetVersionConfig fetches the config requests project details from the API server for a given project ID.
+func (ac *APIClient) GetConfig(versionId string) (*model.Project, error) {
+	resp, err := ac.get(fmt.Sprintf("versions/%v/config", versionId), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	ref := &model.Project{}
+	if err := util.ReadYAMLInto(resp.Body, ref); err != nil {
+		return nil, err
+	}
+	return ref, nil
 }
 
 // DeletePatchModule makes a request to the API server to delete the given module from a patch
@@ -321,6 +365,26 @@ func (ac *APIClient) CheckUpdates() (*evergreen.ClientConfig, error) {
 	}
 
 	reply := evergreen.ClientConfig{}
+	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
+		return nil, err
+	}
+	return &reply, nil
+}
+
+func (ac *APIClient) GetTask(taskId string) (*service.RestTask, error) {
+	resp, err := ac.get("tasks/"+taskId, nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+
+	reply := service.RestTask{}
 	if err := util.ReadJSONInto(resp.Body, &reply); err != nil {
 		return nil, err
 	}

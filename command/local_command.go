@@ -20,52 +20,52 @@ type LocalCommand struct {
 	Cmd              *exec.Cmd
 }
 
-func (self *LocalCommand) Run() error {
-	err := self.Start()
+func (lc *LocalCommand) Run() error {
+	err := lc.Start()
 	if err != nil {
 		return err
 	}
-	return self.Cmd.Wait()
+	return lc.Cmd.Wait()
 }
 
-func (self *LocalCommand) Start() error {
+func (lc *LocalCommand) Start() error {
 	var cmd *exec.Cmd
-	if self.ScriptMode {
+	if lc.ScriptMode {
 		cmd = exec.Command("sh")
-		cmd.Stdin = strings.NewReader(self.CmdString)
+		cmd.Stdin = strings.NewReader(lc.CmdString)
 	} else {
-		cmd = exec.Command("sh", "-c", self.CmdString)
+		cmd = exec.Command("sh", "-c", lc.CmdString)
 	}
 
 	// create the command, set the options
-	if self.WorkingDirectory != "" {
-		cmd.Dir = self.WorkingDirectory
+	if lc.WorkingDirectory != "" {
+		cmd.Dir = lc.WorkingDirectory
 	}
-	cmd.Env = self.Environment
+	cmd.Env = lc.Environment
 	if cmd.Env == nil {
 		cmd.Env = os.Environ()
 	}
-	cmd.Stdout = self.Stdout
-	cmd.Stderr = self.Stderr
+	cmd.Stdout = lc.Stdout
+	cmd.Stderr = lc.Stderr
 
 	// cache the command running
-	self.Cmd = cmd
+	lc.Cmd = cmd
 
 	// start the command
 	return cmd.Start()
 }
 
-func (self *LocalCommand) Stop() error {
-	if self.Cmd != nil && self.Cmd.Process != nil {
-		return self.Cmd.Process.Kill()
+func (lc *LocalCommand) Stop() error {
+	if lc.Cmd != nil && lc.Cmd.Process != nil {
+		return lc.Cmd.Process.Kill()
 	}
 	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
 	return nil
 }
 
-func (self *LocalCommand) PrepToRun(expansions *Expansions) error {
+func (lc *LocalCommand) PrepToRun(expansions *Expansions) error {
 	var err error
-	self.CmdString, err = expansions.ExpandString(self.CmdString)
+	lc.CmdString, err = expansions.ExpandString(lc.CmdString)
 	if err != nil {
 		return err
 	}
@@ -77,9 +77,9 @@ type LocalCommandGroup struct {
 	Expansions *Expansions
 }
 
-func (self *LocalCommandGroup) PrepToRun() error {
-	for _, cmd := range self.Commands {
-		if err := cmd.PrepToRun(self.Expansions); err != nil {
+func (lc *LocalCommandGroup) PrepToRun() error {
+	for _, cmd := range lc.Commands {
+		if err := cmd.PrepToRun(lc.Expansions); err != nil {
 			return err
 		}
 	}

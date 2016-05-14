@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/goamz/goamz/aws"
@@ -31,7 +31,7 @@ func TestPushTask(t *testing.T) {
 						"linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
-					testServer, err := apiserver.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
 					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)

@@ -6,12 +6,12 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/apiserver"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/git"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -76,7 +76,7 @@ func TestManifestLoad(t *testing.T) {
 		gitPlugin := &git.GitPlugin{}
 		testutil.HandleTestingErr(registry.Register(gitPlugin), t, "failed to register git plugin")
 
-		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
 		taskConfig, err := plugintest.CreateTestConfig("testdata/mongodb-mongo-master.yml", t)
