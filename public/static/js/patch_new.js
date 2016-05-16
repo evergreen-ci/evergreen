@@ -173,7 +173,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     patch.VariantsTasks = _.map(patch.BuildVariants, function(v){
       // The _intersection limits the set of tasks to be included
       // to just the ones that actually exist in the config for that variant.
-      return {Variant:v, Tasks: _.intersection(_.pluck($window.variants[v].Tasks, "Name"), patch.Tasks)};
+      return {Variant:v, Tasks: _.intersection(_.pluck(($window.variants[v] || {}).Tasks , "Name"), patch.Tasks)};
     });
   }
 
