@@ -208,12 +208,12 @@ func (repoTracker *RepoTracker) activateElapsedBuilds(v *version.Version) (err e
 func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 	err error) {
 	// Send a notification to the MCI team
+	settings := repoTracker.Settings
 	max := settings.RepoTracker.MaxRepoRevisionsToSearch
 	if max <= 0 {
 		max = DefaultMaxRepoRevisionsToSearch
 	}
 	projectRef := repoTracker.ProjectRef
-	settings := repoTracker.Settings
 	subject := fmt.Sprintf(notify.RepotrackerFailurePreface,
 		projectRef.Identifier, lastRevision)
 	url := fmt.Sprintf("%v/%v/%v/commits/%v", thirdparty.GithubBase,
