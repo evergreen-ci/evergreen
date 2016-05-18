@@ -91,6 +91,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   // Sends the current patch config to the server to save.
   $scope.save = function(){
     var data = {
+      "description": $scope.patch.Description,
       "variants_tasks": _.filter(_.map($scope.variants, function(v){
         return {
           variant: v.id, 
