@@ -66,11 +66,6 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	template := "patch_version.html"
-	if len(r.FormValue("beta")) == 0 && !currentUser.Settings.PatchBeta {
-		template = "patch_version_old.html"
-	}
-
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
 		User        *user.DBUser
@@ -79,7 +74,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 		Tasks       []interface{}
 		CanEdit     bool
 	}{projCtx, currentUser, versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch)}, "base",
-		template, "base_angular.html", "menu.html")
+		"patch_version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
