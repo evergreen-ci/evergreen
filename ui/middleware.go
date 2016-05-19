@@ -234,6 +234,7 @@ func (uis *UIServer) RedirectToLogin(w http.ResponseWriter, r *http.Request) {
 // If the project is private but the user is not logged in, redirects to the login page.
 func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("calling loadp roject casfa")
 		projCtx, err := uis.LoadProjectContext(w, r)
 		if err != nil {
 			// Some database lookup failed when fetching the data - log it
@@ -455,9 +456,11 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 			}
 		}
 	}
-	if len(uis.GetAppPlugins()) > 0 {
+
+	appPlugins := uis.GetAppPlugins()
+	if len(appPlugins) > 0 {
 		pluginNames := []string{}
-		for _, p := range uis.GetAppPlugins() {
+		for _, p := range appPlugins {
 			pluginNames = append(pluginNames, p.Name())
 		}
 		proj.PluginNames = pluginNames

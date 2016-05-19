@@ -37,6 +37,7 @@ func TestGetBuildInfo(t *testing.T) {
 		Settings:    *buildTestConfig,
 		UserManager: userManager,
 	}
+	uis.InitPlugins()
 
 	home := evergreen.FindEvergreenHome()
 
@@ -214,6 +215,7 @@ func TestGetBuildStatus(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+	uis.InitPlugins()
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
