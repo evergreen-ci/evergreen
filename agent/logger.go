@@ -32,11 +32,18 @@ type StreamLogger struct {
 	apiLogger APILogger
 }
 
-// GetTaskLogWriter returns an io.Writer of the given level. Useful for
-// working with other libraries seamlessly.
+// GetTaskLogWriter returns an io.Writer of the given level that writes to the task log stream.
 func (lgr *StreamLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 	return &evergreen.LoggingWriter{
 		Logger:   lgr.Task,
+		Severity: level,
+	}
+}
+
+// GetSystemLogWriter returns an io.Writer of the given level that writes to the system log stream.
+func (lgr *StreamLogger) GetSystemLogWriter(level slogger.Level) io.Writer {
+	return &evergreen.LoggingWriter{
+		Logger:   lgr.System,
 		Severity: level,
 	}
 }
@@ -95,6 +102,10 @@ func (cmdLgr *CommandLogger) addCommandToMsgAndArgs(messageFmt string, args []in
 
 func (cmdLgr *CommandLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 	return cmdLgr.logger.GetTaskLogWriter(level)
+}
+
+func (cmdLgr *CommandLogger) GetSystemLogWriter(level slogger.Level) io.Writer {
+	return cmdLgr.logger.GetSystemLogWriter(level)
 }
 
 func (cmdLgr *CommandLogger) LogLocal(level slogger.Level, messageFmt string, args ...interface{}) {

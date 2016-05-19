@@ -31,13 +31,13 @@ type ShellPlugin struct{}
 
 // Name returns the name of the plugin. Required to fulfill
 // the Plugin interface.
-func (self *ShellPlugin) Name() string {
+func (sp *ShellPlugin) Name() string {
 	return ShellPluginName
 }
 
 // NewCommand returns the requested command, or returns an error
 // if a non-existing command is requested.
-func (self *ShellPlugin) NewCommand(cmdName string) (plugin.Command, error) {
+func (sp *ShellPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	if cmdName == TrackCmd {
 		return &TrackCommand{}, nil
 	} else if cmdName == CleanupCmd {
@@ -111,31 +111,35 @@ type ShellExecCommand struct {
 	// WorkingDir is the working directory to start the shell in.
 	WorkingDir string `mapstructure:"working_dir"`
 
+	// SystemLog if set will write the shell command's output to the system logs, instead of the
+	// task logs. This can be used to collect diagnostic data in the background of a running task.
+	SystemLog bool `mapstructure:"system_log"`
+
 	// ContinueOnError determines whether or not a failed return code
 	// should cause the task to be marked as failed. Setting this to true
 	// allows following commands to execute even if this shell command fails.
 	ContinueOnError bool `mapstructure:"continue_on_err"`
 }
 
-func (self *ShellExecCommand) Name() string {
+func (_ *ShellExecCommand) Name() string {
 	return ShellExecCmd
 }
 
-func (self *ShellExecCommand) Plugin() string {
+func (_ *ShellExecCommand) Plugin() string {
 	return ShellPluginName
 }
 
 // ParseParams reads in the command's parameters.
-func (self *ShellExecCommand) ParseParams(params map[string]interface{}) error {
-	err := mapstructure.Decode(params, self)
+func (sec *ShellExecCommand) ParseParams(params map[string]interface{}) error {
+	err := mapstructure.Decode(params, sec)
 	if err != nil {
-		return fmt.Errorf("error decoding %v params: %v", self.Name(), err)
+		return fmt.Errorf("error decoding %v params: %v", sec.Name(), err)
 	}
 	return nil
 }
 
 // Execute starts the shell with its given parameters.
-func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
+func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	conf *model.TaskConfig,
 	stop chan bool) error {
@@ -143,6 +147,10 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 
 	logWriterInfo := pluginLogger.GetTaskLogWriter(slogger.INFO)
 	logWriterErr := pluginLogger.GetTaskLogWriter(slogger.ERROR)
+	if sec.SystemLog {
+		logWriterInfo = pluginLogger.GetSystemLogWriter(slogger.INFO)
+		logWriterErr = pluginLogger.GetSystemLogWriter(slogger.ERROR)
+	}
 
 	outBufferWriter := util.NewLineBufferingWriter(logWriterInfo)
 	errorBufferWriter := util.NewLineBufferingWriter(logWriterErr)
@@ -150,14 +158,14 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	defer errorBufferWriter.Flush()
 
 	localCmd := &command.LocalCommand{
-		CmdString:  self.Script,
+		CmdString:  sec.Script,
 		Stdout:     outBufferWriter,
 		Stderr:     errorBufferWriter,
 		ScriptMode: true,
 	}
 
-	if self.WorkingDir != "" {
-		localCmd.WorkingDirectory = filepath.Join(conf.WorkDir, self.WorkingDir)
+	if sec.WorkingDir != "" {
+		localCmd.WorkingDirectory = filepath.Join(conf.WorkDir, sec.WorkingDir)
 	} else {
 		localCmd.WorkingDirectory = conf.WorkDir
 	}
@@ -166,7 +174,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	if err != nil {
 		return fmt.Errorf("Failed to apply expansions: %v", err)
 	}
-	if self.Silent {
+	if sec.Silent {
 		pluginLogger.LogExecution(slogger.INFO, "Executing script (source hidden)...")
 	} else {
 		pluginLogger.LogExecution(slogger.INFO, "Executing script: %v", localCmd.CmdString)
@@ -193,7 +201,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 				trackProcess(conf.Task.Id, localCmd.Cmd.Process.Pid, pluginLogger)
 			}
 
-			if !self.Background {
+			if !sec.Background {
 				err = localCmd.Cmd.Wait()
 			}
 		} else {
@@ -206,7 +214,7 @@ func (self *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	select {
 	case err = <-doneStatus:
 		if err != nil {
-			if self.ContinueOnError {
+			if sec.ContinueOnError {
 				pluginLogger.LogExecution(slogger.INFO, "(ignoring) Script finished with error: %v", err)
 				return nil
 			} else {

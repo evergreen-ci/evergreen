@@ -69,9 +69,13 @@ type Logger interface {
 	// Log system-level information (resource usage, ), etc.
 	LogSystem(level slogger.Level, messageFmt string, args ...interface{})
 
-	// Returns the log writer as an io.Writer, for use in io-related
+	// Returns the task log writer as an io.Writer, for use in io-related
 	// functions, e.g. io.Copy
 	GetTaskLogWriter(level slogger.Level) io.Writer
+
+	// Returns the system log writer as an io.Writer, for use in io-related
+	// functions, e.g. io.Copy
+	GetSystemLogWriter(level slogger.Level) io.Writer
 
 	// Trigger immediate flushing of any buffered log messages.
 	Flush()

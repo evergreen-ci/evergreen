@@ -53,7 +53,7 @@ func TestAgentDebugHandler(t *testing.T) {
 				gcTesting := "testing.RunTests" // we know this will be present in the trace
 				So(string(stack), ShouldContainSubstring, gcTesting)
 				Convey("which should also be present in the logs", func() {
-					So(scanLogsForTask(testTask.Id, gcTesting), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", gcTesting), ShouldBeTrue)
 				})
 			})
 		})

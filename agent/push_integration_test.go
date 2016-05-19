@@ -45,11 +45,11 @@ func TestPushTask(t *testing.T) {
 					newDate := testAgent.taskConfig.Expansions.Get("new_date")
 
 					Convey("all scripts in task should have been run successfully", func() {
-						So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-						So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
 
-						So(scanLogsForTask(testTask.Id, "push task pre-run!"), ShouldBeTrue)
-						So(scanLogsForTask(testTask.Id, "push task post-run!"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "push task pre-run!"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "push task post-run!"), ShouldBeTrue)
 
 						Convey("s3.put attaches task file properly", func() {
 							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))

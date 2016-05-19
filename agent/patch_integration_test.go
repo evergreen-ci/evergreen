@@ -47,18 +47,18 @@ func TestPatchTask(t *testing.T) {
 							printLogsForTask(testTask.Id)
 
 							Convey("all scripts in task should have been run successfully", func() {
-								So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-								So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
 
-								So(scanLogsForTask(testTask.Id, "Cloning into") || // git 1.8
-									scanLogsForTask(testTask.Id, "Initialized empty Git repository"), // git 1.7
+								So(scanLogsForTask(testTask.Id, "", "Cloning into") || // git 1.8
+									scanLogsForTask(testTask.Id, "", "Initialized empty Git repository"), // git 1.7
 									ShouldBeTrue)
 
-								So(scanLogsForTask(testTask.Id, "i am patched!"), ShouldBeTrue)
-								So(scanLogsForTask(testTask.Id, "i am a patched module"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "i am patched!"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "i am a patched module"), ShouldBeTrue)
 
-								So(scanLogsForTask(testTask.Id, "i am compiling!"), ShouldBeTrue)
-								So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "i am compiling!"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "i am sanity testing!"), ShouldBeTrue)
 
 								testTask, err = task.FindOne(task.ById(testTask.Id))
 								testutil.HandleTestingErr(err, t, "Error finding test task: %v", err)

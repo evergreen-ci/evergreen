@@ -264,8 +264,8 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			newDir := filepath.Join(distro.WorkDir, dirName)
 
 			Convey("Then the directory should have been set and printed", func() {
-				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeTrue)
-				So(scanLogsForTask(testTask.Id, newDir), ShouldBeTrue)
+				So(scanLogsForTask(testTask.Id, "", "printing current directory"), ShouldBeTrue)
+				So(scanLogsForTask(testTask.Id, "", newDir), ShouldBeTrue)
 			})
 			Convey("Then the directory should have been deleted", func() {
 				files, err := ioutil.ReadDir("./")
@@ -314,8 +314,8 @@ func TestAgentDirectoryFailure(t *testing.T) {
 
 			printLogsForTask(testTask.Id)
 			Convey("Then the task should not have been run", func() {
-				So(scanLogsForTask(testTask.Id, "printing current directory"), ShouldBeFalse)
-				So(scanLogsForTask(testTask.Id, newDir), ShouldBeFalse)
+				So(scanLogsForTask(testTask.Id, "", "printing current directory"), ShouldBeFalse)
+				So(scanLogsForTask(testTask.Id, "", newDir), ShouldBeFalse)
 			})
 			<-testAgent.KillChan
 			Convey("Then the taskDetail type should have been set to SystemCommandType and have status failed", func() {
@@ -383,39 +383,39 @@ func TestTaskSuccess(t *testing.T) {
 						testAgent.RunTask()
 						Convey("expansions should be fetched", func() {
 							So(testAgent.taskConfig.Expansions.Get("aws_key"), ShouldEqual, testConfig.Providers.AWS.Id)
-							So(scanLogsForTask(testTask.Id, "fetch_expansion_value"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "fetch_expansion_value"), ShouldBeTrue)
 						})
 						time.Sleep(100 * time.Millisecond)
 						testAgent.APILogger.FlushAndWait()
 						printLogsForTask(testTask.Id)
 
 						Convey("all scripts in task should have been run successfully", func() {
-							So(scanLogsForTask(testTask.Id, "Executing script: echo \"predefined command!\""), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "predefined command!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "this should not end up in the logs"), ShouldBeFalse)
-							So(scanLogsForTask(testTask.Id, "Command timeout set to 21m40s"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "Command timeout set to 43m20s"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "Cloning into") || // git 1.8
-								scanLogsForTask(testTask.Id, "Initialized empty Git repository"), // git 1.7
+							So(scanLogsForTask(testTask.Id, "", "Executing script: echo \"predefined command!\""), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "predefined command!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "this should not end up in the logs"), ShouldBeFalse)
+							So(scanLogsForTask(testTask.Id, "", "Command timeout set to 21m40s"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "Command timeout set to 43m20s"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "Cloning into") || // git 1.8
+								scanLogsForTask(testTask.Id, "", "Initialized empty Git repository"), // git 1.7
 								ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "i am compiling!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "i am compiling!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "i am sanity testing!"), ShouldBeTrue)
 
 							// Check that functions with args are working correctly
-							So(scanLogsForTask(testTask.Id, "arg1 is FOO"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "arg2 is BAR"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "arg3 is Expanded: qux"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "arg4 is Default: default_value"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "arg1 is FOO"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "arg2 is BAR"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "arg3 is Expanded: qux"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "arg4 is Default: default_value"), ShouldBeTrue)
 
 							// Check that multi-command functions are working correctly
-							So(scanLogsForTask(testTask.Id, "step 1 of multi-command func"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "step 2 of multi-command func"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "step 3 of multi-command func"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "step 1 of multi-command func"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "step 2 of multi-command func"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "step 3 of multi-command func"), ShouldBeTrue)
 
 							// Check that logging output is only flushing on a newline
-							So(scanLogsForTask(testTask.Id, "this should be on the same line...as this."), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "this should be on the same line...as this."), ShouldBeTrue)
 
 							testTask, err = task.FindOne(task.ById(testTask.Id))
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
@@ -457,11 +457,12 @@ func TestTaskSuccess(t *testing.T) {
 						testAgent.APILogger.FlushAndWait()
 
 						Convey("all scripts in task should have been run successfully", func() {
-							So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
 
-							So(scanLogsForTask(testTask.Id, "starting normal_task!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "done with normal_task!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "starting normal_task!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "done with normal_task!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, model.SystemLogPrefix, "this output should go to the system logs."), ShouldBeTrue)
 
 							testTask, err = task.FindOne(task.ById(testTask.Id))
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
@@ -511,12 +512,12 @@ func TestTaskFailures(t *testing.T) {
 					printLogsForTask(testTask.Id)
 
 					Convey("the pre and post-run scripts should have run", func() {
-						So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-						So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
 
 						Convey("the task should have run up until its first failure", func() {
-							So(scanLogsForTask(testTask.Id, "starting failing_task!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "done with failing_task!"), ShouldBeFalse)
+							So(scanLogsForTask(testTask.Id, "", "starting failing_task!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "done with failing_task!"), ShouldBeFalse)
 						})
 
 						Convey("the tasks's final status should be FAILED", func() {
@@ -569,10 +570,10 @@ func TestTaskAbortion(t *testing.T) {
 						printLogsForTask(testTask.Id)
 
 						Convey("the pre and post-run scripts should have run", func() {
-							So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "Received abort signal - stopping."), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "done with very_slow_task!"), ShouldBeFalse)
+							So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "Received abort signal - stopping."), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "done with very_slow_task!"), ShouldBeFalse)
 							testTask, err = task.FindOne(task.ById(testTask.Id))
 							testutil.HandleTestingErr(err, t, "Failed to find test task")
 							So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -604,9 +605,9 @@ func TestTaskTimeout(t *testing.T) {
 				time.Sleep(5 * time.Second)
 				printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
-					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = task.FindOne(task.ById(testTask.Id))
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
@@ -639,16 +640,16 @@ func TestTaskCallbackTimeout(t *testing.T) {
 				//printLogsForTask(testTask.Id)
 				So(testAgent.taskConfig.Project.CallbackTimeout, ShouldEqual, 1)
 				Convey("the test should be marked as failed and timed out", func() {
-					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = task.FindOne(task.ById(testTask.Id))
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
 					So(testTask.Details.Description, ShouldEqual, "shell.exec")
 
 					Convey("and the timeout task should have failed", func() {
-						So(scanLogsForTask(testTask.Id, "running task-timeout commands in 1"), ShouldBeTrue)
+						So(scanLogsForTask(testTask.Id, "", "running task-timeout commands in 1"), ShouldBeTrue)
 					})
 				})
 			})
@@ -676,9 +677,9 @@ func TestTaskExecTimeout(t *testing.T) {
 				time.Sleep(5 * time.Second)
 				printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
-					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = task.FindOne(task.ById(testTask.Id))
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
@@ -709,9 +710,9 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 				time.Sleep(5 * time.Second)
 				printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
-					So(scanLogsForTask(testTask.Id, "executing the pre-run script"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the post-run script!"), ShouldBeTrue)
-					So(scanLogsForTask(testTask.Id, "executing the task-timeout script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+					So(scanLogsForTask(testTask.Id, "", "executing the task-timeout script!"), ShouldBeTrue)
 					testTask, err = task.FindOne(task.ById(testTask.Id))
 					So(testTask.Status, ShouldEqual, evergreen.TaskFailed)
 					So(testTask.Details.TimedOut, ShouldBeTrue)
@@ -764,13 +765,20 @@ func TestTaskEndEndpoint(t *testing.T) {
 	}
 }
 
-func scanLogsForTask(taskId string, scanFor string) bool {
+// scanLogsForTask examines log messages stored under the given taskId and returns true
+// if the string scanFor appears in their contents at least once. If a non-empty value is supplied
+// for logTypes, only logs within the specified log types will
+// be scanned for the given string (see SystemLogPrefix, AgentLogPrefix, TaskLogPrefix).
+func scanLogsForTask(taskId string, logTypes string, scanFor string) bool {
 	taskLogs, err := model.FindAllTaskLogs(taskId, 0)
 	if err != nil {
 		panic(err)
 	}
 	for _, taskLogObj := range taskLogs {
 		for _, logmsg := range taskLogObj.Messages {
+			if logTypes != "" && !strings.Contains(logTypes, logmsg.Type) {
+				continue
+			}
 			if strings.Contains(logmsg.Message, scanFor) {
 				return true
 			}

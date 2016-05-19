@@ -158,6 +158,14 @@ tasks:
     - command: shell.exec
       params:
         working_dir: src
+        system_log: true
+        silent: true
+        script: |
+            echo "this output should go to the system logs."
+
+    - command: shell.exec
+      params:
+        working_dir: src
         script: |
             set -o verbose
             set -o errexit

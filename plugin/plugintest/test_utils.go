@@ -30,6 +30,7 @@ func (_ *MockLogger) LogExecution(level slogger.Level, messageFmt string, args .
 func (_ *MockLogger) LogTask(level slogger.Level, messageFmt string, args ...interface{})      {}
 func (_ *MockLogger) LogSystem(level slogger.Level, messageFmt string, args ...interface{})    {}
 func (_ *MockLogger) GetTaskLogWriter(level slogger.Level) io.Writer                           { return ioutil.Discard }
+func (_ *MockLogger) GetSystemLogWriter(level slogger.Level) io.Writer                         { return ioutil.Discard }
 
 func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) {
 	testutil.HandleTestingErr(
