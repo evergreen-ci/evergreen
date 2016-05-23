@@ -178,39 +178,37 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 			return fmt.Errorf("Fetch module command interrupted.")
 		}
 
-		//Apply patches if necessary
-		if conf.Task.Requester != evergreen.PatchVersionRequester {
-			continue
-		}
-		go func() {
-			pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
-			patch, err := ggpc.GetPatch(conf, pluginCom, pluginLogger)
-			if err != nil {
-				pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
-				errChan <- fmt.Errorf("Failed to get patch: %v", err)
-			}
-			err = ggpc.getPatchContents(conf, pluginCom, pluginLogger, patch)
-			if err != nil {
-				pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
-				errChan <- fmt.Errorf("Failed to get patch contents: %v", err)
-			}
-			err = ggpc.applyPatch(conf, patch, pluginLogger)
-			if err != nil {
-				pluginLogger.LogExecution(slogger.INFO, "Failed to apply patch: %v", err)
-				errChan <- fmt.Errorf("Failed to apply patch: %v", err)
-			}
-			errChan <- nil
-		}()
-
-		select {
-		case err := <-errChan:
-			return err
-		case <-stop:
-			return fmt.Errorf("Patch command interrupted.")
-		}
-
 	}
 
-	return nil
+	//Apply patches if necessary
+	if conf.Task.Requester != evergreen.PatchVersionRequester {
+		return nil
+	}
+	go func() {
+		pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
+		patch, err := ggpc.GetPatch(conf, pluginCom, pluginLogger)
+		if err != nil {
+			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
+			errChan <- fmt.Errorf("Failed to get patch: %v", err)
+		}
+		err = ggpc.getPatchContents(conf, pluginCom, pluginLogger, patch)
+		if err != nil {
+			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
+			errChan <- fmt.Errorf("Failed to get patch contents: %v", err)
+		}
+		err = ggpc.applyPatch(conf, patch, pluginLogger)
+		if err != nil {
+			pluginLogger.LogExecution(slogger.INFO, "Failed to apply patch: %v", err)
+			errChan <- fmt.Errorf("Failed to apply patch: %v", err)
+		}
+		errChan <- nil
+	}()
+
+	select {
+	case err := <-errChan:
+		return err
+	case <-stop:
+		return fmt.Errorf("Patch command interrupted.")
+	}
 
 }
