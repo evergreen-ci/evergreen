@@ -56,7 +56,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := uis.UserManager.CreateUserToken(creds.Username, creds.Password)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid username/password: %v", err), http.StatusUnauthorized)
+		http.Error(w, "Invalid username/password", http.StatusUnauthorized)
 		return
 	}
 	uis.setLoginToken(token, w)
