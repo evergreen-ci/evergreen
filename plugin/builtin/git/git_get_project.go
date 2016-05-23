@@ -113,13 +113,11 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 		pluginLogger.LogExecution(slogger.INFO, "Fetching module: %v", moduleName)
 		module, err := conf.Project.GetModuleByName(moduleName)
 		if err != nil {
-			pluginLogger.LogExecution(slogger.ERROR, "Couldn't get module %v: %v",
-				moduleName, err)
+			pluginLogger.LogExecution(slogger.ERROR, "Couldn't get module %v: %v", moduleName, err)
 			continue
 		}
 		if module == nil {
-			pluginLogger.LogExecution(slogger.ERROR, "No module found for %v",
-				moduleName)
+			pluginLogger.LogExecution(slogger.ERROR, "No module found for %v", moduleName)
 			continue
 		}
 
@@ -182,7 +180,7 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 
 		//Apply patches if necessary
 		if conf.Task.Requester != evergreen.PatchVersionRequester {
-			return nil
+			continue
 		}
 		go func() {
 			pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
