@@ -402,7 +402,6 @@ func TestTaskSuccess(t *testing.T) {
 								ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "i am compiling!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "i am sanity testing!"), ShouldBeTrue)
-							So(scanLogsForTask(testTask.Id, "Skipping command 'git.apply_patch' on variant"), ShouldBeTrue)
 
 							// Check that functions with args are working correctly
 							So(scanLogsForTask(testTask.Id, "arg1 is FOO"), ShouldBeTrue)
@@ -469,7 +468,7 @@ func TestTaskSuccess(t *testing.T) {
 							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
 							expectedResults := []task.TestResult{
-								task.TestResult{
+								{
 									Status:    "success",
 									TestFile:  "t1",
 									URL:       "url",
@@ -885,7 +884,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 	taskQueue := &model.TaskQueue{
 		Distro: "test-distro-one",
 		Queue: []model.TaskQueueItem{
-			model.TaskQueueItem{
+			{
 				Id:          "testTaskIdTwo",
 				DisplayName: taskDisplayName,
 			},

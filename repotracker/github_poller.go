@@ -94,6 +94,27 @@ func (gRepoPoller *GithubRepositoryPoller) GetRemoteConfig(
 	return projectConfig, nil
 }
 
+// GetRemoteConfig fetches the contents of a remote github repository's
+// configuration data as at a given revision
+func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(commitRevision string) ([]string, error) {
+	// get the entire commit, then pull the files from it
+	projectRef := gRepoPoller.ProjectRef
+	commit, err := thirdparty.GetCommitEvent(
+		gRepoPoller.OauthToken,
+		projectRef.Owner,
+		projectRef.Repo,
+		commitRevision,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error loading commit '%v': %v", commitRevision, err)
+	}
+	files := []string{}
+	for _, f := range commit.Files {
+		files = append(files, f.FileName)
+	}
+	return files, nil
+}
+
 // GetRevisionsSince fetches the all commits from the corresponding Github
 // ProjectRef that were made after 'revision'
 func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(

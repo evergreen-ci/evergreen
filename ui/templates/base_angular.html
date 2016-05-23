@@ -56,6 +56,12 @@
                 // allProjects only has the identifier and display name properties
                 var allProjects = {{.ProjectData.AllProjects}};
                 var redirect = {{.ProjectData.AuthRedirect}};
+
+            {{if .ProjectData.PluginNames}}
+                var appPlugins = {{.ProjectData.PluginNames}}
+            {{else}}
+                var appPlugins = [];
+            {{end}}
         {{end}}
         </script>
     </head>

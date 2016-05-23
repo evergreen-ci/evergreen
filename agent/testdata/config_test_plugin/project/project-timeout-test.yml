@@ -87,9 +87,6 @@ tasks:
         directory: src
         revisions:
           recursive: ${recursive_rev}
-    - command: git.apply_patch
-      params:
-        directory: src
     - command: shell.exec
       params:
         working_dir: src
@@ -108,10 +105,6 @@ tasks:
             printf "this should be on the same line..."
             printf "as this.\n"
             cat doc.go recursive/clone/recursive/doc.go
-    - command: git.apply_patch
-      variants: ["random"]
-      params:
-        directory: src
     - command: archive.targz_pack
       params:
         target: "target.tgz"

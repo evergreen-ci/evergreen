@@ -89,7 +89,7 @@ func setDocumentLocked(id string, upsert bool) (bool, error) {
 	// 2. lock is held but has timed out
 	selector := bson.M{
 		"_id": GlobalLockId,
-		"$or": []bson.M{bson.M{"locked": false}, bson.M{"locked_at": bson.M{"$lte": timeoutThreshold}}},
+		"$or": []bson.M{{"locked": false}, {"locked_at": bson.M{"$lte": timeoutThreshold}}},
 	}
 
 	// change to apply to document

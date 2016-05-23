@@ -63,10 +63,10 @@ func TestSplitHostsByDistro(t *testing.T) {
 		distroIds := []string{"d1", "d2", "d3"}
 		hostIds := []string{"h1", "h2", "h3", "h4"}
 		hosts := []host.Host{
-			host.Host{Id: hostIds[0], Distro: distroIds[0]},
-			host.Host{Id: hostIds[1], Distro: distroIds[1]},
-			host.Host{Id: hostIds[2], Distro: distroIds[2]},
-			host.Host{Id: hostIds[3], Distro: distroIds[1]},
+			{Id: hostIds[0], Distro: distroIds[0]},
+			{Id: hostIds[1], Distro: distroIds[1]},
+			{Id: hostIds[2], Distro: distroIds[2]},
+			{Id: hostIds[3], Distro: distroIds[1]},
 		}
 
 		taskRunner := &TaskRunner{

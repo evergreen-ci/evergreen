@@ -89,6 +89,7 @@ type waterfallVersion struct {
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
 	Warnings []waterfallVersionError `json:"warnings"`
+	Ignoreds []bool                  `json:"ignoreds"`
 }
 
 type waterfallVersionError struct {
@@ -172,6 +173,8 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 					lastRolledUpVersion.Warnings, waterfallVersionError{version.Warnings})
 				lastRolledUpVersion.Messages = append(
 					lastRolledUpVersion.Messages, version.Message)
+				lastRolledUpVersion.Ignoreds = append(
+					lastRolledUpVersion.Ignoreds, version.Ignored)
 				lastRolledUpVersion.CreateTimes = append(
 					lastRolledUpVersion.CreateTimes, version.CreateTime)
 				lastRolledUpVersion.Revisions = append(
@@ -200,10 +203,9 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 				Authors:     []string{version.Author},
 				CreateTimes: []time.Time{version.CreateTime},
 				Revisions:   []string{version.Revision},
-				Errors: []waterfallVersionError{
-					waterfallVersionError{version.Errors}},
-				Warnings: []waterfallVersionError{
-					waterfallVersionError{version.Warnings}},
+				Errors:      []waterfallVersionError{{version.Errors}},
+				Warnings:    []waterfallVersionError{{version.Warnings}},
+				Ignoreds:    []bool{version.Ignored},
 			}
 
 			// add the builds to the version
@@ -256,7 +258,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 
 	// create the list of display names for the build variants represented
 	buildVariants := []string{}
-	for name, _ := range bvSet {
+	for name := range bvSet {
 		displayName := buildVariantMappings[name]
 		if displayName == "" {
 			displayName = name + " (removed)"
@@ -278,6 +280,7 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 			version.RevisionKey,
 			version.ErrorsKey,
 			version.WarningsKey,
+			version.IgnoredKey,
 			version.MessageKey,
 			version.AuthorKey,
 			version.RevisionOrderNumberKey,

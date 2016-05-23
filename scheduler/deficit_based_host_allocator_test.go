@@ -38,9 +38,9 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		Convey("if there are no tasks to run, no new hosts should be needed",
 			func() {
 				hosts := []host.Host{
-					host.Host{Id: hostIds[0]},
-					host.Host{Id: hostIds[1]},
-					host.Host{Id: hostIds[2]},
+					{Id: hostIds[0]},
+					{Id: hostIds[1]},
+					{Id: hostIds[2]},
 				}
 				dist.PoolSize = len(hosts) + 5
 
@@ -60,10 +60,10 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		Convey("if the number of existing hosts equals the max hosts, no new"+
 			" hosts can be spawned", func() {
 			taskQueueItems := []model.TaskQueueItem{
-				model.TaskQueueItem{Id: taskIds[0]},
-				model.TaskQueueItem{Id: taskIds[1]},
-				model.TaskQueueItem{Id: taskIds[2]},
-				model.TaskQueueItem{Id: taskIds[3]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[2]},
+				{Id: taskIds[3]},
 			}
 			dist.PoolSize = 0
 
@@ -77,7 +77,7 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			So(hostAllocator.numNewHostsForDistro(hostAllocatorData, dist, hostAllocatorTestConf),
 				ShouldEqual, 0)
 			hosts := []host.Host{
-				host.Host{Id: hostIds[0]},
+				{Id: hostIds[0]},
 			}
 			dist.PoolSize = len(hosts)
 
@@ -101,14 +101,14 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			" hosts can be spawned", func() {
 
 			taskQueueItems := []model.TaskQueueItem{
-				model.TaskQueueItem{Id: taskIds[0]},
-				model.TaskQueueItem{Id: taskIds[1]},
-				model.TaskQueueItem{Id: taskIds[2]},
-				model.TaskQueueItem{Id: taskIds[3]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[2]},
+				{Id: taskIds[3]},
 			}
 			hosts := []host.Host{
-				host.Host{Id: hostIds[0]},
-				host.Host{Id: hostIds[1]},
+				{Id: hostIds[0]},
+				{Id: hostIds[1]},
 			}
 			dist.PoolSize = 1
 
@@ -131,14 +131,14 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		Convey("if the number of tasks to run is less than the number of free"+
 			" hosts, no new hosts are needed", func() {
 			taskQueueItems := []model.TaskQueueItem{
-				model.TaskQueueItem{Id: taskIds[0]},
-				model.TaskQueueItem{Id: taskIds[1]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
 			}
 			hosts := []host.Host{
-				host.Host{Id: hostIds[0]},
-				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				host.Host{Id: hostIds[2]},
-				host.Host{Id: hostIds[3]},
+				{Id: hostIds[0]},
+				{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				{Id: hostIds[2]},
+				{Id: hostIds[3]},
 			}
 			dist.PoolSize = len(hosts) + 5
 
@@ -162,14 +162,14 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		Convey("if the number of tasks to run is equal to the number of free"+
 			" hosts, no new hosts are needed", func() {
 			taskQueueItems := []model.TaskQueueItem{
-				model.TaskQueueItem{Id: taskIds[0]},
-				model.TaskQueueItem{Id: taskIds[1]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
 			}
 			hosts := []host.Host{
-				host.Host{Id: hostIds[0]},
-				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				host.Host{Id: hostIds[3]},
+				{Id: hostIds[0]},
+				{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				{Id: hostIds[3]},
 			}
 			dist.PoolSize = len(hosts) + 5
 
@@ -193,18 +193,18 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 			" hosts, new hosts are needed up to the maximum allowed for the"+
 			" distro", func() {
 			taskQueueItems := []model.TaskQueueItem{
-				model.TaskQueueItem{Id: taskIds[0]},
-				model.TaskQueueItem{Id: taskIds[1]},
-				model.TaskQueueItem{Id: taskIds[2]},
-				model.TaskQueueItem{Id: taskIds[3]},
-				model.TaskQueueItem{Id: taskIds[4]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[2]},
+				{Id: taskIds[3]},
+				{Id: taskIds[4]},
 			}
 			hosts := []host.Host{
-				host.Host{Id: hostIds[0]},
-				host.Host{Id: hostIds[1], RunningTask: runningTaskIds[0]},
-				host.Host{Id: hostIds[2], RunningTask: runningTaskIds[1]},
-				host.Host{Id: hostIds[3]},
-				host.Host{Id: hostIds[4], RunningTask: runningTaskIds[2]},
+				{Id: hostIds[0]},
+				{Id: hostIds[1], RunningTask: runningTaskIds[0]},
+				{Id: hostIds[2], RunningTask: runningTaskIds[1]},
+				{Id: hostIds[3]},
+				{Id: hostIds[4], RunningTask: runningTaskIds[2]},
 			}
 			dist.PoolSize = 9
 
@@ -270,12 +270,12 @@ func TestDeficitBasedHostAllocator(t *testing.T) {
 		Convey("if the distro cannot be used to spawn hosts, then no new hosts"+
 			" can be spawned", func() {
 			hosts := []host.Host{
-				host.Host{Id: hostIds[0]},
+				{Id: hostIds[0]},
 			}
 			taskQueueItems := []model.TaskQueueItem{
-				model.TaskQueueItem{Id: taskIds[0]},
-				model.TaskQueueItem{Id: taskIds[1]},
-				model.TaskQueueItem{Id: taskIds[2]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[2]},
 			}
 			dist.PoolSize = 20
 			dist.Provider = "static"

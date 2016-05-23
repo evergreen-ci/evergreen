@@ -147,6 +147,15 @@ type UIPlugin interface {
 	Configure(conf map[string]interface{}) error
 }
 
+// AppUIPlugin represents a UIPlugin that also has a page route.
+type AppUIPlugin interface {
+	UIPlugin
+
+	// GetAppPluginInfo returns all the information
+	// needed for the UI server to render a page from the navigation bar.
+	GetAppPluginInfo() *UIPage
+}
+
 // Publish is called in a plugin's "init" func to
 // announce that plugin's presence to the entire plugin package.
 // This architecture is designed to make it easy to add

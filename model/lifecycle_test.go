@@ -1041,18 +1041,16 @@ func TestDeletingBuild(t *testing.T) {
 func TestSetNumDeps(t *testing.T) {
 	Convey("setNumDeps correctly sets NumDependents for each task", t, func() {
 		tasks := []*task.Task{
-			&task.Task{
-				Id: "task1",
-			},
-			&task.Task{
+			{Id: "task1"},
+			{
 				Id:        "task2",
 				DependsOn: []task.Dependency{{TaskId: "task1"}},
 			},
-			&task.Task{
+			{
 				Id:        "task3",
 				DependsOn: []task.Dependency{{TaskId: "task1"}},
 			},
-			&task.Task{
+			{
 				Id:        "task4",
 				DependsOn: []task.Dependency{{TaskId: "task2"}, {TaskId: "task3"}, {TaskId: "not_here"}},
 			},

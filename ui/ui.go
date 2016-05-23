@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	htmlTemplate "html/template"
 	"net/http"
 	"path/filepath"
 	"runtime/debug"
@@ -10,6 +11,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
@@ -37,12 +39,34 @@ type UIServer struct {
 
 	// The root URL of the server, used in redirects for instance.
 	RootURL string
+
 	//authManager
-	UserManager auth.UserManager
-	Settings    evergreen.Settings
-	CookieStore *sessions.CookieStore
+	UserManager     auth.UserManager
+	Settings        evergreen.Settings
+	CookieStore     *sessions.CookieStore
+	PluginTemplates map[string]*htmlTemplate.Template
 
 	plugin.PanelManager
+}
+
+func New(settings *evergreen.Settings, home string) (*UIServer, error) {
+	uis := &UIServer{}
+	if settings.Ui.LogFile != "" {
+		evergreen.SetLogger(settings.Ui.LogFile)
+	}
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
+
+	uis.Settings = *settings
+	uis.Home = home
+
+	userManager, err := auth.LoadUserManager(settings.AuthConfig)
+	if err != nil {
+		return nil, err
+	}
+	uis.UserManager = userManager
+
+	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
+	return uis, nil
 }
 
 // InitPlugins registers all installed plugins with the UI Server.
@@ -200,11 +224,22 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()
 	for _, pl := range plugin.UIPlugins {
+
+		// get the settings
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to configure plugin %v: %v", pl.Name(), err)
 		}
+
+		// check if a plugin is an app level plugin first
+		if appPlugin, ok := pl.(plugin.AppUIPlugin); ok {
+			// register the app level pa}rt of the plugin
+			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
+			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
+		}
+
+		// check if there are any errors getting the panel config
 		uiConf, err := pl.GetPanelConfig()
 		if err != nil {
 			panic(fmt.Sprintf("Error getting UI config for plugin %v: %v", pl.Name(), err))
@@ -213,6 +248,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			evergreen.Logger.Logf(slogger.DEBUG, "No UI config needed for plugin %v, skipping", pl.Name())
 			continue
 		}
+
 		// create a root path for the plugin based on its name
 		plRouter := rootPluginRouter.PathPrefix(fmt.Sprintf("/%v/", pl.Name())).Subrouter()
 

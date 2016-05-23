@@ -47,6 +47,7 @@ func TestGetRecentVersions(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+	uis.InitPlugins()
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
@@ -252,6 +253,7 @@ func TestGetVersionInfo(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+	uis.InitPlugins()
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
@@ -355,6 +357,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+	uis.InitPlugins()
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
@@ -448,6 +451,7 @@ func TestActivateVersion(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+	uis.InitPlugins()
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")
@@ -591,6 +595,7 @@ func TestGetVersionStatus(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
+	uis.InitPlugins()
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failure in uis.NewRouter()")

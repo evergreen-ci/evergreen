@@ -110,7 +110,7 @@ func TestManifestLoad(t *testing.T) {
 				So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Identifier)
 				So(currentManifest.Modules, ShouldNotBeNil)
 				So(len(currentManifest.Modules), ShouldEqual, 1)
-				for key, _ := range currentManifest.Modules {
+				for key := range currentManifest.Modules {
 					So(key, ShouldEqual, "sample")
 				}
 				So(taskConfig.Expansions.Get("sample_rev"), ShouldEqual, "3c7bfeb82d492dc453e7431be664539c35b5db4b")
@@ -138,7 +138,7 @@ func TestManifestLoad(t *testing.T) {
 					So(currentManifest.ProjectName, ShouldEqual, taskConfig.ProjectRef.Identifier)
 					So(currentManifest.Modules, ShouldNotBeNil)
 					So(len(currentManifest.Modules), ShouldEqual, 1)
-					for key, _ := range currentManifest.Modules {
+					for key := range currentManifest.Modules {
 						So(key, ShouldEqual, "sample")
 					}
 					So(currentManifest.Modules["sample"].Repo, ShouldEqual, "sample")

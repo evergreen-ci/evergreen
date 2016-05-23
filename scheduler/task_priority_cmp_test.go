@@ -35,8 +35,8 @@ func TestTaskImportanceComparators(t *testing.T) {
 		taskIds = []string{"t1", "t2"}
 
 		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
+			{Id: taskIds[0]},
+			{Id: taskIds[1]},
 		}
 
 		Convey("the explicit priority comparator should prioritize a task"+
@@ -158,8 +158,8 @@ func TestTaskImportanceComparators(t *testing.T) {
 			prevTaskIds := []string{"pt1", "pt2"}
 
 			prevTasks := map[string]task.Task{
-				taskIds[0]: task.Task{Id: prevTaskIds[0]},
-				taskIds[1]: task.Task{Id: prevTaskIds[1]},
+				taskIds[0]: {Id: prevTaskIds[0]},
+				taskIds[1]: {Id: prevTaskIds[1]},
 			}
 
 			taskPrioritizer.previousTasksCache = prevTasks

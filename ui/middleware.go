@@ -51,6 +51,8 @@ type (
 
 		// Determines whether or not a user is an admin for any project of all projectRefs
 		IsAdmin bool
+
+		PluginNames []string
 	}
 )
 
@@ -452,6 +454,15 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 
 			}
 		}
+	}
+
+	appPlugins := uis.GetAppPlugins()
+	if len(appPlugins) > 0 {
+		pluginNames := []string{}
+		for _, p := range appPlugins {
+			pluginNames = append(pluginNames, p.Name())
+		}
+		proj.PluginNames = pluginNames
 	}
 
 	proj.AuthRedirect = uis.UserManager.IsRedirect()

@@ -34,16 +34,16 @@ func TestDBTaskFinder(t *testing.T) {
 
 		taskIds = []string{"t1", "t2", "t3", "t4"}
 		tasks = []*task.Task{
-			&task.Task{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
-			&task.Task{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true},
-			&task.Task{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true},
-			&task.Task{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
+			{Id: taskIds[0], Status: evergreen.TaskUndispatched, Activated: true},
+			{Id: taskIds[1], Status: evergreen.TaskUndispatched, Activated: true},
+			{Id: taskIds[2], Status: evergreen.TaskUndispatched, Activated: true},
+			{Id: taskIds[3], Status: evergreen.TaskUndispatched, Activated: true, Priority: -1},
 		}
 
 		depTaskIds = []string{"td1", "td2"}
 		depTasks = []*task.Task{
-			&task.Task{Id: depTaskIds[0]},
-			&task.Task{Id: depTaskIds[1]},
+			{Id: depTaskIds[0]},
+			{Id: depTaskIds[1]},
 		}
 
 		So(db.Clear(task.Collection), ShouldBeNil)

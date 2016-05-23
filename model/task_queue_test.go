@@ -52,9 +52,9 @@ func TestDequeueTask(t *testing.T) {
 		Convey("if the task is present in the queue, it should be removed"+
 			" from the in-memory and db versions of the queue", func() {
 			taskQueue.Queue = []TaskQueueItem{
-				TaskQueueItem{Id: taskIds[0]},
-				TaskQueueItem{Id: taskIds[1]},
-				TaskQueueItem{Id: taskIds[2]},
+				{Id: taskIds[0]},
+				{Id: taskIds[1]},
+				{Id: taskIds[2]},
 			}
 			So(taskQueue.Save(), ShouldBeNil)
 			So(taskQueue.DequeueTask(taskIds[1]), ShouldBeNil)

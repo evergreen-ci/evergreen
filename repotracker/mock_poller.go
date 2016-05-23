@@ -35,6 +35,10 @@ func (d *mockRepoPoller) clearError() (err error) {
 	return err
 }
 
+func (d *mockRepoPoller) GetChangedFiles(commitRevision string) ([]string, error) {
+	return nil, nil
+}
+
 func (d *mockRepoPoller) GetRemoteConfig(revision string) (*model.Project, error) {
 	d.ConfigGets++
 	if d.nextError != nil {

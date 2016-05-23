@@ -35,9 +35,9 @@ func TestSetupFuncs(t *testing.T) {
 		taskIds = []string{"t1", "t2", "t3"}
 
 		tasks = []task.Task{
-			task.Task{Id: taskIds[0]},
-			task.Task{Id: taskIds[1]},
-			task.Task{Id: taskIds[2]},
+			{Id: taskIds[0]},
+			{Id: taskIds[1]},
+			{Id: taskIds[2]},
 		}
 
 		testutil.HandleTestingErr(

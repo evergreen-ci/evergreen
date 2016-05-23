@@ -136,7 +136,7 @@ func (pfCmd *ParseFilesCommand) AllOutputFiles() ([]string, error) {
 		asSet[file] = true
 	}
 	outputFiles = []string{}
-	for file, _ := range asSet {
+	for file := range asSet {
 		outputFiles = append(outputFiles, file)
 	}
 

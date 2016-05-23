@@ -20,6 +20,7 @@ type Version struct {
 	Status              string        `bson:"status" json:"status,omitempty"`
 	RevisionOrderNumber int           `bson:"order,omitempty" json:"order,omitempty"`
 	Config              string        `bson:"config" json:"config,omitempty"`
+	Ignored             bool          `bson:"ignored" json:"ignored"`
 	Owner               string        `bson:"owner_name" json:"owner_name,omitempty"`
 	Repo                string        `bson:"repo_name" json:"repo_name,omitempty"`
 	Branch              string        `bson:"branch_name" json:"branch_name, omitempty"`

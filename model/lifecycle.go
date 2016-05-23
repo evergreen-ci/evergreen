@@ -238,7 +238,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 	// reset the build statuses, once per build
 	buildIdList := make([]string, 0, len(buildIdSet))
-	for k, _ := range buildIdSet {
+	for k := range buildIdSet {
 		buildIdList = append(buildIdList, k)
 	}
 
@@ -548,7 +548,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 					// only create the dependency if the task exists--it always will,
 					// except for patches with patch_optional dependencies.
 					if len(id) != 0 {
-						newDeps = []task.Dependency{task.Dependency{TaskId: id, Status: status}}
+						newDeps = []task.Dependency{{TaskId: id, Status: status}}
 					}
 				}
 

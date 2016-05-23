@@ -137,7 +137,7 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 		// if port is not already in use, bind it to sshd exposed container port
 		if !reservedPorts[i] {
 			hostConfig.PortBindings[SSHDPort] = []docker.PortBinding{
-				docker.PortBinding{
+				{
 					HostIP:   settings.BindIp,
 					HostPort: fmt.Sprintf("%v", i),
 				},
@@ -156,7 +156,7 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 func retrieveOpenPortBinding(containerPtr *docker.Container) (string, error) {
 	exposedPorts := containerPtr.Config.ExposedPorts
 	ports := containerPtr.NetworkSettings.Ports
-	for k, _ := range exposedPorts {
+	for k := range exposedPorts {
 		portBindings := ports[k]
 		if len(portBindings) > 0 {
 			return portBindings[0].HostPort, nil
@@ -239,7 +239,7 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, owner string, us
 			Config: &docker.Config{
 				Cmd: []string{"/usr/sbin/sshd", "-D"},
 				ExposedPorts: map[docker.Port]struct{}{
-					SSHDPort: struct{}{},
+					SSHDPort: {},
 				},
 				Image: settings.ImageId,
 			},

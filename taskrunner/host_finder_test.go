@@ -37,11 +37,11 @@ func TestDBHostFinder(t *testing.T) {
 		taskIds = []string{"t1"}
 		hostIds = []string{"h1", "h2", "h3"}
 		hosts = []*host.Host{
-			&host.Host{Id: hostIds[0], StartedBy: evergreen.User,
+			{Id: hostIds[0], StartedBy: evergreen.User,
 				Status: evergreen.HostRunning},
-			&host.Host{Id: hostIds[1], StartedBy: evergreen.User,
+			{Id: hostIds[1], StartedBy: evergreen.User,
 				Status: evergreen.HostRunning},
-			&host.Host{Id: hostIds[2], StartedBy: evergreen.User,
+			{Id: hostIds[2], StartedBy: evergreen.User,
 				Status: evergreen.HostRunning},
 		}
 

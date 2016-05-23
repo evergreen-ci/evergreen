@@ -13,12 +13,9 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/db"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/ui"
 	"github.com/evergreen-ci/render"
-	"github.com/gorilla/sessions"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
@@ -40,30 +37,13 @@ func init() {
 }
 
 func main() {
+
 	settings := evergreen.GetSettingsOrExit()
-	if settings.Ui.LogFile != "" {
-		evergreen.SetLogger(settings.Ui.LogFile)
-	}
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
-
 	home := evergreen.FindEvergreenHome()
-
-	userManager, err := auth.LoadUserManager(settings.AuthConfig)
+	uis, err := ui.New(settings, home)
 	if err != nil {
-		fmt.Println("Failed to create user manager:", err)
+		fmt.Println("Failed to create ui server: %v", err)
 		os.Exit(1)
-	}
-
-	cookieStore := sessions.NewCookieStore([]byte(settings.Ui.Secret))
-
-	uis := ui.UIServer{
-		nil, // render
-		home,
-		settings.Ui.Url, // RootURL
-		userManager,     // User Manager
-		*settings,       // mci settings
-		cookieStore,     // cookiestore
-		nil,             // plugin panel manager
 	}
 	router, err := uis.NewRouter()
 	if err != nil {
@@ -71,11 +51,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	webHome := filepath.Join(home, "public")
+	webHome := filepath.Join(uis.Home, "public")
 
-	functionOptions := ui.FuncOptions{webHome, settings.Ui.HelpUrl, true, router}
+	functionOptions := ui.FuncOptions{webHome, uis.Settings.Ui.HelpUrl, true, router}
 
-	functions, err := ui.MakeTemplateFuncs(functionOptions, settings.SuperUsers)
+	functions, err := ui.MakeTemplateFuncs(functionOptions, uis.Settings.SuperUsers)
 	htmlFunctions := htmlTemplate.FuncMap(functions)
 	textFunctions := textTemplate.FuncMap(functions)
 
@@ -85,8 +65,8 @@ func main() {
 	}
 
 	uis.Render = render.New(render.Options{
-		Directory:    filepath.Join(home, ui.WebRootPath, ui.Templates),
-		DisableCache: !settings.Ui.CacheTemplates,
+		Directory:    filepath.Join(uis.Home, ui.WebRootPath, ui.Templates),
+		DisableCache: !uis.Settings.Ui.CacheTemplates,
 		HtmlFuncs:    htmlFunctions,
 		TextFuncs:    textFunctions,
 	})
@@ -98,8 +78,8 @@ func main() {
 	n := negroni.New()
 	n.Use(negroni.NewStatic(http.Dir(webHome)))
 	n.Use(ui.NewLogger())
-	n.Use(negroni.HandlerFunc(ui.UserMiddleware(userManager)))
+	n.Use(negroni.HandlerFunc(ui.UserMiddleware(uis.UserManager)))
 	n.UseHandler(router)
-	graceful.Run(settings.Ui.HttpListenAddr, requestTimeout, n)
+	graceful.Run(uis.Settings.Ui.HttpListenAddr, requestTimeout, n)
 	evergreen.Logger.Logf(slogger.INFO, "UI server cleanly terminated")
 }

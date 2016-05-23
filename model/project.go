@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	ignore "github.com/sabhiram/go-git-ignore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -39,6 +40,7 @@ type Project struct {
 	Identifier      string                     `yaml:"identifier,omitempty" bson:"identifier"`
 	DisplayName     string                     `yaml:"display_name,omitempty" bson:"display_name"`
 	CommandType     string                     `yaml:"command_type,omitempty" bson:"command_type"`
+	Ignore          []string                   `yaml:"ignore,omitempty" bson:"ignore"`
 	Pre             *YAMLCommandSet            `yaml:"pre,omitempty" bson:"pre"`
 	Post            *YAMLCommandSet            `yaml:"post,omitempty" bson:"post"`
 	Timeout         *YAMLCommandSet            `yaml:"timeout,omitempty" bson:"timeout"`
@@ -360,7 +362,7 @@ func (tt TaskIdTable) GetIdsForAllVariants(taskName string) []string {
 // the specific task denoted by the task/variant pair.
 func (tt TaskIdTable) GetIdsForAllVariantsExcluding(taskName string, exclude TVPair) []string {
 	ids := []string{}
-	for pair, _ := range tt {
+	for pair := range tt {
 		if pair.TaskName == taskName && pair != exclude {
 			if id := tt[pair]; id != "" {
 				ids = append(ids, id)
@@ -374,7 +376,7 @@ func (tt TaskIdTable) GetIdsForAllVariantsExcluding(taskName string, exclude TVP
 // The current variant and task must be passed in to avoid cycle generation.
 func (tt TaskIdTable) GetIdsForAllTasks(currentVariant, taskName string) []string {
 	ids := []string{}
-	for pair, _ := range tt {
+	for pair := range tt {
 		if !(pair.TaskName == taskName && pair.Variant == currentVariant) {
 			if id := tt[pair]; id != "" {
 				ids = append(ids, id)
@@ -742,4 +744,20 @@ func (p *Project) FindVariantsWithTask(task string) []string {
 		}
 	}
 	return variants
+}
+
+// IgnoresAllFiles takes in a slice of filepaths and checks to see if
+// all files are matched by the project's Ignore regular expressions.
+func (p *Project) IgnoresAllFiles(files []string) bool {
+	if len(p.Ignore) == 0 || len(files) == 0 {
+		return false
+	}
+	// CompileIgnoreLines has a silly API: it always returns a nil error.
+	ignorer, _ := ignore.CompileIgnoreLines(p.Ignore...)
+	for _, f := range files {
+		if !ignorer.MatchesPath(f) {
+			return false
+		}
+	}
+	return true
 }

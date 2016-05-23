@@ -18,84 +18,25 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"github.com/mitchellh/mapstructure"
 )
 
-// GitApplyPatchCommand is a command to pull a patch from the api server
-// and apply it to the given directory using `git apply`. If there are
-// module patch sets included in the patch, those are applied to their
-// proper directory as well.
-type GitApplyPatchCommand struct {
-	//The root directory (locally) that the code should be checked out into.
-	//Must be a valid non-blank directory name.
-	Directory string
-}
+// GitApplyPatchCommand is deprecated. Its functionality is now a part of GitGetProjectCommand.
+type GitApplyPatchCommand struct{}
 
-func (gapc *GitApplyPatchCommand) Name() string {
-	return ApplyPatchCmdName
-}
-
-func (gapc *GitApplyPatchCommand) Plugin() string {
-	return GitPluginName
-}
-
-// ParseParams reads the command's configuration and returns any errors that occur.
-func (gapc *GitApplyPatchCommand) ParseParams(params map[string]interface{}) error {
-	err := mapstructure.Decode(params, gapc)
-	if err != nil {
-		return err
-	}
-
-	if gapc.Directory == "" {
-		return fmt.Errorf("error parsing '%v' params: value for directory "+
-			"must not be blank", gapc.Name())
-	}
-	return nil
-}
-
-// Execute pulls the task's patch and then applies it
-func (gapc *GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
+func (*GitApplyPatchCommand) Name() string                                    { return ApplyPatchCmdName }
+func (*GitApplyPatchCommand) Plugin() string                                  { return GitPluginName }
+func (*GitApplyPatchCommand) ParseParams(params map[string]interface{}) error { return nil }
+func (*GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
-
-	errChan := make(chan error)
-
-	go func() {
-		//Apply patches only if necessary
-		if conf.Task.Requester == evergreen.PatchVersionRequester {
-			pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
-			patch, err := gapc.GetPatch(conf, pluginCom, pluginLogger)
-			if err != nil {
-				pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
-				errChan <- fmt.Errorf("Failed to get patch: %v", err)
-			}
-
-			err = gapc.getPatchContents(conf, pluginCom, pluginLogger, patch)
-			if err != nil {
-				pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
-				errChan <- fmt.Errorf("Failed to get patch contents: %v", err)
-			}
-
-			err = gapc.applyPatch(conf, patch, pluginLogger)
-			if err != nil {
-				pluginLogger.LogExecution(slogger.INFO, "Failed to apply patch: %v", err)
-				errChan <- fmt.Errorf("Failed to apply patch: %v", err)
-			}
-		}
-		errChan <- nil
-	}()
-
-	select {
-	case err := <-errChan:
-		return err
-	case <-stop:
-		return fmt.Errorf("Patch command interrupted.")
-	}
+	pluginLogger.LogExecution(slogger.INFO,
+		"WARNING: git.apply_patch is deprecated. Patches are applied in git.get_project ")
+	return nil
 }
 
 // GetPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure.
-func (gapc GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
+func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
 	pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*patch.Patch, error) {
 	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
@@ -168,7 +109,7 @@ func (gapc GitApplyPatchCommand) GetPatch(conf *model.TaskConfig,
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
 // the API server, and setting them into the patch object.
-func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com plugin.PluginCommunicator, log plugin.Logger, p *patch.Patch) error {
+func (ggpc GitGetProjectCommand) getPatchContents(conf *model.TaskConfig, com plugin.PluginCommunicator, log plugin.Logger, p *patch.Patch) error {
 	for i, patchPart := range p.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
@@ -211,7 +152,7 @@ func (gapc GitApplyPatchCommand) getPatchContents(conf *model.TaskConfig, com pl
 
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
-func (gapc *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
+func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 	patch *patch.Patch, pluginLogger plugin.Logger) error {
 
 	// patch sets and contain multiple patches, some of them for modules
@@ -219,7 +160,7 @@ func (gapc *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
 		var dir string
 		if patchPart.ModuleName == "" {
 			// if patch is not part of a module, just apply patch against src root
-			dir = gapc.Directory
+			dir = ggpc.Directory
 			pluginLogger.LogExecution(slogger.INFO, "Applying patch with git...")
 		} else {
 			// if patch is part of a module, apply patch in module root
@@ -239,7 +180,7 @@ func (gapc *GitApplyPatchCommand) applyPatch(conf *model.TaskConfig,
 				continue
 			}
 
-			dir = filepath.Join(gapc.Directory, module.Prefix, module.Name)
+			dir = filepath.Join(ggpc.Directory, module.Prefix, module.Name)
 			pluginLogger.LogExecution(slogger.INFO, "Applying module patch with git...")
 		}
 

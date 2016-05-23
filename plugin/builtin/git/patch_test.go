@@ -27,7 +27,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		server, err := apiserver.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		taskConfig, _ := plugintest.CreateTestConfig("testdata/plugin_patch.yml", t)
-		testCommand := GitApplyPatchCommand{"dir"}
+		testCommand := GitGetProjectCommand{Directory: "dir"}
 		_, _, err = plugintest.SetupAPITestData("testTask", true, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 		testTask, err := task.FindOne(task.ById("testTaskId"))
@@ -115,26 +115,6 @@ func TestPatchPlugin(t *testing.T) {
 					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
-				}
-			}
-		})
-		Convey("broken test project should fail during execution", func() {
-			// this config tries to patch on an empty repo
-			taskConfig, _ := plugintest.CreateTestConfig("testdata/plugin_broken_patch.yml", t)
-			taskConfig.Task.Requester = evergreen.PatchVersionRequester
-			_, _, err = plugintest.SetupAPITestData("testTask", true, t)
-			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
-
-			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
-				for _, command := range task.Commands {
-					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
-					So(pluginCmds, ShouldNotBeNil)
-					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
-					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
-					So(err, ShouldNotBeNil)
 				}
 			}
 		})

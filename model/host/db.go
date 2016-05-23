@@ -18,8 +18,8 @@ const (
 )
 
 var noRunningTask = []bson.D{
-	bson.D{{"running_task", ""}},
-	bson.D{{"running_task", bson.D{{"$exists", false}}}},
+	{{"running_task", ""}},
+	{{"running_task", bson.D{{"$exists", false}}}},
 }
 
 var (
@@ -222,8 +222,8 @@ func ByNotMonitoredSince(threshold time.Time) db.Q {
 		},
 		StartedByKey: evergreen.User,
 		"$or": []bson.M{
-			bson.M{LastReachabilityCheckKey: bson.M{"$lte": threshold}},
-			bson.M{LastReachabilityCheckKey: bson.M{"$exists": false}},
+			{LastReachabilityCheckKey: bson.M{"$lte": threshold}},
+			{LastReachabilityCheckKey: bson.M{"$exists": false}},
 		},
 	})
 }

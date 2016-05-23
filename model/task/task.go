@@ -575,8 +575,8 @@ func (t *Task) SetPriority(priority int64) error {
 
 	_, err = UpdateAll(
 		bson.M{"$or": []bson.M{
-			bson.M{IdKey: t.Id},
-			bson.M{IdKey: bson.M{"$in": ids},
+			{IdKey: t.Id},
+			{IdKey: bson.M{"$in": ids},
 				PriorityKey: bson.M{"$lt": priority}},
 		}},
 		bson.M{"$set": modifier},

@@ -203,7 +203,7 @@ func (uis *UIServer) lastGreenHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Make sure all query params are valid build variants and put them in an array
 	var buildVariantNames []string
-	for key, _ := range queryParams {
+	for key := range queryParams {
 		if projCtx.Project.FindBuildVariant(key) != nil {
 			buildVariantNames = append(buildVariantNames, key)
 		} else {
