@@ -1,4 +1,4 @@
-mciModule.controller('TaskTimingController', function($scope, $filter, $window, notificationService, $http) {
+mciModule.controller('TaskTimingController', function($scope, $http, $window, $filter, $locationHash, mciTime, notificationService) {
     $scope.currentProject = $window.activeProject;
     // sort the task names for the current project
     $scope.currentProject.task_names.sort()
