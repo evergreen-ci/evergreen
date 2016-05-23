@@ -60,7 +60,7 @@ If you add a new dependency, or change the version of an existing one, run the `
 * `task`: “compile”, “test”, or “push”.  The kinds of things that we want to do on a `host`.
 
 ## Running Evergreen Processes
-A single configuration (settings) file drives most of how Evergreen works. Each Evergreen process must be supplied this settings file to run properly.
+A single configuration file drives most of how Evergreen works. Each Evergreen process must be supplied this settings file to run properly.
 For development, tweak the sample configuration file [here](https://github.com/evergreen-ci/evergreen/blob/master/docs/evg_example_config.yml).
 
 All Evergreen programs accept a configuration file with the `-conf` flag.
