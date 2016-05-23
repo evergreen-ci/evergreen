@@ -9,16 +9,19 @@ Using Evergreen, we've significantly enhanced the productivity of our engineers.
 # Features
 
 #### Elastic Host Allocation
-Use only the computing resources you need
+Use only the computing resources you need.
 
 #### Clean UI 
-Easily navigate and explore the state of your tests
+Easily navigate the state of your tests, logs, and commit history.
 
 #### Multiplatform Support
-Run jobs on any operating system supported by the Go compiler
+Run jobs on Linux (including PowerPC and ZSeries), Windows, OSX, Solaris, and BSD.
+
+#### Spawn Hosts
+Spin up a copy of any machine in your test infrastructure for debugging.
 
 #### Patch Builds 
-Test your changes before your commit
+See test results for your code changes before committing.
 
 #### Stepback on Failure
 Automatically run past commits to pinpoint the origin of a test failure
@@ -34,9 +37,7 @@ Please refer to [our tutorial](https://github.com/evergreen-ci/evergreen/wiki/Ge
  However, the Evergreen API Server, UI Server, and Runner program are currently only supported and tested on Linux and OSX.
 
 ## Go Requirements
- * [Install Go from source](http://golang.org/doc/install/source).
- This is needed to build the binaries using goxc.
- This requirement will be simplified by the release of Go 1.5.
+ * [Install Go 1.6 or later](https://golang.org/dl/).
 
 ## Vendoring Dependencies
 Our dependencies live in the `vendor` subdirectory of the repo.
@@ -44,13 +45,9 @@ The specifications for what version of each dependency is used resides in the Go
 If you add a new dependency, or change the version of an existing one, run the `vendor.sh` script to refresh the downloaded versions in `vendor`.
 
 ## Building the Binaries
-* To build the binaries for the cron tasks and servers, run the `build.sh` script in the root of the repo. This will
-install the binaries into the `bin` subdirectory.
-* To build the agent binary, run the `build_agent.sh` script in the root of the repo. This will use goxc (located in
-`vendor/src/github.com/laher/goxc`) to cross-compile the agent binary into the `executables` subdirectory. Before doing
-this, you have to run `go run vendor/src/github.com/laher/goxc/goxc.go -t` once on the machine where you are building 
-the binaries.
-* To run tests or build manually, you must update the GOPATH variable by running `. setgopath.sh` in your shell.
+* Run the `build.sh` script in the root of the repo to generate binaries (in the `bin/` subdirectory) for the UI server, API server, and runner daemon.
+* To build the agent binaries for all platforms, run the `build_agent_gc.sh` script in the root of the repo. 
+* To run tests or build manually, you must update the GOPATH variable by running `. ./setgopath.sh` in your shell.
 
 ## Terminology
 * `distro`: A platform type (e.g. Windows or OSX) plus large-scale architectural details.  One of the targets that we produce executables for.
