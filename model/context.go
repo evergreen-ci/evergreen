@@ -31,7 +31,7 @@ func LoadContext(taskId, buildId, versionId, patchId, projectId string) (Context
 	if err != nil {
 		return *ctx, err
 	}
-	if len(projectId) == 0 && len(pId) > 0 {
+	if len(projectId) == 0 || (len(pId) > 0 && pId != projectId) {
 		projectId = pId
 	}
 
