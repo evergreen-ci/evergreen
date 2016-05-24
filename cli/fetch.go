@@ -134,25 +134,24 @@ func fetchSource(ac, rc *APIClient, rootPath, taskId string, noPatch bool) error
 }
 
 type cloneOptions struct {
-	repo         string
-	revision     string
-	rootDir      string
-	singleBranch string
-	depth        uint
+	repo     string
+	revision string
+	rootDir  string
+	depth    uint
 }
 
-func clone(opts cloneOptions) error {
+func clone(opts cloneOptions, verbose bool) error {
 	// clone the repo first
-	args := []string{"clone", opts.repo}
-	if len(opts.singleBranch) > 0 {
-		args = append(args, "--branch", opts.singleBranch, "--single-branch")
-	}
+	cloneArgs := []string{"clone", opts.repo}
 	if opts.depth > 0 {
-		args = append(args, "--depth", fmt.Sprintf("%d", opts.depth))
+		cloneArgs = append(cloneArgs, "--depth", fmt.Sprintf("%d", opts.depth))
 	}
 
-	args = append(args, opts.rootDir)
-	c := exec.Command("git", args...)
+	cloneArgs = append(cloneArgs, opts.rootDir)
+	if verbose {
+		fmt.Println("Executing git", strings.Join(cloneArgs, " "))
+	}
+	c := exec.Command("git", cloneArgs...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
 	err := c.Run()
 	if err != nil {
@@ -160,26 +159,39 @@ func clone(opts cloneOptions) error {
 	}
 
 	// try to check out the revision we want
-	c = exec.Command("git", "-C", opts.rootDir, "checkout", opts.revision)
+	checkoutArgs := []string{"checkout", opts.revision}
+	if verbose {
+		fmt.Println("Executing git", strings.Join(checkoutArgs, " "))
+	}
+	c = exec.Command("git", checkoutArgs...)
 	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
 	c.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
 	c.Stderr = io.MultiWriter(os.Stderr, stderrBuf)
+	c.Dir = opts.rootDir
 	err = c.Run()
 	if err != nil {
 		if !bytes.Contains(stderrBuf.Bytes(), []byte("reference is not a tree:")) {
 			return err
 		}
 
-		// depth arg was not enough, we have to go deeper ;)
-		c = exec.Command("git", "-C", opts.rootDir, "fetch", "--unshallow")
-		c.Stdout, c.Stderr = os.Stdout, os.Stderr
+		// we have to go deeper
+		fetchArgs := []string{"fetch", "--unshallow"}
+		if verbose {
+			fmt.Println("Executing git", strings.Join(fetchArgs, " "))
+		}
+		c = exec.Command("git", fetchArgs...)
+		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		err = c.Run()
 		if err != nil {
 			return err
 		}
 		// now it's unshallow, so try again to check it out
-		c = exec.Command("git", "-C", opts.rootDir, "checkout", opts.revision)
-		c.Stdout, c.Stderr = os.Stdout, os.Stderr
+		checkoutRetryArgs := []string{"checkout", opts.revision}
+		if verbose {
+			fmt.Println("Executing git", strings.Join(checkoutRetryArgs, " "))
+		}
+		c = exec.Command("git", checkoutRetryArgs...)
+		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		return c.Run()
 	}
 	return nil
@@ -189,12 +201,12 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	// Fetch the outermost repo for the task
 	err := clone(
 		cloneOptions{
-			repo:         fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
-			revision:     task.Revision,
-			rootDir:      cloneDir,
-			singleBranch: project.Branch,
-			depth:        defaultCloneDepth,
+			repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
+			revision: task.Revision,
+			rootDir:  cloneDir,
+			depth:    defaultCloneDepth,
 		},
+		false,
 	)
 
 	if err != nil {
@@ -217,7 +229,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			repo:     module.Repo,
 			revision: module.Branch,
 			rootDir:  filepath.ToSlash(moduleBase),
-		})
+		}, false)
 		if err != nil {
 			return err
 		}
@@ -248,9 +260,9 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			dir = filepath.Join(rootCloneDir, module.Prefix, module.Name)
 		}
 
-		applyCmd := exec.Command("git", "-C", dir, "apply", "--whitespace=fix")
-		applyCmd.Stdout = os.Stdout
-		applyCmd.Stderr = os.Stderr
+		args := []string{"apply", "--whitespace=fix"}
+		applyCmd := exec.Command("git", args...)
+		applyCmd.Stdout, applyCmd.Stderr, applyCmd.Dir = os.Stdout, os.Stderr, dir
 		applyCmd.Stdin = bytes.NewReader([]byte(patchPart.PatchSet.Patch))
 		err := applyCmd.Run()
 		if err != nil {
