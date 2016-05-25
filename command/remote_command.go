@@ -29,54 +29,54 @@ type RemoteCommand struct {
 	Cmd *exec.Cmd
 }
 
-func (self *RemoteCommand) Run() error {
-	err := self.Start()
+func (rc *RemoteCommand) Run() error {
+	err := rc.Start()
 	if err != nil {
 		return err
 	}
-	return self.Cmd.Wait()
+	return rc.Cmd.Wait()
 }
 
-func (self *RemoteCommand) Wait() error {
-	return self.Cmd.Wait()
+func (rc *RemoteCommand) Wait() error {
+	return rc.Cmd.Wait()
 }
 
-func (self *RemoteCommand) Start() error {
+func (rc *RemoteCommand) Start() error {
 
 	// build the remote connection, in user@host format
-	remote := self.RemoteHostName
-	if self.User != "" {
-		remote = fmt.Sprintf("%v@%v", self.User, remote)
+	remote := rc.RemoteHostName
+	if rc.User != "" {
+		remote = fmt.Sprintf("%v@%v", rc.User, remote)
 	}
 
 	// build the command
-	cmdArray := append(self.Options, remote)
+	cmdArray := append(rc.Options, remote)
 
 	// set to the background, if necessary
-	cmdString := self.CmdString
-	if self.Background {
+	cmdString := rc.CmdString
+	if rc.Background {
 		cmdString = fmt.Sprintf("nohup %v > /tmp/start 2>&1 &", cmdString)
 	}
 	cmdArray = append(cmdArray, cmdString)
 
-	if !self.LoggingDisabled {
+	if !rc.LoggingDisabled {
 		evergreen.Logger.Logf(slogger.WARN, "Remote command executing: '%#v'",
 			strings.Join(cmdArray, " "))
 	}
 
 	// set up execution
 	cmd := exec.Command("ssh", cmdArray...)
-	cmd.Stdout = self.Stdout
-	cmd.Stderr = self.Stderr
+	cmd.Stdout = rc.Stdout
+	cmd.Stderr = rc.Stderr
 
 	// cache the command running
-	self.Cmd = cmd
+	rc.Cmd = cmd
 	return cmd.Start()
 }
 
-func (self *RemoteCommand) Stop() error {
-	if self.Cmd != nil && self.Cmd.Process != nil {
-		return self.Cmd.Process.Kill()
+func (rc *RemoteCommand) Stop() error {
+	if rc.Cmd != nil && rc.Cmd.Process != nil {
+		return rc.Cmd.Process.Kill()
 	}
 	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
 	return nil
