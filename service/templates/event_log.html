@@ -8,10 +8,11 @@ Events
   var events = {{.Data}}.reverse()
   var host = {{.Data}}
   var userTz = {{GetTimezone $.User}}
-  var LogController = function($scope, $window){
-    $scope.userTz = $window.userTz;
-    $scope.events = $window.events.reverse()
-  }
+
+mciModule.controller('LogController', function($scope, $window) {
+  $scope.userTz = $window.userTz;
+  $scope.events = $window.events.reverse()
+})
 </script>
 {{end}}
 
