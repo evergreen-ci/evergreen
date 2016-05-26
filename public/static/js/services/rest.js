@@ -227,6 +227,7 @@ mciServices.rest.factory('mciSpawnRestService', ['mciBaseRestService', function(
         var config = {
             data: data
         };
+        config.data['task_id'] = spawnInfo.task_id;
         config.data['distro'] = spawnInfo.distroId;
         config.data['save_key'] = spawnInfo.saveKey;
         config.data['key_name'] = spawnInfo.spawnKey.name;

@@ -23,6 +23,7 @@ var (
 
 // Host triggers
 var (
+	SpawnFailed                = "spawn_failed"
 	SpawnHostTwoHourWarning    = "spawn_twohour"
 	SpawnHostTwelveHourWarning = "spawn_twelvehour"
 	SlowProvisionWarning       = "slow_provision"

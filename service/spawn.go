@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/spawn"
@@ -30,12 +31,34 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	flashes := PopFlashes(uis.CookieStore, r, w)
 	projCtx := MustHaveProjectContext(r)
 
+	var spawnDistro *distro.Distro
+	var spawnTask *task.Task
+	var err error
+	if len(r.FormValue("distro_id")) > 0 {
+		spawnDistro, err = distro.FindOne(distro.ById(r.FormValue("distro_id")))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				fmt.Errorf("Error finding distro %v: %v", r.FormValue("distro_id"), err))
+			return
+		}
+	}
+	if len(r.FormValue("task_id")) > 0 {
+		spawnTask, err = task.FindOne(task.ById(r.FormValue("task_id")))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				fmt.Errorf("Error finding task %v: %v", r.FormValue("task_id"), err))
+			return
+		}
+	}
+
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData     projectContext
 		User            *user.DBUser
 		Flashes         []interface{}
+		Distro          *distro.Distro
+		Task            *task.Task
 		MaxHostsPerUser int
-	}{projCtx, GetUser(r), flashes, spawn.MaxPerUser}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+	}{projCtx, GetUser(r), flashes, spawnDistro, spawnTask, spawn.MaxPerUser}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +104,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	authedUser := MustHaveUser(r)
 
 	putParams := struct {
+		Task      string `json:"task_id"`
 		Distro    string `json:"distro"`
 		KeyName   string `json:"key_name"`
 		PublicKey string `json:"public_key"`
@@ -94,6 +118,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := spawn.Options{
+		TaskId:    putParams.Task,
 		Distro:    putParams.Distro,
 		UserName:  authedUser.Username(),
 		PublicKey: putParams.PublicKey,
@@ -128,7 +153,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	// Start a background goroutine that handles host creation/setup.
 	go func() {
-		host, err := spawner.CreateHost(opts)
+		host, err := spawner.CreateHost(opts, authedUser)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
 			mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),

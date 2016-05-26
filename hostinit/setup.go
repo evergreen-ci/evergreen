@@ -2,10 +2,14 @@ package hostinit
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -15,8 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
@@ -85,9 +91,8 @@ func (init *HostInit) setupReadyHosts() error {
 		wg.Add(1)
 		go func(h host.Host) {
 
-			if err := init.ProvisionHost(&h); err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v",
-					h.Id, err)
+			if err := init.ProvisionHost(&h, ProvisionOptions{}); err != nil {
+				evergreen.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v", h.Id, err)
 
 				// notify the admins of the failure
 				subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
@@ -239,11 +244,11 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 
 	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get cloud host for %v: %v", targetHost.Id, err)
+		return nil, fmt.Errorf("failed to get cloud host for %v: %v", targetHost.Id, err)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting ssh options for host %v: %v", targetHost.Id, err)
+		return nil, fmt.Errorf("error getting ssh options for host %v: %v", targetHost.Id, err)
 	}
 
 	// copy setup script over to the remote machine
@@ -259,10 +264,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	}
 
 	// run the command to scp the setup script with a timeout
-	err = util.RunFunctionWithTimeout(
-		scpSetupCmd.Run,
-		SCPTimeout,
-	)
+	err = util.RunFunctionWithTimeout(scpSetupCmd.Run, SCPTimeout)
 	if err != nil {
 		if err == util.ErrTimedOut {
 			scpSetupCmd.Stop()
@@ -310,21 +312,35 @@ func (init *HostInit) buildSetupScript(h *host.Host) (string, error) {
 	return setupScript, err
 }
 
+//
+type ProvisionOptions struct {
+	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
+	// be placed onto the host after startup.
+	LoadCLI bool
+
+	// TaskId if non-empty will trigger the CLI tool to fetch source and artifacts for the given task.
+	// Ignored if LoadCLI is false.
+	TaskId string
+
+	// Owner is the user associated with the host used to populate any necessary metadata.
+	Owner *user.DBUser
+}
+
 // Provision the host, and update the database accordingly.
-func (init *HostInit) ProvisionHost(h *host.Host) error {
+func (init *HostInit) ProvisionHost(h *host.Host, opts ProvisionOptions) error {
 
 	// run the setup script
+
+	evergreen.Logger.Logf(slogger.INFO, "Setting up host %v", h.Id)
 	output, err := init.setupHost(h)
 
 	// deal with any errors that occured while running the setup
 	if err != nil {
-
 		evergreen.Logger.Logf(slogger.ERROR, "Error running setup script: %v", err)
 
 		// another hostinit process beat us there
 		if err == ErrHostAlreadyInitializing {
-			evergreen.Logger.Logf(slogger.DEBUG,
-				"Attempted to initialize already initializing host %v", h.Id)
+			evergreen.Logger.Logf(slogger.DEBUG, "Attempted to initialize already initializing host %v", h.Id)
 			return nil
 		}
 
@@ -345,6 +361,20 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 
 	}
 
+	evergreen.Logger.Logf(slogger.INFO, "Setup complete for host %v", h.Id)
+
+	if opts.LoadCLI && opts.Owner != nil {
+		evergreen.Logger.Logf(slogger.INFO, "Uploading client binary to host %v", h.Id)
+		lcr, err := init.LoadClient(h, opts.Owner)
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Failed to load client binary onto host %v: %v", h.Id, err)
+		} else if err == nil && len(opts.TaskId) > 0 {
+			evergreen.Logger.Logf(slogger.INFO, "Fetching data for task %v onto host %v", opts.TaskId, h.Id)
+			err = init.fetchRemoteTaskData(opts.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
+			evergreen.Logger.Logf(slogger.ERROR, "Failed to fetch data onto host %v", h.Id)
+		}
+	}
+
 	// the setup was successful. update the host accordingly in the database
 	if err := h.MarkAsProvisioned(); err != nil {
 		return fmt.Errorf("error marking host %v as provisioned: %v", err)
@@ -353,5 +383,191 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 	evergreen.Logger.Logf(slogger.INFO, "Host %v successfully provisioned", h.Id)
 
 	return nil
+}
 
+// LocateCLIBinary returns the (absolute) path to the CLI binary for the given architecture, based
+// on the system settings. Returns an error if the file does not exist.
+func LocateCLIBinary(settings *evergreen.Settings, architecture string) (string, error) {
+	clientsSubDir := "clients"
+	if settings.ClientBinariesDir != "" {
+		clientsSubDir = settings.ClientBinariesDir
+	}
+
+	var path string
+	if filepath.IsAbs(clientsSubDir) {
+		path = filepath.Join(clientsSubDir, architecture, "main")
+	} else {
+		path = filepath.Join(evergreen.FindEvergreenHome(), clientsSubDir, architecture, "main")
+	}
+	_, err := os.Stat(path)
+	if err != nil {
+		return path, err
+	}
+	return filepath.Abs(path)
+}
+
+// LoadClientResult indicates the locations on a target host where the CLI binary and it's config
+// file have been written to.
+type LoadClientResult struct {
+	BinaryPath string
+	ConfigPath string
+}
+
+// LoadClient places the evergreen command line client on the host, places a copy of the user's
+// settings onto the host, and makes the binary appear in the $PATH when the user logs in.
+// If successful, returns an instance of LoadClientResult which contains the paths where the
+// binary and config file were written to.
+func (init *HostInit) LoadClient(target *host.Host, user *user.DBUser) (*LoadClientResult, error) {
+	// Make sure we have the binary we want to upload - if it hasn't been built for the given
+	// architecture, fail early
+	cliBinaryPath, err := LocateCLIBinary(init.Settings, target.Distro.Arch)
+	if err != nil {
+		return nil, fmt.Errorf("Couldn't locate CLI binary for upload: %v", err)
+	}
+
+	// 1. mkdir the destination directory on the host,
+	//    and modify ~/.profile so the target binary will be on the $PATH
+	targetDir := "cli_bin"
+	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing ssh info %v: %v", target.Host, err)
+	}
+
+	cloudHost, err := providers.GetCloudHost(target, init.Settings)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get cloud host for %v: %v", target.Id, err)
+	}
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return nil, fmt.Errorf("Error getting ssh options for host %v: %v", target.Id, err)
+	}
+	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
+
+	mkdirOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+
+	// Create the directory for the binary to be uploaded into.
+	// Also, make a best effort to add the binary's location to $PATH upon login. If we can't do
+	// this successfully, the command will still succeed, it just means that the user will have to
+	// use an absolute path (or manually set $PATH in their shell) to execute it.
+	makeShellCmd := &command.RemoteCommand{
+		CmdString:      fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir),
+		Stdout:         mkdirOutput,
+		Stderr:         mkdirOutput,
+		RemoteHostName: hostSSHInfo.Hostname,
+		User:           target.User,
+		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+	}
+
+	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	// run the make shell command with a timeout
+	err = util.RunFunctionWithTimeout(makeShellCmd.Run, 30*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("error running setup command for cli, %v: '%v'", mkdirOutput.Buffer.String(), err)
+	}
+	// place the binary into the directory
+	scpSetupCmd := &command.ScpCommand{
+		Source:         cliBinaryPath,
+		Dest:           fmt.Sprintf("~/%s/evergreen", targetDir),
+		Stdout:         scpOut,
+		Stderr:         scpOut,
+		RemoteHostName: hostSSHInfo.Hostname,
+		User:           target.User,
+		Options:        append([]string{"-P", hostSSHInfo.Port}, sshOptions...),
+	}
+
+	// run the command to scp the setup script with a timeout
+	err = util.RunFunctionWithTimeout(scpSetupCmd.Run, 3*time.Minute)
+	if err != nil {
+		return nil, fmt.Errorf("error running SCP command for cli, %v: '%v'", scpOut.Buffer.String(), err)
+	}
+
+	// 4. Write a settings file for the user that owns the host, and scp it to the directory
+	outputStruct := model.CLISettings{
+		User:          user.Id,
+		APIKey:        user.APIKey,
+		APIServerHost: init.Settings.ApiUrl + "/api",
+		UIServerHost:  init.Settings.Ui.Url,
+	}
+	outputJSON, err := json.Marshal(outputStruct)
+	if err != nil {
+		return nil, err
+	}
+
+	tempFileName, err := util.WriteTempFile("", outputJSON)
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tempFileName)
+
+	scpYmlCommand := &command.ScpCommand{
+		Source:         tempFileName,
+		Dest:           fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
+		Stdout:         scpOut,
+		Stderr:         scpOut,
+		RemoteHostName: hostSSHInfo.Hostname,
+		User:           target.User,
+		Options:        append([]string{"-P", hostSSHInfo.Port}, sshOptions...),
+	}
+	err = util.RunFunctionWithTimeout(scpYmlCommand.Run, 30*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("error running SCP command for evergreen.yml, %v: '%v'", scpOut.Buffer.String(), err)
+	}
+
+	return &LoadClientResult{
+		BinaryPath: fmt.Sprintf("~/%s/evergreen", targetDir),
+		ConfigPath: fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
+	}, nil
+}
+
+func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, target *host.Host) error {
+	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
+	if err != nil {
+		return fmt.Errorf("error parsing ssh info %v: %v", target.Host, err)
+	}
+
+	cloudHost, err := providers.GetCloudHost(target, init.Settings)
+	if err != nil {
+		return fmt.Errorf("Failed to get cloud host for %v: %v", target.Id, err)
+	}
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return fmt.Errorf("Error getting ssh options for host %v: %v", target.Id, err)
+	}
+	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
+
+	/* TESTING ONLY
+	// Note for testing - when running locally, if your API Server's URL is behind a gateway (i.e. not a
+	// static IP) the next step will fail because the API server will not be reachable.
+	// If you want it to reach your local API server, execute a command here that sets up a reverse ssh tunnel:
+	// ssh -f -N -T -R 8080:localhost:8080 -o UserKnownHostsFile=/dev/null
+	// ... or, add a time.Sleep() here that gives you enough time to log in and edit the config
+	// on the spawnhost manually.
+	fmt.Println("starting up tunnel.")
+	tunnelCmd := exec.Command("ssh", "-f", "-N", "-T", "-R", "8080:localhost:8080", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", "/Users/michaelobrien/.ssh/mci.pem", fmt.Sprintf("%s@%s", target.User, hostSSHInfo.Hostname))
+	err = tunnelCmd.Start()
+	if err != nil {
+		fmt.Println("Setting up SSH tunnel failed - manual tunnel setup required.")
+		// Give the developer a 30 second grace period to set up the tunnel.
+		time.Sleep(30 * time.Second)
+	}
+	fmt.Println("Tunnel setup complete, starting fetch in 10 seconds...")
+	time.Sleep(10 * time.Second)
+	*/
+
+	// When testing, use this writer to force a copy of the output to be written to standard out so
+	// that remote command failures also show up in server log output.
+	cmdOutput := io.MultiWriter(&util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}, os.Stdout)
+	//cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	makeShellCmd := &command.RemoteCommand{
+		CmdString:      fmt.Sprintf("%s -c '%s' fetch -t %s --source --artifacts --dir '%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
+		Stdout:         cmdOutput,
+		Stderr:         cmdOutput,
+		RemoteHostName: hostSSHInfo.Hostname,
+		User:           target.User,
+		Options:        append([]string{"-p", hostSSHInfo.Port}, sshOptions...),
+	}
+
+	// run the make shell command with a timeout
+	err = util.RunFunctionWithTimeout(makeShellCmd.Run, 15*time.Minute)
+	return err
 }

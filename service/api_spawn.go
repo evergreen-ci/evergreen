@@ -90,7 +90,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 
 	// Start a background goroutine that handles host creation/setup.
 	go func() {
-		host, err := spawner.CreateHost(opts)
+		host, err := spawner.CreateHost(opts, user)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, err.Error())
 			mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),

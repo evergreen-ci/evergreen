@@ -69,6 +69,11 @@
         <textarea id="input-userdata-val" name="userdata" placeholder="Enter userdata here (goes to {{selectedDistro.userDataFile}})" ng-required="selectedDistro.userDataValidate != ''" user-data-valid ng-model="userData.text"></textarea>
       </p>
     </div>
+    <div class="spawn-task-options" ng-show="!!spawnTask">
+      <input type="checkbox" ng-model="$parent.spawnTaskChecked">
+      Load data for <strong>[[spawnTask.display_name]]</strong> on <strong>[[spawnTask.build_variant]]</strong> @ <strong class="mono">[[spawnTask.gitspec | limitTo:5]]</strong> onto host at startup
+      </input>
+    </div>
     <div>
       <button type="submit" class="btn btn-primary" style="float: left; margin-left: 10px;" ng-disabled="!form.$valid || spawnReqSent">Spawn</button>
       <button type="button" class="btn btn-danger" style="float: left; margin-left: 30px;" data-dismiss="modal">Cancel</button>

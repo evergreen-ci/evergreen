@@ -13,6 +13,7 @@ window.plugins = {{.PluginContent.Data}}
   var userTz = {{GetTimezone $.User}}
   {{if .User}}
     var have_user = true
+    var taskHost = {{.Host}}
   {{end}}
   var task_data = {{.Task}}
 </script>
@@ -142,23 +143,23 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
 
             <table id="task-info-elements">
               <tr ng-show="task.min_queue_pos != 0">
-                <td><i class="fa fa-sort-numeric-asc"></i></td>
+                <td class="icon"><i class="fa fa-sort-numeric-asc"></i></td>
                 <td><strong>[[task.min_queue_pos | ordinalNum]]</strong> in queue</td>
               </tr>
               <tr>
                 <td ng-hide="task.expected_duration == 0"><i class="fa fa-clock-o"></i></td>
                 <td>
-                  <span ng-hide="task.status == 'undispatched'">[[timeTaken | stringifyNanoseconds]]</span>
+                  <span ng-hide="task.status == 'undispatched'"> [[timeTaken | stringifyNanoseconds]] </span>
                   <span ng-show="task.status == 'started' || task.status == 'dispatched'"> (ETA: [[timeToCompletion | stringifyNanoseconds]])</span>
                  <span ng-show="task.status == 'undispatched' && task.expected_duration > 0"> Estimated Runtime: [[timeToCompletion | stringifyNanoseconds]]</span>
                 </td>
               </tr>
               <tr ng-show="baseTimeTaken">
-                <td><i class="fa fa-hourglass"></i></td>
+                <td class="icon"><i class="fa fa-hourglass"></i></td>
                 <td>[[baseTimeTaken | stringifyNanoseconds]] on base commit</td>
               </tr>
               <tr ng-show="task.execution > 0 || task.archived">
-                <td><i class="fa fa-rotate-left"></i></td>
+                <td class="icon"><i class="fa fa-rotate-left"></i></td>
 
                 <td ng-show="!task.archived">
                   Latest of [[task.execution+1]] executions
@@ -180,29 +181,34 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </td>
               </tr>
               <tr ng-show="task.host_dns">
-                <td><i class="fa fa-desktop"></i></td>
-                <td data-element-tooltip="task.distro">[[task.host_dns]]
-                  (<a ng-href="/host/[[task.host_id]]">details</a>)
+                <td class="icon"><i class="fa fa-desktop"></i></td>
+                <td>
+                  <span>
+                    <a href="/host/[[task.host_id]]" class="host-info-item">[[task.host_id]]</a>
+                    <span ng-show="haveUser" class="label label-primary host-info-item"><a ng-href="/distros##[[task.distro]]">[[task.distro]]</a></span>
+                    <span ng-hide="haveUser" class="label label-primary host-info-item">[[task.distro]]</span>
+                    <a ng-show="haveUser && getSpawnLink().length > 0" href="[[getSpawnLink()]]" class="small">Spawn...</a>
+                  </span>
                 </td>
               </tr>
               <tr ng-show="task.abort">
-                <td><i class="fa fa-level-down"></i></td>
+                <td class="icon"><i class="fa fa-level-down"></i></td>
                 <td>Aborting</td>
               </tr>
               <tr ng-show="task.start_time > 0 && (task.status != 'undispatched' && task.status != 'dispatched') ">
-                <td><i class="fa fa-calendar"></i></td>
+                <td class="icon"><i class="fa fa-calendar"></i></td>
                 <td>Started on [[task.start_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
               </tr>
               <tr ng-show="task.finish_time > 0 && (task.status == 'success' || task.status == 'failed') ">
-                <td><i class="fa fa-calendar"></i></td>
+                <td class="icon"><i class="fa fa-calendar"></i></td>
                 <td>Finished on [[task.finish_time | dateFromNanoseconds | convertDateToUserTimezone:userTz:"MMM D, YYYY h:mm:ss a"]]</td>
               </tr>
               <tr ng-show="task.priority > 0">
-                <td><i class="fa fa-rocket"></i></td>
+                <td class="icon"><i class="fa fa-rocket"></i></td>
                 <td>Priority: [[task.priority]]</td>
               </tr>
               <tr ng-show="task.priority < 0">
-                <td><i class="fa fa-ban"></i></td>
+                <td class="icon"><i class="fa fa-ban"></i></td>
                 <td>Blacklisted</td>
               </tr>
             </table>

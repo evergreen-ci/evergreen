@@ -208,10 +208,12 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		task.MinQueuePos = projCtx.Task.MinQueuePos
 	}
 
+	var taskHost *host.Host
 	if projCtx.Task.HostId != "" {
 		task.HostDNS = projCtx.Task.HostId
 		task.HostId = projCtx.Task.HostId
-		taskHost, err := host.FindOne(host.ById(projCtx.Task.HostId))
+		var err error
+		taskHost, err = host.FindOne(host.ById(projCtx.Task.HostId))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -246,8 +248,9 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		User          *user.DBUser
 		Flashes       []interface{}
 		Task          uiTaskData
+		Host          *host.Host
 		PluginContent pluginData
-	}{projCtx, GetUser(r), flashes, task, pluginContent}, "base",
+	}{projCtx, GetUser(r), flashes, task, taskHost, pluginContent}, "base",
 		"task.html", "base_angular.html", "menu.html")
 }
 

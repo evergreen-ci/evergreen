@@ -30,6 +30,7 @@ type FetchCommand struct {
 	Artifacts bool   `long:"artifacts" description:"fetch artifacts for the task and all its recursive dependents"`
 	Shallow   bool   `long:"shallow" description:"don't recursively download artifacts from dependency tasks"`
 	NoPatch   bool   `long:"no-patch" description:"when using --source with a patch task, skip applying the patch"`
+	Dir       string `long:"dir" description:"root directory to fetch artifacts into. defaults to current working directory"`
 	TaskId    string `short:"t" long:"task" description:"task associated with the data to fetch" required:"true"`
 }
 
@@ -42,9 +43,12 @@ func (fc *FetchCommand) Execute(args []string) error {
 	}
 	notifyUserUpdate(ac)
 
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
+	wd := fc.Dir
+	if len(wd) == 0 {
+		wd, err = os.Getwd()
+		if err != nil {
+			return err
+		}
 	}
 
 	if len(fc.TaskId) == 0 {
@@ -61,7 +65,7 @@ func (fc *FetchCommand) Execute(args []string) error {
 		}
 	}
 	if fc.Artifacts {
-		err = fetchArtifacts(ac, rc, fc.TaskId, fc.Shallow)
+		err = fetchArtifacts(ac, rc, fc.TaskId, wd, fc.Shallow)
 		if err != nil {
 			return err
 		}
@@ -105,19 +109,20 @@ func fetchSource(ac, rc *APIClient, rootPath, taskId string, noPatch bool) error
 		return err
 	}
 
-	cloneDir := util.CleanForPath(fmt.Sprintf("%v-src", task.Project))
+	cloneDir := util.CleanForPath(fmt.Sprintf("source-%v", task.Project))
 	var patch *service.RestPatch
 	if task.Requester == evergreen.PatchVersionRequester {
-		cloneDir = util.CleanForPath(fmt.Sprintf("patch-%v_%v", task.PatchNumber, task.Project))
+		cloneDir = util.CleanForPath(fmt.Sprintf("source-patch-%v_%v", task.PatchNumber, task.Project))
 		patch, err = rc.GetPatch(task.PatchId)
 		if err != nil {
 			return err
 		}
 	} else {
 		if len(task.Revision) >= 5 {
-			cloneDir = util.CleanForPath(fmt.Sprintf("%v-%v", task.Project, task.Revision[0:6]))
+			cloneDir = util.CleanForPath(fmt.Sprintf("source-%v-%v", task.Project, task.Revision[0:6]))
 		}
 	}
+	cloneDir = filepath.Join(rootPath, cloneDir)
 
 	err = cloneSource(task, project, config, cloneDir)
 	if err != nil {
@@ -272,7 +277,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 	return nil
 }
 
-func fetchArtifacts(ac, rc *APIClient, taskId string, shallow bool) error {
+func fetchArtifacts(ac, rc *APIClient, taskId string, rootDir string, shallow bool) error {
 	task, err := rc.GetTask(taskId)
 	if err != nil {
 		return err
@@ -285,11 +290,7 @@ func fetchArtifacts(ac, rc *APIClient, taskId string, shallow bool) error {
 	if err != nil {
 		return err
 	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	err = downloadUrls(wd, urls, 4)
+	err = downloadUrls(rootDir, urls, 4)
 	if err != nil {
 		return err
 	}
@@ -333,13 +334,13 @@ type artifactDownload struct {
 
 func getArtifactFolderName(task *service.RestTask) string {
 	if task.Requester == evergreen.PatchVersionRequester {
-		return fmt.Sprintf("patch-%v_%v_%v", task.PatchNumber, task.BuildVariant, task.DisplayName)
+		return fmt.Sprintf("artifacts-patch-%v_%v_%v", task.PatchNumber, task.BuildVariant, task.DisplayName)
 	}
 
 	if len(task.Revision) >= 5 {
-		return fmt.Sprintf("%v-%v_%v", task.Revision[0:6], task.BuildVariant, task.DisplayName)
+		return fmt.Sprintf("artifacts-%v-%v_%v", task.Revision[0:6], task.BuildVariant, task.DisplayName)
 	}
-	return fmt.Sprintf("%v_%v", task.BuildVariant, task.DisplayName)
+	return fmt.Sprintf("artifacts-%v_%v", task.BuildVariant, task.DisplayName)
 }
 
 // getUrlsChannel takes a seed task, and returns a channel that streams all of the artifacts

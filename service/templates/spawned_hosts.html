@@ -6,6 +6,12 @@
 <script type="text/javascript">
   window.userTz = {{ GetTimezone $.User }};
   window.maxHostsPerUser = {{$.MaxHostsPerUser}}
+  {{if .Task}}
+  window.spawnTask = {{.Task}}
+  {{end}}
+  {{if .Distro}}
+  window.spawnDistro = {{.Distro}}
+  {{end}}
 </script>
 {{end}}
 

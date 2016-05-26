@@ -394,7 +394,7 @@ func (lc *ListCommand) listProjects() error {
 	for _, id := range ids {
 		line := fmt.Sprintf("\t%v\t", id)
 		if len(names[id]) > 0 && names[id] != id {
-			line = line + fmt.Sprintf("(%v)", names[id])
+			line = line + fmt.Sprintf("%v", names[id])
 		}
 		fmt.Fprintln(w, line)
 	}
@@ -481,7 +481,7 @@ func (lc *ListCommand) listVariants() error {
 }
 
 // Performs validation for patch or patch-file
-func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *Settings, ref *model.ProjectRef, err error) {
+func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *model.CLISettings, ref *model.ProjectRef, err error) {
 	ac, _, settings, err = getAPIClients(params.GlobalOpts)
 	if err != nil {
 		return
@@ -494,8 +494,8 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 		if settings.FindDefaultProject() == "" &&
 			!params.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", params.Project), true) {
 			settings.SetDefaultProject(params.Project)
-			if err := settings.Write(params.GlobalOpts); err != nil {
-				fmt.Println("warning - failed to set default project: %v", err)
+			if err := WriteSettings(settings, params.GlobalOpts); err != nil {
+				fmt.Printf("warning - failed to set default project: %v\n", err)
 			}
 		}
 	}
@@ -524,8 +524,8 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?",
 				params.Variants, params.Project), false) {
 			settings.SetDefaultVariants(params.Project, params.Variants...)
-			if err := settings.Write(params.GlobalOpts); err != nil {
-				fmt.Println("warning - failed to set default variants: %v", err)
+			if err := WriteSettings(settings, params.GlobalOpts); err != nil {
+				fmt.Printf("warning - failed to set default variants: %v\n", err)
 			}
 		}
 	}
@@ -544,8 +544,8 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 			confirm(fmt.Sprintf("Set %v as the default tasks for project '%v'?",
 				params.Tasks, params.Project), false) {
 			settings.SetDefaultTasks(params.Project, params.Tasks...)
-			if err := settings.Write(params.GlobalOpts); err != nil {
-				fmt.Println("warning - failed to set default tasks: %v", err)
+			if err := WriteSettings(settings, params.GlobalOpts); err != nil {
+				fmt.Printf("warning - failed to set default tasks: %v\n", err)
 			}
 		}
 	}
@@ -558,7 +558,7 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 }
 
 // Creates a patch using diffData
-func createPatch(params PatchCommandParams, ac *APIClient, settings *Settings, diffData *localDiff) error {
+func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISettings, diffData *localDiff) error {
 	if err := validatePatchSize(diffData, params.Large); err != nil {
 		return err
 	}

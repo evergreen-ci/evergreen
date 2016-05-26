@@ -46,14 +46,14 @@ func (self *SucceedingAgentCompiler) ExecutableSubPath(distroId string) (
 
 func TestAgentBasedHostGateway(t *testing.T) {
 
-	var hostGateway *AgentBasedHostGateway
+	var hostGateway *AgentHostGateway
 
 	Convey("When prepping the remote machine", t, func() {
 
 		Convey("the remote shell should be created, and the config directory"+
 			" and agent binaries should be copied over to it", func() {
 
-			hostGateway = &AgentBasedHostGateway{
+			hostGateway = &AgentHostGateway{
 				Compiler: &SucceedingAgentCompiler{},
 			}
 

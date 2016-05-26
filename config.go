@@ -199,6 +199,7 @@ type Settings struct {
 	ConfigDir           string            `yaml:"configdir"`
 	ApiUrl              string            `yaml:"api_url"`
 	AgentExecutablesDir string            `yaml:"agentexecutablesdir"`
+	ClientBinariesDir   string            `yaml:"client_binaries_dir"`
 	SuperUsers          []string          `yaml:"superusers"`
 	Jira                JiraConfig        `yaml:"jira"`
 	Providers           CloudProviders    `yaml:"providers"`

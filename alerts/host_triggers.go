@@ -59,6 +59,22 @@ func (sthw SpawnTwelveHourWarning) ShouldExecute(ctx triggerContext) (bool, erro
 	return rec == nil, nil
 }
 
+type SpawnFailure struct{}
+
+func (sf SpawnFailure) Id() string { return alertrecord.SpawnFailed }
+
+func (sf SpawnFailure) Display() string {
+	return "Spawn host startup failed."
+}
+
+func (sf SpawnFailure) CreateAlertRecord(ctx triggerContext) *alertrecord.AlertRecord {
+	return nil
+}
+
+func (sf SpawnFailure) ShouldExecute(ctx triggerContext) (bool, error) {
+	return true, nil
+}
+
 type SlowProvisionWarning struct{}
 
 func (sthw SlowProvisionWarning) Id() string { return alertrecord.SlowProvisionWarning }

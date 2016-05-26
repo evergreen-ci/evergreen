@@ -12,10 +12,12 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"gopkg.in/yaml.v2"
 )
 
@@ -24,9 +26,7 @@ const (
 	DefaultExpiration = time.Duration(24 * time.Hour)
 )
 
-var (
-	SpawnLimitErr = errors.New("User is already running the max allowed # of spawn hosts")
-)
+var SpawnLimitErr = errors.New("User is already running the max allowed # of spawn hosts")
 
 // BadOptionsErr represents an in valid set of spawn options.
 type BadOptionsErr struct {
@@ -48,6 +48,7 @@ type Options struct {
 	UserName  string
 	PublicKey string
 	UserData  string
+	TaskId    string
 }
 
 // New returns an initialized Spawn controller.
@@ -126,12 +127,17 @@ func (sm Spawn) Validate(so Options) error {
 }
 
 // CreateHost spawns a host with the given options.
-func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
+func (sm Spawn) CreateHost(so Options, owner *user.DBUser) (*host.Host, error) {
 
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.Distro))
 	if err != nil {
 		return nil, err
+	}
+
+	// fake out replacing spot instances with on-demand equivalents
+	if d.Provider == ec2.SpotProviderName {
+		d.Provider = ec2.OnDemandProviderName
 	}
 
 	// get the appropriate cloud manager
@@ -150,8 +156,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	expireTime := h.CreationTime.Add(DefaultExpiration)
 	err = h.SetExpirationTime(expireTime)
 	if err != nil {
-		return h, evergreen.Logger.Errorf(slogger.ERROR,
-			"error setting expiration on host %v: %v", h.Id, err)
+		return h, evergreen.Logger.Errorf(slogger.ERROR, "error setting expiration on host %v: %v", h.Id, err)
 	}
 
 	// set the user data, if applicable
@@ -164,16 +169,13 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	}
 
 	// create a hostinit to take care of setting up the host
-	init := &hostinit.HostInit{
-		Settings: sm.settings,
-	}
+	init := &hostinit.HostInit{Settings: sm.settings}
 
 	// for making sure the host doesn't take too long to spawn
 	startTime := time.Now()
 
 	// spin until the host is ready for its setup script to be run
 	for {
-
 		// make sure we haven't been spinning for too long
 		if time.Now().Sub(startTime) > 15*time.Minute {
 			if err := h.SetDecommissioned(); err != nil {
@@ -219,8 +221,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	}
 
 	// modify the setup script to add the user's public key
-	h.Distro.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n",
-		so.PublicKey, h.Distro.User)
+	h.Distro.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, h.Distro.User)
 
 	// replace expansions in the script
 	exp := command.NewExpansions(init.Settings.Expansions)
@@ -230,7 +231,7 @@ func (sm Spawn) CreateHost(so Options) (*host.Host, error) {
 	}
 
 	// provision the host
-	err = init.ProvisionHost(h)
+	err = init.ProvisionHost(h, hostinit.ProvisionOptions{true, so.TaskId, owner})
 	if err != nil {
 		return nil, fmt.Errorf("error provisioning host %v: %v", h.Id, err)
 	}

@@ -228,9 +228,21 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
 mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $interval, md5, $filter, $window, $http, $locationHash) {
   $scope.userTz = $window.userTz;
+  $scope.haveUser = $window.have_user;
+  $scope.taskHost = $window.taskHost;
 
   var hash = $locationHash.get();
   $scope.hash = hash;
+
+  $scope.getSpawnLink = function(){
+    if(!$scope.haveUser) { // user is not logged in, so we won't provide a link.
+      return ""
+    }
+    if(!$scope.taskHost || $scope.taskHost.distro.provider == "static" || !$scope.taskHost.distro.spawn_allowed){
+      return ""
+    }
+    return "/spawn?distro_id=" + $scope.taskHost.distro._id + "&task_id=" + $scope.task.id
+  }
 
   $scope.setSortBy = function(order) {
     $scope.sortBy = order;

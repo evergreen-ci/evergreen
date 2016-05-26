@@ -37,7 +37,7 @@ type HostGateway interface {
 
 // Implementation of the HostGateway that builds and copies over the MCI
 // agent to run tasks.
-type AgentBasedHostGateway struct {
+type AgentHostGateway struct {
 	// Destination directory for the agent executables
 	ExecutablesDir string
 	// Internal cache of the agent package's current git hash
@@ -48,11 +48,7 @@ type AgentBasedHostGateway struct {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine.
 // Returns an error if any step along the way fails.
-func (self *AgentBasedHostGateway) RunTaskOnHost(settings *evergreen.Settings,
-	taskToRun task.Task, hostObj host.Host) (string, error) {
-
-	// cache mci home
-	evgHome := evergreen.FindEvergreenHome()
+func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskToRun task.Task, hostObj host.Host) (string, error) {
 
 	// get the host's SSH options
 	cloudHost, err := providers.GetCloudHost(&hostObj, settings)
@@ -66,17 +62,16 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(settings *evergreen.Settings,
 
 	// prep the remote host
 	evergreen.Logger.Logf(slogger.INFO, "Prepping remote host %v...", hostObj.Id)
-	agentRevision, err := self.prepRemoteHost(settings, hostObj, sshOptions, evgHome)
+	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions)
 	if err != nil {
 		return "", fmt.Errorf("error prepping remote host %v: %v", hostObj.Id, err)
 	}
 	evergreen.Logger.Logf(slogger.INFO, "Prepping host %v finished successfully", hostObj.Id)
 
 	// start the agent on the remote machine
-	evergreen.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...",
-		hostObj.Id, taskToRun.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...", hostObj.Id, taskToRun.Id)
 
-	err = self.startAgentOnRemote(settings, &taskToRun, &hostObj, sshOptions)
+	err = startAgentOnRemote(settings.ApiUrl, &taskToRun, &hostObj, sshOptions)
 	if err != nil {
 		return "", err
 	}
@@ -86,9 +81,9 @@ func (self *AgentBasedHostGateway) RunTaskOnHost(settings *evergreen.Settings,
 }
 
 // Gets the git revision of the currently built agent
-func (self *AgentBasedHostGateway) GetAgentRevision() (string, error) {
+func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 
-	versionFile := filepath.Join(self.ExecutablesDir, "version")
+	versionFile := filepath.Join(agbh.ExecutablesDir, "version")
 	hashBytes, err := ioutil.ReadFile(versionFile)
 	if err != nil {
 		return "", fmt.Errorf("error reading agent version file: %v", err)
@@ -123,9 +118,11 @@ func newCappedOutputLog() *util.CappedWriter {
 }
 
 // Prepare the remote machine to run a task.
-func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
-	hostObj host.Host, sshOptions []string, mciHome string) (string, error) {
-
+// This consists of:
+// 1. Creating the directories on the remote host where, according to the distro's settings,
+//    the agent should be placed.
+// 2. Copying the agent into that directory.
+func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []string) (string, error) {
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
@@ -147,10 +144,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	evergreen.Logger.Logf(slogger.INFO, "Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
-	err = util.RunFunctionWithTimeout(
-		makeShellCmd.Run,
-		MakeShellTimeout,
-	)
+	err = util.RunFunctionWithTimeout(makeShellCmd.Run, MakeShellTimeout)
 	if err != nil {
 		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
@@ -161,33 +155,6 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 			"error creating directories on remote machine (%v): %v", err, mkdirOutput.String())
 	}
 
-	scpOutput := newCappedOutputLog()
-	scpConfigsCmd := &command.ScpCommand{
-		Source:         filepath.Join(mciHome, settings.ConfigDir),
-		Dest:           hostObj.Distro.WorkDir,
-		Stdout:         scpOutput,
-		Stderr:         scpOutput,
-		RemoteHostName: hostInfo.Hostname,
-		User:           hostObj.User,
-		Options: append([]string{"-P", hostInfo.Port, "-r"},
-			sshOptions...),
-	}
-
-	// run the command to scp the configs with a timeout
-	err = util.RunFunctionWithTimeout(
-		scpConfigsCmd.Run,
-		SCPTimeout,
-	)
-	if err != nil {
-		// if it timed out, kill the scp command
-		if err == util.ErrTimedOut {
-			scpConfigsCmd.Stop()
-			return "", fmt.Errorf("scp-ing config directory timed out: %v", scpOutput.String())
-		}
-		return "", fmt.Errorf(
-			"error copying config directory to remote: machine (%v): %v", err, scpOutput.String())
-	}
-
 	// third, copy over the correct agent binary to the remote machine
 	execSubPath, err := executableSubPath(hostObj.Distro.Id)
 	if err != nil {
@@ -196,7 +163,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 
 	scpAgentOutput := newCappedOutputLog()
 	scpAgentCmd := &command.ScpCommand{
-		Source:         filepath.Join(self.ExecutablesDir, execSubPath),
+		Source:         filepath.Join(agbh.ExecutablesDir, execSubPath),
 		Dest:           hostObj.Distro.WorkDir,
 		Stdout:         scpAgentOutput,
 		Stderr:         scpAgentOutput,
@@ -206,17 +173,14 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	}
 
 	// get the agent's revision before scp'ing over the executable
-	preSCPAgentRevision, err := self.GetAgentRevision()
+	preSCPAgentRevision, err := agbh.GetAgentRevision()
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error getting pre scp agent "+
 			"revision: %v", err)
 	}
 
 	// run the command to scp the agent with a timeout
-	err = util.RunFunctionWithTimeout(
-		scpAgentCmd.Run,
-		SCPTimeout,
-	)
+	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
 	if err != nil {
 		if err == util.ErrTimedOut {
 			scpAgentCmd.Stop()
@@ -227,7 +191,7 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	}
 
 	// get the agent's revision after scp'ing over the executable
-	postSCPAgentRevision, err := self.GetAgentRevision()
+	postSCPAgentRevision, err := agbh.GetAgentRevision()
 	if err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error getting post scp agent "+
 			"revision: %v", err)
@@ -243,21 +207,16 @@ func (self *AgentBasedHostGateway) prepRemoteHost(settings *evergreen.Settings,
 	return preSCPAgentRevision, nil
 }
 
-// Start the agent process on the specified remote host, and have it run
-// the specified task.
-// Returns an error if starting the agent remotely fails.
-func (self *AgentBasedHostGateway) startAgentOnRemote(
-	settings *evergreen.Settings, task *task.Task,
-	hostObj *host.Host, sshOptions []string) error {
-
+// Start the agent process on the specified remote host, and have it run the specified task.
+func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "main")
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
 		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -log_prefix "%v" -https_cert "%v" -pid_file "%v"`,
-		pathToExecutable, settings.ApiUrl, task.Id, task.Secret, filepath.Join(hostObj.Distro.WorkDir,
-			agentFile), settings.Expansions["api_httpscert_path"], filepath.Join(hostObj.Distro.WorkDir, pidFile),
+		pathToExecutable, apiURL, task.Id, task.Secret, filepath.Join(hostObj.Distro.WorkDir,
+			agentFile), "", filepath.Join(hostObj.Distro.WorkDir, pidFile),
 	)
 	evergreen.Logger.Logf(slogger.INFO, "%v", remoteCmd)
 

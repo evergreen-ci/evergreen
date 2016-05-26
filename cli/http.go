@@ -48,7 +48,7 @@ func NewAPIError(resp *http.Response) APIError {
 
 // getAPIClients loads and returns user settings along with two APIClients: one configured for the API
 // server endpoints, and another for the REST api.
-func getAPIClients(o *Options) (*APIClient, *APIClient, *Settings, error) {
+func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, error) {
 	settings, err := LoadSettings(o)
 	if err != nil {
 		return nil, nil, nil, err

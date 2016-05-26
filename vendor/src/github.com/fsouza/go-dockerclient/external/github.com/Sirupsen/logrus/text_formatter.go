@@ -25,7 +25,7 @@ var (
 
 func init() {
 	baseTimestamp = time.Now()
-	isTerminal = IsTerminal()
+	isTerminal = false
 }
 
 func miniTS() int {

@@ -82,7 +82,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(projectRef.Insert(), ShouldBeNil)
 
 	// create a settings file for the command line client
-	settings := Settings{
+	settings := model.CLISettings{
 		APIServerHost: testServer.URL + "/api",
 		UIServerHost:  "http://dev-evg.mongodb.com",
 		APIKey:        "testapikey",
@@ -102,7 +102,7 @@ func TestCLIFetchSource(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	Convey("with a task containing patches and modules", t, func() {
 		testSetup := setupCLITestHarness()
-		err := os.RemoveAll("patch-1_sample")
+		err := os.RemoveAll("source-patch-1_sample")
 		So(err, ShouldBeNil)
 
 		// first, create a patch
@@ -137,13 +137,13 @@ func TestCLIFetchSource(t *testing.T) {
 		err = fetchSource(ac, rc, "", testTask.Id, false)
 		So(err, ShouldBeNil)
 
-		fileStat, err := os.Stat("./patch-1_sample/README.md")
+		fileStat, err := os.Stat("./source-patch-1_sample/README.md")
 		So(err, ShouldBeNil)
 		// If patch was applied correctly, README.md will have a non-zero size
 		So(fileStat.Size, ShouldNotEqual, 0)
 		// If module was fetched, "render" directory should have been created.
 		// The "blah.md" file should have been created if the patch was applied successfully.
-		fileStat, err = os.Stat("./patch-1_sample/modules/render-module/blah.md")
+		fileStat, err = os.Stat("./source-patch-1_sample/modules/render-module/blah.md")
 		So(err, ShouldBeNil)
 		So(fileStat.Size, ShouldNotEqual, 0)
 
@@ -155,9 +155,9 @@ func TestCLIFetchArtifacts(t *testing.T) {
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
 
-		err := os.RemoveAll("abcdef-rest_task_variant_task_one")
+		err := os.RemoveAll("artifacts-abcdef-rest_task_variant_task_one")
 		So(err, ShouldBeNil)
-		err = os.RemoveAll("abcdef-rest_task_variant_task_two")
+		err = os.RemoveAll("artifacts-abcdef-rest_task_variant_task_two")
 		So(err, ShouldBeNil)
 
 		err = (&task.Task{
@@ -195,19 +195,19 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
-			err = fetchArtifacts(ac, rc, "rest_task_test_id1", true)
+			err = fetchArtifacts(ac, rc, "rest_task_test_id1", "", true)
 			So(err, ShouldBeNil)
 			// downloaded file should exist where we expect
-			fileStat, err := os.Stat("./abcdef-rest_task_variant_task_one/robots.txt")
+			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
 			So(err, ShouldBeNil)
 			So(fileStat.Size(), ShouldBeGreaterThan, 0)
 
 			fileStat, err = os.Stat("./rest_task_variant_task_two/humans.txt")
 			So(os.IsNotExist(err), ShouldBeTrue)
 			Convey("deep fetch artifacts should also download artifacts from dependency", func() {
-				err = fetchArtifacts(ac, rc, "rest_task_test_id1", false)
+				err = fetchArtifacts(ac, rc, "rest_task_test_id1", "", false)
 				So(err, ShouldBeNil)
-				fileStat, err = os.Stat("./abcdef-rest_task_variant_task_two/humans.txt")
+				fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
 				So(os.IsNotExist(err), ShouldBeFalse)
 			})
 		})
