@@ -140,7 +140,8 @@ func (vp *VanillaParser) handleEnd(line string, rgx *regexp.Regexp) error {
 	}
 	t := vp.tests[name]
 	if t.Name == "" {
-		return fmt.Errorf("found exit for test without start line: %v", line)
+		// if there's no existing test, just stub one out
+		t = vp.newTestResult(name)
 	}
 	t.Status = status
 	t.RunTime = duration
@@ -155,12 +156,18 @@ func (vp *VanillaParser) handleStart(line string, rgx *regexp.Regexp) error {
 	if err != nil {
 		return fmt.Errorf("error parsing start line '%v': %v", line, err)
 	}
-	vp.tests[name] = TestResult{
+	vp.tests[name] = vp.newTestResult(name)
+	return nil
+}
+
+// newTestResult populates a test result type with the given
+// test name, current suite, and current line number.
+func (vp *VanillaParser) newTestResult(name string) TestResult {
+	return TestResult{
 		Name:      name,
 		SuiteName: vp.Suite,
 		StartLine: len(vp.logs),
 	}
-	return nil
 }
 
 // startInfoFromLogLine gets the test name from a log line

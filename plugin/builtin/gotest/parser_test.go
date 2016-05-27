@@ -71,12 +71,12 @@ func TestParserFunctionality(t *testing.T) {
 
 			Convey("and logs should be the correct length", func() {
 				logs := parser.Logs()
-				So(len(logs), ShouldEqual, 17)
+				So(len(logs), ShouldEqual, 18)
 			})
 
 			Convey("and there should be one test result", func() {
 				results := parser.Results()
-				So(len(results), ShouldEqual, 1)
+				So(len(results), ShouldEqual, 2)
 
 				Convey("with the proper fields matching the original log file", func() {
 					So(results[0].Name, ShouldEqual, "TestFailures")
@@ -86,6 +86,13 @@ func TestParserFunctionality(t *testing.T) {
 					So(results[0].StartLine, ShouldEqual, 1)
 					So(results[0].EndLine, ShouldEqual, 14)
 					So(results[0].SuiteName, ShouldEqual, "test")
+					So(results[1].Name, ShouldEqual, "TestFailures2")
+					So(results[1].Status, ShouldEqual, FAIL)
+					rTime, _ = time.ParseDuration("2.00s")
+					So(results[1].RunTime, ShouldEqual, rTime)
+					So(results[1].StartLine, ShouldEqual, 15)
+					So(results[1].EndLine, ShouldEqual, 15)
+					So(results[1].SuiteName, ShouldEqual, "test")
 				})
 			})
 		})
