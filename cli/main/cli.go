@@ -22,6 +22,7 @@ func main() {
 	parser.AddCommand("cancel-patch", "cancel an existing patch", "", &cli.CancelPatchCommand{GlobalOpts: &opts})
 	parser.AddCommand("finalize-patch", "finalize an existing patch", "", &cli.FinalizePatchCommand{GlobalOpts: &opts})
 	parser.AddCommand("list", "list available projects, tasks, or variants", "", &cli.ListCommand{GlobalOpts: &opts})
+	parser.AddCommand("last-green", "return a project's most recent successful version for given variants", "", &cli.LastGreenCommand{GlobalOpts: &opts})
 	parser.AddCommand("validate", "validate a config file", "", &cli.ValidateCommand{GlobalOpts: &opts})
 	parser.AddCommand("evaluate", "display a project file's evaluated and expanded form", "", &cli.EvaluateCommand{})
 	parser.AddCommand("fetch", "fetch data associated with a task", "", &cli.FetchCommand{GlobalOpts: &opts})

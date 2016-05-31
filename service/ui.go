@@ -130,7 +130,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// Build page
 	r.HandleFunc("/build/{build_id}", uis.loadCtx(uis.buildPage)).Methods("GET")
 	r.HandleFunc("/builds/{build_id}", requireLogin(uis.loadCtx(uis.modifyBuild))).Methods("PUT")
-	r.HandleFunc("/json/last_green/{project_id}", uis.loadCtx(uis.lastGreenHandler)).Methods("GET")
 	r.HandleFunc("/json/build_history/{build_id}", uis.loadCtx(uis.buildHistory)).Methods("GET")
 
 	// Version page

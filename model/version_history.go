@@ -18,7 +18,7 @@ const (
 
 // Given a project name and a list of build variants, return the latest version
 // on which all the given build variants succeeded. Gives up after 100 versions.
-func FindLastPassingVersionForBuildVariants(project Project, buildVariantNames []string) (*version.Version, error) {
+func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames []string) (*version.Version, error) {
 	if len(buildVariantNames) == 0 {
 		return nil, fmt.Errorf("No build variants specified!")
 	}

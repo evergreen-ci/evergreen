@@ -7,6 +7,7 @@ Evergreen REST API v1
   - [Retrieve a list of active projects](#retrieve-a-list-of-active-projects)
   - [Retrieve info on a particular project](#retrieve-info-on-a-particular-project)
   - [Retrieve the most recent revisions for a particular project](#retrieve-the-most-recent-revisions-for-a-particular-project)
+  - [Retrieve a version with passing builds](#retrieve-a-version-with-passing-builds)
   - [Retrieve info on a particular version](#retrieve-info-on-a-particular-version)
   - [Retrieve info on a particular version by its revision](#retrieve-info-on-a-particular-version-by-its-revision)
   - [Activate a particular version](#activate-a-particular-version)
@@ -128,6 +129,29 @@ _Note that you must use API credentials to see private projects._
   ]
 }
 ```
+
+#### Retrieve a version with passing builds
+
+    GET /rest/v1/projects/{project_id}/last_green?{variants}
+
+##### Parameters
+
+This endpoint requires a query string listing the variants the user would like to ensure are passing.
+Each variant is provided as a separate field (field values are not required: `?rhel55&osx-1010` is equivalent to `?rhel55=1&osx-1010=1`).
+
+At least one variant is required.
+
+##### Request
+
+    curl https://localhost:9090/rest/v1/projects/mongodb-mongo-master/last_green?rhel55=1&rhel62=1
+
+##### Response
+
+The project's most recent version for which the variants provided in the query string are completely successful (i.e. "green").
+The response contains the [entire version document](#retrieve-info-on-a-particular-version).
+
+
+
 
 #### Retrieve info on a particular version by its revision
 

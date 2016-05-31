@@ -189,44 +189,6 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	uis.WriteJSON(w, http.StatusOK, updatedBuild)
 }
 
-func (uis *UIServer) lastGreenHandler(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
-	// queryParams should list build variants, example:
-	// GET /ui/json/last_green/mongodb-mongo-master?linux-64=1&windows-64=1
-	queryParams := r.URL.Query()
-
-	if projCtx.Project == nil {
-		http.Error(w, "project not found", http.StatusNotFound)
-		return
-	}
-
-	// Make sure all query params are valid build variants and put them in an array
-	var buildVariantNames []string
-	for key := range queryParams {
-		if projCtx.Project.FindBuildVariant(key) != nil {
-			buildVariantNames = append(buildVariantNames, key)
-		} else {
-			http.Error(w, "build variant not found", http.StatusNotFound)
-			return
-		}
-	}
-
-	// Get latest version for which all the given build variants passed.
-	version, err := model.FindLastPassingVersionForBuildVariants(*projCtx.Project,
-		buildVariantNames)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-	if version == nil {
-		http.Error(w, "Couldn't find latest green version", http.StatusNotFound)
-		return
-	}
-
-	uis.WriteJSON(w, http.StatusOK, version)
-}
-
 func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 	buildId := mux.Vars(r)["build_id"]
 

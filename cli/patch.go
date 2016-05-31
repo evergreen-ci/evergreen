@@ -14,6 +14,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 )
@@ -38,6 +39,14 @@ var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
 	{{end}}
 {{end}}
 {{end}}
+`))
+
+// lastGreenTemplate helps return readable information for the last-green command.
+var lastGreenTemplate = template.Must(template.New("last_green").Parse(`
+   Revision : {{.Version.Revision}}
+    Message : {{.Version.Message}}
+       Link : {{.UIURL}}/version/{{.Version.Id}}
+
 `))
 
 var defaultPatchesReturned = 5
@@ -115,6 +124,13 @@ type PatchCommandParams struct {
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
 	Large       bool     `long:"large" description:"enable submitting larger patches (>16MB)"`
+}
+
+// LastGreenCommand contains parameters for the finding a project's most recent passing version.
+type LastGreenCommand struct {
+	GlobalOpts *Options `no-flag:"true"`
+	Project    string   `short:"p" long:"project" description:"project to search" required:"true"`
+	Variants   []string `short:"v" long:"variants" description:"variant that must be passing" required:"true"`
 }
 
 // SetModuleCommand adds or updates a module in an existing patch.
@@ -315,6 +331,22 @@ func (fpc *FinalizePatchCommand) Execute(args []string) error {
 	}
 	fmt.Println("Patch finalized.")
 	return nil
+}
+
+func (lgc *LastGreenCommand) Execute(args []string) error {
+	ac, rc, settings, err := getAPIClients(lgc.GlobalOpts)
+	if err != nil {
+		return err
+	}
+	notifyUserUpdate(ac)
+	v, err := rc.GetLastGreen(lgc.Project, lgc.Variants)
+	if err != nil {
+		return err
+	}
+	return lastGreenTemplate.Execute(os.Stdout, struct {
+		Version *version.Version
+		UIURL   string
+	}{v, settings.UIServerHost})
 }
 
 func (lc *ListCommand) Execute(args []string) error {

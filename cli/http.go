@@ -8,10 +8,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -219,6 +221,27 @@ func (ac *APIClient) GetConfig(versionId string) (*model.Project, error) {
 		return nil, err
 	}
 	return ref, nil
+}
+
+// GetLastGreen returns the most recent successful version for the given project and variants.
+func (ac *APIClient) GetLastGreen(project string, variants []string) (*version.Version, error) {
+	qs := []string{}
+	for _, v := range variants {
+		qs = append(qs, url.QueryEscape(v))
+	}
+	q := strings.Join(qs, "&")
+	resp, err := ac.get(fmt.Sprintf("/projects/%v/last_green?%v", project, q), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	v := &version.Version{}
+	if err := util.ReadJSONInto(resp.Body, v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // DeletePatchModule makes a request to the API server to delete the given module from a patch

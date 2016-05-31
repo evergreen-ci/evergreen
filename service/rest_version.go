@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
@@ -438,4 +439,44 @@ func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.Response
 	restapi.WriteJSON(w, http.StatusOK, result)
 	return
 
+}
+
+// lastGreen returns the most recent version for which the supplied variants completely pass.
+func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveRESTContext(r)
+	p := projCtx.Project
+	if p == nil {
+		http.Error(w, "project not found", http.StatusNotFound)
+		return
+	}
+
+	// queryParams should list build variants, example:
+	// GET /rest/v1/projects/mongodb-mongo-master/last_green?linux-64=1&windows-64=1
+	queryParams := r.URL.Query()
+
+	// Make sure all query params are valid variants and put them in an array
+	var bvs []string
+	for key := range queryParams {
+		if p.FindBuildVariant(key) != nil {
+			bvs = append(bvs, key)
+		} else {
+			msg := fmt.Sprintf("build variant '%v' does not exit", key)
+			http.Error(w, msg, http.StatusNotFound)
+			return
+		}
+	}
+
+	// Get latest version for which all the given build variants passed.
+	version, err := model.FindLastPassingVersionForBuildVariants(p, bvs)
+	if err != nil {
+		ra.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if version == nil {
+		msg := fmt.Sprintf("Couldn't find latest green version for %v", strings.Join(bvs, ", "))
+		http.Error(w, msg, http.StatusNotFound)
+		return
+	}
+
+	ra.WriteJSON(w, http.StatusOK, version)
 }
