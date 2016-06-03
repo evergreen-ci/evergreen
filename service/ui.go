@@ -66,6 +66,9 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 	uis.UserManager = userManager
 
 	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
+
+	uis.PluginTemplates = map[string]*htmlTemplate.Template{}
+
 	return uis, nil
 }
 
