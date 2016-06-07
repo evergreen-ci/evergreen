@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -80,53 +79,11 @@ func taskSelectorShouldEval(tse *taskSelectorEvaluator, s string, expected []str
 	})
 }
 
-func taskSelectorTaskEval(tse *taskSelectorEvaluator, bvts, expected []BuildVariantTask) {
-	Convey(fmt.Sprintf(`tasks %v should evaluate properly`, bvts), func() {
-		tasks, err := tse.EvaluateTasks(bvts)
-		if expected != nil {
-			So(err, ShouldBeNil)
-		} else {
-			So(err, ShouldNotBeNil)
-		}
-		So(len(tasks), ShouldEqual, len(expected))
-		for _, e := range expected {
-			exists := false
-			for _, t := range tasks {
-				if t.Name == e.Name && t.Priority == e.Priority && len(t.DependsOn) == len(e.DependsOn) {
-					exists = true
-				}
-			}
-			So(exists, ShouldBeTrue)
-		}
-	})
-}
-
-func taskSelectorDepEval(tse *taskSelectorEvaluator, deps, expected []TaskDependency) {
-	Convey(fmt.Sprintf(`dependencies %v should evaluate properly`, deps), func() {
-		tasks, err := tse.EvaluateDeps(deps)
-		if expected != nil {
-			So(err, ShouldBeNil)
-		} else {
-			So(err, ShouldNotBeNil)
-		}
-		So(len(tasks), ShouldEqual, len(expected))
-		for _, e := range expected {
-			exists := false
-			for _, t := range tasks {
-				if reflect.DeepEqual(t, e) {
-					exists = true
-				}
-			}
-			So(exists, ShouldBeTrue)
-		}
-	})
-}
-
 func TestTaskSelectorEvaluation(t *testing.T) {
 	var tse *taskSelectorEvaluator
 
 	Convey("With a colorful set of ProjectTasks", t, func() {
-		taskDefs := []ProjectTask{
+		taskDefs := []parserTask{
 			{Name: "red", Tags: []string{"primary", "warm"}},
 			{Name: "orange", Tags: []string{"secondary", "warm"}},
 			{Name: "yellow", Tags: []string{"primary", "warm"}},
@@ -139,7 +96,7 @@ func TestTaskSelectorEvaluation(t *testing.T) {
 		}
 
 		Convey("a taskSelectorEvaluator", func() {
-			tse = NewTaskSelectorEvaluator(taskDefs)
+			tse = NewParserTaskSelectorEvaluator(taskDefs)
 
 			Convey("should evaluate single name selectors properly", func() {
 				taskSelectorShouldEval(tse, "red", []string{"red"})
@@ -208,97 +165,6 @@ func TestTaskSelectorEvaluation(t *testing.T) {
 					So(err, ShouldNotBeNil)
 				})
 			})
-
-			Convey("should evaluate valid tasks pointers properly", func() {
-				taskSelectorTaskEval(tse,
-					[]BuildVariantTask{{Name: "white"}},
-					[]BuildVariantTask{{Name: "white"}})
-				taskSelectorTaskEval(tse,
-					[]BuildVariantTask{{Name: "red", Priority: 500}, {Name: ".secondary"}},
-					[]BuildVariantTask{{Name: "red", Priority: 500}, {Name: "orange"}, {Name: "purple"}, {Name: "green"}})
-				taskSelectorTaskEval(tse,
-					[]BuildVariantTask{
-						{Name: "orange", Distros: []string{"d1"}},
-						{Name: ".warm .secondary", Distros: []string{"d1"}}},
-					[]BuildVariantTask{{Name: "orange", Distros: []string{"d1"}}})
-				taskSelectorTaskEval(tse,
-					[]BuildVariantTask{
-						{Name: "orange", Distros: []string{"d1"}},
-						{Name: "!.warm .secondary", Distros: []string{"d1"}}},
-					[]BuildVariantTask{
-						{Name: "orange", Distros: []string{"d1"}},
-						{Name: "purple", Distros: []string{"d1"}},
-						{Name: "green", Distros: []string{"d1"}}})
-				taskSelectorTaskEval(tse,
-					[]BuildVariantTask{{Name: "*"}},
-					[]BuildVariantTask{
-						{Name: "red"}, {Name: "blue"}, {Name: "yellow"},
-						{Name: "orange"}, {Name: "purple"}, {Name: "green"},
-						{Name: "brown"}, {Name: "white"}, {Name: "black"},
-					})
-				taskSelectorDepEval(tse,
-					[]TaskDependency{
-						{Name: "orange", Variant: "v1"},
-						{Name: "!.warm .secondary", Variant: "v1"}},
-					[]TaskDependency{
-						{Name: "orange", Variant: "v1"},
-						{Name: "purple", Variant: "v1"},
-						{Name: "green", Variant: "v1"}})
-				taskSelectorDepEval(tse,
-					[]TaskDependency{
-						{Name: "orange", Status: "*"},
-						{Name: "!.warm .secondary", Status: "*"}},
-					[]TaskDependency{
-						{Name: "orange", Status: "*"},
-						{Name: "purple", Status: "*"},
-						{Name: "green", Status: "*"}})
-				taskSelectorDepEval(tse,
-					[]TaskDependency{{Name: "*"}},
-					[]TaskDependency{{Name: "*"}})
-			})
-			Convey("should fail on  invalid tasks pointers like", func() {
-				Convey("tasks and tags that do not exist", func() {
-					_, err := tse.EvaluateTasks([]BuildVariantTask{{Name: "magenta"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateDeps([]TaskDependency{{Name: "magenta"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateTasks([]BuildVariantTask{{Name: "!magenta"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateTasks([]BuildVariantTask{{Name: ".invisible"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateTasks([]BuildVariantTask{{Name: "!.invisible"}})
-					So(err, ShouldNotBeNil)
-				})
-				Convey("empty results", func() {
-					_, err := tse.EvaluateTasks([]BuildVariantTask{{Name: ".warm .cool"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateDeps([]TaskDependency{{Name: ".warm .cool"}})
-					So(err, ShouldNotBeNil)
-				})
-				Convey("conflicting definitions", func() {
-					_, err := tse.EvaluateTasks([]BuildVariantTask{
-						{Name: "orange", Distros: []string{"d1"}},
-						{Name: ".warm .secondary", Distros: []string{"d2"}}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateTasks([]BuildVariantTask{
-						{Name: "orange", Distros: []string{"d1"}},
-						{Name: ".warm .secondary"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateDeps([]TaskDependency{
-						{Name: "orange", Variant: "woop", Status: "*"},
-						{Name: ".warm .secondary", Variant: "woop"}})
-					So(err, ShouldNotBeNil)
-				})
-				Convey("bad selectors", func() {
-					_, err := tse.EvaluateTasks([]BuildVariantTask{{Name: "ora!ge"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateTasks([]BuildVariantTask{{Name: "purp.e"}})
-					So(err, ShouldNotBeNil)
-					_, err = tse.EvaluateTasks([]BuildVariantTask{{Name: ""}})
-					So(err, ShouldNotBeNil)
-				})
-			})
-
 		})
 	})
 }

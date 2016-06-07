@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	ignore "github.com/sabhiram/go-git-ignore"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -515,25 +514,6 @@ func (p *Project) GetVariantsWithTask(taskName string) []string {
 	return variantsList
 }
 
-// EvaluateTags replaces all tag selectors with actual tasks objects that
-// can be used by the rest of Evergreen's code.
-func (p *Project) EvaluateTags() (err error) {
-	tse := NewTaskSelectorEvaluator(p.Tasks)
-	for i, bv := range p.BuildVariants {
-		p.BuildVariants[i].Tasks, err = tse.EvaluateTasks(bv.Tasks)
-		if err != nil {
-			return fmt.Errorf("error evaluating tags on variant '%v': %v", bv.Name, err)
-		}
-	}
-	for i, t := range p.Tasks {
-		p.Tasks[i].DependsOn, err = tse.EvaluateDeps(t.DependsOn)
-		if err != nil {
-			return fmt.Errorf("error evaluating dependency tags on task '%v': %v", t.Name, err)
-		}
-	}
-	return nil
-}
-
 // RunOnVariant returns true if the plugin command should run on variant; returns false otherwise
 func (p PluginCommandConf) RunOnVariant(variant string) bool {
 	return len(p.Variants) == 0 || util.SliceContains(p.Variants, variant)
@@ -629,20 +609,6 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		}
 	}
 	return project, nil
-}
-
-// LoadProjectInto loads the raw data from the config file into project
-// and sets the project's identifier field to identifier. Tags are expanded.
-func LoadProjectInto(data []byte, identifier string, project *Project) error {
-	if err := yaml.Unmarshal(data, project); err != nil {
-		return fmt.Errorf("parse error unmarshalling project: %v", err)
-	}
-	// expand task definitions
-	if err := project.EvaluateTags(); err != nil {
-		return fmt.Errorf("error evaluating project tags: %v", err)
-	}
-	project.Identifier = identifier
-	return nil
 }
 
 func (p *Project) FindTaskForVariant(task, variant string) *BuildVariantTask {

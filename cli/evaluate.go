@@ -25,14 +25,9 @@ func (ec *EvaluateCommand) Execute(args []string) error {
 	}
 
 	p := &model.Project{}
-	err = yaml.Unmarshal(configBytes, p)
+	err = model.LoadProjectInto(configBytes, "", p)
 	if err != nil {
-		return fmt.Errorf("error parsing project YAML: %v", err)
-	}
-
-	err = p.EvaluateTags()
-	if err != nil {
-		return err
+		return fmt.Errorf("error loading project: %v", err)
 	}
 
 	var out interface{}

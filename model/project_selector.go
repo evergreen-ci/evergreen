@@ -3,7 +3,6 @@ package model
 import (
 	"bytes"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/util"
@@ -129,111 +128,28 @@ type taskSelectorEvaluator struct {
 	byTag  map[string][]*ProjectTask
 }
 
-// NewTaskSelectorEvaluator returns a new taskSelectorEvaluator.
-func NewTaskSelectorEvaluator(tasks []ProjectTask) *taskSelectorEvaluator {
+// NewParserTaskSelectorEvaluator returns a new taskSelectorEvaluator.
+func NewParserTaskSelectorEvaluator(tasks []parserTask) *taskSelectorEvaluator {
 	// cache everything
 	byName := map[string]*ProjectTask{}
 	byTag := map[string][]*ProjectTask{}
-	for i, t := range tasks {
-		byName[t.Name] = &tasks[i]
+	ts := []ProjectTask{}
+	for _, t := range tasks {
+		info := ProjectTask{
+			Name: t.Name,
+			Tags: t.Tags,
+		}
+		ts = append(ts, info)
+		byName[t.Name] = &info
 		for _, tag := range t.Tags {
-			byTag[tag] = append(byTag[tag], &tasks[i])
+			byTag[tag] = append(byTag[tag], &info)
 		}
 	}
 	return &taskSelectorEvaluator{
-		tasks:  tasks,
+		tasks:  ts,
 		byName: byName,
 		byTag:  byTag,
 	}
-}
-
-// EvaluateTasks expands the selectors in the given BuildVariantTask definitions, removing duplicates.
-func (tse *taskSelectorEvaluator) EvaluateTasks(bvTasks []BuildVariantTask) ([]BuildVariantTask, error) {
-	// Evaluate all selectors while merging, avoiding duplicates. We use a slice
-	// along a map so that we can maintain some basic ordering for better UX.
-	newTasks := []BuildVariantTask{}
-	newTasksByName := map[string]BuildVariantTask{}
-	// TODO accumulate a list of validation errors for each bvt
-	// once the validator package is broken up
-	for _, bvt := range bvTasks {
-		if bvt.Name == "" {
-			return nil, fmt.Errorf("task has empty name")
-		}
-		names, err := tse.evalSelector(ParseSelector(bvt.Name))
-		if err != nil {
-			return nil, err
-		}
-		// create new BuildVariantTask definitions, throwing away duplicates
-		for _, name := range names {
-			// create a newTask by copying the BuildVariantTask that selected it,
-			// so we can preserve the other fields (Distros, Priority, etc).
-			newTask := bvt
-			newTask.Name = name
-			// dive into the variant-specific task dependencies
-			newTask.DependsOn, err = tse.EvaluateDeps(newTask.DependsOn)
-			if err != nil {
-				return nil, fmt.Errorf("error expanding dependency for task '%v': %v", name, err)
-			}
-			// add the new task if it doesn't already exists (we must avoid duplicates)
-			if oldTask, ok := newTasksByName[name]; !ok {
-				// not a duplicate--add it!
-				newTasks = append(newTasks, newTask)
-				newTasksByName[name] = newTask
-			} else {
-				// task already in the new list, so we check to make sure the definitions match.
-				if !reflect.DeepEqual(newTask, oldTask) {
-					return nil, fmt.Errorf(
-						"conflicting definitions of task '%v': %v != %v", name, newTask, oldTask)
-				}
-			}
-		}
-	}
-	return newTasks, nil
-}
-
-// EvaluateDeps expands selectors in the given dependency definitions.
-func (tse *taskSelectorEvaluator) EvaluateDeps(deps []TaskDependency) ([]TaskDependency, error) {
-	// This is almost an exact copy of EvaluateTasks.
-	newDeps := []TaskDependency{}
-	newDepsByNameAndVariant := map[TVPair]TaskDependency{}
-
-	// TODO accumulate a list of validation errors for each dep
-	// once the validator package is broken up
-	for _, d := range deps {
-		// * is a special case for dependencies //TODO--should it be?
-		if d.Name == AllDependencies {
-			newDeps = append(newDeps, d)
-			newDepsByNameAndVariant[TVPair{d.Variant, d.Name}] = d
-			continue
-		}
-		if d.Name == "" {
-			return nil, fmt.Errorf("dependency has empty name")
-		}
-		names, err := tse.evalSelector(ParseSelector(d.Name))
-		if err != nil {
-			return nil, err
-		}
-		// create new dependency definitions--duplicates must have the same status requirements
-		for _, name := range names {
-			// create a newDep by copying the dep that selected it,
-			// so we can preserve the "Variant" and "Status" field.
-			newDep := d
-			newDep.Name = name
-			// add the new dep if it doesn't already exists (we must avoid conflicting status fields)
-			if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {
-				// not a duplicate--add it!
-				newDeps = append(newDeps, newDep)
-				newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}] = newDep
-			} else {
-				// it's already in the new list, so we check to make sure the status definitions match.
-				if !reflect.DeepEqual(newDep, oldDep) {
-					return nil, fmt.Errorf(
-						"conflicting definitions of dependency '%v': %v != %v", name, newDep, oldDep)
-				}
-			}
-		}
-	}
-	return newDeps, nil
 }
 
 // evalSelector returns all task names that fulfil a selector. This is done
