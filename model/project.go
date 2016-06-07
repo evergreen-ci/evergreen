@@ -391,9 +391,6 @@ func NewTaskIdTable(p *Project, v *version.Version) TaskIdTable {
 	// init the variant map
 	table := TaskIdTable{}
 	for _, bv := range p.BuildVariants {
-		if bv.Disabled {
-			continue
-		}
 		for _, t := range bv.Tasks {
 			// create a unique Id for each task
 			taskId := util.CleanName(
@@ -418,9 +415,6 @@ func NewPatchTaskIdTable(proj *Project, v *version.Version, patchConfig TVPairSe
 		// we must track the project's variants definitions as well,
 		// so that we don't create Ids for variants that don't exist.
 		projBV := proj.FindBuildVariant(vt.Variant)
-		if projBV.Disabled {
-			continue
-		}
 		taskNamesForVariant := patchConfig.TaskNames(vt.Variant)
 		for _, t := range projBV.Tasks {
 			// create Ids for each task that can run on the variant and is requested by the patch.
