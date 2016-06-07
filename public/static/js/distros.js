@@ -352,7 +352,7 @@ mciModule.directive('removeDistro', function() {
     template: '<div class="row">' +
       ' <div class="col-lg-12">' +
       '   <div>' +
-      '     Are you sure you want to remove this distro?' +
+      '     Are you sure you want to remove [[activeDistro._id]]?' +
       '     <div style="float:right">' +
       '       <button type="button" class="btn btn-danger" style="float: right;" data-dismiss="modal">Cancel</button>' +
       '       <button type="button" class="btn btn-primary" style="float: right; margin-right: 10px;" ng-click="removeConfiguration()">Yes</button>' +
