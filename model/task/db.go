@@ -60,6 +60,7 @@ var (
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
 	TestResultTestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
 	TestResultURLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
+	TestResultURLRawKey    = bsonutil.MustHaveTag(TestResult{}, "URLRaw")
 	TestResultExitCodeKey  = bsonutil.MustHaveTag(TestResult{}, "ExitCode")
 	TestResultStartTimeKey = bsonutil.MustHaveTag(TestResult{}, "StartTime")
 	TestResultEndTimeKey   = bsonutil.MustHaveTag(TestResult{}, "EndTime")

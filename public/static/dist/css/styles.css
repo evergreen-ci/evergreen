@@ -1281,6 +1281,9 @@ textarea {
   margin-top: 20px;
   width: 100%;
 }
+#task-info-elements i {
+  margin-right: 10px;
+}
 #task-info-elements td {
   padding: 3px 0;
   text-align: left;
@@ -1511,6 +1514,30 @@ textarea {
 }
 .host-info-item a {
   color: white;
+}
+.url-link {
+  width: 40%;
+  display: inline-block;
+}
+#html-link {
+  text-align: right;
+}
+#raw-link {
+  text-align: left;
+}
+#separator {
+  width: 3%;
+  display: inline-block;
+}
+.task-logs {
+  font-size: 14pt;
+}
+#view-as {
+  opacity: 0.5;
+  font-size: 12pt;
+}
+.task-log-links {
+  font-size: 14pt;
 }
 .task-history-gridtable .top-header-row.locked {
   margin-left: 250px;

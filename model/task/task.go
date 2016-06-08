@@ -139,6 +139,7 @@ type TestResult struct {
 	Status    string  `json:"status" bson:"status"`
 	TestFile  string  `json:"test_file" bson:"test_file"`
 	URL       string  `json:"url" bson:"url,omitempty"`
+	URLRaw    string  `json:"url_raw" bson:"url_raw,omitempty"`
 	LogId     string  `json:"log_id,omitempty" bson:"log_id,omitempty"`
 	LineNum   int     `json:"line_num,omitempty" bson:"line_num,omitempty"`
 	ExitCode  int     `json:"exit_code" bson:"exit_code"`

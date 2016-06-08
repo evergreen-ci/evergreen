@@ -231,6 +231,28 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   $scope.haveUser = $window.have_user;
   $scope.taskHost = $window.taskHost;
 
+  $scope.getURL = function(testResult, isRaw) {
+    var url = (isRaw == "raw") ? testResult.url_raw : testResult.url;
+
+    if (url != '') {
+      return url; 
+    }
+    var logid = testResult.log_id;
+    var linenum = testResult.line_num || 0;
+    url = '/test_log/' + logid + '#L' + linenum;
+
+    return url;
+  };
+
+  $scope.hideURL = function(testResult, isRaw) {
+    var url = isRaw === 'raw' ? testResult.url_raw : testResult.url;
+    return !((url != '') || (testResult.log_id));
+  };
+
+  $scope.hasBothURL = function(testResult) {
+    return !($scope.hideURL(testResult) || $scope.hideURL(testResult,'raw'))
+  };
+
   var hash = $locationHash.get();
   $scope.hash = hash;
 
@@ -551,11 +573,12 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
     }, 5000);
   };
 
-  $scope.getRawLogLink = function() {
+  $scope.getRawLogLink = function(isRaw) {
     if ($scope.currentLogs === $scope.eventLogs) {
       return '/event_log/task/' + $scope.taskId;
     } else {
-      return '/task_log_raw/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs;
+      var raw = isRaw ? '&text=true' : '';
+      return 'task_log_raw/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs + raw;
     }
   };
 

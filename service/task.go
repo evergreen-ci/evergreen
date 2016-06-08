@@ -677,8 +677,14 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		close(displayLogs)
 	}()
 
+	template := "task_log.html"
+
+	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
+		template = "task_log_raw.html"
+	}
+
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Data chan model.LogMessage
 		User *user.DBUser
-	}{displayLogs, GetUser(r)}, "base", "task_log.html")
+	}{displayLogs, GetUser(r)}, "base", template)
 }

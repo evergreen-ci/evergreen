@@ -324,12 +324,19 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   <div class="progress [[progressBarClass]]" test-result-bar="test" style="width: [[barWidth]]%"></div>
                 </td>
                 <td class="col-lg-3">
-                  <a href="[[test.url]]" ng-hide="test.url == ''">
-                    View Logs
-                  </a>
-                  <a href="/test_log/[[test.log_id]]#L[[test.line_num || 0]]" ng-hide="test.url!='' || !test.log_id">
-                    View Logs
-                  </a>
+                  <div class="url-link" id="html-link"> 
+                    <a ng-href="[[getURL(test)]]" ng-hide="[[hideURL(test)]]"> 
+                      HTML
+                    </a>
+                  </div>
+                  <div id="separator">
+                    <b ng-show="[[hasBothURL(test)]]">&middot;</b>
+                  </div>
+                  <div class="url-link" id="raw-link">
+                    <a ng-href="[[getURL(test, 'raw')]]" ng-hide="[[hideURL(test, 'raw')]]">
+                      Raw
+                    </a>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -345,29 +352,35 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
   <div class="row">
     <div class="col-lg-12">
       {{range .PluginContent.Panels.Center}}
-          {{.}}
+        {{.}}
       {{end}}
     </div>
   </div>
 </div>
 
 <div class="row" ng-controller="TaskLogCtrl">
-  <div class="col-lg-12">
-    <h3 class="section-heading">
-      <i class="fa fa-folder-open"></i>
-      Logs (<a ng-href="[[getRawLogLink()]]" target="_blank">view full</a>)
-      <div id="logs-options" class="btn-group btn-group-sm">
-          <a class="pointer btn btn-default" ng-class="{active:currentLogs==allLogs}" ng-click="setCurrentLogs(allLogs)">All logs</a>
-          <a class="pointer btn btn-default" ng-class="{active:currentLogs==taskLogs}" ng-click="setCurrentLogs(taskLogs)">Task logs</a>
-          {{if .User}}
-            <a class="pointer btn btn-default" ng-class="{active:currentLogs==agentLogs}" ng-click="setCurrentLogs(agentLogs)">Agent logs</a>
-          {{end}}
-          {{if .User}}
-            <a class="pointer btn btn-default" ng-class="{active:currentLogs==systemLogs}" ng-click="setCurrentLogs(systemLogs)">System logs</a>
-          {{end}}
-          <a class="pointer btn btn-default" ng-class="{active:currentLogs==eventLogs}" ng-click="setCurrentLogs(eventLogs)">Event logs</a>
-      </div>
-    </h3>
+<div class="col-lg-12">
+  <h3 class="section-heading">
+    <i class="fa fa-folder-open"></i>
+    Logs 
+    <span id="view-as">view as:</span> 
+    <a ng-href="[[getRawLogLink(false)]]" class="task-log-links" target="_blank">HTML</a>
+    <span ng-hide="currentLogs==eventLogs"> 
+      <b>&middot;</b> 
+      <a ng-href="[[getRawLogLink(true)]]" class="task-log-links" target="_blank">Raw</a>
+    </span>
+    <div id="logs-options" class="btn-group btn-group-sm">
+      <a class="pointer btn btn-default" ng-class="{active:currentLogs==allLogs}" ng-click="setCurrentLogs(allLogs)">All logs</a>
+      <a class="pointer btn btn-default" ng-class="{active:currentLogs==taskLogs}" ng-click="setCurrentLogs(taskLogs)">Task logs</a>
+      {{if .User}}
+        <a class="pointer btn btn-default" ng-class="{active:currentLogs==agentLogs}" ng-click="setCurrentLogs(agentLogs)">Agent logs</a>
+      {{end}}
+      {{if .User}}
+        <a class="pointer btn btn-default" ng-class="{active:currentLogs==systemLogs}" ng-click="setCurrentLogs(systemLogs)">System logs</a>
+      {{end}}
+      <a class="pointer btn btn-default" ng-class="{active:currentLogs==eventLogs}" ng-click="setCurrentLogs(eventLogs)">Event logs</a>
+    </div>
+  </h3>
     <div class="row">
       <div class="col-lg-12">
         <pre ng-show="currentLogs != eventLogs && logs.length"><span ng-repeat="entry in logs.slice().reverse() track by $index" class="severity-[[ entry.severity ]]" ng-bind-html="formatTimestamp(entry, 1) + (entry.message | escapeHtml) + '\n' | linkify | ansi | trustAsHtml"></span></pre>
