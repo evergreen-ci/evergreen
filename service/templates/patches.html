@@ -49,9 +49,7 @@ Evergreen - Patches
 
   <div ng-repeat="patch in uiPatches">
     <span ng-if="patch.Patch.Version">
-      <a ng-href="/version/[[patch.Patch.Version]]">
-        Activated
-      </a>
+      <a ng-href="/version/[[patch.Patch.Version]]">Activated</a>
         <span ng-show="patch.canEdit">
         [&nbsp;
         <a ng-href="/patch/[[patch.Patch.Id]]" class="semi-muted">
