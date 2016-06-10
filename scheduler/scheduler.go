@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -36,10 +37,11 @@ type versionBuildVariant struct {
 // are ready to be run, splitting them by distro, prioritizing them, and saving
 // the per-distro queues.  Then determines the number of new hosts to spin up
 // for each distro, and spins them up.
-func (self *Scheduler) Schedule() error {
+func (s *Scheduler) Schedule() error {
 	// make sure the correct static hosts are in the database
 	evergreen.Logger.Logf(slogger.INFO, "Updating static hosts...")
-	err := model.UpdateStaticHosts(self.Settings)
+
+	err := model.UpdateStaticHosts(s.Settings)
 	if err != nil {
 		return fmt.Errorf("error updating static hosts: %v", err)
 	}
@@ -47,7 +49,7 @@ func (self *Scheduler) Schedule() error {
 	// find all tasks ready to be run
 	evergreen.Logger.Logf(slogger.INFO, "Finding runnable tasks...")
 
-	runnableTasks, err := self.FindRunnableTasks()
+	runnableTasks, err := s.FindRunnableTasks()
 	if err != nil {
 		return fmt.Errorf("Error finding runnable tasks: %v", err)
 	}
@@ -55,7 +57,7 @@ func (self *Scheduler) Schedule() error {
 	evergreen.Logger.Logf(slogger.INFO, "There are %v tasks ready to be run", len(runnableTasks))
 
 	// split the tasks by distro
-	tasksByDistro, taskRunDistros, err := self.splitTasksByDistro(runnableTasks)
+	tasksByDistro, taskRunDistros, err := s.splitTasksByDistro(runnableTasks)
 	if err != nil {
 		return fmt.Errorf("Error splitting tasks by distro to run on: %v", err)
 	}
@@ -69,11 +71,14 @@ func (self *Scheduler) Schedule() error {
 	taskIdToMinQueuePos := make(map[string]int)
 
 	// get the expected run duration of all runnable tasks
-	taskExpectedDuration, err := self.GetExpectedDurations(runnableTasks)
+	taskExpectedDuration, err := s.GetExpectedDurations(runnableTasks)
 
 	if err != nil {
 		return fmt.Errorf("Error getting expected task durations: %v", err)
 	}
+
+	// intialize a map of scheduler events
+	schedulerEvents := map[string]event.TaskQueueInfo{}
 
 	// prioritize the tasks, one distro at a time
 	taskQueueItems := make(map[string][]model.TaskQueueItem)
@@ -82,7 +87,7 @@ func (self *Scheduler) Schedule() error {
 		evergreen.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
 			len(runnableTasksForDistro), d.Id)
 
-		prioritizedTasks, err := self.PrioritizeTasks(self.Settings,
+		prioritizedTasks, err := s.PrioritizeTasks(s.Settings,
 			runnableTasksForDistro)
 		if err != nil {
 			return fmt.Errorf("Error prioritizing tasks: %v", err)
@@ -104,7 +109,7 @@ func (self *Scheduler) Schedule() error {
 		// persist the queue of tasks
 		evergreen.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...",
 			d.Id)
-		queuedTasks, err := self.PersistTaskQueue(d.Id, prioritizedTasks,
+		queuedTasks, err := s.PersistTaskQueue(d.Id, prioritizedTasks,
 			taskExpectedDuration)
 		if err != nil {
 			return fmt.Errorf("Error saving task queue: %v", err)
@@ -118,6 +123,17 @@ func (self *Scheduler) Schedule() error {
 				"tasks: %v", err)
 		}
 		taskQueueItems[d.Id] = queuedTasks
+
+		var summedNanoSeconds int64
+		for _, item := range queuedTasks {
+			summedNanoSeconds += item.ExpectedDuration.Nanoseconds()
+		}
+		// initialize the task queue info
+		schedulerEvents[d.Id] = event.TaskQueueInfo{
+			TaskQueueLength:  len(queuedTasks),
+			NumHostsRunning:  0,
+			ExpectedDuration: time.Duration(summedNanoSeconds),
+		}
 	}
 
 	err = task.UpdateMinQueuePos(taskIdToMinQueuePos)
@@ -144,6 +160,13 @@ func (self *Scheduler) Schedule() error {
 			liveHost)
 	}
 
+	// add the length of the host lists of hosts that are running to the event log.
+	for distroId, hosts := range hostsByDistro {
+		taskQueueInfo := schedulerEvents[distroId]
+		taskQueueInfo.NumHostsRunning = len(hosts)
+		schedulerEvents[distroId] = taskQueueInfo
+	}
+
 	// construct the data that will be needed by the host allocator
 	hostAllocatorData := HostAllocatorData{
 		existingDistroHosts:  hostsByDistro,
@@ -154,14 +177,14 @@ func (self *Scheduler) Schedule() error {
 	}
 
 	// figure out how many new hosts we need
-	newHostsNeeded, err := self.NewHostsNeeded(hostAllocatorData, self.Settings)
+	newHostsNeeded, err := s.NewHostsNeeded(hostAllocatorData, s.Settings)
 	if err != nil {
 		return fmt.Errorf("Error determining how many new hosts are needed: %v",
 			err)
 	}
 
 	// spawn up the hosts
-	hostsSpawned, err := self.spawnHosts(newHostsNeeded)
+	hostsSpawned, err := s.spawnHosts(newHostsNeeded)
 	if err != nil {
 		return fmt.Errorf("Error spawning new hosts: %v", err)
 	}
@@ -174,18 +197,28 @@ func (self *Scheduler) Schedule() error {
 			for _, host := range hosts {
 				evergreen.Logger.Logf(slogger.INFO, "    %v", host.Id)
 			}
+
+			taskQueueInfo := schedulerEvents[distro]
+			taskQueueInfo.NumHostsRunning += len(hosts)
+			schedulerEvents[distro] = taskQueueInfo
 		}
 	} else {
 		evergreen.Logger.Logf(slogger.INFO, "No new hosts spawned")
 	}
 
+	// create the scheduler event data
+	eventLog := event.SchedulerEventData{
+		ResourceType:  event.ResourceTypeScheduler,
+		TaskQueueInfo: schedulerEvents,
+	}
+	event.LogSchedulerEvent(eventLog)
 	return nil
 }
 
 // Takes in a version id and a map of "key -> buildvariant" (where "key" is of
 // type "versionBuildVariant") and updates the map with an entry for the
 // buildvariants associated with "versionStr"
-func (self *Scheduler) updateVersionBuildVarMap(versionStr string,
+func (s *Scheduler) updateVersionBuildVarMap(versionStr string,
 	versionBuildVarMap map[versionBuildVariant]model.BuildVariant) (err error) {
 	version, err := version.FindOne(version.ById(versionStr))
 	if err != nil {
@@ -214,7 +247,7 @@ func (self *Scheduler) updateVersionBuildVarMap(versionStr string,
 // Returns a map of distro name -> tasks that can be run on that distro
 // and a map of task id -> distros that the task can be run on (for tasks
 // that can be run on multiple distro)
-func (self *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
+func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 	map[string][]task.Task, map[string][]string, error) {
 	tasksByDistro := make(map[string][]task.Task)
 	taskRunDistros := make(map[string][]string)
@@ -226,7 +259,7 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 	for _, task := range tasksToSplit {
 		key := versionBuildVariant{task.Version, task.BuildVariant}
 		if _, exists := versionBuildVarMap[key]; !exists {
-			err := self.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
+			err := s.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
 			if err != nil {
 				evergreen.Logger.Logf(slogger.WARN, "error getting buildvariant "+
 					"map for task %v: %v", task.Id, err)
@@ -283,7 +316,7 @@ func (self *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
+func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 	map[string][]host.Host, error) {
 
 	// loop over the distros, spawning up the appropriate number of hosts
@@ -315,7 +348,7 @@ func (self *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 				continue
 			}
 
-			cloudManager, err := providers.GetCloudManager(d.Provider, self.Settings)
+			cloudManager, err := providers.GetCloudManager(d.Provider, s.Settings)
 			if err != nil {
 				evergreen.Logger.Errorf(slogger.ERROR, "Error getting cloud manager for distro: %v", err)
 				continue
