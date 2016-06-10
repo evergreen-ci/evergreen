@@ -39,8 +39,8 @@ type PatchAPIRequest struct {
 
 // CreatePatch checks an API request to see if it is safe and sane.
 // Returns the relevant patch metadata, the patch document, and any errors that occur.
-func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
-	settings *evergreen.Settings) (*model.Project, *patch.Patch, error) {
+func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
+	dbUser *user.DBUser, settings *evergreen.Settings) (*model.Project, *patch.Patch, error) {
 	var repoOwner, repo string
 	var module *model.Module
 
@@ -79,7 +79,7 @@ func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
 		return nil, nil, fmt.Errorf("couldn't validate patch: %v", err)
 	}
 
-	if len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "" {
+	if finalize && (len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "") {
 		return nil, nil, fmt.Errorf("no buildvariants specified")
 	}
 
@@ -129,7 +129,7 @@ func (pr *PatchAPIRequest) CreatePatch(oauthToken string, dbUser *user.DBUser,
 
 	// verify that all variants exists
 	for _, buildVariant := range pr.BuildVariants {
-		if buildVariant == "all" {
+		if buildVariant == "all" || buildVariant == "" {
 			continue
 		}
 		bv := project.FindBuildVariant(buildVariant)
@@ -217,7 +217,8 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	project, patchDoc, err := apiRequest.CreatePatch(as.Settings.Credentials["github"], dbUser, &as.Settings)
+	project, patchDoc, err := apiRequest.CreatePatch(
+		finalize, as.Settings.Credentials["github"], dbUser, &as.Settings)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Invalid patch: %v", err))
 		return

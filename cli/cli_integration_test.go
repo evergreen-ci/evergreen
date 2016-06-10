@@ -284,6 +284,20 @@ func TestCLIFunctions(t *testing.T) {
 				})
 			})
 
+			Convey("Creating a patch without variants should be successful", func() {
+				patchSub := patchSubmission{
+					"sample",
+					testPatch,
+					"sample patch",
+					"3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					"all",
+					[]string{},
+					false,
+				}
+				_, err := ac.PutPatch(patchSub)
+				So(err, ShouldBeNil)
+			})
+
 			Convey("Creating a complex patch should be successful", func() {
 				patchSub := patchSubmission{"sample",
 					testPatch,
