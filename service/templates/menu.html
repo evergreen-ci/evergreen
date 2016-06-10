@@ -63,18 +63,14 @@
           {{.User.DisplayName}} <b class="caret"></b>
         </a>
         <ul class="dropdown-menu">
-          <li><a href="/settings">Settings</a></li>
-          <li class="divider"></li>
           <li><a ng-href="/distros">Distros</a></li>
-          <li class="divider"></li>
           {{if .ProjectData.IsAdmin}}
           <li><a ng-href="/projects##[[project]]">Projects</a></li>
-          <li class="divider"></li>
           {{end}}
           <li><a href="/spawn">Hosts</a></li>
-          <li class="divider"></li>
           <li><a href="/patches/mine">Patches</a></li>
           <li class="divider"></li>
+          <li><a href="/settings">Settings</a></li>
           <li><a href="/logout">Logout</a></li>
         </ul>
         </li>
