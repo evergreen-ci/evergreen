@@ -25,6 +25,11 @@ type TaskQueue struct {
 	Queue  []TaskQueueItem `bson:"queue" json:"queue"`
 }
 
+type TaskDep struct {
+	Id          string `bson:"task_id,omitempty" json:"task_id"`
+	DisplayName string `bson:"display_name" json:"display_name"`
+}
+
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
@@ -34,6 +39,7 @@ type TaskQueueItem struct {
 	Revision            string        `bson:"gitspec" json:"gitspec"`
 	Project             string        `bson:"project" json:"project"`
 	ExpectedDuration    time.Duration `bson:"exp_dur" json:"exp_dur"`
+	Priority            int64         `bson:"priority" json:"priority"`
 }
 
 var (
@@ -58,6 +64,8 @@ var (
 		"Project")
 	TaskQueueItemExpDurationKey = bsonutil.MustHaveTag(TaskQueueItem{},
 		"ExpectedDuration")
+	TaskQueuePriorityKey = bsonutil.MustHaveTag(TaskQueueItem{},
+		"Priority")
 )
 
 func (self *TaskQueue) Length() int {

@@ -18,15 +18,17 @@ import (
 
 // ui version of a task queue item
 type uiTaskQueueItem struct {
-	Id                  string `json:"_id"`
-	DisplayName         string `json:"display_name"`
-	BuildVariant        string `json:"build_variant"`
-	RevisionOrderNumber int    `json:"order"`
-	Requester           string `json:"requester"`
-	Revision            string `json:"gitspec"`
-	Project             string `json:"project"`
-	Version             string `json:"version"`
-	Build               string `json:"build"`
+	Id                  string        `json:"_id"`
+	DisplayName         string        `json:"display_name"`
+	BuildVariant        string        `json:"build_variant"`
+	RevisionOrderNumber int           `json:"order"`
+	Requester           string        `json:"requester"`
+	Revision            string        `json:"gitspec"`
+	Project             string        `json:"project"`
+	Version             string        `json:"version"`
+	Build               string        `json:"build"`
+	ExpectedDuration    time.Duration `json:"exp_dur"`
+	Priority            int64         `json:"priority"`
 
 	// only if it's a patch request task
 	User string `json:"user,omitempty"`
@@ -127,6 +129,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 
 			// cache the ids, for fetching the tasks from the db
 			taskIds = append(taskIds, item.Id)
+
 			queueItemAsUI := uiTaskQueueItem{
 				Id:                  item.Id,
 				DisplayName:         item.DisplayName,
@@ -135,7 +138,10 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 				Requester:           item.Requester,
 				Revision:            item.Revision,
 				Project:             item.Project,
+				ExpectedDuration:    item.ExpectedDuration,
+				Priority:            item.Priority,
 			}
+
 			asUI.Queue = append(asUI.Queue, queueItemAsUI)
 		}
 

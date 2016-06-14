@@ -94,15 +94,15 @@ mciModule.controller('TaskQueuesCtrl',
     $('body').animate({scrollTop: $('#'+distro).offset().top-60}, 'fast');
   };
 
-  $scope.requesterColumn = function(queueItem) {
-    if (queueItem.requester === 'gitter_request') {
-      return queueItem.project + ' (' +
-        '<span style="font-family: monospace">' +
-        queueItem.gitspec.substring(0, 8) +
-        '</span>)';
-    }
-    return 'Patch by ' + queueItem.user;
-  };
+  $scope.isPatch = function(queueItem){
+    return queueItem.requester != 'gitter_request';
+  }
+
+  $scope.sumEstimatedDuration = function(distro) {
+    return _.reduce($scope.queues[distro], function(sum, queueItem){
+      return sum + queueItem.exp_dur;
+    }, 0)
+  }
 
 }]);
 

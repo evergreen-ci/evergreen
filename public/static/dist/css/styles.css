@@ -140,6 +140,9 @@ h3.section-heading {
   text-transform: none;
   font-family: Menlo, Monaco, monospace;
 }
+.mono {
+  font-family: monospace;
+}
 .allow-absolute-children {
   position: relative;
 }
@@ -1683,6 +1686,9 @@ pre {
 }
 #stats p {
   font-size: 16px;
+}
+.task-queue-elt {
+  font-size: 10px;
 }
 #timeline {
   margin-left: 0;

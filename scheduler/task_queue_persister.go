@@ -35,7 +35,9 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 			Revision:            t.Revision,
 			Project:             t.Project,
 			ExpectedDuration:    expectedTaskDuration,
+			Priority:            t.Priority,
 		})
+
 		if err := t.SetExpectedDuration(expectedTaskDuration); err != nil {
 			evergreen.Logger.Errorf(slogger.ERROR, "Error updating projected task "+
 				"duration for %v: %v", t.Id, err)

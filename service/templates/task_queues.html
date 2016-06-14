@@ -23,7 +23,7 @@ Evergreen - Task queues
           <ul id="distros-list">
             <li ng-repeat="distro in distros" ng-click="setActiveDistro(distro)"
             ng-class="{'active-distro': distro == activeDistro}">
-            [[distro]] ([[queues[distro].length]])
+            [[distro]] <span class="badge">[[queues[distro].length]]</span>
             </li>
           </ul>
         </div>
@@ -36,25 +36,46 @@ Evergreen - Task queues
           <h2>Task Queues</h2>
         </div>
         <div class="panel-body">
-          <div id="[[distro]]" ng-repeat="distro in distros">
-            <h3>[[distro]] ([[queues[distro].length]])</h3>
+        <div id="[[distro]]" ng-repeat="distro in distros">
+            <h4>
+              [[distro]] 
+              <span class="badge">[[queues[distro].length]]</span>
+              <span class="small muted" ng-show="sumEstimatedDuration(distro) > 0"> 
+                <strong>Total Runtime</strong> [[sumEstimatedDuration(distro) | stringifyNanoseconds: true]]
+              </span>
+            </h4>
             <table class="table table-striped task-queue-table">
               <tr ng-repeat="queueItem in queues[distro]">
                 <td class="index-col">[[$index+1]]</td>
-                <td>
-                  <a href="/task/[[queueItem._id]]" ng-show="queueItem.requester=='gitter_request'">
-                    <span>[[queueItem.project]]</span>&nbsp;(<span style="font-family:Monospace">[[queueItem.gitspec.substring(0, 5)]]</span>)
-                  </a>
-                  <a href="/task/[[queueItem._id]]" ng-show="queueItem.requester!='gitter_request'">
-                    <b>[[queueItem.user]]</b>'s patch
-                  </a>
-                </td>
-                <td>
-                  <a ng-href="/task/[[queueItem._id]]">
-                    [[queueItem.display_name]]
-                  </a>
+                <td>                 
+                  <div> <a href="/task/_[[queueItem._id]]"> [[queueItem.display_name]] </a> </div>
+
+                  <div class="small">
+                    [[queueItem.project]]
+                  </div>
                   <div class="muted" style="font-size: 10px">[[queueItem.build_variant]]</div>
                 </td>
+                <td class="task-queue-elt">
+                  <strong> Estimated Runtime </strong> <div>[[queueItem.exp_dur | stringifyNanoseconds]]</div>
+                </td>
+                <td class="task-queue-elt">
+                  <span ng-show="queueItem.priority > 0"> 
+                    <strong> Priority </strong> <div> [[queueItem.priority]] </div>
+                  </span>
+                </td>
+                <td class="task-queue-elt">
+                  <span ng-show="isPatch(queueItem)"> 
+                    <strong> Patch Author </strong> 
+                    <div> [[queueItem.user]]</div> 
+                  </span>
+                  <span ng-show="!isPatch(queueItem)">
+                    <strong> Revision </strong>
+                    <div class="mono"> [[queueItem.gitspec.substring(0,8)]] </div>
+                  </span>
+                </td>
+                <td>
+                  <span class="label pull-right" ng-class="isPatch(queueItem)? 'label-primary' : 'label-success'"> [[isPatch(queueItem) ? "Patch" : "Commit"]] </span>
+                 </td>
               </tr>
             </table>
           </div>
