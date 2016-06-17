@@ -36,3 +36,18 @@ func StringSliceIntersection(a, b []string) []string {
 	}
 	return out
 }
+
+// UniqueStrings takes a slice of strings and returns a new slice with duplicates removed.
+// Order is preserved.
+func UniqueStrings(slice []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, s := range slice {
+		if seen[s] {
+			continue
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+	return out
+}

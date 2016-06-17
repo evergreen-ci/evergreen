@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
@@ -298,6 +299,8 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if len(taskSpec.Distros) != 0 {
 			distrosToUse = taskSpec.Distros
 		}
+		// remove duplicates to avoid scheduling twice
+		distrosToUse = util.UniqueStrings(distrosToUse)
 		for _, d := range distrosToUse {
 			tasksByDistro[d] = append(tasksByDistro[d], task)
 		}
