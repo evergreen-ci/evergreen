@@ -325,9 +325,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newestPushLog != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "conflict with existing pushed file: "+
-			"%v", copyToLocation)
-		http.Error(w, "conflicting push target for this file already exists.", http.StatusConflict)
+		evergreen.Logger.Logf(slogger.WARN, "conflict with existing pushed file: "+"%v", copyToLocation)
 		return
 	}
 
