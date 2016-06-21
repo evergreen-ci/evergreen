@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/notify"
 	. "github.com/evergreen-ci/evergreen/runner"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 func init() {
@@ -61,6 +62,7 @@ func main() {
 		evergreen.SetLogger(settings.Runner.LogFile)
 	}
 
+	go util.DumpStackOnSIGQUIT(os.Stdout)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	// just run one process if an argument was passed in

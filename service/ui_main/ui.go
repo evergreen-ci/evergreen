@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	"gopkg.in/tylerb/graceful.v1"
 )
@@ -37,6 +38,7 @@ func init() {
 }
 
 func main() {
+	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 	home := evergreen.FindEvergreenHome()
 	uis, err := service.NewUIServer(settings, home)

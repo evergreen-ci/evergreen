@@ -33,6 +33,7 @@ func init() {
 }
 
 func main() {
+	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 	if settings.Api.LogFile != "" {
 		evergreen.SetLogger(settings.Api.LogFile)

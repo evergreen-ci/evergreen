@@ -7,11 +7,11 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 const FilenameTimestamp = "2006-01-02_15_04_05"
@@ -23,19 +23,13 @@ func DumpStackOnSIGQUIT(curAgent **Agent) {
 	signal.Notify(in, syscall.SIGQUIT)
 	for _ = range in {
 		agt := *curAgent
-		stackBytes := trace()
+		stackBytes := util.DebugTrace()
 		task, command := taskAndCommand(agt)
 
 		// we dump to files and logs without blocking, in case our logging is deadlocked or broken
 		go dumpToDisk(task, command, stackBytes)
 		go dumpToLogs(task, command, stackBytes, agt)
 	}
-}
-
-func trace() []byte {
-	var buf [32 * 1024]byte
-	n := runtime.Stack(buf[:], true)
-	return buf[:n]
 }
 
 func taskAndCommand(agt *Agent) (string, string) {
