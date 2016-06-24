@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -41,7 +42,7 @@ func TestAgentDebugHandler(t *testing.T) {
 				go func() {
 					time.Sleep(time.Second)
 					task, command = taskAndCommand(testAgent)
-					stack = trace()
+					stack = util.DebugTrace()
 					dumpToLogs(task, command, stack, testAgent)
 					done <- struct{}{}
 				}()
