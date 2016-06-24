@@ -29,10 +29,13 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     'display': 'Windows 64-bit'
   }, {
     'id': 'ppc_amd64',
-    'display': 'PowerPC 64-bit'
+    'display': 'Linux PowerPC 64-bit'
   }, {
     'id': 'linux_s390x',
     'display': 'Linux zSeries'
+  }, {
+    'id': 'linux_arm64',
+    'display': 'Linux ARM 64-bit'
   }, {
     'id': 'windows_386',
     'display': 'Windows 32-bit'
