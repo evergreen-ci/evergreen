@@ -48,7 +48,7 @@ Evergreen - Task queues
               <tr ng-repeat="queueItem in queues[distro]">
                 <td class="index-col">[[$index+1]]</td>
                 <td>                 
-                  <div> <a href="/task/_[[queueItem._id]]"> [[queueItem.display_name]] </a> </div>
+                  <div> <a href="/task/[[queueItem._id]]"> [[queueItem.display_name]] </a> </div>
 
                   <div class="small">
                     [[queueItem.project]]
