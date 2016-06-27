@@ -23,7 +23,7 @@ Evergreen - Task queues
           <ul id="distros-list">
             <li ng-repeat="distro in distros" ng-click="setActiveDistro(distro)"
             ng-class="{'active-distro': distro == activeDistro}">
-            [[distro]] <span class="badge">[[queues[distro].length]]</span>
+            <span class="badge">[[queues[distro].length]]</span> [[distro]]
             </li>
           </ul>
         </div>
@@ -38,9 +38,9 @@ Evergreen - Task queues
         <div class="panel-body">
         <div id="[[distro]]" ng-repeat="distro in distros">
             <h4>
-              [[distro]] 
               <span class="badge">[[queues[distro].length]]</span>
-              <span class="small muted" ng-show="sumEstimatedDuration(distro) > 0"> 
+              [[distro]] 
+              <span class="small muted pull-right" ng-show="sumEstimatedDuration(distro) > 0"> 
                 <strong>Total Runtime</strong> [[sumEstimatedDuration(distro) | stringifyNanoseconds: true]]
               </span>
             </h4>
