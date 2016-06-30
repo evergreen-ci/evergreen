@@ -370,7 +370,7 @@ func (init *HostInit) ProvisionHost(h *host.Host, opts ProvisionOptions) error {
 		} else if err == nil && len(opts.TaskId) > 0 {
 			evergreen.Logger.Logf(slogger.INFO, "Fetching data for task %v onto host %v", opts.TaskId, h.Id)
 			err = init.fetchRemoteTaskData(opts.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to fetch data onto host %v", h.Id)
+			evergreen.Logger.Logf(slogger.ERROR, "Failed to fetch data onto host %v: %v", h.Id, err)
 		}
 	}
 
