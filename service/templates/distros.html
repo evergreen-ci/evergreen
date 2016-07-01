@@ -61,7 +61,7 @@ Evergreen - Distros
               <strong class="distro-menu-item">[[activeDistro.arch | archDisplay:this]]<span class="fa fa-caret-down"></span></strong>
               </button>
               <ul class="dropdown-menu" style="margin-left: 125px; align: left;" role="menu">
-                <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures" role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
+                <li ng-click="form.$setDirty();setKeyValue('arch', arch.id)" required name="agentArch" ng-repeat="arch in architectures | orderBy:'display'" role="presentation"><a role="menuitem" tabindex="-1">[[arch.display]]</a></li>
               </ul>
               <div class="icon fa fa-warning distro-error" ng-show="form.agentArch.$dirty && form.agentArch.$error.required || form.agentArch.$invalid">Agent architecture is required</div>
             </div>
