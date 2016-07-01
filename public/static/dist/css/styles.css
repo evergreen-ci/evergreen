@@ -2122,4 +2122,7 @@ path {
   stroke: black;
   shape-rendering: crispEdges;
 }
+.log-elt {
+  margin-right: 100px;
+}
 /*# sourceMappingURL=/static/dist/less.map */

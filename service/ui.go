@@ -174,6 +174,9 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	// Task queues
 	r.HandleFunc("/task_queue", uis.loadCtx(uis.allTaskQueues))
 
+	// Scheduler Events
+	r.HandleFunc("/scheduler_event/{distro_id}", uis.loadCtx(uis.getSchedulerLogs))
+
 	// Patch pages
 	r.HandleFunc("/patch/{patch_id}", requireLogin(uis.loadCtx(uis.patchPage))).Methods("GET")
 	r.HandleFunc("/patch/{patch_id}", requireLogin(uis.loadCtx(uis.schedulePatch))).Methods("POST")

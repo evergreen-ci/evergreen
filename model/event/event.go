@@ -48,6 +48,8 @@ func (dw DataWrapper) MarshalJSON() ([]byte, error) {
 		return json.Marshal(event)
 	case *HostEventData:
 		return json.Marshal(event)
+	case *SchedulerEventData:
+		return json.Marshal(event)
 	default:
 		return nil, fmt.Errorf("cannot marshal data of type %T", dw.Data)
 	}
@@ -58,7 +60,7 @@ func (dw DataWrapper) GetBSON() (interface{}, error) {
 }
 
 func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
-	for _, impl := range []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}} {
+	for _, impl := range []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}, &SchedulerEventData{}} {
 		err := raw.Unmarshal(impl)
 		if err != nil {
 			return err
