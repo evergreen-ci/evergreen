@@ -1662,7 +1662,7 @@ pre {
   padding-bottom: 20px;
 }
 #distros-list-container {
-  height: 410px;
+  height: 500px;
   overflow-y: scroll;
   border: 1px solid #ddd;
 }
@@ -1703,9 +1703,16 @@ pre {
   overflow: hidden;
   white-space: nowrap;
 }
+.task-queue-table .task-col {
+  width: 40%;
+}
 .task-queue-table .index-col {
-  width: 65px;
+  width: 7%;
   font-weight: bold;
+}
+.task-queue-table .task-queue-elt {
+  font-size: 10px;
+  width: 15%;
 }
 #time-stats table {
   margin-top: 16px;

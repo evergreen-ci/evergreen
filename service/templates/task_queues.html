@@ -8,37 +8,36 @@
 {{end}}
 
 {{define "title"}}
-Evergreen - Task queues
+Evergreen - Task Queues
 {{end}}
 
 {{define "content"}}
-<div class="container">
-  <div class="row" ng-controller="TaskQueuesCtrl">
+<div class="container" ng-controller="TaskQueuesCtrl">
+  <div class="row">
+    <h2> Task Queues </h2>
+  </div>
+  <div class="row">
     <div id="nav-container" class="col-lg-2">
       <div class="panel">
-        <div class="panel-heading">
-          <h2>Distro</h2>
+        <div class="panel-heading row">
+          <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.distro" placeholder="Filter Distro" />
         </div>
         <div id="distros-list-container">
           <ul id="distros-list">
-            <li ng-repeat="distro in distros" ng-click="setActiveDistro(distro)"
+            <li ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro" ng-click="setActiveDistro(distro)"
             ng-class="{'active-distro': distro == activeDistro}">
-            <span class="badge">[[queues[distro].length]]</span> [[distro]]
+            <span class="badge">[[getLength(distro)]]</span> [[distro]]
             </li>
           </ul>
         </div>
       </div>
     </div>
-    <div class="col-lg-2"></div>
-    <div class="col-lg-8 col-lg-offset-1">
+    <div class="col-lg-8 col-lg-offset-3">
       <div id="queues" class="panel">
-        <div class="panel-heading">
-          <h2>Task Queues</h2>
-        </div>
         <div class="panel-body">
-        <div id="[[distro]]" ng-repeat="distro in distros">
+        <div id="[[distro]]" ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro">
             <h4>
-              <span class="badge">[[queues[distro].length]]</span>
+              <span class="badge">[[getLength(distro)]]</span>
               [[distro]] 
               <span class="small muted pull-right" ng-show="sumEstimatedDuration(distro) > 0"> 
                 <strong>Total Runtime</strong> [[sumEstimatedDuration(distro) | stringifyNanoseconds: true]]
@@ -47,7 +46,7 @@ Evergreen - Task queues
             <table class="table table-striped task-queue-table">
               <tr ng-repeat="queueItem in queues[distro]">
                 <td class="index-col">[[$index+1]]</td>
-                <td>                 
+                <td class="task-col">                 
                   <div> <a href="/task/[[queueItem._id]]"> [[queueItem.display_name]] </a> </div>
 
                   <div class="small">
@@ -56,7 +55,7 @@ Evergreen - Task queues
                   <div class="muted" style="font-size: 10px">[[queueItem.build_variant]]</div>
                 </td>
                 <td class="task-queue-elt">
-                  <strong> Estimated Runtime </strong> <div>[[queueItem.exp_dur | stringifyNanoseconds]]</div>
+                  <strong> Est. Runtime </strong> <div>[[queueItem.exp_dur | stringifyNanoseconds]]</div>
                 </td>
                 <td class="task-queue-elt">
                   <span ng-show="queueItem.priority > 0"> 

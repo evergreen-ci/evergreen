@@ -104,6 +104,10 @@ mciModule.controller('TaskQueuesCtrl',
     }, 0)
   }
 
+  $scope.getLength = function(distro){
+    return $scope.queues[distro].length;
+  }
+
 }]);
 
 
