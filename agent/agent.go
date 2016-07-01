@@ -488,16 +488,16 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 		agt.logger.LogTask(slogger.WARN, "Running agent without a https certificate.")
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration.")
-
 	taskConfig, err := agt.GetTaskConfig()
 	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error fetching task configuration: %v", err)
 		return nil, err
 	}
 
-	name := taskConfig.Task.DisplayName
-	pt := taskConfig.Project.FindProjectTask(name)
+	agt.logger.LogTask(slogger.INFO,
+		"Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)
+
+	pt := taskConfig.Project.FindProjectTask(taskConfig.Task.DisplayName)
 	if pt.ExecTimeoutSecs == 0 {
 		// if unspecified in the project task and the project, use the default value
 		if taskConfig.Project.ExecTimeoutSecs != 0 {
