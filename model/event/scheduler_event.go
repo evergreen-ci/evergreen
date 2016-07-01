@@ -24,8 +24,9 @@ type TaskQueueInfo struct {
 // implements EventData
 type SchedulerEventData struct {
 	// necessary for IsValid
-	ResourceType  string                   `bson:"r_type" json:"resource_type"`
-	TaskQueueInfo map[string]TaskQueueInfo `bson:"tq_info" json:"task_queue_info"`
+	ResourceType  string        `bson:"r_type" json:"resource_type"`
+	TaskQueueInfo TaskQueueInfo `bson:"tq_info" json:"task_queue_info"`
+	DistroId      string        `bson:"d_id" json:"distro_id"`
 }
 
 func (sed SchedulerEventData) IsValid() bool {
@@ -38,7 +39,7 @@ func LogSchedulerEvent(eventData SchedulerEventData) {
 	eventData.ResourceType = ResourceTypeScheduler
 	event := Event{
 		Timestamp:  time.Now(),
-		ResourceId: time.Now().String(),
+		ResourceId: eventData.DistroId,
 		EventType:  EventSchedulerRun,
 		Data:       DataWrapper{eventData},
 	}

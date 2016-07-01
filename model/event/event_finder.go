@@ -62,3 +62,15 @@ func MostRecentDistroEvents(id string, n int) db.Q {
 func DistroEventsInOrder(id string) db.Q {
 	return DistroEventsForId(id).Sort([]string{TimestampKey})
 }
+
+// Scheduler Events
+func SchedulerEventsForId(distroId string) db.Q {
+	return db.Query(bson.D{
+		{DataKey + "." + ResourceTypeKey, ResourceTypeScheduler},
+		{ResourceIdKey, distroId},
+	})
+}
+
+func RecentSchedulerEvents(distroId string, n int) db.Q {
+	return SchedulerEventsForId(distroId).Sort([]string{"-" + TimestampKey}).Limit(n)
+}

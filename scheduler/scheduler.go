@@ -207,12 +207,15 @@ func (s *Scheduler) Schedule() error {
 		evergreen.Logger.Logf(slogger.INFO, "No new hosts spawned")
 	}
 
-	// create the scheduler event data
-	eventLog := event.SchedulerEventData{
-		ResourceType:  event.ResourceTypeScheduler,
-		TaskQueueInfo: schedulerEvents,
+	for d, t := range schedulerEvents {
+		eventLog := event.SchedulerEventData{
+			ResourceType:  event.ResourceTypeScheduler,
+			TaskQueueInfo: t,
+			DistroId:      d,
+		}
+		event.LogSchedulerEvent(eventLog)
 	}
-	event.LogSchedulerEvent(eventLog)
+
 	return nil
 }
 
