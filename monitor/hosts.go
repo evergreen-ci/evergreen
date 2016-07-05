@@ -2,15 +2,17 @@ package monitor
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 )
 
@@ -91,57 +93,34 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 // terminate the passed-in slice of hosts. returns any errors that occur
 // terminating the hosts
 func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason string) []error {
-
-	// used to store any errors that occur
-	var errors []error
-
-	// for terminating the different hosts in parallel
-	waitGroup := &sync.WaitGroup{}
-
-	// to ensure thread-safe appending to the errors
-	errsLock := &sync.Mutex{}
-
+	errChan := make(chan error)
 	for _, h := range hosts {
-
-		evergreen.Logger.Logf(slogger.INFO, "Terminating host %v...", h.Id)
-
-		waitGroup.Add(1)
-
-		// terminate the host in a goroutine. pass the host in as a parameter
+		evergreen.Logger.Logf(slogger.INFO, "Terminating host %v", h.Id)
+		// terminate the host in a goroutine, passing the host in as a parameter
 		// so that the variable isn't reused for subsequent iterations
 		go func(hostToTerminate host.Host) {
-
-			defer waitGroup.Done()
-
-			// Log that the host was flagged, and why
-			event.LogMonitorOperation(hostToTerminate.Id, reason)
-
-			// wrapper function to terminate the host
-			terminateFunc := func() error {
-				return terminateHost(&hostToTerminate, settings)
-			}
-
-			// run the function with a timeout
-			err := util.RunFunctionWithTimeout(terminateFunc, 10*time.Second)
-
-			if err == util.ErrTimedOut {
-				errsLock.Lock()
-				errors = append(errors, fmt.Errorf("timeout terminating host %v", hostToTerminate.Id))
-				errsLock.Unlock()
-			} else if err != nil {
-				errsLock.Lock()
-				errors = append(errors, fmt.Errorf("error terminating host: %v", err))
-				errsLock.Unlock()
-			} else {
+			errChan <- func() error {
+				event.LogMonitorOperation(hostToTerminate.Id, reason)
+				err := util.RunFunctionWithTimeout(func() error {
+					return terminateHost(&hostToTerminate, settings)
+				}, 6*time.Minute)
+				if err != nil {
+					if err == util.ErrTimedOut {
+						return fmt.Errorf("timeout terminating host %v", hostToTerminate.Id)
+					}
+					return fmt.Errorf("error terminating host %v: %v", hostToTerminate.Id, err)
+				}
 				evergreen.Logger.Logf(slogger.INFO, "Successfully terminated host %v", hostToTerminate.Id)
-			}
-
+				return nil
+			}()
 		}(h)
 	}
-
-	// make sure all terminations finish
-	waitGroup.Wait()
-
+	var errors []error
+	for range hosts {
+		if err := <-errChan; err != nil {
+			errors = append(errors, err)
+		}
+	}
 	return errors
 }
 
@@ -154,11 +133,37 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 		return fmt.Errorf("error getting cloud host for %v: %v", host.Id, err)
 	}
 
+	// run teardown script if we have one, sending notifications if things go awry
+	if host.Distro.Teardown != "" {
+		evergreen.Logger.Logf(slogger.ERROR, "Running teardown script for host %v", host.Id)
+		if err := runHostTeardown(host, cloudHost); err != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Error running teardown script for %v: %v", host.Id, err)
+			subj := fmt.Sprintf("%v Error running teardown for host %v",
+				notify.TeardownFailurePreface, host.Id)
+			if err := notify.NotifyAdmins(subj, err.Error(), settings); err != nil {
+				evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			}
+		}
+	}
+
 	// terminate the instance
 	if err := cloudHost.TerminateInstance(); err != nil {
 		return fmt.Errorf("error terminating host %v: %v", host.Id, err)
 	}
 
 	return nil
+}
 
+func runHostTeardown(h *host.Host, cloudHost *cloud.CloudHost) error {
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return fmt.Errorf("error getting ssh options for host %v: %v", h.Id, err)
+	}
+	startTime := time.Now()
+	logs, err := hostutil.RunRemoteScript(h, "teardown.sh", sshOptions)
+	event.LogHostTeardown(h.Id, logs, err == nil, time.Since(startTime))
+	if err != nil {
+		return fmt.Errorf("error (%v) running teardown.sh over ssh: %v", err, logs)
+	}
+	return nil
 }

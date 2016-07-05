@@ -107,14 +107,13 @@ filters.common.filter('conditional', function() {
   // in hours. Otherwise, they will be displayed as '>=1 day'
   return function(input, skipDayMax, skipSecMax) {
     if (input == 0) {
-      return "Not Started";
+      return "0 seconds";
     } else if (input < NS_PER_MS) {
       return "< 1 ms";
     } else if (input < NS_PER_SEC) {
       if (skipSecMax){
         return Math.floor(input / NS_PER_MS) + " ms";
-      }
-        else {
+      } else {
         return "< 1 second"
       }
     } else if (input < NS_PER_MINUTE) {

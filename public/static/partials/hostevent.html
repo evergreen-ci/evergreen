@@ -20,9 +20,20 @@
     </span>
     <span ng-switch-when="HOST_PROVISION_FAILED">
       <div>Provisioning failed.</div>
-      <div class="toggle" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
+      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] provisioning logs</div>
       <div ng-show="showlogs">
-        <pre>[[eventLogObj.data.setup_log]]</pre>
+        <pre>[[eventLogObj.data.logs]]</pre>
+      </div>
+    </span>
+    <span ng-switch-when="HOST_TEARDOWN">
+      <div> Teardown script
+        <span ng-show="eventLogObj.data.successful">ran successfully</span>
+        <span ng-show="!eventLogObj.data.successful"><strong>failed</strong></span>
+        in [[eventLogObj.data.duration | stringifyNanoseconds:true:true]].
+      </div>
+      <div class="toggle pointer" ng-click="showlogs = !showlogs"><i class="fa" ng-class="showlogs | conditional:'fa-caret-down':'fa-caret-right'"></i> [[showlogs | conditional:'hide':'show']] teardown logs </div>
+      <div ng-show="showlogs">
+        <pre>[[eventLogObj.data.logs]]</pre>
       </div>
     </span>
     <span ng-switch-when="HOST_TASK_FINISHED">Task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:'...']]</a> completed with status: <b>[[eventLogObj.data.task_status]]</b></span>

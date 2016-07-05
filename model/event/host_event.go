@@ -22,6 +22,7 @@ const (
 	EventHostTaskPidSet         = "HOST_TASK_PID_SET"
 	EventHostMonitorFlag        = "HOST_MONITOR_FLAG"
 	EventTaskFinished           = "HOST_TASK_FINISHED"
+	EventHostTeardown           = "HOST_TEARDOWN"
 )
 
 // implements EventData
@@ -29,14 +30,16 @@ type HostEventData struct {
 	// necessary for IsValid
 	ResourceType string `bson:"r_type" json:"resource_type"`
 
-	OldStatus  string `bson:"o_s,omitempty" json:"old_status,omitempty"`
-	NewStatus  string `bson:"n_s,omitempty" json:"new_status,omitempty"`
-	SetupLog   string `bson:"log,omitempty" json:"setup_log,omitempty"`
-	Hostname   string `bson:"hn,omitempty" json:"hostname,omitempty"`
-	TaskId     string `bson:"t_id,omitempty" json:"task_id,omitempty"`
-	TaskPid    string `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
-	TaskStatus string `bson:"t_st,omitempty" json:"task_status,omitempty"`
-	MonitorOp  string `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	OldStatus  string        `bson:"o_s,omitempty" json:"old_status,omitempty"`
+	NewStatus  string        `bson:"n_s,omitempty" json:"new_status,omitempty"`
+	Logs       string        `bson:"log,omitempty" json:"logs,omitempty"`
+	Hostname   string        `bson:"hn,omitempty" json:"hostname,omitempty"`
+	TaskId     string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
+	TaskPid    string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
+	TaskStatus string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	MonitorOp  string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
+	Successful bool          `bson:"successful,omitempty" json:"successful"`
+	Duration   time.Duration `bson:"duration,omitempty" json:"duration"`
 }
 
 func (self HostEventData) IsValid() bool {
@@ -93,8 +96,13 @@ func LogHostTaskPidSet(hostId string, taskPid string) {
 	LogHostEvent(hostId, EventHostTaskPidSet, HostEventData{TaskPid: taskPid})
 }
 
-func LogProvisionFailed(hostId string, setupLog string) {
-	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{SetupLog: setupLog})
+func LogProvisionFailed(hostId string, setupLogs string) {
+	LogHostEvent(hostId, EventHostProvisionFailed, HostEventData{Logs: setupLogs})
+}
+
+func LogHostTeardown(hostId, teardownLogs string, success bool, duration time.Duration) {
+	LogHostEvent(hostId, EventHostTeardown,
+		HostEventData{Logs: teardownLogs, Successful: success, Duration: duration})
 }
 
 func LogMonitorOperation(hostId string, op string) {

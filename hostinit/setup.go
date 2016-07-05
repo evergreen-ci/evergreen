@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -28,7 +30,9 @@ import (
 )
 
 const (
-	SCPTimeout = time.Minute
+	SCPTimeout         = time.Minute
+	setupScriptName    = "setup.sh"
+	teardownScriptName = "teardown.sh"
 )
 
 // Error indicating another hostinit got to the setup first.
@@ -177,12 +181,12 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 // setupHost runs the specified setup script for an individual host. Returns
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
-func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
+func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := providers.GetCloudManager(targetHost.Provider, init.Settings)
 	if err != nil {
-		return nil,
+		return "",
 			fmt.Errorf("failed to get cloud manager for host %v with provider %v: %v",
 				targetHost.Id, targetHost.Provider, err)
 	}
@@ -190,11 +194,15 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 	// mark the host as initializing
 	if err := targetHost.SetInitializing(); err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, ErrHostAlreadyInitializing
+			return "", ErrHostAlreadyInitializing
 		} else {
-			return nil, fmt.Errorf("database error: %v", err)
+			return "", fmt.Errorf("database error: %v", err)
 		}
 	}
+
+	/* TESTING ONLY
+	setupDebugSSHTunnel(path_to_ssh_key, targetHost.User, targetHost.Host)
+	*/
 
 	// run the function scheduled for when the host is up
 	err = cloudMgr.OnUp(targetHost)
@@ -202,113 +210,110 @@ func (init *HostInit) setupHost(targetHost *host.Host) ([]byte, error) {
 		// if this fails it is probably due to an API hiccup, so we keep going.
 		evergreen.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", targetHost.Id, err)
 	}
-
-	// run the remote setup script as sudo, if appropriate
-	sudoStr := ""
-	if targetHost.Distro.SetupAsSudo {
-		sudoStr = "sudo "
-	}
-
-	// parse the hostname into the user, host and port
-	hostInfo, err := util.ParseSSHInfo(targetHost.Host)
+	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("failed to get cloud host for %v: %v", targetHost.Id, err)
 	}
-	user := targetHost.Distro.User
+	sshOptions, err := cloudHost.GetSSHOptions()
+	if err != nil {
+		return "", fmt.Errorf("error getting ssh options for host %v: %v", targetHost.Id, err)
+	}
+
+	if targetHost.Distro.Teardown != "" {
+		err = init.copyScript(targetHost, teardownScriptName, targetHost.Distro.Teardown)
+		if err != nil {
+			return "", fmt.Errorf("error copying script %v to host %v: %v",
+				teardownScriptName, targetHost.Id, err)
+		}
+	}
+
+	if targetHost.Distro.Setup != "" {
+		err = init.copyScript(targetHost, setupScriptName, targetHost.Distro.Setup)
+		if err != nil {
+			return "", fmt.Errorf("error copying script %v to host %v: %v",
+				setupScriptName, targetHost.Id, err)
+		}
+		logs, err := hostutil.RunRemoteScript(targetHost, setupScriptName, sshOptions)
+		if err != nil {
+			return logs, fmt.Errorf("error running setup script over ssh: %v", err)
+		}
+		return logs, nil
+	}
+	return "", nil
+}
+
+// copyScript writes a given script as file "name" to the target host. This works
+// by creating a local copy of the script on the runner's machine, scping it over
+// then removing the local copy.
+func (init *HostInit) copyScript(target *host.Host, name, script string) error {
+	// parse the hostname into the user, host and port
+	hostInfo, err := util.ParseSSHInfo(target.Host)
+	if err != nil {
+		return err
+	}
+	user := target.Distro.User
 	if hostInfo.User != "" {
 		user = hostInfo.User
 	}
 
-	// create a temp file for the setup script
-	fileName := "setup.sh"
-	file, err := ioutil.TempFile("", fileName)
+	// create a temp file for the script
+	file, err := ioutil.TempFile("", name)
 	if err != nil {
-		return nil, fmt.Errorf("error creating setup script: %v", err)
+		return fmt.Errorf("error creating temporary script file: %v", err)
 	}
 	defer func() {
 		file.Close()
 		os.Remove(file.Name())
 	}()
 
-	// build the setup script
-	setup, err := init.buildSetupScript(targetHost)
+	expanded, err := init.expandScript(script)
 	if err != nil {
-		return nil, fmt.Errorf("error building setup script for host %v: %v", targetHost.Id, err)
+		return fmt.Errorf("error expanding script for host %v: %v", target.Id, err)
+	}
+	if _, err := io.WriteString(file, expanded); err != nil {
+		return fmt.Errorf("error writing local script: %v", err)
 	}
 
-	// write the setup script to the file
-	if _, err := file.Write([]byte(setup)); err != nil {
-		return nil, fmt.Errorf("error writing remote setup script: %v", err)
-	}
-
-	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
+	cloudHost, err := providers.GetCloudHost(target, init.Settings)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cloud host for %v: %v", targetHost.Id, err)
+		return fmt.Errorf("failed to get cloud host for %v: %v", target.Id, err)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return nil, fmt.Errorf("error getting ssh options for host %v: %v", targetHost.Id, err)
+		return fmt.Errorf("error getting ssh options for host %v: %v", target.Id, err)
 	}
 
-	// copy setup script over to the remote machine
-	var scpSetupCmdStderr bytes.Buffer
-	scpSetupCmd := &command.ScpCommand{
+	var scpCmdStderr bytes.Buffer
+	scpCmd := &command.ScpCommand{
 		Source:         file.Name(),
-		Dest:           fileName,
-		Stdout:         &scpSetupCmdStderr,
-		Stderr:         &scpSetupCmdStderr,
+		Dest:           name,
+		Stdout:         &scpCmdStderr,
+		Stderr:         &scpCmdStderr,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
 	}
-
-	// run the command to scp the setup script with a timeout
-	err = util.RunFunctionWithTimeout(scpSetupCmd.Run, SCPTimeout)
+	err = util.RunFunctionWithTimeout(scpCmd.Run, SCPTimeout)
 	if err != nil {
 		if err == util.ErrTimedOut {
-			scpSetupCmd.Stop()
-			return nil, fmt.Errorf("scp-ing setup script timed out")
+			scpCmd.Stop()
+			return fmt.Errorf("scp-ing script timed out")
 		}
-		return nil, fmt.Errorf("error (%v) copying setup script to remote "+
-			"machine: %v", err, scpSetupCmdStderr.String())
+		return fmt.Errorf("error (%v) copying script to remote machine: %v",
+			err, scpCmdStderr.String())
 	}
-
-	// run command to ssh into remote machine and execute setup script
-	var sshSetupCmdStderr bytes.Buffer
-	runSetupCmd := &command.RemoteCommand{
-		CmdString:      sudoStr + "sh " + fileName,
-		Stdout:         &sshSetupCmdStderr,
-		Stderr:         &sshSetupCmdStderr,
-		RemoteHostName: hostInfo.Hostname,
-		User:           user,
-		Options:        []string{"-p", hostInfo.Port},
-		Background:     false,
-	}
-
-	// only force creation of a tty if sudo
-	if targetHost.Distro.SetupAsSudo {
-		runSetupCmd.Options = []string{"-t", "-t", "-p", hostInfo.Port}
-	}
-	runSetupCmd.Options = append(runSetupCmd.Options, sshOptions...)
-
-	// run the ssh command with given timeout
-	err = util.RunFunctionWithTimeout(
-		runSetupCmd.Run,
-		time.Duration(SSHTimeoutSeconds)*time.Second,
-	)
-
-	return sshSetupCmdStderr.Bytes(), err
+	return nil
 }
 
 // Build the setup script that will need to be run on the specified host.
-func (init *HostInit) buildSetupScript(h *host.Host) (string, error) {
+func (init *HostInit) expandScript(s string) (string, error) {
 	// replace expansions in the script
 	exp := command.NewExpansions(init.Settings.Expansions)
-	setupScript, err := exp.ExpandString(h.Distro.Setup)
+	script, err := exp.ExpandString(s)
 	if err != nil {
 		return "", fmt.Errorf("expansions error: %v", err)
 	}
-	return setupScript, err
+	return script, err
 }
 
 //
@@ -329,7 +334,6 @@ type ProvisionOptions struct {
 func (init *HostInit) ProvisionHost(h *host.Host, opts ProvisionOptions) error {
 
 	// run the setup script
-
 	evergreen.Logger.Logf(slogger.INFO, "Setting up host %v", h.Id)
 	output, err := init.setupHost(h)
 
@@ -343,13 +347,8 @@ func (init *HostInit) ProvisionHost(h *host.Host, opts ProvisionOptions) error {
 			return nil
 		}
 
-		// log the provisioning failure
-		setupLog := ""
-		if output != nil {
-			setupLog = string(output)
-		}
 		alerts.RunHostProvisionFailTriggers(h)
-		event.LogProvisionFailed(h.Id, setupLog)
+		event.LogProvisionFailed(h.Id, output)
 
 		// setup script failed, mark the host's provisioning as failed
 		if err := h.SetUnprovisioned(); err != nil {
@@ -535,28 +534,14 @@ func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, targ
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
 	/* TESTING ONLY
-	// Note for testing - when running locally, if your API Server's URL is behind a gateway (i.e. not a
-	// static IP) the next step will fail because the API server will not be reachable.
-	// If you want it to reach your local API server, execute a command here that sets up a reverse ssh tunnel:
-	// ssh -f -N -T -R 8080:localhost:8080 -o UserKnownHostsFile=/dev/null
-	// ... or, add a time.Sleep() here that gives you enough time to log in and edit the config
-	// on the spawnhost manually.
-	fmt.Println("starting up tunnel.")
-	tunnelCmd := exec.Command("ssh", "-f", "-N", "-T", "-R", "8080:localhost:8080", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", "/Users/michaelobrien/.ssh/mci.pem", fmt.Sprintf("%s@%s", target.User, hostSSHInfo.Hostname))
-	err = tunnelCmd.Start()
-	if err != nil {
-		fmt.Println("Setting up SSH tunnel failed - manual tunnel setup required.")
-		// Give the developer a 30 second grace period to set up the tunnel.
-		time.Sleep(30 * time.Second)
-	}
-	fmt.Println("Tunnel setup complete, starting fetch in 10 seconds...")
-	time.Sleep(10 * time.Second)
+	setupDebugSSHTunnel(path_to_ssh_keys, target.User, hostSSHInfo.Hostname)
 	*/
 
 	// When testing, use this writer to force a copy of the output to be written to standard out so
 	// that remote command failures also show up in server log output.
-	cmdOutput := io.MultiWriter(&util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}, os.Stdout)
-	//cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+	//cmdOutput := io.MultiWriter(&util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}, os.Stdout)
+
+	cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
 	makeShellCmd := &command.RemoteCommand{
 		CmdString:      fmt.Sprintf("%s -c '%s' fetch -t %s --source --artifacts --dir '%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
 		Stdout:         cmdOutput,
@@ -569,4 +554,25 @@ func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, targ
 	// run the make shell command with a timeout
 	err = util.RunFunctionWithTimeout(makeShellCmd.Run, 15*time.Minute)
 	return err
+}
+
+// this helper is for local testing--it allows developers to get around
+// firewall restrictions by opening up an SSH tunnel.
+func setupDebugSSHTunnel(keyPath, hostUser, hostName string) {
+	// Note for testing - when running locally, if your API Server's URL is behind a gateway (i.e. not a
+	// static IP) the next step will fail because the API server will not be reachable.
+	// If you want it to reach your local API server, execute a command here that sets up a reverse ssh tunnel:
+	// ssh -f -N -T -R 8080:localhost:8080 -o UserKnownHostsFile=/dev/null
+	// ... or, add a time.Sleep() here that gives you enough time to log in and edit the config
+	// on the spawnhost manually.
+	fmt.Println("starting up tunnel.")
+	tunnelCmd := exec.Command("ssh", "-f", "-N", "-T", "-R", "8080:localhost:8080", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", keyPath, fmt.Sprintf("%s@%s", hostUser, hostName))
+	err := tunnelCmd.Start()
+	if err != nil {
+		fmt.Println("Setting up SSH tunnel failed - manual tunnel setup required.")
+		// Give the developer a 30 second grace period to set up the tunnel.
+		time.Sleep(30 * time.Second)
+	}
+	fmt.Println("Tunnel setup complete, starting fetch in 10 seconds...")
+	time.Sleep(10 * time.Second)
 }

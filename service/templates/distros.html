@@ -277,14 +277,21 @@ Evergreen - Distros
           </div>
           <div>
             <div>
-              <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.setup_as_sudo">Run as sudo</span><label class="distro-label">Setup Script:
-              </label>
+              <span style="float: right; margin-top: 20px;" class="distro-checkbox checkbox"><input ng-disabled="readOnly" type="checkbox" ng-model="activeDistro.setup_as_sudo">Run scripts as sudo</span>
+              <label class="distro-label">Setup Script:</label>
             </div>
-            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="15" ng-model="activeDistro.setup" style="margin-left: 0px; font-family: monospace"></textarea>
+            <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="7" ng-model="activeDistro.setup" style="margin-left: 0px; font-family: monospace"></textarea>
+            <div ng-hide="activeDistro.provider=='static'">
+              <label class="distro-label">Teardown Script:</label>
+              <textarea ng-readonly="readOnly" name="script" type="text" wrap="off" class="form-control" rows="2" ng-model="activeDistro.teardown" style="margin-left: 0px; font-family: monospace"></textarea>
+              <div ng-show="activeDistro.teardown.length"><i label class="icon fa fa-warning warning-text"></i>
+                There is no guarantee this script will be run if the host is terminated by mechanisms outside of Evergreen.
+              </div>
+            </div>
           </div>
           <div>
             <div ng-form name="expansions">
-              <label class="distro-label">Expansions</label>
+              <label class="distro-label">Expansions:</label>
               <div id="expansions-table" class="distro-table-scroll">
                 <table style="margin-left: -8px;" class="table distro-table" ng-show="activeDistro.expansions">
                   <thead class="muted">

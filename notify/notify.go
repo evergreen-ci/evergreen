@@ -44,6 +44,7 @@ const (
 	ProvisionFailurePreface = "[PROVISION-FAILURE]"
 	ProvisionTimeoutPreface = "[PROVISION-TIMEOUT]"
 	ProvisionLatePreface    = "[PROVISION-LATE]"
+	TeardownFailurePreface  = "[TEARDOWN-FAILURE]"
 
 	// repotracker notification prefaces
 	RepotrackerFailurePreface = "[REPOTRACKER-FAILURE %v] on %v"

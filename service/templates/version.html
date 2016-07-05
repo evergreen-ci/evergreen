@@ -124,8 +124,8 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
 
            </div>
            <table id="build-info-elements">
-             <tr ng-show="makeSpanMS != 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the version has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
-             <tr ng-show="totalTimeMS != 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+             <tr ng-show="makeSpanMS > 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the version has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+             <tr ng-show="totalTimeMS > 0"><td><i class="fa fa-clock-o"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
              <tr/>
            </table>
          </div>

@@ -15,10 +15,6 @@ describe('stringifyNanoseconds', function() {
   var NS_PER_MINUTE = NS_PER_SEC * 60;
   var NS_PER_HOUR = NS_PER_MINUTE * 60;
 
-  it("should return the default value for zero", inject(function($filter) {
-    expect($filter('stringifyNanoseconds')(0)).toBe("Not Started");
-  }));
-
   it("should return default value for small inputs", inject(function($filter) {
     expect($filter('stringifyNanoseconds')(NS_PER_SEC * 0.5)).toBe("< 1 second");
   }));

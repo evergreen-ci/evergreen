@@ -99,8 +99,18 @@ Evergreen - Build {{Trunc .Build.Build.Revision 10}} on {{.Build.Build.DisplayNa
               <github-commit-panel commit="commit" timezone="{{GetTimezone .User}}"></github-commit-panel>
             {{end}}
             <table id="build-info-elements">
-              <tr><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the build has started to when the last task is completed.">Makespan</strong></th><td>[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
-              <tr><td><i class="fa fa-clock-o"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th><td>[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</td></tr>
+              <tr><td><i class="fa fa-clock-o"></i></td><th><strong title="The makespan is the difference in time from when the first task in the build has started to when the last task is completed.">Makespan</strong></th>
+                <td>
+                  <span ng-show="makeSpanMS>0">[[makeSpanMS * 1000000 | default:0 | stringifyNanoseconds:true]]</span>
+                  <span ng-show="makeSpanMS==0">Not Started</span>
+                </td>
+              </tr>
+              <tr><td><i class="fa fa-clock-o"></i></td><th><strong title="The time spent indicates the sum of the processing time across all the tasks in the build.">Time Spent</strong></th>
+                <td>
+                  <span ng-show="totalTimeMS>0">[[totalTimeMS * 1000000 | default:0 | stringifyNanoseconds:true]]</span>
+                  <span ng-show="totalTimeMS==0">Not Started</span>
+                </td>
+              </tr>
             </table>
           </div>
         </div>
