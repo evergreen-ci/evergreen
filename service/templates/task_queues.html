@@ -14,17 +14,17 @@ Evergreen - Task Queues
 {{define "content"}}
 <div class="container" ng-controller="TaskQueuesCtrl">
   <div class="row">
-    <h2> Task Queues </h2>
-  </div>
-  <div class="row">
     <div id="nav-container" class="col-lg-2">
+      <div class="row">
+          <h2> Task Queues </h2>
+      </div>
       <div class="panel">
         <div class="panel-heading row">
           <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.distro" placeholder="Filter Distro" />
         </div>
         <div id="distros-list-container">
           <ul id="distros-list">
-            <li ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro" ng-click="setActiveDistro(distro)"
+            <li ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro" ng-click="setActiveElement(distro)"
             ng-class="{'active-distro': distro == activeDistro}">
             <span class="badge">[[getLength(distro)]]</span> [[distro]]
             </li>
@@ -35,7 +35,9 @@ Evergreen - Task Queues
     <div class="col-lg-8 col-lg-offset-3">
       <div id="queues" class="panel">
         <div class="panel-body">
-        <div id="[[distro]]" ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro">
+        <div ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro">
+            <span id="[[distro]]"></span>
+            <div>
             <h4>
               <span class="badge">[[getLength(distro)]]</span>
               [[distro]] 
@@ -44,7 +46,7 @@ Evergreen - Task Queues
               </span>
             </h4>
             <table class="table table-striped task-queue-table">
-              <tr ng-repeat="queueItem in queues[distro]">
+              <tr id="[[queueItem._id]]" ng-repeat="queueItem in queues[distro]">
                 <td class="index-col">[[$index+1]]</td>
                 <td class="task-col">                 
                   <div> <a href="/task/[[queueItem._id]]"> [[queueItem.display_name]] </a> </div>
@@ -77,6 +79,7 @@ Evergreen - Task Queues
                  </td>
               </tr>
             </table>
+            </div>
           </div>
         </div>
       </div>

@@ -144,7 +144,10 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
             <table id="task-info-elements">
               <tr ng-show="task.min_queue_pos != 0">
                 <td class="icon"><i class="fa fa-sort-numeric-asc"></i></td>
-                <td><strong>[[task.min_queue_pos | ordinalNum]]</strong> in queue</td>
+                  <td>
+                    <a href="/task_queue#/#[[task.id]]">[[task.min_queue_pos | ordinalNum]]</a> 
+                    in queue
+                  </td>
               </tr>
               <tr>
                 <td ng-hide="task.expected_duration == 0"><i class="fa fa-clock-o"></i></td>
