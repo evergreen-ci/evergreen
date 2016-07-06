@@ -24,7 +24,7 @@ Evergreen - Scheduler Task Queue Logs
 		<div class="event_details col-lg-9 col-md-8 col-sm-7">
 			<span class="log-elt"> Hosts Running:  [[event.data.task_queue_info.num_hosts_running]]</span>
 			<span class="log-elt"> Tasks in Queue:  [[event.data.task_queue_info.task_queue_length]]</span>
-			<span class="log-elt"> Expected Duration:  [[event.data.task_queue_info.expected_duration | stringifyNanoseconds]]
+			<span class="log-elt"> Expected Duration:  [[event.data.task_queue_info.expected_duration | stringifyNanoseconds : true]]
 
 		</div>
 	</div>
