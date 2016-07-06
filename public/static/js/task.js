@@ -578,7 +578,7 @@ mciModule.controller('TaskLogCtrl', ['$scope', '$timeout', '$http', '$location',
       return '/event_log/task/' + $scope.taskId;
     } else {
       var raw = isRaw ? '&text=true' : '';
-      return 'task_log_raw/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs + raw;
+      return '/task_log_raw/' + $scope.taskId + '/' + $scope.task.execution + '?type=' + $scope.currentLogs + raw;
     }
   };
 
