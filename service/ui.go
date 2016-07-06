@@ -142,9 +142,9 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/version/{project_id}/{revision}", uis.loadCtx(uis.versionFind)).Methods("GET")
 
 	// Hosts
-	r.HandleFunc("/hosts", uis.loadCtx(uis.hostsPage)).Methods("GET")
+	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.hostsPage))).Methods("GET")
 	r.HandleFunc("/hosts", requireLogin(uis.loadCtx(uis.modifyHosts))).Methods("PUT")
-	r.HandleFunc("/host/{host_id}", uis.loadCtx(uis.hostPage)).Methods("GET")
+	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.hostPage))).Methods("GET")
 	r.HandleFunc("/host/{host_id}", requireLogin(uis.loadCtx(uis.modifyHost))).Methods("PUT")
 
 	// Distros
