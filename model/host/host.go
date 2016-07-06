@@ -388,6 +388,7 @@ func (h *Host) UpdateReachability(reachable bool) error {
 }
 
 func (self *Host) Upsert() (*mgo.ChangeInfo, error) {
+
 	return UpsertOne(
 		bson.M{
 			IdKey: self.Id,
@@ -402,7 +403,8 @@ func (self *Host) Upsert() (*mgo.ChangeInfo, error) {
 				ProviderKey:    self.Provider,
 			},
 			"$setOnInsert": bson.M{
-				StatusKey: self.Status,
+				StatusKey:     self.Status,
+				CreateTimeKey: self.CreationTime,
 			},
 		},
 	)

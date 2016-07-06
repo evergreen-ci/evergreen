@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -188,6 +189,30 @@ func ByIds(ids []string) db.Q {
 func ByRunningTaskId(taskId string) db.Q {
 	return db.Query(bson.D{{RunningTaskKey, taskId}})
 }
+
+// ByDynamicWithinTime is a query that returns all dynamic hosts running between a certain time and another time.
+func ByDynamicWithinTime(startTime, endTime time.Time) db.Q {
+	return db.Query(
+		bson.M{
+			ProviderKey: bson.M{"$ne": evergreen.HostTypeStatic},
+			"$or": []bson.M{
+				bson.M{
+					CreateTimeKey:      bson.M{"$lt": endTime},
+					TerminationTimeKey: bson.M{"$gt": startTime},
+				},
+				bson.M{
+					CreateTimeKey:      bson.M{"$lt": endTime},
+					TerminationTimeKey: util.ZeroTime,
+					StatusKey:          evergreen.HostRunning,
+				},
+			},
+		})
+}
+
+var AllStatic = db.Query(
+	bson.M{
+		ProviderKey: evergreen.HostTypeStatic,
+	})
 
 // IsIdle is a query that returns all running Evergreen hosts with no task.
 var IsIdle = db.Query(

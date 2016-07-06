@@ -1,0 +1,62 @@
+{{define "scripts"}}
+<script type="text/javascript">
+   	window.userTz = {{GetTimezone $.User}};
+</script>
+<script type="text/javascript" src="{{Static "js" "scheduler_stats.js"}}?hash={{ StaticsMD5 }}"></script>
+{{end}}
+
+{{define "title"}}
+Evergreen - Scheduler Statistics
+{{end}}
+
+{{define "content"}}
+<div id="content" class="container-fluid" ng-controller="SchedulerStatsCtrl">
+	<div class="row">
+		<div class="col-lg-3">
+			<h2> Host Utilization </h2>
+		</div>
+		<div class="col-lg-3">
+			<h4> Granularity </h4>
+			<div class="btn-group btn-group-sm">
+				<a class="pointer btn btn-default" ng-repeat="granularity in granularitySeconds" ng-class="{active: currentGranularity.value == granularity.value}" ng-click="setGranularity(granularity)">
+					[[granularity.display]]
+				</a>
+			</div>
+		</div>
+		<div class="col-lg-5 btn-group">
+			<h4> Time Back </h4>
+			<div class="btn-group btn-group-sm">
+				<a class="pointer btn btn-default" ng-repeat="day in numberDays" ng-class="{active: currentNumberDays.value == day.value, disabled: disableDays(day)}" ng-click="setNumberDays(day)">
+				[[day.display]]
+				</a>
+			</div>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-10 stats-table">
+			<table class="table table-bordered table-hover">
+				<tr class="stats-header"> 
+					<th> Timeframe </th>
+					<th> Static Host Uptime </th>
+					<th> Dynamic Host Uptime </th>
+					<th> Task Time </th>
+					<th> Percent Utilization </th>
+				</tr>
+				<tr ng-repeat="data in utilizationData">
+					<td> [[data.start_time | convertDateToUserTimezone:userTz:currentGranularity.format]]-[[data.end_time | convertDateToUserTimezone:userTz:currentGranularity.format]]</td>
+					<td> 
+						<span> [[data.static_host | stringifyNanoseconds: true]] </span>
+					</td>
+					<td> 
+						<span> [[data.dynamic_host | stringifyNanoseconds: true]] </span>
+					</td>
+					<td> 
+						<span> [[data.task | stringifyNanoseconds: true]] </span>
+					</td>
+					<td> [[getPercentUtilization(data)]]%</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+</div>
+{{end}}}

@@ -256,6 +256,18 @@ func ByBeforeRevisionWithStatusesAndRequester(revisionOrder int, statuses []stri
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
+// ByTimeRun returns all tasks that are running in between two given times.
+func ByTimeRun(startTime, endTime time.Time) db.Q {
+	return db.Query(
+		bson.M{
+			StartTimeKey:  bson.M{"$lte": endTime},
+			FinishTimeKey: bson.M{"$gte": startTime},
+			StatusKey: bson.M{
+				"$in": []string{evergreen.TaskFailed, evergreen.TaskSucceeded},
+			},
+		})
+}
+
 func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
@@ -353,6 +365,16 @@ func FindOneOld(query db.Q) (*Task, error) {
 		return nil, nil
 	}
 	return task, err
+}
+
+// FindOld returns all task from the old tasks collection that satisfies the query.
+func FindOld(query db.Q) ([]Task, error) {
+	tasks := []Task{}
+	err := db.FindAllQ(OldCollection, query, &tasks)
+	if err == mgo.ErrNotFound {
+		return nil, nil
+	}
+	return tasks, err
 }
 
 // Find returns all tasks that satisfy the query.
