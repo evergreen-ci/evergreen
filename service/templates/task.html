@@ -327,15 +327,15 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                   <div class="progress [[progressBarClass]]" test-result-bar="test" style="width: [[barWidth]]%"></div>
                 </td>
                 <td class="col-lg-3">
-                  <div class="url-link" id="html-link"> 
-                    <a ng-href="[[getURL(test)]]" ng-hide="[[hideURL(test)]]"> 
+                  <div class="url-link nowrap" id="html-link">
+                    <a ng-href="[[getURL(test)]]" ng-hide="[[hideURL(test)]]">
                       HTML
                     </a>
                   </div>
                   <div id="separator">
                     <b ng-show="[[hasBothURL(test)]]">&middot;</b>
                   </div>
-                  <div class="url-link" id="raw-link">
+                  <div class="url-link nowrap" id="raw-link">
                     <a ng-href="[[getURL(test, 'raw')]]" ng-hide="[[hideURL(test, 'raw')]]">
                       Raw
                     </a>
