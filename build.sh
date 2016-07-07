@@ -2,7 +2,7 @@
 if [ "Windows_NT" = "$OS" ]
 then
     set -o igncr
-    export GOBIN=bin
+    export GOBIN=$(cygpath -w `pwd`/bin)
 else
     export GOBIN=`pwd`/bin
 fi
