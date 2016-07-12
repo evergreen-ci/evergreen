@@ -134,7 +134,7 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 	}
 
 	// run teardown script if we have one, sending notifications if things go awry
-	if host.Distro.Teardown != "" {
+	if host.Distro.Teardown != "" && host.Provisioned {
 		evergreen.Logger.Logf(slogger.ERROR, "Running teardown script for host %v", host.Id)
 		if err := runHostTeardown(host, cloudHost); err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "Error running teardown script for %v: %v", host.Id, err)
