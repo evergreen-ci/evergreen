@@ -101,8 +101,7 @@ func (self *Expansions) ExpandString(toExpand string) (string, error) {
 		}))
 
 	if malformedFound || strings.Contains(expanded, "${") {
-		return expanded, fmt.Errorf("The line \"%v\" is badly formed - it"+
-			" contains an unclosed expansion", expanded)
+		return expanded, fmt.Errorf("\"%v\" contains an unclosed expansion", expanded)
 	}
 
 	return expanded, nil

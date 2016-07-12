@@ -5,8 +5,21 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+// ShouldContainResembling tests whether a slice contains an element that DeepEquals
+// the expected input.
+func ShouldContainResembling(actual interface{}, expected ...interface{}) string {
+	if len(expected) != 1 {
+		return "ShouldContainResembling takes 1 argument"
+	}
+	if !util.SliceContains(actual, expected[0]) {
+		return fmt.Sprintf("%#v does not contain %#v", actual, expected[0])
+	}
+	return ""
+}
 
 func TestCreateIntermediateProjectDependencies(t *testing.T) {
 	Convey("Testing different project files", t, func() {
@@ -98,9 +111,9 @@ tasks:
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[1].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[1].Requires[0].Variant, ShouldEqual, "v1")
+			So(p.Tasks[1].Requires[0].Variant.stringSelector, ShouldEqual, "v1")
 			So(p.Tasks[1].Requires[1].Name, ShouldEqual, "task2")
-			So(p.Tasks[1].Requires[1].Variant, ShouldEqual, "")
+			So(p.Tasks[1].Requires[1].Variant, ShouldBeNil)
 		})
 		Convey("a single requirement should parse", func() {
 			simple := `
@@ -114,7 +127,29 @@ tasks:
 			So(p, ShouldNotBeNil)
 			So(len(errs), ShouldEqual, 0)
 			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
-			So(p.Tasks[0].Requires[0].Variant, ShouldEqual, "v1")
+			So(p.Tasks[0].Requires[0].Variant.stringSelector, ShouldEqual, "v1")
+		})
+		Convey("a single requirement with a matrix selector should parse", func() {
+			simple := `
+tasks:
+- name: task1
+  requires:
+    name: "task0"
+    variant:
+     cool: "shoes"
+     colors:
+      - red
+      - green
+      - blue
+`
+			p, errs := createIntermediateProject([]byte(simple))
+			So(errs, ShouldBeNil)
+			So(p, ShouldNotBeNil)
+			So(p.Tasks[0].Requires[0].Name, ShouldEqual, "task0")
+			So(p.Tasks[0].Requires[0].Variant.stringSelector, ShouldEqual, "")
+			So(p.Tasks[0].Requires[0].Variant.matrixSelector, ShouldResemble, matrixDefinition{
+				"cool": []string{"shoes"}, "colors": []string{"red", "green", "blue"},
+			})
 		})
 	})
 }
@@ -151,8 +186,9 @@ buildvariants:
 			So(len(bv.Modules), ShouldEqual, 2)
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
-			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble, TaskSelector{Name: "t3", Variant: "v0"})
-			So(bv.Tasks[1].Requires[0], ShouldResemble, TaskSelector{Name: "t4"})
+			So(bv.Tasks[1].DependsOn[0].taskSelector, ShouldResemble,
+				taskSelector{Name: "t3", Variant: &variantSelector{stringSelector: "v0"}})
+			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 			So(*bv.Tasks[1].Stepback, ShouldBeFalse)
 			So(bv.Tasks[1].Priority, ShouldEqual, 77)
 		})
@@ -173,8 +209,8 @@ buildvariants:
 			So(bv.Name, ShouldEqual, "v1")
 			So(bv.Tasks[0].Name, ShouldEqual, "t1")
 			So(bv.Tasks[1].Name, ShouldEqual, "t2")
-			So(bv.Tasks[1].DependsOn[0].TaskSelector, ShouldResemble, TaskSelector{Name: "t3"})
-			So(bv.Tasks[1].Requires[0], ShouldResemble, TaskSelector{Name: "t4"})
+			So(bv.Tasks[1].DependsOn[0].taskSelector, ShouldResemble, taskSelector{Name: "t3"})
+			So(bv.Tasks[1].Requires[0], ShouldResemble, taskSelector{Name: "t4"})
 		})
 		Convey("a file with single BVTs should parse", func() {
 			simple := `
@@ -256,12 +292,16 @@ func TestTranslateDependsOn(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
 		pp := &parserProject{}
 		Convey("a tag-free dependency config should be unchanged", func() {
+			pp.BuildVariants = []parserBV{
+				{Name: "v1"},
+			}
 			pp.Tasks = []parserTask{
 				{Name: "t1"},
 				{Name: "t2"},
 				{Name: "t3", DependsOn: parserDependencies{
-					{TaskSelector: TaskSelector{Name: "t1"}},
-					{TaskSelector: TaskSelector{Name: "t2", Variant: "v1"}}},
+					{taskSelector: taskSelector{Name: "t1"}},
+					{taskSelector: taskSelector{
+						Name: "t2", Variant: &variantSelector{stringSelector: "v1"}}}},
 				},
 			}
 			out, errs := translateProject(pp)
@@ -273,13 +313,19 @@ func TestTranslateDependsOn(t *testing.T) {
 			So(deps[1].Variant, ShouldEqual, "v1")
 		})
 		Convey("a dependency with tag selectors should evaluate", func() {
+			pp.BuildVariants = []parserBV{
+				{Name: "v1", Tags: []string{"cool"}},
+				{Name: "v2", Tags: []string{"cool"}},
+			}
 			pp.Tasks = []parserTask{
 				{Name: "t1", Tags: []string{"a", "b"}},
 				{Name: "t2", Tags: []string{"a", "c"}, DependsOn: parserDependencies{
-					{TaskSelector: TaskSelector{Name: "*"}}}},
+					{taskSelector: taskSelector{Name: "*"}}}},
 				{Name: "t3", DependsOn: parserDependencies{
-					{TaskSelector: TaskSelector{Name: ".b"}},
-					{TaskSelector: TaskSelector{Name: ".a !.b", Variant: "v1"}}},
+					{taskSelector: taskSelector{
+						Name: ".b", Variant: &variantSelector{stringSelector: ".cool !v2"}}},
+					{taskSelector: taskSelector{
+						Name: ".a !.b", Variant: &variantSelector{stringSelector: ".cool"}}}},
 				},
 			}
 			out, errs := translateProject(pp)
@@ -288,24 +334,31 @@ func TestTranslateDependsOn(t *testing.T) {
 			So(out.Tasks[1].DependsOn[0].Name, ShouldEqual, "*")
 			deps := out.Tasks[2].DependsOn
 			So(deps[0].Name, ShouldEqual, "t1")
+			So(deps[0].Variant, ShouldEqual, "v1")
 			So(deps[1].Name, ShouldEqual, "t2")
 			So(deps[1].Variant, ShouldEqual, "v1")
+			So(deps[2].Name, ShouldEqual, "t2")
+			So(deps[2].Variant, ShouldEqual, "v2")
 		})
 		Convey("a dependency with erroneous selectors should fail", func() {
+			pp.BuildVariants = []parserBV{
+				{Name: "v1"},
+			}
 			pp.Tasks = []parserTask{
 				{Name: "t1", Tags: []string{"a", "b"}},
 				{Name: "t2", Tags: []string{"a", "c"}},
 				{Name: "t3", DependsOn: parserDependencies{
-					{TaskSelector: TaskSelector{Name: ".cool"}},
-					{TaskSelector: TaskSelector{Name: "!!.cool"}},                //illegal selector
-					{TaskSelector: TaskSelector{Name: "!.c !.b", Variant: "v1"}}, //no matching tasks
-					{TaskSelector: TaskSelector{Name: "t1"}, Status: "*"},        //valid, but:
-					{TaskSelector: TaskSelector{Name: ".b"}},                     //conflicts with above
+					{taskSelector: taskSelector{Name: ".cool"}},
+					{taskSelector: taskSelector{Name: "!!.cool"}},                                                  //[1] illegal selector
+					{taskSelector: taskSelector{Name: "!.c !.b", Variant: &variantSelector{stringSelector: "v1"}}}, //[2] no matching tasks
+					{taskSelector: taskSelector{Name: "t1", Variant: &variantSelector{stringSelector: ".nope"}}},   //[3] no matching variants
+					{taskSelector: taskSelector{Name: "t1"}, Status: "*"},                                          // valid, but:
+					{taskSelector: taskSelector{Name: ".b"}},                                                       //[4] conflicts with above
 				}},
 			}
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 3)
+			So(len(errs), ShouldEqual, 4)
 		})
 	})
 }
@@ -314,12 +367,15 @@ func TestTranslateRequires(t *testing.T) {
 	Convey("With an intermediate parseProject", t, func() {
 		pp := &parserProject{}
 		Convey("a task with valid requirements should succeed", func() {
+			pp.BuildVariants = []parserBV{
+				{Name: "v1"},
+			}
 			pp.Tasks = []parserTask{
 				{Name: "t1"},
 				{Name: "t2"},
-				{Name: "t3", Requires: TaskSelectors{
+				{Name: "t3", Requires: taskSelectors{
 					{Name: "t1"},
-					{Name: "t2", Variant: "v1"},
+					{Name: "t2", Variant: &variantSelector{stringSelector: "v1"}},
 				}},
 			}
 			out, errs := translateProject(pp)
@@ -331,18 +387,22 @@ func TestTranslateRequires(t *testing.T) {
 			So(reqs[1].Variant, ShouldEqual, "v1")
 		})
 		Convey("a task with erroneous requirements should fail", func() {
+			pp.BuildVariants = []parserBV{
+				{Name: "v1"},
+			}
 			pp.Tasks = []parserTask{
 				{Name: "t1"},
 				{Name: "t2", Tags: []string{"taggy"}},
-				{Name: "t3", Requires: TaskSelectors{
-					{Name: "!!!!!"},                     //illegal selector
-					{Name: ".taggy !t2", Variant: "v1"}, //nothing returned
-					{Name: "t1 t2"},                     //nothing returned
+				{Name: "t3", Requires: taskSelectors{
+					{Name: "!!!!!"}, //illegal selector
+					{Name: ".taggy !t2", Variant: &variantSelector{stringSelector: "v1"}}, //nothing returned
+					{Name: "t1", Variant: &variantSelector{stringSelector: "!v1"}},        //no variants returned
+					{Name: "t1 t2"}, //nothing returned
 				}},
 			}
 			out, errs := translateProject(pp)
 			So(out, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 3)
+			So(len(errs), ShouldEqual, 4)
 		})
 	})
 }
@@ -361,8 +421,8 @@ func TestTranslateBuildVariants(t *testing.T) {
 				Tasks: parserBVTasks{
 					{Name: "t1"},
 					{Name: ".z", DependsOn: parserDependencies{
-						{TaskSelector: TaskSelector{Name: ".b"}}}},
-					{Name: "* !t1 !t2", Requires: TaskSelectors{{Name: "!.a"}}},
+						{taskSelector: taskSelector{Name: ".b"}}}},
+					{Name: "* !t1 !t2", Requires: taskSelectors{{Name: "!.a"}}},
 				},
 			}}
 
@@ -383,7 +443,7 @@ func TestTranslateBuildVariants(t *testing.T) {
 			pp.BuildVariants = []parserBV{{
 				Name: "v1",
 				Tasks: parserBVTasks{
-					{Name: "t1", Requires: TaskSelectors{{Name: ".b"}}},
+					{Name: "t1", Requires: taskSelectors{{Name: ".b"}}},
 				},
 			}}
 			out, errs := translateProject(pp)
@@ -402,9 +462,10 @@ func parserTaskSelectorTaskEval(tse *taskSelectorEvaluator, tasks parserBVTasks,
 	for _, e := range expected {
 		exp = append(exp, e.Name)
 	}
+	vse := NewVariantSelectorEvaluator([]parserBV{}, nil)
 	Convey(fmt.Sprintf("tasks [%v] should evaluate to [%v]",
 		strings.Join(names, ", "), strings.Join(exp, ", ")), func() {
-		ts, errs := evaluateBVTasks(tse, tasks)
+		ts, errs := evaluateBVTasks(tse, vse, tasks)
 		if expected != nil {
 			So(errs, ShouldBeNil)
 		} else {

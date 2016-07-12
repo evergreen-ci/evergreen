@@ -1,0 +1,76 @@
+axes:
+- id: "color"
+  values:
+  - id: "red"
+    display_name: "Red"
+  - id: "blue"
+    display_name: "Blue"
+    variables:
+      length: 7
+  - id: "yellow"
+    display_name: "Yellow"
+- id: "shape"
+  values:
+  - id: "circle"
+    display_name: "Perfect Circle"
+    tags:
+    - round
+    - perfect
+    run_on: "round_machine"
+  - id: "ellipse"
+    display_name: "Ellipse"
+    tags: "round"
+    run_on: "round_machine"
+  - id: "square"
+    display_name: "Perfect Square"
+    variables:
+      corners: yes
+      length: 125
+    tags: perfect 
+    run_on: "right_angler"
+  - id: rectangle
+    display_name: "Rectangle"
+    run_on: "right_angler"
+
+buildvariants:
+- matrix_name: tester
+  display_name: ${color} ${shape} Shape
+  matrix_spec:
+    color: "*"
+    shape: "*"
+  exclude_spec: 
+  - color: red
+    shape: circle
+  - color: blue
+    shape: ".round"
+  tags: ["==${corners}=="]
+  tasks:
+  - "test_task"
+  - "test_${length|0}"
+  - name: "compile"
+    run_on: "corners_${corners|none}"
+  - name: "1"
+    depends_on: 
+        - name: test_${length|0}
+          status: ${color}
+    requires:  test_${length|0}
+  rules:
+  - if:
+      color: "*"
+      shape: ".round"
+    then:
+      set:
+        tags: "gotcha_boy"
+        stepback: false
+      add_tasks: ".special"
+
+tasks:
+- name: "test_task"
+- name: compile
+- name: test_7
+- name: test_0
+- name: test_125
+- name: "1"
+- name: add_me
+  tags: special
+

@@ -127,6 +127,7 @@ type BuildVariant struct {
 	Expansions  map[string]string `yaml:"expansions,omitempty" bson:"expansions"`
 	Modules     []string          `yaml:"modules,omitempty" bson:"modules"`
 	Disabled    bool              `yaml:"disabled,omitempty" bson:"disabled"`
+	Tags        []string          `yaml:"tags,omitempty" bson:"tags"`
 	Push        bool              `yaml:"push,omitempty" bson:"push"`
 
 	// Use a *int for 2 possible states

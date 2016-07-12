@@ -1,0 +1,77 @@
+axes:
+- id: configuration
+  values:
+  - id: standalone
+    variables:
+        setup: standalone
+  - id: repl
+    variables:
+        setup: repl
+  - id: sharded
+    variables:
+        setup: sharded
+- id: os
+  values:
+  - id: windows
+    variables:
+        build_distro: "windows_big"
+  - id: linux
+    run_on: "linux"
+    tags: "posix"
+    variables:
+        build_distro: "linux_big"
+        setup: repl
+  - id: osx
+    run_on: "osx"
+    tags: "posix"
+    variables:
+        build_distro: "osx_big"
+
+
+buildvariants:
+# standalone matrix for doing work before and after all other tasks
+- name: analysis
+  run_on: "linux"
+  stepback: false
+  tasks:
+  - pre-task
+  - post-task
+
+- matrix_name: test
+  matrix_spec:
+      os: "*"
+      configuration: "*"
+  tasks:
+  - name: "!.special"
+    depends_on:
+    - name: "compile"
+      variant: 
+        os: ${os}
+        configuration: "standalone"
+  rules:
+  # only run compile once per OS -- all configs will depend on it
+  - if:
+      os: "*"
+      configuration: "standalone"
+    then:
+      add_tasks:
+        name: "compile"
+        run_on: ${build_distro}
+        depends_on:
+        - name: "pre-task"
+          variant: "analysis"
+
+tasks:
+- name: "compile"
+  tags: "special"
+- name: "test1"
+- name: "test2"
+- name: "test3"
+- name: "test4"
+- name: "pre-task"
+  tags: "special"
+- name: "post-task"
+  depends_on:
+  - name: "!.special"
+    variant: {"os":"*", "configuration":"*"}
+  tags: "special"

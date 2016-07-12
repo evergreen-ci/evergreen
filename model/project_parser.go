@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/yaml.v2"
 )
 
-// This file contains all of the infrastructure for turning a YAML project configuration
+// This file contains the infrastructure for turning a YAML project configuration
 // into a usable Project struct. A basic overview of the project parsing process is:
 //
 // First, the YAML bytes are unmarshalled into an intermediary parserProject.
@@ -23,7 +25,7 @@ import (
 // when they use fields that aren't actually defined.
 //
 // Once the intermediary project is created, we crawl it to evaluate tag selectors
-// and (TODO) matrix definitions. This step recursively crawls variants, tasks, their
+// and  matrix definitions. This step recursively crawls variants, tasks, their
 // dependencies, and so on, to replace selectors with the tasks they reference and return
 // a populated Project type.
 //
@@ -56,6 +58,10 @@ type parserProject struct {
 	Functions       map[string]*YAMLCommandSet `yaml:"functions"`
 	Tasks           []parserTask               `yaml:"tasks"`
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs"`
+
+	// Matrix code
+	Axes     []matrixAxis `yaml:"axes"`
+	matrices []matrix
 }
 
 // parserTask represents an intermediary state of task definitions.
@@ -65,16 +71,20 @@ type parserTask struct {
 	ExecTimeoutSecs int                 `yaml:"exec_timeout_secs"`
 	DisableCleanup  bool                `yaml:"disable_cleanup"`
 	DependsOn       parserDependencies  `yaml:"depends_on"`
-	Requires        TaskSelectors       `yaml:"requires"`
+	Requires        taskSelectors       `yaml:"requires"`
 	Commands        []PluginCommandConf `yaml:"commands"`
 	Tags            parserStringSlice   `yaml:"tags"`
 	Patchable       *bool               `yaml:"patchable"`
 	Stepback        *bool               `yaml:"stepback"`
 }
 
+// helper methods for task tag evaluations
+func (pt *parserTask) name() string   { return pt.Name }
+func (pt *parserTask) tags() []string { return pt.Tags }
+
 // parserDependency represents the intermediary state for referencing dependencies.
 type parserDependency struct {
-	TaskSelector
+	taskSelector
 	Status        string `yaml:"status"`
 	PatchOptional bool   `yaml:"patch_optional"`
 }
@@ -103,7 +113,7 @@ func (pds *parserDependencies) UnmarshalYAML(unmarshal func(interface{}) error) 
 // UnmarshalYAML reads YAML into a parserDependency. A single selector string
 // will be also be accepted.
 func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	if err := unmarshal(&pd.TaskSelector); err != nil {
+	if err := unmarshal(&pd.taskSelector); err != nil {
 		return err
 	}
 	otherFields := struct {
@@ -112,43 +122,73 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 	}{}
 	// ignore any errors here; if we're using a single-string selector, this is expected to fail
 	unmarshal(&otherFields)
-	// TODO validate status
 	pd.Status = otherFields.Status
 	pd.PatchOptional = otherFields.PatchOptional
 	return nil
 }
 
 // TaskSelector handles the selection of specific task/variant combinations
-// in the context of dependencies and requirements fields.
-type TaskSelector struct {
-	Name    string `yaml:"name"`
-	Variant string `yaml:"variant"`
+// in the context of dependencies and requirements fields. //TODO no export?
+type taskSelector struct {
+	Name    string           `yaml:"name"`
+	Variant *variantSelector `yaml:"variant"`
 }
 
 // TaskSelectors is a helper type for parsing arrays of TaskSelector.
-type TaskSelectors []TaskSelector
+type taskSelectors []taskSelector
+
+// VariantSelector handles the selection of a variant, either by a id/tag selector
+// or by matching against matrix axis values.
+type variantSelector struct {
+	stringSelector string
+	matrixSelector matrixDefinition
+}
+
+// UnmarshalYAML allows variants to be referenced as single selector strings or
+// as a matrix definition. This works by first attempting to unmarshal the YAML
+// into a string and then falling back to the matrix.
+func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// first, attempt to unmarshal just a selector string
+	var onlySelector string
+	if err := unmarshal(&onlySelector); err == nil {
+		if onlySelector != "" {
+			vs.stringSelector = onlySelector
+			return nil
+		}
+	}
+
+	md := matrixDefinition{}
+	if err := unmarshal(&md); err != nil {
+		return err
+	}
+	if len(md) == 0 {
+		return fmt.Errorf("variant selector must not be empty")
+	}
+	vs.matrixSelector = md
+	return nil
+}
 
 // UnmarshalYAML reads YAML into an array of TaskSelector. It will
 // successfully unmarshal arrays of dependency selectors or a single selector.
-func (tss *TaskSelectors) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (tss *taskSelectors) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// first, attempt to unmarshal a single selector
-	var single TaskSelector
+	var single taskSelector
 	if err := unmarshal(&single); err == nil {
-		*tss = TaskSelectors([]TaskSelector{single})
+		*tss = taskSelectors([]taskSelector{single})
 		return nil
 	}
-	var slice []TaskSelector
+	var slice []taskSelector
 	if err := unmarshal(&slice); err != nil {
 		return err
 	}
-	*tss = TaskSelectors(slice)
+	*tss = taskSelectors(slice)
 	return nil
 }
 
 // UnmarshalYAML allows tasks to be referenced as single selector strings.
 // This works by first attempting to unmarshal the YAML into a string
 // and then falling back to the TaskSelector struct.
-func (ts *TaskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	// first, attempt to unmarshal just a selector string
 	var onlySelector string
 	if err := unmarshal(&onlySelector); err == nil {
@@ -159,7 +199,7 @@ func (ts *TaskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	// we define a new type so that we can grab the yaml struct tags without the struct methods,
 	// preventing infinite recursion on the UnmarshalYAML() method.
-	type copyType TaskSelector
+	type copyType taskSelector
 	var tsc copyType
 	if err := unmarshal(&tsc); err != nil {
 		return err
@@ -167,22 +207,62 @@ func (ts *TaskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if tsc.Name == "" {
 		return fmt.Errorf("task selector must have a name")
 	}
-	*ts = TaskSelector(tsc)
+	*ts = taskSelector(tsc)
 	return nil
 }
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name        string            `yaml:"name"`
-	DisplayName string            `yaml:"display_name"`
-	Expansions  map[string]string `yaml:"expansions"`
-	Modules     parserStringSlice `yaml:"modules"`
-	Disabled    bool              `yaml:"disabled"`
-	Push        bool              `yaml:"push"`
-	BatchTime   *int              `yaml:"batchtime"`
-	Stepback    *bool             `yaml:"stepback"`
-	RunOn       parserStringSlice `yaml:"run_on"`
-	Tasks       parserBVTasks     `yaml:"tasks"`
+	Name        string             `yaml:"name"`
+	DisplayName string             `yaml:"display_name"`
+	Expansions  command.Expansions `yaml:"expansions"`
+	Tags        parserStringSlice  `yaml:"tags"`
+	Modules     parserStringSlice  `yaml:"modules"`
+	Disabled    bool               `yaml:"disabled"`
+	Push        bool               `yaml:"push"`
+	BatchTime   *int               `yaml:"batchtime"`
+	Stepback    *bool              `yaml:"stepback"`
+	RunOn       parserStringSlice  `yaml:"run_on"`
+	Tasks       parserBVTasks      `yaml:"tasks"`
+
+	// internal matrix stuff
+	matrixId  string
+	matrixVal matrixValue
+	matrix    *matrix
+
+	matrixRules []ruleAction
+}
+
+// helper methods for variant tag evaluations
+func (pbv *parserBV) name() string   { return pbv.Name }
+func (pbv *parserBV) tags() []string { return pbv.Tags }
+
+func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// first attempt to unmarshal into a matrix
+	m := matrix{}
+	merr := unmarshal(&m)
+	if merr == nil {
+		if m.Id != "" {
+			*pbv = parserBV{matrix: &m}
+			return nil
+		}
+	}
+	// otherwise use a BV copy type to skip this Unmarshal method
+	type copyType parserBV
+	var bv copyType
+	if err := unmarshal(&bv); err != nil {
+		return err
+	}
+	if bv.Name == "" {
+		// if we're here, it's very likely that the user was building a matrix but broke
+		// the syntax, so we try and surface the matrix error if they used "matrix_name".
+		if m.Id != "" {
+			return fmt.Errorf("parsing matrix: %v", merr)
+		}
+		return fmt.Errorf("buildvariant missing name")
+	}
+	*pbv = parserBV(bv)
+	return nil
 }
 
 // parserBVTask is a helper type storing intermediary variant task configurations.
@@ -191,7 +271,7 @@ type parserBVTask struct {
 	Patchable       *bool              `yaml:"patchable"`
 	Priority        int64              `yaml:"priority"`
 	DependsOn       parserDependencies `yaml:"depends_on"`
-	Requires        TaskSelectors      `yaml:"requires"`
+	Requires        taskSelectors      `yaml:"requires"`
 	ExecTimeoutSecs int                `yaml:"exec_timeout_secs"`
 	Stepback        *bool              `yaml:"stepback"`
 	Distros         parserStringSlice  `yaml:"distros"`
@@ -283,7 +363,10 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 			}
 			buf.WriteString(e.Error())
 		}
-		return fmt.Errorf("error loading project yaml: %v", buf.String())
+		if len(errs) > 1 {
+			return fmt.Errorf("project errors: %v", buf.String())
+		}
+		return fmt.Errorf("project error: %v", buf.String())
 	}
 	*project = *p
 	project.Identifier = identifier
@@ -310,6 +393,7 @@ func createIntermediateProject(yml []byte) (*parserProject, []error) {
 	if err != nil {
 		return nil, []error{err}
 	}
+
 	return p, nil
 }
 
@@ -341,17 +425,37 @@ func translateProject(pp *parserProject) (*Project, []error) {
 		ExecTimeoutSecs: pp.ExecTimeoutSecs,
 	}
 	tse := NewParserTaskSelectorEvaluator(pp.Tasks)
+	ase := NewAxisSelectorEvaluator(pp.Axes)
+	regularBVs, matrices := sieveMatrixVariants(pp.BuildVariants)
 	var evalErrs, errs []error
-	proj.Tasks, errs = evaluateTasks(tse, pp.Tasks)
+	matrixVariants, errs := buildMatrixVariants(pp.Axes, ase, matrices)
 	evalErrs = append(evalErrs, errs...)
-	proj.BuildVariants, errs = evaluateBuildVariants(tse, pp.BuildVariants)
+	pp.BuildVariants = append(regularBVs, matrixVariants...)
+	vse := NewVariantSelectorEvaluator(pp.BuildVariants, ase)
+	proj.Tasks, errs = evaluateTasks(tse, vse, pp.Tasks)
+	evalErrs = append(evalErrs, errs...)
+	proj.BuildVariants, errs = evaluateBuildVariants(tse, vse, pp.BuildVariants)
 	evalErrs = append(evalErrs, errs...)
 	return proj, evalErrs
 }
 
+// sieveMatrixVariants takes a set of parserBVs and groups them into regular
+// buildvariant matrix definitions and matrix definitions.
+func sieveMatrixVariants(bvs []parserBV) (regular []parserBV, matrices []matrix) {
+	for _, bv := range bvs {
+		if bv.matrix != nil {
+			matrices = append(matrices, *bv.matrix)
+		} else {
+			regular = append(regular, bv)
+		}
+	}
+	return regular, matrices
+}
+
 // evaluateTasks translates intermediate tasks into true ProjectTask types,
 // evaluating any selectors in the DependsOn or Requires fields.
-func evaluateTasks(tse *taskSelectorEvaluator, pts []parserTask) ([]ProjectTask, []error) {
+func evaluateTasks(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
+	pts []parserTask) ([]ProjectTask, []error) {
 	tasks := []ProjectTask{}
 	var evalErrs, errs []error
 	for _, pt := range pts {
@@ -365,9 +469,9 @@ func evaluateTasks(tse *taskSelectorEvaluator, pts []parserTask) ([]ProjectTask,
 			Patchable:       pt.Patchable,
 			Stepback:        pt.Stepback,
 		}
-		t.DependsOn, errs = evaluateDependsOn(tse, pt.DependsOn)
+		t.DependsOn, errs = evaluateDependsOn(tse, vse, pt.DependsOn)
 		evalErrs = append(evalErrs, errs...)
-		t.Requires, errs = evaluateRequires(tse, pt.Requires)
+		t.Requires, errs = evaluateRequires(tse, vse, pt.Requires)
 		evalErrs = append(evalErrs, errs...)
 		tasks = append(tasks, t)
 	}
@@ -376,7 +480,8 @@ func evaluateTasks(tse *taskSelectorEvaluator, pts []parserTask) ([]ProjectTask,
 
 // evaluateBuildsVariants translates intermediate tasks into true BuildVariant types,
 // evaluating any selectors in the Tasks fields.
-func evaluateBuildVariants(tse *taskSelectorEvaluator, pbvs []parserBV) ([]BuildVariant, []error) {
+func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
+	pbvs []parserBV) ([]BuildVariant, []error) {
 	bvs := []BuildVariant{}
 	var evalErrs, errs []error
 	for _, pbv := range pbvs {
@@ -390,8 +495,54 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, pbvs []parserBV) ([]Build
 			BatchTime:   pbv.BatchTime,
 			Stepback:    pbv.Stepback,
 			RunOn:       pbv.RunOn,
+			Tags:        pbv.Tags,
 		}
-		bv.Tasks, errs = evaluateBVTasks(tse, pbv.Tasks)
+		bv.Tasks, errs = evaluateBVTasks(tse, vse, pbv.Tasks)
+		// evaluate any rules passed in during matrix construction
+		for _, r := range pbv.matrixRules {
+			// remove_tasks removes all tasks with matching names
+			if len(r.RemoveTasks) > 0 {
+				prunedTasks := []BuildVariantTask{}
+				toRemove := []string{}
+				for _, t := range r.RemoveTasks {
+					removed, err := tse.evalSelector(ParseSelector(t))
+					if err != nil {
+						evalErrs = append(evalErrs, fmt.Errorf("remove rule: %v", err))
+						continue
+					}
+					toRemove = append(toRemove, removed...)
+				}
+				for _, t := range bv.Tasks {
+					if !util.SliceContains(toRemove, t.Name) {
+						prunedTasks = append(prunedTasks, t)
+					}
+				}
+				bv.Tasks = prunedTasks
+			}
+			// add_tasks adds the given BuildVariantTasks, returning errors for any collisions
+			if len(r.AddTasks) > 0 {
+				// cache existing tasks so we can check for duplicates
+				existing := map[string]*BuildVariantTask{}
+				for i, t := range bv.Tasks {
+					existing[t.Name] = &bv.Tasks[i]
+				}
+
+				added, errs := evaluateBVTasks(tse, vse, r.AddTasks)
+				evalErrs = append(evalErrs, errs...)
+				// check for conflicting duplicates
+				for _, t := range added {
+					if old, ok := existing[t.Name]; ok {
+						if !reflect.DeepEqual(t, *old) {
+							evalErrs = append(evalErrs, fmt.Errorf(
+								"conflicting definitions of added tasks '%v': %v != %v", t.Name, t, old))
+						}
+					} else {
+						bv.Tasks = append(bv.Tasks, t)
+						existing[t.Name] = &t
+					}
+				}
+			}
+		}
 		evalErrs = append(evalErrs, errs...)
 		bvs = append(bvs, bv)
 	}
@@ -401,7 +552,8 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, pbvs []parserBV) ([]Build
 // evaluateBVTasks translates intermediate tasks into true BuildVariantTask types,
 // evaluating any selectors referencing tasks, and further evaluating any selectors
 // in the DependsOn or Requires fields of those tasks.
-func evaluateBVTasks(tse *taskSelectorEvaluator, pbvts []parserBVTask) ([]BuildVariantTask, []error) {
+func evaluateBVTasks(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
+	pbvts []parserBVTask) ([]BuildVariantTask, []error) {
 	var evalErrs, errs []error
 	ts := []BuildVariantTask{}
 	tasksByName := map[string]BuildVariantTask{}
@@ -423,9 +575,9 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, pbvts []parserBVTask) ([]BuildV
 				Stepback:        pt.Stepback,
 				Distros:         pt.Distros,
 			}
-			t.DependsOn, errs = evaluateDependsOn(tse, pt.DependsOn)
+			t.DependsOn, errs = evaluateDependsOn(tse, vse, pt.DependsOn)
 			evalErrs = append(evalErrs, errs...)
-			t.Requires, errs = evaluateRequires(tse, pt.Requires)
+			t.Requires, errs = evaluateRequires(tse, vse, pt.Requires)
 			evalErrs = append(evalErrs, errs...)
 
 			// add the new task if it doesn't already exists (we must avoid conflicting status fields)
@@ -446,49 +598,56 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, pbvts []parserBVTask) ([]BuildV
 }
 
 // evaluateDependsOn expands any selectors in a dependency definition.
-func evaluateDependsOn(tse *taskSelectorEvaluator, deps []parserDependency) ([]TaskDependency, []error) {
+func evaluateDependsOn(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
+	deps []parserDependency) ([]TaskDependency, []error) {
 	var evalErrs []error
+	var err error
 	newDeps := []TaskDependency{}
 	newDepsByNameAndVariant := map[TVPair]TaskDependency{}
 	for _, d := range deps {
+		names := []string{""}
 		if d.Name == AllDependencies {
-			// * is a special case for dependencies
-			allDep := TaskDependency{
-				Name:          AllDependencies,
-				Variant:       d.Variant,
-				Status:        d.Status,
-				PatchOptional: d.PatchOptional,
+			// * is a special case for dependencies, so don't eval it
+			names = []string{AllDependencies}
+		} else {
+			names, err = tse.evalSelector(ParseSelector(d.Name))
+			if err != nil {
+				evalErrs = append(evalErrs, err)
+				continue
 			}
-			newDeps = append(newDeps, allDep)
-			newDepsByNameAndVariant[TVPair{d.Variant, d.Name}] = allDep
-			continue
 		}
-		names, err := tse.evalSelector(ParseSelector(d.Name))
-		if err != nil {
-			evalErrs = append(evalErrs, err)
-			continue
+		// we default to handle the empty variant, but expand the list of variants
+		// if the variant field is set.
+		variants := []string{""}
+		if d.Variant != nil {
+			variants, err = vse.evalSelector(d.Variant)
+			if err != nil {
+				evalErrs = append(evalErrs, err)
+				continue
+			}
 		}
 		// create new dependency definitions--duplicates must have the same status requirements
 		for _, name := range names {
-			// create a newDep by copying the dep that selected it,
-			// so we can preserve the "Variant" and "Status" field.
-			newDep := TaskDependency{
-				Name:          name,
-				Variant:       d.Variant,
-				Status:        d.Status,
-				PatchOptional: d.PatchOptional,
-			}
-			newDep.Name = name
-			// add the new dep if it doesn't already exists (we must avoid conflicting status fields)
-			if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {
-				newDeps = append(newDeps, newDep)
-				newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}] = newDep
-			} else {
-				// it's already in the new list, so we check to make sure the status definitions match.
-				if !reflect.DeepEqual(newDep, oldDep) {
-					evalErrs = append(evalErrs, fmt.Errorf(
-						"conflicting definitions of dependency '%v': %v != %v", name, newDep, oldDep))
-					continue
+			for _, variant := range variants {
+				// create a newDep by copying the dep that selected it,
+				// so we can preserve the "Status" and "PatchOptional" field.
+				newDep := TaskDependency{
+					Name:          name,
+					Variant:       variant,
+					Status:        d.Status,
+					PatchOptional: d.PatchOptional,
+				}
+				// add the new dep if it doesn't already exists (we must avoid conflicting status fields)
+				if oldDep, ok := newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}]; !ok {
+					newDeps = append(newDeps, newDep)
+					newDepsByNameAndVariant[TVPair{newDep.Variant, newDep.Name}] = newDep
+				} else {
+					// it's already in the new list, so we check to make sure the status definitions match.
+					if !reflect.DeepEqual(newDep, oldDep) {
+						evalErrs = append(evalErrs, fmt.Errorf(
+							"conflicting definitions of dependency '%v': %v != %v", name, newDep, oldDep))
+						continue
+					}
 				}
 			}
 		}
@@ -497,7 +656,8 @@ func evaluateDependsOn(tse *taskSelectorEvaluator, deps []parserDependency) ([]T
 }
 
 // evaluateRequires expands any selectors in a requirement definition.
-func evaluateRequires(tse *taskSelectorEvaluator, reqs []TaskSelector) ([]TaskRequirement, []error) {
+func evaluateRequires(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
+	reqs []taskSelector) ([]TaskRequirement, []error) {
 	var evalErrs []error
 	newReqs := []TaskRequirement{}
 	newReqsByNameAndVariant := map[TVPair]struct{}{}
@@ -507,13 +667,25 @@ func evaluateRequires(tse *taskSelectorEvaluator, reqs []TaskSelector) ([]TaskRe
 			evalErrs = append(evalErrs, err)
 			continue
 		}
+		// we default to handle the empty variant, but expand the list of variants
+		// if the variant field is set.
+		variants := []string{""}
+		if r.Variant != nil {
+			variants, err = vse.evalSelector(r.Variant)
+			if err != nil {
+				evalErrs = append(evalErrs, err)
+				continue
+			}
+		}
 		for _, name := range names {
-			newReq := TaskRequirement{Name: name, Variant: r.Variant}
-			newReq.Name = name
-			// add the new req if it doesn't already exists (we must avoid duplicates)
-			if _, ok := newReqsByNameAndVariant[TVPair{newReq.Variant, newReq.Name}]; !ok {
-				newReqs = append(newReqs, newReq)
-				newReqsByNameAndVariant[TVPair{newReq.Variant, newReq.Name}] = struct{}{}
+			for _, variant := range variants {
+				newReq := TaskRequirement{Name: name, Variant: variant}
+				newReq.Name = name
+				// add the new req if it doesn't already exists (we must avoid duplicates)
+				if _, ok := newReqsByNameAndVariant[TVPair{newReq.Variant, newReq.Name}]; !ok {
+					newReqs = append(newReqs, newReq)
+					newReqsByNameAndVariant[TVPair{newReq.Variant, newReq.Name}] = struct{}{}
+				}
 			}
 		}
 	}
