@@ -1,5 +1,7 @@
-dburl: "mongodb://localhost:27017/mci_test"
-db: "mci_test"
+database:
+    url: "mongodb://localhost:27017/mci_test"
+    db: "mci_test"
+
 configdir: "config_test"
 credentials:  {
         github: "token xxx",

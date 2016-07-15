@@ -17,7 +17,7 @@ func dropTestDB(t *testing.T) {
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	testutil.HandleTestingErr(err, t, "Error opening database session")
 	defer session.Close()
-	testutil.HandleTestingErr(session.DB(testConfig.Db).DropDatabase(), t, "Error dropping test database")
+	testutil.HandleTestingErr(session.DB(testConfig.Database.DB).DropDatabase(), t, "Error dropping test database")
 }
 
 func createVersion(order int, project string, buildVariants []string) error {

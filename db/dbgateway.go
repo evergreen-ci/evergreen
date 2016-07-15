@@ -1,6 +1,8 @@
 package db
 
 import (
+	"crypto/tls"
+	"net"
 	"sync"
 	"time"
 
@@ -19,6 +21,7 @@ var (
 type SessionFactory struct {
 	url           string
 	db            string
+	ssl           bool
 	dialTimeout   time.Duration
 	socketTimeout time.Duration
 	safety        mgo.Safe
@@ -35,20 +38,21 @@ type SessionProvider interface {
 // the Evergreen settings.
 func SessionFactoryFromConfig(settings *evergreen.Settings) *SessionFactory {
 	safety := mgo.Safe{}
-	safety.W = settings.WriteConcern.W
-	safety.WMode = settings.WriteConcern.WMode
-	safety.WTimeout = settings.WriteConcern.WTimeout
-	safety.FSync = settings.WriteConcern.FSync
-	safety.J = settings.WriteConcern.J
-	return NewSessionFactory(settings.DbUrl, settings.Db, safety, defaultDialTimeout)
+	safety.W = settings.Database.WriteConcernSettings.W
+	safety.WMode = settings.Database.WriteConcernSettings.WMode
+	safety.WTimeout = settings.Database.WriteConcernSettings.WTimeout
+	safety.FSync = settings.Database.WriteConcernSettings.FSync
+	safety.J = settings.Database.WriteConcernSettings.J
+	return NewSessionFactory(settings.Database.Url, settings.Database.DB, settings.Database.SSL, safety, defaultDialTimeout)
 }
 
 // NewSessionFactory returns a new session factory pointed at the given URL/DB combo,
 // with the supplied timeout and writeconcern settings.
-func NewSessionFactory(url, db string, safety mgo.Safe, dialTimeout time.Duration) *SessionFactory {
+func NewSessionFactory(url, db string, ssl bool, safety mgo.Safe, dialTimeout time.Duration) *SessionFactory {
 	return &SessionFactory{
 		url:           url,
 		db:            db,
+		ssl:           ssl,
 		dialTimeout:   dialTimeout,
 		socketTimeout: defaultSocketTimeout,
 		safety:        safety,
@@ -61,8 +65,22 @@ func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 		sf.dialLock.Lock()
 		defer sf.dialLock.Unlock()
 		if sf.masterSession == nil { //check again in case someone else just set and unlocked it
-			var err error
-			sf.masterSession, err = mgo.DialWithTimeout(sf.url, sf.dialTimeout)
+			dialInfo, err := mgo.ParseURL(sf.url)
+			if err != nil {
+				return nil, nil, err
+			}
+			dialInfo.Timeout = sf.dialTimeout
+
+			if sf.ssl {
+				tlsConfig := &tls.Config{}
+				tlsConfig.InsecureSkipVerify = true
+				dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+					conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+					return conn, err
+				}
+			}
+
+			sf.masterSession, err = mgo.DialWithInfo(dialInfo)
 			if err != nil {
 				return nil, nil, err
 			}

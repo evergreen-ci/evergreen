@@ -42,7 +42,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	}()
 
 	startTime := time.Now()
-	evergreen.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", config.Db)
+	evergreen.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", config.Database.DB)
 
 	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {

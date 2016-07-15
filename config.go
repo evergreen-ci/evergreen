@@ -178,6 +178,10 @@ type JiraConfig struct {
 // manually by their respective plugins
 type PluginConfig map[string]map[string]interface{}
 
+type AlertsConfig struct {
+	LogFile string
+	SMTP    *SMTPConfig `yaml:"smtp"`
+}
 type WriteConcern struct {
 	W        int    `yaml:"w"`
 	WMode    string `yaml:"wmode"`
@@ -186,15 +190,16 @@ type WriteConcern struct {
 	J        bool   `yaml:"j"`
 }
 
-type AlertsConfig struct {
-	LogFile string
-	SMTP    *SMTPConfig `yaml:"smtp"`
+type DBSettings struct {
+	Url                  string       `yaml:"url"`
+	SSL                  bool         `yaml:"ssl"`
+	DB                   string       `yaml:"db"`
+	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 }
 
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	DbUrl               string            `yaml:"dburl"`
-	Db                  string            `yaml:"db"`
+	Database            DBSettings        `yaml:"database"`
 	WriteConcern        WriteConcern      `yaml:"write_concern"`
 	ConfigDir           string            `yaml:"configdir"`
 	ApiUrl              string            `yaml:"api_url"`
@@ -281,7 +286,7 @@ type ConfigValidator func(settings *Settings) error
 // ConfigValidationRules is the set of all ConfigValidator functions.
 var ConfigValidationRules = []ConfigValidator{
 	func(settings *Settings) error {
-		if settings.DbUrl == "" || settings.Db == "" {
+		if settings.Database.Url == "" || settings.Database.DB == "" {
 			return fmt.Errorf("DBUrl and DB must not be empty")
 		}
 		return nil
