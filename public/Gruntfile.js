@@ -1,4 +1,3 @@
-
 module.exports = function(grunt) {
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
@@ -29,29 +28,14 @@ module.exports = function(grunt) {
                     'static/dist/css/styles.min.css': 'static/dist/css/styles.css'
                 }
             }
-        },
-        babel: {
-          options: {
-            sourceMap: true,
-            presets: ['es2015']
-          },
-          dist: {
-            files: {
-              'static/js/waterfall.js':'static/js/waterfall.jsx'
-            }
-          }
         }
-
     });
-    require("load-grunt-tasks")(grunt); 
 
     grunt.loadNpmTasks('grunt-contrib-less');
     grunt.loadNpmTasks('grunt-contrib-cssmin');
     grunt.loadNpmTasks('grunt-contrib-watch');
 
     grunt.registerTask('css', ['less', 'cssmin']);
-    grunt.registerTask('default', ['babel']);
 
-
-    //grunt.registerTask('default', ['css']);
+    grunt.registerTask('default', ['css']);
 };
