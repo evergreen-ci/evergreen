@@ -73,6 +73,8 @@ func (sf *SessionFactory) GetSession() (*mgo.Session, *mgo.Database, error) {
 
 			if sf.ssl {
 				tlsConfig := &tls.Config{}
+				// Note: this turns off certificate validation. TODO: load system certs and/or
+				// allow the user to specify their own CA certs file
 				tlsConfig.InsecureSkipVerify = true
 				dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
 					conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
