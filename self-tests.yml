@@ -2,6 +2,7 @@ command_type: system
 stepback: true
 ignore: 
     - "*.md" # don't schedule tests if a commit only changes markdown files
+    - "scripts/*" # our scripts are untested, so don't schedule tests for them
 
 variables:
     only_coverage: &ONLY_COVERAGE_VARIANTS
