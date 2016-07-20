@@ -183,6 +183,9 @@ type Agent struct {
 	// currentTaskDir holds the absolute path of the directory that the agent has
 	// created for executing the current task.
 	currentTaskDir string
+
+	// location of the .pid lock file
+	pidFilePath string
 }
 
 // finishAndAwaitCleanup sends the returned TaskEndResponse and error
@@ -283,7 +286,7 @@ func (sh *SignalHandler) awaitSignal() Signal {
 // CreatePidFile checks that the pid file does not already exist with a different pid
 // and creates one
 func (agt *Agent) CreatePidFile(pidFilePath string) error {
-
+	agt.pidFilePath = pidFilePath
 	// create a file that will error out if there is another process writing to the file, add the read/write flag to
 	// indicate that reading and writing can happen.
 	pidFile, err := os.OpenFile(pidFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
@@ -333,10 +336,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		os.Exit(1)
+		ExitAgent(1, agt.pidFilePath)
 	case HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		os.Exit(1)
+		ExitAgent(1, agt.pidFilePath)
 	case AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
