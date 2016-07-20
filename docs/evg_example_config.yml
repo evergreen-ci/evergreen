@@ -1,5 +1,7 @@
-dburl: "mongodb://localhost:27017"
-db: "evg"
+database:
+  url: "mongodb://localhost:27017"
+  db: "evg"
+
 configdir: "config_prod"
 providers:
     aws:
