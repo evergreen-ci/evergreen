@@ -23,7 +23,7 @@
         <span class="extra-info">[[diff.build_variant]]</span>
       </td>
       <td>
-        <a ng-href="[[diff.originalLink]]">
+        <a ng-href="[[diff.originalLink]]" ng-if="[[diff.originalLink]]">
           <span class="diffbox" ng-class="diff.diff.original | statusFilter"></span>
         </a>
       </td>

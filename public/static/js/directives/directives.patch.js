@@ -54,10 +54,14 @@ directives.patch.directive('patchDiffPanel', function() {
         passfail:       {icon:"fa-bug", type: 0},
         failedfailed:   {icon:"fa-question", type: 1},
         failfail:       {icon:"fa-question", type: 1},
-        failedsuccess:  {icon:"fa-star", type: 2},
-        failpass:       {icon:"fa-star", type: 2},
-        successsuccess: {icon:"", type: 3},
-        passpass:       {icon:"", type: 3},
+        failed:         {icon:"fa-bug", type: 2},
+        fail:           {icon:"fa-bug", type: 2},
+        failedsuccess:  {icon:"fa-star", type: 3},
+        failpass:       {icon:"fa-star", type: 3},
+        success:        {icon:"fa-star", type: 4},
+        pass:           {icon:"fa-star", type: 4},
+        successsuccess: {icon:"", type: 5},
+        passpass:       {icon:"", type: 5},
       };
 
       // helper for ranking status combinations
