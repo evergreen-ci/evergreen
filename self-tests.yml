@@ -223,7 +223,7 @@ tasks:
           ${plugins_file}
           END_OF_PLUGINS
           cat Plugins
-          ./install_plugins.sh
+          ${goroot_vars} ./install_plugins.sh
           echo "running process compile sanity check"
           set -e
           if [ "Windows_NT" = "$OS" ]; then
@@ -936,7 +936,7 @@ buildvariants:
       tasks:
       - "*"
     - name: zseries
-      display_name: RHEL 7.1 zSeries GCCGO
+      display_name: RHEL 7.2 zSeries GCCGO
       run_on:
       - rhel72-zseries-test
       expansions:
