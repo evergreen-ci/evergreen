@@ -175,8 +175,10 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/task_queue/", uis.loadCtx(uis.allTaskQueues))
 
 	// Scheduler
-	r.HandleFunc("/scheduler/logs/{distro_id}", uis.loadCtx(uis.getSchedulerLogs))
+	r.HandleFunc("/scheduler/distro/{distro_id}", uis.loadCtx(uis.getSchedulerPage))
+	r.HandleFunc("/scheduler/distro/{distro_id}/logs", uis.loadCtx(uis.getSchedulerLogs))
 	r.HandleFunc("/scheduler/stats", uis.loadCtx(uis.schedulerStatsPage))
+	r.HandleFunc("/scheduler/distro/{distro_id}/stats", uis.loadCtx(uis.averageSchedulerStats))
 	r.HandleFunc("/scheduler/stats/utilization", uis.loadCtx(uis.schedulerHostUtilization))
 
 	// Patch pages

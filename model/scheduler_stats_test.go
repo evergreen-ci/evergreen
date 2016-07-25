@@ -236,3 +236,36 @@ func TestCreateTaskBuckets(t *testing.T) {
 
 	})
 }
+
+func TestAverageStatistics(t *testing.T) {
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "couldnt reset host")
+	distroId := "sampleDistro"
+
+	Convey("With a set of tasks that have different scheduled -> start times over a given time period", t, func() {
+		now := time.Now()
+		bucketSize := 10 * time.Second
+		numberBuckets := time.Duration(3)
+
+		task1 := task.Task{Id: "task1", ScheduledTime: now,
+			StartTime: now.Add(time.Duration(5) * time.Second), Status: evergreen.TaskStarted, DistroId: distroId}
+
+		So(task1.Insert(), ShouldBeNil)
+
+		task2 := task.Task{Id: "task2", ScheduledTime: now,
+			StartTime: now.Add(time.Duration(20) * time.Second), Status: evergreen.TaskStarted, DistroId: distroId}
+
+		So(task2.Insert(), ShouldBeNil)
+
+		task3 := task.Task{Id: "task3", ScheduledTime: now.Add(time.Duration(10) * time.Second),
+			StartTime: now.Add(time.Duration(20) * time.Second), Status: evergreen.TaskStarted, DistroId: distroId}
+		So(task3.Insert(), ShouldBeNil)
+
+		avgBuckets, err := AverageStatistics(now, numberBuckets, bucketSize, distroId)
+		So(err, ShouldBeNil)
+
+		So(avgBuckets[0].AverageTime, ShouldEqual, 5*time.Second)
+		So(avgBuckets[1].AverageTime, ShouldEqual, 0)
+		So(avgBuckets[2].AverageTime, ShouldEqual, 15*time.Second)
+	})
+
+}

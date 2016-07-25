@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // ResourceInfo contains the meta data about a given resource
@@ -25,6 +27,17 @@ type Bucket struct {
 	TotalTime time.Duration  `json:"total_time"`
 	Resources []ResourceInfo `json:"resources"`
 }
+
+// AvgBucket is one element in the results of a list of buckets that are created from the agg query.
+type AvgBucket struct {
+	Id          int           `bson:"_id" json:"index"`
+	AverageTime time.Duration `bson:"a" json:"avg"`
+	NumberTasks int           `bson:"n" json:"number_tasks"`
+	Start       time.Time     `json:"start_time"`
+	End         time.Time     `json:"end_time"`
+}
+
+type AvgBuckets []AvgBucket
 
 func addBucketTime(duration time.Duration, resource ResourceInfo, bucket Bucket) Bucket {
 	return Bucket{
@@ -165,4 +178,83 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, startTime time.T
 		}
 	}
 	return taskBuckets, errors
+}
+
+// AverageStatistics uses an agg pipeline that creates buckets given a time frame and finds the average scheduled ->
+// start time for that time frame.
+// One thing to note is that the average time is in milliseconds, not nanoseconds and must be converted.
+func AverageStatistics(startTime time.Time, numberBuckets int, bucketSize time.Duration, distroId string) (AvgBuckets, error) {
+	numBucketsDuration := time.Duration(numberBuckets)
+	endTime := startTime.Add(numBucketsDuration * bucketSize)
+	intBucketSize := util.FromNanoseconds(bucketSize)
+	buckets := AvgBuckets{}
+	pipeline := []bson.M{
+		// find all tasks that have started within the time frame for a given distro and only valid statuses.
+		{"$match": bson.M{
+			task.StartTimeKey: bson.M{
+				"$gte": startTime,
+				"$lte": endTime,
+			},
+			// only need tasks that have already started or those that have finished,
+			// not looking for tasks that have been scheduled but not started.
+			task.StatusKey: bson.M{
+				"$in": []string{evergreen.TaskStarted,
+					evergreen.TaskFailed, evergreen.TaskSucceeded},
+			},
+			task.DistroIdKey: distroId,
+		}},
+		// project the difference in scheduled -> start, as well as the bucket
+		{"$project": bson.M{
+			"diff": bson.M{
+				"$subtract": []interface{}{"$" + task.StartTimeKey, "$" + task.ScheduledTimeKey},
+			},
+			"b": bson.M{
+				"$floor": bson.M{
+					"$divide": []interface{}{
+						bson.M{"$subtract": []interface{}{"$" + task.StartTimeKey, startTime}},
+						intBucketSize},
+				},
+			},
+		}},
+		{"$group": bson.M{
+			"_id": "$b",
+			"a":   bson.M{"$avg": "$diff"},
+			"n":   bson.M{"$sum": 1},
+		}},
+
+		{"$sort": bson.M{
+			"_id": 1,
+		}},
+	}
+
+	if err := db.Aggregate(task.Collection, pipeline, &buckets); err != nil {
+		return nil, err
+	}
+	return convertBucketsToNanoseconds(buckets, numberBuckets, bucketSize, startTime), nil
+}
+
+// convertBucketsToNanoseconds fills in 0 time buckets to the list of Average Buckets
+// and it converts the average times to nanoseconds.
+func convertBucketsToNanoseconds(buckets AvgBuckets, numberBuckets int, bucketSize time.Duration, frameStart time.Time) AvgBuckets {
+	allBuckets := AvgBuckets{}
+	for i := 0; i < numberBuckets; i++ {
+		startTime := frameStart.Add(time.Duration(i) * bucketSize)
+		endTime := startTime.Add(bucketSize)
+		currentBucket := AvgBucket{
+			Id:          i,
+			AverageTime: 0,
+			NumberTasks: 0,
+			Start:       startTime,
+			End:         endTime,
+		}
+		for j := 0; j < len(buckets); j++ {
+			if buckets[j].Id == i {
+				currentBucket.AverageTime = util.ToNanoseconds(buckets[j].AverageTime)
+				currentBucket.NumberTasks = buckets[j].NumberTasks
+				break
+			}
+		}
+		allBuckets = append(allBuckets, currentBucket)
+	}
+	return allBuckets
 }

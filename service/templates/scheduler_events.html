@@ -1,10 +1,9 @@
 {{define "scripts"}}
-  <script type="text/javascript">
-    window.events = {{ .Data }};
-   	window.userTz = {{GetTimezone $.User}};
-   	window.distro = {{.DistroId}};
-  </script>
-  <script type="text/javascript" src="{{Static "js" "scheduler_events.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript">
+  window.userTz = {{GetTimezone $.User}};
+  window.distro = {{.DistroId}};
+</script>
+<script type="text/javascript" src="{{Static "js" "scheduler_events.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
 
 {{define "title"}}
@@ -13,20 +12,69 @@ Evergreen - Scheduler Task Queue Logs
 
 {{define "content"}}
 <div class="container" ng-controller="SchedulerEventCtrl">
-	<div class="row" ng-show="fullEvents.length > 0">
-		<h2> Scheduler Logs for [[distro]] </h2>
-	</div>
-	<div ng-show="fullEvents.length == 0">
-		<h1> No scheduler logs for [[distro]]</h1>
-	</div>
-	<div class="eventlog row" ng-repeat="event in fullEvents" ng-show="event.data.task_queue_info.task_queue_length > 0">
-		<div class="timestamp col-lg-2 col-md-3 col-sm-4" style="min-width: 250px;">[[event.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
-		<div class="event_details col-lg-9 col-md-8 col-sm-7">
-			<span class="log-elt"> Hosts Running:  [[event.data.task_queue_info.num_hosts_running]]</span>
-			<span class="log-elt"> Tasks in Queue:  [[event.data.task_queue_info.task_queue_length]]</span>
-			<span class="log-elt"> Expected Duration:  [[event.data.task_queue_info.expected_duration | stringifyNanoseconds : true]]
+  <div class="row">
+    <h2> [[distro]] </h2>
+    <ul class="nav nav-tabs">
+      <li ng-class="{active:tab == consts.logs}"><a href="#" ng-click="setTab(consts.logs)">Logs</a></li>
+      <li ng-class="{active:tab == consts.stats}"><a href="#" ng-click="setTab(consts.stats)">Statistics</a></li>
+    </ul>
+  </div>
 
-		</div>
-	</div>
+  <div ng-show="tab == consts.logs">
+    <div ng-show="fullEvents.length == 0">
+      <h4> No scheduler logs for [[distro]]</h4>
+    </div>
+    <div class="eventlog row" ng-repeat="event in fullEvents" ng-show="event.data.task_queue_info.task_queue_length > 0">
+      <div class="timestamp col-lg-2 col-md-3 col-sm-4" style="min-width: 250px;">[[event.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
+      <div class="event_details col-lg-9 col-md-8 col-sm-7">
+        <span class="log-elt"> Hosts Running:  [[event.data.task_queue_info.num_hosts_running]]</span>
+        <span class="log-elt"> Tasks in Queue:  [[event.data.task_queue_info.task_queue_length]]</span>
+        <span class="log-elt"> Expected Duration:  [[event.data.task_queue_info.expected_duration | stringifyNanoseconds : true]]</span>
+      </div>
+    </div>
+  </div>
+
+  <div ng-show="tab == consts.stats">
+    <div class="row">
+      <div class="col-lg-3">
+        <h4> Granularity </h4>
+        <div class="btn-group btn-group-sm">
+          <a class="pointer btn btn-default" ng-repeat="granularity in granularitySeconds" ng-class="{active: currentGranularity.value == granularity.value}" ng-click="setGranularity(granularity)">
+            [[granularity.display]]
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-5 btn-group">
+        <h4> Time Back </h4>
+        <div class="btn-group btn-group-sm">
+          <a class="pointer btn btn-default" ng-repeat="day in numberDays" ng-class="{active: currentNumberDays.value == day.value, disabled: disableDays(day)}" ng-click="setNumberDays(day)">
+            [[day.display]]
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+    <div class="col-lg-10 stats-table">
+      <table class="table table-bordered table-hover">
+        <tr class="stats-header"> 
+          <th> Timeframe </th>
+          <th> Average Scheduled to Start Time </th>
+          <th> Number Tasks </th>
+        </tr>
+        <tr ng-repeat="data in stats">
+          <td> [[data.start_time | convertDateToUserTimezone:userTz:currentGranularity.format]]-[[data.end_time | convertDateToUserTimezone:userTz:currentGranularity.format]]</td>
+          <td> 
+            <span> [[data.avg | stringifyNanoseconds: true]] </span>
+          </td>
+          <td> [[data.number_tasks]] </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  </div>
+
 </div>
+
 {{end}}

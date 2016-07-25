@@ -2,7 +2,7 @@
 <script type="text/javascript">
    	window.userTz = {{GetTimezone $.User}};
 </script>
-<script type="text/javascript" src="{{Static "js" "scheduler_stats.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "scheduler_stats_new.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
 
 {{define "title"}}
@@ -10,19 +10,14 @@ Evergreen - Scheduler Statistics
 {{end}}
 
 {{define "content"}}
-<div id="content" class="container-fluid" ng-controller="SchedulerStatsCtrl">
+<div id="root" class="container-fluid"></div>
+
+
 	<div class="row">
 		<div class="col-lg-3">
 			<h2> Host Utilization </h2>
 		</div>
-		<div class="col-lg-3">
-			<h4> Granularity </h4>
-			<div class="btn-group btn-group-sm">
-				<a class="pointer btn btn-default" ng-repeat="granularity in granularitySeconds" ng-class="{active: currentGranularity.value == granularity.value}" ng-click="setGranularity(granularity)">
-					[[granularity.display]]
-				</a>
-			</div>
-		</div>
+
 		<div class="col-lg-5 btn-group">
 			<h4> Time Back </h4>
 			<div class="btn-group btn-group-sm">
