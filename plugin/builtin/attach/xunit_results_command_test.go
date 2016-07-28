@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	TotalResultCount = 676
+	TotalResultCount = 677
 	SingleFileConfig = "testdata/plugin_attach_xunit.yml"
 	WildcardConfig   = "testdata/plugin_attach_xunit_wildcard.yml"
 )

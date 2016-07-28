@@ -541,7 +541,7 @@ tasks:
             cd $i
             mkfifo $i.pipe
             tee -a $WORK_DIR/$i.suite < $i.pipe& 
-            ${goroot_vars} go test -v > $i.pipe
+            ${goroot_vars} go test -v ./... > $i.pipe
             if [ $? -ne 0 ]; then
                 echo "$i suite failed, will exit with error on finish"
                 export exitcode=1

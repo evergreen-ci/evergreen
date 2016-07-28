@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -81,6 +82,25 @@ func TestXMLParsing(t *testing.T) {
 					So(res[0].TestCases[0].Skipped.Type, ShouldEqual, "unittest.case.SkipTest")
 					So(res[0].TestCases[0].Skipped.Content, ShouldContainSubstring,
 						"SkipTest: Authentication is not enabled on server")
+				})
+			})
+		})
+		Convey(`with a "real" java driver xunit file`, func() {
+			file, err := os.Open("testdata/junit_4.xml")
+			testutil.HandleTestingErr(err, t, "Error reading file")
+
+			Convey("the file should parse without error", func() {
+				res, err := ParseXMLResults(file)
+				So(err, ShouldBeNil)
+				So(len(res), ShouldBeGreaterThan, 0)
+
+				Convey("and have proper values decoded", func() {
+					So(res[0].Errors, ShouldEqual, 0)
+					So(res[0].Failures, ShouldEqual, 0)
+					So(res[0].Name, ShouldEqual, "com.mongodb.operation.InsertOperationSpecification")
+					So(res[0].TestCases[0].Name, ShouldEqual, "should return correct result")
+					So(res[0].SysOut, ShouldEqual, "out message")
+					So(res[0].SysErr, ShouldEqual, "error message")
 				})
 			})
 		})

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 type XUnitResults []TestSuite
@@ -62,8 +63,8 @@ func (tc TestCase) ToModelTestResultAndLog(t *task.Task) (task.TestResult, *mode
 	} else {
 		res.TestFile = tc.Name
 	}
-	// replace spaces with dashes
-	res.TestFile = strings.Replace(res.TestFile, " ", "-", -1)
+	// replace spaces, dashes, etc. with underscores
+	res.TestFile = util.CleanForPath(res.TestFile)
 
 	res.StartTime = float64(time.Now().Unix())
 	res.EndTime = float64(res.StartTime + tc.Time)
