@@ -544,7 +544,7 @@ func (p PluginCommandConf) GetType(prj *Project) string {
 func (m *Module) GetRepoOwnerAndName() (string, string) {
 	parts := strings.Split(string(m.Repo), ":")
 	basename := parts[len(parts)-1]
-	ownerAndName := util.RemoveSuffix(basename, ".git")
+	ownerAndName := strings.TrimSuffix(basename, ".git")
 	ownersplit := strings.Split(ownerAndName, "/")
 	if len(ownersplit) != 2 {
 		return "", ""

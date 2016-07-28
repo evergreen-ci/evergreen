@@ -8,14 +8,6 @@ import (
 
 var cleanFileRegex = regexp.MustCompile("[^a-zA-Z0-9_\\-\\.]")
 
-// RemoveSuffix returns s with 'suffix' removed from end of string if present
-func RemoveSuffix(s, suffix string) string {
-	if strings.HasSuffix(s, suffix) {
-		return s[:len(s)-len(suffix)]
-	}
-	return s
-}
-
 // Truncate returns a string of at most the given length.
 func Truncate(input string, outputLength int) string {
 	if len(input) <= outputLength {
