@@ -88,7 +88,7 @@ func dBTestsWildcard() {
 
 	Convey("along with the proper logs", func() {
 		// junit_1.xml
-		tl := dBFindOneTestLog("pkg1.test.test_things.test_params_func:2")
+		tl := dBFindOneTestLog("pkg1.test.test_things.test_params_func_2")
 		So(tl.Lines[0], ShouldContainSubstring, "FAILURE")
 		So(tl.Lines[6], ShouldContainSubstring, "AssertionError")
 		tl = dBFindOneTestLog("pkg1.test.test_things.SomeTests.test_skippy")
