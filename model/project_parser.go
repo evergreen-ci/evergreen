@@ -68,6 +68,7 @@ type parserTask struct {
 	Requires        TaskSelectors       `yaml:"requires"`
 	Commands        []PluginCommandConf `yaml:"commands"`
 	Tags            parserStringSlice   `yaml:"tags"`
+	Patchable       *bool               `yaml:"patchable"`
 	Stepback        *bool               `yaml:"stepback"`
 }
 
@@ -361,6 +362,7 @@ func evaluateTasks(tse *taskSelectorEvaluator, pts []parserTask) ([]ProjectTask,
 			DisableCleanup:  pt.DisableCleanup,
 			Commands:        pt.Commands,
 			Tags:            pt.Tags,
+			Patchable:       pt.Patchable,
 			Stepback:        pt.Stepback,
 		}
 		t.DependsOn, errs = evaluateDependsOn(tse, pt.DependsOn)
