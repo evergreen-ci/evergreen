@@ -14,10 +14,8 @@ Evergreen - Task Queues
 {{define "content"}}
 <div class="container" ng-controller="TaskQueuesCtrl">
   <div class="row">
-    <div id="nav-container" class="col-lg-2">
-      <div class="row">
-          <h2> Task Queues </h2>
-      </div>
+    <div class="col-md-3">
+      <h2>Task Queues</h2>
       <div class="panel">
         <div class="panel-heading row">
           <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.distro" placeholder="Filter Distro" />
@@ -32,7 +30,7 @@ Evergreen - Task Queues
         </div>
       </div>
     </div>
-    <div class="col-lg-8 col-lg-offset-3">
+    <div class="col-md-9">
       <div id="queues" class="panel">
         <div class="panel-body">
         <div ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro">
