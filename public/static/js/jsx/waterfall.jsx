@@ -60,11 +60,11 @@ class Root extends React.Component{
   }
   render() {
     return (
-      React.createElement("div", null, 
-        React.createElement(Toolbar, {data: this.props.data, collapsed: this.state.collapsed, onCheck: this.handleCollapseChange}), 
-        React.createElement(Headers, {data: this.props.data}), 
-        React.createElement(Grid, {data: this.props.data, collapsed: this.state.collapsed})
-      )
+      <div> 
+        <Toolbar data={this.props.data} collapsed={this.state.collapsed} onCheck={this.handleCollapseChange} />
+        <Headers data={this.props.data} /> 
+        <Grid data={this.props.data} collapsed={this.state.collapsed}/>
+      </div>
     )
   }
 }
@@ -73,7 +73,7 @@ class Root extends React.Component{
 class Toolbar extends React.Component{
   render() {
     return (
-      React.createElement(CollapseButton, {collapsed: this.props.collapsed, onCheck: this.props.onCheck})
+      <CollapseButton collapsed={this.props.collapsed} onCheck={this.props.onCheck} />
     )
   }
 }
@@ -88,14 +88,14 @@ class CollapseButton extends React.Component{
   }
   render() {
     return (
-      React.createElement("label", {style: {display:"inline-block"}}, 
-        React.createElement("span", {style: {fontWeight:"normal"}}, "Show Collapsed View "), React.createElement("input", {style: {display:"inline"}, 
-          className: "checkbox", 
-          type: "checkbox", 
-          checked: this.props.collapsed, 
-          ref: "collapsedBuilds", 
-          onChange: this.handleChange})
-      )
+      <label style={{display:"inline-block"}}>
+        <span style={{fontWeight:"normal"}}>Show Collapsed View </span><input style={{display:"inline"}}
+          className="checkbox"
+          type="checkbox"
+          checked={this.props.collapsed}
+          ref="collapsedBuilds"
+          onChange={this.handleChange} />
+      </label>
     )
   }
 }
@@ -105,21 +105,21 @@ class CollapseButton extends React.Component{
 class Headers extends React.Component{
   render() {
     return (
-    React.createElement("div", {className: "row version-header"}, 
-      React.createElement("div", {className: "variant-col col-xs-2 version-header-full text-right"}, 
-        "Variant"
-      ), 
-      
+    <div className="row version-header">
+      <div className="variant-col col-xs-2 version-header-full text-right">
+        Variant
+      </div>
+      {
         this.props.data.versions.map(function(x,i){
           if (x.rolled_up) {
-            return React.createElement(RolledUpVersionHeader, {key: x.ids[0], currentVersion: x, versionIndex: i})
+            return <RolledUpVersionHeader key={x.ids[0]} currentVersion={x} versionIndex={i} />
           }
           // Unrolled up version, no popover
-          return React.createElement(VersionHeader, {key: x.ids[0], currentVersion: x});
-        }), 
-      
-      React.createElement("br", null)
-    )
+          return <VersionHeader key={x.ids[0]} currentVersion={x} />;
+        })
+      }
+      <br/>
+    </div>
     )
   }
 }
@@ -139,17 +139,17 @@ class VersionHeader extends React.Component{
     var formatted_time = getFormattedTime(new Date(currVersion.create_times[0]));
     
     return (
-      React.createElement("div", {className: "col-xs-2"}, 
-        React.createElement("div", {className: "version-header-expanded"}, 
-          React.createElement("div", null, 
-            React.createElement("span", {className: "btn btn-default btn-hash history-item-revision"}, 
-              React.createElement("a", {href: id_link}, commit)
-            ), 
-            formatted_time
-          ), 
-          author, " - ", shortened_message
-        )
-      )
+      <div className="col-xs-2">
+        <div className="version-header-expanded">
+          <div>
+            <span className="btn btn-default btn-hash history-item-revision">
+              <a href={id_link}>{commit}</a>
+            </span>
+            {formatted_time}
+          </div>
+          {author} - {shortened_message}
+        </div>
+      </div>
     )
   }
 }
@@ -166,23 +166,23 @@ class RolledUpVersionHeader extends React.Component{
     var rolled_header = currVersion.messages.length + " inactive " + versiontitle; 
     
     const popovers = (
-      React.createElement(Popover, {id: "popover-positioned-bottom", title: ""}, 
-        
+      <Popover id="popover-positioned-bottom" title="">
+        {
           currVersion.ids.map(function(x,i) {
-            return React.createElement(RolledUpVersionSummary, {currentVersion: currVersion, currentIndex: i})
+            return <RolledUpVersionSummary currentVersion={currVersion} currentIndex={i} />
           })
-        
-      )
+        }
+      </Popover>
     );
 
     return (
-      React.createElement("div", {className: "col-xs-2"}, 
-        React.createElement(OverlayTrigger, {trigger: "click", placement: "bottom", overlay: popovers, className: "col-xs-2"}, 
-          React.createElement(Button, {className: "rolled-up-button"}, 
-            React.createElement("a", {href: "#"}, rolled_header)
-          )
-        )
-      )
+      <div className="col-xs-2">
+        <OverlayTrigger trigger="click" placement="bottom" overlay={popovers} className="col-xs-2">
+          <Button className="rolled-up-button">
+            <a href="#">{rolled_header}</a>
+          </Button>
+        </OverlayTrigger>
+      </div>
     )
   }
 }
@@ -199,14 +199,14 @@ class RolledUpVersionSummary extends React.Component{
     var message = currVersion.messages[i];
       
     return (
-      React.createElement("div", {className: "rolled-up-version-summary"}, 
-        React.createElement("span", {className: "version-header-time"}, formatted_time), 
-        React.createElement("br", null), 
-        React.createElement("a", {href: "/version/" + currVersion.ids[i]}, commit), " - ", React.createElement("strong", null, author), 
-        React.createElement("br", null), 
-        message, 
-        React.createElement("br", null)
-      )
+      <div className="rolled-up-version-summary">
+        <span className="version-header-time">{formatted_time}</span>
+        <br /> 
+        <a href={"/version/" + currVersion.ids[i]}>{commit}</a> - <strong>{author}</strong> 
+        <br /> 
+        {message} 
+        <br />
+      </div>
     )
   }
 }
@@ -218,13 +218,13 @@ class Grid extends React.Component{
   render() {
     var data = this.props.data;
     return (
-      React.createElement("div", {className: "waterfall-grid"}, 
-        
+      <div className="waterfall-grid">
+        {
           this.props.data.build_variants.map((x, i) => {
-            return React.createElement(Variant, {key: x, data: data, variantIndex: i, variantDisplayName: x, collapsed: this.props.collapsed});
+            return <Variant key={x} data={data} variantIndex={i} variantDisplayName={x} collapsed={this.props.collapsed} />;
           })
-        
-      ) 
+        }
+      </div> 
     )
   }
 }
@@ -238,27 +238,27 @@ class Variant extends React.Component{
     var variantId = getBuildByIds(data.unrolledVersionIndex, variantIndex, data).build_variant.id;
     
     return (
-      React.createElement("div", {className: "row variant-row"}, 
+      <div className="row variant-row">
 
-        /* column of build names */
-        React.createElement("div", {className: "col-xs-2 build-variant-name distro-col"}, 
-          React.createElement("a", {href: "/build_variant/" + project + "/" + variantId}, 
-            this.props.variantDisplayName
-          )
-        ), 
+        {/* column of build names */}
+        <div className="col-xs-2 build-variant-name distro-col"> 
+          <a href={"/build_variant/" + project + "/" + variantId}>
+            {this.props.variantDisplayName} 
+          </a> 
+        </div>
 
-        /* 5 columns of versions */
-        React.createElement("div", {className: "col-xs-10"}, 
-          React.createElement("div", {className: "row build-cols"}, 
-            
+        {/* 5 columns of versions */}
+        <div className="col-xs-10"> 
+          <div className="row build-cols">
+            {
               data.versions.map((x,i) => {
-                return React.createElement(Build, {key: x.ids[0], data: data, variantIndex: variantIndex, versionIndex: i, collapsed: this.props.collapsed});
+                return <Build key={x.ids[0]} data={data} variantIndex={variantIndex} versionIndex={i} collapsed={this.props.collapsed} />;
               })
-            
-          )
-        )
+            }
+          </div>
+        </div>
 
-      )
+      </div>
     )
   }
 }
@@ -270,7 +270,7 @@ class Build extends React.Component{
     var currentVersion = this.props.data.versions[this.props.versionIndex];
     
     if (currentVersion.rolled_up) {
-      return React.createElement(InactiveBuild, {className: "build"});
+      return <InactiveBuild className="build"/>;
     }
    
     var isCollapsed = this.props.collapsed; // Will add switch to change isCollapsed state 
@@ -278,19 +278,19 @@ class Build extends React.Component{
     if (isCollapsed) {
       var tasksToShow = ['failed','sytem-failed']; // Can be modified to show combinations of tasks by statuses
       return (
-        React.createElement("div", {className: "build"}, 
-          React.createElement(ActiveBuild, {filters: tasksToShow, data: this.props.data, versionIndex: this.props.versionIndex, variantIndex: this.props.variantIndex}), 
+        <div className="build">
+          <ActiveBuild filters={tasksToShow} data={this.props.data} versionIndex={this.props.versionIndex} variantIndex={this.props.variantIndex} />
           
-          React.createElement(CollapsedBuild, {data: this.props.data, versionIndex: this.props.versionIndex, variantIndex: this.props.variantIndex})
-        )
+          <CollapsedBuild data={this.props.data} versionIndex={this.props.versionIndex} variantIndex={this.props.variantIndex}/>
+        </div>
       )
     } 
     
     //We have an active, uncollapsed build 
     return (
-      React.createElement("div", {className: "build"}, 
-        React.createElement(ActiveBuild, {data: this.props.data, versionIndex: this.props.versionIndex, variantIndex: this.props.variantIndex})
-      )
+      <div className="build">
+        <ActiveBuild data={this.props.data} versionIndex={this.props.versionIndex} variantIndex={this.props.variantIndex} />
+      </div>
     )
   }
 }
@@ -314,13 +314,13 @@ class ActiveBuild extends React.Component {
     }
 
     return (
-      React.createElement("div", {className: "active-build"}, 
-        
+      <div className="active-build"> 
+        {
           tasks.map((x) => {
-            return React.createElement(Task, {key: x.id, task: x})
+            return <Task key={x.id} task={x} />
           })
-        
-      )
+        }
+      </div>
     )
   }
 }
@@ -329,7 +329,7 @@ class ActiveBuild extends React.Component {
 class InactiveBuild extends React.Component {
   render() {
 
-    return React.createElement("div", {className: "inactive-build"}, " inactive build ");
+    return <div className="inactive-build"> inactive build </div>;
   }
 }
 
@@ -339,9 +339,9 @@ class Task extends React.Component {
     var status = this.props.task.status;
     var tooltipContent = this.props.task.display_name + " - " + status;
     return (
-      React.createElement("div", {className: "waterfall-box"}, 
-        React.createElement("a", {href: "/task/" + this.props.task.id, className: "task-result " + status})
-      )
+      <div className="waterfall-box"> 
+        <a href={"/task/" + this.props.task.id} className={"task-result " + status} />  
+      </div>
     )
   }
 }
@@ -368,13 +368,13 @@ class CollapsedBuild extends React.Component {
     })));
 
     return (
-      React.createElement("div", {className: "collapsed-bar"}, 
-        
+      <div className="collapsed-bar">
+        {
           taskTypes.map((x) => {
-            return React.createElement(TaskSummary, {key: x[0], total: build.tasks.length, status: x[0], taskNum: x[1]})
+            return <TaskSummary key={x[0]} total={build.tasks.length} status={x[0]} taskNum={x[1]} />
           }) 
-        
-      )
+        }
+      </div>
     )
   }
 }
@@ -385,9 +385,9 @@ class TaskSummary extends React.Component {
   render() {
     var status = this.props.status;
     return (
-      React.createElement("div", {className: status + " task-summary"}, 
-        "+", this.props.taskNum
-      )
+      <div className={status + " task-summary"}> 
+        +{this.props.taskNum}
+      </div>
     )
   }
 }

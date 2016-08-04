@@ -35,6 +35,29 @@ func skipValue(r *http.Request) (int, error) {
 	return strconv.Atoi(toSkipStr)
 }
 
+// uiStatus determines task status label.
+func uiStatus(task waterfallTask) string {
+	switch task.Status {
+	case "started":
+		return "started"
+	case "undispatched":
+		if task.Activated {
+			return "undispatched"
+		} else {
+			return "inactive"
+		}
+	case "success":
+		return "success"
+	case "failed":
+		return "failed"
+	case "dispatched":
+		return "dispatched"
+	default:
+		return ""
+	}
+}
+
+// waterfallData is all of the data that gets sent to the waterfall page on load
 type waterfallData struct {
 	Versions          []waterfallVersion `json:"versions"`
 	BuildVariants     []string           `json:"build_variants"`
@@ -53,11 +76,37 @@ type waterfallTask struct {
 	Activated     bool                    `json:"activated"`
 }
 
-// Waterfall-specific representation of a single build
+// Waterfall-specific representation of a single build. In the waterfall page, this data is used to render the
+// intersection of one build variant and one version. waterfallBuild is null if the version is rolled up.
+// Tasks holds an array of tasks that this build runs and the relevant data associated with each one
+// Id is the unique id for each build
+// BuildVariant stores the relevant data for the build variant of each build,
+// including the unique id and human readable display name
+// TaskStatusCount holds all the data needed for the collapsed view of a build
 type waterfallBuild struct {
-	Id           string          `json:"id"`
-	BuildVariant string          `json:"build_variant"`
-	Tasks        []waterfallTask `json:"tasks"`
+	Id              string                   `json:"id"`
+	BuildVariant    waterfallBuildVariant    `json:"build_variant"`
+	Tasks           []waterfallTask          `json:"tasks"`
+	TaskStatusCount waterfallTaskStatusCount `json:"waterfallTaskStatusCount"`
+}
+
+// struct to hold all the numbers for different task types
+// used by the front-end to show the rolled up view
+type waterfallTaskStatusCount struct {
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
+}
+
+// waterfallBuildVariant stores the Id and DisplayName for a given build
+// This struct is associated with one waterfallBuild
+type waterfallBuildVariant struct {
+	Id          string `json:"id"`
+	DisplayName string `json:"display_name"`
 }
 
 // Waterfall-specific representation of a single version element.  If the
@@ -211,15 +260,23 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 			// add the builds to the version
 			for _, build := range buildsInVersion {
 
-				buildForWaterfall := waterfallBuild{
-					Id:           build.Id,
-					BuildVariant: buildVariantMappings[build.BuildVariant],
+				buildVariant := waterfallBuildVariant{
+					Id:          build.BuildVariant,
+					DisplayName: buildVariantMappings[build.BuildVariant],
 				}
 
-				if buildForWaterfall.BuildVariant == "" {
-					buildForWaterfall.BuildVariant = build.BuildVariant +
+				buildForWaterfall := waterfallBuild{
+					Id:           build.Id,
+					BuildVariant: buildVariant,
+				}
+
+				if buildForWaterfall.BuildVariant.DisplayName == "" {
+					buildForWaterfall.BuildVariant.DisplayName = build.BuildVariant +
 						" (removed)"
 				}
+
+				//initialize and set TaskStatusCount fields to zero
+				statusCount := waterfallTaskStatusCount{}
 
 				// add the tasks to the build
 				for _, task := range build.Tasks {
@@ -231,7 +288,26 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 						Activated:     task.Activated,
 						TimeTaken:     task.TimeTaken,
 					}
+					taskForWaterfall.Status = uiStatus(taskForWaterfall)
 
+					switch taskForWaterfall.Status {
+					case "success":
+						statusCount.Succeeded++
+					case "failed":
+						if taskForWaterfall.StatusDetails.TimedOut && taskForWaterfall.StatusDetails.Description == "heartbeat" {
+							statusCount.TimedOut++
+						} else {
+							statusCount.Failed++
+						}
+					case "started":
+						statusCount.Started++
+					case "undispatched":
+						statusCount.Undispatched++
+					case "dispatched":
+						statusCount.Started++
+					case "inactive":
+						statusCount.Inactive++
+					}
 					// if the task is inactive, set its status to inactive
 					if !task.Activated {
 						taskForWaterfall.Status = InactiveStatus
@@ -239,6 +315,8 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 
 					buildForWaterfall.Tasks = append(buildForWaterfall.Tasks, taskForWaterfall)
 				}
+
+				buildForWaterfall.TaskStatusCount = statusCount
 
 				activeVersion.Builds =
 					append(activeVersion.Builds, buildForWaterfall)
@@ -248,7 +326,6 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 			finalVersions = append(finalVersions, activeVersion)
 
 		}
-
 	}
 
 	// if the last version was rolled-up, add it

@@ -1,50 +1,142 @@
 @border-color: rgba(100, 100, 100, .4);
 
-@cell-height: 34px;
-@cell-height-padding: 4px;
+@cell-height: 18px;
+@cell-height-padding: 2px;
 @cell-height-minus-padding: @cell-height - @cell-height-padding * 2;
 
-.waterfall-cell {
-    height: @cell-height;
-    padding: 4px;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    // border-bottom: 1px solid @gray7;
+@tooltip-width: 150px;
+@tooltip-left: 0 - @tooltip-width / 2;
+
+body {
+//  background-color: #f3f3f3;
 }
 
+.waterfall-grid {
+  width: 100%;
+}
+
+.variant-row {
+  margin-bottom: 15px;
+}
+
+.distro-col {
+ padding-top: 10px;
+ text-align: right;
+}
+
+.build-cols {
+  //background-color: white;
+  border: 1px solid @gray6;
+}
+
+
+.build {
+  padding-top: 14px;
+  padding-bottom: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
+  width: 20%;
+  float: left;
+}
+
+.active-build {
+  display: inline-block;
+}
+
+.inactive-build {
+  text-transform: uppercase;
+  color: @gray6;
+  font-weight: bold;
+  font-size: 12px;
+  text-align: center;
+  width: 20%;
+  float: left;
+  padding-top: 10px;
+}
+
+
+.waterfall-box {
+  float: left;
+  margin-left: 1px;
+  margin-bottom: 1px;
+}
+
+.task-result{
+  display: table-cell;
+  height: @cell-height-minus-padding;
+  width: @cell-height-minus-padding;
+  &:hover {
+    opacity: .8;
+  }
+  }
+
+.variant-col {
+  text-align: center;
+}
+
+.collapsed-bar {
+  height: 10px; 
+  width: 100%;
+}
+
+.task-summary {
+  width: 16.66%;
+  float: left;
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.inactive-header {
+  text-align: center;
+}
+
+// Version headers styling
 .version-header {
-    height: auto;
-    margin-bottom: 4px;
-    padding: 5px;
-    text-overflow: ellipsis;
-    overflow: hidden;
+//    height: auto;
+//    text-overflow: ellipsis;
+//    overflow: hidden;
     font-size: 12px;
     border-top: 2px solid @gray7;
     border-bottom: 2px solid @gray7;
-    font-weight: bold;
+ //   font-weight: bold;
+    margin-bottom: 10px;
+//    &.text-right {
+//      text-align: right;
+//      padding-right: 10px;
+//    }
+//    &-expanded {
+//      font-weight: normal;
+//      text-align: left;
+//    }
+ //   &-full {
+ //     text-align: center;
+//      white-space: nowrap;
+ //     &:hover {
+//        cursor: pointer;
+//        color: @linkText;
+ //    }
+//  }
+}
 
-    &.text-right {
-      text-align: right;
-      padding-right: 10px;
+.rolled-up-version-summary {
+  padding-bottom: 10px;
+    
+    .version-header-time {
+      color: @gray4;
+      font-size: 12px;
     }
-    &-expanded {
-      font-weight: normal;
-      text-align: left;
-    }
-    &-full {
-      text-align: center;
-      white-space: nowrap;
-      &:hover {
-        cursor: pointer;
-        color: @linkText;
-     }
-  }
-  &-button-link {
-    padding: 0;
-    border: 0;
-    margin: 0;
-  }
+}
+
+.rolled-up-version-header {
+  width: 100%;
+}
+
+.rolled-up-button {
+  width: 100%;
+  border-color: #f3f3f3;
+  //background-color: #f3f3f3;
+  text-transform: lowercase;
 }
 
 .popover.popover-wide {
@@ -69,25 +161,6 @@
   }
 }
 
-.build-result {
-   width: 100%;
-   display: table;
-   table-layout: fixed;
-}
-
-.build-summary {
-    width: 100%;
-    display: table;
-    table-layout: fixed;
-    color: black;
-    background-color: #eee;
-    
-    &:hover {
-        cursor: pointer;
-        border: 1px solid #555;
-    }
-}
-
 .build-summary-popover-title {
     font-size: 12px;
     overflow: hidden;
@@ -104,65 +177,83 @@
       border-left: 1px dotted grey;
     }
 }
-.task-result{
-  display: table-cell;
-  height: @cell-height-minus-padding;
-  border-left: 1px solid rgba(255,255,255,0.75);
-  
-  &:hover {
-    opacity: .8;
-  }
-  &:first-child {
-    border-left: 1px solid @pw;
-  }
-}
+
 
 .build-summary {
-  height: @cell-height-minus-padding - 2;
+  height: @cell-height-minus-padding + 9;
   font-size: 12px;
   line-height: @cell-height-minus-padding - 2;
   text-align: center;
   border: 1px solid #ccc;
 }
 
-.inactive-build {
-  text-transform: uppercase;
-  color: @gray6;
-  font-weight: bold;
-  font-size: 12px;
-  text-align: center;
-  padding-top: 4px;
-}
-
-@media(max-width: 992px) {
-  #build-variant-col {
-    font-size: 12px;
-    text-align: right;
-  }
+@media(max-width: 991px) {
   .inactive-build {
     font-size: 10px;
   }
   .filter {
     width: 100%;
-    margin-bottom: 15px;
-  }
-  .task-result {
-    display: none !important;
   }
 }
 
-@media(min-width: 992px) {
-  .build-summary {
-    display: none !important;
-  }
-  .tasks-summary {
-    display: none !important;
-  }
-  #build-variant-col {
-    text-align: right;
 
-    .waterfall-cell.build-variant-name {
-      padding: 8px 10px 0 10px;
-    }
-  }
+/* Add this attribute to the element that needs a tooltip 
+[data-tooltip] {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
 }
+
+/* Hide the tooltip content by default 
+[data-tooltip]:before,
+[data-tooltip]:after {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Position tooltip above the element 
+[data-tooltip]:before {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-bottom: 5px;
+  padding: 2px;
+  width: @tooltip-width;
+  margin-left: @tooltip-left;
+  -webkit-border-radius: 3px;
+  -moz-border-radius: 3px;
+  border-radius: 3px;
+  background-color: #000;
+  background-color: hsla(0, 0%, 20%, 0.9);
+  color: #fff;
+  font-weight: normal;
+  content: attr(data-tooltip);
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+/* Triangle hack to make tooltip look like a speech bubble 
+[data-tooltip]:after {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  margin-left: -10px;
+  width: 0;
+  border-top: 5px solid #000;
+  border-top: 5px solid hsla(0, 0%, 20%, 0.9);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  content: " ";
+  font-size: 0;
+  line-height: 0;
+}
+
+/* Show tooltip content on hover 
+  [data-tooltip]:hover:before,
+  [data-tooltip]:hover:after {
+    visibility: visible;
+    opacity: 1;
+  }
+*/
