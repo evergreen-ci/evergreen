@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -57,49 +58,19 @@ func uiStatus(task waterfallTask) string {
 	}
 }
 
+type versionVariantData struct {
+	Rows          map[string]waterfallRow     `json:"rows"`
+	Versions      map[string]waterfallVersion `json:"versions"`
+	BuildVariants waterfallBuildVariants      `json:"build_variants"`
+}
+
 // waterfallData is all of the data that gets sent to the waterfall page on load
 type waterfallData struct {
-	Versions          []waterfallVersion `json:"versions"`
-	BuildVariants     []string           `json:"build_variants"`
-	TotalVersions     int                `json:"total_versions"`      // total number of versions (for pagination)
-	CurrentSkip       int                `json:"current_skip"`        // number of versions skipped so far
-	PreviousPageCount int                `json:"previous_page_count"` // number of versions on previous page
-}
-
-// Waterfall-specific representation of a single task
-type waterfallTask struct {
-	Id            string                  `json:"id"`
-	Status        string                  `json:"status"`
-	StatusDetails apimodels.TaskEndDetail `json:"task_end_details"`
-	DisplayName   string                  `json:"display_name"`
-	TimeTaken     time.Duration           `json:"time_taken"`
-	Activated     bool                    `json:"activated"`
-}
-
-// Waterfall-specific representation of a single build. In the waterfall page, this data is used to render the
-// intersection of one build variant and one version. waterfallBuild is null if the version is rolled up.
-// Tasks holds an array of tasks that this build runs and the relevant data associated with each one
-// Id is the unique id for each build
-// BuildVariant stores the relevant data for the build variant of each build,
-// including the unique id and human readable display name
-// TaskStatusCount holds all the data needed for the collapsed view of a build
-type waterfallBuild struct {
-	Id              string                   `json:"id"`
-	BuildVariant    waterfallBuildVariant    `json:"build_variant"`
-	Tasks           []waterfallTask          `json:"tasks"`
-	TaskStatusCount waterfallTaskStatusCount `json:"waterfallTaskStatusCount"`
-}
-
-// struct to hold all the numbers for different task types
-// used by the front-end to show the rolled up view
-type waterfallTaskStatusCount struct {
-	Succeeded    int `json:"succeeded"`
-	Failed       int `json:"failed"`
-	Started      int `json:"started"`
-	Undispatched int `json:"undispatched"`
-	Inactive     int `json:"inactive"`
-	Dispatched   int `json:"dispatched"`
-	TimedOut     int `json:"timed_out"`
+	Rows              []waterfallRow              `json:"rows"`
+	Versions          map[string]waterfallVersion `json:"versions"`
+	TotalVersions     int                         `json:"total_versions"`      // total number of versions (for pagination)
+	CurrentSkip       int                         `json:"current_skip"`        // number of versions skipped so far
+	PreviousPageCount int                         `json:"previous_page_count"` // number of versions on previous page
 }
 
 // waterfallBuildVariant stores the Id and DisplayName for a given build
@@ -109,14 +80,49 @@ type waterfallBuildVariant struct {
 	DisplayName string `json:"display_name"`
 }
 
-// Waterfall-specific representation of a single version element.  If the
-// RolledUp field is false, then this contains information about a single
-// version, and all of the metadata fields (ids, messages, etc) will each
-// have length 1.  If the RolledUp field is true, then this version element
-// actually contains information about a group of contiguous inactive versions.
-// In that case, ids[x] will have the version id corresponding to messages[x]
-// and authors[x] (as well for the other metadata fields).  The rolled-up
-// versions will be backwards-ordered in time.
+// waterfallRow represents one row associated with a build variant.
+type waterfallRow struct {
+	BuildVariant waterfallBuildVariant     `json:"build_variant"`
+	Builds       map[string]waterfallBuild `json:"builds"`
+	Versions     []string                  `json:"versions"`
+}
+
+// waterfallBuild represents one set of tests for a given build variant and version
+type waterfallBuild struct {
+	Id              string          `json:"id"`
+	Active          bool            `json:"active"`
+	Version         string          `json:"version"`
+	Tasks           []waterfallTask `json:"tasks"`
+	TaskStatusCount taskStatusCount `json:"taskStatusCount"`
+}
+
+// waterfallTask represents one task in the waterfall UI.
+type waterfallTask struct {
+	Id            string                  `json:"id"`
+	Status        string                  `json:"status"`
+	StatusDetails apimodels.TaskEndDetail `json:"task_end_details"`
+	DisplayName   string                  `json:"display_name"`
+	TimeTaken     time.Duration           `json:"time_taken"`
+	Activated     bool                    `json:"activated"`
+}
+
+// taskStatusCount holds all the counts for task statuses for a given build.
+type taskStatusCount struct {
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
+}
+
+// waterfallVersion holds the waterfall UI representation of a single version (column)
+// If the RolledUp field is false, then it contains information about
+// a single version and the metadata fields will be of length 1.
+// If the RolledUp field is true, this represents multiple inactive versions, with each element
+// in the metadata arrays corresponsing to one inactive version,
+// ordered from most recent inactive version to earliest.
 type waterfallVersion struct {
 
 	// whether or not the version element actually consists of multiple inactive
@@ -125,15 +131,12 @@ type waterfallVersion struct {
 
 	// metadata about the enclosed versions.  if this version does not consist
 	// of multiple rolled-up versions, these will each only have length 1
-	Ids         []string    `json:"ids"`
-	Messages    []string    `json:"messages"`
-	Authors     []string    `json:"authors"`
-	CreateTimes []time.Time `json:"create_times"`
-	Revisions   []string    `json:"revisions"`
-
-	// the builds that are a part of the version. this will be empty if the
-	// element consists of multiple rolled-up versions
-	Builds []waterfallBuild `json:"builds"`
+	Ids                 []string    `json:"ids"`
+	Messages            []string    `json:"messages"`
+	Authors             []string    `json:"authors"`
+	CreateTimes         []time.Time `json:"create_times"`
+	Revisions           []string    `json:"revisions"`
+	RevisionOrderNumber int         `json:"revision_order"`
 
 	// used to hold any errors that were found in creating the version
 	Errors   []waterfallVersionError `json:"errors"`
@@ -145,17 +148,80 @@ type waterfallVersionError struct {
 	Messages []string `json:"messages"`
 }
 
+// waterfallBuildVariants implements the sort interface to allow backend sorting.
+type waterfallBuildVariants []waterfallBuildVariant
+
+func (wfbv waterfallBuildVariants) Len() int {
+	return len(wfbv)
+}
+
+func (wfbv waterfallBuildVariants) Less(i, j int) bool {
+	return wfbv[i].DisplayName < wfbv[j].DisplayName
+}
+
+func (wfbv waterfallBuildVariants) Swap(i, j int) {
+	wfbv[i], wfbv[j] = wfbv[j], wfbv[i]
+}
+
+// createWaterfallTasks takes ina  build's task cache returns a list of waterfallTasks.
+func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, taskStatusCount) {
+	//initialize and set TaskStatusCount fields to zero
+	statusCount := taskStatusCount{}
+	waterfallTasks := []waterfallTask{}
+
+	// add the tasks to the build
+	for _, t := range tasks {
+		taskForWaterfall := waterfallTask{
+			Id:            t.Id,
+			Status:        t.Status,
+			StatusDetails: t.StatusDetails,
+			DisplayName:   t.DisplayName,
+			Activated:     t.Activated,
+			TimeTaken:     t.TimeTaken,
+		}
+		taskForWaterfall.Status = uiStatus(taskForWaterfall)
+
+		switch taskForWaterfall.Status {
+		case "success":
+			statusCount.Succeeded++
+		case "failed":
+			if taskForWaterfall.StatusDetails.TimedOut && taskForWaterfall.StatusDetails.Description == "heartbeat" {
+				statusCount.TimedOut++
+			} else {
+				statusCount.Failed++
+			}
+		case "started":
+			statusCount.Started++
+		case "undispatched":
+			statusCount.Undispatched++
+		case "dispatched":
+			statusCount.Started++
+		case "inactive":
+			statusCount.Inactive++
+		}
+		// if the task is inactive, set its status to inactive
+		if !t.Activated {
+			taskForWaterfall.Status = InactiveStatus
+		}
+
+		waterfallTasks = append(waterfallTasks, taskForWaterfall)
+	}
+	return waterfallTasks, statusCount
+}
+
 // Fetch versions until 'numVersionElements' elements are created, including
 // elements consisting of multiple versions rolled-up into one.
 // The skip value indicates how many versions back in time should be skipped
 // before starting to fetch versions, the project indicates which project the
 // returned versions should be a part of.
-func getVersionsAndVariants(skip int, numVersionElements int, project *model.Project) ([]waterfallVersion, []string, error) {
+func getVersionsAndVariants(skip, numVersionElements int, project *model.Project) (versionVariantData, error) {
 	// the final array of versions to return
-	finalVersions := []waterfallVersion{}
+	finalVersions := map[string]waterfallVersion{}
 
 	// keep track of the build variants we see
 	bvSet := map[string]bool{}
+
+	waterfallRows := map[string]waterfallRow{}
 
 	// build variant mappings - used so we can store the display name as
 	// the build variant field of a build
@@ -173,7 +239,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 			fetchVersionsAndAssociatedBuilds(project, skip, numVersionElements)
 
 		if err != nil {
-			return nil, nil, fmt.Errorf("error fetching versions and builds:"+
+			return versionVariantData{}, fmt.Errorf("error fetching versions and builds:"+
 				" %v", err)
 		}
 
@@ -186,7 +252,7 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 		skip += len(versionsFromDB)
 
 		// create the necessary versions, rolling up inactive ones
-		for _, version := range versionsFromDB {
+		for _, v := range versionsFromDB {
 
 			// if we have hit enough versions, break out
 			if len(finalVersions) == numVersionElements {
@@ -194,40 +260,54 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 			}
 
 			// the builds for the version
-			buildsInVersion := buildsByVersion[version.Id]
+			buildsInVersion := buildsByVersion[v.Id]
 
 			// see if there are any active tasks in the version
 			versionActive := anyActiveTasks(buildsInVersion)
 
-			// add any represented build variants to the set
-			for _, build := range buildsInVersion {
-				bvSet[build.BuildVariant] = true
+			// add any represented build variants to the set and initialize rows
+			for _, b := range buildsInVersion {
+				bvSet[b.BuildVariant] = true
+
+				buildVariant := waterfallBuildVariant{
+					Id:          b.BuildVariant,
+					DisplayName: buildVariantMappings[b.BuildVariant],
+				}
+
+				if _, ok := waterfallRows[b.BuildVariant]; !ok {
+					waterfallRows[b.BuildVariant] = waterfallRow{
+						Versions:     []string{},
+						Builds:       map[string]waterfallBuild{},
+						BuildVariant: buildVariant,
+					}
+				}
+
 			}
 
 			// if it is inactive, roll up the version and don't create any
 			// builds for it
 			if !versionActive {
 				if lastRolledUpVersion == nil {
-					lastRolledUpVersion = &waterfallVersion{RolledUp: true}
+					lastRolledUpVersion = &waterfallVersion{RolledUp: true, RevisionOrderNumber: v.RevisionOrderNumber}
 				}
 
 				// add the version metadata into the last rolled-up version
 				lastRolledUpVersion.Ids = append(lastRolledUpVersion.Ids,
-					version.Id)
+					v.Id)
 				lastRolledUpVersion.Authors = append(lastRolledUpVersion.Authors,
-					version.Author)
+					v.Author)
 				lastRolledUpVersion.Errors = append(
-					lastRolledUpVersion.Errors, waterfallVersionError{version.Errors})
+					lastRolledUpVersion.Errors, waterfallVersionError{v.Errors})
 				lastRolledUpVersion.Warnings = append(
-					lastRolledUpVersion.Warnings, waterfallVersionError{version.Warnings})
+					lastRolledUpVersion.Warnings, waterfallVersionError{v.Warnings})
 				lastRolledUpVersion.Messages = append(
-					lastRolledUpVersion.Messages, version.Message)
+					lastRolledUpVersion.Messages, v.Message)
 				lastRolledUpVersion.Ignoreds = append(
-					lastRolledUpVersion.Ignoreds, version.Ignored)
+					lastRolledUpVersion.Ignoreds, v.Ignored)
 				lastRolledUpVersion.CreateTimes = append(
-					lastRolledUpVersion.CreateTimes, version.CreateTime)
+					lastRolledUpVersion.CreateTimes, v.CreateTime)
 				lastRolledUpVersion.Revisions = append(
-					lastRolledUpVersion.Revisions, version.Revision)
+					lastRolledUpVersion.Revisions, v.Revision)
 
 				// move on to the next version
 				continue
@@ -235,7 +315,14 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 
 			// add a pending rolled-up version, if it exists
 			if lastRolledUpVersion != nil {
-				finalVersions = append(finalVersions, *lastRolledUpVersion)
+				finalVersions[lastRolledUpVersion.Ids[0]] = *lastRolledUpVersion
+				// add the first version id to the waterfall rows of every build variant
+				for bvName, _ := range bvSet {
+					currentRow := waterfallRows[bvName]
+					currentRow.Versions = append(currentRow.Versions, lastRolledUpVersion.Ids[0])
+					waterfallRows[bvName] = currentRow
+				}
+
 				lastRolledUpVersion = nil
 			}
 
@@ -247,103 +334,71 @@ func getVersionsAndVariants(skip int, numVersionElements int, project *model.Pro
 			// if the version can not be rolled up, create a fully fledged
 			// version for it
 			activeVersion := waterfallVersion{
-				Ids:         []string{version.Id},
-				Messages:    []string{version.Message},
-				Authors:     []string{version.Author},
-				CreateTimes: []time.Time{version.CreateTime},
-				Revisions:   []string{version.Revision},
-				Errors:      []waterfallVersionError{{version.Errors}},
-				Warnings:    []waterfallVersionError{{version.Warnings}},
-				Ignoreds:    []bool{version.Ignored},
+				Ids:                 []string{v.Id},
+				Messages:            []string{v.Message},
+				Authors:             []string{v.Author},
+				CreateTimes:         []time.Time{v.CreateTime},
+				Revisions:           []string{v.Revision},
+				Errors:              []waterfallVersionError{{v.Errors}},
+				Warnings:            []waterfallVersionError{{v.Warnings}},
+				Ignoreds:            []bool{v.Ignored},
+				RevisionOrderNumber: v.RevisionOrderNumber,
 			}
 
-			// add the builds to the version
-			for _, build := range buildsInVersion {
-
-				buildVariant := waterfallBuildVariant{
-					Id:          build.BuildVariant,
-					DisplayName: buildVariantMappings[build.BuildVariant],
-				}
-
+			// add the builds to the waterfall row
+			for _, b := range buildsInVersion {
+				currentRow := waterfallRows[b.BuildVariant]
 				buildForWaterfall := waterfallBuild{
-					Id:           build.Id,
-					BuildVariant: buildVariant,
+					Id:      b.Id,
+					Version: v.Id,
 				}
 
-				if buildForWaterfall.BuildVariant.DisplayName == "" {
-					buildForWaterfall.BuildVariant.DisplayName = build.BuildVariant +
+				if currentRow.BuildVariant.DisplayName == "" {
+					currentRow.BuildVariant.DisplayName = b.BuildVariant +
 						" (removed)"
 				}
 
-				//initialize and set TaskStatusCount fields to zero
-				statusCount := waterfallTaskStatusCount{}
-
-				// add the tasks to the build
-				for _, task := range build.Tasks {
-					taskForWaterfall := waterfallTask{
-						Id:            task.Id,
-						Status:        task.Status,
-						StatusDetails: task.StatusDetails,
-						DisplayName:   task.DisplayName,
-						Activated:     task.Activated,
-						TimeTaken:     task.TimeTaken,
-					}
-					taskForWaterfall.Status = uiStatus(taskForWaterfall)
-
-					switch taskForWaterfall.Status {
-					case "success":
-						statusCount.Succeeded++
-					case "failed":
-						if taskForWaterfall.StatusDetails.TimedOut && taskForWaterfall.StatusDetails.Description == "heartbeat" {
-							statusCount.TimedOut++
-						} else {
-							statusCount.Failed++
-						}
-					case "started":
-						statusCount.Started++
-					case "undispatched":
-						statusCount.Undispatched++
-					case "dispatched":
-						statusCount.Started++
-					case "inactive":
-						statusCount.Inactive++
-					}
-					// if the task is inactive, set its status to inactive
-					if !task.Activated {
-						taskForWaterfall.Status = InactiveStatus
-					}
-
-					buildForWaterfall.Tasks = append(buildForWaterfall.Tasks, taskForWaterfall)
-				}
-
+				tasks, statusCount := createWaterfallTasks(b.Tasks)
+				buildForWaterfall.Tasks = tasks
 				buildForWaterfall.TaskStatusCount = statusCount
-
-				activeVersion.Builds =
-					append(activeVersion.Builds, buildForWaterfall)
+				currentRow.Builds[v.Id] = buildForWaterfall
+				currentRow.Versions = append(currentRow.Versions, v.Id)
+				waterfallRows[b.BuildVariant] = currentRow
 			}
 
 			// add the version
-			finalVersions = append(finalVersions, activeVersion)
+			finalVersions[v.Id] = activeVersion
 
 		}
 	}
 
 	// if the last version was rolled-up, add it
 	if lastRolledUpVersion != nil {
-		finalVersions = append(finalVersions, *lastRolledUpVersion)
+		finalVersions[lastRolledUpVersion.Ids[0]] = *lastRolledUpVersion
+		// add the first version id to the waterfall rows of every build variant
+		for bvName, _ := range bvSet {
+			currentRow := waterfallRows[bvName]
+			currentRow.Versions = append(currentRow.Versions, lastRolledUpVersion.Ids[0])
+			waterfallRows[bvName] = currentRow
+		}
 	}
 
 	// create the list of display names for the build variants represented
-	buildVariants := []string{}
+	buildVariants := waterfallBuildVariants{}
 	for name := range bvSet {
 		displayName := buildVariantMappings[name]
 		if displayName == "" {
 			displayName = name + " (removed)"
 		}
-		buildVariants = append(buildVariants, displayName)
+		buildVariants = append(buildVariants, waterfallBuildVariant{Id: name, DisplayName: displayName})
 	}
 
-	return finalVersions, buildVariants, nil
+	return versionVariantData{
+		Rows:          waterfallRows,
+		Versions:      finalVersions,
+		BuildVariants: buildVariants,
+	}, nil
+
 }
 
 // Helper function to fetch a group of versions and their associated builds.
@@ -354,15 +409,15 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 	// fetch the versions from the db
 	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
 		WithFields(
-			version.RevisionKey,
-			version.ErrorsKey,
-			version.WarningsKey,
-			version.IgnoredKey,
-			version.MessageKey,
-			version.AuthorKey,
-			version.RevisionOrderNumberKey,
-			version.CreateTimeKey,
-		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
+		version.RevisionKey,
+		version.ErrorsKey,
+		version.WarningsKey,
+		version.IgnoredKey,
+		version.MessageKey,
+		version.AuthorKey,
+		version.RevisionOrderNumberKey,
+		version.CreateTimeKey,
+	).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error fetching versions from database: %v", err)
@@ -382,11 +437,10 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 		return nil, nil, fmt.Errorf("error fetching builds from database: %v", err)
 	}
 
-	// sort the builds by version
+	// group the builds by version
 	buildsByVersion := map[string][]build.Build{}
 	for _, build := range buildsFromDb {
-		buildsByVersion[build.Version] = append(
-			buildsByVersion[build.Version], build)
+		buildsByVersion[build.Version] = append(buildsByVersion[build.Version], build)
 	}
 
 	return versionsFromDB, buildsByVersion, nil
@@ -510,12 +564,22 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	finalData := waterfallData{}
 
 	// first, get all of the versions and variants we will need
-	finalData.Versions, finalData.BuildVariants, err = getVersionsAndVariants(skip,
+	vvData, err := getVersionsAndVariants(skip,
 		VersionItemsToCreate, projCtx.Project)
+
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
+
+	finalData.Versions = vvData.Versions
+
+	sort.Sort(vvData.BuildVariants)
+	rows := []waterfallRow{}
+	for _, bv := range vvData.BuildVariants {
+		rows = append(rows, vvData.Rows[bv.Id])
+	}
+	finalData.Rows = rows
 
 	// compute the total number of versions that exist
 	finalData.TotalVersions, err = version.Count(version.ByProjectId(projCtx.Project.Identifier))

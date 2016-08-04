@@ -1,17 +1,13 @@
 {{define "scripts"}}
-<!-- ReactJS libs -->
-<script src="https://fb.me/react-15.2.0.min.js"></script>        
-<script src="https://fb.me/react-dom-15.2.0.min.js"></script>   
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.34/browser.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.2.0/react.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.2.0/react-dom.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-bootstrap/0.30.0/react-bootstrap.min.js"></script>
-<script src="http://netdna.bootstrapcdn.com/twitter-bootstrap/2.3.1/js/bootstrap.min.js"></script>
+<!-- ReactJS libs -->
+<script type="text/javascript" src="/static/js/react.min.js"></script>
+<script type="text/javascript" src="/static/js/react-dom.min.js"></script>
+<script type="text/javascript" src="/static/js/browser.min.js"></script>
+<script type="text/javascript" src="/static/js/react-bootstrap.min.js"></script>
 
 <script type="text/javascript">
   window.serverData = {{ .Data }};
-  window.serverData.unrolledVersionIndex = -1; //to be initialized in preprocessing function
 </script>
 
 <script type="text/javascript" src="{{Static "js" "waterfall.js"}}?hash={{ StaticsMD5 }}"></script>
