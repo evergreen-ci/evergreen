@@ -1998,6 +1998,7 @@ pre {
   border-top: 2px solid #ebebed;
   border-bottom: 2px solid #ebebed;
   margin-bottom: 10px;
+  word-wrap: break-word;
 }
 .rolled-up-version-summary {
   padding-bottom: 10px;

@@ -24,20 +24,23 @@ function getFormattedTime(datetimeObj) {
 class Root extends React.Component{
   constructor(props){
     super(props);
-    this.state = {collapsed: false};
+    this.state = {collapsed : false,
+                  hidden    : true};
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
+    this.handleHideChange = this.handleHideChange.bind(this);
   }
   handleCollapseChange(collapsed) {
     this.setState({collapsed: collapsed});
   }
+  handleHideChange(hidden) {
+    var opposite = !hidden;
+    this.setState({hidden: opposite});
+  }
   render() {
-    var toolbarData = {collapsed : this.state.collapsed,
-                       onCheck : this.handleCollapseChange};
-
     return (
       <div> 
-        <Toolbar data={this.props.data} collapsed={this.state.collapsed} onCheck={this.handleCollapseChange} toolbarData={toolbarData} stuff={"hellolol"} things={"nope"}/>
-        <Headers versions={this.props.data.versions}/> 
+        <Toolbar data={this.props.data} collapsed={this.state.collapsed} onCheck={this.handleCollapseChange} toolbarData={toolbarData}/>
+        <Headers versions={this.props.data.versions} hidden={this.state.hidden} onHide={this.handleHideChange} /> 
         <Grid data={this.props.data} collapsed={this.state.collapsed} project={this.props.project} />
       </div>
     )
@@ -46,9 +49,9 @@ class Root extends React.Component{
 
 /*** START OF WATERFALL TOOLBAR ***/
 
-const Toolbar = ({toolbarData}) => {
+const Toolbar = ({collapsed, onCheck}) => {
   return (
-    <CollapseButton collapsed={toolbarData.collapsed} onCheck={toolbarData.onCheck}  /> 
+    <CollapseButton collapsed={collapsed} onCheck={onCheck}  /> 
   )
 };
 
@@ -76,7 +79,8 @@ class CollapseButton extends React.Component{
 
 /*** START OF WATERFALL HEADERS ***/
 
-function Headers ({versions}) {
+
+function Headers ({versions, hidden, onHide}) {
   var versionList = _.sortBy(_.values(versions), 'revision_order').reverse();
   return (
   <div className="row version-header">
@@ -89,7 +93,8 @@ function Headers ({versions}) {
           return <RolledUpVersionHeader key={version.ids[0]} version={version} />
         }
         // Unrolled up version, no popover
-        return <ActiveVersionHeader key={version.ids[0]} version={version} />;
+        return <ActiveVersionHeader key={version.ids[0]} version={version} hidden={hidden} onHide={onHide} />;
+
       })
     }
     <br/>
@@ -97,16 +102,16 @@ function Headers ({versions}) {
   )
 }
 
-function ActiveVersionHeader({version}) {
-  
+function ActiveVersionHeader({version, hidden, onHide}) {
   var message = version.messages[0];
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
   var message = version.messages[0]; 
-  var shortened_message = version.messages[0].substring(0,35);
-
   var formatted_time = getFormattedTime(new Date(version.create_times[0]));
+  
+  //If we hide the full commit message, only take the first 35 chars
+  if (hidden) message = message.substring(0,35) + "...";
 
   return (
       <div className="col-xs-2">
@@ -117,19 +122,36 @@ function ActiveVersionHeader({version}) {
             </span>
             {formatted_time}
           </div>
-          {author} - {shortened_message}
+          {author} - {message}
+          <HideHeaderButton onHide={onHide} hidden={hidden} />
         </div>
       </div>
   )
 };
+
+class HideHeaderButton extends React.Component{
+  constructor(props){
+    super(props);
+    this.handleHide = this.handleHide.bind(this);
+  }
+  handleHide(event){
+    this.props.onHide(this.props.hidden);
+  }
+  render() {
+    var textToShow = this.props.hidden ? "more" : "less";
+    return (
+      <span onClick={this.handleHide}> <a href="#">{textToShow}</a> </span>
+    )
+  }
+}
 
 function RolledUpVersionHeader({version}){
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Button = ReactBootstrap.Button;
   
-  var versionTitle = version.messages.length > 1 ? "versions" : "version";
-  var rolledHeader = version.messages.length + " inactive " + versionTitle; 
+  var versionStr = (version.messages.length > 1) ? "versions" : "version";
+  var rolledHeader = version.messages.length + " inactive " + versionStr; 
  
   const popovers = (
     <Popover id="popover-positioned-bottom" title="">
