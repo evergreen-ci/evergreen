@@ -11,6 +11,7 @@ import (
 )
 
 type RemoteCommand struct {
+	Id        string
 	CmdString string
 
 	Stdout io.Writer
@@ -30,9 +31,15 @@ type RemoteCommand struct {
 }
 
 func (rc *RemoteCommand) Run() error {
+	evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) beginning Run()", rc.Id)
 	err := rc.Start()
 	if err != nil {
 		return err
+	}
+	if rc.Cmd != nil && rc.Cmd.Process != nil {
+		evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) started process %v", rc.Id, rc.Cmd.Process.Pid)
+	} else {
+		evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 	return rc.Cmd.Wait()
 }
@@ -76,8 +83,9 @@ func (rc *RemoteCommand) Start() error {
 
 func (rc *RemoteCommand) Stop() error {
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
+		evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) killing process %v", rc.Id, rc.Cmd.Process.Pid)
 		return rc.Cmd.Process.Kill()
 	}
-	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
+	evergreen.Logger.Logf(slogger.WARN, "RemoteCommand(%v) Trying to stop command but Cmd / Process was nil", rc.Id)
 	return nil
 }
