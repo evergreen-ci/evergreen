@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 	"strings"
 	"time"
@@ -132,6 +133,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	// first, create the necessary sandbox of directories on the remote machine
 	mkdirOutput := newCappedOutputLog()
 	makeShellCmd := &command.RemoteCommand{
+		Id:             fmt.Sprintf("agent_mkdir-%v", rand.Int()),
 		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir),
 		Stdout:         mkdirOutput,
 		Stderr:         mkdirOutput,
@@ -163,6 +165,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	scpAgentOutput := newCappedOutputLog()
 	scpAgentCmd := &command.ScpCommand{
+		Id:             fmt.Sprintf("scp%v", rand.Int()),
 		Source:         filepath.Join(agbh.ExecutablesDir, execSubPath),
 		Dest:           hostObj.Distro.WorkDir,
 		Stdout:         scpAgentOutput,
@@ -229,6 +232,7 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 	// run the command to kick off the agent remotely
 	var startAgentLog bytes.Buffer
 	startAgentCmd := &command.RemoteCommand{
+		Id:             fmt.Sprintf("startagent-%v", rand.Int()),
 		CmdString:      remoteCmd,
 		Stdout:         &startAgentLog,
 		Stderr:         &startAgentLog,

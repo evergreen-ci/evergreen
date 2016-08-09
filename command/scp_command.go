@@ -10,6 +10,7 @@ import (
 )
 
 type ScpCommand struct {
+	Id     string
 	Source string
 	Dest   string
 
@@ -29,9 +30,15 @@ type ScpCommand struct {
 }
 
 func (self *ScpCommand) Run() error {
+	evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) beginning Run()", self.Id)
 	err := self.Start()
 	if err != nil {
 		return err
+	}
+	if self.Cmd != nil && self.Cmd.Process != nil {
+		evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) started process %v", self.Id, self.Cmd.Process.Pid)
+	} else {
+		evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) has nil Cmd or Cmd.Process in Run()", self.Id)
 	}
 	return self.Cmd.Wait()
 }
@@ -69,8 +76,9 @@ func (self *ScpCommand) Start() error {
 
 func (self *ScpCommand) Stop() error {
 	if self.Cmd != nil && self.Cmd.Process != nil {
+		evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) killing process %v", self.Id, self.Cmd.Process.Pid)
 		return self.Cmd.Process.Kill()
 	}
-	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
+	evergreen.Logger.Logf(slogger.WARN, "SCPCommand(%v) Trying to stop command but Cmd / Process was nil", self.Id)
 	return nil
 }
