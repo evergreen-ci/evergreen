@@ -1935,12 +1935,30 @@ pre {
 .variant-row {
   margin-bottom: 15px;
 }
+.waterfall-toolbar {
+  margin-top: 15px;
+  margin-bottom: 8px;
+}
+.waterfall-text {
+  font-size: 18pt;
+  padding-right: 5px;
+  font-family: inherit;
+}
+.waterfall-page-buttons {
+  float: right;
+}
 .distro-col {
   padding-top: 10px;
   text-align: right;
 }
 .build-cols {
   border: 1px solid #dee0e3;
+}
+.waterfall-checkbox {
+  font-weight: normal;
+}
+.waterfall-checkbox-input {
+  display: inline;
 }
 .build {
   padding-top: 14px;
@@ -2081,66 +2099,6 @@ pre {
     width: 100%;
   }
 }
-/* Add this attribute to the element that needs a tooltip 
-[data-tooltip] {
-  position: relative;
-  z-index: 2;
-  cursor: pointer;
-}
-
-/* Hide the tooltip content by default 
-[data-tooltip]:before,
-[data-tooltip]:after {
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Position tooltip above the element 
-[data-tooltip]:before {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  margin-bottom: 5px;
-  padding: 2px;
-  width: @tooltip-width;
-  margin-left: @tooltip-left;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  border-radius: 3px;
-  background-color: #000;
-  background-color: hsla(0, 0%, 20%, 0.9);
-  color: #fff;
-  font-weight: normal;
-  content: attr(data-tooltip);
-  text-align: center;
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-/* Triangle hack to make tooltip look like a speech bubble 
-[data-tooltip]:after {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  margin-left: -10px;
-  width: 0;
-  border-top: 5px solid #000;
-  border-top: 5px solid hsla(0, 0%, 20%, 0.9);
-  border-right: 5px solid transparent;
-  border-left: 5px solid transparent;
-  content: " ";
-  font-size: 0;
-  line-height: 0;
-}
-
-/* Show tooltip content on hover 
-  [data-tooltip]:hover:before,
-  [data-tooltip]:hover:after {
-    visibility: visible;
-    opacity: 1;
-  }
-*/
 .active-elt-colors {
   background-color: #5F923B;
   color: white;

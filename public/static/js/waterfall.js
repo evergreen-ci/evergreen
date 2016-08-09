@@ -24,24 +24,61 @@ function getFormattedTime(datetimeObj) {
 class Root extends React.Component{
   constructor(props){
     super(props);
-    this.state = {collapsed : false,
-                  hidden    : true};
+
+    // Initialize newer|older buttons
+    
+    var versionsOnPage = _.reduce(_.map(window.serverData.versions, function(version){return version.authors.length; }), function(memo,num) {return memo + num;});
+
+    var currentSkip = window.serverData.current_skip;
+    var nextSkip = currentSkip + versionsOnPage; 
+    var prevSkip = currentSkip - window.serverData.previous_page_count;
+   
+    this.nextURL = "";
+    this.prevURL = ""; 
+
+    // If nextSkip and currentSkip are valid, set a valid href for the buttons
+    // Otherwise, the two buttons remain disabled with an empty url
+    if (nextSkip < window.serverData.total_versions) {
+      this.nextURL = "/waterfall/" + this.props.project + "?skip=" + nextSkip;
+    }
+    
+    if (currentSkip > 0) {
+      this.prevURL = "/waterfall/" + this.props.project + "?skip=" + prevSkip;
+    }
+
+    // Handle state for a collapsed view, as well as shortened header commit messages
+    this.state = {collapsed: false,
+                  shortenCommitMessage: true};
+
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
-    this.handleHideChange = this.handleHideChange.bind(this);
+    this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
   }
   handleCollapseChange(collapsed) {
     this.setState({collapsed: collapsed});
   }
-  handleHideChange(hidden) {
-    var opposite = !hidden;
-    this.setState({hidden: opposite});
+
+  handleHeaderLinkClick(shortenMessage) {
+    this.setState({shortenCommitMessage: !shortenMessage});
   }
   render() {
     return (
       React.createElement("div", null, 
-        React.createElement(Toolbar, {collapsed: this.state.collapsed, onCheck: this.handleCollapseChange}), 
-        React.createElement(Headers, {versions: this.props.data.versions, hidden: this.state.hidden, onHide: this.handleHideChange}), 
-        React.createElement(Grid, {data: this.props.data, collapsed: this.state.collapsed, project: this.props.project})
+        React.createElement(Toolbar, {
+          collapsed: this.state.collapsed, 
+          onCheck: this.handleCollapseChange, 
+          nextURL: this.nextURL, 
+          prevURL: this.prevURL}
+        ), 
+        React.createElement(Headers, {
+          shortenCommitMessage: this.state.shortenCommitMessage, 
+          versions: this.props.data.versions, 
+          onLinkClick: this.handleHeaderLinkClick}
+        ), 
+        React.createElement(Grid, {
+          data: this.props.data, 
+          collapsed: this.state.collapsed, 
+          project: this.props.project}
+        )
       )
     )
   }
@@ -49,11 +86,33 @@ class Root extends React.Component{
 
 /*** START OF WATERFALL TOOLBAR ***/
 
-function Toolbar({collapsed, onCheck}) {
+
+function Toolbar ({collapsed, onCheck, nextURL, prevURL}) {
   return (
-    React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}) 
+    React.createElement("div", {className: "waterfall-toolbar"}, 
+      React.createElement("span", {className: "waterfall-text"}, " Waterfall "), 
+      React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}), 
+      React.createElement(PageButtons, {nextURL: nextURL, prevURL: prevURL})
+    )
   )
 };
+
+function PageButtons ({prevURL, nextURL}) {
+  var ButtonGroup = ReactBootstrap.ButtonGroup;
+  return (
+    React.createElement(ButtonGroup, {className: "waterfall-page-buttons"}, 
+      React.createElement(PageButton, {pageURL: prevURL, disabled: prevURL === "", displayText: "newer"}), 
+      React.createElement(PageButton, {pageURL: nextURL, disabled: nextURL === "", displayText: "older"})
+    )
+  );
+}
+
+function PageButton ({pageURL, displayText, disabled}) {
+  var Button = ReactBootstrap.Button;
+  return (
+    React.createElement(Button, {href: pageURL, disabled: disabled, bsSize: "small"}, displayText)
+  );
+}
 
 class CollapseButton extends React.Component{
   constructor(props){
@@ -65,13 +124,15 @@ class CollapseButton extends React.Component{
   }
   render() {
     return (
-      React.createElement("label", {style: {display:"inline-block"}}, 
-        React.createElement("span", {style: {fontWeight:"normal"}}, "Show Collapsed View "), React.createElement("input", {style: {display:"inline"}, 
-          className: "checkbox", 
-          type: "checkbox", 
-          checked: this.props.collapsed, 
-          ref: "collapsedBuilds", 
-          onChange: this.handleChange})
+      React.createElement("label", {className: "waterfall-checkbox"}, 
+        React.createElement("span", null, "Show Collapsed View "), 
+          React.createElement("input", {
+            className: "checkbox waterfall-checkbox-input", 
+            type: "checkbox", 
+            checked: this.props.collapsed, 
+            ref: "collapsedBuilds", 
+            onChange: this.handleChange}
+          )
       )
     )
   }
@@ -80,7 +141,7 @@ class CollapseButton extends React.Component{
 /*** START OF WATERFALL HEADERS ***/
 
 
-function Headers ({versions, hidden, onHide}) {
+function Headers ({shortenCommitMessage, versions, onLinkClick}) {
   var versionList = _.sortBy(_.values(versions), 'revision_order').reverse();
   return (
   React.createElement("div", {className: "row version-header"}, 
@@ -90,11 +151,17 @@ function Headers ({versions, hidden, onHide}) {
     
       _.map(versionList, function(version){
         if (version.rolled_up) {
-          return React.createElement(RolledUpVersionHeader, {key: version.ids[0], version: version})
+          return React.createElement(RolledUpVersionHeader, {key: version.ids[0], version: version});
         }
         // Unrolled up version, no popover
-        return React.createElement(ActiveVersionHeader, {key: version.ids[0], version: version, hidden: hidden, onHide: onHide});
-
+        return (
+          React.createElement(ActiveVersionHeader, {
+            key: version.ids[0], 
+            version: version, 
+            shortenCommitMessage: shortenCommitMessage, 
+            onLinkClick: onLinkClick}
+          )
+        );
       }), 
     
     React.createElement("br", null)
@@ -102,16 +169,32 @@ function Headers ({versions, hidden, onHide}) {
   )
 }
 
-function ActiveVersionHeader({version, hidden, onHide}) {
+
+function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick}) {
   var message = version.messages[0];
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
   var message = version.messages[0]; 
+  // TODO: change this to use moment.js
   var formatted_time = getFormattedTime(new Date(version.create_times[0]));
   
   //If we hide the full commit message, only take the first 35 chars
   if (hidden) message = message.substring(0,35) + "...";
+
+  // If we shorten the commit message, only display the first 35 chars
+  if (shortenCommitMessage) {
+    var elipses = message.length > 35 ? "..." : "";
+    message = message.substring(0,35) + elipses; 
+  }
+ 
+  // Only show more/less buttons if the commit message is large enough 
+  var button;
+  if (message.length > 35) {
+    button = (
+       React.createElement(HideHeaderButton, {onLinkClick: onLinkClick, shortenCommitMessage: shortenCommitMessage})
+    );
+  }
 
   return (
       React.createElement("div", {className: "col-xs-2"}, 
@@ -123,7 +206,7 @@ function ActiveVersionHeader({version, hidden, onHide}) {
             formatted_time
           ), 
           author, " - ", message, 
-          React.createElement(HideHeaderButton, {onHide: onHide, hidden: hidden})
+          button
         )
       )
   )
@@ -132,15 +215,15 @@ function ActiveVersionHeader({version, hidden, onHide}) {
 class HideHeaderButton extends React.Component{
   constructor(props){
     super(props);
-    this.handleHide = this.handleHide.bind(this);
+    this.onLinkClick = this.onLinkClick.bind(this);
   }
-  handleHide(event){
-    this.props.onHide(this.props.hidden);
+  onLinkClick(event){
+    this.props.onLinkClick(this.props.shortenCommitMessage);
   }
   render() {
-    var textToShow = this.props.hidden ? "more" : "less";
+    var textToShow = this.props.shortenCommitMessage ? "more" : "less";
     return (
-      React.createElement("span", {onClick: this.handleHide}, " ", React.createElement("a", {href: "#"}, textToShow), " ")
+      React.createElement("span", {onClick: this.onLinkClick}, " ", React.createElement("a", {href: "#"}, textToShow), " ")
     )
   }
 }
