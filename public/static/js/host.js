@@ -15,13 +15,22 @@ mciModule.controller('HostCtrl', function($scope, $window) {
       $scope.host.uptime = moment.duration(uptime, 'seconds').humanize();
   }
 
+  var epochTime = moment("Jan 1, 1970");
+
+  var last_reachability = moment($scope.host.last_reachability_check);
+  if (last_reachability <= epochTime) { 
+	  $scope.host.last_reachability_check = "N/A";
+  } else {
+	  var last_reachability_seconds = moment().diff($scope.host.last_reachability_check, 'seconds');
+      $scope.host.last_reachability_check = moment.duration(last_reachability_seconds, 'seconds').humanize() + ' ago';
+  }
+
   // Determining the start and elapsed time should be done the same way as in hosts.js
   if ($scope.running_task && $scope.running_task.id) {
       var dispatchTimeDiffedPrefix = "";
 
       // In case the task is dispatched but not yet marked as
       // started, use the task's 'dispatch_time' in lieu of 'start_time'
-      var epochTime = moment("Jan 1, 1970");
       var startTime = moment($scope.running_task.start_time);
 
       // 'start_time' is set to epochTime by default. We use
@@ -30,6 +39,7 @@ mciModule.controller('HostCtrl', function($scope, $window) {
         startTime = $scope.running_task.dispatch_time;
         dispatchTimeDiffedPrefix = "*";
       }
+
 
       var elapsedTime = moment().diff(startTime, 'seconds');
       $scope.host.start_time = startTime;
