@@ -276,14 +276,27 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 		Messages:     messages,
 	}
 
-	resp, err := h.tryPostJSON("log", outgoingData)
-	if resp != nil {
-		defer resp.Body.Close()
+	retriableLog := util.RetriableFunc(
+		func() error {
+			resp, err := h.tryPostJSON("log", outgoingData)
+			if resp != nil {
+				defer resp.Body.Close()
+			}
+			if err != nil {
+				return util.RetriableError{err}
+			}
+			if resp.StatusCode == http.StatusInternalServerError {
+				return util.RetriableError{fmt.Errorf("http status %v response body %v", resp.StatusCode, resp.Body)}
+			}
+			return nil
+		},
+	)
+	retryFail, err := util.Retry(retriableLog, h.MaxAttempts, h.RetrySleep)
+	if retryFail {
+		return fmt.Errorf("logging failed after %vtries: %v",
+			h.MaxAttempts, err)
 	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // GetTask returns the communicator's task.
