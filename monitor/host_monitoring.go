@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
@@ -14,6 +15,7 @@ import (
 const (
 	// how long to wait in between reachability checks
 	ReachabilityCheckInterval = 10 * time.Minute
+	NumReachabilityWorkers    = 100
 )
 
 // responsible for monitoring and checking in on hosts
@@ -36,19 +38,49 @@ func monitorReachability(settings *evergreen.Settings) []error {
 		errors = append(errors, fmt.Errorf("error finding hosts not monitored recently: %v", err))
 		return errors
 	}
+	evergreen.Logger.Logf(slogger.INFO, "Hosts %v", hosts)
+
+	workers := NumReachabilityWorkers
+	if len(hosts) < workers {
+		workers = len(hosts)
+	}
+
+	wg := sync.WaitGroup{}
+
+	wg.Add(workers)
+
+	hostsChan := make(chan host.Host, workers)
+	errChan := make(chan error, workers)
+
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for host := range hostsChan {
+				if err := checkHostReachability(host, settings); err != nil {
+					errChan <- err
+				}
+			}
+		}()
+	}
+
+	errDone := make(chan struct{})
+	go func() {
+		defer close(errDone)
+		for err := range errChan {
+			errors = append(errors, fmt.Errorf("error checking reachability: %v", err))
+		}
+	}()
 
 	// check all of the hosts. continue on error so that other hosts can be
 	// checked successfully
 	for _, host := range hosts {
-		if err := checkHostReachability(host, settings); err != nil {
-			errors = append(errors, fmt.Errorf("error checking reachability for host %v: %v", host.Id, err))
-			continue
-		}
-
+		hostsChan <- host
 	}
+	close(hostsChan)
+	wg.Wait()
+	close(errChan)
 
-	evergreen.Logger.Logf(slogger.INFO, "Finished running host reachability checks")
-
+	<-errDone
 	return errors
 }
 
