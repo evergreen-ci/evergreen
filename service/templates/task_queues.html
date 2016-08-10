@@ -15,18 +15,20 @@ Evergreen - Task Queues
 <div class="container" ng-controller="TaskQueuesCtrl">
   <div class="row">
     <div class="col-md-3">
-      <h2>Task Queues</h2>
-      <div class="panel">
-        <div class="panel-heading row">
-          <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.distro" placeholder="Filter Distro" />
-        </div>
-        <div id="distros-list-container">
-          <ul id="distros-list">
-            <li ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro" ng-click="setActiveElement(distro)"
-            ng-class="{'active-distro': distro == activeDistro}">
-            <span class="badge">[[getLength(distro)]]</span> [[distro]]
-            </li>
-          </ul>
+      <div id="nav-container">
+        <h2>Task Queues</h2>
+        <div class="panel">
+          <div class="panel-heading row">
+            <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.distro" placeholder="Filter Distro" />
+          </div>
+          <div id="distros-list-container">
+            <ul id="distros-list">
+              <li ng-repeat="distro in distros | orderBy:getLength:true | filter:filter.distro" ng-click="setActiveElement(distro)"
+              ng-class="{'active-distro': distro == activeDistro}">
+              <span class="badge">[[getLength(distro)]]</span> [[distro]]
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
