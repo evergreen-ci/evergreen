@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	MakeShellTimeout  = time.Second * 30
+	MakeShellTimeout  = time.Minute
 	SCPTimeout        = time.Minute
-	StartAgentTimeout = time.Second * 30
+	StartAgentTimeout = time.Minute
 	agentFile         = "agent"
 	pidFile           = ".pid"
 )
