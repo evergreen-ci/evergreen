@@ -19,11 +19,15 @@ mciModule.controller('TaskQueuesCtrl',
   });
 
   $scope.activeElement = $location.hash();
+  $anchorScroll();
 
   $scope.setActiveElement = function(distro) {
+
     $scope.activeElement = distro;
+    var old = $location.hash();
     $location.hash(distro);
     $anchorScroll();
+    $location.hash(old);
   };
 
   $scope.isPatch = function(queueItem){
@@ -40,7 +44,6 @@ mciModule.controller('TaskQueuesCtrl',
     return $scope.queues[distro].length;
   }
 
-  $anchorScroll();
 
 }]);
 
