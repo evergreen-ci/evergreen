@@ -39,7 +39,7 @@ class Root extends React.Component{
   render() {
     return (
       React.createElement("div", null, 
-        React.createElement(Toolbar, {data: this.props.data, collapsed: this.state.collapsed, onCheck: this.handleCollapseChange, toolbarData: toolbarData}), 
+        React.createElement(Toolbar, {collapsed: this.state.collapsed, onCheck: this.handleCollapseChange}), 
         React.createElement(Headers, {versions: this.props.data.versions, hidden: this.state.hidden, onHide: this.handleHideChange}), 
         React.createElement(Grid, {data: this.props.data, collapsed: this.state.collapsed, project: this.props.project})
       )
@@ -49,7 +49,7 @@ class Root extends React.Component{
 
 /*** START OF WATERFALL TOOLBAR ***/
 
-const Toolbar = ({collapsed, onCheck}) => {
+function Toolbar({collapsed, onCheck}) {
   return (
     React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}) 
   )
