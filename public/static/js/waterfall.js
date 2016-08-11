@@ -179,9 +179,6 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick}) {
   // TODO: change this to use moment.js
   var formatted_time = getFormattedTime(new Date(version.create_times[0]));
   
-  //If we hide the full commit message, only take the first 35 chars
-  if (hidden) message = message.substring(0,35) + "...";
-
   // If we shorten the commit message, only display the first 35 chars
   if (shortenCommitMessage) {
     var elipses = message.length > 35 ? "..." : "";
