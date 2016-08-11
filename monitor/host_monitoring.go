@@ -38,7 +38,6 @@ func monitorReachability(settings *evergreen.Settings) []error {
 		errors = append(errors, fmt.Errorf("error finding hosts not monitored recently: %v", err))
 		return errors
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Hosts %v", hosts)
 
 	workers := NumReachabilityWorkers
 	if len(hosts) < workers {
