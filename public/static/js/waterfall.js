@@ -1,7 +1,6 @@
-  /*
+ /*
   ReactJS code for the Waterfall page. Grid calls the Variant class for each distro, and the Variant class renders each build variant for every version that exists. In each build variant we iterate through all the tasks and render them as well. The row of headers is just a placeholder at the moment.
-  */
-
+ */
 
 
 // Returns string from datetime object in "5/7/96 1:15 AM" format
@@ -44,16 +43,25 @@ class Root extends React.Component{
 
     // Handle state for a collapsed view, as well as shortened header commit messages
     this.state = {collapsed: false,
-                  shortenCommitMessage: true};
+                  shortenCommitMessage: true,
+                  buildVariantFilter: '',
+                  taskFilter: ''};
 
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
+    this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
+    this.handleTaskFilter = this.handleTaskFilter.bind(this);
 
   }
   handleCollapseChange(collapsed) {
     this.setState({collapsed: collapsed});
   }
-
+  handleBuildVariantFilter(filter) {
+    this.setState({buildVariantFilter: filter});
+  }
+  handleTaskFilter(filter) {
+    this.setState({taskFilter: filter});
+  }
   handleHeaderLinkClick(shortenMessage) {
     this.setState({shortenCommitMessage: !shortenMessage});
   }
@@ -75,7 +83,9 @@ class Root extends React.Component{
           collapsed: this.state.collapsed, 
           onCheck: this.handleCollapseChange, 
           nextURL: this.nextURL, 
-          prevURL: this.prevURL}
+          prevURL: this.prevURL, 
+          buildVariantFilterFunc: this.handleBuildVariantFilter, 
+          taskFilterFunc: this.handleTaskFilter}
         ), 
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage, 
@@ -86,7 +96,9 @@ class Root extends React.Component{
         React.createElement(Grid, {
           data: this.props.data, 
           collapseInfo: collapseInfo, 
-          project: this.props.project}
+          project: this.props.project, 
+          buildVariantFilter: this.state.buildVariantFilter, 
+          taskFilter: this.state.taskFilter}
         )
       )
     )
@@ -96,10 +108,12 @@ class Root extends React.Component{
 // Toolbar
 
 
-function Toolbar ({collapsed, onCheck, nextURL, prevURL}) {
+function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc, taskFilterFunc}) {
   return (
     React.createElement("div", {className: "waterfall-toolbar"}, 
       React.createElement("span", {className: "waterfall-text"}, " Waterfall "), 
+      React.createElement(FilterBox, {filterFunction: buildVariantFilterFunc, placeholder: "Filter variant", disabled: false}), 
+      React.createElement(FilterBox, {filterFunction: taskFilterFunc, placeholder: "Filter task", disabled: collapsed}), 
       React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}), 
       React.createElement(PageButtons, {nextURL: nextURL, prevURL: prevURL})
     )
@@ -121,6 +135,19 @@ function PageButton ({pageURL, displayText, disabled}) {
   return (
     React.createElement(Button, {href: pageURL, disabled: disabled, bsSize: "small"}, displayText)
   );
+}
+
+class FilterBox extends React.Component {
+  constructor(props){
+    super(props);
+    this.applyFilter = this.applyFilter.bind(this);
+  }
+  applyFilter() {
+    this.props.filterFunction(this.refs.searchInput.value)
+  }
+  render() {
+    return React.createElement("input", {type: "text", ref: "searchInput", placeholder: this.props.placeholder, value: this.props.currentFilter, onChange: this.applyFilter, disabled: this.props.disabled})
+  }
 }
 
 class CollapseButton extends React.Component{
@@ -282,12 +309,15 @@ function RolledUpVersionSummary ({version, i, userTz}) {
 // Grid
 
 // The main class that binds to the root div. This contains all the distros, builds, and tasks
-function Grid ({data, project, collapseInfo}) {
+function Grid ({data, project, collapseInfo, buildVariantFilter, taskFilter}) {
   return (
     React.createElement("div", {className: "waterfall-grid"}, 
       
-        data.rows.map(function(row){
-          return React.createElement(Variant, {row: row, project: project, collapseInfo: collapseInfo, versions: data.versions});
+        data.rows.filter(function(row){
+          return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
+        })
+        .map(function(row){
+          return React.createElement(Variant, {row: row, project: project, collapseInfo: collapseInfo, versions: data.versions, taskFilter: taskFilter});
         })
       
     ) 
@@ -302,7 +332,7 @@ function filterActiveTasks(tasks, activeStatuses){
 
 // The class for each "row" of the waterfall page. Includes the build variant link, as well as the five columns
 // of versions.
-function Variant({row, versions, project, collapseInfo}) {
+function Variant({row, versions, project, collapseInfo, taskFilter}) {
       if (collapseInfo.collapsed){
         collapseInfo.noActive = _.every(row.builds, 
           function(build, versionId){
@@ -310,6 +340,7 @@ function Variant({row, versions, project, collapseInfo}) {
             return t.length == 0;
           }) 
       }
+
       return (
       React.createElement("div", {className: "row variant-row"}, 
         React.createElement("div", {className: "col-xs-2 build-variants"}, 
@@ -320,11 +351,12 @@ function Variant({row, versions, project, collapseInfo}) {
         React.createElement("div", {className: "col-xs-10"}, 
           React.createElement("div", {className: "row build-cells"}, 
             
-              row.versions.map((versionId,i) => {
+              row.versions.map(function(versionId,i){
                 return React.createElement(Build, {key: versionId, 
                               build: row.builds[versionId], 
                               version: versions[versionId], 
-                              collapseInfo: collapseInfo})
+                              collapseInfo: collapseInfo, 
+                              taskFilter: taskFilter})
               })
             
           )
@@ -336,7 +368,8 @@ function Variant({row, versions, project, collapseInfo}) {
 
 // Each Build class is one group of tasks for an version + build variant intersection
 // We case on whether or not a build is active or not, and return either an ActiveBuild or InactiveBuild respectively
-function Build({build, collapseInfo, version}){
+
+function Build({build, collapseInfo, version, taskFilter}){
   // inactive build
   if (version.rolled_up) {
     return React.createElement(InactiveBuild, {className: "build"});
@@ -362,13 +395,20 @@ function Build({build, collapseInfo, version}){
   // uncollapsed active build
   return (
     React.createElement("div", {className: "build"}, 
-      React.createElement(ActiveBuild, {tasks: build.tasks})
+      React.createElement(ActiveBuild, {tasks: build.tasks, taskFilter: taskFilter})
     )
   )
 }
 
 // At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
-function ActiveBuild({tasks}){  
+function ActiveBuild({tasks, taskFilter}){  
+
+  if (taskFilter != null){
+    tasks = _.filter(tasks, function(task){
+      return task.display_name.toLowerCase().indexOf(taskFilter.toLowerCase()) != -1;
+    });
+  }
+
   return (
     React.createElement("div", {className: "active-build"}, 
       
