@@ -9,6 +9,7 @@
 
 <script type="text/javascript">
   window.serverData = {{ .Data }};
+  window.userTz = {{GetTimezone .User}}
 </script>
 
 <script type="text/javascript" src="{{Static "js" "waterfall.js"}}?hash={{ StaticsMD5 }}"></script>

@@ -1929,11 +1929,34 @@ pre {
   float: left;
   background-color: #999;
 }
-.waterfall-grid {
-  width: 100%;
+.build-cells {
+  border: 1px solid #dee0e3;
+}
+.build-variants {
+  padding-top: 10px;
+  text-align: right;
+}
+.githash-popover li {
+  margin: 20px 0;
+}
+.githash-popover li .commit-meta {
+  margin-bottom: 3px;
+}
+.githash-popover li .commit-meta .commit-date {
+  color: #a09f9e;
+  font-size: 12px;
+}
+.githash-popover li:first-child {
+  margin-top: 0;
+}
+.githash-popover li:last-child {
+  margin-bottom: 0;
 }
 .variant-row {
   margin-bottom: 15px;
+}
+.waterfall-page-buttons {
+  float: right;
 }
 .waterfall-toolbar {
   margin-top: 15px;
@@ -1942,17 +1965,6 @@ pre {
 .waterfall-text {
   font-size: 18pt;
   padding-right: 5px;
-  font-family: inherit;
-}
-.waterfall-page-buttons {
-  float: right;
-}
-.distro-col {
-  padding-top: 10px;
-  text-align: right;
-}
-.build-cols {
-  border: 1px solid #dee0e3;
 }
 .waterfall-checkbox {
   font-weight: normal;
@@ -2017,45 +2029,22 @@ pre {
   border-bottom: 2px solid #ebebed;
   margin-bottom: 10px;
   word-wrap: break-word;
+  padding: 10px;
+}
+.version-header-rolled {
+  font-weight: bold;
+  text-align: center;
 }
 .rolled-up-version-summary {
   padding-bottom: 10px;
+  word-wrap: break-word;
 }
 .rolled-up-version-summary .version-header-time {
   color: #a09f9e;
   font-size: 12px;
 }
-.rolled-up-version-header {
-  width: 100%;
-}
-.rolled-up-button {
-  width: 100%;
-  border-color: #f3f3f3;
-  text-transform: lowercase;
-}
 .popover.popover-wide {
   max-width: 400px;
-}
-.githash-popover li {
-  margin: 20px 0;
-}
-.githash-popover li .commit-meta {
-  margin-bottom: 3px;
-}
-.githash-popover li .commit-meta .commit-date {
-  color: #a09f9e;
-  font-size: 12px;
-}
-.githash-popover li:first-child {
-  margin-top: 0;
-}
-.githash-popover li:last-child {
-  margin-bottom: 0;
-}
-.build-summary-popover-title {
-  font-size: 12px;
-  overflow: hidden;
-  white-space: nowrap;
 }
 .tasks-summary {
   display: table-cell;
@@ -2066,6 +2055,81 @@ pre {
 .tasks-summary:nth-of-type(n+2) {
   border-left: 1px dotted grey;
 }
+.waterfall-grid {
+  width: 100%;
+}
+@media (max-width: 991px) {
+  .inactive-build {
+    font-size: 10px;
+  }
+  .filter {
+    width: 100%;
+  }
+}
+.waterfall-cell {
+  height: 34px;
+  padding: 4px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.version-header-old {
+  height: auto;
+  margin-bottom: 4px;
+  padding: 5px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  font-size: 12px;
+  border-top: 2px solid #ebebed;
+  border-bottom: 2px solid #ebebed;
+  font-weight: bold;
+}
+.version-header-old.text-right {
+  text-align: right;
+  padding-right: 10px;
+}
+.version-header-old-expanded {
+  font-weight: normal;
+  text-align: left;
+}
+.version-header-old-full {
+  text-align: center;
+  white-space: nowrap;
+}
+.version-header-old-full:hover {
+  cursor: pointer;
+  color: #006cbc;
+}
+.version-header-old-button-link {
+  padding: 0;
+  border: 0;
+  margin: 0;
+}
+.build-result {
+  width: 100%;
+  display: table;
+  table-layout: fixed;
+}
+.build-summary-old {
+  width: 100%;
+  display: table;
+  table-layout: fixed;
+  color: black;
+  background-color: #eee;
+}
+.build-summary-old:hover {
+  cursor: pointer;
+  border: 1px solid #555;
+}
+.task-result-old {
+  display: table-cell;
+  height: 26px;
+  border-left: 1px solid rgba(255, 255, 255, 0.75);
+}
+.task-result-old:hover {
+  opacity: .8;
+}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 .task-result {
@@ -2086,17 +2150,47 @@ pre {
 >>>>>>> EVG-1086 collapsed view toggle
 .build-summary {
   height: 23px;
-  font-size: 12px;
-  line-height: 12px;
-  text-align: center;
-  border: 1px solid #ccc;
+=======
+.task-result-old:first-child {
+  border-left: 1px solid #ffffff;
 }
-@media (max-width: 991px) {
+.inactive-build-old {
+  text-transform: uppercase;
+  color: #dee0e3;
+  font-weight: bold;
+>>>>>>> EVG-1098 ui polish
+  font-size: 12px;
+  text-align: center;
+  padding-top: 4px;
+}
+@media (max-width: 992px) {
+  #build-variant-col {
+    font-size: 12px;
+    text-align: right;
+  }
   .inactive-build {
     font-size: 10px;
   }
   .filter {
     width: 100%;
+    margin-bottom: 15px;
+  }
+  .task-result {
+    display: none !important;
+  }
+}
+@media (min-width: 992px) {
+  .build-summary {
+    display: none !important;
+  }
+  .tasks-summary {
+    display: none !important;
+  }
+  #build-variant-col {
+    text-align: right;
+  }
+  #build-variant-col .waterfall-cell.build-variant-name {
+    padding: 8px 10px 0 10px;
   }
 }
 .active-elt-colors {

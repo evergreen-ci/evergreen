@@ -6,16 +6,8 @@
 
 // Returns string from datetime object in "5/7/96 1:15 AM" format
 // Used to display version headers
-function getFormattedTime(datetimeObj) {
-  var formatted_time = datetimeObj.toLocaleDateString('en-US', {
-    month : 'numeric',
-    day : 'numeric',
-    year : '2-digit',
-    hour : '2-digit',
-    minute : '2-digit'
-  }).replace(",","");
-
-  return formatted_time;
+function getFormattedTime(input, userTz, fmt) {
+  return moment(input).tz(userTz).format(fmt);
 }
 
 
@@ -27,7 +19,11 @@ class Root extends React.Component{
 
     // Initialize newer|older buttons
     
-    var versionsOnPage = _.reduce(_.map(window.serverData.versions, function(version){return version.authors.length; }), function(memo,num) {return memo + num;});
+    var versionsOnPage = _.reduce(_.map(window.serverData.versions, function(version){
+      return version.authors.length; 
+    }), function(memo,num){
+      return memo + num;
+    });
 
     var currentSkip = window.serverData.current_skip;
     var nextSkip = currentSkip + versionsOnPage; 
@@ -52,6 +48,7 @@ class Root extends React.Component{
 
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
+
   }
   handleCollapseChange(collapsed) {
     this.setState({collapsed: collapsed});
@@ -61,6 +58,17 @@ class Root extends React.Component{
     this.setState({shortenCommitMessage: !shortenMessage});
   }
   render() {
+    if (this.props.data.rows.length == 0){
+      return (
+        React.createElement("div", null, 
+          "There are no builds for this project."
+        )
+        )
+    }
+    var collapseInfo = {
+      collapsed : this.state.collapsed,
+      activeTaskStatuses : ['failed','system-failed'],
+    };
     return (
       React.createElement("div", null, 
         React.createElement(Toolbar, {
@@ -72,11 +80,12 @@ class Root extends React.Component{
         React.createElement(Headers, {
           shortenCommitMessage: this.state.shortenCommitMessage, 
           versions: this.props.data.versions, 
-          onLinkClick: this.handleHeaderLinkClick}
+          onLinkClick: this.handleHeaderLinkClick, 
+          userTz: this.props.userTz}
         ), 
         React.createElement(Grid, {
           data: this.props.data, 
-          collapsed: this.state.collapsed, 
+          collapseInfo: collapseInfo, 
           project: this.props.project}
         )
       )
@@ -84,7 +93,7 @@ class Root extends React.Component{
   }
 }
 
-/*** START OF WATERFALL TOOLBAR ***/
+// Toolbar
 
 
 function Toolbar ({collapsed, onCheck, nextURL, prevURL}) {
@@ -138,26 +147,26 @@ class CollapseButton extends React.Component{
   }
 }
 
-/*** START OF WATERFALL HEADERS ***/
+// Headers
 
-
-function Headers ({shortenCommitMessage, versions, onLinkClick}) {
+function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
   var versionList = _.sortBy(_.values(versions), 'revision_order').reverse();
   return (
   React.createElement("div", {className: "row version-header"}, 
-    React.createElement("div", {className: "variant-col col-xs-2 version-header-full text-right"}, 
+    React.createElement("div", {className: "variant-col col-xs-2 version-header-rolled"}, 
       "Variant"
     ), 
     
       _.map(versionList, function(version){
         if (version.rolled_up) {
-          return React.createElement(RolledUpVersionHeader, {key: version.ids[0], version: version});
+          return React.createElement(RolledUpVersionHeader, {key: version.ids[0], version: version, userTz: userTz});
         }
         // Unrolled up version, no popover
         return (
           React.createElement(ActiveVersionHeader, {
             key: version.ids[0], 
             version: version, 
+            userTz: userTz, 
             shortenCommitMessage: shortenCommitMessage, 
             onLinkClick: onLinkClick}
           )
@@ -170,24 +179,24 @@ function Headers ({shortenCommitMessage, versions, onLinkClick}) {
 }
 
 
-function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick}) {
+function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz}) {
   var message = version.messages[0];
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
   var message = version.messages[0]; 
   // TODO: change this to use moment.js
-  var formatted_time = getFormattedTime(new Date(version.create_times[0]));
+  var formatted_time = getFormattedTime(version.create_times[0], userTz, 'M/D/YY h:mm A' );
   
   // If we shorten the commit message, only display the first 35 chars
   if (shortenCommitMessage) {
     var elipses = message.length > 35 ? "..." : "";
-    message = message.substring(0,35) + elipses; 
+    message = message.substring(0,32) + elipses; 
   }
  
   // Only show more/less buttons if the commit message is large enough 
   var button;
-  if (message.length > 35) {
+  if (message.length > 32) {
     button = (
        React.createElement(HideHeaderButton, {onLinkClick: onLinkClick, shortenCommitMessage: shortenCommitMessage})
     );
@@ -225,7 +234,7 @@ class HideHeaderButton extends React.Component{
   }
 }
 
-function RolledUpVersionHeader({version}){
+function RolledUpVersionHeader({version, userTz}){
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Button = ReactBootstrap.Button;
@@ -237,25 +246,23 @@ function RolledUpVersionHeader({version}){
     React.createElement(Popover, {id: "popover-positioned-bottom", title: ""}, 
       
         version.ids.map(function(id,i) {
-          return React.createElement(RolledUpVersionSummary, {version: version, key: id, i: i})
+          return React.createElement(RolledUpVersionSummary, {version: version, key: id, i: i, userTz: userTz})
         })
       
     )
   );
 
   return (
-    React.createElement("div", {className: "col-xs-2"}, 
+    React.createElement("div", {className: "col-xs-2 version-header-rolled"}, 
       React.createElement(OverlayTrigger, {trigger: "click", placement: "bottom", overlay: popovers, className: "col-xs-2"}, 
-        React.createElement(Button, {className: "rolled-up-button"}, 
-          React.createElement("a", {href: "#"}, rolledHeader)
-        )
+          React.createElement("span", {className: "pointer"}, " ", rolledHeader, " ")
       )
     )
   )
 };
 
-function RolledUpVersionSummary ({version, i}) {
-  var formatted_time = getFormattedTime(new Date(version.create_times[i]));
+function RolledUpVersionSummary ({version, i, userTz}) {
+  var formatted_time = getFormattedTime(new Date(version.create_times[i]), userTz, 'M/D/YY h:mm A' );
   var author = version.authors[i];
   var commit =  version.revisions[i].substring(0,10);
   var message = version.messages[i];
@@ -272,36 +279,52 @@ function RolledUpVersionSummary ({version, i}) {
   )
 };
 
-/*** START OF WATERFALL GRID ***/
+// Grid
 
 // The main class that binds to the root div. This contains all the distros, builds, and tasks
-function Grid ({data, project, collapsed}) {
+function Grid ({data, project, collapseInfo}) {
   return (
     React.createElement("div", {className: "waterfall-grid"}, 
       
         data.rows.map(function(row){
-          return React.createElement(Variant, {row: row, project: project, collapsed: collapsed, versions: data.versions});
+          return React.createElement(Variant, {row: row, project: project, collapseInfo: collapseInfo, versions: data.versions});
         })
       
     ) 
   )
 };
 
+function filterActiveTasks(tasks, activeStatuses){
+  return _.filter(tasks, function(task) { 
+      return _.contains(activeStatuses, task.status);
+    });
+}
+
 // The class for each "row" of the waterfall page. Includes the build variant link, as well as the five columns
 // of versions.
-function Variant({row, versions, project, collapsed}) {
+function Variant({row, versions, project, collapseInfo}) {
+      if (collapseInfo.collapsed){
+        collapseInfo.noActive = _.every(row.builds, 
+          function(build, versionId){
+            var t = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses);
+            return t.length == 0;
+          }) 
+      }
       return (
       React.createElement("div", {className: "row variant-row"}, 
-        React.createElement("div", {className: "col-xs-2 build-variant-name distro-col"}, 
+        React.createElement("div", {className: "col-xs-2 build-variants"}, 
         React.createElement("a", {href: "/build_variant/" + project + "/" + row.build_variant.id}, 
             row.build_variant.display_name
           )
         ), 
         React.createElement("div", {className: "col-xs-10"}, 
-          React.createElement("div", {className: "row build-cols"}, 
+          React.createElement("div", {className: "row build-cells"}, 
             
               row.versions.map((versionId,i) => {
-                return React.createElement(Build, {key: versionId, build: row.builds[versionId], version: versions[versionId], collapsed: collapsed})
+                return React.createElement(Build, {key: versionId, 
+                              build: row.builds[versionId], 
+                              version: versions[versionId], 
+                              collapseInfo: collapseInfo})
               })
             
           )
@@ -313,40 +336,39 @@ function Variant({row, versions, project, collapsed}) {
 
 // Each Build class is one group of tasks for an version + build variant intersection
 // We case on whether or not a build is active or not, and return either an ActiveBuild or InactiveBuild respectively
-function Build({build, collapsed, version}){
+function Build({build, collapseInfo, version}){
   // inactive build
   if (version.rolled_up) {
     return React.createElement(InactiveBuild, {className: "build"});
   }
   // collapsed active build
-  if (collapsed) {
-    var validTasks = ['failed','system-failed']; // Can be modified to show combinations of tasks by statuses      
+  if (collapseInfo.collapsed) {
+    if (collapseInfo.noActive){
+      return (
+      React.createElement("div", {className: "build"}, 
+        React.createElement(CollapsedBuild, {build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses})
+      )
+      )
+    }
+    // Can be modified to show combinations of tasks by statuses  
+    var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses)
     return (
       React.createElement("div", {className: "build"}, 
-        React.createElement(ActiveBuild, {build: build, validTasks: validTasks}), 
-        React.createElement(CollapsedBuild, {build: build, validTasks: validTasks})
+        React.createElement(ActiveBuild, {tasks: activeTasks}), 
+        React.createElement(CollapsedBuild, {build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses})
       )
     )
   } 
   // uncollapsed active build
   return (
     React.createElement("div", {className: "build"}, 
-      React.createElement(ActiveBuild, {build: build})
+      React.createElement(ActiveBuild, {tasks: build.tasks})
     )
   )
 }
 
-// At least one task in the version is non-inactive, so we display all build tasks with their appropiate colors signifying their status
-function ActiveBuild({build, validTasks}){  
-  var tasks = build.tasks;
-
-  // If our filter is defined, we filter our list of tasks to only display a given status 
-  if (validTasks != null) {
-    tasks = _.filter(tasks, function(task) { 
-      return _.contains(validTasks, task.status);
-    });
-  }
-
+// At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
+function ActiveBuild({tasks}){  
   return (
     React.createElement("div", {className: "active-build"}, 
       
@@ -377,7 +399,7 @@ function Task({task}) {
 
 // A CollapsedBuild contains a set of PartialProgressBars, which in turn make up a full progress bar
 // We iterate over the 5 different main types of task statuses, each of which have a different color association
-function CollapsedBuild({build, validTasks}){
+function CollapsedBuild({build, activeTaskStatuses}){
   var taskStats = build.taskStatusCount;
 
   var taskTypes = {
@@ -386,12 +408,12 @@ function CollapsedBuild({build, validTasks}){
   "system-failed": taskStats.timed_out,
   "undispatched" : taskStats.undispatched, 
   "inactive"     : taskStats.inactive,
-  "failed" :        taskStats.failed,
+  "failed"       : taskStats.failed,
   };
 
   // Remove all task summaries that have 0 tasks
   taskTypes = _.pick(taskTypes, function(count, status){
-    return count > 0 && !(_.contains(validTasks, status))
+    return count > 0 && !(_.contains(activeTaskStatuses, status))
   });
   
   return (

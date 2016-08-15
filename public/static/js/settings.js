@@ -43,6 +43,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
 
   $scope.user_tz = $window.user_tz;
   $scope.new_tz = $scope.user_tz || "America/New_York";
+  $scope.new_waterfall = $window.new_waterfall;
   $scope.userConf = $window.userConf;
   $scope.binaries = $window.binaries;
 
@@ -60,8 +61,8 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
       });
   }
 
-  $scope.updateUserSettings = function(new_tz) {
-    data = {timezone: new_tz};
+  $scope.updateUserSettings = function(new_tz, new_waterfall) {
+    data = {timezone: new_tz, new_waterfall: new_waterfall};
     $http.put('/settings/', data)
       .success(function(data, status) {
         window.location.reload()

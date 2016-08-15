@@ -2,6 +2,7 @@
 <script type="text/javascript" src="{{Static "js" "settings.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript">
   var user_tz = {{.Data.Timezone}};
+  var new_waterfall = {{.Data.NewWaterfall}}
   var userApiKey = {{.User.APIKey}};
   var userConf = {{.Config}};
   var binaries = {{.Binaries}};
@@ -73,7 +74,13 @@ ui_server_host: "[[userConf.ui_server_host]]"</pre>
                     <select class="form-control" ng-model="new_tz" ng-options="t.value as t.str for t in timezones"></select>
                   </div>
                 </div>
-                <div class="center text-center"><button ng-click="updateUserSettings(new_tz)" class="btn btn-primary">Save</button></div>
+                <div class="form-group">
+                  <span class="col-sm-4 col-sm-offset-2"> 
+                  <label class="control-label"> Use New Waterfall </label>
+                  <input type="checkbox" ng-value="new_waterfall" ng-model="new_waterfall">
+                  </span>
+                </div>
+                <div class="center text-center"><button ng-click="updateUserSettings(new_tz, new_waterfall)" class="btn btn-primary">Save</button></div>
               </form>
             </div>
           </div>

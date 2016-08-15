@@ -29,7 +29,8 @@ type PubKey struct {
 }
 
 type UserSettings struct {
-	Timezone string `json:"timezone" bson:"timezone"`
+	Timezone     string `json:"timezone" bson:"timezone"`
+	NewWaterfall bool   `json:"new_waterfall" bson:"new_waterfall"`
 }
 
 func (u *DBUser) Username() string {

@@ -11,12 +11,41 @@ body {
 //  background-color: #f3f3f3;
 }
 
-.waterfall-grid {
-  width: 100%;
+.build-cells {
+  border: 1px solid @gray6;
 }
+
+.build-variants {
+ padding-top: 10px;
+ text-align: right;
+}
+
+.githash-popover li {
+  margin: 20px 0;
+
+  .commit-meta {
+    margin-bottom: 3px;
+
+    .commit-date {
+      color: @gray4;
+      font-size: 12px;
+    }
+  }
+  &:first-child {
+    margin-top: 0;
+  }
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+
 
 .variant-row {
   margin-bottom: 15px;
+}
+.waterfall-page-buttons {
+  float: right;
 }
 
 .waterfall-toolbar {
@@ -27,21 +56,8 @@ body {
 .waterfall-text {
   font-size: 18pt;
   padding-right: 5px;
-  font-family: inherit;
 }
 
-.waterfall-page-buttons {
-  float: right;
-}
-
-.distro-col {
- padding-top: 10px;
- text-align: right;
-}
-
-.build-cols {
-  border: 1px solid @gray6;
-}
 
 .waterfall-checkbox {
   font-weight: normal;
@@ -86,7 +102,7 @@ body {
   width: @cell-height-minus-padding;
   &:hover {
     opacity: .8;
-  }
+    }
   }
 
 .variant-col {
@@ -117,6 +133,12 @@ body {
   border-bottom: 2px solid @gray7;
   margin-bottom: 10px;
   word-wrap: break-word;
+  padding: 10px;
+
+ &-rolled {
+  font-weight: bold;
+  text-align: center;
+}
 }
 
 .rolled-up-version-summary {
@@ -125,45 +147,15 @@ body {
       color: @gray4;
       font-size: 12px;
     }
-}
-
-.rolled-up-version-header {
-  width: 100%;
-}
-
-.rolled-up-button {
-  width: 100%;
-  border-color: #f3f3f3;
-  text-transform: lowercase;
+  word-wrap: break-word;
 }
 
 .popover.popover-wide {
   max-width: 400px;
 }
-.githash-popover li {
-  margin: 20px 0;
 
-  .commit-meta {
-    margin-bottom: 3px;
 
-    .commit-date {
-      color: @gray4;
-      font-size: 12px;
-    }
-  }
-  &:first-child {
-    margin-top: 0;
-  }
-  &:last-child {
-    margin-bottom: 0;
-  }
-}
 
-.build-summary-popover-title {
-    font-size: 12px;
-    overflow: hidden;
-    white-space: nowrap;
-}
 
 .tasks-summary {
     display: table-cell;
@@ -176,14 +168,10 @@ body {
     }
 }
 
-
-.build-summary {
-  height: @cell-height-minus-padding + 9;
-  font-size: 12px;
-  line-height: @cell-height-minus-padding - 2;
-  text-align: center;
-  border: 1px solid #ccc;
+.waterfall-grid {
+  width: 100%;
 }
+
 
 @media(max-width: 991px) {
   .inactive-build {

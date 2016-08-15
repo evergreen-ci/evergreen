@@ -38,6 +38,7 @@ const (
 	TaskDispatched   = "dispatched"
 	TaskFailed       = "failed"
 	TaskSucceeded    = "success"
+	TaskInactive     = "inactive"
 
 	TestFailedStatus    = "fail"
 	TestSkippedStatus   = "skip"

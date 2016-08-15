@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -39,20 +40,15 @@ func skipValue(r *http.Request) (int, error) {
 // uiStatus determines task status label.
 func uiStatus(task waterfallTask) string {
 	switch task.Status {
-	case "started":
-		return "started"
-	case "undispatched":
+	case evergreen.TaskStarted, evergreen.TaskSucceeded,
+		evergreen.TaskFailed, evergreen.TaskDispatched:
+		return task.Status
+	case evergreen.TaskUndispatched:
 		if task.Activated {
-			return "undispatched"
+			return evergreen.TaskUndispatched
 		} else {
-			return "inactive"
+			return evergreen.TaskInactive
 		}
-	case "success":
-		return "success"
-	case "failed":
-		return "failed"
-	case "dispatched":
-		return "dispatched"
 	default:
 		return ""
 	}
@@ -182,21 +178,19 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, taskStatusC
 		taskForWaterfall.Status = uiStatus(taskForWaterfall)
 
 		switch taskForWaterfall.Status {
-		case "success":
+		case evergreen.TaskSucceeded:
 			statusCount.Succeeded++
-		case "failed":
+		case evergreen.TaskFailed:
 			if taskForWaterfall.StatusDetails.TimedOut && taskForWaterfall.StatusDetails.Description == "heartbeat" {
 				statusCount.TimedOut++
 			} else {
 				statusCount.Failed++
 			}
-		case "started":
+		case evergreen.TaskStarted, evergreen.TaskDispatched:
 			statusCount.Started++
-		case "undispatched":
+		case evergreen.TaskUndispatched:
 			statusCount.Undispatched++
-		case "dispatched":
-			statusCount.Started++
-		case "inactive":
+		case evergreen.TaskInactive:
 			statusCount.Inactive++
 		}
 		// if the task is inactive, set its status to inactive
@@ -554,6 +548,14 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Project == nil {
 		uis.ProjectNotFound(projCtx, w, r)
 		return
+	}
+
+	u := GetUser(r)
+	if u != nil {
+		if !u.Settings.NewWaterfall {
+			uis.waterfallPageOld(w, r)
+			return
+		}
 	}
 
 	skip, err := skipValue(r)
