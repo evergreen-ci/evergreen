@@ -25,6 +25,7 @@ db.hosts.ensureIndex({ "branch" : 1, "create_time" : 1 })
 db.hosts.ensureIndex({ "version" : 1 })
 db.hosts.ensureIndex({ "author" : 1 })
 db.hosts.ensureIndex({ "distro._id" : 1, "status" : 1 })
+db.hosts.ensureIndex({ "status" : 1, "create_time": 1, "termination_time" : 1, "provider": 1 })
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })

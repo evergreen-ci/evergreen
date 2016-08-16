@@ -194,16 +194,17 @@ func ByRunningTaskId(taskId string) db.Q {
 func ByDynamicWithinTime(startTime, endTime time.Time) db.Q {
 	return db.Query(
 		bson.M{
-			ProviderKey: bson.M{"$ne": evergreen.HostTypeStatic},
 			"$or": []bson.M{
 				bson.M{
 					CreateTimeKey:      bson.M{"$lt": endTime},
 					TerminationTimeKey: bson.M{"$gt": startTime},
+					ProviderKey:        bson.M{"$ne": evergreen.HostTypeStatic},
 				},
 				bson.M{
 					CreateTimeKey:      bson.M{"$lt": endTime},
 					TerminationTimeKey: util.ZeroTime,
 					StatusKey:          evergreen.HostRunning,
+					ProviderKey:        bson.M{"$ne": evergreen.HostTypeStatic},
 				},
 			},
 		})

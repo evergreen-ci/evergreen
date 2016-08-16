@@ -260,12 +260,18 @@ func ByBeforeRevisionWithStatusesAndRequester(revisionOrder int, statuses []stri
 func ByTimeRun(startTime, endTime time.Time) db.Q {
 	return db.Query(
 		bson.M{
-			StartTimeKey:  bson.M{"$lte": endTime},
-			FinishTimeKey: bson.M{"$gte": startTime},
-			StatusKey: bson.M{
-				"$in": []string{evergreen.TaskFailed, evergreen.TaskSucceeded},
-			},
-		})
+			"$or": []bson.M{
+				bson.M{
+					StartTimeKey:  bson.M{"$lte": endTime},
+					FinishTimeKey: bson.M{"$gte": startTime},
+					StatusKey:     evergreen.TaskFailed,
+				},
+				bson.M{
+					StartTimeKey:  bson.M{"$lte": endTime},
+					FinishTimeKey: bson.M{"$gte": startTime},
+					StatusKey:     evergreen.TaskSucceeded,
+				},
+			}})
 }
 
 func ByStatuses(statuses []string, buildVariant, displayName, project, requester string) db.Q {
