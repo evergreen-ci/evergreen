@@ -89,7 +89,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
   <div class="row">
     <div class="col-lg-7">
       <header class="clearfix">
-        <h1 class="one-liner">
+        <h1 class="one-liner" id="task-title">
           <span class="label status-label" ng-class="task | statusFilter">[[task | statusLabel]]</span>
           [[task.display_name]] <span class="text-muted">on</span> [[task.build_variant_display]]
         </h1>
@@ -261,40 +261,47 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       {{end}}
     </div>
     <div class="col-lg-5">
-      <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
-
+      <div class="row">
+        <div class="col-md-4">
+          <h3 class="section-heading"><i class="fa fa-flask"></i> Tests</h3>
+        </div>
+        <div class="col-md-8">
+          <div ng-hide="!task.test_results || task.test_results.length == 0"
+            class="dropdown pull-right" style="margin-top:15px">
+            <button class="btn btn-default" data-toggle="dropdown" href="#" id="dLabel">
+              <span class="semi-muted">
+                Sort By:
+              </span>
+              <strong>
+                [[sortBy.name]]&nbsp;
+                <span class="fa fa-caret-down"></span>
+              </strong>
+            </button>
+            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+              <li role="presentation" class="dropdown-header">Sort Options</li>
+              <li role="presentation" ng-repeat="order in sortOrders">
+                <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
+                  [[order.name]]
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
       <div ng-show="!task.test_results || task.test_results.length == 0" class="mci-pod">
         <h4 class="text-center text-muted">No test results to show</h4>
       </div>
       <div ng-show="task.test_results.length > 0" class="mci-pod">
-        <div class="row">
-          <div class="col-md-6">
-            <div class="dropdown">
-              <button class="btn btn-default btn-xs" data-toggle="dropdown" href="#" id="dLabel">
-                <span class="semi-muted">
-                  Sort By:
-                </span>
-                <strong>
-                  [[sortBy.name]]&nbsp;&nbsp;
-                  <span class="fa fa-caret-down"></span>
-                </strong>
-              </button>
-              <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
-                <li role="presentation" class="dropdown-header">Sort Options</li>
-                <li role="presentation" ng-repeat="order in sortOrders">
-                  <a role="menuitem" ng-click="setSortBy(order);" href="javascript:return false;">
-                    [[order.name]]
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div class="col-md-6 text-right">
-            <span class="label success" style="margin-right: 5px">
+        <div class=row>
+          <div class="col-md-12">
+            <span class="label success pull-left" style="margin-right: 5px">
               [[(task.test_results | filter:{'status' : 'pass'}).length]] Succeeded
             </span>
-            <span class="label failed">
+            <span class="label failed pull-left">
               [[(task.test_results | filter:{'status' : 'fail'}).length]] Failed
+            </span>
+            <span class="label unlabel semi-muted pull-right">
+              <i class="fa fa-clock-o"></i> [[totalTestTimeNano | stringifyNanoseconds]] total runtime
             </span>
           </div>
         </div>

@@ -305,10 +305,14 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
       by: [''],
       reverse: true
     }];
+
+    var totalTestTime = 0;
     (task.test_results || []).forEach(function(testResult) {
       testResult.time_taken = testResult.end - testResult.start;
+      totalTestTime += testResult.time_taken;
       testResult.display_name = $filter('endOfPath')(testResult.test_file);
     });
+    $scope.totalTestTimeNano = totalTestTime * 1000 * 1000 * 1000;
 
     if (hash.sort) {
       var index = _.indexOf(_.pluck($scope.sortOrders, 'name'), hash.sort);
