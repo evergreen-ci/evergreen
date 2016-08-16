@@ -360,7 +360,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 		http.SetCookie(rw, &http.Cookie{
 			Name:    ProjectCookieName,
 			Value:   ctx.ProjectRef.Identifier,
-			Path:    "",
+			Path:    "/",
 			Expires: time.Now().Add(7 * 24 * time.Hour),
 		})
 	}
