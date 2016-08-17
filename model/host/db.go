@@ -95,7 +95,7 @@ var IsAvailableAndFree = db.Query(
 		StatusKey:    evergreen.HostRunning,
 		StartedByKey: evergreen.User,
 	},
-)
+).Sort([]string{"-" + LTCTimeKey})
 
 // IsFree is a query that returns all running
 // Evergreen hosts without an assigned task.
