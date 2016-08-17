@@ -110,12 +110,12 @@ class Root extends React.Component{
 
 function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc, taskFilterFunc}) {
   return (
-    React.createElement("div", {className: "waterfall-toolbar"}, 
-      React.createElement("span", {className: "waterfall-text"}, " Waterfall "), 
-      React.createElement(FilterBox, {filterFunction: buildVariantFilterFunc, placeholder: "Filter variant", disabled: false}), 
-      React.createElement(FilterBox, {filterFunction: taskFilterFunc, placeholder: "Filter task", disabled: collapsed}), 
-      React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}), 
-      React.createElement(PageButtons, {nextURL: nextURL, prevURL: prevURL})
+    React.createElement("div", {className: "waterfall-toolbar row"}, 
+      React.createElement("span", {className: "waterfall-text col-xs-2"}, " Waterfall "), 
+      React.createElement(FilterBox, {className: "col-xs-2", filterFunction: buildVariantFilterFunc, placeholder: "Filter variant", disabled: false}), 
+      React.createElement(FilterBox, {className: "col-xs-2", filterFunction: taskFilterFunc, placeholder: "Filter task", disabled: collapsed}), 
+      React.createElement(CollapseButton, {className: "col-xs-2", collapsed: collapsed, onCheck: onCheck}), 
+      React.createElement(PageButtons, {className: "col-xs-offset-2 col-xs-2", nextURL: nextURL, prevURL: prevURL})
     )
   )
 };
@@ -123,7 +123,7 @@ function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc,
 function PageButtons ({prevURL, nextURL}) {
   var ButtonGroup = ReactBootstrap.ButtonGroup;
   return (
-    React.createElement(ButtonGroup, {className: "waterfall-page-buttons"}, 
+    React.createElement(ButtonGroup, null, 
       React.createElement(PageButton, {pageURL: prevURL, disabled: prevURL === "", displayText: "newer"}), 
       React.createElement(PageButton, {pageURL: nextURL, disabled: nextURL === "", displayText: "older"})
     )
@@ -146,7 +146,10 @@ class FilterBox extends React.Component {
     this.props.filterFunction(this.refs.searchInput.value)
   }
   render() {
-    return React.createElement("input", {type: "text", ref: "searchInput", placeholder: this.props.placeholder, value: this.props.currentFilter, onChange: this.applyFilter, disabled: this.props.disabled})
+    return React.createElement("input", {type: "text", ref: "searchInput", 
+                  placeholder: this.props.placeholder, 
+                  value: this.props.currentFilter, onChange: this.applyFilter, 
+                  disabled: this.props.disabled})
   }
 }
 
@@ -160,10 +163,10 @@ class CollapseButton extends React.Component{
   }
   render() {
     return (
-      React.createElement("label", {className: "waterfall-checkbox"}, 
-        React.createElement("span", null, "Show Collapsed View "), 
+      React.createElement("span", null, 
+          "Show Collapsed View", 
           React.createElement("input", {
-            className: "checkbox waterfall-checkbox-input", 
+            className: "checkbox waterfall-checkbox", 
             type: "checkbox", 
             checked: this.props.collapsed, 
             ref: "collapsedBuilds", 

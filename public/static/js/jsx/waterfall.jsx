@@ -110,12 +110,12 @@ class Root extends React.Component{
 
 function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc, taskFilterFunc}) {
   return (
-    <div className="waterfall-toolbar"> 
-      <span className="waterfall-text"> Waterfall </span>
-      <FilterBox filterFunction={buildVariantFilterFunc} placeholder={"Filter variant"} disabled={false}/>
-      <FilterBox filterFunction={taskFilterFunc} placeholder={"Filter task"} disabled={collapsed}/>
-      <CollapseButton collapsed={collapsed} onCheck={onCheck} />
-      <PageButtons nextURL={nextURL} prevURL={prevURL} />
+    <div className="waterfall-toolbar row"> 
+      <span className="waterfall-text col-xs-2"> Waterfall </span>
+      <FilterBox  className="col-xs-2" filterFunction={buildVariantFilterFunc} placeholder={"Filter variant"} disabled={false}/>
+      <FilterBox  className="col-xs-2" filterFunction={taskFilterFunc} placeholder={"Filter task"} disabled={collapsed}/>
+      <CollapseButton className="col-xs-2" collapsed={collapsed} onCheck={onCheck} />
+      <PageButtons className="col-xs-offset-2 col-xs-2" nextURL={nextURL} prevURL={prevURL} />
     </div>
   )
 };
@@ -123,7 +123,7 @@ function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc,
 function PageButtons ({prevURL, nextURL}) {
   var ButtonGroup = ReactBootstrap.ButtonGroup;
   return (
-    <ButtonGroup className="waterfall-page-buttons">
+    <ButtonGroup>
       <PageButton pageURL={prevURL} disabled={prevURL === ""} displayText="newer" />
       <PageButton pageURL={nextURL} disabled={nextURL === ""} displayText="older" />
     </ButtonGroup>
@@ -146,7 +146,10 @@ class FilterBox extends React.Component {
     this.props.filterFunction(this.refs.searchInput.value)
   }
   render() {
-    return <input type="text" ref="searchInput" placeholder={this.props.placeholder} value={this.props.currentFilter} onChange={this.applyFilter} disabled={this.props.disabled}/>
+    return <input type="text" ref="searchInput" 
+                  placeholder={this.props.placeholder} 
+                  value={this.props.currentFilter} onChange={this.applyFilter} 
+                  disabled={this.props.disabled}/>
   }
 }
 
@@ -160,16 +163,16 @@ class CollapseButton extends React.Component{
   }
   render() {
     return (
-      <label className="waterfall-checkbox">
-        <span>Show Collapsed View </span>
+      <span>
+          Show Collapsed View
           <input 
-            className="checkbox waterfall-checkbox-input"
+            className="checkbox waterfall-checkbox"
             type="checkbox"
             checked={this.props.collapsed}
             ref="collapsedBuilds"
             onChange={this.handleChange} 
           />
-      </label>
+      </span>
     )
   }
 }
