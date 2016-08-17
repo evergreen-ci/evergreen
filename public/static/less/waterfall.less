@@ -1,23 +1,31 @@
 @border-color: rgba(100, 100, 100, .4);
-
-@cell-height: 18px;
-@cell-height-padding: 2px;
-@cell-height-minus-padding: @cell-height - @cell-height-padding * 2;
-
 @tooltip-width: 150px;
 @tooltip-left: 0 - @tooltip-width / 2;
+@cell-height: 14px;
+@summary-height: @cell-height*2 + 1;
+@build-padding: 8px;
 
 body {
-//  background-color: #f3f3f3;
+ background-color: #f3f3f3;
+}
+
+#root.waterfall-2 {
+  background-color: @pageBackground;
 }
 
 .build-cells {
   border: 1px solid @gray6;
+  border-right: none;
+  background: white;
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+
 }
 
 .build-variants {
- padding-top: 10px;
- text-align: right;
+  padding-top: @build-padding;
+  text-align: right;
+  font-size: 14px;
 }
 
 .githash-popover li {
@@ -39,10 +47,8 @@ body {
   }
 }
 
-
-
 .variant-row {
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 
 .waterfall-toolbar {
@@ -63,17 +69,18 @@ body {
   display: inline;
 }
 
+#collapsed-prompt{
+  margin-right: 6px;
+}
+
 .build {
-  padding-top: 14px;
-  padding-bottom: 8px;
-  padding-left: 6px;
-  padding-right: 6px;
+  padding: @build-padding;
   width: 20%;
   float: left;
 }
 
 .active-build {
-  display: inline-block;
+  display: table;
 }
 
 .inactive-build {
@@ -82,42 +89,44 @@ body {
   font-weight: bold;
   font-size: 12px;
   text-align: center;
+  padding-top: @build-padding;
   width: 20%;
   float: left;
-  padding-top: 10px;
 }
-
 
 .waterfall-box {
   float: left;
-  margin-left: 1px;
+  margin-right: 1px;
   margin-bottom: 1px;
-}
-
-.task-result{
-  display: table-cell;
-  height: @cell-height-minus-padding;
-  width: @cell-height-minus-padding;
+  height: @cell-height;
+  width: @cell-height;
   &:hover {
     opacity: .8;
-    }
   }
+}
 
 .variant-col {
   text-align: center;
 }
 
-.collapsed-bar {
-  height: 10px; 
-  width: 100%;
-}
-
-.task-summary {
-  width: 16.66%;
+a.task-summary {
+  padding: 0 6px;
+  margin-right: 1px;
+  margin-bottom: 1px;
+  height: @summary-height;
+  line-height: @summary-height;
   float: left;
-  text-align: center;
-  margin-bottom: 10px;
+  font-size:  @summary-height - 12;
+  color: @gray1;
   font-weight: bold;
+  text-align: center;
+  text-decoration: none;
+  &:hover {
+    opacity: .8;
+  }
+  &.success{
+    color: white;
+  }
 }
 
 .inactive-header {
@@ -127,16 +136,22 @@ body {
 // Version headers styling
 .version-header {
   font-size: 12px;
-  border-top: 2px solid @gray7;
-  border-bottom: 2px solid @gray7;
-  margin-bottom: 10px;
   word-wrap: break-word;
-  padding: 10px;
 
- &-rolled {
-  font-weight: bold;
-  text-align: center;
+  &-rolled {
+    font-weight: bold;
+    text-align: center;
+  }
+
+  .githash {
+    font-family: monospace;
+    font-weight: bold;
+    margin-right: 5px;
+  }
 }
+
+.header-col {
+  .build
 }
 
 .rolled-up-version-summary {
@@ -152,6 +167,9 @@ body {
   max-width: 400px;
 }
 
+.waterfall-form-item {
+  margin: 0 4px;
+}
 
 
 
@@ -164,10 +182,6 @@ body {
     &:nth-of-type(n+2) {
       border-left: 1px dotted grey;
     }
-}
-
-.waterfall-grid {
-  width: 100%;
 }
 
 

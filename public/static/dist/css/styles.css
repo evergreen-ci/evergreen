@@ -1929,12 +1929,23 @@ pre {
   float: left;
   background-color: #999;
 }
+body {
+  background-color: #f3f3f3;
+}
+#root.waterfall-2 {
+  background-color: #f5f6f7;
+}
 .build-cells {
   border: 1px solid #dee0e3;
+  border-right: none;
+  background: white;
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
 }
 .build-variants {
-  padding-top: 10px;
+  padding-top: 8px;
   text-align: right;
+  font-size: 14px;
 }
 .githash-popover li {
   margin: 20px 0;
@@ -1953,7 +1964,7 @@ pre {
   margin-bottom: 0;
 }
 .variant-row {
-  margin-bottom: 15px;
+  margin-bottom: 8px;
 }
 .waterfall-toolbar {
   margin-top: 15px;
@@ -1969,16 +1980,16 @@ pre {
 .waterfall-checkbox {
   display: inline;
 }
+#collapsed-prompt {
+  margin-right: 6px;
+}
 .build {
-  padding-top: 14px;
-  padding-bottom: 8px;
-  padding-left: 6px;
-  padding-right: 6px;
+  padding: 8px;
   width: 20%;
   float: left;
 }
 .active-build {
-  display: inline-block;
+  display: table;
 }
 .inactive-build {
   text-transform: uppercase;
@@ -1986,51 +1997,63 @@ pre {
   font-weight: bold;
   font-size: 12px;
   text-align: center;
+  padding-top: 8px;
   width: 20%;
   float: left;
-  padding-top: 10px;
 }
 .waterfall-box {
   float: left;
-  margin-left: 1px;
+  margin-right: 1px;
   margin-bottom: 1px;
-}
-.task-result {
-  display: table-cell;
   height: 14px;
   width: 14px;
 }
-.task-result:hover {
+.waterfall-box:hover {
   opacity: .8;
 }
 .variant-col {
   text-align: center;
 }
-.collapsed-bar {
-  height: 10px;
-  width: 100%;
-}
-.task-summary {
-  width: 16.66%;
+a.task-summary {
+  padding: 0 6px;
+  margin-right: 1px;
+  margin-bottom: 1px;
+  height: 29px;
+  line-height: 29px;
   float: left;
-  text-align: center;
-  margin-bottom: 10px;
+  font-size: 17px;
+  color: #494747;
   font-weight: bold;
+  text-align: center;
+  text-decoration: none;
+}
+a.task-summary:hover {
+  opacity: .8;
+}
+a.task-summary.success {
+  color: white;
 }
 .inactive-header {
   text-align: center;
 }
 .version-header {
   font-size: 12px;
-  border-top: 2px solid #ebebed;
-  border-bottom: 2px solid #ebebed;
-  margin-bottom: 10px;
   word-wrap: break-word;
-  padding: 10px;
 }
 .version-header-rolled {
   font-weight: bold;
   text-align: center;
+}
+.version-header .githash {
+  font-family: monospace;
+  font-weight: bold;
+  margin-right: 5px;
+}
+.header-col {
+  list-style: none;
+  padding: 8px;
+  width: 20%;
+  float: left;
 }
 .rolled-up-version-summary {
   padding-bottom: 10px;
@@ -2043,6 +2066,9 @@ pre {
 .popover.popover-wide {
   max-width: 400px;
 }
+.waterfall-form-item {
+  margin: 0 4px;
+}
 .tasks-summary {
   display: table-cell;
   overflow: hidden;
@@ -2051,9 +2077,6 @@ pre {
 }
 .tasks-summary:nth-of-type(n+2) {
   border-left: 1px dotted grey;
-}
-.waterfall-grid {
-  width: 100%;
 }
 @media (max-width: 991px) {
   .inactive-build {

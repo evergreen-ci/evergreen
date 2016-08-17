@@ -17,7 +17,6 @@ class Root extends React.Component{
     super(props);
 
     // Initialize newer|older buttons
-    
     var versionsOnPage = _.reduce(_.map(window.serverData.versions, function(version){
       return version.authors.length; 
     }), function(memo,num){
@@ -109,13 +108,17 @@ class Root extends React.Component{
 
 
 function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc, taskFilterFunc}) {
+  var Form = ReactBootstrap.Form;
   return (
-    <div className="waterfall-toolbar row"> 
-      <span className="waterfall-text col-xs-2"> Waterfall </span>
-      <FilterBox  className="col-xs-2" filterFunction={buildVariantFilterFunc} placeholder={"Filter variant"} disabled={false}/>
-      <FilterBox  className="col-xs-2" filterFunction={taskFilterFunc} placeholder={"Filter task"} disabled={collapsed}/>
-      <CollapseButton className="col-xs-2" collapsed={collapsed} onCheck={onCheck} />
-      <PageButtons className="col-xs-offset-2 col-xs-2" nextURL={nextURL} prevURL={prevURL} />
+    <div className="row">
+    <div className="col-xs-12">
+    <Form inline className="waterfall-toolbar pull-right"> 
+      <CollapseButton collapsed={collapsed} onCheck={onCheck} />
+      <FilterBox filterFunction={buildVariantFilterFunc} placeholder={"Filter variant"} disabled={false}/>
+      <FilterBox filterFunction={taskFilterFunc} placeholder={"Filter task"} disabled={collapsed}/>
+      <PageButtons nextURL={nextURL} prevURL={prevURL} />
+    </Form>
+    </div>
     </div>
   )
 };
@@ -123,17 +126,20 @@ function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc,
 function PageButtons ({prevURL, nextURL}) {
   var ButtonGroup = ReactBootstrap.ButtonGroup;
   return (
-    <ButtonGroup>
-      <PageButton pageURL={prevURL} disabled={prevURL === ""} displayText="newer" />
-      <PageButton pageURL={nextURL} disabled={nextURL === ""} displayText="older" />
-    </ButtonGroup>
+    <span className="waterfall-form-item">
+      <ButtonGroup>
+        <PageButton pageURL={prevURL} disabled={prevURL === ""} directionIcon="fa-chevron-left" />
+        <PageButton pageURL={nextURL} disabled={nextURL === ""} directionIcon="fa-chevron-right" />
+      </ButtonGroup>
+    </span>
   );
 }
 
-function PageButton ({pageURL, displayText, disabled}) {
+function PageButton ({pageURL, directionIcon, disabled}) {
   var Button = ReactBootstrap.Button;
+  var classes = "fa " + directionIcon;
   return (
-    <Button href={pageURL} disabled={disabled} bsSize="small">{displayText}</Button>
+    <Button href={pageURL} disabled={disabled}><i className={classes}></i></Button>
   );
 }
 
@@ -146,7 +152,8 @@ class FilterBox extends React.Component {
     this.props.filterFunction(this.refs.searchInput.value)
   }
   render() {
-    return <input type="text" ref="searchInput" 
+    return <input type="text" ref="searchInput"
+                  className="form-control waterfall-form-item"
                   placeholder={this.props.placeholder} 
                   value={this.props.currentFilter} onChange={this.applyFilter} 
                   disabled={this.props.disabled}/>
@@ -163,15 +170,15 @@ class CollapseButton extends React.Component{
   }
   render() {
     return (
-      <span>
-          Show Collapsed View
-          <input 
-            className="checkbox waterfall-checkbox"
-            type="checkbox"
-            checked={this.props.collapsed}
-            ref="collapsedBuilds"
-            onChange={this.handleChange} 
-          />
+      <span className="semi-muted waterfall-form-item">
+        <span id="collapsed-prompt">Show collapsed view</span>
+        <input 
+          className="checkbox waterfall-checkbox"
+          type="checkbox"
+          checked={this.props.collapsed}
+          ref="collapsedBuilds"
+          onChange={this.handleChange} 
+        />
       </span>
     )
   }
@@ -182,29 +189,30 @@ class CollapseButton extends React.Component{
 function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
   var versionList = _.sortBy(_.values(versions), 'revision_order').reverse();
   return (
-  <div className="row version-header">
-    <div className="variant-col col-xs-2 version-header-rolled">
-      Variant
-    </div>
-    {
-      _.map(versionList, function(version){
-        if (version.rolled_up) {
-          return <RolledUpVersionHeader key={version.ids[0]} version={version} userTz={userTz} />;
+    <div className="row version-header">
+      <div className="variant-col col-xs-2 version-header-rolled"></div>
+      <div className="col-xs-10">
+        <div className="row">
+        {
+          _.map(versionList, function(version){
+            if (version.rolled_up) {
+              return <RolledUpVersionHeader key={version.ids[0]} version={version} userTz={userTz} />;
+            }
+            // Unrolled up version, no popover
+            return (
+              <ActiveVersionHeader 
+                key={version.ids[0]} 
+                version={version}
+                userTz = {userTz} 
+                shortenCommitMessage={shortenCommitMessage} 
+                onLinkClick={onLinkClick} 
+              />
+            );
+          })
         }
-        // Unrolled up version, no popover
-        return (
-          <ActiveVersionHeader 
-            key={version.ids[0]} 
-            version={version}
-            userTz = {userTz} 
-            shortenCommitMessage={shortenCommitMessage} 
-            onLinkClick={onLinkClick} 
-          />
-        );
-      })
-    }
-    <br/>
-  </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -215,34 +223,34 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
   var id_link = "/version/" + version.ids[0];
   var commit = version.revisions[0].substring(0,5);
   var message = version.messages[0]; 
-  // TODO: change this to use moment.js
   var formatted_time = getFormattedTime(version.create_times[0], userTz, 'M/D/YY h:mm A' );
-  
-  // If we shorten the commit message, only display the first 35 chars
-  if (shortenCommitMessage) {
-    var elipses = message.length > 35 ? "..." : "";
-    message = message.substring(0,32) + elipses; 
-  }
- 
-  // Only show more/less buttons if the commit message is large enough 
+  const maxChars = 44 
   var button;
-  if (message.length > 32) {
+  if (message.length > maxChars) {
+    // If we shorten the commit message, only display the first maxChars chars
+    if (shortenCommitMessage) {
+      message = message.substring(0, maxChars-3) + "...";
+    }
     button = (
-       <HideHeaderButton onLinkClick={onLinkClick} shortenCommitMessage={shortenCommitMessage} />
+      <HideHeaderButton onLinkClick={onLinkClick} shortenCommitMessage={shortenCommitMessage} />
     );
   }
-
+ 
   return (
-      <div className="col-xs-2">
+      <div className="header-col">
         <div className="version-header-expanded">
-          <div>
-            <span className="btn btn-default btn-hash history-item-revision">
-              <a href={id_link}>{commit}</a>
-            </span>
-            {formatted_time}
+          <div className="col-xs-12">
+            <div className="row">
+              <a className="githash" href={id_link}>{commit}</a>
+              {formatted_time}
+            </div>
           </div>
-          {author} - {message}
-          {button}
+          <div className="col-xs-12">
+            <div className="row">
+              <strong>{author}</strong> - {message}
+              {button}
+            </div>
+          </div>
         </div>
       </div>
   )
@@ -283,7 +291,7 @@ function RolledUpVersionHeader({version, userTz}){
   );
 
   return (
-    <div className="col-xs-2 version-header-rolled">
+    <div className="header-col version-header-rolled">
       <OverlayTrigger trigger="click" placement="bottom" overlay={popovers} className="col-xs-2">
           <span className="pointer"> {rolledHeader} </span>
       </OverlayTrigger>
@@ -390,8 +398,8 @@ function Build({build, collapseInfo, version, taskFilter}){
     var activeTasks = filterActiveTasks(build.tasks, collapseInfo.activeTaskStatuses)
     return (
       <div className="build">
-        <ActiveBuild tasks={activeTasks} />
         <CollapsedBuild build={build} activeTaskStatuses={collapseInfo.activeTaskStatuses} />
+        <ActiveBuild tasks={activeTasks} />
       </div>
     )
   } 
@@ -413,13 +421,13 @@ function ActiveBuild({tasks, taskFilter}){
   }
 
   return (
-    <div className="active-build"> 
+    <span className="active-build"> 
       {
         tasks.map(function(task){
           return <Task task={task} />
         })
       }
-    </div>
+    </span>
   )
 }
 
@@ -432,11 +440,14 @@ function InactiveBuild ({}){
 function Task({task}) {
   var status = task.status;
   var tooltipContent = task.display_name + " - " + status;
-
+  var OverlayTrigger = ReactBootstrap.OverlayTrigger;
+  var Popover = ReactBootstrap.Popover;
+  var Tooltip = ReactBootstrap.Tooltip;
+  var tt = <Tooltip id="tooltip">{tooltipContent}</Tooltip>
   return (
-    <div className="waterfall-box"> 
-      <a href={"/task/" + task.id} className={"task-result " + status} />  
-    </div>
+    <OverlayTrigger placement="top" overlay={tt} animation={false}>
+      <a href={"/task/" + task.id} className={"waterfall-box " + status} />  
+    </OverlayTrigger>
   )
 }
 
@@ -446,12 +457,12 @@ function CollapsedBuild({build, activeTaskStatuses}){
   var taskStats = build.taskStatusCount;
 
   var taskTypes = {
-  "success"      : taskStats.succeeded, 
-  "dispatched"   : taskStats.started, 
-  "system-failed": taskStats.timed_out,
-  "undispatched" : taskStats.undispatched, 
-  "inactive"     : taskStats.inactive,
-  "failed"       : taskStats.failed,
+    "success"      : taskStats.succeeded, 
+    "dispatched"   : taskStats.started, 
+    "system-failed": taskStats.timed_out,
+    "undispatched" : taskStats.undispatched, 
+    "inactive"     : taskStats.inactive,
+    "failed"       : taskStats.failed,
   };
 
   // Remove all task summaries that have 0 tasks
@@ -460,10 +471,10 @@ function CollapsedBuild({build, activeTaskStatuses}){
   });
   
   return (
-    <div className="collapsed-bar">
+    <div>
       {
         _.map(taskTypes, function(count, status) {
-          return <TaskSummary key={status} status={status} count={count} />;
+          return <TaskSummary status={status} count={count} build={build} />;
         }) 
       }
     </div>
@@ -472,10 +483,17 @@ function CollapsedBuild({build, activeTaskStatuses}){
 
 // A TaskSummary is the class for one rolled up task type
 // A CollapsedBuild is comprised of an  array of contiguous TaskSummaries below individual failing tasks 
-function TaskSummary({status, count}){
+function TaskSummary({status, count, build}){
+  var id_link = "/build/" + build.id;
+  var OverlayTrigger = ReactBootstrap.OverlayTrigger;
+  var Popover = ReactBootstrap.Popover;
+  var Tooltip = ReactBootstrap.Tooltip;
+  var tt = <Tooltip id="tooltip">{count} {status}</Tooltip>;
   return (
-    <div className={status + " task-summary"}> 
-      +{count}
-    </div>
+    <OverlayTrigger placement="top" overlay={tt} animation={false}>
+      <a href={id_link} className={"task-summary " + status} > 
+        +{count}
+      </a>
+    </OverlayTrigger>
   )
 }
