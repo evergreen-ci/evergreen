@@ -9,7 +9,7 @@ import (
 const (
 	// if we have no data on a given task, we want to default to 1 second so we
 	// have some new hosts spawned
-	DefaultTaskDuration = time.Duration(1) * time.Second
+	DefaultTaskDuration = time.Duration(10) * time.Minute
 
 	// for the UI, if we have no data on a given task, we want to default to
 	// 0 time
