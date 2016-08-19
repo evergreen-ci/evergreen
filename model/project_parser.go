@@ -395,7 +395,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, pbvs []parserBV) ([]Build
 		evalErrs = append(evalErrs, errs...)
 		bvs = append(bvs, bv)
 	}
-	return bvs, errs
+	return bvs, evalErrs
 }
 
 // evaluateBVTasks translates intermediate tasks into true BuildVariantTask types,
