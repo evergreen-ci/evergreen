@@ -654,7 +654,7 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 		})
 
 		Convey("the duration of running tasks with unknown running time "+
-			"estimates should be ignored", func() {
+			"estimates should be accounted for", func() {
 
 			// running tasks have a time to completion of about 1 minute
 			existingDistroHosts := []host.Host{
@@ -677,9 +677,9 @@ func TestComputeRunningTasksDuration(t *testing.T) {
 			runningTasksDuration, err :=
 				computeRunningTasksDuration(existingDistroHosts, taskDurations)
 			So(err, ShouldBeNil)
-			// only task 1's duration is known
-			// due to scheduling variables, we allow a 5 second tolerance
-			So(runningTasksDuration, ShouldAlmostEqual, remainingDurationTwo, 5)
+			// only task 1's duration is known, so the others should use the default.
+			expectedDur := remainingDurationTwo + float64((2*model.DefaultTaskDuration)/time.Second)
+			So(runningTasksDuration, ShouldAlmostEqual, expectedDur, 200)
 		})
 
 		Convey("the duration of running tasks with outliers as running times "+
