@@ -46,9 +46,6 @@ func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Pro
 	}
 
 	project := &model.Project{}
-	if err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
-		return nil, err
-	}
 	// apply remote configuration patch if needed
 	if p.ConfigChanged(projectRef.RemotePath) {
 		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
@@ -68,6 +65,11 @@ func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Pro
 				message += fmt.Sprintf("\n\t=> %v", err)
 			}
 			return nil, fmt.Errorf(message)
+		}
+	} else {
+		// configuration is not patched
+		if err = model.LoadProjectInto(projectFileBytes, projectRef.Identifier, project); err != nil {
+			return nil, err
 		}
 	}
 	return project, nil
