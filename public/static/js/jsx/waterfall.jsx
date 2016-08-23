@@ -41,10 +41,13 @@ class Root extends React.Component{
     }
 
     // Handle state for a collapsed view, as well as shortened header commit messages
-    this.state = {collapsed: false,
-                  shortenCommitMessage: true,
-                  buildVariantFilter: '',
-                  taskFilter: ''};
+    var collapsed = localStorage.getItem("collapsed") == "true";
+    this.state = {
+      collapsed: collapsed,
+      shortenCommitMessage: true,
+      buildVariantFilter: '',
+      taskFilter: ''
+    };
 
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
@@ -53,6 +56,7 @@ class Root extends React.Component{
 
   }
   handleCollapseChange(collapsed) {
+    localStorage.setItem("collapsed", collapsed);
     this.setState({collapsed: collapsed});
   }
   handleBuildVariantFilter(filter) {
@@ -111,14 +115,14 @@ function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc,
   var Form = ReactBootstrap.Form;
   return (
     <div className="row">
-    <div className="col-xs-12">
-    <Form inline className="waterfall-toolbar pull-right"> 
-      <CollapseButton collapsed={collapsed} onCheck={onCheck} />
-      <FilterBox filterFunction={buildVariantFilterFunc} placeholder={"Filter variant"} disabled={false}/>
-      <FilterBox filterFunction={taskFilterFunc} placeholder={"Filter task"} disabled={collapsed}/>
-      <PageButtons nextURL={nextURL} prevURL={prevURL} />
-    </Form>
-    </div>
+      <div className="col-xs-12">
+        <Form inline className="waterfall-toolbar pull-right"> 
+          <CollapseButton collapsed={collapsed} onCheck={onCheck} />
+          <FilterBox filterFunction={buildVariantFilterFunc} placeholder={"Filter variant"} disabled={false}/>
+          <FilterBox filterFunction={taskFilterFunc} placeholder={"Filter task"} disabled={collapsed}/>
+          <PageButtons nextURL={nextURL} prevURL={prevURL} />
+        </Form>
+      </div>
     </div>
   )
 };
@@ -355,9 +359,9 @@ function Variant({row, versions, project, collapseInfo, taskFilter}) {
       return (
       <div className="row variant-row">
         <div className="col-xs-2 build-variants"> 
-        <a href={"/build_variant/" + project + "/" + row.build_variant.id}>
+          <a href={"/build_variant/" + project + "/" + row.build_variant.id}>
             {row.build_variant.display_name}
-          </a> 
+          </a>
         </div>
         <div className="col-xs-10"> 
           <div className="row build-cells">
@@ -421,13 +425,13 @@ function ActiveBuild({tasks, taskFilter}){
   }
 
   return (
-    <span className="active-build"> 
+    <div className="active-build"> 
       {
         tasks.map(function(task){
           return <Task task={task} />
         })
       }
-    </span>
+    </div>
   )
 }
 
@@ -471,7 +475,7 @@ function CollapsedBuild({build, activeTaskStatuses}){
   });
   
   return (
-    <div>
+    <div className="collapsed-build">
       {
         _.map(taskTypes, function(count, status) {
           return <TaskSummary status={status} count={count} build={build} />;
@@ -489,10 +493,11 @@ function TaskSummary({status, count, build}){
   var Popover = ReactBootstrap.Popover;
   var Tooltip = ReactBootstrap.Tooltip;
   var tt = <Tooltip id="tooltip">{count} {status}</Tooltip>;
+  var classes = "task-summary " + status
   return (
     <OverlayTrigger placement="top" overlay={tt} animation={false}>
-      <a href={id_link} className={"task-summary " + status} > 
-        +{count}
+      <a href={id_link} className={classes}>
+        {count}
       </a>
     </OverlayTrigger>
   )

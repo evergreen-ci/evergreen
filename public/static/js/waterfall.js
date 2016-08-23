@@ -41,10 +41,13 @@ class Root extends React.Component{
     }
 
     // Handle state for a collapsed view, as well as shortened header commit messages
-    this.state = {collapsed: false,
-                  shortenCommitMessage: true,
-                  buildVariantFilter: '',
-                  taskFilter: ''};
+    var collapsed = localStorage.getItem("collapsed") == "true";
+    this.state = {
+      collapsed: collapsed,
+      shortenCommitMessage: true,
+      buildVariantFilter: '',
+      taskFilter: ''
+    };
 
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
@@ -53,6 +56,7 @@ class Root extends React.Component{
 
   }
   handleCollapseChange(collapsed) {
+    localStorage.setItem("collapsed", collapsed);
     this.setState({collapsed: collapsed});
   }
   handleBuildVariantFilter(filter) {
@@ -111,14 +115,14 @@ function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc,
   var Form = ReactBootstrap.Form;
   return (
     React.createElement("div", {className: "row"}, 
-    React.createElement("div", {className: "col-xs-12"}, 
-    React.createElement(Form, {inline: true, className: "waterfall-toolbar pull-right"}, 
-      React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}), 
-      React.createElement(FilterBox, {filterFunction: buildVariantFilterFunc, placeholder: "Filter variant", disabled: false}), 
-      React.createElement(FilterBox, {filterFunction: taskFilterFunc, placeholder: "Filter task", disabled: collapsed}), 
-      React.createElement(PageButtons, {nextURL: nextURL, prevURL: prevURL})
-    )
-    )
+      React.createElement("div", {className: "col-xs-12"}, 
+        React.createElement(Form, {inline: true, className: "waterfall-toolbar pull-right"}, 
+          React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}), 
+          React.createElement(FilterBox, {filterFunction: buildVariantFilterFunc, placeholder: "Filter variant", disabled: false}), 
+          React.createElement(FilterBox, {filterFunction: taskFilterFunc, placeholder: "Filter task", disabled: collapsed}), 
+          React.createElement(PageButtons, {nextURL: nextURL, prevURL: prevURL})
+        )
+      )
     )
   )
 };
@@ -355,7 +359,7 @@ function Variant({row, versions, project, collapseInfo, taskFilter}) {
       return (
       React.createElement("div", {className: "row variant-row"}, 
         React.createElement("div", {className: "col-xs-2 build-variants"}, 
-        React.createElement("a", {href: "/build_variant/" + project + "/" + row.build_variant.id}, 
+          React.createElement("a", {href: "/build_variant/" + project + "/" + row.build_variant.id}, 
             row.build_variant.display_name
           )
         ), 
@@ -421,7 +425,7 @@ function ActiveBuild({tasks, taskFilter}){
   }
 
   return (
-    React.createElement("span", {className: "active-build"}, 
+    React.createElement("div", {className: "active-build"}, 
       
         tasks.map(function(task){
           return React.createElement(Task, {task: task})
@@ -471,7 +475,7 @@ function CollapsedBuild({build, activeTaskStatuses}){
   });
   
   return (
-    React.createElement("div", null, 
+    React.createElement("div", {className: "collapsed-build"}, 
       
         _.map(taskTypes, function(count, status) {
           return React.createElement(TaskSummary, {status: status, count: count, build: build});
@@ -489,10 +493,11 @@ function TaskSummary({status, count, build}){
   var Popover = ReactBootstrap.Popover;
   var Tooltip = ReactBootstrap.Tooltip;
   var tt = React.createElement(Tooltip, {id: "tooltip"}, count, " ", status);
+  var classes = "task-summary " + status
   return (
     React.createElement(OverlayTrigger, {placement: "top", overlay: tt, animation: false}, 
-      React.createElement("a", {href: id_link, className: "task-summary " + status}, 
-        "+", count
+      React.createElement("a", {href: id_link, className: classes}, 
+        count
       )
     )
   )

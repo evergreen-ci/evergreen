@@ -2,7 +2,8 @@
 @tooltip-width: 150px;
 @tooltip-left: 0 - @tooltip-width / 2;
 @cell-height: 14px;
-@summary-height: @cell-height*2 + 1;
+@cell-padding: 1px;
+@summary-height: @cell-height*2 + @cell-padding;
 @build-padding: 8px;
 
 body {
@@ -96,8 +97,8 @@ body {
 
 .waterfall-box {
   float: left;
-  margin-right: 1px;
-  margin-bottom: 1px;
+  margin-right: @cell-padding;
+  margin-bottom: @cell-padding;
   height: @cell-height;
   width: @cell-height;
   &:hover {
@@ -110,22 +111,26 @@ body {
 }
 
 a.task-summary {
-  padding: 0 6px;
-  margin-right: 1px;
-  margin-bottom: 1px;
+  padding: 0 2px;
+  display: inline-block;
+  margin-right: @cell-padding;
+  margin-bottom: @cell-padding;
   height: @summary-height;
+  min-width: @summary-height;
   line-height: @summary-height;
-  float: left;
-  font-size:  @summary-height - 12;
+  font-size: @summary-height*.5;
   color: @gray1;
   font-weight: bold;
   text-align: center;
   text-decoration: none;
-  &:hover {
-    opacity: .8;
-  }
   &.success{
     color: white;
+  }
+  &.zero{
+    opacity: .2;
+  }
+  &:hover {
+    opacity: .8;
   }
 }
 
@@ -171,7 +176,9 @@ a.task-summary {
   margin: 0 4px;
 }
 
-
+.collapsed-build{
+  display: inline-block;
+}
 
 .tasks-summary {
     display: table-cell;
