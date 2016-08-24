@@ -50,24 +50,28 @@ directives.patch.directive('patchDiffPanel', function() {
       // there is redundancy here between "success/pass" and "failed/fail"
       // to allow this to work generically with both test and task statuses
       scope.diffTypes = {
-        successfailed:  {icon:"fa-bug", type: 0},
-        passfail:       {icon:"fa-bug", type: 0},
-        failedfailed:   {icon:"fa-question", type: 1},
-        failfail:       {icon:"fa-question", type: 1},
-        failed:         {icon:"fa-bug", type: 2},
-        fail:           {icon:"fa-bug", type: 2},
-        failedsuccess:  {icon:"fa-star", type: 3},
-        failpass:       {icon:"fa-star", type: 3},
-        success:        {icon:"fa-star", type: 4},
-        pass:           {icon:"fa-star", type: 4},
-        successsuccess: {icon:"", type: 5},
-        passpass:       {icon:"", type: 5},
+        successfailed:    {icon:"fa-bug", type: 0},
+        passfail:         {icon:"fa-bug", type: 0},
+        failedfailed:     {icon:"fa-question", type: 1},
+        failfail:         {icon:"fa-question", type: 1},
+        failed:           {icon:"", type: 2},
+        fail:             {icon:"", type: 2},
+        undefinedfailed:  {icon:"", type: 2},
+        undefinedfail:    {icon:"", type: 2},
+        failedsuccess:    {icon:"fa-star", type: 3},
+        failpass:         {icon:"fa-star", type: 3},
+        success:          {icon:"", type: 4},
+        pass:             {icon:"", type: 4},
+        undefinedsuccess: {icon:"", type: 4},
+        undefinedpass:    {icon:"", type: 4},
+        successsuccess:   {icon:"", type: 5},
+        passpass:         {icon:"", type: 5},
       };
 
       // helper for ranking status combinations
       scope.getDisplayInfo = function(diff) {
         // concat results for key lookup
-        if (diff.original.status) {
+        if (typeof(diff.original) == "object") {
           // task diffs have an extra layer we need to extract
           key = diff.original.status + diff.patch.status;
         } else {
