@@ -311,7 +311,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			if lastRolledUpVersion != nil {
 				finalVersions[lastRolledUpVersion.Ids[0]] = *lastRolledUpVersion
 				// add the first version id to the waterfall rows of every build variant
-				for bvName, _ := range bvSet {
+				for bvName := range bvSet {
 					currentRow := waterfallRows[bvName]
 					currentRow.Versions = append(currentRow.Versions, lastRolledUpVersion.Ids[0])
 					waterfallRows[bvName] = currentRow
@@ -370,7 +370,7 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 	if lastRolledUpVersion != nil {
 		finalVersions[lastRolledUpVersion.Ids[0]] = *lastRolledUpVersion
 		// add the first version id to the waterfall rows of every build variant
-		for bvName, _ := range bvSet {
+		for bvName := range bvSet {
 			currentRow := waterfallRows[bvName]
 			currentRow.Versions = append(currentRow.Versions, lastRolledUpVersion.Ids[0])
 			waterfallRows[bvName] = currentRow
@@ -403,15 +403,15 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 	// fetch the versions from the db
 	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
 		WithFields(
-		version.RevisionKey,
-		version.ErrorsKey,
-		version.WarningsKey,
-		version.IgnoredKey,
-		version.MessageKey,
-		version.AuthorKey,
-		version.RevisionOrderNumberKey,
-		version.CreateTimeKey,
-	).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
+			version.RevisionKey,
+			version.ErrorsKey,
+			version.WarningsKey,
+			version.IgnoredKey,
+			version.MessageKey,
+			version.AuthorKey,
+			version.RevisionOrderNumberKey,
+			version.CreateTimeKey,
+		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error fetching versions from database: %v", err)
@@ -551,11 +551,9 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u := GetUser(r)
-	if u != nil {
-		if !u.Settings.NewWaterfall {
-			uis.waterfallPageOld(w, r)
-			return
-		}
+	if u == nil || !u.Settings.NewWaterfall {
+		uis.waterfallPageOld(w, r)
+		return
 	}
 
 	skip, err := skipValue(r)

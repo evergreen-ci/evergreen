@@ -1929,11 +1929,12 @@ pre {
   float: left;
   background-color: #999;
 }
-body {
-  background-color: #f3f3f3;
-}
+/* body {
+ background-color: #f3f3f3;
+} FIXME after we remove old waterfall */
 #root.waterfall-2 {
   background-color: #f5f6f7;
+  min-height: 100%;
 }
 .build-cells {
   border: 1px solid #dee0e3;
@@ -2156,28 +2157,6 @@ a.task-summary:hover {
 .task-result-old:hover {
   opacity: .8;
 }
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-.task-result {
-  display: table-cell;
-  height: 26px;
-  border-left: 1px solid rgba(255, 255, 255, 0.75);
-}
-.task-result:hover {
-  opacity: .8;
-}
-.task-result:first-child {
-  border-left: 1px solid #fff;
-}
-=======
-
->>>>>>> EVG-1087 waterfall page in react.js
-=======
->>>>>>> EVG-1086 collapsed view toggle
-.build-summary {
-  height: 23px;
-=======
 .task-result-old:first-child {
   border-left: 1px solid #ffffff;
 }
@@ -2185,7 +2164,6 @@ a.task-summary:hover {
   text-transform: uppercase;
   color: #dee0e3;
   font-weight: bold;
->>>>>>> EVG-1098 ui polish
   font-size: 12px;
   text-align: center;
   padding-top: 4px;

@@ -6,12 +6,13 @@
 @summary-height: @cell-height*2 + @cell-padding;
 @build-padding: 8px;
 
-body {
+/* body {
  background-color: #f3f3f3;
-}
+} FIXME after we remove old waterfall */ 
 
 #root.waterfall-2 {
   background-color: @pageBackground;
+  min-height: 100%;
 }
 
 .build-cells {
@@ -20,7 +21,6 @@ body {
   background: white;
   border-top-left-radius: 3px;
   border-bottom-left-radius: 3px;
-
 }
 
 .build-variants {
