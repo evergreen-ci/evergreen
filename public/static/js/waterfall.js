@@ -9,6 +9,67 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
+// taskStatusClass returns the css class that should be associated with a given task so that it can
+// be properly styled.
+function taskStatusClass(task) {
+  if (task !== Object(task)) {
+	  return '';
+  }
+
+  if (task.status == 'undispatched') {
+    if (!task.activated) {
+      return 'inactive';
+    } else {
+      return 'unstarted';
+    }
+  }
+
+  if (task.status == 'failed') {
+    if ('task_end_details' in task) {
+      if ('type' in task.task_end_details && task.task_end_details.type == 'system') {
+         return 'system-failed';
+      }
+      if (!!task.task_end_details.timed_out && task.task_end_details.desc == 'heartbeat') {
+        return 'system-failed';
+      }
+    }
+    return 'failed';
+  }
+  return task.status;
+}
+
+// labelFromTask returns the human readable label for a task's status given the details of its execution.
+function labelFromTask(task){
+  if (task !== Object(task)) {
+	  return '';
+  }
+
+  if (task.status == 'undispatched') {
+    if (task.activated) {
+      if (task.task_waiting) {
+        return task.task_waiting;
+      }
+      return 'scheduled';
+    } else if (+task.dispatch_time == 0 || (typeof task.dispatch_time == "string" && +new Date(task.dispatch_time) <= 0)) {
+       return 'not scheduled';
+    }
+  }
+
+  if (task.status == 'failed' && 'task_end_details' in task){
+    if ('timed_out' in task.task_end_details) {
+      if (task.task_end_details.timed_out && task.task_end_details.desc == 'heartbeat') {
+        return 'system unresponsive';
+      }
+      if (task.task_end_details.type == 'system') {
+        return 'system timed out';
+      }
+      return 'test timed out';
+    }
+  }
+
+  return task.status;
+}
+
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
@@ -442,15 +503,14 @@ function InactiveBuild ({}){
 
 // A Task contains the information for a single task for a build, including the link to its page, and a tooltip
 function Task({task}) {
-  var status = task.status;
-  var tooltipContent = task.display_name + " - " + status;
+  var tooltipContent = task.display_name + " - " + labelFromTask(task);
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Popover = ReactBootstrap.Popover;
   var Tooltip = ReactBootstrap.Tooltip;
   var tt = React.createElement(Tooltip, {id: "tooltip"}, tooltipContent)
   return (
     React.createElement(OverlayTrigger, {placement: "top", overlay: tt, animation: false}, 
-      React.createElement("a", {href: "/task/" + task.id, className: "waterfall-box " + status})
+      React.createElement("a", {href: "/task/" + task.id, className: "waterfall-box " + taskStatusClass(task)})
     )
   )
 }
