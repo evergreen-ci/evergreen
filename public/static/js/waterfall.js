@@ -70,6 +70,41 @@ function labelFromTask(task){
   return task.status;
 }
 
+// stringifyNanoseconds takes an integer count of nanoseconds and
+// returns it formatted as a human readable string, like "1h32m40s"
+// If skipDayMax is true, then durations longer than 1 day will be represented
+// in hours. Otherwise, they will be displayed as '>=1 day'
+function stringifyNanoseconds(input, skipDayMax, skipSecMax) {
+  var NS_PER_MS = 1000 * 1000; // 10^6
+  var NS_PER_SEC = NS_PER_MS * 1000
+  var NS_PER_MINUTE = NS_PER_SEC * 60;
+  var NS_PER_HOUR = NS_PER_MINUTE * 60;
+
+  if (input == 0) {
+    return "0 seconds";
+  } else if (input < NS_PER_MS) {
+    return "< 1 ms";
+  } else if (input < NS_PER_SEC) {
+    if (skipSecMax){
+      return Math.floor(input / NS_PER_MS) + " ms";
+    } else {
+      return "< 1 second"
+    }
+  } else if (input < NS_PER_MINUTE) {
+    return Math.floor(input / NS_PER_SEC) + " seconds";
+  } else if (input < NS_PER_HOUR) {
+    return Math.floor(input / NS_PER_MINUTE) + "m " + Math.floor((input % NS_PER_MINUTE) / NS_PER_SEC) + "s";
+  } else if (input < NS_PER_HOUR * 24 || skipDayMax) {
+    return Math.floor(input / NS_PER_HOUR) + "h " +
+        Math.floor((input % NS_PER_HOUR) / NS_PER_MINUTE) + "m " +
+        Math.floor((input % NS_PER_MINUTE) / NS_PER_SEC) + "s";
+  } else if (input == "unknown") {
+    return "unknown";
+  }  else {
+    return ">= 1 day";
+  }
+}
+
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
@@ -504,6 +539,10 @@ function InactiveBuild ({}){
 // A Task contains the information for a single task for a build, including the link to its page, and a tooltip
 function Task({task}) {
   var tooltipContent = task.display_name + " - " + labelFromTask(task);
+  if (task.status == 'success' || task.status == 'failed') {
+    var dur = stringifyNanoseconds(task.time_taken);
+    tooltipContent += ' - ' + dur;
+  }
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Popover = ReactBootstrap.Popover;
   var Tooltip = ReactBootstrap.Tooltip;
