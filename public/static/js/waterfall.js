@@ -65,6 +65,9 @@ function labelFromTask(task){
       }
       return 'test timed out';
     }
+    if (task.task_end_details.type == 'system') {
+      return 'system failure';
+    }
   }
 
   return task.status;
