@@ -290,14 +290,13 @@ class CollapseButton extends React.Component{
 // Headers
 
 function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
-  var versionList = _.sortBy(_.values(versions), 'revision_order').reverse();
   return (
     <div className="row version-header">
       <div className="variant-col col-xs-2 version-header-rolled"></div>
       <div className="col-xs-10">
         <div className="row">
         {
-          _.map(versionList, function(version){
+          versions.map(function(version){
             if (version.rolled_up) {
               return <RolledUpVersionHeader key={version.ids[0]} version={version} userTz={userTz} />;
             }
@@ -465,10 +464,10 @@ function Variant({row, versions, project, collapseInfo, taskFilter}) {
         <div className="col-xs-10"> 
           <div className="row build-cells">
             {
-              row.versions.map(function(versionId,i){
-                return <Build key={versionId} 
-                              build={row.builds[versionId]} 
-                              version={versions[versionId]} 
+              versions.map(function(version, i){
+                return <Build key={version.ids[0]} 
+                              build={row.builds[version.ids[0]]} 
+                              version={version} 
                               collapseInfo={collapseInfo}
                               taskFilter={taskFilter} />
               })
@@ -484,10 +483,18 @@ function Variant({row, versions, project, collapseInfo, taskFilter}) {
 // We case on whether or not a build is active or not, and return either an ActiveBuild or InactiveBuild respectively
 
 function Build({build, collapseInfo, version, taskFilter}){
+ 
   // inactive build
   if (version.rolled_up) {
     return <InactiveBuild className="build"/>;
   }
+
+  // no build for this version
+  if (!build) {
+    return <EmptyBuild />  
+  }
+
+
   // collapsed active build
   if (collapseInfo.collapsed) {
     if (collapseInfo.noActive){
@@ -537,6 +544,10 @@ function ActiveBuild({tasks, taskFilter}){
 // All tasks are inactive, so we display the words "inactive build"
 function InactiveBuild ({}){
     return (<div className="inactive-build"> inactive build </div>)
+}
+// No build associated with a given version and variant, so we render an empty div
+function EmptyBuild ({}){
+    return (<div className="build"> </div>)
 }
 
 // A Task contains the information for a single task for a build, including the link to its page, and a tooltip
