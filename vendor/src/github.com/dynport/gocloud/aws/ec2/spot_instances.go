@@ -2,7 +2,6 @@ package ec2
 
 import (
 	"encoding/xml"
-	"log"
 	"net/url"
 	"strconv"
 	"time"
@@ -18,6 +17,7 @@ type SpotPrice struct {
 
 type DescribeSpotPriceHistoryResponse struct {
 	SpotPrices []*SpotPrice `xml:"spotPriceHistorySet>item"`
+	NextToken  string       `xml:"nextToken"`
 }
 
 const TIME_FORMAT = "2006-01-02T15:04:05.999Z"
@@ -51,16 +51,24 @@ func (client *Client) DescribeSpotPriceHistory(filter *SpotPriceFilter) (prices 
 	if !filter.EndTime.IsZero() {
 		values.Add("EndTime", filter.EndTime.Format(TIME_FORMAT))
 	}
-	query += "&" + values.Encode()
-	log.Println(query)
-	raw, e := client.DoSignedRequest("GET", client.Endpoint(), query, nil)
-	if e != nil {
-		return prices, e
+	//TODO fix this for real in EVG-1185
+	fullQuery := query + "&" + values.Encode()
+	for {
+		raw, e := client.DoSignedRequest("GET", client.Endpoint(), fullQuery, nil)
+		if e != nil {
+			return prices, e
+		}
+		rsp := &DescribeSpotPriceHistoryResponse{}
+		e = xml.Unmarshal(raw.Content, rsp)
+		if e != nil {
+			return prices, e
+		}
+		prices = append(prices, rsp.SpotPrices...)
+		if rsp.NextToken == "" {
+			break
+		}
+		values.Set("NextToken", rsp.NextToken)
+		fullQuery = query + "&" + values.Encode()
 	}
-	rsp := &DescribeSpotPriceHistoryResponse{}
-	e = xml.Unmarshal(raw.Content, rsp)
-	if e != nil {
-		return prices, e
-	}
-	return rsp.SpotPrices, nil
+	return prices, nil
 }

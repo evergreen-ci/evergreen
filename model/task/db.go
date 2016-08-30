@@ -55,6 +55,7 @@ var (
 	PriorityKey            = bsonutil.MustHaveTag(Task{}, "Priority")
 	MinQueuePosKey         = bsonutil.MustHaveTag(Task{}, "MinQueuePos")
 	ActivatedByKey         = bsonutil.MustHaveTag(Task{}, "ActivatedBy")
+	CostKey                = bsonutil.MustHaveTag(Task{}, "Cost")
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")

@@ -2,9 +2,13 @@ package ec2
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
+	gcaws "github.com/dynport/gocloud/aws"
+	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
@@ -89,7 +93,7 @@ func (cloudManager *EC2SpotManager) Configure(settings *evergreen.Settings) erro
 	return nil
 }
 
-func (_ *EC2SpotManager) GetSettings() cloud.ProviderSettings {
+func (*EC2SpotManager) GetSettings() cloud.ProviderSettings {
 	return &EC2SpotSettings{}
 }
 
@@ -405,4 +409,178 @@ func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.
 			len(resp.SpotRequestResults))
 	}
 	return &resp.SpotRequestResults[0], nil
+}
+
+// CostForDuration computes the currency amount it costs to use the given host between a start and end time.
+// The Spot prices estimation takes both spot prices and EBS prices into account. Here's a breakdown:
+//
+// Spot prices are determined by a fluctuating price market. We set a bid price and get a host if the
+// "market" price is lower than that. We are billed by what the current spot price is, and then charged
+// the current spot price once our hour billing cycle is up, and so on. This calculator ONLY returns
+// the cost of the time used between the start and end times, it does not account for unused host time.
+//
+// EBS volumes are charged on a per-gigabyte-per-month rate for usage, rounded to the nearest hour.
+// There is no EBS price API, so we scrape it from Amazon's UI. This could unexpectedly break in the
+// future, but, so far, the JSON we are loading hasn't changed format in half a decade. EBS spending
+// for a single task ends up being virtually nothing compared to the machine price, but those fractions
+// of cents will add up over time.
+//
+// CostForDuration returns the total cost and any errors that occur.
+func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+	// sanity check
+	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+		return 0, fmt.Errorf("task timing data is malformed")
+	}
+
+	// grab instance details from EC2
+	spotDetails, err := cloudManager.describeSpotRequest(h.Id)
+	if err != nil {
+		return 0, err
+	}
+	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	instance, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
+	os := osLinux
+	if strings.Contains(h.Distro.Arch, "windows") {
+		os = osWindows
+	}
+	cost := 0.0
+
+	// calculate cost for EBS
+	if len(instance.BlockDevices) > 0 {
+		volumeIds := []string{}
+		for _, bd := range instance.BlockDevices {
+			volumeIds = append(volumeIds, bd.EBS.VolumeId)
+		}
+		vols, err := ec2Handle.Volumes(volumeIds, nil)
+		if err != nil {
+			return 0, err
+		}
+		for _, v := range vols.Volumes {
+			// an amazon region is just the availability zone minus the final letter
+			region := v.AvailZone[0 : len(v.AvailZone)-1]
+			size, err := strconv.Atoi(v.Size)
+			if err != nil {
+				return 0, fmt.Errorf("reading volume size: %v", err)
+			}
+			p, err := ebsCost(&pkgEBSFetcher, region, size, end.Sub(start))
+			if err != nil {
+				return 0, fmt.Errorf("EBS volume %v: %v", v.VolumeId, err)
+			}
+			cost += p
+		}
+	}
+
+	spotCost, err := cloudManager.calculateSpotCost(instance, os, start, end)
+	if err != nil {
+		return 0, err
+	}
+	cost += spotCost
+	return cost, nil
+}
+
+// calculateSpotCost is a helper for fetching spot price history and computing the
+// cost of a task across a host's billing cycles.
+func (cloudManager *EC2SpotManager) calculateSpotCost(
+	i *ec2.Instance, os osType, start, end time.Time) (float64, error) {
+	launchTime, err := time.Parse(time.RFC3339, i.LaunchTime)
+	if err != nil {
+		return 0, fmt.Errorf("reading instance launch time: %v", err)
+	}
+	rates, err := cloudManager.describeHourlySpotPriceHistory(
+		i.InstanceType, i.AvailabilityZone, os, launchTime, end)
+	if err != nil {
+		return 0, err
+	}
+	return spotCostForRange(start, end, rates), nil
+}
+
+// spotRate is an internal type for simplifying Amazon's price history responses.
+type spotRate struct {
+	Time  time.Time
+	Price float64
+}
+
+// spotCostForRange determines the price of a range of spot price history.
+// The hostRates parameter is expected to be a slice of (time, price) pairs
+// representing every hour billing cycle. The function iterates through billing
+// cycles, adding up the total cost of the time span across them.
+//
+// This problem, incidentally, may be a good algorithms interview question ;)
+func spotCostForRange(start, end time.Time, rates []spotRate) float64 {
+	cost := 0.0
+	cur := start
+	// this loop adds up the cost of a task over all the billing periods
+	// it ran within.
+	for i := range rates {
+		// if our start time is after the current billing range, keep skipping
+		// ahead until we find the starting range.
+		if i+1 < len(rates) && cur.After(rates[i+1].Time) {
+			continue
+		}
+		// if the task's end happens before the end of this billing period,
+		// we only want to calculate the cost between the billing start
+		// and task end, then exit; we also do this if we're in the last rate bucket.
+		if i+1 == len(rates) || end.Before(rates[i+1].Time) {
+			cost += float64(end.Sub(cur)) / float64(time.Hour) * rates[i].Price
+			break
+		}
+		// in the default case, we get the duration between our current time
+		// and the next billing period, and multiply that duration by the current price.
+		cost += float64(rates[i+1].Time.Sub(cur)) / float64(time.Hour) * rates[i].Price
+		cur = rates[i+1].Time
+	}
+	return cost
+}
+
+// describeHourlySpotPriceHistory talks to Amazon to get spot price history, then
+// simplifies that history into hourly billing rates starting from the supplied
+// start time. Returns a slice of hour-separated spot prices or any errors that occur.
+func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
+	iType string, zone string, os osType, start, end time.Time) ([]spotRate, error) {
+	gcClient := gcec2.Client{
+		&gcaws.Client{
+			Key:    cloudManager.awsCredentials.AccessKey,
+			Secret: cloudManager.awsCredentials.SecretKey,
+		},
+	}
+	//convert times to UTC b/c this client is buggy
+	start, end = start.UTC(), end.UTC()
+	filter := &gcec2.SpotPriceFilter{
+		InstanceTypes:       []string{iType},
+		ProductDescriptions: []string{string(os)},
+		AvailabilityZones:   []string{zone},
+		StartTime:           start.Add(-time.Hour),
+		EndTime:             end.Add(time.Hour),
+	}
+	dirtyHistory, err := gcClient.DescribeSpotPriceHistory(filter)
+	if err != nil {
+		return nil, err
+	}
+	// cull prices for the wrong zone
+	history := []*gcec2.SpotPrice{}
+	for _, p := range dirtyHistory {
+		if p.AvailabilityZone == zone {
+			history = append(history, p)
+		}
+	}
+	// this loop samples the spot price history (which includes updates for every few minutes)
+	// into hourly billing periods. The price we are billed for an hour of spot time is the
+	// current price at the start of the hour. Amazon returns spot price history sorted in
+	// decreasing time order. We iterate backwards through the list to
+	// pretend the ordering to increasing time.
+	prices := []spotRate{}
+	for i := len(history) - 1; i >= 0; i-- {
+		// add the current hourly price if we're in the last result bucket
+		// OR our billing hour starts the same time as the data (very rare)
+		// OR our billing hour starts after the current bucket but before the next one
+		if i == 0 || start.Equal(history[i].Timestamp) ||
+			start.After(history[i].Timestamp) && start.Before(history[i-1].Timestamp) {
+			prices = append(prices, spotRate{Time: start, Price: history[i].SpotPrice})
+			start = start.Add(time.Hour)
+			if start.After(end) {
+				break
+			}
+		}
+	}
+	return prices, nil
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/bookkeeping"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -313,6 +314,33 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	as.taskFinished(w, t, finishTime)
 }
 
+// updateTaskCost determines a task's cost based on the host it ran on. Hosts that
+// are unable to calculate their own costs will not set a task's Cost field. Errors
+// are logged but not returned, since any number of API failures could happen and
+// we shouldn't sacrifice a task's status for them.
+func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.Time) {
+	manager, err := providers.GetCloudManager(h.Provider, &as.Settings)
+	if err != nil {
+		evergreen.Logger.Logf(slogger.ERROR,
+			"Error loading provider for host %v cost calculation: %v ", t.HostId, err)
+		return
+	}
+	if calc, ok := manager.(cloud.CloudCostCalculator); ok {
+		evergreen.Logger.Logf(slogger.INFO, "Calculating cost for task %v", t.Id)
+		cost, err := calc.CostForDuration(h, t.StartTime, finishTime)
+		if err != nil {
+			evergreen.Logger.Logf(slogger.ERROR,
+				"Error calculating cost for task %v: %v ", t.Id, err)
+			return
+		}
+		if err := t.SetCost(cost); err != nil {
+			evergreen.Logger.Logf(slogger.ERROR,
+				"Error updating cost for task %v: %v ", t.Id, err)
+			return
+		}
+	}
+}
+
 func markHostRunningTaskFinished(h *host.Host, t *task.Task, newTaskId string) {
 	// update the given host's running_task field accordingly
 	if err := h.UpdateRunningTask(t.Id, newTaskId, time.Now()); err != nil {
@@ -363,6 +391,9 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
 	}
+
+	// task cost calculations have no impact on task results, so do them in their own goroutine
+	go as.updateTaskCost(t, host, finishTime)
 
 	// b. check if the agent needs to be rebuilt
 	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)

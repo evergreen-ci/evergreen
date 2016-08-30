@@ -110,7 +110,7 @@ func (cloudManager *EC2Manager) CanSpawn() (bool, error) {
 	return true, nil
 }
 
-func (_ *EC2Manager) GetSettings() cloud.ProviderSettings {
+func (*EC2Manager) GetSettings() cloud.ProviderSettings {
 	return &EC2ProviderSettings{}
 }
 

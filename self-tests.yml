@@ -360,6 +360,36 @@ tasks:
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
 
+- name: ec2
+  commands:
+    - func: "start mongod"
+    - func: "fetch source"
+    - func: "setup creds"
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export EVGHOME=${EVGHOME_cmd}
+          cd cloud/providers/ec2
+          mkfifo test_pipe
+          tee -a ec2.suite < test_pipe&
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=$EVGHOME/creds.yml ./... > test_pipe
+          mv ec2.suite ../..
+    - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv cloud/providers/ec2/coverage.out .
+    - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
+
 - name: db
   commands:
     - func: "start mongod"

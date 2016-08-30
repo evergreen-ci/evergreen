@@ -86,6 +86,9 @@ type Task struct {
 	// how long we expect the task to take from start to finish
 	ExpectedDuration time.Duration `bson:"expected_duration,omitempty" json:"expected_duration,omitempty"`
 
+	// an estimate of what the task cost to run, hidden from JSON views for now
+	Cost float64 `bson:"cost,omitempty" json:"-"`
+
 	// test results captured and sent back by agent
 	TestResults []TestResult `bson:"test_results" json:"test_results"`
 
@@ -670,6 +673,21 @@ func (t *Task) ClearResults() error {
 		bson.M{
 			"$set": bson.M{
 				TestResultsKey: []TestResult{},
+			},
+		},
+	)
+}
+
+// SetCost updates the task's Cost field
+func (t *Task) SetCost(cost float64) error {
+	t.Cost = cost
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				CostKey: cost,
 			},
 		},
 	)

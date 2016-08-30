@@ -1,14 +1,22 @@
 package ec2
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/rand"
+	"net/http"
 	"os"
 	"os/user"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
+	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
@@ -50,6 +58,15 @@ var (
 	VirtualNameKey = bsonutil.MustHaveTag(MountPoint{}, "VirtualName")
 	DeviceNameKey  = bsonutil.MustHaveTag(MountPoint{}, "DeviceName")
 	SizeKey        = bsonutil.MustHaveTag(MountPoint{}, "Size")
+)
+
+// type/consts for price evaluation based on OS
+type osType string
+
+const (
+	osLinux   osType = gcec2.DESC_LINUX_UNIX
+	osSUSE    osType = "SUSE Linux"
+	osWindows osType = "Windows"
 )
 
 //Utility func to create a create a temporary instance name for a host
@@ -229,4 +246,122 @@ func timeTilNextEC2Payment(host *host.Host) time.Duration {
 
 	return nextPaymentTime.Sub(now)
 
+}
+
+// ebsRegex extracts EBS Price JSON data from Amazon's UI.
+var ebsRegex = regexp.MustCompile(`(?s)callback\((.*)\)`)
+
+// ebsPriceFetcher is an interface for types capable of returning EBS price data.
+// Data is in the form of map[AVAILABILITY_ZONE]PRICE.
+type ebsPriceFetcher interface {
+	FetchEBSPrices() (map[string]float64, error)
+}
+
+// cachedEBSPriceFetcher is a threadsafe price fetcher that only grabs EBS price
+// data once during a program's execution. Prices change so infrequently that
+// this is safe to do.
+type cachedEBSPriceFetcher struct {
+	prices map[string]float64
+	m      sync.Mutex
+}
+
+// package-level price fetcher for all requests
+var pkgEBSFetcher cachedEBSPriceFetcher
+
+// FetchEBSPrices returns an EBS zone->price map. If the prices aren't cached,
+// it makes a request to Amazon and caches them before returning.
+func (cpf *cachedEBSPriceFetcher) FetchEBSPrices() (map[string]float64, error) {
+	cpf.m.Lock()
+	defer cpf.m.Unlock()
+	if prices := cpf.prices; prices != nil {
+		return prices, nil
+	} else {
+		ps, err := fetchEBSPricing()
+		if err != nil {
+			return nil, fmt.Errorf("fetching EBS prices: %v", err)
+		}
+		cpf.prices = ps
+		return ps, nil
+	}
+}
+
+// fetchEBSPricing does the dirty work of scraping price information from Amazon.
+func fetchEBSPricing() (map[string]float64, error) {
+	// there is no true EBS pricing API, so we have to wrangle it from EC2's frontend
+	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
+	evergreen.Logger.Logf(slogger.DEBUG, "Loading EBS pricing from %v", endpoint)
+	resp, err := http.Get(endpoint)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("fetching %v: %v", endpoint, err)
+	}
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response body: %v", err)
+	}
+	matches := ebsRegex.FindSubmatch(data)
+	if len(matches) < 2 {
+		return nil, fmt.Errorf("could not find price JSON in response from %v", endpoint)
+	}
+	// define a one-off type for storing results from the price JSON
+	prices := struct {
+		Config struct {
+			Regions []struct {
+				Region string
+				Types  []struct {
+					Name   string
+					Values []struct {
+						Prices struct {
+							USD string
+						}
+					}
+				}
+			}
+		}
+	}{}
+	err = json.Unmarshal(matches[1], &prices)
+	if err != nil {
+		return nil, fmt.Errorf("parsing price JSON: %v", err)
+	}
+
+	pricePerRegion := map[string]float64{}
+	for _, r := range prices.Config.Regions {
+		for _, t := range r.Types {
+			// only cache "general purpose" pricing for now
+			if strings.Contains(t.Name, "gp2") {
+				if len(t.Values) == 0 {
+					continue
+				}
+				price, err := strconv.ParseFloat(t.Values[0].Prices.USD, 64)
+				if err != nil {
+					continue
+				}
+				pricePerRegion[r.Region] = price
+			}
+		}
+	}
+	// one final sanity check that we actually pulled information, which will alert
+	// us if, say, Amazon changes the structure of their JSON
+	if len(pricePerRegion) == 0 {
+		return nil, fmt.Errorf("unable to parse prices from %v", endpoint)
+	}
+	return pricePerRegion, nil
+}
+
+// ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
+// EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.
+func ebsCost(pf ebsPriceFetcher, region string, size int, duration time.Duration) (float64, error) {
+	prices, err := pf.FetchEBSPrices()
+	if err != nil {
+		return 0.0, err
+	}
+	price, ok := prices[region]
+	if !ok {
+		return 0.0, fmt.Errorf("no EBS price for region '%v'", region)
+	}
+	// price = GB * % of month *
+	month := (time.Hour * 24 * 30)
+	return float64(size) * (float64(duration) / float64(month)) * price, nil
 }

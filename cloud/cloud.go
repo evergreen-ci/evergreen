@@ -107,6 +107,12 @@ type CloudManager interface {
 	TimeTilNextPayment(host *host.Host) time.Duration
 }
 
+// CloudCostCalculator is an interface for cloud managers that can estimate an
+// what a span of time on a given host costs.
+type CloudCostCalculator interface {
+	CostForDuration(host *host.Host, start time.Time, end time.Time) (float64, error)
+}
+
 //CloudHost is a provider-agnostic host object that delegates methods
 //like status checks, ssh options, DNS name checks, termination, etc. to the
 //underlying provider's implementation.
