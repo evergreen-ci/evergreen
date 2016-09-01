@@ -1975,6 +1975,13 @@ pre {
 .waterfall-text {
   font-size: 18pt;
 }
+.waterfall-tooltip .icon {
+  padding-right: 3px;
+  color: #ed271c;
+}
+.waterfall-tooltip .failed-tests {
+  padding: 4px;
+}
 .waterfall-toolbar-elt {
   margin-right: 5px;
 }

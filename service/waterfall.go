@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 )
@@ -99,6 +100,7 @@ type waterfallTask struct {
 	DisplayName   string                  `json:"display_name"`
 	TimeTaken     time.Duration           `json:"time_taken"`
 	Activated     bool                    `json:"activated"`
+	FailedTests   []failedTest            `json:"failed_tests,omitempty"`
 }
 
 // taskStatusCount holds all the counts for task statuses for a given build.
@@ -110,6 +112,12 @@ type taskStatusCount struct {
 	Inactive     int `json:"inactive"`
 	Dispatched   int `json:"dispatched"`
 	TimedOut     int `json:"timed_out"`
+}
+
+// failedTest holds all the information for displaying context about tests that failed in a
+// waterfall page tooltip.
+type failedTest struct {
+	Name string `json:"name"`
 }
 
 // waterfallVersion holds the waterfall UI representation of a single version (column)
@@ -256,6 +264,9 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			break
 		}
 
+		// to fetch failed tests for constructing tooltips
+		failedTaskIds := []string{}
+
 		// update the amount skipped
 		skip += len(versionsFromDB)
 
@@ -363,12 +374,25 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				buildForWaterfall.TaskStatusCount = statusCount
 				currentRow.Builds[versionFromDB.Id] = buildForWaterfall
 				waterfallRows[b.BuildVariant] = currentRow
+				for _, task := range buildForWaterfall.Tasks {
+					if task.Status == "failed" {
+						failedTaskIds = append(failedTaskIds, task.Id)
+					}
+				}
 			}
 
 			// add the version
 			finalVersions = append(finalVersions, activeVersion)
 
 		}
+
+		failedTasks, err := task.Find(task.ByIds(failedTaskIds))
+		if err != nil {
+			return versionVariantData{}, fmt.Errorf("error fetching failed tasks:"+
+				" %v", err)
+
+		}
+		addFailedTests(waterfallRows, failedTasks)
 	}
 
 	// if the last version was rolled-up, add it
@@ -392,6 +416,31 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 		BuildVariants: buildVariants,
 	}, nil
 
+}
+
+// addFailedTests adds all of the failed tests associated with a task to its entry in the waterfallRow.
+func addFailedTests(waterfallRows map[string]waterfallRow, failedTasks []task.Task) {
+	failedTestsByTaskId := map[string][]failedTest{}
+	for _, t := range failedTasks {
+		failedTests := []failedTest{}
+		for _, r := range t.TestResults {
+			if r.Status == "fail" {
+				failedTests = append(failedTests, failedTest{Name: r.TestFile})
+			}
+		}
+		failedTestsByTaskId[t.Id] = failedTests
+	}
+	for buildVariant, row := range waterfallRows {
+		for versionId, build := range row.Builds {
+			for i, task := range build.Tasks {
+				if len(failedTestsByTaskId[task.Id]) != 0 {
+					waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTests = append(
+						waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTests,
+						failedTestsByTaskId[task.Id]...)
+				}
+			}
+		}
+	}
 }
 
 // Helper function to fetch a group of versions and their associated builds.

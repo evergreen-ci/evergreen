@@ -38,6 +38,19 @@ function taskStatusClass(task) {
   return task.status;
 }
 
+// endOfPath strips off all of the begging characters from a file path so that just the file name is left.
+function endOfPath(input) {
+  var lastSlash = input.lastIndexOf('/');
+  if (lastSlash === -1 || lastSlash === input.length - 1) {
+    // try to find the index using windows-style filesystem separators
+    lastSlash = input.lastIndexOf('\\');
+    if (lastSlash === -1 || lastSlash === input.length - 1) {
+      return input;
+    }
+  }
+  return input.substring(lastSlash + 1);
+}
+
 // labelFromTask returns the human readable label for a task's status given the details of its execution.
 function labelFromTask(task){
   if (task !== Object(task)) {
@@ -72,6 +85,7 @@ function labelFromTask(task){
 
   return task.status;
 }
+
 
 // stringifyNanoseconds takes an integer count of nanoseconds and
 // returns it formatted as a human readable string, like "1h32m40s"
@@ -550,19 +564,66 @@ function EmptyBuild ({}){
     return (<div className="build"> </div>)
 }
 
-// A Task contains the information for a single task for a build, including the link to its page, and a tooltip
-function Task({task}) {
-  var tooltipContent = task.display_name + " - " + labelFromTask(task);
+
+function TooltipContent({task}) {
+  var topLineContent = task.display_name + " - " + labelFromTask(task);
+
   if (task.status == 'success' || task.status == 'failed') {
     var dur = stringifyNanoseconds(task.time_taken);
-    tooltipContent += ' - ' + dur;
+    topLineContent += ' - ' + dur;
   }
+
+  if (task.status !='failed' || !task.failed_tests || task.failed_tests.length == 0) {
+    return (
+        <span className="waterfall-tooltip">
+          {topLineContent}
+        </span>
+        )
+  }
+
+
+  if (task.failed_tests.length > 3) {
+    return (
+        <span className="waterfall-tooltip">
+          <span>{topLineContent}</span> 
+        <div className="header">
+          <i className="fa fa-times icon"></i>
+          {task.failed_tests.length} failed tests 
+          </div>
+       </span>
+        )
+  }
+  return(
+      <span className="waterfall-tooltip">
+        <span>{topLineContent}</span>
+      <div className="failed-tests">
+        {
+          task.failed_tests.map(function(failed_test){
+            return (
+                <div> 
+                 <i className="fa fa-times icon"></i>
+                  {endOfPath(failed_test.name)} 
+                </div>
+                )
+          })
+        }
+        </div>
+        </span>
+      )
+}
+
+// A Task contains the information for a single task for a build, including the link to its page, and a tooltip
+function Task({task}) {
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Popover = ReactBootstrap.Popover;
   var Tooltip = ReactBootstrap.Tooltip;
-  var tt = <Tooltip id="tooltip">{tooltipContent}</Tooltip>
+  var tooltip = (
+      <Tooltip id="tooltip">
+        <TooltipContent task={task} />
+      </Tooltip>
+      )
   return (
-    <OverlayTrigger placement="top" overlay={tt} animation={false}>
+    <OverlayTrigger placement="top" overlay={tooltip} animation={false}>
       <a href={"/task/" + task.id} className={"waterfall-box " + taskStatusClass(task)} />  
     </OverlayTrigger>
   )
