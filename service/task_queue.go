@@ -9,6 +9,7 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -46,6 +47,7 @@ type uiTaskQueue struct {
 type uiResourceInfo struct {
 	TaskQueues     []uiTaskQueue    `json:"task_queues"`
 	HostStatistics uiHostStatistics `json:"host_stats"`
+	Distros        []string         `json:"distros"`
 }
 
 // information on host utilization
@@ -105,6 +107,18 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
 			fmt.Errorf("Error finding task queues: %v", err))
 		return
+	}
+
+	// find all distros so that we only display task queues of distros that exist.
+	allDistros, err := distro.Find(distro.All.WithFields(distro.IdKey))
+	if err != nil {
+		message := fmt.Sprintf("error fetching distros: %v", err)
+		http.Error(w, message, http.StatusInternalServerError)
+		return
+	}
+	distroIds := []string{}
+	for _, d := range allDistros {
+		distroIds = append(distroIds, d.Id)
 	}
 
 	// cached map of version id to relevant patch
@@ -245,6 +259,6 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		User        *user.DBUser
 		Flashes     []interface{}
 		Data        uiResourceInfo
-	}{projCtx, GetUser(r), []interface{}{}, uiResourceInfo{uiTaskQueues, hostStats}},
+	}{projCtx, GetUser(r), []interface{}{}, uiResourceInfo{uiTaskQueues, hostStats, distroIds}},
 		"base", "task_queues.html", "base_angular.html", "menu.html")
 }

@@ -4,14 +4,9 @@ mciModule.controller('TaskQueuesCtrl',
 
   $scope.taskQueues = $window.taskQueues;
   $scope.loading = true;
-  $scope.distros = [];
-
   $anchorScroll.yOffset = 60;
 
-  _.each($scope.taskQueues, function(queue) {
-    $scope.distros.push(queue.distro);
-  })
-  $scope.distros = $scope.distros.sort();
+  $scope.distros = $window.distros.sort();
 
   $scope.queues = {};
   _.each($scope.taskQueues, function(queue) {

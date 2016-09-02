@@ -3,6 +3,7 @@
     window.data = {{ .Data }}
     window.hostStats = window.data.host_stats
     window.taskQueues = window.data.task_queues
+    window.distros = window.data.distros
   </script>
   <script type="text/javascript" src="{{Static "js" "task_queues.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
