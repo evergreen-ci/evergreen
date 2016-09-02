@@ -338,11 +338,15 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 
 		uiHosts[idx] = host
 		// get the task running on this host
-		task, err := task.FindOne(task.ById(dbHost.RunningTask))
-		if err != nil {
-			return nil, err
-		}
-		if task != nil {
+		if dbHost.RunningTask != "" {
+			task, err := task.FindOne(task.ById(dbHost.RunningTask))
+			if err != nil {
+				return nil, err
+			}
+			if task == nil {
+				evergreen.Logger.Logf(slogger.ERROR,
+					"Hosts page could not find task %v for host %v", dbHost.RunningTask, dbHost.Id)
+			}
 			uiHosts[idx].RunningTask = task
 		}
 	}
