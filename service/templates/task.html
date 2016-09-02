@@ -290,6 +290,11 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
       </div>
       <div ng-show="!task.test_results || task.test_results.length == 0" class="mci-pod">
         <h4 class="text-center text-muted">No test results to show</h4>
+        <p class="text-center">
+          <a ng-href="[[getTestHistoryUrl(project, task)]]">
+            Explore task history
+          </a>
+        </p>
       </div>
       <div ng-show="task.test_results.length > 0" class="mci-pod">
         <div class=row>
