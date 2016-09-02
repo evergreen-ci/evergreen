@@ -247,6 +247,25 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
         })
     }
   }
+
+  $scope.validKeyValue = function(keyName, value){
+    if (!(keyName)){ 
+        $scope.invalidKeyMessage = "";
+      return false;
+    }
+    
+    if (keyName.indexOf(".") != -1){
+      $scope.invalidKeyMessage = "Project variable keys cannot have dots in them";
+      return false;
+    };
+
+    if (!(value)){
+      $scope.invalidKeyMessage = "";
+      return false;
+    }
+    return true;
+  }
+
 });
 
 mciModule.directive('adminNewProject', function() {
