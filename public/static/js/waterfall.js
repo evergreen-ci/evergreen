@@ -11,6 +11,7 @@ function getFormattedTime(input, userTz, fmt) {
   return moment(input).tz(userTz).format(fmt);
 }
 
+
 // taskStatusClass returns the css class that should be associated with a given task so that it can
 // be properly styled.
 function taskStatusClass(task) {
@@ -223,9 +224,8 @@ class Root extends React.Component{
   }
 }
 
+
 // Toolbar
-
-
 function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc, taskFilterFunc}) {
   var Form = ReactBootstrap.Form;
   return (
@@ -446,7 +446,7 @@ function Grid ({data, project, collapseInfo, buildVariantFilter, taskFilter}) {
           return row.build_variant.display_name.toLowerCase().indexOf(buildVariantFilter.toLowerCase()) != -1;
         })
         .map(function(row){
-          return React.createElement(Variant, {row: row, project: project, collapseInfo: collapseInfo, versions: data.versions, taskFilter: taskFilter});
+          return React.createElement(Variant, {row: row, project: project, collapseInfo: collapseInfo, versions: data.versions, taskFilter: taskFilter, currentTime: data.current_time});
         })
       
     ) 
@@ -461,7 +461,7 @@ function filterActiveTasks(tasks, activeStatuses){
 
 // The class for each "row" of the waterfall page. Includes the build variant link, as well as the five columns
 // of versions.
-function Variant({row, versions, project, collapseInfo, taskFilter}) {
+function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}) {
       if (collapseInfo.collapsed){
         collapseInfo.noActive = _.every(row.builds, 
           function(build, versionId){
@@ -485,7 +485,8 @@ function Variant({row, versions, project, collapseInfo, taskFilter}) {
                               build: row.builds[version.ids[0]], 
                               version: version, 
                               collapseInfo: collapseInfo, 
-                              taskFilter: taskFilter})
+                              taskFilter: taskFilter, 
+                              currentTime: currentTime})
               })
             
           )
@@ -498,7 +499,7 @@ function Variant({row, versions, project, collapseInfo, taskFilter}) {
 // Each Build class is one group of tasks for an version + build variant intersection
 // We case on whether or not a build is active or not, and return either an ActiveBuild or InactiveBuild respectively
 
-function Build({build, collapseInfo, version, taskFilter}){
+function Build({build, collapseInfo, version, taskFilter, currentTime}){
  
   // inactive build
   if (version.rolled_up) {
@@ -525,20 +526,20 @@ function Build({build, collapseInfo, version, taskFilter}){
     return (
       React.createElement("div", {className: "build"}, 
         React.createElement(CollapsedBuild, {build: build, activeTaskStatuses: collapseInfo.activeTaskStatuses}), 
-        React.createElement(ActiveBuild, {tasks: activeTasks})
+        React.createElement(ActiveBuild, {tasks: activeTasks, currentTime: currentTime})
       )
     )
   } 
   // uncollapsed active build
   return (
     React.createElement("div", {className: "build"}, 
-      React.createElement(ActiveBuild, {tasks: build.tasks, taskFilter: taskFilter})
+      React.createElement(ActiveBuild, {tasks: build.tasks, taskFilter: taskFilter, currentTime: currentTime})
     )
   )
 }
 
 // At least one task in the version is not inactive, so we display all build tasks with their appropiate colors signifying their status
-function ActiveBuild({tasks, taskFilter}){  
+function ActiveBuild({tasks, taskFilter, currentTime}){  
 
   if (taskFilter != null){
     tasks = _.filter(tasks, function(task){
@@ -550,7 +551,7 @@ function ActiveBuild({tasks, taskFilter}){
     React.createElement("div", {className: "active-build"}, 
       
         tasks.map(function(task){
-          return React.createElement(Task, {task: task})
+          return React.createElement(Task, {task: task, currentTime: currentTime})
         })
       
     )
@@ -566,16 +567,21 @@ function EmptyBuild ({}){
     return (React.createElement("div", {className: "build"}, " "))
 }
 
-
-function TooltipContent({task}) {
+function TooltipContent({task, eta}) {
   var topLineContent = task.display_name + " - " + labelFromTask(task);
-
   if (task.status == 'success' || task.status == 'failed') {
     var dur = stringifyNanoseconds(task.time_taken);
     topLineContent += ' - ' + dur;
   }
 
   if (task.status !='failed' || !task.failed_test_names || task.failed_test_names.length == 0) {
+    if (task.status == 'started') {
+      return(
+        React.createElement("span", {className: "waterfall-tooltip"}, 
+          topLineContent, " - ", eta
+        )
+        )
+    }
     return (
         React.createElement("span", {className: "waterfall-tooltip"}, 
           topLineContent
@@ -613,14 +619,87 @@ function TooltipContent({task}) {
       )
 }
 
+// CountdownClock is a class that manages decrementing duration every second.
+// It takes as an argument nanosecondsRemaining and begins counting this number
+// down as soon as it is instantiated.
+class CountdownClock {
+  constructor(nanosecondsRemaining) {
+    this.tick = this.tick.bind(this);
+    this.countdown = setInterval(this.tick, 1000);
+    this.nanosecondsRemaining = nanosecondsRemaining;
+  }
+  tick() {
+    this.nanosecondsRemaining -= 1 * (1000 * 1000 * 1000);
+    if (this.nanosecondsRemaining <= 0) {
+      this.nanosecondsRemaining = 0;
+      clearInterval(this.countdown);
+    }
+  }
+  getNanosecondsRemaining() {
+    return this.nanosecondsRemaining;
+  }
+}
+
+// ETADisplay is a react component that manages displaying a time being
+// counted down. It takes as a prop a CountdownClock, which it uses to fetch
+// the time left in the count down.
+class ETADisplay extends React.Component {
+  constructor(props) {
+    super(props);
+    this.tick = this.tick.bind(this);
+    this.componentWillUnmount = this.componentWillUnmount.bind(this);
+
+    this.update = setInterval(this.tick, 1000);
+    this.countdownClock = this.props.countdownClock;
+
+    var nsString = stringifyNanoseconds(this.countdownClock.getNanosecondsRemaining());
+
+    if (this.countdownClock.getNanosecondsRemaining() <= 0) {
+      nsString = 'unknown';
+    }
+    this.state = {
+      ETAString: nsString
+    };
+
+  }
+
+  tick() {
+    var nsRemaining = this.countdownClock.getNanosecondsRemaining();
+    var nsString = stringifyNanoseconds(nsRemaining);
+
+    if (nsRemaining <= 0) {
+      nsString = 'unknown';
+      clearInterval(this.countdown);
+    }
+    this.setState({
+      ETAString: nsString,
+    });
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.interval);
+  }
+  render() {
+    return (React.createElement("span", null, "ETA: ", this.state.ETAString));
+  }
+}
+
+
 // A Task contains the information for a single task for a build, including the link to its page, and a tooltip
-function Task({task}) {
+function Task({task, currentTime}) {
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Popover = ReactBootstrap.Popover;
   var Tooltip = ReactBootstrap.Tooltip;
+  var eta;
+  if (task.status == 'started') {
+    var timeRemaining = task.expected_duration - (currentTime - task.start_time);
+
+    var clock = new CountdownClock(timeRemaining);
+    var eta = (React.createElement(ETADisplay, {countdownClock: clock}));
+  }
   var tooltip = (
       React.createElement(Tooltip, {id: "tooltip"}, 
-        React.createElement(TooltipContent, {task: task})
+        React.createElement(TooltipContent, {task: task, eta: eta})
       )
       )
   return (

@@ -68,6 +68,7 @@ type waterfallData struct {
 	TotalVersions     int                `json:"total_versions"`      // total number of versions (for pagination)
 	CurrentSkip       int                `json:"current_skip"`        // number of versions skipped so far
 	PreviousPageCount int                `json:"previous_page_count"` // number of versions on previous page
+	CurrentTime       int64              `json:"current_time"`        // time used to calculate the eta of started task
 }
 
 // waterfallBuildVariant stores the Id and DisplayName for a given build
@@ -94,13 +95,15 @@ type waterfallBuild struct {
 
 // waterfallTask represents one task in the waterfall UI.
 type waterfallTask struct {
-	Id              string                  `json:"id"`
-	Status          string                  `json:"status"`
-	StatusDetails   apimodels.TaskEndDetail `json:"task_end_details"`
-	DisplayName     string                  `json:"display_name"`
-	TimeTaken       time.Duration           `json:"time_taken"`
-	Activated       bool                    `json:"activated"`
-	FailedTestNames []string                `json:"failed_test_names,omitempty"`
+	Id               string                  `json:"id"`
+	Status           string                  `json:"status"`
+	StatusDetails    apimodels.TaskEndDetail `json:"task_end_details"`
+	DisplayName      string                  `json:"display_name"`
+	TimeTaken        time.Duration           `json:"time_taken"`
+	Activated        bool                    `json:"activated"`
+	FailedTestNames  []string                `json:"failed_test_names,omitempty"`
+	ExpectedDuration time.Duration           `json:"expected_duration,omitempty"`
+	StartTime        int64                   `json:"start_time"`
 }
 
 // taskStatusCount holds all the counts for task statuses for a given build.
@@ -193,6 +196,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, taskStatusC
 			DisplayName:   t.DisplayName,
 			Activated:     t.Activated,
 			TimeTaken:     t.TimeTaken,
+			StartTime:     t.StartTime.UnixNano(),
 		}
 		taskForWaterfall.Status = uiStatus(taskForWaterfall)
 
@@ -261,8 +265,9 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 			break
 		}
 
-		// to fetch failed tests for constructing tooltips
-		failedTaskIds := []string{}
+		// to fetch started tasks and failed tests for providing additional context
+		// in a tooltip
+		failedAndStartedTaskIds := []string{}
 
 		// update the amount skipped
 		skip += len(versionsFromDB)
@@ -372,8 +377,8 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 				currentRow.Builds[versionFromDB.Id] = buildForWaterfall
 				waterfallRows[b.BuildVariant] = currentRow
 				for _, task := range buildForWaterfall.Tasks {
-					if task.Status == "failed" {
-						failedTaskIds = append(failedTaskIds, task.Id)
+					if task.Status == evergreen.TaskFailed || task.Status == evergreen.TaskStarted {
+						failedAndStartedTaskIds = append(failedAndStartedTaskIds, task.Id)
 					}
 				}
 			}
@@ -383,13 +388,13 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 		}
 
-		failedTasks, err := task.Find(task.ByIds(failedTaskIds))
+		failedAndStartedTasks, err := task.Find(task.ByIds(failedAndStartedTaskIds))
 		if err != nil {
 			return versionVariantData{}, fmt.Errorf("error fetching failed tasks:"+
 				" %v", err)
 
 		}
-		addFailedTests(waterfallRows, failedTasks)
+		addFailedAndStartedTests(waterfallRows, failedAndStartedTasks)
 	}
 
 	// if the last version was rolled-up, add it
@@ -416,14 +421,20 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 }
 
 // addFailedTests adds all of the failed tests associated with a task to its entry in the waterfallRow.
-func addFailedTests(waterfallRows map[string]waterfallRow, failedTasks []task.Task) {
+// addFailedAndStartedTests adds all of the failed tests associated with a task to its entry in the waterfallRow
+// and adds the estimated duration to started tasks.
+func addFailedAndStartedTests(waterfallRows map[string]waterfallRow, failedAndStartedTasks []task.Task) {
 	failedTestsByTaskId := map[string][]string{}
-	for _, t := range failedTasks {
+	expectedDurationByTaskId := map[string]time.Duration{}
+	for _, t := range failedAndStartedTasks {
 		failedTests := []string{}
 		for _, r := range t.TestResults {
-			if r.Status == "fail" {
+			if r.Status == evergreen.TestFailedStatus {
 				failedTests = append(failedTests, r.TestFile)
 			}
+		}
+		if t.Status == evergreen.TaskStarted {
+			expectedDurationByTaskId[t.Id] = t.ExpectedDuration
 		}
 		failedTestsByTaskId[t.Id] = failedTests
 	}
@@ -435,6 +446,9 @@ func addFailedTests(waterfallRows map[string]waterfallRow, failedTasks []task.Ta
 						waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTestNames,
 						failedTestsByTaskId[task.Id]...)
 					sort.Strings(waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTestNames)
+				}
+				if duration, ok := expectedDurationByTaskId[task.Id]; ok {
+					waterfallRows[buildVariant].Builds[versionId].Tasks[i].ExpectedDuration = duration
 				}
 			}
 		}
@@ -645,6 +659,9 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 
 	// add in the skip value
 	finalData.CurrentSkip = skip
+
+	// pass it the current time
+	finalData.CurrentTime = time.Now().UnixNano()
 
 	uis.WriteHTML(w, http.StatusOK, struct {
 		ProjectData projectContext
