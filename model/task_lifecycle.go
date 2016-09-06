@@ -319,6 +319,18 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	return nil
 }
 
+// updateMakespans
+func updateMakespans(b *build.Build) error {
+	// find all tasks associated with the build
+	tasks, err := task.Find(task.ByBuildId(b.Id))
+	if err != nil {
+		return err
+	}
+
+	depPath := FindPredictedMakespan(tasks)
+	return b.UpdateMakespans(depPath.TotalTime, CalculateActualMakespan(tasks))
+}
+
 // UpdateBuildStatusForTask finds all the builds for a task and updates the
 // status of the build based on the task's status.
 func UpdateBuildAndVersionStatusForTask(taskId string) error {
@@ -461,6 +473,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
 				return err
 			}
+		}
+
+		// update the build's makespan information if the task has finished
+		err = updateMakespans(b)
+		if err != nil {
+			evergreen.Logger.Errorf(slogger.ERROR, "Error updating makespan information: %v", err)
+			return err
 		}
 	}
 

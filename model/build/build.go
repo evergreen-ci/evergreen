@@ -47,6 +47,8 @@ type Build struct {
 	Tasks               []TaskCache   `bson:"tasks" json:"tasks,omitempty"`
 	TimeTaken           time.Duration `bson:"time_taken" json:"time_taken,omitempty"`
 	DisplayName         string        `bson:"display_name" json:"display_name,omitempty"`
+	PredictedMakespan   time.Duration `bson:"predicted_makespan" json:"predicted_makespan,omitempty"`
+	ActualMakespan      time.Duration `bson:"actual_makespan" json:"actual_makespan,omitempty"`
 
 	// build requester - this is used to help tell the
 	// reason this build was created. e.g. it could be
@@ -128,6 +130,17 @@ func (b *Build) UpdateStatus(status string) error {
 	return UpdateOne(
 		bson.M{IdKey: b.Id},
 		bson.M{"$set": bson.M{StatusKey: status}},
+	)
+}
+
+// UpdateMakespans sets the builds predicted and actual makespans to given durations
+func (b *Build) UpdateMakespans(predictedMakespan, actualMakespan time.Duration) error {
+	b.PredictedMakespan = predictedMakespan
+	b.ActualMakespan = actualMakespan
+
+	return UpdateOne(
+		bson.M{IdKey: b.Id},
+		bson.M{"$set": bson.M{PredictedMakespanKey: predictedMakespan, ActualMakespanKey: actualMakespan}},
 	)
 }
 

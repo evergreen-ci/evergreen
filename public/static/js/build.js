@@ -179,6 +179,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
 
 
   $scope.setBuild($window.build);
+
   $scope.plugins = $window.plugins
 
 });

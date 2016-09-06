@@ -34,6 +34,8 @@ var (
 	TimeTakenKey           = bsonutil.MustHaveTag(Build{}, "TimeTaken")
 	DisplayNameKey         = bsonutil.MustHaveTag(Build{}, "DisplayName")
 	RequesterKey           = bsonutil.MustHaveTag(Build{}, "Requester")
+	PredictedMakespanKey   = bsonutil.MustHaveTag(Build{}, "PredictedMakespan")
+	ActualMakespanKey      = bsonutil.MustHaveTag(Build{}, "ActualMakespan")
 
 	// bson fields for the task caches
 	TaskCacheIdKey            = bsonutil.MustHaveTag(TaskCache{}, "Id")
@@ -188,6 +190,15 @@ func ByAfterRevision(project, buildVariant string, revision int) db.Q {
 		RequesterKey:           evergreen.RepotrackerVersionRequester,
 		RevisionOrderNumberKey: bson.M{"$gte": revision},
 	}).Sort([]string{RevisionOrderNumberKey})
+}
+
+// ByRecentlyFinished builds a query that returns all builds for a given project
+// that are versions (not patches), that have finished.
+func ByRecentlyFinished(limit int) db.Q {
+	return db.Query(bson.M{
+		RequesterKey: evergreen.RepotrackerVersionRequester,
+		StatusKey:    bson.M{"$in": evergreen.CompletedStatuses},
+	}).Sort([]string{RevisionOrderNumberKey}).Limit(limit)
 }
 
 // DB Boilerplate
