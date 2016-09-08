@@ -2,6 +2,8 @@
   ReactJS code for the Waterfall page. Grid calls the Variant class for each distro, and the Variant class renders each build variant for every version that exists. In each build variant we iterate through all the tasks and render them as well. The row of headers is just a placeholder at the moment.
  */
 
+const MaxFailedTestDisplay = 5;
+    
 
 // Returns string from datetime object in "5/7/96 1:15 AM" format
 // Used to display version headers
@@ -580,9 +582,10 @@ function TooltipContent({task}) {
         </span>
         )
   }
+  task.failed_tests.sort();
 
 
-  if (task.failed_tests.length > 3) {
+  if (task.failed_tests.length > MaxFailedTestDisplay) {
     return (
         <span className="waterfall-tooltip">
           <span>{topLineContent}</span> 
