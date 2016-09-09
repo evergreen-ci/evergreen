@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -56,6 +57,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(
 		db.ClearCollections(
 			task.Collection,
+			build.Collection,
 			user.Collection,
 			patch.Collection,
 			model.ProjectRefCollection,
