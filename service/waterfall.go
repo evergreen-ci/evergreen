@@ -94,13 +94,13 @@ type waterfallBuild struct {
 
 // waterfallTask represents one task in the waterfall UI.
 type waterfallTask struct {
-	Id            string                  `json:"id"`
-	Status        string                  `json:"status"`
-	StatusDetails apimodels.TaskEndDetail `json:"task_end_details"`
-	DisplayName   string                  `json:"display_name"`
-	TimeTaken     time.Duration           `json:"time_taken"`
-	Activated     bool                    `json:"activated"`
-	FailedTests   []failedTest            `json:"failed_tests,omitempty"`
+	Id              string                  `json:"id"`
+	Status          string                  `json:"status"`
+	StatusDetails   apimodels.TaskEndDetail `json:"task_end_details"`
+	DisplayName     string                  `json:"display_name"`
+	TimeTaken       time.Duration           `json:"time_taken"`
+	Activated       bool                    `json:"activated"`
+	FailedTestNames []string                `json:"failed_test_names,omitempty"`
 }
 
 // taskStatusCount holds all the counts for task statuses for a given build.
@@ -116,9 +116,6 @@ type taskStatusCount struct {
 
 // failedTest holds all the information for displaying context about tests that failed in a
 // waterfall page tooltip.
-type failedTest struct {
-	Name string `json:"name"`
-}
 
 // waterfallVersion holds the waterfall UI representation of a single version (column)
 // If the RolledUp field is false, then it contains information about
@@ -420,12 +417,12 @@ func getVersionsAndVariants(skip, numVersionElements int, project *model.Project
 
 // addFailedTests adds all of the failed tests associated with a task to its entry in the waterfallRow.
 func addFailedTests(waterfallRows map[string]waterfallRow, failedTasks []task.Task) {
-	failedTestsByTaskId := map[string][]failedTest{}
+	failedTestsByTaskId := map[string][]string{}
 	for _, t := range failedTasks {
-		failedTests := []failedTest{}
+		failedTests := []string{}
 		for _, r := range t.TestResults {
 			if r.Status == "fail" {
-				failedTests = append(failedTests, failedTest{Name: r.TestFile})
+				failedTests = append(failedTests, r.TestFile)
 			}
 		}
 		failedTestsByTaskId[t.Id] = failedTests
@@ -434,9 +431,10 @@ func addFailedTests(waterfallRows map[string]waterfallRow, failedTasks []task.Ta
 		for versionId, build := range row.Builds {
 			for i, task := range build.Tasks {
 				if len(failedTestsByTaskId[task.Id]) != 0 {
-					waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTests = append(
-						waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTests,
+					waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTestNames = append(
+						waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTestNames,
 						failedTestsByTaskId[task.Id]...)
+					sort.Strings(waterfallRows[buildVariant].Builds[versionId].Tasks[i].FailedTestNames)
 				}
 			}
 		}

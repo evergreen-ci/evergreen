@@ -575,23 +575,21 @@ function TooltipContent({task}) {
     topLineContent += ' - ' + dur;
   }
 
-  if (task.status !='failed' || !task.failed_tests || task.failed_tests.length == 0) {
+  if (task.status !='failed' || !task.failed_test_names || task.failed_test_names.length == 0) {
     return (
         React.createElement("span", {className: "waterfall-tooltip"}, 
           topLineContent
         )
         )
   }
-  task.failed_tests.sort();
 
-
-  if (task.failed_tests.length > MaxFailedTestDisplay) {
+  if (task.failed_test_names.length > MaxFailedTestDisplay) {
     return (
         React.createElement("span", {className: "waterfall-tooltip"}, 
           React.createElement("span", null, topLineContent), 
         React.createElement("div", {className: "header"}, 
           React.createElement("i", {className: "fa fa-times icon"}), 
-          task.failed_tests.length, " failed tests" 
+          task.failed_test_names.length, " failed tests" 
           )
        )
         )
@@ -601,11 +599,11 @@ function TooltipContent({task}) {
         React.createElement("span", null, topLineContent), 
       React.createElement("div", {className: "failed-tests"}, 
         
-          task.failed_tests.map(function(failed_test){
+          task.failed_test_names.map(function(failed_test_name){
             return (
                 React.createElement("div", null, 
                  React.createElement("i", {className: "fa fa-times icon"}), 
-                  endOfPath(failed_test.name)
+                  endOfPath(failed_test_name)
                 )
                 )
           })
