@@ -199,13 +199,16 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	task.DependsOn = deps
 	task.TaskWaiting = taskWaiting
-
-	// Activating and deactivating tasks should clear out the
-	// MinQueuePos but just in case, lets not show it if we shouldn't
-	if projCtx.Task.Status == evergreen.TaskUndispatched && projCtx.Task.Activated {
-		task.MinQueuePos = projCtx.Task.MinQueuePos
+	task.MinQueuePos, err = model.FindMinimumQueuePositionForTask(task.Id)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	if task.MinQueuePos < 0 {
+		task.MinQueuePos = 0
 	}
 
 	var taskHost *host.Host

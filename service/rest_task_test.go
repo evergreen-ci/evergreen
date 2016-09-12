@@ -100,7 +100,6 @@ func TestGetTaskInfo(t *testing.T) {
 			TimeTaken:        time.Duration(100 * time.Millisecond),
 			ExpectedDuration: time.Duration(99 * time.Millisecond),
 			TestResults:      []task.TestResult{testResult},
-			MinQueuePos:      0,
 		}
 		So(testTask.Insert(), ShouldBeNil)
 
@@ -231,8 +230,6 @@ func TestGetTaskInfo(t *testing.T) {
 			So(ok, ShouldBeTrue)
 
 			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
-
-			So(jsonBody["min_queue_pos"], ShouldEqual, testTask.MinQueuePos)
 
 			var jsonFiles []map[string]interface{}
 			err = json.Unmarshal(*rawJsonBody["files"], &jsonFiles)

@@ -29,7 +29,6 @@ type TaskDep struct {
 	Id          string `bson:"task_id,omitempty" json:"task_id"`
 	DisplayName string `bson:"display_name" json:"display_name"`
 }
-
 type TaskQueueItem struct {
 	Id                  string        `bson:"_id" json:"_id"`
 	DisplayName         string        `bson:"display_name" json:"display_name"`
@@ -114,6 +113,38 @@ func FindTaskQueueForDistro(distroId string) (*TaskQueue, error) {
 		return nil, nil
 	}
 	return taskQueue, err
+}
+
+// FindMinimumQueuePositionForTask finds the position of a task in the many task queues
+// where its position is the lowest. It returns an error if the aggregation it runs fails.
+func FindMinimumQueuePositionForTask(taskId string) (int, error) {
+	var results []struct {
+		Index int `bson:"index"`
+	}
+	queueItemIdKey := fmt.Sprintf("%v.%v", TaskQueueQueueKey, TaskQueueItemIdKey)
+
+	// NOTE: this aggregation requires 3.2+ because of its use of
+	// $unwind's 'path' and 'includeArrayIndex'
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			queueItemIdKey: taskId}},
+		{"$unwind": bson.M{
+			"path":              fmt.Sprintf("$%", TaskQueueQueueKey),
+			"includeArrayIndex": "index"}},
+		{"$match": bson.M{
+			queueItemIdKey: taskId}},
+		{"$sort": bson.M{
+			"index": 1}},
+		{"$limit": 1},
+	}
+
+	err := db.Aggregate(TaskQueuesCollection, pipeline, &results)
+
+	if len(results) == 0 {
+		return -1, err
+	}
+
+	return (results[0].Index + 1), err
 }
 
 func FindAllTaskQueues() ([]TaskQueue, error) {

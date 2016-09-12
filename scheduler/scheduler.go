@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
@@ -69,8 +68,6 @@ func (s *Scheduler) Schedule() error {
 		return fmt.Errorf("Error finding distros: %v", err)
 	}
 
-	taskIdToMinQueuePos := make(map[string]int)
-
 	// get the expected run duration of all runnable tasks
 	taskExpectedDuration, err := s.GetExpectedDurations(runnableTasks)
 
@@ -92,19 +89,6 @@ func (s *Scheduler) Schedule() error {
 			runnableTasksForDistro)
 		if err != nil {
 			return fmt.Errorf("Error prioritizing tasks: %v", err)
-		}
-
-		// Update the running minimums of queue position
-		// The value is 1-based primarily so that we can differentiate between
-		// no value and being first in a queue
-		for i, prioritizedTask := range prioritizedTasks {
-			minQueuePos, ok := taskIdToMinQueuePos[prioritizedTask.Id]
-			if ok {
-				taskIdToMinQueuePos[prioritizedTask.Id] =
-					int(math.Min(float64(minQueuePos), float64(i+1)))
-			} else {
-				taskIdToMinQueuePos[prioritizedTask.Id] = i + 1
-			}
 		}
 
 		// persist the queue of tasks
@@ -135,11 +119,6 @@ func (s *Scheduler) Schedule() error {
 			NumHostsRunning:  0,
 			ExpectedDuration: time.Duration(summedNanoSeconds),
 		}
-	}
-
-	err = task.UpdateMinQueuePos(taskIdToMinQueuePos)
-	if err != nil {
-		return fmt.Errorf("Error updating tasks with queue positions: %v", err)
 	}
 
 	// split distros by name

@@ -7,6 +7,7 @@ import (
 
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 )
@@ -121,7 +122,19 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.Aborted = srcTask.Aborted
 	destTask.TimeTaken = srcTask.TimeTaken
 	destTask.ExpectedDuration = srcTask.ExpectedDuration
-	destTask.MinQueuePos = srcTask.MinQueuePos
+
+	var err error
+	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(destTask.Id)
+	if err != nil {
+		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
+		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
+		return
+	}
+
+	if destTask.MinQueuePos < 0 {
+		destTask.MinQueuePos = 0
+	}
 
 	// Copy over the status details
 	destTask.StatusDetails.TimedOut = srcTask.Details.TimedOut

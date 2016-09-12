@@ -91,9 +91,6 @@ type Task struct {
 
 	// test results captured and sent back by agent
 	TestResults []TestResult `bson:"test_results" json:"test_results"`
-
-	// position in queue for the queue where it's closest to the top
-	MinQueuePos int `bson:"min_queue_pos" json:"min_queue_pos,omitempty"`
 }
 
 // Dependency represents a task that must be completed before the owning
@@ -311,7 +308,6 @@ func (t *Task) MarkAsDispatched(hostId string, distroId string, dispatchTime tim
 				AbortedKey:     "",
 				TestResultsKey: "",
 				DetailsKey:     "",
-				MinQueuePosKey: "",
 			},
 		},
 	)
@@ -342,31 +338,9 @@ func (t *Task) MarkAsUndispatched() error {
 				AbortedKey:       "",
 				TestResultsKey:   "",
 				DetailsKey:       "",
-				MinQueuePosKey:   "",
 			},
 		},
 	)
-}
-
-// UpdateMinQueuePos takes a taskId-to-MinQueuePosition map and updates
-// the min_queue_pos field in each specified task to the specified MinQueuePos
-func UpdateMinQueuePos(taskIdToMinQueuePos map[string]int) error {
-	for taskId, minQueuePos := range taskIdToMinQueuePos {
-		err := UpdateOne(
-			bson.M{
-				IdKey: taskId,
-			},
-			bson.M{
-				"$set": bson.M{
-					MinQueuePosKey: minQueuePos,
-				},
-			},
-		)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // SetTasksScheduledTime takes a list of tasks and a time, and then sets
@@ -432,9 +406,6 @@ func (t *Task) ActivateTask(caller string) error {
 				ActivatedKey:   true,
 				ActivatedByKey: caller,
 			},
-			"$unset": bson.M{
-				MinQueuePosKey: "",
-			},
 		})
 }
 
@@ -451,9 +422,6 @@ func (t *Task) DeactivateTask(caller string) error {
 			"$set": bson.M{
 				ActivatedKey:     false,
 				ScheduledTimeKey: util.ZeroTime,
-			},
-			"$unset": bson.M{
-				MinQueuePosKey: "",
 			},
 		},
 	)
