@@ -252,7 +252,7 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 			startAgentCmd.Stop()
 			return fmt.Errorf("starting agent timed out")
 		}
-		return fmt.Errorf("error starting agent on host %v (%v): %v", hostObj.Id, err, startAgentLog)
+		return fmt.Errorf("error starting agent (%v): %v", hostObj.Id, err, startAgentLog.String())
 	}
 
 	return nil
