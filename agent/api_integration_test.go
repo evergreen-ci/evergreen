@@ -38,6 +38,7 @@ import (
 var Verbose = testing.Verbose()
 
 var testConfig = evergreen.TestConfig()
+var testPidFile = "test_pid_file"
 
 var testSetups = []testConfigPath{
 	{"With plugin mode test config", "testdata/config_test_plugin"},
@@ -111,7 +112,7 @@ func setupTlsConfigs(t *testing.T) {
 }
 
 func createAgent(testServer *service.TestServer, testTask *task.Task) (*Agent, error) {
-	testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+	testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +244,7 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -287,7 +288,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -593,7 +594,7 @@ func TestTaskTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -626,7 +627,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 			prependConfigToVersion(t, testTask.Version, "callback_timeout_secs: 1\n")
@@ -665,7 +666,7 @@ func TestTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -698,7 +699,7 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 

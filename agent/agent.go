@@ -286,7 +286,6 @@ func (sh *SignalHandler) awaitSignal() Signal {
 // CreatePidFile checks that the pid file does not already exist with a different pid
 // and creates one
 func (agt *Agent) CreatePidFile(pidFilePath string) error {
-	agt.pidFilePath = pidFilePath
 	// create a file that will error out if there is another process writing to the file, add the read/write flag to
 	// indicate that reading and writing can happen.
 	pidFile, err := os.OpenFile(pidFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
@@ -420,7 +419,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 }
 
 // New creates a new agent to run a given task.
-func New(apiServerURL, taskId, taskSecret, logFile, cert string) (*Agent, error) {
+func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFile string) (*Agent, error) {
 	sh := &SignalHandler{}
 	sh.makeChannels()
 
@@ -440,6 +439,8 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert string) (*Agent, error)
 		return nil, err
 	}
 	httpCommunicator.Logger = streamLogger.Execution
+
+	agt.pidFilePath = pidFilePath
 
 	// set up the heartbeat ticker
 	hbTicker := &HeartbeatTicker{

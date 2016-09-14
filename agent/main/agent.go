@@ -39,7 +39,7 @@ func main() {
 
 	logFile := *logPrefix + logSuffix()
 
-	agt, err := agent.New(*apiServer, *taskId, *taskSecret, logFile, httpsCert)
+	agt, err := agent.New(*apiServer, *taskId, *taskSecret, logFile, httpsCert, *pidFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
@@ -72,7 +72,7 @@ func main() {
 			break
 		}
 
-		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, logFile, httpsCert)
+		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, logFile, httpsCert, *pidFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
 			exitCode = 1
