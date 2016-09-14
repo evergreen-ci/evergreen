@@ -219,7 +219,9 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
 	return err
 }
 
-func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType string) error {
+// PutS3File writes the specified file to an s3 bucket using the given permissions and content type.
+// The details of where to put the file are included in the s3URL
+func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permissionACL string) error {
 	urlParsed, err := url.Parse(s3URL)
 	if err != nil {
 		return err
@@ -243,7 +245,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType string) err
 	bucket := session.Bucket(urlParsed.Host)
 	// options for the header
 	options := s3.Options{}
-	err = bucket.PutReader(urlParsed.Path, localFileReader, fi.Size(), contentType, s3.PublicRead, options)
+	err = bucket.PutReader(urlParsed.Path, localFileReader, fi.Size(), contentType, s3.ACL(permissionACL), options)
 	if err != nil {
 		return err
 	}

@@ -50,7 +50,7 @@ func TestPutS3File(t *testing.T) {
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
 			longURLKey := sourceURL + strings.Repeat("suffix", 300)
-			err = PutS3File(auth, tempfile.Name(), longURLKey, "application/x-tar")
+			err = PutS3File(auth, tempfile.Name(), longURLKey, "application/x-tar", "public-read")
 			So(err, ShouldNotEqual, nil)
 		})
 		Convey("a valid source file with a valid key should return no errors", func() {
@@ -67,7 +67,7 @@ func TestPutS3File(t *testing.T) {
 				AccessKey: testConfig.Providers.AWS.Id,
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
-			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar")
+			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
 			So(err, ShouldEqual, nil)
 		})
 	})
@@ -91,7 +91,7 @@ func TestS3Copy(t *testing.T) {
 				AccessKey: testConfig.Providers.AWS.Id,
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
-			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar")
+			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
 			So(err, ShouldEqual, nil)
 
 			// Copy the test file over to another location
@@ -123,7 +123,7 @@ func TestS3Copy(t *testing.T) {
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
 			longURLKey := sourceURL + strings.Repeat("suffix", 300)
-			err = PutS3File(auth, tempfile.Name(), longURLKey, "application/x-tar")
+			err = PutS3File(auth, tempfile.Name(), longURLKey, "application/x-tar", "public-read")
 			So(err, ShouldNotEqual, nil)
 		})
 		Convey("a valid source file copied to a destination with too long a "+
@@ -141,7 +141,7 @@ func TestS3Copy(t *testing.T) {
 				AccessKey: testConfig.Providers.AWS.Id,
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
-			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar")
+			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
 			So(err, ShouldEqual, nil)
 
 			longURLKey := sourceURL + strings.Repeat("suffix", 300)

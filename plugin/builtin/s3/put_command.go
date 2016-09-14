@@ -3,7 +3,7 @@ package s3
 import (
 	"errors"
 	"fmt"
-	"os"
+	"net/url"
 	"path/filepath"
 	"time"
 
@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -28,6 +27,11 @@ var (
 
 var errSkippedFile = errors.New("missing optional file was skipped")
 
+type S3PutCommandWrapper struct {
+	S3PutCommand
+	Files []string
+}
+
 // A plugin command to put a resource to an s3 bucket and download it to
 // the local machine.
 type S3PutCommand struct {
@@ -40,8 +44,12 @@ type S3PutCommand struct {
 	// wishes to store in s3
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 
+	// LocalFilesIncludeFilter is an array of expressions that specify what files should be
+	// included in this upload.
+	LocalFilesIncludeFilter []string `mapstructure:"local_files_include_filter" plugin:"expand"`
+
 	// RemoteFile is the filepath to store the file to,
-	// within an s3 bucket
+	// within an s3 bucket. Is a prefix when multiple files are uploaded via LocalFilesIncludeFilter.
 	RemoteFile string `mapstructure:"remote_file" plugin:"expand"`
 
 	// Bucket is the s3 bucket to use when storing the desired file
@@ -60,7 +68,8 @@ type S3PutCommand struct {
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants"`
 
-	// DisplayName stores the name of the file that is linked
+	// DisplayName stores the name of the file that is linked. Is a prefix when
+	// to the matched file name when multiple files are uploaded.
 	DisplayName string `mapstructure:"display_name" plugin:"expand"`
 
 	// Visibility determines who can see file links in the UI.
@@ -108,8 +117,11 @@ func (s3pc *S3PutCommand) validateParams() error {
 	if s3pc.AwsSecret == "" {
 		return fmt.Errorf("aws_secret cannot be blank")
 	}
-	if s3pc.LocalFile == "" {
-		return fmt.Errorf("local_file cannot be blank")
+	if s3pc.LocalFile == "" && len(s3pc.LocalFilesIncludeFilter) == 0 {
+		return fmt.Errorf("local_file and local_files_include_filter cannot both be blank")
+	}
+	if s3pc.LocalFile != "" && len(s3pc.LocalFilesIncludeFilter) != 0 {
+		return fmt.Errorf("local_file and local_files_include_filter cannot both be specified")
 	}
 	if s3pc.RemoteFile == "" {
 		return fmt.Errorf("remote_file cannot be blank")
@@ -138,6 +150,12 @@ func (s3pc *S3PutCommand) validateParams() error {
 // fields of the S3PutCommand.
 func (s3pc *S3PutCommand) expandParams(conf *model.TaskConfig) error {
 	return plugin.ExpandValues(s3pc, conf.Expansions)
+}
+
+// isMulti returns whether or not this using the multiple file upload
+// capability of the Put command.
+func (s3pc *S3PutCommand) isMulti() bool {
+	return (len(s3pc.LocalFilesIncludeFilter) != 0)
 }
 
 func (s3pc *S3PutCommand) shouldRunForVariant(buildVariantName string) bool {
@@ -173,13 +191,16 @@ func (s3pc *S3PutCommand) Execute(log plugin.Logger,
 		return nil
 	}
 
-	// if the local file is a relative path, join it to the work dir
-	if !filepath.IsAbs(s3pc.LocalFile) {
-		s3pc.LocalFile = filepath.Join(conf.WorkDir, s3pc.LocalFile)
+	if s3pc.isMulti() {
+		log.LogTask(slogger.INFO, "Putting files matching filter %v into path %v in s3 bucket %v",
+			s3pc.LocalFilesIncludeFilter, s3pc.RemoteFile, s3pc.Bucket)
+	} else {
+		if !filepath.IsAbs(s3pc.LocalFile) {
+			s3pc.LocalFile = filepath.Join(conf.WorkDir, s3pc.LocalFile)
+		}
+		log.LogTask(slogger.INFO, "Putting %v into path %v in s3 bucket %v",
+			s3pc.LocalFile, s3pc.RemoteFile, s3pc.Bucket)
 	}
-
-	log.LogTask(slogger.INFO, "Putting %v into path %v in s3 bucket %v",
-		s3pc.LocalFile, s3pc.RemoteFile, s3pc.Bucket)
 
 	errChan := make(chan error)
 	go func() {
@@ -226,48 +247,43 @@ func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommu
 
 // Put the specified resource to s3.
 func (s3pc *S3PutCommand) Put() error {
+	var filesList []string
 
-	fi, err := os.Stat(s3pc.LocalFile)
-	if err != nil {
-		if os.IsNotExist(err) && s3pc.Optional {
-			return errSkippedFile
+	filesList = []string{s3pc.LocalFile}
+	var err error
+
+	if s3pc.isMulti() {
+		filesList, err = util.BuildFileList(".", s3pc.LocalFilesIncludeFilter...)
+		if err != nil {
+			return err
 		}
-		return err
 	}
-
-	fileReader, err := os.Open(s3pc.LocalFile)
-	if err != nil {
-		if os.IsNotExist(err) && s3pc.Optional {
-			return errSkippedFile
+	for _, fpath := range filesList {
+		remoteName := s3pc.RemoteFile
+		if s3pc.isMulti() {
+			fname := filepath.Base(fpath)
+			remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
 		}
-		return err
+
+		auth := &aws.Auth{
+			AccessKey: s3pc.AwsKey,
+			SecretKey: s3pc.AwsSecret,
+		}
+		s3URL := url.URL{
+			Scheme: "s3",
+			Host:   s3pc.Bucket,
+			Path:   remoteName,
+		}
+		err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
+		if err != nil {
+			return err
+		}
 	}
-	defer fileReader.Close()
-
-	// get the appropriate session and bucket
-	auth := &aws.Auth{
-		AccessKey: s3pc.AwsKey,
-		SecretKey: s3pc.AwsSecret,
-	}
-	session := thirdparty.NewS3Session(auth, aws.USEast)
-
-	bucket := session.Bucket(s3pc.Bucket)
-
-	options := s3.Options{}
-	// put the data
-	return bucket.PutReader(
-		s3pc.RemoteFile,
-		fileReader,
-		fi.Size(),
-		s3pc.ContentType,
-		s3.ACL(s3pc.Permissions),
-		options,
-	)
-
+	return nil
 }
 
 // AttachTaskFiles is responsible for sending the
-// specified file to the API Server
+// specified file to the API Server. Does not support multiple file putting.
 func (s3pc *S3PutCommand) AttachTaskFiles(log plugin.Logger,
 	com plugin.PluginCommunicator) error {
 

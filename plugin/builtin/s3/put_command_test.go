@@ -33,6 +33,21 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.ParseParams(params), ShouldNotBeNil)
 				So(cmd.validateParams(), ShouldNotBeNil)
 			})
+			Convey("a defined local file and inclusion filter should cause an error", func() {
+
+				params := map[string]interface{}{
+					"aws_secret":                 "secret",
+					"local_file":                 "local",
+					"local_files_include_filter": []string{"local"},
+					"remote_file":                "remote",
+					"bucket":                     "bck",
+					"permissions":                "public-read",
+					"content_type":               "application/x-tar",
+					"display_name":               "test_file",
+				}
+				So(cmd.ParseParams(params), ShouldNotBeNil)
+				So(cmd.validateParams(), ShouldNotBeNil)
+			})
 
 			Convey("a missing aws secret should cause an error", func() {
 
@@ -188,7 +203,6 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.DisplayName, ShouldEqual, params["display_name"])
 
 			})
-
 		})
 
 	})
