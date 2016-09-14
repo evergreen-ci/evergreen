@@ -79,7 +79,7 @@ func main() {
 			break
 		}
 	}
-	agent.ExitAgent(exitCode, *pidFile)
+	agent.ExitAgent(nil, exitCode, *pidFile)
 }
 
 // logSuffix generates a unique log filename suffic that is namespaced

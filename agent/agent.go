@@ -336,10 +336,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		ExitAgent(1, agt.pidFilePath)
+		ExitAgent(agt.logger, 1, agt.pidFilePath)
 	case HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		ExitAgent(1, agt.pidFilePath)
+		ExitAgent(agt.logger, 1, agt.pidFilePath)
 	case AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
@@ -771,10 +771,15 @@ func (agt *Agent) removeTaskDirectory() error {
 }
 
 // ExitAgent removes the pid file and exits the process with the given exit code.
-func ExitAgent(exitCode int, pidFile string) {
+func ExitAgent(logger *StreamLogger, exitCode int, pidFile string) {
 	err := os.Remove(pidFile)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error removing pid file: %v\n", err)
+		if logger != nil {
+			logger.LogLocal(slogger.ERROR, "Error removing .pid file: %v", err)
+			logger.Flush()
+		} else {
+			fmt.Printf("Error removing .pid file: %v", err)
+		}
 		// exit with code 2 to indicate pid file removal error
 		os.Exit(2)
 	}
