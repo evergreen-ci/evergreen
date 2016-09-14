@@ -12,4 +12,4 @@ GOMAXPROCS=3 nohup $EVGHOME/bin/evergreen_ui_server -conf /data/home/etc/mci_set
 
 # restart runner
 killall evergreen_runner || true
-GOMAXPROCS=3 nohup $EVGHOME/bin/evergreen_runner -conf /data/home/etc/mci_settings.yml >& $EVGHOME/logs/evg_runner_nohup.log &
+GOMAXPROCS=7 nohup $EVGHOME/bin/evergreen_runner -conf /data/home/etc/mci_settings.yml >& $EVGHOME/logs/evg_runner_nohup.log &
