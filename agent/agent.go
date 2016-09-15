@@ -419,7 +419,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 }
 
 // New creates a new agent to run a given task.
-func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFile string) (*Agent, error) {
+func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFilePath string) (*Agent, error) {
 	sh := &SignalHandler{}
 	sh.makeChannels()
 
@@ -439,8 +439,6 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFile string) (*Agen
 		return nil, err
 	}
 	httpCommunicator.Logger = streamLogger.Execution
-
-	agt.pidFilePath = pidFilePath
 
 	// set up the heartbeat ticker
 	hbTicker := &HeartbeatTicker{
@@ -472,6 +470,7 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFile string) (*Agen
 		Registry:           plugin.NewSimpleRegistry(),
 		KillChan:           make(chan bool),
 		endChan:            make(chan *apimodels.TaskEndDetail, 1),
+		pidFilePath:        pidFilePath,
 	}
 
 	return agt, nil
