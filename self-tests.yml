@@ -99,7 +99,7 @@ pre:
         rm -rf mongodb
         mkdir mongodb
         cd mongodb
-        curl ${mongo_url} -o mongodb.tgz
+        curl ${mongo_url} -o mongodb.tgz 
         ${decompress} mongodb.tgz
         chmod +x ./mongodb-*/bin/*
         mv ./mongodb-*/bin/* .
@@ -959,7 +959,7 @@ buildvariants:
       - ubuntu1404-test
       expansions:
         EVGHOME_cmd: "`pwd`"
-        mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-2.6.1.tgz
+        mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
         bin_builder_env: 'GOROOT="`pwd`/go" PATH="`pwd`/go/bin:$PATH"'
         use_prebuilt_toolchain: "true"
         test_flag: "-coverprofile=coverage.out"
@@ -973,7 +973,7 @@ buildvariants:
         goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
         EVGHOME_cmd: "`pwd`"
         compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
-        mongo_url: https://s3.amazonaws.com/mciuploads/mongodb-mongo-master/enterprise-rhel-72-s390x/7bc77b9f6db91f0f66dc77e41c9c6212c944bf91/binaries/mongo-mongodb_mongo_master_enterprise_rhel_72_s390x_7bc77b9f6db91f0f66dc77e41c9c6212c944bf91_16_04_02_17_29_56.tgz
+        mongo_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
       tasks:
       - "!make_deploy"
     - name: ppc
@@ -984,7 +984,7 @@ buildvariants:
         goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
         EVGHOME_cmd: "`pwd`"
         compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
-        mongo_url: https://s3.amazonaws.com/mciuploads/mongodb-mongo-master/enterprise-rhel-71-ppc64le/622707b5ce4bde79cbf6df07bafc98038d5c7e8d/binaries/mongo-mongodb_mongo_master_enterprise_rhel_71_ppc64le_622707b5ce4bde79cbf6df07bafc98038d5c7e8d_16_03_22_15_23_09.tgz
+        mongo_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.2.9.tgz  
       tasks:
       - "!make_deploy"
     - name: osx
@@ -993,7 +993,7 @@ buildvariants:
       - osx-1010
       expansions:
         EVGHOME_cmd: "`pwd`"
-        mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-2.6.5.tgz
+        mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
         bin_builder_args: "dev"
         test_flag: "-coverprofile=coverage.out"
       tasks:
@@ -1013,7 +1013,7 @@ buildvariants:
       - windows-64-vs2013-compile
       expansions:
         EVGHOME_cmd: "$(cygpath -w `pwd`)"
-        mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5.zip
+        mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.2.9.zip
         extension: .exe
       tasks:
       - ".nodb !make_deploy"
