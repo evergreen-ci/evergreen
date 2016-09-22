@@ -244,7 +244,7 @@ func TestAverageStatistics(t *testing.T) {
 	Convey("With a set of tasks that have different scheduled -> start times over a given time period", t, func() {
 		now := time.Now()
 		bucketSize := 10 * time.Second
-		numberBuckets := time.Duration(3)
+		numberBuckets := 3
 
 		task1 := task.Task{Id: "task1", ScheduledTime: now,
 			StartTime: now.Add(time.Duration(5) * time.Second), Status: evergreen.TaskStarted, DistroId: distroId}
