@@ -1003,6 +1003,7 @@ buildvariants:
       run_on:
       - ubuntu1604-arm64-large
       expansions:
+        goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
         EVGHOME_cmd: "`pwd`"
         #mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5.zip
       tasks:
