@@ -103,7 +103,7 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason stri
 				event.LogMonitorOperation(hostToTerminate.Id, reason)
 				err := util.RunFunctionWithTimeout(func() error {
 					return terminateHost(&hostToTerminate, settings)
-				}, 6*time.Minute)
+				}, 12*time.Minute)
 				if err != nil {
 					if err == util.ErrTimedOut {
 						return fmt.Errorf("timeout terminating host %v", hostToTerminate.Id)
