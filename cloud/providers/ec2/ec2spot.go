@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
-	gcaws "github.com/dynport/gocloud/aws"
-	gcec2 "github.com/dynport/gocloud/aws/ec2"
+	awssdk "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	ec2sdk "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
@@ -537,30 +539,37 @@ func spotCostForRange(start, end time.Time, rates []spotRate) float64 {
 // start time. Returns a slice of hour-separated spot prices or any errors that occur.
 func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
 	iType string, zone string, os osType, start, end time.Time) ([]spotRate, error) {
-	gcClient := gcec2.Client{
-		&gcaws.Client{
-			Key:    cloudManager.awsCredentials.AccessKey,
-			Secret: cloudManager.awsCredentials.SecretKey,
-		},
+	svc := ec2sdk.New(session.New(), &awssdk.Config{
+		Region: awssdk.String("us-east-1"),
+		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
+			credentials.Value{
+				AccessKeyID:     cloudManager.awsCredentials.AccessKey,
+				SecretAccessKey: cloudManager.awsCredentials.SecretKey,
+			},
+		}),
+	})
+	// convert times to UTC and expand them to be safe
+	startFilter, endFilter := start.Add(-time.Hour), end.Add(time.Hour)
+	osStr := string(os)
+	filter := &ec2sdk.DescribeSpotPriceHistoryInput{
+		InstanceTypes:       []*string{&iType},
+		ProductDescriptions: []*string{&osStr},
+		AvailabilityZone:    &zone,
+		StartTime:           &startFilter,
+		EndTime:             &endFilter,
 	}
-	//convert times to UTC b/c this client is buggy
-	start, end = start.UTC(), end.UTC()
-	filter := &gcec2.SpotPriceFilter{
-		InstanceTypes:       []string{iType},
-		ProductDescriptions: []string{string(os)},
-		AvailabilityZones:   []string{zone},
-		StartTime:           start.Add(-time.Hour),
-		EndTime:             end.Add(time.Hour),
-	}
-	dirtyHistory, err := gcClient.DescribeSpotPriceHistory(filter)
-	if err != nil {
-		return nil, err
-	}
-	// cull prices for the wrong zone
-	history := []*gcec2.SpotPrice{}
-	for _, p := range dirtyHistory {
-		if p.AvailabilityZone == zone {
-			history = append(history, p)
+	// iterate through all pages of results (the helper that does this for us appears to be broken)
+	history := []*ec2sdk.SpotPrice{}
+	for {
+		h, err := svc.DescribeSpotPriceHistory(filter)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, h.SpotPriceHistory...)
+		if *h.NextToken != "" {
+			filter.NextToken = h.NextToken
+		} else {
+			break
 		}
 	}
 	// this loop samples the spot price history (which includes updates for every few minutes)
@@ -569,17 +578,24 @@ func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
 	// decreasing time order. We iterate backwards through the list to
 	// pretend the ordering to increasing time.
 	prices := []spotRate{}
-	for i := len(history) - 1; i >= 0; i-- {
+	i := len(history) - 1
+	for i >= 0 {
 		// add the current hourly price if we're in the last result bucket
 		// OR our billing hour starts the same time as the data (very rare)
 		// OR our billing hour starts after the current bucket but before the next one
-		if i == 0 || start.Equal(history[i].Timestamp) ||
-			start.After(history[i].Timestamp) && start.Before(history[i-1].Timestamp) {
-			prices = append(prices, spotRate{Time: start, Price: history[i].SpotPrice})
+		if i == 0 || start.Equal(*history[i].Timestamp) ||
+			start.After(*history[i].Timestamp) && start.Before(*history[i-1].Timestamp) {
+			price, err := strconv.ParseFloat(*history[i].SpotPrice, 64)
+			if err != nil {
+				return nil, fmt.Errorf("parsing spot price: %v", err)
+			}
+			prices = append(prices, spotRate{Time: start, Price: price})
 			start = start.Add(time.Hour)
 			if start.After(end) {
 				break
 			}
+		} else {
+			i--
 		}
 	}
 	return prices, nil

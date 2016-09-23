@@ -31,3 +31,6 @@ github.com/sabhiram/go-git-ignore               228fcfa2a06e870a3ef238d54c45ea84
 gopkg.in/tylerb/graceful.v1						49b853e77ab58c31be0d3ee87db62909b90ac93e
 github.com/dustin/go-humanize                   f3565c9525600a911af3bd34f8b535ea81b2a9e0
 github.com/mitchellh/go-homedir                 981ab348d865cf048eb7d17e78ac7192632d8415
+github.com/jmespath/go-jmespath                 bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+github.com/go-ini/ini                           6e4869b434bd001f6983749881c7ead3545887d8
+github.com/aws/aws-sdk-go                       87a2cff6c2601f69429f336067d1deb7f713d1c6
