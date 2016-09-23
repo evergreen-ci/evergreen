@@ -54,6 +54,41 @@ function endOfPath(input) {
   return input.substring(lastSlash + 1);
 }
 
+function generateURLParameters(params) {
+ var ret = [];
+ for (var p in params) {
+  ret.push(encodeURIComponent(p) + "=" + encodeURIComponent(params[p]));
+ }
+ return ret.join("&");
+}
+
+// getParameterByName returns the value associated with a given query parameter.
+// Based on: http://stackoverflow.com/questions/901115/how-can-i-get-query-string-values-in-javascript
+function getParameterByName(name, url) {
+  name = name.replace(/[\[\]]/g, "\\$&");
+  var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)");
+  var results = regex.exec(url);
+  if (!results){
+    return null;
+  }
+  if (!results[2]){
+    return '';
+  }
+  return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
+  var params = {};
+  if (bvFilter && bvFilter != '')
+    params["bv_filter"]= bvFilter;
+  if (taskFilter && taskFilter != '')
+    params["task_filter"]= taskFilter; 
+  params["skip"] = skip
+
+  var paramString = generateURLParameters(params);
+  window.history.replaceState({}, '', baseURL + "?" + paramString);
+}
+
 // labelFromTask returns the human readable label for a task's status given the details of its execution.
 function labelFromTask(task){
   if (task !== Object(task)) {
@@ -131,7 +166,6 @@ function stringifyNanoseconds(input, skipDayMax, skipSecMax) {
 class Root extends React.Component{
   constructor(props){
     super(props);
-
     // Initialize newer|older buttons
     var versionsOnPage = _.reduce(_.map(window.serverData.versions, function(version){
       return version.authors.length; 
@@ -139,46 +173,50 @@ class Root extends React.Component{
       return memo + num;
     });
 
-    var currentSkip = window.serverData.current_skip;
-    var nextSkip = currentSkip + versionsOnPage; 
-    var prevSkip = currentSkip - window.serverData.previous_page_count;
+    this.baseURL = "/waterfall/" + this.props.project;
+    this.currentSkip = window.serverData.current_skip;
+    this.nextSkip = this.currentSkip + versionsOnPage; 
+    this.prevSkip = this.currentSkip - window.serverData.previous_page_count;
+
+    if (this.nextSkip >= window.serverData.total_versions) {
+      this.nextSkip = -1;
+    }
+    if (this.currentSkip <= 0) {
+      this.prevSkip = -1;
+    }
    
-    this.nextURL = "";
-    this.prevURL = ""; 
+    var buildVariantFilter = getParameterByName('bv_filter',window.location.href);
+    var taskFilter = getParameterByName('task_filter',window.location.href);
 
-    // If nextSkip and currentSkip are valid, set a valid href for the buttons
-    // Otherwise, the two buttons remain disabled with an empty url
-    if (nextSkip < window.serverData.total_versions) {
-      this.nextURL = "/waterfall/" + this.props.project + "?skip=" + nextSkip;
-    }
+    buildVariantFilter = buildVariantFilter || '';
+    taskFilter = taskFilter || '';
     
-    if (currentSkip > 0) {
-      this.prevURL = "/waterfall/" + this.props.project + "?skip=" + prevSkip;
-    }
-
-    // Handle state for a collapsed view, as well as shortened header commit messages
     var collapsed = localStorage.getItem("collapsed") == "true";
+
     this.state = {
       collapsed: collapsed,
       shortenCommitMessage: true,
-      buildVariantFilter: '',
-      taskFilter: ''
+      buildVariantFilter: buildVariantFilter,
+      taskFilter:taskFilter 
     };
 
+    // Handle state for a collapsed view, as well as shortened header commit messages
     this.handleCollapseChange = this.handleCollapseChange.bind(this);
     this.handleHeaderLinkClick = this.handleHeaderLinkClick.bind(this);
     this.handleBuildVariantFilter = this.handleBuildVariantFilter.bind(this);
     this.handleTaskFilter = this.handleTaskFilter.bind(this);
-
   }
+
   handleCollapseChange(collapsed) {
     localStorage.setItem("collapsed", collapsed);
     this.setState({collapsed: collapsed});
   }
   handleBuildVariantFilter(filter) {
+    updateURLParams(filter, this.state.taskFilter, this.currentSkip, this.baseURL);
     this.setState({buildVariantFilter: filter});
   }
   handleTaskFilter(filter) {
+    updateURLParams(this.state.buildVariantFilter, filter, this.currentSkip, this.baseURL);
     this.setState({taskFilter: filter});
   }
   handleHeaderLinkClick(shortenMessage) {
@@ -201,8 +239,11 @@ class Root extends React.Component{
         React.createElement(Toolbar, {
           collapsed: this.state.collapsed, 
           onCheck: this.handleCollapseChange, 
-          nextURL: this.nextURL, 
-          prevURL: this.prevURL, 
+          baseURL: this.baseURL, 
+          nextSkip: this.nextSkip, 
+          prevSkip: this.prevSkip, 
+          buildVariantFilter: this.state.buildVariantFilter, 
+          taskFilter: this.state.taskFilter, 
           buildVariantFilterFunc: this.handleBuildVariantFilter, 
           taskFilterFunc: this.handleTaskFilter}
         ), 
@@ -226,29 +267,73 @@ class Root extends React.Component{
 
 
 // Toolbar
-function Toolbar ({collapsed, onCheck, nextURL, prevURL, buildVariantFilterFunc, taskFilterFunc}) {
+function Toolbar ({collapsed, 
+  onCheck, 
+  baseURL,
+  nextSkip, 
+  prevSkip, 
+  buildVariantFilter, 
+  taskFilter,
+  buildVariantFilterFunc, 
+  taskFilterFunc}) {
+
   var Form = ReactBootstrap.Form;
   return (
     React.createElement("div", {className: "row"}, 
       React.createElement("div", {className: "col-xs-12"}, 
         React.createElement(Form, {inline: true, className: "waterfall-toolbar pull-right"}, 
           React.createElement(CollapseButton, {collapsed: collapsed, onCheck: onCheck}), 
-          React.createElement(FilterBox, {filterFunction: buildVariantFilterFunc, placeholder: "Filter variant", disabled: false}), 
-          React.createElement(FilterBox, {filterFunction: taskFilterFunc, placeholder: "Filter task", disabled: collapsed}), 
-          React.createElement(PageButtons, {nextURL: nextURL, prevURL: prevURL})
+          React.createElement(FilterBox, {
+            filterFunction: buildVariantFilterFunc, 
+            placeholder: "Filter variant", 
+            currentFilter: buildVariantFilter, 
+            disabled: false}
+          ), 
+          React.createElement(FilterBox, {
+            filterFunction: taskFilterFunc, 
+            placeholder: "Filter task", 
+            currentFilter: taskFilter, 
+            disabled: collapsed}
+          ), 
+          React.createElement(PageButtons, {
+            nextSkip: nextSkip, 
+            prevSkip: prevSkip, 
+            baseURL: baseURL, 
+            buildVariantFilter: buildVariantFilter, 
+            taskFilter: taskFilter}
+          )
         )
       )
     )
   )
 };
 
-function PageButtons ({prevURL, nextURL}) {
+function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilter}) {
   var ButtonGroup = ReactBootstrap.ButtonGroup;
+
+  var nextURL= "";
+  var prevURL= "";
+
+  prevURLParams = {};
+  nextURLParams = {};
+
+  nextURLParams["skip"] = nextSkip;
+  prevURLParams["skip"] = prevSkip;
+  if (buildVariantFilter && buildVariantFilter != '') {
+    nextURLParams["bv_filter"] = buildVariantFilter;
+    nextURLParams["bv_filter"] = buildVariantFilter;
+  }
+  if (taskFilter && taskFilter != '') {
+    prevURLParams["task_filter"] = taskFilter;
+    prevURLParams["task_filter"] = taskFilter;
+  }
+  nextURL = "?" + generateURLParameters(nextURLParams);
+  prevURL = "?" + generateURLParameters(prevURLParams);
   return (
     React.createElement("span", {className: "waterfall-form-item"}, 
       React.createElement(ButtonGroup, null, 
-        React.createElement(PageButton, {pageURL: prevURL, disabled: prevURL === "", directionIcon: "fa-chevron-left"}), 
-        React.createElement(PageButton, {pageURL: nextURL, disabled: nextURL === "", directionIcon: "fa-chevron-right"})
+        React.createElement(PageButton, {pageURL: prevURL, disabled: prevSkip <=0, directionIcon: "fa-chevron-left"}), 
+        React.createElement(PageButton, {pageURL: nextURL, disabled: nextSkip <=0, directionIcon: "fa-chevron-right"})
       )
     )
   );
