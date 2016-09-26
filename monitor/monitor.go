@@ -92,7 +92,8 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	}
 
 	// clean up any necessary tasks
-	errs := taskMonitor.CleanupTasks(projects)
+	errs := withGlobalLock("task cleanup",
+		func() []error { return taskMonitor.CleanupTasks(projects) })
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up tasks: %v", err)
 	}
@@ -104,13 +105,15 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	}
 
 	// clean up any necessary hosts
-	errs = hostMonitor.CleanupHosts(distros, settings)
+	errs = withGlobalLock("host cleanup",
+		func() []error { return hostMonitor.CleanupHosts(distros, settings) })
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up hosts: %v", err)
 	}
 
 	// run monitoring checks
-	errs = hostMonitor.RunMonitoringChecks(settings)
+	errs = withGlobalLock("host monitoring",
+		func() []error { return hostMonitor.RunMonitoringChecks(settings) })
 	for _, err := range errs {
 		evergreen.Logger.Logf(slogger.ERROR, "Error running host monitoring checks: %v", err)
 	}
@@ -146,4 +149,34 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 
 	return nil
 
+}
+
+// withGlobalLock is a wrapper for grabbing the global lock for each segment of the monitor.
+func withGlobalLock(name string, f func() []error) (errs []error) {
+	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for monitor %v", name)
+	// sleep for 1 second to give other spinning locks a chance to preempt this one
+	time.Sleep(time.Second)
+	acquired, err := db.WaitTillAcquireGlobalLock(name, db.LockTimeout)
+	if err != nil {
+		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock for monitor", err)
+		return []error{fmt.Errorf("error acquiring global lock for %v: %v", name, err)}
+	}
+	if !acquired {
+		evergreen.Logger.Errorf(slogger.ERROR,
+			"Timed out attempting to acquire global lock for monitor %v", name)
+		return []error{fmt.Errorf("timed out acquiring global lock for monitor %v", name)}
+	}
+	defer func() {
+		evergreen.Logger.Logf(slogger.DEBUG, "Releasing global lock for monitor %v", name)
+		if err := db.ReleaseGlobalLock(name); err != nil {
+			evergreen.Logger.Errorf(slogger.ERROR,
+				"Error releasing global lock for monitor %v: %v", name, err)
+			errs = append(errs, fmt.Errorf("error releasing global lock for monitor %v: %v", name, err))
+		} else {
+			evergreen.Logger.Logf(slogger.DEBUG, "Released global lock for monitor %v", name)
+		}
+	}()
+	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for monitor %v", name)
+	errs = f()
+	return errs
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -46,6 +47,7 @@ func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 func (self *TaskRunner) Run() error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Finding hosts available to take a task...")
+
 	// find all hosts available to take a task
 	availableHosts, err := self.FindAvailableHosts()
 	if err != nil {
@@ -53,88 +55,104 @@ func (self *TaskRunner) Run() error {
 	}
 	evergreen.Logger.Logf(slogger.INFO, "Found %v host(s) available to take a task",
 		len(availableHosts))
-
-	// split the hosts by distro
 	hostsByDistro := self.splitHostsByDistro(availableHosts)
 
-	// we'll need this to wait for all the setups to finish
-	waitGroup := &sync.WaitGroup{}
-
 	// assign the free hosts for each distro to the tasks they need to run
-	for distroId, freeHostsForDistro := range hostsByDistro {
-		evergreen.Logger.Logf(slogger.INFO, "Kicking off tasks on distro %v...",
-			distroId)
+	for distroId := range hostsByDistro {
+		if err := self.processDistro(distroId); err != nil {
+			return err
+		}
+	}
+	evergreen.Logger.Logf(slogger.INFO, "Finished kicking off all pending tasks")
+	return nil
+}
 
-		// load in the queue of tasks for the distro
-		taskQueue, err := self.FindTaskQueue(distroId)
+// processDistro copies and starts remote agents for the given distro.
+// This function takes a global lock. Returns any errors that occur.
+func (self *TaskRunner) processDistro(distroId string) error {
+	lockKey := fmt.Sprintf("%v.%v", RunnerName, distroId)
+	// sleep for 1 second to give other spinning locks a chance to preempt this one
+	time.Sleep(time.Second)
+	lockAcquired, err := db.WaitTillAcquireGlobalLock(lockKey, db.LockTimeout)
+	if err != nil {
+		return evergreen.Logger.Errorf(slogger.ERROR, "error acquiring global lock for %v: %v", lockKey, err)
+	}
+	if !lockAcquired {
+		return evergreen.Logger.Errorf(slogger.ERROR, "timed out acquiring global lock for %v", lockKey)
+	}
+	defer func() {
+		err := db.ReleaseGlobalLock(lockKey)
 		if err != nil {
-			return fmt.Errorf("error finding task queue for distro %v: %v",
-				distroId, err)
+			evergreen.Logger.Errorf(slogger.ERROR, "error releasing global lock for %v: %v", lockKey, err)
+		}
+	}()
+
+	freeHostsForDistro, err := self.FindAvailableHostsForDistro(distroId)
+	if err != nil {
+		return fmt.Errorf("loading available %v hosts: %v", distroId, err)
+	}
+	evergreen.Logger.Logf(slogger.INFO, "Found %v %v host(s) available to take a task",
+		len(freeHostsForDistro), distroId)
+	evergreen.Logger.Logf(slogger.INFO, "Kicking off tasks on distro %v...", distroId)
+	taskQueue, err := self.FindTaskQueue(distroId)
+	if err != nil {
+		return fmt.Errorf("error finding task queue for distro %v: %v",
+			distroId, err)
+	}
+	if taskQueue == nil {
+		evergreen.Logger.Logf(slogger.INFO, "nil task queue found for distro '%v'", distroId)
+		return nil // nothing to do
+	}
+
+	// while there are both free hosts and pending tasks left, pin tasks to hosts
+	waitGroup := &sync.WaitGroup{}
+	for !taskQueue.IsEmpty() && len(freeHostsForDistro) > 0 {
+		nextHost := freeHostsForDistro[0]
+		nextTask, err := DispatchTaskForHost(taskQueue, &nextHost)
+		if err != nil {
+			return err
 		}
 
-		if taskQueue == nil {
-			evergreen.Logger.Logf(slogger.ERROR, "nil task queue found for distro '%v'", distroId)
+		// can only get here if the queue is empty
+		if nextTask == nil {
 			continue
 		}
 
-		// while there are both free hosts and pending tasks left, pin
-		// tasks to hosts
-		for !taskQueue.IsEmpty() && len(freeHostsForDistro) > 0 {
-			nextHost := freeHostsForDistro[0]
-			nextTask, err := DispatchTaskForHost(taskQueue, &nextHost)
+		// once allocated to a task, pop the host off the distro's free host
+		// list
+		freeHostsForDistro = freeHostsForDistro[1:]
+
+		// use the embedded host gateway to kick the task off
+		waitGroup.Add(1)
+		go func(t task.Task) {
+			defer waitGroup.Done()
+			agentRevision, err := self.RunTaskOnHost(self.Settings,
+				t, nextHost)
 			if err != nil {
-				return err
+				evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
+					" on host %v: %v", t.Id, nextHost.Id, err)
+
+				if err := model.MarkTaskUndispatched(nextTask); err != nil {
+					evergreen.Logger.Logf(slogger.ERROR, "error marking task %v as undispatched "+
+						"on host %v: %v", t.Id, nextHost.Id, err)
+				}
+				return
+			} else {
+				evergreen.Logger.Logf(slogger.INFO, "Task %v successfully kicked"+
+					" off on host %v", t.Id, nextHost.Id)
 			}
 
-			// can only get here if the queue is empty
-			if nextTask == nil {
-				continue
+			// now update the host's running task/agent revision fields
+			// accordingly
+			err = nextHost.SetRunningTask(t.Id, agentRevision, time.Now())
+			if err != nil {
+				evergreen.Logger.Logf(slogger.ERROR, "error updating running "+
+					"task %v on host %v: %v", t.Id,
+					nextHost.Id, err)
 			}
-
-			// once allocated to a task, pop the host off the distro's free host
-			// list
-			freeHostsForDistro = freeHostsForDistro[1:]
-
-			// dereference the task before running the goroutine
-			dereferencedTask := *nextTask
-
-			// use the embedded host gateway to kick the task off
-			waitGroup.Add(1)
-			go func() {
-				defer waitGroup.Done()
-				agentRevision, err := self.RunTaskOnHost(self.Settings,
-					dereferencedTask, nextHost)
-				if err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
-						" on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
-
-					if err := model.MarkTaskUndispatched(nextTask); err != nil {
-						evergreen.Logger.Logf(slogger.ERROR, "error marking task %v as undispatched "+
-							"on host %v: %v", dereferencedTask.Id, nextHost.Id, err)
-					}
-					return
-				} else {
-					evergreen.Logger.Logf(slogger.INFO, "Task %v successfully kicked"+
-						" off on host %v", dereferencedTask.Id, nextHost.Id)
-				}
-
-				// now update the host's running task/agent revision fields
-				// accordingly
-				err = nextHost.SetRunningTask(dereferencedTask.Id, agentRevision, time.Now())
-				if err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "error updating running "+
-						"task %v on host %v: %v", dereferencedTask.Id,
-						nextHost.Id, err)
-				}
-			}()
-		}
+		}(*nextTask)
 	}
-
-	// wait for everything to finish
 	waitGroup.Wait()
-
-	evergreen.Logger.Logf(slogger.INFO, "Finished kicking off all pending tasks")
-
 	return nil
 }
 

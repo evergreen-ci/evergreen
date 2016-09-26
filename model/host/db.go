@@ -97,6 +97,18 @@ var IsAvailableAndFree = db.Query(
 	},
 ).Sort([]string{"-" + LTCTimeKey})
 
+// ByAvailableForDistro returns all running Evergreen hosts with
+// no running task of a certain distro Id.
+func ByAvailableForDistro(d string) db.Q {
+	distroIdKey := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
+	return db.Query(bson.M{
+		distroIdKey:  d,
+		"$or":        noRunningTask,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.User,
+	}).Sort([]string{"-" + LTCTimeKey})
+}
+
 // IsFree is a query that returns all running
 // Evergreen hosts without an assigned task.
 var IsFree = db.Query(

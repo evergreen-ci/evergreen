@@ -8,6 +8,7 @@ import (
 type HostFinder interface {
 	// Find any hosts that are available to run a task
 	FindAvailableHosts() ([]host.Host, error)
+	FindAvailableHostsForDistro(distro string) ([]host.Host, error)
 }
 
 // DBHostFinder fetches the hosts from the database.
@@ -19,6 +20,17 @@ type DBHostFinder struct{}
 func (self *DBHostFinder) FindAvailableHosts() ([]host.Host, error) {
 	// find and return any hosts not currently running a task
 	availableHosts, err := host.Find(host.IsAvailableAndFree)
+	if err != nil {
+		return nil, err
+	}
+	return availableHosts, nil
+}
+
+// FindAvailableHostsForDistro finds all hosts of a certain distro
+// available to have a task run on them.
+func (self *DBHostFinder) FindAvailableHostsForDistro(d string) ([]host.Host, error) {
+	// find and return any hosts not currently running a task
+	availableHosts, err := host.Find(host.ByAvailableForDistro(d))
 	if err != nil {
 		return nil, err
 	}

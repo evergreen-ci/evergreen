@@ -7,7 +7,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -26,13 +28,17 @@ func init() {
 
 type MockHostFinder struct{}
 
-func (self *MockHostFinder) FindAvailableHosts() ([]host.Host, error) {
+func (*MockHostFinder) FindAvailableHosts() ([]host.Host, error) {
 	return nil, fmt.Errorf("FindAvailableHosts not implemented")
+}
+
+func (*MockHostFinder) FindAvailableHostsForDistro(_ string) ([]host.Host, error) {
+	return nil, fmt.Errorf("FindAvailableHostsForDistro not implemented")
 }
 
 type MockTaskQueueFinder struct{}
 
-func (self *MockTaskQueueFinder) FindTaskQueue(distroId string) (*model.TaskQueue, error) {
+func (*MockTaskQueueFinder) FindTaskQueue(distroId string) (*model.TaskQueue, error) {
 	return nil, fmt.Errorf("FindTaskQueue not implemented")
 }
 
@@ -63,10 +69,10 @@ func TestSplitHostsByDistro(t *testing.T) {
 		distroIds := []string{"d1", "d2", "d3"}
 		hostIds := []string{"h1", "h2", "h3", "h4"}
 		hosts := []host.Host{
-			{Id: hostIds[0], Distro: distroIds[0]},
-			{Id: hostIds[1], Distro: distroIds[1]},
-			{Id: hostIds[2], Distro: distroIds[2]},
-			{Id: hostIds[3], Distro: distroIds[1]},
+			{Id: hostIds[0], Distro: distro.Distro{Id: distroIds[0]}},
+			{Id: hostIds[1], Distro: distro.Distro{Id: distroIds[1]}},
+			{Id: hostIds[2], Distro: distro.Distro{Id: distroIds[2]}},
+			{Id: hostIds[3], Distro: distro.Distro{Id: distroIds[1]}},
 		}
 
 		taskRunner := &TaskRunner{

@@ -510,6 +510,34 @@ tasks:
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
 
+- name: taskrunner
+  commands:
+    - func: "start mongod"
+    - func: "fetch source"
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export EVGHOME=${EVGHOME_cmd}
+          cd taskrunner
+          mkfifo test_pipe
+          tee -a taskrunner.suite < test_pipe&
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
+    - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv taskrunner/coverage.out .
+    - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
+
 - name: notify
   commands:
     - func: "start mongod"
