@@ -10,7 +10,7 @@ import (
 const (
 	LockCollection = "lock"
 	GlobalLockId   = "global"
-	LockTimeout    = time.Minute * 3
+	LockTimeout    = time.Minute * 8
 )
 
 // Lock represents a lock stored in the database, for synchronization.
