@@ -129,7 +129,7 @@ func FindMinimumQueuePositionForTask(taskId string) (int, error) {
 		{"$match": bson.M{
 			queueItemIdKey: taskId}},
 		{"$unwind": bson.M{
-			"path":              fmt.Sprintf("$%", TaskQueueQueueKey),
+			"path":              fmt.Sprintf("$%s", TaskQueueQueueKey),
 			"includeArrayIndex": "index"}},
 		{"$match": bson.M{
 			queueItemIdKey: taskId}},
