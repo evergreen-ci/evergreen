@@ -463,15 +463,15 @@ func fetchVersionsAndAssociatedBuilds(project *model.Project, skip int, numVersi
 	// fetch the versions from the db
 	versionsFromDB, err := version.Find(version.ByProjectId(project.Identifier).
 		WithFields(
-			version.RevisionKey,
-			version.ErrorsKey,
-			version.WarningsKey,
-			version.IgnoredKey,
-			version.MessageKey,
-			version.AuthorKey,
-			version.RevisionOrderNumberKey,
-			version.CreateTimeKey,
-		).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
+		version.RevisionKey,
+		version.ErrorsKey,
+		version.WarningsKey,
+		version.IgnoredKey,
+		version.MessageKey,
+		version.AuthorKey,
+		version.RevisionOrderNumberKey,
+		version.CreateTimeKey,
+	).Sort([]string{"-" + version.RevisionOrderNumberKey}).Skip(skip).Limit(numVersions))
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("error fetching versions from database: %v", err)
@@ -607,12 +607,6 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Project == nil {
 		uis.ProjectNotFound(projCtx, w, r)
-		return
-	}
-
-	u := GetUser(r)
-	if u == nil || !u.Settings.NewWaterfall {
-		uis.waterfallPageOld(w, r)
 		return
 	}
 
