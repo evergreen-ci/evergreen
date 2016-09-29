@@ -185,8 +185,10 @@ func ByOrderNumbersForNameAndVariant(revisionOrder []int, displayName, buildVari
 	})
 }
 
-// ByIntermediateRevisions creates a query that returns the tasks existing between two revision order numbers
-func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int, buildVariant, displayName, project, requester string) db.Q {
+// ByIntermediateRevisions creates a query that returns the tasks existing
+// between two revision order numbers, exclusive.
+func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int,
+	buildVariant, displayName, project, requester string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
 		DisplayNameKey:  displayName,
@@ -197,7 +199,6 @@ func ByIntermediateRevisions(previousRevisionOrder, currentRevisionOrder int, bu
 		},
 		ProjectKey: project,
 	})
-
 }
 
 func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, requester string) db.Q {

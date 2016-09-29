@@ -1,8 +1,13 @@
 package alerts
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
+	"github.com/evergreen-ci/evergreen/model/task"
 )
 
 /* Task trigger Implementations */
@@ -99,7 +104,13 @@ func (trig FirstFailureInTaskType) ShouldExecute(ctx triggerContext) (bool, erro
 // the task has never run before
 // 2) The most recent alert for this trigger, if existing, was stored when the 'last passing task'
 // at the time was older than the 'last passing task' for the newly failed task.
+// 3) The previous run was a failure, and there has been Multipler*Batchtime time since
+// the previous alert was sent.
 type TaskFailTransition struct{}
+
+// failureLimitMultiplier is a magic scalar for determining how often to resend transition failures.
+// If a failure reoccurs after 3*batchTime amount of time, we will resend transition emails.
+const failureLimitMultiplier = 3
 
 func (trig TaskFailTransition) Id() string { return alertrecord.TaskFailTransitionId }
 func (trig TaskFailTransition) Display() string {
@@ -128,6 +139,18 @@ func (trig TaskFailTransition) ShouldExecute(ctx triggerContext) (bool, error) {
 			return true, nil
 		}
 	}
+	if ctx.previousCompleted.Status == evergreen.TaskFailed {
+		// check if enough time has passed since our last transition alert
+		q := alertrecord.ByLastFailureTransition(ctx.task.DisplayName, ctx.task.BuildVariant, ctx.task.Project)
+		lastAlerted, err := alertrecord.FindOne(q)
+		if err != nil {
+			return false, err
+		}
+		if lastAlerted == nil || lastAlerted.TaskId == "" {
+			return false, nil
+		}
+		return reachedFailureLimit(lastAlerted.TaskId)
+	}
 	return false, nil
 }
 
@@ -140,6 +163,40 @@ func (trig TaskFailTransition) CreateAlertRecord(ctx triggerContext) *alertrecor
 		rec.RevisionOrderNumber = ctx.previousCompleted.RevisionOrderNumber
 	}
 	return rec
+}
+
+// reachedFailureLimit returns true if task for the previous failure transition alert
+// happened too long ago, as determined by some magic math.
+func reachedFailureLimit(taskId string) (bool, error) {
+	t, err := task.FindOne(task.ById(taskId))
+	if err != nil {
+		return false, err
+	}
+	if t == nil {
+		return false, fmt.Errorf("task %v not found", taskId)
+	}
+	pr, err := model.FindOneProjectRef(t.Project)
+	if err != nil {
+		return false, err
+	}
+	if pr == nil {
+		return false, fmt.Errorf("project ref %v not found", t.Project)
+	}
+	p, err := model.FindProject(t.Revision, pr)
+	if err != nil {
+		return false, err
+	}
+	if p == nil {
+		return false, fmt.Errorf("project %v not found for revision %v", t.Project, t.Revision)
+	}
+	v := p.FindBuildVariant(t.BuildVariant)
+	if v == nil {
+		return false, fmt.Errorf("build variant %v does not exist in project", t.BuildVariant)
+	}
+	batchTime := pr.GetBatchTime(v)
+	reached := time.Since(t.FinishTime) > (time.Duration(batchTime) * time.Minute * failureLimitMultiplier)
+	return reached, nil
+
 }
 
 type LastRevisionNotFound struct{}

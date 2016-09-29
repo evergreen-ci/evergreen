@@ -1,15 +1,19 @@
 package alerts
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -28,8 +32,27 @@ var testTask = &task.Task{
 	Project:             "testProject",
 	BuildVariant:        "testVariant",
 	Version:             "testVersion",
+	Revision:            "aaa",
 	RevisionOrderNumber: 3,
 }
+
+var testProject = model.ProjectRef{
+	Identifier: "testProject",
+	BatchTime:  5,
+}
+
+var testVersion = version.Version{
+	Identifier: "testProject",
+	Requester:  evergreen.RepotrackerVersionRequester,
+	Revision:   "aaa",
+	Config: `
+buildvariants:
+- name: bv1
+  batchtime: 60
+- name: bv2
+  batchtime: 1
+- name: bv3
+`}
 
 func hasTrigger(triggers []Trigger, t Trigger) bool {
 	for _, trig := range triggers {
@@ -130,6 +153,10 @@ func TestExistingPassedTaskTriggers(t *testing.T) {
 func TestExistingFailedTaskTriggers(t *testing.T) {
 	Convey("With a previously failed instance of task in the database", t, func() {
 		db.Clear(task.Collection)
+		db.Clear(model.ProjectRefCollection)
+		db.Clear(version.Collection)
+		So(testProject.Insert(), ShouldBeNil)
+		So(testVersion.Insert(), ShouldBeNil)
 		testTask.Status = evergreen.TaskFailed
 		err := testTask.Insert()
 		So(err, ShouldBeNil)
@@ -149,6 +176,68 @@ func TestExistingFailedTaskTriggers(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(triggers), ShouldEqual, 1)
 			So(triggers[0].Id(), ShouldEqual, TaskFailed{}.Id())
+		})
+	})
+}
+
+func TestTransitionResend(t *testing.T) {
+	Convey("With a set of failures that previously transitioned", t, func() {
+		db.Clear(task.Collection)
+		db.Clear(alertrecord.Collection)
+		db.Clear(model.ProjectRefCollection)
+		db.Clear(version.Collection)
+		// insert 15 failed task documents
+		ts := []task.Task{
+			*testTask,
+			*testTask,
+			*testTask,
+		}
+		for i := range ts {
+			ts[i].Id = fmt.Sprintf("t%v", i)
+			ts[i].BuildVariant = fmt.Sprintf("bv%v", i+1)
+			ts[i].FinishTime = time.Now().Add(-10 * time.Minute)
+			ts[i].Insert()
+		}
+		pastAlert := alertrecord.AlertRecord{
+			Id:        bson.NewObjectId(),
+			Type:      alertrecord.TaskFailTransitionId,
+			TaskName:  ts[0].DisplayName,
+			ProjectId: ts[0].Project,
+		}
+		So(testProject.Insert(), ShouldBeNil)
+		So(testVersion.Insert(), ShouldBeNil)
+		Convey("a failure 10 minutes ago with a batch time of 60 should not retrigger", func() {
+			pastAlert.TaskId = ts[0].Id
+			pastAlert.Variant = ts[0].BuildVariant
+			So(pastAlert.Insert(), ShouldBeNil)
+			ctx, err := getTaskTriggerContext(&ts[0])
+			So(err, ShouldBeNil)
+			ctx.previousCompleted = &task.Task{Status: evergreen.TaskFailed}
+			triggers, err := getActiveTaskFailureTriggers(*ctx)
+			So(err, ShouldBeNil)
+			So(hasTrigger(triggers, TaskFailTransition{}), ShouldBeFalse)
+		})
+		Convey("a failure 10 minutes ago with a batch time of 1 should retrigger", func() {
+			pastAlert.TaskId = ts[1].Id
+			pastAlert.Variant = ts[1].BuildVariant
+			So(pastAlert.Insert(), ShouldBeNil)
+			ctx, err := getTaskTriggerContext(&ts[1])
+			So(err, ShouldBeNil)
+			ctx.previousCompleted = &task.Task{Status: evergreen.TaskFailed}
+			triggers, err := getActiveTaskFailureTriggers(*ctx)
+			So(err, ShouldBeNil)
+			So(hasTrigger(triggers, TaskFailTransition{}), ShouldBeTrue)
+		})
+		Convey("a failure 10 minutes ago with a batch time of 5 should not retrigger", func() {
+			pastAlert.TaskId = ts[2].Id
+			pastAlert.Variant = ts[2].BuildVariant
+			So(pastAlert.Insert(), ShouldBeNil)
+			ctx, err := getTaskTriggerContext(&ts[2])
+			So(err, ShouldBeNil)
+			ctx.previousCompleted = &task.Task{Status: evergreen.TaskFailed}
+			triggers, err := getActiveTaskFailureTriggers(*ctx)
+			So(err, ShouldBeNil)
+			So(hasTrigger(triggers, TaskFailTransition{}), ShouldBeFalse)
 		})
 	})
 }
@@ -177,5 +266,45 @@ func TestSpawnExpireWarningTrigger(t *testing.T) {
 		shouldExec, err = trigger.ShouldExecute(ctx)
 		So(err, ShouldBeNil)
 		So(shouldExec, ShouldBeFalse)
+	})
+}
+
+func TestReachedFailureLimit(t *testing.T) {
+	Convey("With 3 failed task and relevant project variants", t, func() {
+		db.Clear(task.Collection)
+		db.Clear(model.ProjectRefCollection)
+		db.Clear(version.Collection)
+		t := task.Task{
+			Id:           "t1",
+			Revision:     "aaa",
+			Project:      "testProject",
+			BuildVariant: "bv1",
+			FinishTime:   time.Now().Add(-time.Hour),
+		}
+		So(t.Insert(), ShouldBeNil)
+		t.Id = "t2"
+		t.BuildVariant = "bv2"
+		So(t.Insert(), ShouldBeNil)
+		t.Id = "t3"
+		t.BuildVariant = "bv3"
+		So(t.Insert(), ShouldBeNil)
+		So(testProject.Insert(), ShouldBeNil)
+		So(testVersion.Insert(), ShouldBeNil)
+
+		Convey("a variant with batchtime of 60 should not hit the limit", func() {
+			out, err := reachedFailureLimit("t1")
+			So(err, ShouldBeNil)
+			So(out, ShouldBeFalse)
+		})
+		Convey("a variant with batchtime of 1 should hit the limit", func() {
+			out, err := reachedFailureLimit("t2")
+			So(err, ShouldBeNil)
+			So(out, ShouldBeTrue)
+		})
+		Convey("a fallback batchtime of 5 should hit the limit", func() {
+			out, err := reachedFailureLimit("t3")
+			So(err, ShouldBeNil)
+			So(out, ShouldBeTrue)
+		})
 	})
 }
