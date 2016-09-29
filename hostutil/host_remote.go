@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
-const SSHTimeout = time.Minute * 5
+const SSHTimeout = time.Minute * 10
 
 // RunRemoteScript executes a shell script that already exists on the remote host,
 // returning logs and any errors that occur. Logs may still be returned for some errors.
