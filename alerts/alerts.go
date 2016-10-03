@@ -235,7 +235,6 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	for _, u := range superUsers {
 		qp.superUsersConfigs = append(qp.superUsersConfigs, model.AlertConfig{"email", bson.M{"rcpt": u.Email()}})
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Super-users config for outgoing alerts is: %#v", qp.superUsersConfigs)
 
 	evergreen.Logger.Logf(slogger.INFO, "Running alert queue processing")
 	for {
