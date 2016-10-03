@@ -439,6 +439,9 @@ func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end tim
 	}
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	instance, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
+	if err != nil {
+		return 0, err
+	}
 	os := osLinux
 	if strings.Contains(h.Distro.Arch, "windows") {
 		os = osWindows
