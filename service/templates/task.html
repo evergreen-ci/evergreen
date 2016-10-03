@@ -343,7 +343,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                 </td>
                 <td class="col-lg-3">
                   <div class="url-link nowrap" id="html-link">
-                    <a ng-href="[[getURL(test)]]" ng-hide="[[hideURL(test)]]">
+                    <a ng-href="[[getURL(test, false)]]" ng-hide="[[hideURL(test, false)]]">
                       HTML
                     </a>
                   </div>
@@ -351,7 +351,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
                     <b ng-show="[[hasBothURL(test)]]">&middot;</b>
                   </div>
                   <div class="url-link nowrap" id="raw-link">
-                    <a ng-href="[[getURL(test, 'raw')]]" ng-hide="[[hideURL(test, 'raw')]]">
+                    <a ng-href="[[getURL(test, true)]]" ng-hide="[[hideURL(test, true)]]">
                       Raw
                     </a>
                   </div>

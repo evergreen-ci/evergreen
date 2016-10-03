@@ -684,6 +684,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 
 	if (r.FormValue("raw") == "1") || (r.Header.Get("Content-type") == "text/plain") {
 		template = "task_log_raw.html"
+		w.Header().Set("Content-Type", "text/plain")
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {

@@ -232,20 +232,25 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   $scope.taskHost = $window.taskHost;
 
   $scope.getURL = function(testResult, isRaw) {
-    var url = (isRaw == "raw") ? testResult.url_raw : testResult.url;
+    var url = (isRaw) ? testResult.url_raw : testResult.url;
 
     if (url != '') {
       return url; 
     }
+
     var logid = testResult.log_id;
     var linenum = testResult.line_num || 0;
+
     url = '/test_log/' + logid + '#L' + linenum;
+    if (isRaw) {
+      url = '/test_log/' + logid + '?raw=1';
+    }
 
     return url;
   };
 
   $scope.hideURL = function(testResult, isRaw) {
-    var url = isRaw === 'raw' ? testResult.url_raw : testResult.url;
+    var url = isRaw ? testResult.url_raw : testResult.url;
     return !((url != '') || (testResult.log_id));
   };
 
