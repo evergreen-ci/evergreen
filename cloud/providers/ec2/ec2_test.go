@@ -88,8 +88,21 @@ func TestSpotPriceHistory(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(ps), ShouldBeGreaterThan, 2)
 			Convey("and the results should be sane", func() {
-				So(ps[0].Time, ShouldHappenBetween,
-					time.Now().Add(-3*time.Hour), time.Now())
+				So(ps[len(ps)-1].Time, ShouldHappenBetween,
+					time.Now().Add(-10*time.Minute), time.Now())
+				So(ps[0].Price, ShouldBeBetween, 0.0, 2.0)
+				So(ps[0].Time, ShouldHappenBefore, ps[1].Time)
+			})
+		})
+		Convey("loading 10 days of price history should succeed", func() {
+			ps, err := m.describeHourlySpotPriceHistory("m3.large", "us-east-1a", osLinux,
+				time.Now().Add(-240*time.Hour), time.Now())
+			So(err, ShouldBeNil)
+			So(len(ps), ShouldBeGreaterThan, 240)
+			Convey("and the results should be sane", func() {
+				So(ps[len(ps)-1].Time, ShouldHappenBetween, time.Now().Add(-30*time.Minute), time.Now())
+				So(ps[0].Time, ShouldHappenWithin,
+					time.Hour, time.Now().Add(-241*time.Hour))
 				So(ps[0].Price, ShouldBeBetween, 0.0, 2.0)
 				So(ps[0].Time, ShouldHappenBefore, ps[1].Time)
 			})
