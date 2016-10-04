@@ -332,8 +332,8 @@ function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilt
   return (
     React.createElement("span", {className: "waterfall-form-item"}, 
       React.createElement(ButtonGroup, null, 
-        React.createElement(PageButton, {pageURL: prevURL, disabled: prevSkip <=0, directionIcon: "fa-chevron-left"}), 
-        React.createElement(PageButton, {pageURL: nextURL, disabled: nextSkip <=0, directionIcon: "fa-chevron-right"})
+        React.createElement(PageButton, {pageURL: prevURL, disabled: prevSkip < 0, directionIcon: "fa-chevron-left"}), 
+        React.createElement(PageButton, {pageURL: nextURL, disabled: nextSkip < 0, directionIcon: "fa-chevron-right"})
       )
     )
   );

@@ -332,8 +332,8 @@ function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilt
   return (
     <span className="waterfall-form-item">
       <ButtonGroup>
-        <PageButton pageURL={prevURL} disabled={prevSkip <=0} directionIcon="fa-chevron-left" />
-        <PageButton pageURL={nextURL} disabled={nextSkip <=0} directionIcon="fa-chevron-right" />
+        <PageButton pageURL={prevURL} disabled={prevSkip < 0} directionIcon="fa-chevron-left" />
+        <PageButton pageURL={nextURL} disabled={nextSkip < 0} directionIcon="fa-chevron-right" />
       </ButtonGroup>
     </span>
   );
