@@ -164,15 +164,19 @@ func TestCreateHostBuckets(t *testing.T) {
 		So(h4.Insert(), ShouldBeNil)
 
 		Convey("for three buckets of 10 seconds, should only retrieve pertinent host docs", func() {
-			numberBuckets := time.Duration(3)
 
 			endTime := now.Add(time.Duration(30) * time.Second)
 			hosts, err := host.Find(host.ByDynamicWithinTime(now, endTime))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 6)
-
+			frameBounds := FrameBounds{
+				StartTime:     now,
+				EndTime:       endTime,
+				BucketSize:    bucketSize,
+				NumberBuckets: 3,
+			}
 			Convey("should create the correct buckets and bucket time accordingly", func() {
-				buckets, errors := CreateHostBuckets(hosts, now, numberBuckets, bucketSize)
+				buckets, errors := CreateHostBuckets(hosts, frameBounds)
 				So(errors, ShouldBeEmpty)
 				So(len(buckets), ShouldEqual, 3)
 				So(int(buckets[0].TotalTime.Seconds()), ShouldEqual, 17)
@@ -218,15 +222,19 @@ func TestCreateTaskBuckets(t *testing.T) {
 		h4 := task.Task{Id: "h4", StartTime: now.Add(time.Duration(5) * time.Second), FinishTime: now.Add(time.Duration(30) * time.Second), Status: evergreen.TaskFailed}
 		So(h4.Insert(), ShouldBeNil)
 
+		endTime := now.Add(time.Duration(40) * time.Second)
+		frameBounds := FrameBounds{
+			StartTime:     now,
+			EndTime:       endTime,
+			NumberBuckets: 4,
+			BucketSize:    bucketSize,
+		}
 		Convey("for four buckets of 10 seconds", func() {
-			numberBuckets := time.Duration(4)
-
-			endTime := now.Add(time.Duration(40) * time.Second)
 			tasks, err := task.Find(task.ByTimeRun(now, endTime))
 			So(err, ShouldBeNil)
 			So(len(tasks), ShouldEqual, 4)
 
-			buckets, errors := CreateTaskBuckets(tasks, []task.Task{}, now, numberBuckets, bucketSize)
+			buckets, errors := CreateTaskBuckets(tasks, []task.Task{}, frameBounds)
 			So(errors, ShouldBeEmpty)
 			So(len(buckets), ShouldEqual, 4)
 			So(int(buckets[0].TotalTime.Seconds()), ShouldEqual, 17)
@@ -260,7 +268,13 @@ func TestAverageStatistics(t *testing.T) {
 			StartTime: now.Add(time.Duration(20) * time.Second), Status: evergreen.TaskStarted, DistroId: distroId}
 		So(task3.Insert(), ShouldBeNil)
 
-		avgBuckets, err := AverageStatistics(now, numberBuckets, bucketSize, distroId)
+		frameBounds := FrameBounds{
+			StartTime:     now,
+			EndTime:       now.Add(time.Duration(numberBuckets) * bucketSize),
+			NumberBuckets: numberBuckets,
+			BucketSize:    bucketSize,
+		}
+		avgBuckets, err := AverageStatistics(distroId, frameBounds)
 		So(err, ShouldBeNil)
 
 		So(avgBuckets[0].AverageTime, ShouldEqual, 5*time.Second)

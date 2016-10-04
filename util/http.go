@@ -81,3 +81,16 @@ func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error
 	}
 	return intVal, nil
 }
+
+// GetBoolValue returns a form value as an integer
+func GetBoolValue(r *http.Request, valueKey string, defaultValue bool) (bool, error) {
+	val := r.FormValue(valueKey)
+	if val == "" {
+		return defaultValue, nil
+	}
+	boolVal, err := strconv.ParseBool(val)
+	if err != nil {
+		return defaultValue, fmt.Errorf("%v: cannot convert %v to boolean: %v", valueKey, val, err.Error())
+	}
+	return boolVal, nil
+}

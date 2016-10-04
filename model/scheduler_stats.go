@@ -38,6 +38,23 @@ type AvgBucket struct {
 	End         time.Time     `json:"end_time"`
 }
 
+// FrameBounds is a set of information about the inputs of buckets
+type FrameBounds struct {
+	StartTime     time.Time
+	EndTime       time.Time
+	BucketSize    time.Duration
+	NumberBuckets int
+}
+
+// HostUtilizationBucket represents an aggregate view of the hosts and tasks Bucket for a given time frame.
+type HostUtilizationBucket struct {
+	StaticHost  time.Duration `json:"static_host" csv:"static_host"`
+	DynamicHost time.Duration `json:"dynamic_host" csv:"dynamic_host"`
+	Task        time.Duration `json:"task" csv:"task"`
+	StartTime   time.Time     `json:"start_time" csv:"start_time"`
+	EndTime     time.Time     `json:"end_time" csv:"end_time"`
+}
+
 type AvgBuckets []AvgBucket
 
 // dependencyPath represents the path of tasks that can
@@ -61,6 +78,25 @@ func addBucketTime(duration time.Duration, resource ResourceInfo, bucket Bucket)
 	return Bucket{
 		TotalTime: bucket.TotalTime + duration,
 		Resources: append(bucket.Resources, resource),
+	}
+}
+
+// CalculateBounds takes in a daysBack and granularity and returns the
+// start time, end time, bucket size, and number of buckets
+func CalculateBounds(daysBack, granularity int) FrameBounds {
+	endTime := time.Now()
+	totalTime := 24 * time.Hour * time.Duration(daysBack)
+	startTime := endTime.Add(-1 * totalTime)
+
+	bucketSize := time.Duration(granularity) * time.Second
+
+	numberBuckets := (time.Duration(daysBack) * time.Hour * 24) / (time.Duration(granularity) * time.Second)
+
+	return FrameBounds{
+		StartTime:     startTime,
+		EndTime:       endTime,
+		BucketSize:    bucketSize,
+		NumberBuckets: int(numberBuckets),
 	}
 }
 
@@ -136,10 +172,9 @@ func bucketResource(resource ResourceInfo, frameStart, frameEnd time.Time, bucke
 
 // CreateHostBuckets takes in a list of hosts with their creation and termination times
 // and returns durations bucketed based on a start time, number of buckets and the size of each bucket
-func CreateHostBuckets(hosts []host.Host, startTime time.Time, numberBuckets, bucketSize time.Duration) ([]Bucket, []error) {
-	hostBuckets := make([]Bucket, numberBuckets)
+func CreateHostBuckets(hosts []host.Host, bounds FrameBounds) ([]Bucket, []error) {
+	hostBuckets := make([]Bucket, bounds.NumberBuckets)
 	var err error
-	endTime := startTime.Add(bucketSize * numberBuckets)
 	errors := []error{}
 	for _, h := range hosts {
 		hostResource := ResourceInfo{
@@ -151,11 +186,11 @@ func CreateHostBuckets(hosts []host.Host, startTime time.Time, numberBuckets, bu
 		// static hosts
 		if h.Provider == evergreen.HostTypeStatic {
 			for i, b := range hostBuckets {
-				hostBuckets[i] = addBucketTime(bucketSize, hostResource, b)
+				hostBuckets[i] = addBucketTime(bounds.BucketSize, hostResource, b)
 			}
 			continue
 		}
-		hostBuckets, err = bucketResource(hostResource, startTime, endTime, bucketSize, hostBuckets)
+		hostBuckets, err = bucketResource(hostResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, hostBuckets)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error bucketing host %v : %v", h.Id, err))
 		}
@@ -165,9 +200,8 @@ func CreateHostBuckets(hosts []host.Host, startTime time.Time, numberBuckets, bu
 
 // CreateTaskBuckets takes in a list of tasks with their start and finish times
 // and returns durations bucketed based on  a start time, number of buckets and  the size of each bucket
-func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, startTime time.Time, numberBuckets, bucketSize time.Duration) ([]Bucket, []error) {
-	taskBuckets := make([]Bucket, numberBuckets)
-	endTime := startTime.Add(bucketSize * numberBuckets)
+func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, bounds FrameBounds) ([]Bucket, []error) {
+	taskBuckets := make([]Bucket, bounds.NumberBuckets)
 	var err error
 	errors := []error{}
 	for _, t := range tasks {
@@ -177,7 +211,7 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, startTime time.T
 			End:   t.FinishTime,
 			Data:  t.HostId,
 		}
-		taskBuckets, err = bucketResource(taskResource, startTime, endTime, bucketSize, taskBuckets)
+		taskBuckets, err = bucketResource(taskResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, taskBuckets)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error bucketing task %v : %v", t.Id, err))
 		}
@@ -190,7 +224,7 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, startTime time.T
 			End:   t.FinishTime,
 			Data:  t.HostId,
 		}
-		taskBuckets, err = bucketResource(taskResource, startTime, endTime, bucketSize, taskBuckets)
+		taskBuckets, err = bucketResource(taskResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, taskBuckets)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error bucketing task %v : %v", t.Id, err))
 		}
@@ -198,20 +232,63 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, startTime time.T
 	return taskBuckets, errors
 }
 
+// CreateAllHostUtilizationBuckets aggregates each bucket by creating a time frame given the number of days back
+// and the granularity wanted (ie. days, minutes, seconds, hours) all in seconds. It returns a list of Host utilization
+// information for each bucket.
+func CreateAllHostUtilizationBuckets(daysBack, granularity int) ([]HostUtilizationBucket, error) {
+	bounds := CalculateBounds(daysBack, granularity)
+	// find non-static hosts
+	dynamicHosts, err := host.Find(host.ByDynamicWithinTime(bounds.StartTime, bounds.EndTime))
+	if err != nil {
+		return nil, err
+	}
+	// find static hosts
+	staticHosts, err := host.Find(host.AllStatic)
+	if err != nil {
+		return nil, err
+	}
+
+	dynamicBuckets, _ := CreateHostBuckets(dynamicHosts, bounds)
+	staticBuckets, _ := CreateHostBuckets(staticHosts, bounds)
+
+	tasks, err := task.Find(task.ByTimeRun(bounds.StartTime, bounds.EndTime).WithFields(task.StartTimeKey, task.FinishTimeKey, task.HostIdKey))
+	if err != nil {
+		return nil, err
+	}
+
+	oldTasks, err := task.FindOld(task.ByTimeRun(bounds.StartTime, bounds.EndTime))
+	if err != nil {
+		return nil, err
+	}
+
+	taskBuckets, _ := CreateTaskBuckets(tasks, oldTasks, bounds)
+	bucketData := []HostUtilizationBucket{}
+	for i, staticBucket := range staticBuckets {
+		b := HostUtilizationBucket{
+			StaticHost:  staticBucket.TotalTime,
+			DynamicHost: dynamicBuckets[i].TotalTime,
+			Task:        taskBuckets[i].TotalTime,
+			StartTime:   bounds.StartTime.Add(time.Duration(i) * bounds.BucketSize),
+			EndTime:     bounds.StartTime.Add(time.Duration(i+1) * bounds.BucketSize),
+		}
+		bucketData = append(bucketData, b)
+
+	}
+	return bucketData, nil
+}
+
 // AverageStatistics uses an agg pipeline that creates buckets given a time frame and finds the average scheduled ->
 // start time for that time frame.
 // One thing to note is that the average time is in milliseconds, not nanoseconds and must be converted.
-func AverageStatistics(startTime time.Time, numberBuckets int, bucketSize time.Duration, distroId string) (AvgBuckets, error) {
-	numBucketsDuration := time.Duration(numberBuckets)
-	endTime := startTime.Add(numBucketsDuration * bucketSize)
-	intBucketSize := util.FromNanoseconds(bucketSize)
+func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) {
+	intBucketSize := util.FromNanoseconds(bounds.BucketSize)
 	buckets := AvgBuckets{}
 	pipeline := []bson.M{
 		// find all tasks that have started within the time frame for a given distro and only valid statuses.
 		{"$match": bson.M{
 			task.StartTimeKey: bson.M{
-				"$gte": startTime,
-				"$lte": endTime,
+				"$gte": bounds.StartTime,
+				"$lte": bounds.EndTime,
 			},
 			// only need tasks that have already started or those that have finished,
 			// not looking for tasks that have been scheduled but not started.
@@ -229,7 +306,7 @@ func AverageStatistics(startTime time.Time, numberBuckets int, bucketSize time.D
 			"b": bson.M{
 				"$floor": bson.M{
 					"$divide": []interface{}{
-						bson.M{"$subtract": []interface{}{"$" + task.StartTimeKey, startTime}},
+						bson.M{"$subtract": []interface{}{"$" + task.StartTimeKey, bounds.StartTime}},
 						intBucketSize},
 				},
 			},
@@ -248,16 +325,16 @@ func AverageStatistics(startTime time.Time, numberBuckets int, bucketSize time.D
 	if err := db.Aggregate(task.Collection, pipeline, &buckets); err != nil {
 		return nil, err
 	}
-	return convertBucketsToNanoseconds(buckets, numberBuckets, bucketSize, startTime), nil
+	return convertBucketsToNanoseconds(buckets, bounds), nil
 }
 
 // convertBucketsToNanoseconds fills in 0 time buckets to the list of Average Buckets
 // and it converts the average times to nanoseconds.
-func convertBucketsToNanoseconds(buckets AvgBuckets, numberBuckets int, bucketSize time.Duration, frameStart time.Time) AvgBuckets {
+func convertBucketsToNanoseconds(buckets AvgBuckets, bounds FrameBounds) AvgBuckets {
 	allBuckets := AvgBuckets{}
-	for i := 0; i < numberBuckets; i++ {
-		startTime := frameStart.Add(time.Duration(i) * bucketSize)
-		endTime := startTime.Add(bucketSize)
+	for i := 0; i < bounds.NumberBuckets; i++ {
+		startTime := bounds.StartTime.Add(time.Duration(i) * bounds.BucketSize)
+		endTime := bounds.StartTime.Add(bounds.BucketSize)
 		currentBucket := AvgBucket{
 			Id:          i,
 			AverageTime: 0,
