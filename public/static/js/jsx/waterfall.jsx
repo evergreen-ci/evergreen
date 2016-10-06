@@ -321,10 +321,10 @@ function PageButtons ({prevSkip, nextSkip, baseURL, buildVariantFilter, taskFilt
   prevURLParams["skip"] = prevSkip;
   if (buildVariantFilter && buildVariantFilter != '') {
     nextURLParams["bv_filter"] = buildVariantFilter;
-    nextURLParams["bv_filter"] = buildVariantFilter;
+    prevURLParams["bv_filter"] = buildVariantFilter;
   }
   if (taskFilter && taskFilter != '') {
-    prevURLParams["task_filter"] = taskFilter;
+    nextURLParams["task_filter"] = taskFilter;
     prevURLParams["task_filter"] = taskFilter;
   }
   nextURL = "?" + generateURLParameters(nextURLParams);
