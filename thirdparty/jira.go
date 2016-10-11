@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/url"
 )
 
@@ -177,8 +178,8 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 
 // JQLSearch runs the given JQL query against the given jira instance and returns
 // the results in a JiraSearchResults
-func (jiraHandler *JiraHandler) JQLSearch(query string) (*JiraSearchResults, error) {
-	apiEndpoint := fmt.Sprintf("https://%v/rest/api/latest/search?jql=%v", jiraHandler.JiraServer, url.QueryEscape(query))
+func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int) (*JiraSearchResults, error) {
+	apiEndpoint := fmt.Sprintf("https://%v/rest/api/latest/search?jql=%v&startAt=%d&maxResults=%d", jiraHandler.JiraServer, url.QueryEscape(query), startAt, maxResults)
 
 	res, err := jiraHandler.MyHttp.doGet(apiEndpoint, jiraHandler.UserName, jiraHandler.Password)
 	if err != nil {
@@ -206,6 +207,30 @@ func (jiraHandler *JiraHandler) JQLSearch(query string) (*JiraSearchResults, err
 	}
 
 	return results, nil
+}
+
+// JQLSearchAll performs repeated JQL searches until the query has been exhausted
+func (jiraHandler *JiraHandler) JQLSearchAll(query string) ([]JiraTicket, error) {
+	allIssues := []JiraTicket{}
+
+	index := 0
+	ticketsLeft := math.MaxInt64
+
+	for ticketsLeft > 0 {
+		nextResult, err := jiraHandler.JQLSearch(query, index, -1)
+		if err != nil {
+			return []JiraTicket{}, err
+		}
+
+		numReturned := nextResult.MaxResults
+		ticketsLeft = nextResult.Total - (index + numReturned)
+		index = numReturned + index + 1
+
+		allIssues = append(allIssues, nextResult.Issues...)
+	}
+
+	return allIssues, nil
+
 }
 
 func NewJiraHandler(server string, user string, password string) JiraHandler {
