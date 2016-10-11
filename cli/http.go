@@ -230,7 +230,7 @@ func (ac *APIClient) GetLastGreen(project string, variants []string) (*version.V
 		qs = append(qs, url.QueryEscape(v))
 	}
 	q := strings.Join(qs, "&")
-	resp, err := ac.get(fmt.Sprintf("/projects/%v/last_green?%v", project, q), nil)
+	resp, err := ac.get(fmt.Sprintf("projects/%v/last_green?%v", project, q), nil)
 	if err != nil {
 		return nil, err
 	}
