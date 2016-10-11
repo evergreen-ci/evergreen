@@ -75,7 +75,7 @@ const (
 var (
 	// InitialSetupTimeout indicates the time allowed for the agent to collect
 	// relevant information - for running a task - from the API server.
-	InitialSetupTimeout = 10 * time.Minute
+	InitialSetupTimeout = 20 * time.Minute
 	// InitialSetupCommand is a placeholder command for the period during which
 	// the agent requests information for running a task
 	InitialSetupCommand = model.PluginCommandConf{
