@@ -29,12 +29,6 @@ func NewBuildVariantHistoryIterator(buildVariantInTask string, buildVariantInVer
 
 // Returns versions and tasks grouped by gitspec, newest first (sorted by order number desc)
 func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version, numRevisions int) ([]bson.M, []version.Version, error) {
-	session, dbobj, err := db.GetGlobalSessionFactory().GetSession()
-	defer session.Close()
-	if err != nil {
-		return nil, nil, err
-	}
-
 	var versionQuery db.Q
 	if beforeCommit != nil {
 		versionQuery = db.Query(bson.M{
@@ -97,33 +91,30 @@ func (self *buildVariantHistoryIterator) GetItems(beforeCommit *version.Version,
 		}
 	}
 
-	pipeline := dbobj.C(task.Collection).Pipe(
-		[]bson.M{
-			{"$match": matchFilter},
-			{"$sort": bson.D{{task.RevisionOrderNumberKey, 1}}},
-			{
-				"$group": bson.M{
-					"_id":   "$" + task.RevisionKey,
-					"order": bson.M{"$first": "$" + task.RevisionOrderNumberKey},
-					"tasks": bson.M{
-						"$push": bson.M{
-							"_id":              "$" + task.IdKey,
-							"status":           "$" + task.StatusKey,
-							"task_end_details": "$" + task.DetailsKey,
-							"activated":        "$" + task.ActivatedKey,
-							"time_taken":       "$" + task.TimeTakenKey,
-							"display_name":     "$" + task.DisplayNameKey,
-						},
+	pipeline := []bson.M{
+		{"$match": matchFilter},
+		{"$sort": bson.D{{task.RevisionOrderNumberKey, 1}}},
+		{
+			"$group": bson.M{
+				"_id":   "$" + task.RevisionKey,
+				"order": bson.M{"$first": "$" + task.RevisionOrderNumberKey},
+				"tasks": bson.M{
+					"$push": bson.M{
+						"_id":              "$" + task.IdKey,
+						"status":           "$" + task.StatusKey,
+						"task_end_details": "$" + task.DetailsKey,
+						"activated":        "$" + task.ActivatedKey,
+						"time_taken":       "$" + task.TimeTakenKey,
+						"display_name":     "$" + task.DisplayNameKey,
 					},
 				},
 			},
-			{"$sort": bson.M{task.RevisionOrderNumberKey: -1, task.DisplayNameKey: 1}},
 		},
-	)
+		{"$sort": bson.M{task.RevisionOrderNumberKey: -1, task.DisplayNameKey: 1}},
+	}
 
 	var output []bson.M
-	err = pipeline.All(&output)
-	if err != nil {
+	if err = db.Aggregate(task.Collection, pipeline, &output); err != nil {
 		return nil, nil, err
 	}
 
