@@ -28,7 +28,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	if projCtx.Version == nil {
 		v, err := version.Find(version.ByMostRecentForRequester(projCtx.Project.Identifier, evergreen.RepotrackerVersionRequester).Limit(1))
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error finding version: %v", err), http.StatusInternalServerError)
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finding version: %v", err))
 			return
 		}
 		if len(v) > 0 {
@@ -49,11 +49,11 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 	} else {
 		depth, err = strconv.Atoi(d)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error converting depth: %v", err), http.StatusBadRequest)
+			uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error converting depth: %v", err))
 			return
 		}
 		if depth < 0 {
-			http.Error(w, fmt.Sprintf("Depth must be non-negative, got %v", depth), http.StatusBadRequest)
+			uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Depth must be non-negative, got %v", depth))
 			return
 		}
 	}
@@ -65,7 +65,7 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 			Sort([]string{"-" + version.RevisionOrderNumberKey}).
 			Limit(depth + 1))
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching versions: %v", err), http.StatusInternalServerError)
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching versions: %v", err))
 			return
 		}
 
@@ -76,19 +76,19 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 
 		cells, err = grid.FetchCells(*projCtx.Version, depth)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching builds: %v", err), http.StatusInternalServerError)
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching builds: %v", err))
 			return
 		}
 
 		failures, err = grid.FetchFailures(*projCtx.Version, depth)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching builds: %v", err), http.StatusInternalServerError)
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching builds: %v", err))
 			return
 		}
 
 		revisionFailures, err = grid.FetchRevisionOrderFailures(*projCtx.Version, depth)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Error fetching revision failures: %v", err), http.StatusInternalServerError)
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching revision failures: %v", err))
 			return
 		}
 	} else {
