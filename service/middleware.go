@@ -482,7 +482,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		if len(token) > 0 {
 			dbUser, err := um.GetUserByToken(token)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.INFO, "Error getting user: %v", err)
+				evergreen.Logger.Logf(slogger.INFO, "Error getting user %v: %v", authDataName, err)
 			} else {
 				// Get the user's full details from the DB or create them if they don't exists
 				dbUser, err := model.GetOrCreateUser(dbUser.Username(), dbUser.DisplayName(), dbUser.Email())
