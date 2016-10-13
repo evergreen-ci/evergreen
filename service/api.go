@@ -965,7 +965,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	spawns.HandleFunc("/{user}/", requireUser(as.hostsInfoForUser, nil)).Methods("GET")
 	spawns.HandleFunc("/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
 
-	taskRouter := r.PathPrefix("/task/{taskId:[\\w_\\.]+}").Subrouter()
+	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.StartTask)).Methods("POST")
 	taskRouter.HandleFunc("/end", as.checkTask(true, as.EndTask)).Methods("POST")
 	taskRouter.HandleFunc("/log", as.checkTask(true, as.AppendTaskLog)).Methods("POST")
