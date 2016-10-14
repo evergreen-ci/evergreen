@@ -286,6 +286,7 @@ type ProjectTask struct {
 
 type TaskConfig struct {
 	Distro       *distro.Distro
+	Version      *version.Version
 	ProjectRef   *ProjectRef
 	Project      *Project
 	Task         *task.Task
@@ -442,7 +443,7 @@ var (
 	ProjectTasksKey         = bsonutil.MustHaveTag(Project{}, "Tasks")
 )
 
-func NewTaskConfig(d *distro.Distro, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
+func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
 		return nil, fmt.Errorf("project for task with branch %v is empty", t.Project)
@@ -458,11 +459,11 @@ func NewTaskConfig(d *distro.Distro, p *Project, t *task.Task, r *ProjectRef) (*
 		return nil, fmt.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
 	}
 
-	e := populateExpansions(d, bv, t)
-	return &TaskConfig{d, r, p, t, bv, e, d.WorkDir}, nil
+	e := populateExpansions(d, v, bv, t)
+	return &TaskConfig{d, v, r, p, t, bv, e, d.WorkDir}, nil
 }
 
-func populateExpansions(d *distro.Distro, bv *BuildVariant, t *task.Task) *command.Expansions {
+func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *command.Expansions {
 	expansions := command.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
@@ -474,6 +475,7 @@ func populateExpansions(d *distro.Distro, bv *BuildVariant, t *task.Task) *comma
 	expansions.Put("revision", t.Revision)
 	expansions.Put("project", t.Project)
 	expansions.Put("branch_name", t.Project)
+	expansions.Put("author", v.Author)
 	if t.Requester == evergreen.PatchVersionRequester {
 		expansions.Put("is_patch", "true")
 	}

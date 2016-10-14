@@ -226,7 +226,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			err = putCmd.Execute(&plugintest.MockLogger{}, pluginCom,
-				&model.TaskConfig{nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
+				&model.TaskConfig{nil, nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
 			So(err, ShouldBeNil)
 		})
 		Convey("put cmd without 'optional' and missing file should throw an error", func() {
@@ -249,7 +249,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			err = putCmd.Execute(&plugintest.MockLogger{}, pluginCom,
-				&model.TaskConfig{nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
+				&model.TaskConfig{nil, nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
 			So(err, ShouldNotBeNil)
 		})
 	})

@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
@@ -107,7 +108,7 @@ type TaskCommunicator interface {
 	GetTask() (*task.Task, error)
 	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
-	GetProjectConfig() (*model.Project, error)
+	GetVersion() (*version.Version, error)
 	Log([]model.LogMessage) error
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)
@@ -387,35 +388,40 @@ func (agt *Agent) CheckIn(command model.PluginCommandConf, duration time.Duratio
 // GetTaskConfig fetches task configuration data required to run the task from the API server.
 func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 	agt.logger.LogExecution(slogger.INFO, "Fetching distro configuration.")
-	distro, err := agt.GetDistro()
+	confDistro, err := agt.GetDistro()
 	if err != nil {
 		return nil, err
 	}
 
-	agt.logger.LogExecution(slogger.INFO, "Fetching project configuration.")
-	project, err := agt.GetProjectConfig()
+	agt.logger.LogExecution(slogger.INFO, "Fetching version.")
+	confVersion, err := agt.GetVersion()
 	if err != nil {
 		return nil, err
+	}
+
+	confProject := &model.Project{}
+	err = model.LoadProjectInto([]byte(confVersion.Config), confVersion.Identifier, confProject)
+	if err != nil {
+		return nil, fmt.Errorf("reading project config: %v", err)
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration.")
-	task, err := agt.GetTask()
+	confTask, err := agt.GetTask()
 	if err != nil {
 		return nil, err
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Fetching project ref.")
-	ref, err := agt.GetProjectRef()
+	confRef, err := agt.GetProjectRef()
 	if err != nil {
 		return nil, err
 	}
-
-	if ref == nil {
-		return nil, fmt.Errorf("Agent retrieved an empty project ref")
+	if confRef == nil {
+		return nil, fmt.Errorf("agent retrieved an empty project ref")
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Constructing TaskConfig.")
-	return model.NewTaskConfig(distro, project, task, ref)
+	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef)
 }
 
 // New creates a new agent to run a given task.

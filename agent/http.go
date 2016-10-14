@@ -411,18 +411,26 @@ func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 	return projectRef, nil
 }
 
-// GetProjectConfig loads the communicator's task's project from the API server.
-func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
-	projectConfig := &model.Project{}
+// GetVersion loads the communicator's task's version from the API server.
+func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
+	v := &version.Version{}
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.tryGet("version")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
-			if resp != nil && resp.StatusCode == http.StatusConflict {
-				// Something very wrong, fail now with no retry.
-				return fmt.Errorf("conflict - wrong secret!")
+			if resp != nil {
+				if resp.StatusCode == http.StatusConflict {
+					// Something very wrong, fail now with no retry.
+					return fmt.Errorf("conflict - wrong secret!")
+				}
+				if resp.StatusCode != http.StatusOK {
+					msg, _ := ioutil.ReadAll(resp.Body) // ignore ReadAll error
+					return util.RetriableError{
+						fmt.Errorf("bad status code %v: %v", resp.StatusCode, string(msg)),
+					}
+				}
 			}
 			if err != nil {
 				// Some generic error trying to connect - try again
@@ -431,20 +439,11 @@ func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 			if resp == nil {
 				return util.RetriableError{fmt.Errorf("empty response")}
 			} else {
-				v := &version.Version{}
 				err = util.ReadJSONInto(resp.Body, v)
 				if err != nil {
 					h.Logger.Errorf(slogger.ERROR,
 						"unable to read project version response: %v\n", err)
-					return util.RetriableError{fmt.Errorf("unable to read "+
-						"project version response: %v\n", err)}
-				}
-				err = model.LoadProjectInto([]byte(v.Config), v.Identifier, projectConfig)
-				if err != nil {
-					h.Logger.Errorf(slogger.ERROR,
-						"unable to unmarshal project config: %v\n", err)
-					return util.RetriableError{fmt.Errorf("unable to "+
-						"unmarshall project config: %v\n", err)}
+					return fmt.Errorf("unable to read project version response: %v\n", err)
 				}
 				return nil
 			}
@@ -456,7 +455,7 @@ func (h *HTTPCommunicator) GetProjectConfig() (*model.Project, error) {
 		return nil, fmt.Errorf("getting project configuration failed after %v "+
 			"tries: %v", h.MaxAttempts, err)
 	}
-	return projectConfig, nil
+	return v, nil
 }
 
 // Heartbeat sends a heartbeat to the API server. The server can respond with

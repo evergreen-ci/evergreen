@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -22,11 +23,11 @@ type MockCommunicator struct {
 	logChan             chan []model.LogMessage
 }
 
-func (mc *MockCommunicator) tryGet(path string) (*http.Response, error) {
+func (*MockCommunicator) tryGet(path string) (*http.Response, error) {
 	return nil, nil
 }
 
-func (mc *MockCommunicator) tryPostJSON(path string, data interface{}) (*http.Response, error) {
+func (*MockCommunicator) tryPostJSON(path string, data interface{}) (*http.Response, error) {
 	return nil, nil
 }
 
@@ -52,12 +53,12 @@ func (*MockCommunicator) GetDistro() (*distro.Distro, error) {
 	return &distro.Distro{}, nil
 }
 
-func (_ *MockCommunicator) GetProjectRef() (*model.ProjectRef, error) {
+func (*MockCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 	return &model.ProjectRef{}, nil
 }
 
-func (_ *MockCommunicator) GetProjectConfig() (*model.Project, error) {
-	return &model.Project{}, nil
+func (*MockCommunicator) GetVersion() (*version.Version, error) {
+	return &version.Version{}, nil
 }
 
 func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
@@ -75,7 +76,7 @@ func (mc *MockCommunicator) Heartbeat() (bool, error) {
 	return mc.abort, nil
 }
 
-func (mc *MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
+func (*MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{}, nil
 }
 

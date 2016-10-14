@@ -94,7 +94,8 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	workDir, err := ioutil.TempDir("", "plugintest_")
 	testutil.HandleTestingErr(err, t, "failed to get working directory: %v")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	return model.NewTaskConfig(testDistro, testProject, testTask, projectRef)
+	testVersion := &version.Version{}
+	return model.NewTaskConfig(testDistro, testVersion, testProject, testTask, projectRef)
 }
 
 func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *agent.HTTPCommunicator {

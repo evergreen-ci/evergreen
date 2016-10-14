@@ -331,7 +331,8 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	_, err = projectVars.Upsert()
 	testutil.HandleTestingErr(err, t, "failed to upsert project vars")
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	return model.NewTaskConfig(testDistro, testProject, testTask, testProjectRef)
+	testVersion := &version.Version{}
+	return model.NewTaskConfig(testDistro, testVersion, testProject, testTask, testProjectRef)
 }
 
 func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, error) {

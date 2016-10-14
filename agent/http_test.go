@@ -85,8 +85,9 @@ func TestCommunicatorServerUp(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 
-		Convey("Calls to GetProjectConfig() should return the right config", func() {
+		Convey("Calls to GetVersion() should return the right version", func() {
 			v := &version.Version{
+				Author: "hey wow",
 				Config: "enabled: true\nbatchtime: 120",
 			}
 			// Mock project handler to answer the agent's request for a
@@ -95,9 +96,10 @@ func TestCommunicatorServerUp(t *testing.T) {
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, v, http.StatusOK)
 				})
-			projectConfig, err := agentCommunicator.GetProjectConfig()
+			v, err := agentCommunicator.GetVersion()
 			So(err, ShouldBeNil)
-			So(projectConfig.Stepback, ShouldBeFalse)
+			So(v.Author, ShouldEqual, "hey wow")
+			So(v.Config, ShouldNotEqual, "")
 		})
 		Convey("Calls to GetProjectRefConfig() should return the right config", func() {
 			v := &model.ProjectRef{
