@@ -34,6 +34,12 @@ functions:
         cat > testfile <<END_OF_HEREDOC
         this should not end up in the logs!
         END_OF_HEREDOC
+  "function variant test":
+      command: shell.exec
+      variants: ["windows8"]
+      params:
+        script: |
+          echo "variant not excluded!"
   "function with arg test" :
      command: shell.exec
      timeout_secs: 1300
@@ -252,6 +258,10 @@ tasks:
             done
             echo "done with slow" "task with output!"
 
+- name: variant_test
+  commands:
+    - func: "function variant test"
+
 - name: push
   depends_on:
   - name: "*"
@@ -333,12 +343,7 @@ buildvariants:
     compile_flags: --sharedclient -j$(grep -c ^processor /proc/cpuinfo) --release
     test_flags: --continue-on-failure
     buildvariant_pushes: true
-  tasks:
-  - name: aggregation
-  - name: normal_task
-  - name: very_slow_task
-  - name: failing_task
-  - name: push
+  tasks: "*"
 
 - name: windows8
   display_name: Windows 8
@@ -356,11 +361,4 @@ buildvariants:
     compile_flags: --sharedclient -j$(grep -c ^processor /proc/cpuinfo) --release
     test_flags: --continue-on-failure
     buildvariant_pushes: true
-  tasks:
-  - name: aggregation
-  - name: normal_task
-  - name: very_slow_task
-  - name: print_dir_task
-  - name: failing_task
-  - name: push
-
+  tasks: "*"

@@ -626,7 +626,8 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 			}
 
 			// TODO: add validation for this once new config's in place/use
-			if !commandInfo.RunOnVariant(agt.taskConfig.BuildVariant.Name) {
+			if !commandInfo.RunOnVariant(agt.taskConfig.BuildVariant.Name) ||
+				!parsedCommand.RunOnVariant(agt.taskConfig.BuildVariant.Name) {
 				agt.logger.LogTask(slogger.INFO, "Skipping command %v on variant %v (step %v of %v)",
 					fullCommandName, agt.taskConfig.BuildVariant.Name, i+1, len(commands))
 				continue

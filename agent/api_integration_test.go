@@ -604,7 +604,7 @@ func TestTaskTimeout(t *testing.T) {
 				testAgent.RunTask()
 				testAgent.APILogger.Flush()
 				time.Sleep(5 * time.Second)
-				printLogsForTask(testTask.Id)
+				//printLogsForTask(testTask.Id)
 				Convey("the test should be marked as failed and timed out", func() {
 					So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
 					So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
@@ -616,6 +616,38 @@ func TestTaskTimeout(t *testing.T) {
 				})
 			})
 		})
+	}
+}
+
+func TestFunctionVariantExclusion(t *testing.T) {
+	setupTlsConfigs(t)
+	for tlsString, tlsConfig := range tlsConfigs {
+		// test against the windows8 and linux-64 variants; linux-64 excludes a test command
+		for _, variant := range []string{"windows8", "linux-64"} {
+			Convey("With agent running a "+variant+" task and live API server over "+tlsString, t, func() {
+				testTask, _, err := setupAPITestData(testConfig, "variant_test", variant, filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
+				testutil.HandleTestingErr(err, t, "Failed to find test task")
+				testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+				testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+				testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
+				So(err, ShouldBeNil)
+				So(testAgent, ShouldNotBeNil)
+				Convey("running the task", func() {
+					testAgent.RunTask()
+					testAgent.APILogger.Flush()
+					if variant == "windows8" {
+						Convey("the variant-specific function command should run", func() {
+							So(scanLogsForTask(testTask.Id, "", "variant not excluded!"), ShouldBeTrue)
+						})
+					} else {
+						Convey("the variant-specific function command should not run", func() {
+							So(scanLogsForTask(testTask.Id, "", "variant not excluded!"), ShouldBeFalse)
+							So(scanLogsForTask(testTask.Id, "", "Skipping command 'shell.exec'"), ShouldBeTrue)
+						})
+					}
+				})
+			})
+		}
 	}
 }
 
@@ -823,7 +855,8 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 
 	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
-	testutil.HandleTestingErr(yaml.Unmarshal(projectConfig, project), t, "failed to unmarshal project config")
+	testutil.HandleTestingErr(model.LoadProjectInto(projectConfig, "test", project),
+		t, "failed to unmarshal project config")
 
 	// Marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
