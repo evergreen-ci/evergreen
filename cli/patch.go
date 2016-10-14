@@ -469,11 +469,23 @@ func (lc *ListCommand) listVariants() error {
 	} else {
 		return noProjectError
 	}
-	fmt.Println(len(variants), "variants:")
+
+	names := make([]string, 0, len(variants))
+	displayNames := make(map[string]string)
+	for _, variant := range variants {
+		names = append(names, variant.Name)
+		displayNames[variant.Name] = variant.DisplayName
+	}
+	sort.Strings(names)
+	fmt.Println(len(names), "variants:")
 	w := new(tabwriter.Writer)
+	// Format in tab-separated columns with a tab stop of 8.
 	w.Init(os.Stdout, 0, 8, 0, '\t', 0)
-	for _, t := range variants {
-		line := fmt.Sprintf("\t%v\t", t.Name)
+	for _, name := range names {
+		line := fmt.Sprintf("\t%v\t", name)
+		if len(displayNames[name]) > 0 && displayNames[name] != name {
+			line = line + fmt.Sprintf("%v", displayNames[name])
+		}
 		fmt.Fprintln(w, line)
 	}
 	w.Flush()
