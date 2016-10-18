@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -106,7 +107,6 @@ func (s3pc *S3PutCommand) ParseParams(params map[string]interface{}) error {
 	}
 
 	return nil
-
 }
 
 // Validate that all necessary params are set and valid.
@@ -122,6 +122,9 @@ func (s3pc *S3PutCommand) validateParams() error {
 	}
 	if s3pc.LocalFile != "" && len(s3pc.LocalFilesIncludeFilter) != 0 {
 		return fmt.Errorf("local_file and local_files_include_filter cannot both be specified")
+	}
+	if s3pc.Optional && len(s3pc.LocalFilesIncludeFilter) != 0 {
+		return fmt.Errorf("cannot use optional upload with local_files_include_filter")
 	}
 	if s3pc.RemoteFile == "" {
 		return fmt.Errorf("remote_file cannot be blank")
@@ -276,6 +279,11 @@ func (s3pc *S3PutCommand) Put() error {
 		}
 		err := thirdparty.PutS3File(auth, fpath, s3URL.String(), s3pc.ContentType, s3pc.Permissions)
 		if err != nil {
+			if !s3pc.isMulti() {
+				if s3pc.Optional && os.IsNotExist(err) {
+					return errSkippedFile
+				}
+			}
 			return err
 		}
 	}

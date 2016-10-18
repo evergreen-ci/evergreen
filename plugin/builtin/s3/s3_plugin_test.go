@@ -229,6 +229,29 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 				&model.TaskConfig{nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
 			So(err, ShouldBeNil)
 		})
+		Convey("put cmd without 'optional' and missing file should throw an error", func() {
+			// load params into the put command
+			putCmd = &S3PutCommand{}
+			putParams := map[string]interface{}{
+				"aws_key":      conf.Providers.AWS.Id,
+				"aws_secret":   conf.Providers.AWS.Secret,
+				"local_file":   "this_file_does_not_exist.txt",
+				"remote_file":  "remote_file",
+				"bucket":       "test_bucket",
+				"permissions":  "private",
+				"content_type": "text/plain",
+			}
+			So(putCmd.ParseParams(putParams), ShouldBeNil)
+			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
+			pluginCom := &agent.TaskJSONCommunicator{"s3", httpCom}
+
+			So(err, ShouldBeNil)
+
+			err = putCmd.Execute(&plugintest.MockLogger{}, pluginCom,
+				&model.TaskConfig{nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
+			So(err, ShouldNotBeNil)
+		})
 	})
 }
 
