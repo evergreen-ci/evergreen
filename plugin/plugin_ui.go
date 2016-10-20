@@ -120,6 +120,7 @@ type UIContext struct {
 	Patch      *patch.Patch
 	Project    *model.Project
 	ProjectRef *model.ProjectRef
+	Request    *http.Request
 }
 
 // PanelLayout tells the view renderer what panel HTML data to inject and where

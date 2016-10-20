@@ -74,6 +74,7 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 			Patch:      projCtx.Patch,
 			Project:    projCtx.Project,
 			ProjectRef: projCtx.ProjectRef,
+			Request:    r,
 		}
 		pluginData, err := uiPage.DataFunc(pluginCtx)
 		if err != nil {
