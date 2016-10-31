@@ -2,7 +2,9 @@ package scheduler
 
 import (
 	"fmt"
+	"sort"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
@@ -54,9 +56,27 @@ func (self *MockTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 
 type MockTaskPrioritizer struct{}
 
+type revisionOrderComparator struct {
+	tasks []task.Task
+}
+
+func (cmp *revisionOrderComparator) Less(i, j int) bool {
+	return cmp.tasks[i].RevisionOrderNumber < cmp.tasks[j].RevisionOrderNumber
+}
+
+func (cmp *revisionOrderComparator) Len() int {
+	return len(cmp.tasks)
+}
+
+func (cmp *revisionOrderComparator) Swap(i, j int) {
+	cmp.tasks[i], cmp.tasks[j] = cmp.tasks[j], cmp.tasks[i]
+}
+
 func (self *MockTaskPrioritizer) PrioritizeTasks(settings *evergreen.Settings,
 	tasks []task.Task) ([]task.Task, error) {
-	return nil, fmt.Errorf("PrioritizeTasks not implemented")
+	cmp := revisionOrderComparator{tasks}
+	sort.Sort(&cmp)
+	return cmp.tasks, nil
 }
 
 type MockTaskQueuePersister struct{}
@@ -64,7 +84,26 @@ type MockTaskQueuePersister struct{}
 func (self *MockTaskQueuePersister) PersistTaskQueue(distro string,
 	tasks []task.Task,
 	projectTaskDuration model.ProjectTaskDurations) ([]model.TaskQueueItem, error) {
-	return nil, fmt.Errorf("PersistTaskQueue not implemented")
+	taskQueue := make([]model.TaskQueueItem, 0, len(tasks))
+	for _, t := range tasks {
+		expectedTaskDuration := model.GetTaskExpectedDuration(t, projectTaskDuration)
+		if t.Priority < 0 {
+			return taskQueue, fmt.Errorf("priority was %v but cannot be less than 0", t.Priority)
+		}
+		taskQueue = append(taskQueue, model.TaskQueueItem{
+			Id:                  t.Id,
+			DisplayName:         t.DisplayName,
+			BuildVariant:        t.BuildVariant,
+			RevisionOrderNumber: t.RevisionOrderNumber,
+			Requester:           t.Requester,
+			Revision:            t.Revision,
+			Project:             t.Project,
+			ExpectedDuration:    expectedTaskDuration,
+			Priority:            t.Priority,
+		})
+	}
+
+	return taskQueue, nil
 }
 
 type MockTaskDurationEstimator struct{}
@@ -227,4 +266,81 @@ func TestSpawnHosts(t *testing.T) {
 
 	})
 
+}
+
+func TestScheduleDistro(t *testing.T) {
+	Convey("When scheduling a distro", t, func() {
+
+		distroId := "test-distro"
+		projectName := "test-project"
+		buildVariantName := "test-buildvariant"
+
+		runnableTasks := []task.Task{}
+		projectTaskDurations := model.ProjectTaskDurations{map[string]*model.BuildVariantTaskDurations{}}
+		bvTaskDurations := model.BuildVariantTaskDurations{map[string]*model.TaskDurations{}}
+		taskDurations := model.TaskDurations{map[string]time.Duration{}}
+
+		schedulerInstance := &Scheduler{
+			schedulerTestConf,
+			&MockTaskFinder{},
+			&MockTaskPrioritizer{},
+			&MockTaskDurationEstimator{},
+			&MockTaskQueuePersister{},
+			&MockHostAllocator{},
+		}
+		Convey("if there are tasks to be scheduled, then the Scheduler should"+
+			" prioritize them", func() {
+			var totalDuration time.Duration
+			for i := 9; i >= 0; i-- {
+				displayName := fmt.Sprintf("task%v", i)
+
+				newTask := task.Task{
+					Project:             projectName,
+					BuildVariant:        buildVariantName,
+					DisplayName:         displayName,
+					RevisionOrderNumber: i,
+				}
+				runnableTasks = append(runnableTasks, newTask)
+				duration := time.Duration(i) * time.Minute
+				taskDurations.TaskDurationByDisplayName[displayName] = duration
+
+				totalDuration += duration
+			}
+			bvTaskDurations.TaskDurationByBuildVariant[buildVariantName] = &taskDurations
+			projectTaskDurations.TaskDurationByProject[projectName] = &bvTaskDurations
+
+			res := schedulerInstance.scheduleDistro(distroId, runnableTasks, projectTaskDurations)
+			So(res.err, ShouldBeNil)
+			So(res.distroId, ShouldEqual, distroId)
+			So(len(res.taskQueueItem), ShouldEqual, 10)
+
+			// ensure that the prioritizer put them in the correct order by revision order number
+			for i, queueItem := range res.taskQueueItem {
+				So(queueItem.RevisionOrderNumber, ShouldEqual, i)
+			}
+			So(res.schedulerEvent.ExpectedDuration, ShouldEqual, totalDuration)
+		})
+		Convey("if one of the scheduler's functions returns an error, it should be returned in"+
+			" the result", func() {
+			displayName := fmt.Sprintf("task%v", 1)
+
+			newTask := task.Task{
+				Priority:            -1,
+				Project:             projectName,
+				BuildVariant:        buildVariantName,
+				DisplayName:         displayName,
+				RevisionOrderNumber: 1,
+			}
+			runnableTasks = append(runnableTasks, newTask)
+			duration := time.Duration(1) * time.Minute
+			taskDurations.TaskDurationByDisplayName[displayName] = duration
+
+			bvTaskDurations.TaskDurationByBuildVariant[buildVariantName] = &taskDurations
+			projectTaskDurations.TaskDurationByProject[projectName] = &bvTaskDurations
+
+			res := schedulerInstance.scheduleDistro(distroId, runnableTasks, projectTaskDurations)
+			So(res.err, ShouldNotBeNil)
+			fmt.Println(res.err)
+		})
+	})
 }
