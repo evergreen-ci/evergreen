@@ -214,7 +214,7 @@ func (jiraHandler *JiraHandler) JQLSearchAll(query string) ([]JiraTicket, error)
 	allIssues := []JiraTicket{}
 
 	index := 0
-	ticketsLeft := math.MaxInt64
+	ticketsLeft := math.MaxInt32
 
 	for ticketsLeft > 0 {
 		nextResult, err := jiraHandler.JQLSearch(query, index, -1)
