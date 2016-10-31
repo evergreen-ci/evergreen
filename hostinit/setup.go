@@ -137,6 +137,15 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		return false, fmt.Errorf("error checking instance status of host %v: %v", host.Id, err)
 	}
 
+	// if the host has failed, terminate it and return that this host is not ready
+	if hostStatus == cloud.StatusFailed {
+		err = cloudMgr.TerminateInstance(host)
+		if err != nil {
+			return false, err
+		}
+		return false, nil
+	}
+
 	// if the host isn't up yet, we can't do anything
 	if hostStatus != cloud.StatusRunning {
 		return false, nil
