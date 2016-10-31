@@ -485,8 +485,10 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 		}(i)
 	}
 
+	done := make(chan struct{})
 	var hasErrors error
 	go func() {
+		defer close(done)
 		for e := range errs {
 			hasErrors = fmt.Errorf("some files could not be downloaded successfully.")
 			fmt.Println("error: ", e)
@@ -494,6 +496,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 	}()
 	wg.Wait()
 	close(errs)
+	<-done
 
 	return hasErrors
 }
