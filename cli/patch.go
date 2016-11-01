@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -88,6 +89,9 @@ type ListCommand struct {
 // ValidateCommand is used to verify that a config file is valid.
 type ValidateCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
+	Positional struct {
+		FileName string `positional-arg-name:"filename" description:"path to an evergreen project file"`
+	} `positional-args:"1" required:"yes"`
 }
 
 // CancelPatchCommand is used to cancel a patch.
@@ -205,16 +209,17 @@ func (rmc *RemoveModuleCommand) Execute(args []string) error {
 }
 
 func (vc *ValidateCommand) Execute(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("must supply path to a file to validate.")
+	if vc.Positional.FileName == "" {
+		return errors.New("must supply path to a file to validate.")
 	}
+
 	ac, _, _, err := getAPIClients(vc.GlobalOpts)
 	if err != nil {
 		return err
 	}
 	notifyUserUpdate(ac)
 
-	confFile, err := ioutil.ReadFile(args[0])
+	confFile, err := ioutil.ReadFile(vc.Positional.FileName)
 	if err != nil {
 		return err
 	}
