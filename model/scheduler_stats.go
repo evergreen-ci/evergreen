@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -31,11 +32,11 @@ type Bucket struct {
 
 // AvgBucket is one element in the results of a list of buckets that are created from the agg query.
 type AvgBucket struct {
-	Id          int           `bson:"_id" json:"index"`
-	AverageTime time.Duration `bson:"a" json:"avg"`
-	NumberTasks int           `bson:"n" json:"number_tasks"`
-	Start       time.Time     `json:"start_time"`
-	End         time.Time     `json:"end_time"`
+	Id          int           `bson:"_id" json:"index" csv:"index"`
+	AverageTime time.Duration `bson:"a" json:"avg" csv:"avg_time"`
+	NumberTasks int           `bson:"n" json:"number_tasks" csv:"number_tasks"`
+	Start       time.Time     `json:"start_time" csv:"start_time"`
+	End         time.Time     `json:"end_time" csv:"end_time"`
 }
 
 // FrameBounds is a set of information about the inputs of buckets
@@ -281,6 +282,12 @@ func CreateAllHostUtilizationBuckets(daysBack, granularity int) ([]HostUtilizati
 // start time for that time frame.
 // One thing to note is that the average time is in milliseconds, not nanoseconds and must be converted.
 func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) {
+
+	// error out if the distro does not exist
+	d, err := distro.FindOne(distro.ById(distroId))
+	if err != nil {
+		return nil, err
+	}
 	intBucketSize := util.FromNanoseconds(bounds.BucketSize)
 	buckets := AvgBuckets{}
 	pipeline := []bson.M{

@@ -81,6 +81,7 @@ func WriteCSVResponse(w http.ResponseWriter, data interface{}) {
 		w.Write(stringBytes)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 	csvWriter := csv.NewWriter(w)
 	csvWriter.WriteAll(csvRecords)
 	return
