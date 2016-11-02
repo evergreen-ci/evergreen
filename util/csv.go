@@ -66,9 +66,16 @@ func convertDataToCSVRecord(data interface{}) ([][]string, error) {
 	}
 }
 
-// WriteToCSV takes in an interface that is a slice or an array and converts the struct to csv for
+// WriteToCSVResponse takes in an interface that is a slice or an array and converts the struct to csv for
 // fields that have the the csv struct tag.
-func WriteCSVResponse(w http.ResponseWriter, data interface{}) {
+func WriteCSVResponse(w http.ResponseWriter, status int, data interface{}) {
+	// if the status is not okay then don't convert the data to csv.
+	if status != http.StatusOK {
+		bytes := []byte(fmt.Sprintf("%v", data))
+		w.WriteHeader(500)
+		w.Write(bytes)
+		return
+	}
 
 	w.Header().Add("Content-Type", "application/csv")
 	w.Header().Add("Connection", "close")

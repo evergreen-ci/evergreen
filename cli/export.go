@@ -14,6 +14,7 @@ var (
 
 	HostUtilizationStat     = "host"
 	AverageScheduledToStart = "avg"
+	OptimalMakespanStat     = "makespan"
 )
 
 // ExportCommand is used to export statistics
@@ -24,9 +25,11 @@ type ExportCommand struct {
 	Granularity string `long:"granularity" description:"set the granularity, default hour, options are 'second', 'minute', 'hour'"`
 	Days        int    `long:"days" description:"set the number of days, default 1, max of 30 days back"`
 	StatsType   string `long:"stat" 
-						description:"include the type of stats - 'host' for host utilization, -'avg' for average scheduled to start  times" required:"true"`
-	Filepath string `long:"filepath" description:"path to directory where csv file is to be saved"`
+						description:"include the type of stats - 'host' for host utilization,'avg' for average scheduled to start times, 'makespan' for makespan ratios" 
+						required:"true"`
 	DistroId string `long:"distro" description:"distro id - required for average scheduled to start times"`
+	Number   int    `long:"number" description:"set the number of revisions (for getting build makespan), default 100"`
+	Filepath string `long:"filepath" description:"path to directory where csv file is to be saved"`
 }
 
 func (ec *ExportCommand) Execute(args []string) error {
@@ -48,6 +51,11 @@ func (ec *ExportCommand) Execute(args []string) error {
 	if ec.Days == 0 {
 		ec.Days = 1
 	}
+
+	if ec.Number == 0 {
+		ec.Number = 100
+	}
+
 	isCSV := !ec.JSON
 
 	var body io.ReadCloser
@@ -73,6 +81,11 @@ func (ec *ExportCommand) Execute(args []string) error {
 			return err
 		}
 		body, err = rc.GetAverageSchedulerStats(granSeconds, ec.Days, ec.DistroId, isCSV)
+		if err != nil {
+			return err
+		}
+	case OptimalMakespanStat:
+		body, err = rc.GetOptimalMakespans(ec.Number, isCSV)
 		if err != nil {
 			return err
 		}

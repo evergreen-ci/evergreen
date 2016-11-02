@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -65,14 +64,6 @@ type dependencyPath struct {
 	TaskId    string
 	TotalTime time.Duration
 	Tasks     []string
-}
-
-// MakespanRatio represents the predicted and actual makespan for a given build
-// and includes the build id associated with the makespan ratio.
-type MakespanRatio struct {
-	BuildId           string
-	PredictedMakespan dependencyPath
-	ActualMakespan    time.Duration
 }
 
 func addBucketTime(duration time.Duration, resource ResourceInfo, bucket Bucket) Bucket {
@@ -381,38 +372,6 @@ func CalculateActualMakespan(tasks []task.Task) time.Duration {
 		}
 	}
 	return maxFinish.Sub(minStart)
-}
-
-// GetMakespanRatios returns a list of MakespanRatio structs that contain
-// the actual and predicted makespans for a certain number of recent builds.
-func GetMakespanRatios(numberBuilds int) ([]MakespanRatio, error) {
-	builds, err := build.Find(build.ByRecentlyFinished(numberBuilds))
-	if err != nil {
-		return nil, err
-	}
-	makespanRatios := []MakespanRatio{}
-	for _, b := range builds {
-		makespanRatio := MakespanRatio{
-			BuildId: b.Id,
-		}
-		// get tasks for the build
-		tasks, err := task.Find(task.ByBuildId(b.Id))
-		if err != nil {
-			return nil, err
-		}
-		if len(tasks) == 0 {
-			return nil, fmt.Errorf("no tasks returned for build %v", b.Id)
-		}
-		depPath := FindPredictedMakespan(tasks)
-		makespanRatio.PredictedMakespan = depPath
-
-		// find the actual makespan
-		makespan := CalculateActualMakespan(tasks)
-		makespanRatio.ActualMakespan = makespan
-
-		makespanRatios = append(makespanRatios, makespanRatio)
-	}
-	return makespanRatios, nil
 }
 
 // hasTaskId returns true if the dependency list has the task

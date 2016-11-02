@@ -101,6 +101,7 @@ func AttachRESTHandler(root *mux.Router, service restAPIService) http.Handler {
 	rtr.HandleFunc("/tasks/{task_name}/history", rest.loadCtx(rest.getTaskHistory)).Name("task_history").Methods("GET")
 	rtr.HandleFunc("/scheduler/host_utilization", rest.loadCtx(rest.getHostUtilizationStats)).Name("host_utilization").Methods("GET")
 	rtr.HandleFunc("/scheduler/distro/{distro_id}/stats", rest.loadCtx(rest.getAverageSchedulerStats)).Name("avg_stats").Methods("GET")
+	rtr.HandleFunc("/scheduler/makespans", rest.loadCtx(rest.getOptimalAndActualMakespans)).Name("makespan").Methods("GET")
 
 	return root
 

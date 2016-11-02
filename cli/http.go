@@ -433,11 +433,29 @@ func (ac *APIClient) GetHostUtilizationStats(granularity, daysBack int, csv bool
 	return resp.Body, nil
 }
 
-// GetHostUtilizationStats takes in an integer granularity, which is in seconds, and the number of days back and makes a
-// REST API call to get host utilization statistics.
+// GetAverageSchedulerStats takes in an integer granularity, which is in seconds, the number of days back, and a distro id
+// and makes a REST API call to get host utilization statistics.
 func (ac *APIClient) GetAverageSchedulerStats(granularity, daysBack int, distroId string, csv bool) (io.ReadCloser, error) {
 	resp, err := ac.get(fmt.Sprintf("scheduler/distro/%v/stats?granularity=%v&numberDays=%v&csv=%v",
 		distroId, granularity, daysBack, csv), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("not found")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+
+	return resp.Body, nil
+}
+
+// GetOptimalMakespan takes in an integer granularity, which is in seconds, and the number of days back and makes a
+// REST API call to get the optimal and actual makespan for builds going back however many days.
+func (ac *APIClient) GetOptimalMakespans(numberBuilds int, csv bool) (io.ReadCloser, error) {
+	resp, err := ac.get(fmt.Sprintf("scheduler/makespans?number=%v&csv=%v", numberBuilds, csv), nil)
 	if err != nil {
 		return nil, err
 	}
