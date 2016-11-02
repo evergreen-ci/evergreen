@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/util"
 )
 
 type CloudStatus int
@@ -68,7 +69,7 @@ type CloudManager interface {
 
 	// SpawnInstance attempts to create a new host by requesting one from the
 	// provider's API.
-	SpawnInstance(*distro.Distro, string, bool) (*host.Host, error)
+	SpawnInstance(*distro.Distro, HostOptions) (*host.Host, error)
 
 	// CanSpawn indicates if this provider is capable of creating new instances
 	// with SpawnInstance(). If this provider doesn't support spawning new
@@ -111,6 +112,55 @@ type CloudManager interface {
 // what a span of time on a given host costs.
 type CloudCostCalculator interface {
 	CostForDuration(host *host.Host, start time.Time, end time.Time) (float64, error)
+}
+
+// HostOptions is a struct of options that are commonly passed around when creating a
+// new cloud host.
+type HostOptions struct {
+	ProvisionOptions   *host.ProvisionOptions
+	ExpirationDuration *time.Duration
+	UserName           string
+	UserData           string
+	UserHost           bool
+}
+
+// NewIntent creates an IntentHost using the given host settings. An IntentHost is a host that
+// does not exist yet but is intended to be picked up by the hostinit package and started. This
+// function takes distro information, the name of the instance, the provider of the instance and
+// a HostOptions and returns an IntentHost.
+func NewIntent(d distro.Distro, instanceName, provider string, options HostOptions) *host.Host {
+
+	creationTime := time.Now()
+	// proactively write all possible information pertaining
+	// to the host we want to create. this way, if we are unable
+	// to start it or record its instance id, we have a way of knowing
+	// something went wrong - and what
+	intentHost := &host.Host{
+		Id:               instanceName,
+		User:             d.User,
+		Distro:           d,
+		Tag:              instanceName,
+		CreationTime:     creationTime,
+		Status:           evergreen.HostUninitialized,
+		TerminationTime:  util.ZeroTime,
+		TaskDispatchTime: util.ZeroTime,
+		Provider:         provider,
+		StartedBy:        options.UserName,
+		UserHost:         options.UserHost,
+	}
+
+	if options.ExpirationDuration != nil {
+		intentHost.ExpirationTime = creationTime.Add(*options.ExpirationDuration)
+	}
+	if options.ProvisionOptions != nil {
+		intentHost.ProvisionOptions = options.ProvisionOptions
+	}
+	if options.UserData != "" {
+		intentHost.UserData = options.UserData
+	}
+
+	return intentHost
+
 }
 
 //CloudHost is a provider-agnostic host object that delegates methods

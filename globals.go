@@ -28,11 +28,6 @@ const (
 	HostStatusSuccess = "success"
 	HostStatusFailed  = "failed"
 
-	SpawnRequestInit       = "initializing"
-	SpawnRequestReady      = "ready"
-	SpawnRequestUnusable   = "unusable"
-	SpawnRequestTerminated = "terminated"
-
 	TaskStarted      = "started"
 	TaskUndispatched = "undispatched"
 	TaskDispatched   = "dispatched"
@@ -63,7 +58,6 @@ const (
 	PushLogSuccess = "success"
 
 	HostTypeStatic = "static"
-	HostTypeEC2    = "ec2"
 
 	CompileStage = "compile"
 	TestStage    = "single_test"

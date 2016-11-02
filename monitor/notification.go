@@ -174,6 +174,10 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification,
 	evergreen.Logger.Logf(slogger.INFO, "Building warnings for hosts taking a long"+
 		" time to provision...")
 
+	if settings.Notify.SMTP == nil {
+		return []notification{}, fmt.Errorf("no notification emails configured")
+	}
+
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-slowProvisioningThreshold)
 	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))

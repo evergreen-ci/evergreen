@@ -94,7 +94,7 @@ func (init *HostInit) setupReadyHosts() error {
 		wg.Add(1)
 		go func(h host.Host) {
 
-			if err := init.ProvisionHost(&h, ProvisionOptions{}); err != nil {
+			if err := init.ProvisionHost(&h); err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v", h.Id, err)
 
 				// notify the admins of the failure
@@ -143,7 +143,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		return false, nil
+		return false, fmt.Errorf("host %v terminated due to failure before setup", host.Id)
 	}
 
 	// if the host isn't up yet, we can't do anything
@@ -325,22 +325,8 @@ func (init *HostInit) expandScript(s string) (string, error) {
 	return script, err
 }
 
-//
-type ProvisionOptions struct {
-	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
-	// be placed onto the host after startup.
-	LoadCLI bool
-
-	// TaskId if non-empty will trigger the CLI tool to fetch source and artifacts for the given task.
-	// Ignored if LoadCLI is false.
-	TaskId string
-
-	// Owner is the user associated with the host used to populate any necessary metadata.
-	Owner *user.DBUser
-}
-
 // Provision the host, and update the database accordingly.
-func (init *HostInit) ProvisionHost(h *host.Host, opts ProvisionOptions) error {
+func (init *HostInit) ProvisionHost(h *host.Host) error {
 
 	// run the setup script
 	evergreen.Logger.Logf(slogger.INFO, "Setting up host %v", h.Id)
@@ -370,14 +356,16 @@ func (init *HostInit) ProvisionHost(h *host.Host, opts ProvisionOptions) error {
 
 	evergreen.Logger.Logf(slogger.INFO, "Setup complete for host %v", h.Id)
 
-	if opts.LoadCLI && opts.Owner != nil {
+	if h.ProvisionOptions != nil &&
+		h.ProvisionOptions.LoadCLI &&
+		h.ProvisionOptions.OwnerId != "" {
 		evergreen.Logger.Logf(slogger.INFO, "Uploading client binary to host %v", h.Id)
-		lcr, err := init.LoadClient(h, opts.Owner)
+		lcr, err := init.LoadClient(h)
 		if err != nil {
 			evergreen.Logger.Logf(slogger.ERROR, "Failed to load client binary onto host %v: %v", h.Id, err)
-		} else if err == nil && len(opts.TaskId) > 0 {
-			evergreen.Logger.Logf(slogger.INFO, "Fetching data for task %v onto host %v", opts.TaskId, h.Id)
-			err = init.fetchRemoteTaskData(opts.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
+		} else if err == nil && len(h.ProvisionOptions.TaskId) > 0 {
+			evergreen.Logger.Logf(slogger.INFO, "Fetching data for task %v onto host %v", h.ProvisionOptions.TaskId, h.Id)
+			err = init.fetchRemoteTaskData(h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
 			evergreen.Logger.Logf(slogger.ERROR, "Failed to fetch data onto host %v: %v", h.Id, err)
 		}
 	}
@@ -424,12 +412,24 @@ type LoadClientResult struct {
 // settings onto the host, and makes the binary appear in the $PATH when the user logs in.
 // If successful, returns an instance of LoadClientResult which contains the paths where the
 // binary and config file were written to.
-func (init *HostInit) LoadClient(target *host.Host, user *user.DBUser) (*LoadClientResult, error) {
+func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	// Make sure we have the binary we want to upload - if it hasn't been built for the given
 	// architecture, fail early
 	cliBinaryPath, err := LocateCLIBinary(init.Settings, target.Distro.Arch)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't locate CLI binary for upload: %v", err)
+		return nil, fmt.Errorf("couldn't locate CLI binary for upload: %v", err)
+	}
+	if target.ProvisionOptions == nil {
+		return nil, fmt.Errorf("ProvisionOptions is nil")
+	}
+	if target.ProvisionOptions.OwnerId == "" {
+		return nil, fmt.Errorf("OwnerId not set")
+	}
+
+	// get the information about the owner of the host
+	owner, err := user.FindOne(user.ById(target.ProvisionOptions.OwnerId))
+	if err != nil {
+		return nil, fmt.Errorf("couldn't fetch owner %v for host: %v", target.ProvisionOptions.OwnerId, err)
 	}
 
 	// 1. mkdir the destination directory on the host,
@@ -490,8 +490,8 @@ func (init *HostInit) LoadClient(target *host.Host, user *user.DBUser) (*LoadCli
 
 	// 4. Write a settings file for the user that owns the host, and scp it to the directory
 	outputStruct := model.CLISettings{
-		User:          user.Id,
-		APIKey:        user.APIKey,
+		User:          owner.Id,
+		APIKey:        owner.APIKey,
 		APIServerHost: init.Settings.ApiUrl + "/api",
 		UIServerHost:  init.Settings.Ui.Url,
 	}

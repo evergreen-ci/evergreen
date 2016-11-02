@@ -151,25 +151,15 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 
-	// Start a background goroutine that handles host creation/setup.
-	go func() {
-		host, err := spawner.CreateHost(opts, authedUser)
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
-			mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
-				err.Error(), notify.ConstructMailer(uis.Settings.Notify))
-			if mailErr != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
-			}
-			if host != nil { // a host was inserted - we need to clean it up
-				dErr := host.SetDecommissioned()
-				if err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "Failed to set host %v decommissioned: %v", host.Id, dErr)
-				}
-			}
-			return
+	err := spawner.CreateHost(opts, authedUser)
+	if err != nil {
+		evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
+		mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
+			err.Error(), notify.ConstructMailer(uis.Settings.Notify))
+		if mailErr != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
 		}
-	}()
+	}
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host spawned"))
 	uis.WriteJSON(w, http.StatusOK, "Host successfully spawned")

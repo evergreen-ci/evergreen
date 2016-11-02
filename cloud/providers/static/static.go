@@ -43,8 +43,7 @@ func (s *Settings) Validate() error {
 	return nil
 }
 
-func (staticMgr *StaticManager) SpawnInstance(distro *distro.Distro, owner string,
-	userHost bool) (*host.Host, error) {
+func (staticMgr *StaticManager) SpawnInstance(distro *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	return nil, fmt.Errorf("cannot start new instances with static provider")
 }
 

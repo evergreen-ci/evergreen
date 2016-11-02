@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
@@ -114,7 +113,7 @@ func (*EC2Manager) GetSettings() cloud.ProviderSettings {
 	return &EC2ProviderSettings{}
 }
 
-func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != OnDemandProviderName {
 		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, d.Id, d.Provider)
 	}
@@ -141,20 +140,8 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, owner string, us
 	// to the host we want to create. this way, if we are unable
 	// to start it or record its instance id, we have a way of knowing
 	// something went wrong - and what
-	intentHost := &host.Host{
-		Id:               instanceName,
-		User:             d.User,
-		Distro:           *d,
-		Tag:              instanceName,
-		CreationTime:     time.Now(),
-		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
-		Provider:         evergreen.HostTypeEC2,
-		InstanceType:     ec2Settings.InstanceType,
-		StartedBy:        owner,
-		UserHost:         userHost,
-	}
+	intentHost := cloud.NewIntent(*d, instanceName, OnDemandProviderName, hostOpts)
+	intentHost.InstanceType = ec2Settings.InstanceType
 
 	// record this 'intent host'
 	if err := intentHost.Insert(); err != nil {

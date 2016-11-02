@@ -133,7 +133,7 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 
 // IsUninitialized is a query that returns all uninitialized Evergreen hosts.
 var IsUninitialized = db.Query(
-	bson.M{StatusKey: evergreen.HostUninitialized, StartedByKey: evergreen.User},
+	bson.M{StatusKey: evergreen.HostUninitialized},
 )
 
 // ByUnproductiveSince produces a query that returns all hosts that

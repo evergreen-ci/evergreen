@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/mitchellh/mapstructure"
 	"gopkg.in/mgo.v2/bson"
@@ -210,7 +209,7 @@ func (_ *DockerManager) GetSettings() cloud.ProviderSettings {
 }
 
 // SpawnInstance creates and starts a new Docker container
-func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	var err error
 
 	if d.Provider != ProviderName {
@@ -280,33 +279,23 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, owner string, us
 		evergreen.Logger.Logf(slogger.ERROR, "Error with docker container '%v': %v", newContainer.ID, err)
 		return nil, err
 	}
-	hostStr := fmt.Sprintf("%s:%s", settings.BindIp, hostPort)
 
+	hostStr := fmt.Sprintf("%s:%s", settings.BindIp, hostPort)
 	// Add host info to db
 	instanceName := "container-" +
 		fmt.Sprintf("%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-	host := &host.Host{
-		Id:               newContainer.ID,
-		Host:             hostStr,
-		User:             d.User,
-		Tag:              instanceName,
-		Distro:           *d,
-		CreationTime:     newContainer.Created,
-		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
-		Provider:         ProviderName,
-		StartedBy:        owner,
-	}
 
-	err = host.Insert()
+	intentHost := cloud.NewIntent(*d, instanceName, ProviderName, hostOpts)
+	intentHost.Host = hostStr
+
+	err = intentHost.Insert()
 	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to insert new host '%s': %v", host.Id, err)
+		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to insert new host '%s': %v", intentHost.Id, err)
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted new host '%v' for distro '%v'", host.Id, d.Id)
+	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted new host '%v' for distro '%v'", intentHost.Id, d.Id)
 
-	return host, nil
+	return intentHost, nil
 }
 
 // getStatus is a helper function which returns the enum representation of the status

@@ -88,26 +88,16 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Start a background goroutine that handles host creation/setup.
-	go func() {
-		host, err := spawner.CreateHost(opts, user)
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, err.Error())
-			mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),
-				notify.ConstructMailer(as.Settings.Notify))
-			if mailErr != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
-			}
-			if host != nil { // a host was inserted - we need to clean it up
-				dErr := host.SetDecommissioned()
-				if err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "Failed to set host %v decommissioned: %v", host.Id, dErr)
-				}
-			}
-			return
+	err = spawner.CreateHost(opts, user)
+	if err != nil {
+		evergreen.Logger.Logf(slogger.ERROR, err.Error())
+		mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),
+			notify.ConstructMailer(as.Settings.Notify))
+		if mailErr != nil {
+			evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
 		}
-
-	}()
+		return
+	}
 
 	as.WriteJSON(w, http.StatusOK, "")
 }

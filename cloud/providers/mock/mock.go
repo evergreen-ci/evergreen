@@ -14,11 +14,11 @@ const ProviderName = "mock"
 
 type MockCloudManager struct{}
 
-func (staticMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+func (staticMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	return &host.Host{
 		Id:        util.RandomString(),
 		Distro:    *distro,
-		StartedBy: owner,
+		StartedBy: hostOpts.UserName,
 	}, nil
 }
 

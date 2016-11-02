@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -73,7 +72,7 @@ func (_ *DigitalOceanManager) GetSettings() cloud.ProviderSettings {
 }
 
 //SpawnInstance creates a new droplet for the given distro.
-func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != ProviderName {
 		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, d.Id, d.Provider)
 	}
@@ -89,18 +88,8 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, owner string
 
 	instanceName := "droplet-" +
 		fmt.Sprintf("%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-	intentHost := &host.Host{
-		Id:               instanceName,
-		User:             d.User,
-		Distro:           *d,
-		Tag:              instanceName,
-		CreationTime:     time.Now(),
-		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
-		Provider:         ProviderName,
-		StartedBy:        owner,
-	}
+
+	intentHost := cloud.NewIntent(*d, instanceName, ProviderName, hostOpts)
 
 	dropletReq := &digo.Droplet{
 		SizeId:   digoSettings.SizeId,

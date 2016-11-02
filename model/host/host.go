@@ -25,8 +25,10 @@ type Host struct {
 	// true if the host has been set up properly
 	Provisioned bool `bson:"provisioned" json:"provisioned"`
 
+	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
+
 	// the task that is currently running on the host
-	RunningTask string `bson:"running_task" json:"running_task"`
+	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 
 	// the pid of the task that is currently running on the host
 	Pid string `bson:"pid" json:"pid"`
@@ -57,6 +59,20 @@ type Host struct {
 
 	// if set, the time at which the host first became unreachable
 	UnreachableSince time.Time `bson:"unreachable_since,omitempty" json:"unreachable_since"`
+}
+
+// ProvisionOptions is struct containing options about how a new host should be set up.
+type ProvisionOptions struct {
+	// LoadCLI indicates (if set) that while provisioning the host, the CLI binary should
+	// be placed onto the host after startup.
+	LoadCLI bool `bson:"load_cli" json:"load_cli"`
+
+	// TaskId if non-empty will trigger the CLI tool to fetch source and artifacts for the given task.
+	// Ignored if LoadCLI is false.
+	TaskId string `bson:"task_id" json:"task_id"`
+
+	// Owner is the user associated with the host used to populate any necessary metadata.
+	OwnerId string `bson:"owner_id" json:"owner_id"`
 }
 
 // IdleTime returns how long has this host been idle

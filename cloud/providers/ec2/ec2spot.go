@@ -215,7 +215,7 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string, userHost bool) (*host.Host, error) {
+func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != SpotProviderName {
 		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, d.Id, d.Provider)
 	}
@@ -237,22 +237,8 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, owner string
 	}
 
 	instanceName := generateName(d.Id)
-	intentHost := &host.Host{
-		Id:               instanceName,
-		User:             d.User,
-		Distro:           *d,
-		Tag:              instanceName,
-		CreationTime:     time.Now(),
-		Status:           evergreen.HostUninitialized,
-		TerminationTime:  util.ZeroTime,
-		TaskDispatchTime: util.ZeroTime,
-		Provider:         SpotProviderName,
-		InstanceType:     ec2Settings.InstanceType,
-		RunningTask:      "",
-		Provisioned:      false,
-		StartedBy:        owner,
-		UserHost:         userHost,
-	}
+	intentHost := cloud.NewIntent(*d, instanceName, SpotProviderName, hostOpts)
+	intentHost.InstanceType = ec2Settings.InstanceType
 
 	// record this 'intent host'
 	if err := intentHost.Insert(); err != nil {

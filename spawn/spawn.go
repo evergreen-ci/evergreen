@@ -9,12 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -127,12 +126,34 @@ func (sm Spawn) Validate(so Options) error {
 }
 
 // CreateHost spawns a host with the given options.
-func (sm Spawn) CreateHost(so Options, owner *user.DBUser) (*host.Host, error) {
+func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.Distro))
 	if err != nil {
-		return nil, err
+		return err
+	}
+	// add any extra user-specified data into the setup script
+	if d.UserData.File != "" {
+		userDataCmd := fmt.Sprintf("echo \"%v\" > %v\n",
+			strings.Replace(so.UserData, "\"", "\\\"", -1), d.UserData.File)
+		// prepend the setup script to add the userdata file
+		if strings.HasPrefix(d.Setup, "#!") {
+			firstLF := strings.Index(d.Setup, "\n")
+			d.Setup = d.Setup[0:firstLF+1] + userDataCmd + d.Setup[firstLF+1:]
+		} else {
+			d.Setup = userDataCmd + d.Setup
+		}
+	}
+
+	// modify the setup script to add the user's public key
+	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
+
+	// replace expansions in the script
+	exp := command.NewExpansions(sm.settings.Expansions)
+	d.Setup, err = exp.ExpandString(d.Setup)
+	if err != nil {
+		return fmt.Errorf("expansions error: %v", err)
 	}
 
 	// fake out replacing spot instances with on-demand equivalents
@@ -143,98 +164,28 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) (*host.Host, error) {
 	// get the appropriate cloud manager
 	cloudManager, err := providers.GetCloudManager(d.Provider, sm.settings)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// spawn the host
-	h, err := cloudManager.SpawnInstance(d, so.UserName, true)
+	provisionOptions := &host.ProvisionOptions{
+		LoadCLI: true,
+		TaskId:  so.TaskId,
+		OwnerId: owner.Id,
+	}
+	expiration := DefaultExpiration
+	hostOptions := cloud.HostOptions{
+		ProvisionOptions:   provisionOptions,
+		UserName:           so.UserName,
+		ExpirationDuration: &expiration,
+		UserData:           so.UserData,
+		UserHost:           true,
+	}
+
+	_, err = cloudManager.SpawnInstance(d, hostOptions)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	// set the expiration time for the host
-	expireTime := h.CreationTime.Add(DefaultExpiration)
-	err = h.SetExpirationTime(expireTime)
-	if err != nil {
-		return h, evergreen.Logger.Errorf(slogger.ERROR, "error setting expiration on host %v: %v", h.Id, err)
-	}
-
-	// set the user data, if applicable
-	if so.UserData != "" {
-		err = h.SetUserData(so.UserData)
-		if err != nil {
-			return h, evergreen.Logger.Errorf(slogger.ERROR,
-				"Failed setting userData on host %v: %v", h.Id, err)
-		}
-	}
-
-	// create a hostinit to take care of setting up the host
-	init := &hostinit.HostInit{Settings: sm.settings}
-
-	// for making sure the host doesn't take too long to spawn
-	startTime := time.Now()
-
-	// spin until the host is ready for its setup script to be run
-	for {
-		// make sure we haven't been spinning for too long
-		if time.Now().Sub(startTime) > 15*time.Minute {
-			if err := h.SetDecommissioned(); err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "error decommissioning host %v: %v", h.Id, err)
-			}
-			return nil, fmt.Errorf("host took too long to come up")
-		}
-
-		time.Sleep(5000 * time.Millisecond)
-
-		evergreen.Logger.Logf(slogger.INFO, "Checking if host %v is up and ready", h.Id)
-
-		// see if the host is ready for its setup script to be run
-		ready, err := init.IsHostReady(h)
-		if err != nil {
-			if err := h.SetDecommissioned(); err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "error decommissioning host %v: %v", h.Id, err)
-			}
-			return nil, fmt.Errorf("error checking on host %v; decommissioning to save resources: %v",
-				h.Id, err)
-		}
-
-		// if the host is ready, move on to running the setup script
-		if ready {
-			break
-		}
-
-	}
-
-	evergreen.Logger.Logf(slogger.INFO, "Host %v is ready for its setup script to be run", h.Id)
-
-	// add any extra user-specified data into the setup script
-	if h.Distro.UserData.File != "" {
-		userDataCmd := fmt.Sprintf("echo \"%v\" > %v\n",
-			strings.Replace(so.UserData, "\"", "\\\"", -1), h.Distro.UserData.File)
-		// prepend the setup script to add the userdata file
-		if strings.HasPrefix(h.Distro.Setup, "#!") {
-			firstLF := strings.Index(h.Distro.Setup, "\n")
-			h.Distro.Setup = h.Distro.Setup[0:firstLF+1] + userDataCmd + h.Distro.Setup[firstLF+1:]
-		} else {
-			h.Distro.Setup = userDataCmd + h.Distro.Setup
-		}
-	}
-
-	// modify the setup script to add the user's public key
-	h.Distro.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, h.Distro.User)
-
-	// replace expansions in the script
-	exp := command.NewExpansions(init.Settings.Expansions)
-	h.Distro.Setup, err = exp.ExpandString(h.Distro.Setup)
-	if err != nil {
-		return nil, fmt.Errorf("expansions error: %v", err)
-	}
-
-	// provision the host
-	err = init.ProvisionHost(h, hostinit.ProvisionOptions{true, so.TaskId, owner})
-	if err != nil {
-		return nil, fmt.Errorf("error provisioning host %v: %v", h.Id, err)
-	}
-
-	return h, nil
+	return nil
 }
