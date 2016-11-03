@@ -391,7 +391,7 @@ func TestTaskSuccess(t *testing.T) {
 						printLogsForTask(testTask.Id)
 
 						Convey("all scripts in task should have been run successfully", func() {
-							So(scanLogsForTask(testTask.Id, "", "Executing script: echo \"predefined command!\""), ShouldBeTrue)
+							So(scanLogsForTask(testTask.Id, "", "Executing script with sh: echo \"predefined command!\""), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "", "predefined command!"), ShouldBeTrue)

@@ -21,11 +21,17 @@ var (
 		" file")
 )
 
+func SkipUnlessAllTests(t *testing.T, testName string) {
+	if !(*runIntegration) {
+		t.Skip(fmt.Sprintf("skipping %v because '--evergreen.all' is not specified...",
+			testName))
+	}
+}
+
 func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	testName string) {
-	if !(*runIntegration) {
-		t.Skip(fmt.Sprintf("Skipping integration test %v...", testName))
-	}
+
+	SkipUnlessAllTests(t, "integration test "+testName)
 
 	// make sure an override file is provided
 	if (*settingsOverride) == "" {

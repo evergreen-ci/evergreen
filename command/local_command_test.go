@@ -29,7 +29,7 @@ func TestLocalCommands(t *testing.T) {
 			// run the preparation stage, and make sure the replacements are
 			// correctly made
 			So(command.PrepToRun(expansions), ShouldBeNil)
-			So(command.CmdString, ShouldEqual, "one TWO /threefive")
+			So(command.CmdString, ShouldEqual, "one TWO \\threefive")
 
 		})
 
@@ -65,8 +65,8 @@ func TestLocalCommands(t *testing.T) {
 
 			stdout := &CacheLastWritten{}
 
-			evgHome := evergreen.FindEvergreenHome()
-			workingDir := filepath.Join(evgHome, "command/testdata")
+			workingDir, err := filepath.Abs(evergreen.FindEvergreenHome())
+			So(err, ShouldBeNil)
 
 			command := &LocalCommand{
 				CmdString:        "pwd",
@@ -81,8 +81,47 @@ func TestLocalCommands(t *testing.T) {
 
 		})
 
-	})
+		Convey("the specified shell should be used", func() {
+			for _, sh := range []string{"bash", "sh", "/bin/bash", "/bin/sh"} {
+				stdout := &CacheLastWritten{}
+				command := &LocalCommand{
+					Shell:     sh,
+					CmdString: "echo $0",
+					Stdout:    stdout,
+					Stderr:    ioutil.Discard,
+				}
 
+				So(command.Run(), ShouldBeNil)
+				So(string(stdout.LastWritten), ShouldEqual, sh+"\n")
+			}
+		})
+
+		Convey("if not specified, sh should be used", func() {
+			stdout := &CacheLastWritten{}
+			command := &LocalCommand{
+				CmdString: "echo $0",
+				Stdout:    stdout,
+				Stderr:    ioutil.Discard,
+			}
+
+			So(command.Run(), ShouldBeNil)
+			So(string(stdout.LastWritten), ShouldEqual, "sh\n")
+		})
+
+		Convey("when specified, local command can also use python", func() {
+			stdout := &CacheLastWritten{}
+			command := &LocalCommand{
+				Shell:     "python",
+				CmdString: "print('hello world')",
+				Stdout:    stdout,
+				Stderr:    ioutil.Discard,
+			}
+
+			So(command.Run(), ShouldBeNil)
+			So(string(stdout.LastWritten), ShouldEqual, "hello world\n")
+		})
+
+	})
 }
 
 func TestLocalCommandGroups(t *testing.T) {
@@ -118,7 +157,7 @@ func TestLocalCommandGroups(t *testing.T) {
 			// run the preparation step for the command group, make sure it is
 			// run for each command individually
 			So(cmdGroup.PrepToRun(), ShouldBeNil)
-			So(firstCommand.CmdString, ShouldEqual, "one/ TWO /three")
+			So(firstCommand.CmdString, ShouldEqual, "one\\ TWO \\three")
 			So(secondCommand.CmdString, ShouldEqual, "five")
 			So(thirdCommand.CmdString, ShouldEqual, "six seven")
 
@@ -165,8 +204,8 @@ func TestLocalScript(t *testing.T) {
 
 			stdout := &CacheLastWritten{}
 
-			evgHome := evergreen.FindEvergreenHome()
-			workingDir := filepath.Join(evgHome, "command/testdata")
+			workingDir, err := filepath.Abs(evergreen.FindEvergreenHome())
+			So(err, ShouldBeNil)
 
 			command := &LocalCommand{
 				CmdString:        "set -v\necho 'hi'\necho 'foo'\necho `pwd`",

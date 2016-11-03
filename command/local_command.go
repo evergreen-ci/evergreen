@@ -13,6 +13,7 @@ import (
 type LocalCommand struct {
 	CmdString        string
 	WorkingDirectory string
+	Shell            string
 	Environment      []string
 	ScriptMode       bool
 	Stdout           io.Writer
@@ -29,12 +30,16 @@ func (lc *LocalCommand) Run() error {
 }
 
 func (lc *LocalCommand) Start() error {
+	if lc.Shell == "" {
+		lc.Shell = "sh"
+	}
+
 	var cmd *exec.Cmd
 	if lc.ScriptMode {
-		cmd = exec.Command("sh")
+		cmd = exec.Command(lc.Shell)
 		cmd.Stdin = strings.NewReader(lc.CmdString)
 	} else {
-		cmd = exec.Command("sh", "-c", lc.CmdString)
+		cmd = exec.Command(lc.Shell, "-c", lc.CmdString)
 	}
 
 	// create the command, set the options

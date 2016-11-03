@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -103,6 +103,11 @@ type ShellExecCommand struct {
 	// exposing sensitive expansion parameters and keys.
 	Silent bool `mapstructure:"silent"`
 
+	// Shell describes the shell to execute the script contents
+	// with. Defaults to "sh", but users can customize to
+	// explicitly specify another shell.
+	Shell string `mapstructure:"shell"`
+
 	// Background, if set to true, prevents shell code/output from
 	// waiting for the script to complete and immediately returns
 	// to the caller
@@ -170,14 +175,20 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 		localCmd.WorkingDirectory = conf.WorkDir
 	}
 
+	if sec.Shell != "" {
+		localCmd.Shell = sec.Shell
+	}
+
 	err := localCmd.PrepToRun(conf.Expansions)
 	if err != nil {
 		return fmt.Errorf("Failed to apply expansions: %v", err)
 	}
 	if sec.Silent {
-		pluginLogger.LogExecution(slogger.INFO, "Executing script (source hidden)...")
+		pluginLogger.LogExecution(slogger.INFO, "Executing script with %s (source hidden)...",
+			localCmd.Shell)
 	} else {
-		pluginLogger.LogExecution(slogger.INFO, "Executing script: %v", localCmd.CmdString)
+		pluginLogger.LogExecution(slogger.INFO, "Executing script with %s: %v",
+			localCmd.Shell, localCmd.CmdString)
 	}
 
 	doneStatus := make(chan error)

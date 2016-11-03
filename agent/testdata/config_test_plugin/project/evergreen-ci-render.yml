@@ -24,6 +24,7 @@ functions:
   "predefined command test" :
      command: shell.exec
      params:
+       shell: "sh"
        script: |
          echo "predefined command!"
   "silent shell test" :

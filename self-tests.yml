@@ -13,10 +13,6 @@ functions:
     - command: git.get_project
       params:
         directory: src
-    - command: git.apply_patch
-      params:
-        directory: src
-
   "setup creds":
     command: shell.exec
     params:
@@ -360,6 +356,35 @@ tasks:
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
 
+- name: command
+  commands:
+    - func: "fetch source"
+    - command: shell.exec
+      type: test
+      params:
+        working_dir: src
+        script: |
+          if [ "Windows_NT" = "$OS" ]; then
+            set -o igncr
+          fi;
+          . ./set_gopath.sh
+          export EVGHOME=${EVGHOME_cmd}
+          mkfifo test_pipe
+          tee -a command.suite < test_pipe&
+          cd command
+          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} ./. > ../test_pipe
+    - command: shell.exec
+      <<: *ONLY_COVERAGE_VARIANTS
+      params:
+        working_dir: src
+        script: |
+          set -o verbose
+          mv command/coverage.out .
+    - func: "generate and upload coverage"
+      <<: *ONLY_COVERAGE_VARIANTS
+
+
+
 - name: ec2
   commands:
     - func: "start mongod"
@@ -594,7 +619,7 @@ tasks:
 
           cd builtin
           #TODO coverage reports for other model packages
-          for i in attach expansions git gotest s3 s3copy manifest; do 
+          for i in attach expansions git gotest s3 s3copy manifest shell; do
             echo "running $i suite"
             cd $i
             mkfifo $i.pipe
@@ -979,6 +1004,7 @@ tasks:
           mv validator/coverage.out .
     - func: "generate and upload coverage"
       <<: *ONLY_COVERAGE_VARIANTS
+
 
 buildvariants:
     - name: ubuntu

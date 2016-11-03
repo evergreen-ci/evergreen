@@ -8,11 +8,13 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestScpCommand(t *testing.T) {
+	testutil.SkipUnlessAllTests(t, "scp command tests")
 
 	Convey("With files to scp", t, func() {
 
