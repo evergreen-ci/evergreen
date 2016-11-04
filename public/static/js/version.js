@@ -116,7 +116,12 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     }
 
     $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0];
-    $scope.totalTimeMS = _.reduce(_.pluck(tasks, "time_taken"), function(x, y){return x+y}, 0) / nsPerMs;
+
+    var availableTasks = _.filter(tasks, function(t){
+      return +new Date(t.start_time) != +new Date(0);
+    })
+    
+    $scope.totalTimeMS = _.reduce(_.pluck(availableTasks, "time_taken"), function(x, y){return x+y}, 0) / nsPerMs;
   };
 
   $scope.getGridLink = function(bv, test) {
