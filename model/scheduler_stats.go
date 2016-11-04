@@ -284,7 +284,7 @@ func CreateAllHostUtilizationBuckets(daysBack, granularity int) ([]HostUtilizati
 func AverageStatistics(distroId string, bounds FrameBounds) (AvgBuckets, error) {
 
 	// error out if the distro does not exist
-	d, err := distro.FindOne(distro.ById(distroId))
+	_, err := distro.FindOne(distro.ById(distroId))
 	if err != nil {
 		return nil, err
 	}
