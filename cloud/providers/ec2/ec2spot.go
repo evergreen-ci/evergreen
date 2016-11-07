@@ -434,39 +434,15 @@ func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end tim
 	if strings.Contains(h.Distro.Arch, "windows") {
 		os = osWindows
 	}
-	cost := 0.0
-
-	// calculate cost for EBS
-	if len(instance.BlockDevices) > 0 {
-		volumeIds := []string{}
-		for _, bd := range instance.BlockDevices {
-			volumeIds = append(volumeIds, bd.EBS.VolumeId)
-		}
-		vols, err := ec2Handle.Volumes(volumeIds, nil)
-		if err != nil {
-			return 0, err
-		}
-		for _, v := range vols.Volumes {
-			// an amazon region is just the availability zone minus the final letter
-			region := v.AvailZone[0 : len(v.AvailZone)-1]
-			size, err := strconv.Atoi(v.Size)
-			if err != nil {
-				return 0, fmt.Errorf("reading volume size: %v", err)
-			}
-			p, err := ebsCost(&pkgEBSFetcher, region, size, end.Sub(start))
-			if err != nil {
-				return 0, fmt.Errorf("EBS volume %v: %v", v.VolumeId, err)
-			}
-			cost += p
-		}
+	ebsCost, err := blockDeviceCosts(ec2Handle, instance.BlockDevices, end.Sub(start))
+	if err != nil {
+		return 0, fmt.Errorf("calculating block device costs: %v", err)
 	}
-
 	spotCost, err := cloudManager.calculateSpotCost(instance, os, start, end)
 	if err != nil {
 		return 0, err
 	}
-	cost += spotCost
-	return cost, nil
+	return spotCost + ebsCost, nil
 }
 
 // calculateSpotCost is a helper for fetching spot price history and computing the

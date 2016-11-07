@@ -44,7 +44,7 @@ func TestCostForRange(t *testing.T) {
 				So(price, ShouldEqual, .375)
 			})
 		})
-		Convey("and a 120-min task that rang between the first three hours", func() {
+		Convey("and a 120-min task that ran between the first three hours", func() {
 			price := spotCostForRange(mins(30), mins(150), rates)
 			Convey("should cost .5 + .5 + .5", func() {
 				So(price, ShouldEqual, 1.5)
@@ -201,16 +201,122 @@ func TestEBSPriceCaching(t *testing.T) {
 	})
 }
 
+func TestOnDemandPriceAPITranslation(t *testing.T) {
+	Convey("With a set of OS types", t, func() {
+		Convey("Linux/UNIX should become Linux", func() {
+			So(osBillingName(osLinux), ShouldEqual, "Linux")
+		})
+		Convey("other OSes should stay the same", func() {
+			So(osBillingName(osSUSE), ShouldEqual, string(osSUSE))
+			So(osBillingName(osWindows), ShouldEqual, string(osWindows))
+		})
+	})
+
+	Convey("With a set of region names", t, func() {
+		Convey("the full region name should be returned", func() {
+			r, err := regionFullname("us-east-1")
+			So(err, ShouldBeNil)
+			So(r, ShouldEqual, "US East (N. Virginia)")
+			r, err = regionFullname("us-west-1")
+			So(err, ShouldBeNil)
+			So(r, ShouldEqual, "US West (N. California)")
+			r, err = regionFullname("us-west-2")
+			So(err, ShouldBeNil)
+			So(r, ShouldEqual, "US West (Oregon)")
+			Convey("but an unknown region will return an error", func() {
+				r, err = regionFullname("amazing")
+				So(err, ShouldNotBeNil)
+			})
+		})
+	})
+}
+
+type mockODPriceFetcher struct {
+	price float64
+	err   error
+}
+
+func (mpf *mockODPriceFetcher) FetchPrice(_ osType, _, _ string) (float64, error) {
+	if mpf.err != nil {
+		return 0, mpf.err
+	}
+	return mpf.price, nil
+}
+
+func TestOnDemandPriceCalculation(t *testing.T) {
+	Convey("With prices of $1.00/hr", t, func() {
+		pf := &mockODPriceFetcher{1.0, nil}
+		Convey("a half-hour task should cost 50¢", func() {
+			cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Minute*30)
+			So(err, ShouldBeNil)
+			So(cost, ShouldEqual, .50)
+		})
+		Convey("an hour task should cost $1", func() {
+			cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour)
+			So(err, ShouldBeNil)
+			So(cost, ShouldEqual, 1)
+		})
+		Convey("a two-hour task should cost $2", func() {
+			cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour*2)
+			So(err, ShouldBeNil)
+			So(cost, ShouldEqual, 2)
+		})
+	})
+	Convey("With prices of $0.00/hr", t, func() {
+		pf := &mockODPriceFetcher{0, nil}
+		Convey("onDemandPrice should return a 'not found' error", func() {
+			cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "not found")
+			So(cost, ShouldEqual, 0)
+		})
+	})
+	Convey("With an erroring PriceFetcher", t, func() {
+		pf := &mockODPriceFetcher{1, fmt.Errorf("bad thing")}
+		Convey("errors should be bubbled up", func() {
+			cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour*2)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "bad thing")
+			So(cost, ShouldEqual, 0)
+		})
+	})
+}
+
+func TestFetchOnDemandPricing(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestOnDemandPriceCaching")
+	Convey("With an empty cachedOnDemandPriceFetcher", t, func() {
+		pf := cachedOnDemandPriceFetcher{}
+		So(pf.prices, ShouldBeNil)
+		Convey("various prices in us-east-1 should be sane", func() {
+			c34x, err := pf.FetchPrice(osLinux, "c3.4xlarge", "us-east-1")
+			So(err, ShouldBeNil)
+			So(c34x, ShouldBeGreaterThan, .80)
+			c3x, err := pf.FetchPrice(osLinux, "c3.xlarge", "us-east-1")
+			So(err, ShouldBeNil)
+			So(c3x, ShouldBeGreaterThan, .20)
+			So(c34x, ShouldBeGreaterThan, c3x)
+			wc3x, err := pf.FetchPrice(osWindows, "c3.xlarge", "us-east-1")
+			So(err, ShouldBeNil)
+			So(wc3x, ShouldBeGreaterThan, .20)
+			So(wc3x, ShouldBeGreaterThan, c3x)
+
+			Convey("and prices should be cached", func() {
+				So(len(pf.prices), ShouldBeGreaterThan, 50)
+			})
+		})
+	})
+}
+
 /* This is an example of how the cost calculation functions work.
    This function can be uncommented to manually play with
 func TestCostForDuration(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpotPriceHistory")
-	m := &EC2SpotManager{}
+	m := &EC2Manager{}
 	m.Configure(testConfig)
-	h := &host.Host{Id: "sir-026vq2xn"}
+	h := &host.Host{Id: "i-359e91ac"}
 	h.Distro.Arch = "windows_amd64"
 	layout := "Jan 2, 2006 3:04:05 pm -0700"
-	start, err := time.Parse(layout, "Sep 8, 2016 11:18:22 am -0400")
+	start, err := time.Parse(layout, "Sep 8, 2016 11:00:22 am -0400")
 	if err != nil {
 		panic(err)
 	}
@@ -224,4 +330,9 @@ func TestCostForDuration(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println("PRICE", cost)
-} */
+	cost, err = m.CostForDuration(h, start, end)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("PRICE AGAIN", cost)
+}*/

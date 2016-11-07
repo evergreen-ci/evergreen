@@ -2,6 +2,7 @@ package ec2
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
@@ -362,4 +363,35 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 			"associated instances")
 	}
 	return host, resp, nil
+}
+
+// CostForDuration returns the cost of running a host between the given start and end times
+func (cloudManager *EC2Manager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
+	// sanity check
+	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
+		return 0, fmt.Errorf("task timing data is malformed")
+	}
+	// grab instance details from EC2
+	ec2Handle := getUSEast(*cloudManager.awsCredentials)
+	instance, err := getInstanceInfo(ec2Handle, h.Id)
+	if err != nil {
+		return 0, err
+	}
+	os := osLinux
+	if strings.Contains(h.Distro.Arch, "windows") {
+		os = osWindows
+	}
+	dur := end.Sub(start)
+	region := azToRegion(instance.AvailabilityZone)
+	iType := instance.InstanceType
+
+	ebsCost, err := blockDeviceCosts(ec2Handle, instance.BlockDevices, dur)
+	if err != nil {
+		return 0, fmt.Errorf("calculating block device costs: %v", err)
+	}
+	hostCost, err := onDemandCost(&pkgOnDemandPriceFetcher, os, iType, region, dur)
+	if err != nil {
+		return 0, err
+	}
+	return hostCost + ebsCost, nil
 }

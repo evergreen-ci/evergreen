@@ -75,6 +75,37 @@ func generateName(distroId string) string {
 		fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
+// regionFullname takes the API ID of amazon region and returns the
+// full region name. For instance, "us-west-1" becomes "US West (N. California)".
+// This is necessary as the On Demand pricing endpoint uses the full name, unlike
+// the rest of the API. THIS FUNCTION ONLY HANDLES U.S. REGIONS.
+func regionFullname(region string) (string, error) {
+	switch region {
+	case "us-east-1":
+		return "US East (N. Virginia)", nil
+	case "us-west-1":
+		return "US West (N. California)", nil
+	case "us-west-2":
+		return "US West (Oregon)", nil
+	}
+	return "", fmt.Errorf("region %v not supported for On Demand cost calculation", region)
+}
+
+// azToRegion takes an availability zone and returns the region id.
+func azToRegion(az string) string {
+	// an amazon region is just the availability zone minus the final letter
+	return az[:len(az)-1]
+}
+
+// returns the format of os name expected by EC2 On Demand billing data,
+// bucking the normal AWS API naming scheme.
+func osBillingName(os osType) string {
+	if os == osLinux {
+		return "Linux"
+	}
+	return string(os)
+}
+
 //makeBlockDeviceMapping takes the mount_points settings defined in the distro,
 //and converts them to ec2.BlockDeviceMapping structs which are usable by goamz.
 //It returns a non-nil error if any of the fields appear invalid.
@@ -350,6 +381,36 @@ func fetchEBSPricing() (map[string]float64, error) {
 	return pricePerRegion, nil
 }
 
+// blockDeviceCosts returns the total price of a slice of BlockDevices over the given duration
+// by using the EC2 API.
+func blockDeviceCosts(handle *ec2.EC2, devices []ec2.BlockDevice, dur time.Duration) (float64, error) {
+	cost := 0.0
+	if len(devices) > 0 {
+		volumeIds := []string{}
+		for _, bd := range devices {
+			volumeIds = append(volumeIds, bd.EBS.VolumeId)
+		}
+		vols, err := handle.Volumes(volumeIds, nil)
+		if err != nil {
+			return 0, err
+		}
+		for _, v := range vols.Volumes {
+			// an amazon region is just the availability zone minus the final letter
+			region := azToRegion(v.AvailZone)
+			size, err := strconv.Atoi(v.Size)
+			if err != nil {
+				return 0, fmt.Errorf("reading volume size: %v", err)
+			}
+			p, err := ebsCost(&pkgEBSFetcher, region, size, dur)
+			if err != nil {
+				return 0, fmt.Errorf("EBS volume %v: %v", v.VolumeId, err)
+			}
+			cost += p
+		}
+	}
+	return cost, nil
+}
+
 // ebsCost returns the cost of running an EBS block device for an amount of time in a given size and region.
 // EBS bills are charged in "GB/Month" units. We consider a month to be 30 days.
 func ebsCost(pf ebsPriceFetcher, region string, size int, duration time.Duration) (float64, error) {
@@ -364,4 +425,136 @@ func ebsCost(pf ebsPriceFetcher, region string, size int, duration time.Duration
 	// price = GB * % of month *
 	month := (time.Hour * 24 * 30)
 	return float64(size) * (float64(duration) / float64(month)) * price, nil
+}
+
+// onDemandPriceFetcher is an interface for fetching the hourly price of a given
+// os/instance/region combination.
+type onDemandPriceFetcher interface {
+	FetchPrice(os osType, instance, region string) (float64, error)
+}
+
+// odInfo is an internal type for keying hosts by the attributes that affect billing.
+type odInfo struct {
+	os       string
+	instance string
+	region   string
+}
+
+// cachedOnDemandPriceFetcher is a thread-safe onDemandPriceFetcher that caches the results from
+// Amazon, allowing on long load on first access followed by virtually instant response time.
+type cachedOnDemandPriceFetcher struct {
+	prices map[odInfo]float64
+	m      sync.Mutex
+}
+
+// pkgOnDemandPriceFetcher is a package-level cached price fetcher.
+// Pricing logic uses this by default to speed up price calculations.
+var pkgOnDemandPriceFetcher cachedOnDemandPriceFetcher
+
+// Terms is an internal type for loading price API results into.
+type Terms struct {
+	OnDemand map[string]map[string]struct {
+		PriceDimensions map[string]struct {
+			PricePerUnit struct {
+				USD string
+			}
+		}
+	}
+}
+
+// skuPrice digs through the incredibly verbose Amazon price data format
+// for the USD dollar amount of an SKU. The for loops are for traversing
+// maps of size one with an unknown key, which is simple to do in a
+// language like python but really ugly here.
+func (t Terms) skuPrice(sku string) float64 {
+	for _, v := range t.OnDemand[sku] {
+		for _, p := range v.PriceDimensions {
+			// parse -- ignoring errors
+			val, _ := strconv.ParseFloat(p.PricePerUnit.USD, 64)
+			return val
+		}
+	}
+	return 0
+}
+
+// FetchPrice returns the hourly price of a host based on its attributes. A pricing table
+// is cached after the first communication with Amazon to avoid expensive API calls.
+func (cpf *cachedOnDemandPriceFetcher) FetchPrice(os osType, instance, region string) (float64, error) {
+	cpf.m.Lock()
+	defer cpf.m.Unlock()
+	if cpf.prices == nil {
+		if err := cpf.cachePrices(); err != nil {
+			return 0, fmt.Errorf("loading On Demand price data: %v", err)
+		}
+	}
+	region, err := regionFullname(region)
+	if err != nil {
+		return 0, err
+	}
+	return cpf.prices[odInfo{
+		os: osBillingName(os), instance: instance, region: region,
+	}], nil
+}
+
+// cachePrices updates the internal cache with Amazon data.
+func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
+	cpf.prices = map[odInfo]float64{}
+	// the On Demand pricing API is not part of the normal EC2 API
+	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
+	evergreen.Logger.Logf(slogger.DEBUG, "Loading On Demand pricing from %v", endpoint)
+	resp, err := http.Get(endpoint)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("fetching %v: %v", endpoint, err)
+	}
+	evergreen.Logger.Logf(slogger.DEBUG, "Parsing On Demand pricing")
+	details := struct {
+		Terms    Terms
+		Products map[string]struct {
+			SKU           string
+			ProductFamily string
+			Attributes    struct {
+				Location        string
+				InstanceType    string
+				PreInstalledSW  string
+				OperatingSystem string
+				Tenancy         string
+				LicenseModel    string
+			}
+		}
+	}{}
+	if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
+		return fmt.Errorf("parsing response body: %v", err)
+	}
+
+	for _, p := range details.Products {
+		if p.ProductFamily == "Compute Instance" &&
+			p.Attributes.PreInstalledSW == "NA" &&
+			p.Attributes.Tenancy == "Shared" &&
+			p.Attributes.LicenseModel != "Bring your own license" {
+			// the product description does not include pricing information,
+			// so we must look up the SKU in the "Terms" section.
+			price := details.Terms.skuPrice(p.SKU)
+			cpf.prices[odInfo{
+				os:       p.Attributes.OperatingSystem,
+				instance: p.Attributes.InstanceType,
+				region:   p.Attributes.Location,
+			}] = price
+		}
+	}
+	return nil
+}
+
+// onDemandCost is a helper for calculating the price of an On Demand instance using the given price fetcher.
+func onDemandCost(pf onDemandPriceFetcher, os osType, instance, region string, dur time.Duration) (float64, error) {
+	price, err := pf.FetchPrice(os, instance, region)
+	if err != nil {
+		return 0, err
+	}
+	if price == 0 {
+		return 0, fmt.Errorf("price not found in EC2 price listings")
+	}
+	return price * float64(dur) / float64(time.Hour), nil
 }
