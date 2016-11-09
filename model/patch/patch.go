@@ -39,6 +39,7 @@ type Patch struct {
 	Patches       []ModulePatch  `bson:"patches"`
 	Activated     bool           `bson:"activated"`
 	PatchedConfig string         `bson:"patched_config"`
+	IsEmpty       bool           `bson:"is_empty"`
 }
 
 // this stores request details for a patch

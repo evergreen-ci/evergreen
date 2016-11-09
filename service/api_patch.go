@@ -37,6 +37,25 @@ type PatchAPIRequest struct {
 	Description   string
 }
 
+func getSummaries(patchContent string) ([]thirdparty.Summary, error) {
+	summaries := []thirdparty.Summary{}
+	if patchContent != "" {
+		gitOutput, err := thirdparty.GitApplyNumstat(patchContent)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't validate patch: %v", err)
+		}
+		if gitOutput == nil {
+			return nil, fmt.Errorf("couldn't validate patch: git apply --numstat returned empty")
+		}
+
+		summaries, err = thirdparty.ParseGitSummary(gitOutput)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't validate patch: %v", err)
+		}
+	}
+	return summaries, nil
+}
+
 // CreatePatch checks an API request to see if it is safe and sane.
 // Returns the relevant patch metadata, the patch document, and any errors that occur.
 func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
@@ -66,18 +85,12 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
 		return nil, nil, fmt.Errorf("commit hash %v doesn't seem to exist", pr.Githash)
 	}
 
-	gitOutput, err := thirdparty.GitApplyNumstat(pr.PatchContent)
+	summaries, err := getSummaries(pr.PatchContent)
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't validate patch: %v", err)
-	}
-	if gitOutput == nil {
-		return nil, nil, fmt.Errorf("couldn't validate patch: git apply --numstat returned empty")
+		return nil, nil, err
 	}
 
-	summaries, err := thirdparty.ParseGitSummary(gitOutput)
-	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't validate patch: %v", err)
-	}
+	isEmpty := (pr.PatchContent == "")
 
 	if finalize && (len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "") {
 		return nil, nil, fmt.Errorf("no buildvariants specified")
@@ -97,6 +110,7 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: pr.BuildVariants,
 		Tasks:         pr.Tasks,
+		IsEmpty:       isEmpty,
 		Patches: []patch.ModulePatch{
 			{
 				ModuleName: "",
@@ -199,10 +213,6 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 		}
 		if len(data.Patch) > patch.SizeLimit {
 			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Patch is too large."))
-		}
-		if len(data.Patch) == 0 {
-			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
-			return
 		}
 		finalize = data.Finalize
 
@@ -322,11 +332,6 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		moduleName, patchContent, githash = data.Module, data.Patch, data.Githash
 	}
 
-	if len(patchContent) == 0 {
-		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error: Patch must not be empty"))
-		return
-	}
-
 	projectRef, err := model.FindOneProjectRef(p.Project)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting project ref with id %v: %v", p.Project, err))
@@ -348,22 +353,10 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	gitOutput, err := thirdparty.GitApplyNumstat(patchContent)
+	summaries, err := getSummaries(patchContent)
 	if err != nil {
-		as.WriteJSON(w, http.StatusBadRequest, fmt.Errorf("Invalid patch: %v", err))
-		return
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
-	if gitOutput == nil {
-		as.WriteJSON(w, http.StatusBadRequest, fmt.Errorf("Empty diff"))
-		return
-	}
-
-	summaries, err := thirdparty.ParseGitSummary(gitOutput)
-	if err != nil {
-		as.WriteJSON(w, http.StatusBadRequest, fmt.Errorf("Can't validate patch: %v", err))
-		return
-	}
-
 	repoOwner, repo := module.GetRepoOwnerAndName()
 
 	commitInfo, err := thirdparty.GetCommitEvent(as.Settings.Credentials["github"], repoOwner, repo, githash)

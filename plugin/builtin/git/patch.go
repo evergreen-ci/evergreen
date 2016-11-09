@@ -153,10 +153,9 @@ func (ggpc GitGetProjectCommand) getPatchContents(conf *model.TaskConfig, com pl
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
-	patch *patch.Patch, pluginLogger plugin.Logger) error {
-
+	p *patch.Patch, pluginLogger plugin.Logger) error {
 	// patch sets and contain multiple patches, some of them for modules
-	for _, patchPart := range patch.Patches {
+	for _, patchPart := range p.Patches {
 		var dir string
 		if patchPart.ModuleName == "" {
 			// if patch is not part of a module, just apply patch against src root
@@ -207,6 +206,17 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 			fmt.Sprintf("git apply --check --whitespace=fix '%v'", tempAbsPath),
 			fmt.Sprintf("git apply --stat '%v'", tempAbsPath),
 			fmt.Sprintf("git apply --whitespace=fix < '%v'", tempAbsPath),
+		}
+
+		// if the patch is empty we do not want to apply the patch because it will fail.
+		if p.IsEmpty {
+			patchCommandStrings = []string{
+				fmt.Sprintf("set -o verbose"),
+				fmt.Sprintf("set -o errexit"),
+				fmt.Sprintf("ls"),
+				fmt.Sprintf("cd '%v'", dir),
+				fmt.Sprintf("git checkout '%v'", patchPart.Githash),
+			}
 		}
 
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")

@@ -579,7 +579,11 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISe
 	if err := validatePatchSize(diffData, params.Large); err != nil {
 		return err
 	}
-	if !params.SkipConfirm && diffData.patchSummary != "" {
+	if !params.SkipConfirm && len(diffData.fullPatch) == 0 {
+		if !confirm("Patch submission is empty. Continue?(y/n)", true) {
+			return nil
+		}
+	} else if !params.SkipConfirm && diffData.patchSummary != "" {
 		fmt.Println(diffData.patchSummary)
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
 			return nil

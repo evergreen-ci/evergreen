@@ -41,6 +41,8 @@ index 0000000..ce01362
 +hello
 `
 
+var emptyPatch = ``
+
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 }
@@ -336,6 +338,58 @@ func TestCLIFunctions(t *testing.T) {
 							patches, err := ac.GetPatches(2)
 							So(err, ShouldBeNil)
 							So(len(patches), ShouldEqual, 2)
+						})
+					})
+				})
+			})
+
+			Convey("Creating an empty patch should not error out anything", func() {
+				patchSub := patchSubmission{
+					projectId:   "sample",
+					patchData:   emptyPatch,
+					description: "sample patch",
+					base:        "3c7bfeb82d492dc453e7431be664539c35b5db4b",
+					variants:    "all",
+					tasks:       []string{"all"},
+					finalize:    false}
+
+				newPatch, err := ac.PutPatch(patchSub)
+				So(err, ShouldBeNil)
+
+				Convey("Newly created patch should be fetchable via API", func() {
+					patches, err := ac.GetPatches(0)
+					So(err, ShouldBeNil)
+					So(len(patches), ShouldEqual, 1)
+				})
+
+				Convey("Adding a module to the patch should still work as designed even with empty patch", func() {
+					err = ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", emptyPatch, "1e5232709595db427893826ce19289461cba3f75")
+					So(err, ShouldBeNil)
+					patches, err := ac.GetPatches(0)
+					So(err, ShouldBeNil)
+					So(patches[0].Patches[0].ModuleName, ShouldEqual, "")
+					So(patches[0].Patches[1].ModuleName, ShouldEqual, "render-module")
+					Convey("Removing the module from the patch should work as designed even with empty patch", func() {
+						So(ac.DeletePatchModule(newPatch.Id.Hex(), "render-module"), ShouldBeNil)
+						patches, err := ac.GetPatches(0)
+						So(err, ShouldBeNil)
+						So(len(patches[0].Patches), ShouldEqual, 1)
+						Convey("Finalizing the patch should start with no version field and then be populated", func() {
+							So(patches[0].Version, ShouldEqual, "")
+							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
+							patches, err := ac.GetPatches(0)
+							So(err, ShouldBeNil)
+							So(patches[0].Version, ShouldNotEqual, "")
+							Convey("Cancelling the patch should work and the version should be deactivated", func() {
+								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
+								patches, err := ac.GetPatches(0)
+								So(err, ShouldBeNil)
+								tasks, err := task.Find(task.ByVersion(patches[0].Version))
+								So(err, ShouldBeNil)
+								for _, t := range tasks {
+									So(t.Activated, ShouldBeFalse)
+								}
+							})
 						})
 					})
 				})
