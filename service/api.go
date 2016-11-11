@@ -927,8 +927,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	apiRootOld.HandleFunc("/variants/{projectId}", requireUser(as.listVariants, nil)).Methods("GET")
 
 	// Task Queue routes
-	apiRootOld.HandleFunc("/task_queue", requireUser(as.getTaskQueueSizes, nil)).Methods("GET")
-	apiRootOld.HandleFunc("/task_queue_limit", requireUser(as.checkTaskQueueSize, nil)).Methods("GET")
+	apiRootOld.HandleFunc("/task_queue", as.getTaskQueueSizes).Methods("GET")
+	apiRootOld.HandleFunc("/task_queue_limit", as.checkTaskQueueSize).Methods("GET")
 
 	// Client auto-update routes
 	apiRootOld.HandleFunc("/update", as.getUpdate).Methods("GET")
