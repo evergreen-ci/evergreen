@@ -1,4 +1,4 @@
-package agent
+package comm
 
 import (
 	"io/ioutil"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -27,16 +27,16 @@ func TestCommunicatorServerDown(t *testing.T) {
 		downServer.Close()
 
 		agentCommunicator := HTTPCommunicator{
-			downServer.URL,   // root URL of api server
-			"mocktaskid",     // task ID
-			"mocktasksecret", // task Secret
-			3,                // max # of retries for each API call
-			100 * time.Millisecond, // sleep time between API call retries
-			make(chan Signal),      // channel for agent signals
-			logger,                 // logger to use for logging retry attempts
-			"",                     // cert
-			&http.Client{},
-			&http.Client{},
+			ServerURLRoot:   downServer.URL,         // root URL of api server
+			TaskId:          "mocktaskid",           // task ID
+			TaskSecret:      "mocktasksecret",       // task Secret
+			MaxAttempts:     3,                      // max # of retries for each API call
+			RetrySleep:      100 * time.Millisecond, // sleep time between API call retries
+			SignalChan:      make(chan Signal),      // channel for agent signals
+			Logger:          logger,                 // logger to use for logging retry attempts
+			HttpsCert:       "",                     // cert
+			httpClient:      &http.Client{},
+			heartbeatClient: &http.Client{},
 		}
 		Convey("Calling start() should return err after max retries", func() {
 			So(agentCommunicator.Start("1"), ShouldNotBeNil)
@@ -56,16 +56,17 @@ func TestCommunicatorServerUp(t *testing.T) {
 		ts := httptest.NewServer(serveMux)
 		logger := &slogger.Logger{"test", []slogger.Appender{}}
 
-		agentCommunicator := HTTPCommunicator{ts.URL,
-			"mocktaskid",
-			"mocktasksecret",
-			3,
-			100 * time.Millisecond,
-			make(chan Signal),
-			logger,
-			"",
-			&http.Client{},
-			&http.Client{},
+		agentCommunicator := HTTPCommunicator{
+			ServerURLRoot:   ts.URL,
+			TaskId:          "mocktaskid",
+			TaskSecret:      "mocktasksecret",
+			MaxAttempts:     3,
+			RetrySleep:      100 * time.Millisecond,
+			SignalChan:      make(chan Signal),
+			Logger:          logger,
+			HttpsCert:       "",
+			httpClient:      &http.Client{},
+			heartbeatClient: &http.Client{},
 		}
 
 		Convey("Calls to start() or end() should not return err", func() {

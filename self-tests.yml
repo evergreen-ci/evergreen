@@ -1,1074 +1,537 @@
 command_type: system
 stepback: true
-ignore: 
+ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
     - "scripts/*" # our scripts are untested, so don't schedule tests for them
 
-variables:
-    only_coverage: &ONLY_COVERAGE_VARIANTS
-      variants: ["ubuntu", "osx"]
+post:
+  - command: gotest.parse_files
+    params:
+      files:
+        - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
 
+
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: setup-plugins
+      - func: run-make
+        vars: { target: "${task_name}" }
+      - command: s3.put
+        params:
+          optional: true
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_file: gopath/src/github.com/evergreen-ci/evergreen/bin/${task_name}.tar.gz
+          remote_file: evergreen/${build_id}-${build_variant}/greenbay-${task_name}-${revision}.tar.gz
+          bucket: mciuploads
+          content_type: application/x-gzip
+          permissions: public-read
+          display_name: dist.tar.gz
+  - &run-go-test-suite
+    # runs a make target and then uploads gotest output to
+    # evergreen. The test name should correspond to a make target for
+    # that suite
+    name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: setup-plugins
+      - func: setup-credentials
+      - func: run-make
+        vars: { target: "${task_name}" }
+  - &run-go-test-suite-with-mongodb
+    # runs a make target above, but only on systems that have a
+    # running mongod started for testing.
+    name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: setup-credentials
+      - func: setup-plugins
+      - func: set-up-mongodb
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+#######################################
+#              Functions              #
+#######################################
 functions:
-  "fetch source" :
-    - command: git.get_project
-      params:
-        directory: src
-  "setup creds":
+  run-make:
+    command: shell.exec
+    params:
+       script: |
+         set -o errexit
+         set -o verbose
+
+         # Configure a local go path for this build.
+         export GOPATH=`pwd`/gopath
+
+         # on windows we need to turn the slashes the other way
+         if [ "Windows_NT" == "$OS" ]; then
+            export GOPATH=$(cygpath -m $GOPATH)
+         fi
+
+         cd gopath/src/github.com/evergreen-ci/evergreen
+
+         # Run make, called with proper environment variables set,
+         # running the target.
+         ${build_env} make ${make_args|} vendor ${target}
+  setup-plugins:
     command: shell.exec
     params:
       script: |
-        set -o verbose
-        cp creds.yml src
-
-  "generate and upload coverage":
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-              set -o igncr
-          fi;
-          . ./set_gopath.sh
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          . ./set_gopath.sh
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-
-    - command: shell.exec
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          . ./set_gopath.sh
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/coverage.html
-        remote_file: mci/coverage/${task_id}.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Coverage Report (HTML)
-
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/coverage.txt
-        remote_file: mci/coverage/${task_id}.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Coverage Report (TXT)
-
-  "start mongod":
-      - command: shell.exec
-        params:
-          background: true
-          script: |
-            set -o verbose
-            cd mongodb
-            echo "starting mongod..."
-            ./mongod${extension} --dbpath ./db_files &
-            echo "waiting for mongod to start up"
-      - command: shell.exec
-        params:
-          script: |
-            cd mongodb 
-            ./mongo${extension} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
-            echo "mongod is up."
-
-pre:
-  - command: shell.track
-  - command: shell.exec
-    params:
-      script: |
-        rm -rf src
         set -o errexit
-        rm -rf mongodb
-        mkdir mongodb
-        cd mongodb
-        curl ${mongo_url} -o mongodb.tgz 
-        ${decompress} mongodb.tgz
-        chmod +x ./mongodb-*/bin/*
-        mv ./mongodb-*/bin/* .
-        rm -rf db_files
-        rm -rf db_logs
-        mkdir db_files
-        mkdir db_logs
 
-  - command: shell.exec
-    params:
-      silent: true
-      script: |
-        echo "building creds file!"
-        cat > creds.yml <<END_OF_CREDS
-        credentials:  {
-          github: "${github_token}",
-        }
+        echo "building Plugins file!"
+        cat > gopath/src/github.com/evergreen-ci/evergreen/Plugins <<END_OF_PLUGINS
+        ${plugins_file}
+        END_OF_PLUGIN
+  setup-credentials:
+    - command: shell.exec
+      params:
+        silent: true
+        script: |
+          set -o errexit
 
-        jira:
+          echo "building creds file!"
+          cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<END_OF_CREDS
+          credentials:  {
+            github: "${github_token}",
+          }
+
+          jira:
             host: ${jiraserver}
             username: ${crowduser}
             password: ${crowdpw}
 
-        providers:
-          aws:
-            aws_id: "${aws_key}"
-            aws_secret: "${aws_secret}"
+          providers:
+            aws:
+              aws_id: "${aws_key}"
+              aws_secret: "${aws_secret}"
 
-        auth:
+          auth:
             crowd:
               username: ${crowduser}
               password: ${crowdpw}
               urlroot: ${crowdserver}
-        plugins:
-            manifest: 
+          plugins:
+            manifest:
               github_token: "${github_token}"
+          END_OF_CREDS
+  set-up-mongodb:
+    - command: shell.exec
+      params:
+        script: |
+          set -o errexit
+          set -o verbose
 
-        END_OF_CREDS
+          rm -rf mongodb
+          mkdir mongodb
+          cd mongodb
+          curl ${mongodb_url} -o mongodb.tgz
 
-post:
-  - command: gotest.parse_files
-    params: 
-      files: ["src/*.suite", "src/**/*.suite"]
-  - command: shell.cleanup
+          tar -zxvf mongodb.tgz
+          chmod +x ./mongodb-*/bin/*
+          mv ./mongodb-*/bin/* .
+          rm -rf db_files
+          rm -rf db_logs
+          mkdir db_files
+          mkdir db_logs
+    - command: shell.exec
+      params:
+        background: true
+        script: |
+          set -o errexit
+          set -o verbose
+
+          cd mongodb
+          echo "starting mongod..."
+          ./mongod${extension|} --dbpath ./db_files &
+          echo "waiting for mongod to start up"
+    - command: shell.exec
+      params:
+        script: |
+          set -o errexit
+          set -o verbose
+
+          cd mongodb
+          ./mongo${extension|} --nodb --eval 'assert.soon(function(x){try{var d = new Mongo("localhost:27017"); return true}catch(e){return false}}, "timed out connecting")'
+          echo "mongod is up."
+
+#######################################
+#                Tasks                #
+#######################################
 
 tasks:
-
-- name: make_deploy
-  tags: [deploy]
-  commands:
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          set -e
-          set -v
-          . ./set_gopath.sh
-          if [ "${use_prebuilt_toolchain}" = "true" ] ; then
-            curl https://s3.amazonaws.com/boxes.10gen.com/build/go-toolchain.tar.gz | tar xz
-          fi
-
-          echo "building Plugins file!"
-          cat > Plugins <<END_OF_PLUGINS
-          ${plugins_file}
-          END_OF_PLUGINS
-          cat Plugins
-          ${bin_builder_env} ./makedeploy.sh ${bin_builder_args}
-
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/deploy.tgz
-        remote_file: mci/agents/${task_id}/deploy.tgz
-        bucket: mciuploads
-        permissions: public-read
-        content_type: application/gzip
-        display_name: Deployable Tarball (.TGZ)
-
-- name: alerts
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=`pwd`
-          cd alerts
-          mkfifo test_pipe
-          tee -a alerts.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv alerts/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: compile
-  tags: ["nodb"]
-  commands:
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          echo "building Plugins file!"
-          cat > Plugins <<END_OF_PLUGINS
-          ${plugins_file}
-          END_OF_PLUGINS
-          cat Plugins
-          ${goroot_vars} ./install_plugins.sh
-          echo "running process compile sanity check"
-          set -e
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          ${goroot_vars} bash build.sh ${compiler_flag}
-          echo "running agent compile sanity check"
-          . ./set_gopath.sh
-          # don't use githash BuildRevision for patches
-          if [ "${is_patch}" = "true" ]; then
-            export REV="PATCH(${task_id})"
-          else
-            export REV=`git rev-parse HEAD`
-          fi
-          ${goroot_vars} go build -o main${extension} ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=$REV" agent/main/agent.go
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/main${extension}
-        remote_file: mci/agent/${task_id}/main${extension}
-        bucket: mciuploads
-        permissions: public-read
-        content_type: application/octet-stream
-        display_name: Evergreen Agent
-
-- name: client-integration
-  commands:
-    - func: "fetch source"
-    - func: "setup creds"
-    - func: "start mongod"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          mkfifo test_pipe
-          tee -a client.suite < test_pipe&
-          cd cli
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=../creds.yml > ../test_pipe
-
-- name: client
-  tags: ["nodb"]
-  commands:
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          mkdir bin
-          if [ "Windows_NT" = "$OS" ]; then
-            export GOBIN=$(cygpath -w `pwd`/bin)
-          else
-            export GOBIN=`pwd`/bin
-          fi
-          echo "using GOBIN $GOBIN"
-          ${goroot_vars} go install ${compiler_flag} -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" cli/main/cli.go
-    - command: s3.put
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/bin/cli${extension}
-        remote_file: mci/cli/${task_id}/evergreen${extension}
-        bucket: mciuploads
-        permissions: public-read
-        content_type: application/octet-stream
-        display_name: Evergreen CLI client
-
-- name: agent
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "setup creds"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd agent
-          mkfifo test_pipe
-          tee -a agent.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=$EVGHOME/creds.yml > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv agent/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: archive
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd archive
-          mkfifo test_pipe
-          tee -a archive.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe 
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv archive/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: command
-  commands:
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          mkfifo test_pipe
-          tee -a command.suite < test_pipe&
-          cd command
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} ./. > ../test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv command/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-
-
-- name: ec2
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "setup creds"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd cloud/providers/ec2
-          mkfifo test_pipe
-          tee -a ec2.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride=$EVGHOME/creds.yml ./... > test_pipe
-          mv ec2.suite ../..
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv cloud/providers/ec2/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: db
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd db
-          mkfifo test_pipe
-          tee -a db.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe 
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv db/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: evergreen
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          mkfifo test_pipe
-          tee -a evergreen.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: model
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd model
-          mkfifo test_pipe
-          tee -a model.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-          if [ $? -ne 0 ]; then
-            echo "models suite failed, will exit with error on finish"
-            export exitcode=1
-          fi
-          #TODO coverage reports for other model packages
-          for i in patch host event artifact build task; do 
-            echo "running $i suite"
-            mkfifo $i.pipe
-            tee -a $i.suite < $i.pipe& 
-            ${goroot_vars} go test -v ${compiler_flag} ${test_flag} ./$i > $i.pipe
-            if [ $? -ne 0 ]; then
-                echo "$i suite failed, will exit with error on finish"
-                export exitcode=1
-            fi
-          done
-          exit $exitcode
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv model/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: monitor
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd monitor
-          mkfifo test_pipe
-          tee -a monitor.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv monitor/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: taskrunner
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd taskrunner
-          mkfifo test_pipe
-          tee -a taskrunner.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv taskrunner/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: notify
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd notify
-          mkfifo test_pipe
-          tee -a notify.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv notify/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: plugin
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "setup creds"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-
-          export WORK_DIR=$(pwd)
-          cd plugin
-          mkfifo test_pipe
-          tee -a $WORK_DIR/plugin.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-          if [ $? -ne 0 ]; then
-            echo "plugin suite failed, will exit with error on finish"
-            export exitcode=1
-          fi
-
-          cd builtin
-          #TODO coverage reports for other model packages
-          for i in attach expansions git gotest s3 s3copy manifest shell; do
-            echo "running $i suite"
-            cd $i
-            mkfifo $i.pipe
-            tee -a $WORK_DIR/$i.suite < $i.pipe& 
-            ${goroot_vars} go test -v ./... > $i.pipe
-            if [ $? -ne 0 ]; then
-                echo "$i suite failed, will exit with error on finish"
-                export exitcode=1
-            fi
-            cd ..
-          done
-          exit $exitcode
-        
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      type: system
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-
-          cd plugin
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd builtin/attach
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd ../expansions
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd ../git
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd ../gotest
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd ../s3
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-          cd ../s3copy
-          perl -pe 's/.*src/github.com\/evergreen-ci\/evergreen/' coverage.out > coverage_rewrite.out
-          go tool cover -html=coverage_rewrite.out -o coverage.html
-          go tool cover -func=coverage_rewrite.out -o coverage.txt
-
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/coverage.txt
-        remote_file: mci/coverage/${task_id}/plugin.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/coverage.html
-        remote_file: mci/coverage/${task_id}/plugin.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Plugin Coverage Report (HTML)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/attach/coverage.txt
-        remote_file: mci/coverage/${task_id}/attach.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Attach Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/attach/coverage.html
-        remote_file: mci/coverage/${task_id}/attach.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Attach Plugin Coverage Report (HTML)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/expansions/coverage.txt
-        remote_file: mci/coverage/${task_id}/expansions.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Expansions Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/expansions/coverage.html
-        remote_file: mci/coverage/${task_id}/expansions.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Expansions Plugin Coverage Report (HTML)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/git/coverage.txt
-        remote_file: mci/coverage/${task_id}/git.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Git Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/git/coverage.html
-        remote_file: mci/coverage/${task_id}/git.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Git Plugin Coverage Report (HTML)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/gotest/coverage.txt
-        remote_file: mci/coverage/${task_id}/gotest.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: Gotest Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/gotest/coverage.html
-        remote_file: mci/coverage/${task_id}/gotest.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: Gotest Plugin Coverage Report (HTML)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/s3/coverage.txt
-        remote_file: mci/coverage/${task_id}/s3.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: S3 Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/s3/coverage.html
-        remote_file: mci/coverage/${task_id}/s3.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: S3 Plugin Coverage Report (HTML)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/s3copy/coverage.txt
-        remote_file: mci/coverage/${task_id}/s3copy.txt
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/plain
-        display_name: S3Copy Plugin Coverage Report (TXT)
-    - command: s3.put
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        aws_key: ${aws_key}
-        aws_secret: ${aws_secret}
-        local_file: src/plugin/builtin/s3copy/coverage.html
-        remote_file: mci/coverage/${task_id}/s3copy.html
-        bucket: mciuploads
-        permissions: public-read
-        content_type: text/html
-        display_name: S3Copy Plugin Coverage Report (HTML)
-
-- name: repotracker
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "setup creds"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd repotracker
-          mkfifo test_pipe
-          tee -a repotracker.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv repotracker/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: scheduler
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd scheduler
-          mkfifo test_pipe
-          tee -a scheduler.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv scheduler/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: thirdparty
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "setup creds"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd thirdparty
-          mkfifo test_pipe
-          tee -a thirdparty.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv thirdparty/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: service
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd service
-          mkfifo test_pipe
-          tee -a service.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag}  > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv service/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: util
-  commands:
-    - func: "fetch source"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd util
-          mkfifo test_pipe
-          tee -a util.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag}  > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv util/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
-
-- name: validator
-  commands:
-    - func: "start mongod"
-    - func: "fetch source"
-    - func: "setup creds"
-    - command: shell.exec
-      type: test
-      params:
-        working_dir: src
-        script: |
-          if [ "Windows_NT" = "$OS" ]; then
-            set -o igncr
-          fi;
-          . ./set_gopath.sh
-          export EVGHOME=${EVGHOME_cmd}
-          cd validator
-          mkfifo test_pipe
-          tee -a validator.suite < test_pipe&
-          ${goroot_vars} go test -v ${compiler_flag} ${test_flag} -evergreen.all -evergreen.settingsOverride="../creds.yml" > test_pipe
-    - command: shell.exec
-      <<: *ONLY_COVERAGE_VARIANTS
-      params:
-        working_dir: src
-        script: |
-          set -o verbose
-          mv validator/coverage.out .
-    - func: "generate and upload coverage"
-      <<: *ONLY_COVERAGE_VARIANTS
+  - name: coverage
+    tags: [ "report" ]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: setup-credentials
+      - func: set-up-mongodb
+      - func: run-make
+        vars:
+          target: "coverage-html"
+          make_args: "-k"
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage.html"]
+          remote_file: evergreen/${task_id}/
+          bucket: mciuploads
+          content_type: text/html
+          permissions: public-read
+          display_name: "(html) coverage:"
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage"]
+          remote_file: evergreen/${task_id}/
+          bucket: mciuploads
+          content_type: text/plain
+          permissions: public-read
+          display_name: "(txt) coverage:"
+  - name: lint
+    tags: [ "report" ]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/evergreen-ci/evergreen
+      - func: run-make
+        vars: { target: "${task_name}" }
+  - <<: *run-build
+    name: dist
+  - <<: *run-build
+    name: dist-race
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-hostutil
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test", "burn_in"]
+    name: test-remote
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-auth
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-cli
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-command
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-db-bsonutil
+  - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-agent-comm
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-agent
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-db
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-cloud-providers
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test", "burn_in"]
+    name: test-cloud-providers-ec2
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-repotracker
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-scheduler
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-service
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-monitor
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-taskrunner
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-evergreen
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-notify
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-alerts
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-thirdparty
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-util
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-archive
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-validator
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-patch
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-artifact
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-host
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-build
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-event
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-model-task
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-git
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-gotest
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-attach
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-attach-xunit
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-manifest
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-shell
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-s3copy
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-expansions
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-s3
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-hostutil
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race", "burn_in"]
+    name: race-remote
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-auth
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-cli
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-command
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-db-bsonutil
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-agent-comm
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-agent
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-db
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race", "burn_in"]
+    name: race-cloud-providers
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-cloud-providers-ec2
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-repotracker
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-scheduler
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-service
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-monitor
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-taskrunner
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-evergreen
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-notify
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-alerts
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-thirdparty
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-util
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-archive
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-validator
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-patch
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-artifact
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-host
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-build
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-event
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-model-task
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-git
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-gotest
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-attach
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-attach-xunit
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-manifest
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-shell
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-s3copy
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-expansions
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-plugin-builtin-s3
 
 
 buildvariants:
-    - name: ubuntu
-      display_name: Ubuntu
-      run_on:
-      - ubuntu1404-test
-      expansions:
-        EVGHOME_cmd: "`pwd`"
-        mongo_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
-        bin_builder_env: 'GOROOT="`pwd`/go" PATH="`pwd`/go/bin:$PATH"'
-        use_prebuilt_toolchain: "true"
-        test_flag: "-coverprofile=coverage.out"
-      tasks:
-      - "*"
-    - name: zseries
-      display_name: RHEL 7.2 zSeries GCCGO
-      run_on:
-      - rhel72-zseries-test
-      expansions:
-        goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
-        EVGHOME_cmd: "`pwd`"
-        compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
-        mongo_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
-      tasks:
-      - "!make_deploy"
-    - name: ppc
-      display_name: RHEL 7.1 PowerPC GCCGO
-      run_on:
-      - rhel71-power8-test
-      expansions:
-        goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
-        EVGHOME_cmd: "`pwd`"
-        compiler_flag: "-compiler=gccgo -gccgoflags='-static-libgo'"
-        mongo_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.2.9.tgz  
-      tasks:
-      - "!make_deploy"
-    - name: osx
-      display_name: OSX
-      run_on:
+  - name: rhel62
+    display_name: RHEL 6.2
+    run_on:
+      - rhel62-test
+      - rhel62-small
+    expansions:
+      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes TEST_ARGS='evergreen.all evergreen.settingsOverride=`pwd`/creds.yml'"
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
+    tasks:
+      - name: "dist"
+      - name: ".test"
+  - name: race-detector
+    display_name: Race Detector
+    run_on:
+      - archlinux-test
+    expansions:
+      build_env: "TEST_ARGS='evergreen.all evergreen.settingsOverride=`pwd`/creds.yml'"
+      mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
+    tasks:
+      - name: "dist-race"
+      - name: ".race !.burn_in"
+      - name: ".report"
+  - name: osx
+    display_name: OSX
+    run_on:
       - osx-1010
-      expansions:
-        EVGHOME_cmd: "`pwd`"
-        mongo_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
-        bin_builder_args: "dev"
-        test_flag: "-coverprofile=coverage.out"
-      tasks:
-      - "*"
-    - name: arm64
-      display_name: Ubuntu ARM64
-      run_on:
-      - ubuntu1604-arm64-large
-      expansions:
-        goroot_vars: PATH=/opt/mongodbtoolchain/v2/bin:$PATH 
-        EVGHOME_cmd: "`pwd`"
-        #mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-2.6.5.zip
-      tasks:
-      - ".nodb !make_deploy"
-    - name: windows-64
-      display_name: Windows
-      run_on:
-      - windows-64-vs2013-compile
-      expansions:
-        EVGHOME_cmd: "$(cygpath -w `pwd`)"
-        mongo_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.2.9.zip
-        extension: .exe
-      tasks:
-      - ".nodb !make_deploy"
+    expansions:
+      build_env: "TEST_ARGS='evergreen.all DISABLE_COVERAGE=yes evergreen.settingsOverride=`pwd`/creds.yml'"
+      mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
+    tasks:
+      - name: "dist"
+      - name: ".test !.burn_in"
+  - name: windows
+    display_name: Windows
+    run_on:
+      - windows-64-vs2015-small
+      - windows-64-vs2013-test
+      - windows-64-vs2010-test
+    expansions:
+      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes TEST_ARGS='evergreen.all evergreen.settingsOverride=`pwd`/creds.yml'"
+      mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.2.9.zip
+      extension: ".exe"
+    tasks:
+      - name: "dist"
+      - name: ".nodb .test !.burn_in"
+  - name: rhel62-gccgo
+    display_name: RHEL 6.2 (gccgo)
+    run_on:
+      - rhel62-test
+      - rhel62-small
+    expansions:
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes TEST_ARGS='evergreen.settingsOverride=`pwd`/creds.yml'"
+    tasks:
+      - name: ".test"
+  - name: rhel71-power
+    display_name: "RHEL7.1 POWER8"
+    run_on:
+      - rhel71-power8-test
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes TEST_ARGS='evergreen.settingsOverride=`pwd`/creds.yml'"
+      mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
+    tasks:
+      - name: ".nodb .test !.burn_in"
+  - name: rhel71-s390x
+    display_name: "RHEL7.1 s390x"
+    run_on:
+      - rhel72-zseries-test
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes TEST_ARGS='evergreen.settingsOverride=`pwd`/creds.yml'"
+      mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
+    tasks:
+      - name: ".nodb .test !.burn_in"

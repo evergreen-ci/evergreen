@@ -9,21 +9,6 @@ import (
 	ignore "github.com/sabhiram/go-git-ignore"
 )
 
-// GetAppendingFile opens a file for appending. The file will be created
-// if it does not already exist.
-func GetAppendingFile(path string) (*os.File, error) {
-	exists, err := FileExists(path)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		if _, err := os.Create(path); err != nil {
-			return nil, err
-		}
-	}
-	return os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
-}
-
 // FileExists returns true if 'path' exists.
 func FileExists(elem ...string) (bool, error) {
 	path := filepath.Join(elem...)
@@ -40,7 +25,12 @@ func FileExists(elem ...string) (bool, error) {
 // WriteToTempFile writes the given string to a temporary file and returns the
 // path to the file.
 func WriteToTempFile(data string) (string, error) {
-	file, err := ioutil.TempFile("", "temp_file_")
+	dir := filepath.Join(os.TempDir(), "evergreen")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+
+	file, err := ioutil.TempFile(dir, "temp_file_")
 	if err != nil {
 		return "", err
 	}

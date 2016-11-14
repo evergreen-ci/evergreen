@@ -4,9 +4,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
+	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -40,7 +41,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
@@ -51,7 +52,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			// to a temporary directory
 			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			pluginTask, _, err := plugintest.SetupAPITestData("testTask", false, t)
+			pluginTask, _, err := plugintest.SetupAPITestData("testTask", "", t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, testTask := range taskConfig.Project.Tasks {
@@ -61,7 +62,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldNotBeNil)
 					So(err.Error(), ShouldEqual, "test failures")
@@ -106,7 +107,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
@@ -117,7 +118,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			// to a temporary directory
 			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			pluginTask, _, err := plugintest.SetupAPITestData("testTask", false, t)
+			pluginTask, _, err := plugintest.SetupAPITestData("testTask", "", t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, testTask := range taskConfig.Project.Tasks {
@@ -127,7 +128,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 
 					So(err, ShouldBeNil)
@@ -175,7 +176,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("test command should get a copy of custom environment variables", func() {
 			curWD, err := os.Getwd()
@@ -186,7 +187,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 			// to a temporary directory
 			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			_, _, err = plugintest.SetupAPITestData("testTask", false, t)
+			_, _, err = plugintest.SetupAPITestData("testTask", "", t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, testTask := range taskConfig.Project.Tasks {
@@ -196,7 +197,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 
 					So(err, ShouldBeNil)

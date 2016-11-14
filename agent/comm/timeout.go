@@ -1,4 +1,4 @@
-package agent
+package comm
 
 import (
 	"time"
@@ -10,6 +10,12 @@ type TimeoutWatcher struct {
 	timer    *time.Timer
 	stop     <-chan struct{}
 	disabled bool
+}
+
+func NewTimeoutWatcher(stopChan <-chan struct{}) *TimeoutWatcher {
+	// TODO: replace this with a context for cancellation, and be
+	// able to eliminate the constructor
+	return &TimeoutWatcher{stop: stopChan}
 }
 
 // SetDuration sets the duration after which a timeout is triggered.

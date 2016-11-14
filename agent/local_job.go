@@ -5,8 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
 )
@@ -14,7 +15,7 @@ import (
 // AgentCommand encapsulates a running local command and streams logs
 // back to the API server.
 type AgentCommand struct {
-	*StreamLogger
+	*comm.StreamLogger
 	ScriptLine string
 	Expansions *command.Expansions
 	KillChan   chan bool

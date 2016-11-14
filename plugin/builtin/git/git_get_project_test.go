@@ -2,11 +2,13 @@ package git_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
+	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
@@ -32,10 +34,12 @@ func TestGitPlugin(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
-		taskConfig, err := plugintest.CreateTestConfig("testdata/plugin_clone.yml", t)
+		taskConfig, err := plugintest.CreateTestConfig(
+			filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_clone.yml"),
+			t)
 		testutil.HandleTestingErr(err, t, "failed to create test config")
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 		Convey("all commands in test project should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
@@ -44,7 +48,7 @@ func TestGitPlugin(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
 				}

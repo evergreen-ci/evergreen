@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -57,13 +58,13 @@ func TestGetBuildInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "mci-test"
 
-		err := testutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+		err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
 		So(err, ShouldBeNil)
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
+		err = modelutil.CreateTestLocalConfig(buildTestConfig, "project_test", "")
 
 		task := build.TaskCache{
 			Id:          "some-task-id",

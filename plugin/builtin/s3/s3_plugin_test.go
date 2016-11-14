@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -221,7 +221,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
 			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
-			pluginCom := &agent.TaskJSONCommunicator{"s3", httpCom}
+			pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
 
 			So(err, ShouldBeNil)
 
@@ -244,7 +244,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
 			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
-			pluginCom := &agent.TaskJSONCommunicator{"s3", httpCom}
+			pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
 
 			So(err, ShouldBeNil)
 

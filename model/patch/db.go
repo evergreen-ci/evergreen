@@ -3,7 +3,6 @@ package patch
 import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -43,9 +42,9 @@ var (
 	PatchSetSummaryKey = bsonutil.MustHaveTag(PatchSet{}, "Summary")
 
 	// BSON fields for the git patch summary struct
-	GitSummaryNameKey      = bsonutil.MustHaveTag(thirdparty.Summary{}, "Name")
-	GitSummaryAdditionsKey = bsonutil.MustHaveTag(thirdparty.Summary{}, "Additions")
-	GitSummaryDeletionsKey = bsonutil.MustHaveTag(thirdparty.Summary{}, "Deletions")
+	GitSummaryNameKey      = bsonutil.MustHaveTag(Summary{}, "Name")
+	GitSummaryAdditionsKey = bsonutil.MustHaveTag(Summary{}, "Additions")
+	GitSummaryDeletionsKey = bsonutil.MustHaveTag(Summary{}, "Deletions")
 )
 
 // Query Validation

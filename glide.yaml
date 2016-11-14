@@ -1,0 +1,42 @@
+package: github.com/evergreen-ci/evergreen
+import:
+  - package: golang.org/x/crypto
+    subpackages:
+      - ssh
+  - package: github.com/pkg/sftp
+  - package: github.com/vaughan0/go-ini
+  - package: github.com/10gen/goamz/
+    subpackages:
+      - s3
+      - ec2
+      - aws
+  - package: github.com/10gen-labs/slogger/
+    subpackages:
+      - v1
+  - package: github.com/codegangsta/inject
+  - package: github.com/fsouza/go-dockerclient
+  - package: github.com/gorilla/context
+  - package: github.com/gorilla/mux
+  - package: github.com/gorilla/securecookie
+  - package: github.com/gorilla/sessions
+  - package: github.com/mitchellh/mapstructure
+  - package: github.com/smartystreets/assertions
+  - package: github.com/smartystreets/goconvey
+  - package: github.com/jtolds/gls
+  - package: gopkg.in/yaml.v2
+  - package: github.com/dynport/gocloud
+  - package: github.com/dynport/gologger
+  - package: golang.org/x/tools
+    subpackages:
+      - cmd/cover
+  - package: github.com/codegangsta/negroni
+  - package: github.com/evergreen-ci/render
+  - package: github.com/evergreen-ci/crowd
+  - package: github.com/jessevdk/go-flags
+  - package: github.com/kardianos/osext
+  - package: github.com/sabhiram/go-git-ignore
+  - package: gopkg.in/tylerb/graceful.v1
+  - package: github.com/dustin/go-humanize
+  - package: github.com/mitchellh/go-homedir
+  - package: github.com/go-ini/ini
+  - package: github.com/aws/aws-sdk-go

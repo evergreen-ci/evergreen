@@ -1,4 +1,4 @@
-package agent
+package comm
 
 import (
 	"io"
@@ -8,10 +8,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/util"
 )
 
 // StreamLogger holds a set of stream-delineated loggers. Each logger is used
@@ -96,6 +95,10 @@ type CommandLogger struct {
 	logger      *StreamLogger
 }
 
+func NewCommandLogger(name string, logger *StreamLogger) *CommandLogger {
+	return &CommandLogger{name, logger}
+}
+
 func (cmdLgr *CommandLogger) addCommandToMsgAndArgs(messageFmt string, args []interface{}) (string, []interface{}) {
 	return "[%v] " + messageFmt, append([]interface{}{cmdLgr.commandName}, args...)
 }
@@ -138,7 +141,7 @@ func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile 
 	localLogger := slogger.StdOutAppender()
 
 	if logFile != "" {
-		appendingFile, err := util.GetAppendingFile(logFile)
+		appendingFile, err := evergreen.GetAppendingFile(logFile)
 		if err != nil {
 			return nil, err
 		}
@@ -324,30 +327,4 @@ func levelToString(level slogger.Level) string {
 		return model.LogErrorPrefix
 	}
 	return "UNKNOWN"
-}
-
-// NewTestLogger creates a logger for testing. This Logger
-// stores everything in memory.
-func NewTestLogger(appender slogger.Appender) *StreamLogger {
-	return &StreamLogger{
-		Local: &slogger.Logger{
-			Prefix:    "local",
-			Appenders: []slogger.Appender{appender},
-		},
-
-		System: &slogger.Logger{
-			Prefix:    model.SystemLogPrefix,
-			Appenders: []slogger.Appender{appender},
-		},
-
-		Task: &slogger.Logger{
-			Prefix:    model.TaskLogPrefix,
-			Appenders: []slogger.Appender{appender},
-		},
-
-		Execution: &slogger.Logger{
-			Prefix:    model.AgentLogPrefix,
-			Appenders: []slogger.Appender{appender},
-		},
-	}
 }

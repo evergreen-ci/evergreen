@@ -1,4 +1,4 @@
-package agent
+package comm
 
 import (
 	"bytes"
@@ -11,11 +11,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -47,7 +46,7 @@ type HTTPCommunicator struct {
 // The cert parameter may be blank if default system certificates are being used.
 func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
 	agentCommunicator := &HTTPCommunicator{
-		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, APIVersion),
+		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, evergreen.AgentAPIVersion),
 		TaskId:        taskId,
 		TaskSecret:    taskSecret,
 		MaxAttempts:   10,
@@ -76,132 +75,6 @@ func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan cha
 // intervals to ensure that communication hasn't broken down).
 type Heartbeat interface {
 	Heartbeat() (bool, error)
-}
-
-// TaskJSONCommunicator handles plugin-specific JSON-encoded
-// communication with the API server.
-type TaskJSONCommunicator struct {
-	PluginName string
-	TaskCommunicator
-}
-
-// TaskPostJSON does an HTTP POST for the communicator's plugin + task.
-func (t *TaskJSONCommunicator) TaskPostJSON(endpoint string, data interface{}) (*http.Response, error) {
-	return t.tryPostJSON(fmt.Sprintf("%s/%s", t.PluginName, endpoint), data)
-}
-
-// TaskGetJSON does an HTTP GET for the communicator's plugin + task.
-func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response, error) {
-	return t.tryGet(fmt.Sprintf("%s/%s", t.PluginName, endpoint))
-}
-
-// TaskPostResults posts a set of test results for the communicator's task.
-func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error {
-	retriableSendFile := util.RetriableFunc(
-		func() error {
-			resp, err := t.tryPostJSON("results", results)
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if err != nil {
-				err := fmt.Errorf("error posting results: %v", err)
-				return util.RetriableError{err}
-			}
-			body, _ := ioutil.ReadAll(resp.Body)
-			bodyErr := fmt.Errorf("error posting results (%v): %v",
-				resp.StatusCode, string(body))
-			switch resp.StatusCode {
-			case http.StatusOK:
-				return nil
-			case http.StatusBadRequest:
-				return bodyErr
-			default:
-				return util.RetriableError{bodyErr}
-			}
-		},
-	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, 10, 1)
-	if retryFail {
-		return fmt.Errorf("attaching test results failed after %v tries: %v", 10, err)
-	}
-	return nil
-}
-
-// PostTaskFiles is used by the PluginCommunicator interface for attaching task files.
-func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error {
-	retriableSendFile := util.RetriableFunc(
-		func() error {
-			resp, err := t.tryPostJSON("files", task_files)
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if err != nil {
-				err := fmt.Errorf("error posting results: %v", err)
-				return util.RetriableError{err}
-			}
-			body, readAllErr := ioutil.ReadAll(resp.Body)
-			bodyErr := fmt.Errorf("error posting results (%v): %v",
-				resp.StatusCode, string(body))
-			if readAllErr != nil {
-				return bodyErr
-			}
-			switch resp.StatusCode {
-			case http.StatusOK:
-				return nil
-			case http.StatusBadRequest:
-				return bodyErr
-			default:
-				return util.RetriableError{bodyErr}
-			}
-		},
-	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, 10, 1)
-	if retryFail {
-		return fmt.Errorf("attaching task files failed after %v tries: %v", 10, err)
-	}
-	return nil
-}
-
-// TaskPostTestLog posts a test log for a communicator's task.
-func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, error) {
-	var logId string
-	retriableSendFile := util.RetriableFunc(
-		func() error {
-			resp, err := t.tryPostJSON("test_logs", log)
-			if err != nil {
-				err := fmt.Errorf("error posting logs: %v", err)
-				if resp != nil {
-					resp.Body.Close()
-				}
-				return util.RetriableError{err}
-			}
-
-			if resp.StatusCode == http.StatusOK {
-				logReply := struct {
-					Id string `json:"_id"`
-				}{}
-				err = util.ReadJSONInto(resp.Body, &logReply)
-				if err != nil {
-					return err
-				}
-				logId = logReply.Id
-				return nil
-			}
-			bodyErr, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return util.RetriableError{err}
-			}
-			if resp.StatusCode == http.StatusBadRequest {
-				return fmt.Errorf("bad request posting logs: %v", string(bodyErr))
-			}
-			return util.RetriableError{fmt.Errorf("failed posting logs: %v", string(bodyErr))}
-		},
-	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, 10, 1)
-	if retryFail {
-		return "", fmt.Errorf("attaching test logs failed after %v tries: %v", 10, err)
-	}
-	return logId, nil
 }
 
 // Start marks the communicator's task as started.
@@ -278,7 +151,7 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 
 	retriableLog := util.RetriableFunc(
 		func() error {
-			resp, err := h.tryPostJSON("log", outgoingData)
+			resp, err := h.TryPostJSON("log", outgoingData)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -304,7 +177,7 @@ func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
 	task := &task.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.tryGet("")
+			resp, err := h.TryGet("")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -342,7 +215,7 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.tryGet("distro")
+			resp, err := h.TryGet("distro")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -380,7 +253,7 @@ func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.tryGet("project_ref")
+			resp, err := h.TryGet("project_ref")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -416,7 +289,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 	v := &version.Version{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.tryGet("version")
+			resp, err := h.TryGet("version")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -490,11 +363,11 @@ func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	return heartbeatResponse.Abort, nil
 }
 
-func (h *HTTPCommunicator) tryGet(path string) (*http.Response, error) {
+func (h *HTTPCommunicator) TryGet(path string) (*http.Response, error) {
 	return h.tryRequestWithClient(path, "GET", h.httpClient, nil)
 }
 
-func (h *HTTPCommunicator) tryPostJSON(path string, data interface{}) (
+func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (
 	*http.Response, error) {
 	return h.tryRequestWithClient(path, "POST", h.httpClient, &data)
 }
@@ -526,7 +399,7 @@ func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 	resp *http.Response, retryFail bool, err error) {
 	retriablePost := util.RetriableFunc(
 		func() error {
-			resp, err = h.tryPostJSON(path, data)
+			resp, err = h.TryPostJSON(path, data)
 			if err == nil && resp.StatusCode == http.StatusOK {
 				return nil
 			}
@@ -555,7 +428,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 	resultVars := &apimodels.ExpansionVars{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.tryGet("fetch_vars")
+			resp, err := h.TryGet("fetch_vars")
 			if resp != nil {
 				defer resp.Body.Close()
 			}

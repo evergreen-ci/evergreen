@@ -1,11 +1,13 @@
 package git_test
 
 import (
+	"path/filepath"
 	"testing"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
+	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -19,6 +21,7 @@ import (
 
 func TestPatchPluginAPI(t *testing.T) {
 	testConfig := evergreen.TestConfig()
+	cwd := testutil.GetDirectoryOfFile()
 	Convey("With a running api server and installed plugin", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}
@@ -26,19 +29,19 @@ func TestPatchPluginAPI(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		taskConfig, _ := plugintest.CreateTestConfig("testdata/plugin_patch.yml", t)
+		taskConfig, _ := plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
 		testCommand := GitGetProjectCommand{Directory: "dir"}
-		_, _, err = plugintest.SetupAPITestData("testTask", true, t)
+		_, _, err = plugintest.SetupAPITestData("testTask", filepath.Join(cwd, "testdata", "testmodule.patch"), t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 		testTask, err := task.FindOne(task.ById("testTaskId"))
 		testutil.HandleTestingErr(err, t, "Couldn't set up test patch task")
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("calls to existing tasks with patches should succeed", func() {
 			httpCom := plugintest.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
-			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
+			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
 			So(err, ShouldBeNil)
 			So(patch, ShouldNotBeNil)
@@ -49,7 +52,7 @@ func TestPatchPluginAPI(t *testing.T) {
 			v := version.Version{Id: ""}
 			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
 			httpCom := plugintest.TestAgentCommunicator("BAD_TASK_ID", "", server.URL)
-			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
+			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
 			So(err.Error(), ShouldContainSubstring, "not found")
 			So(err, ShouldNotBeNil)
@@ -65,7 +68,7 @@ func TestPatchPluginAPI(t *testing.T) {
 			v := version.Version{Id: ""}
 			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
 			httpCom := plugintest.TestAgentCommunicator(noPatchTask.Id, "", server.URL)
-			pluginCom := &agent.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
+			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "no patch found for task")
@@ -78,6 +81,7 @@ func TestPatchPluginAPI(t *testing.T) {
 }
 
 func TestPatchPlugin(t *testing.T) {
+	cwd := testutil.GetDirectoryOfFile()
 	testConfig := evergreen.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	Convey("With patch plugin installed into plugin registry", t, func() {
@@ -97,12 +101,14 @@ func TestPatchPlugin(t *testing.T) {
 
 		//sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
 		sliceAppender := slogger.StdOutAppender()
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
-			taskConfig, _ := plugintest.CreateTestConfig("testdata/plugin_patch.yml", t)
+			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
+			testutil.HandleTestingErr(err, t, "could not create test config")
+
 			taskConfig.Task.Requester = evergreen.PatchVersionRequester
-			_, _, err = plugintest.SetupAPITestData("testTask", true, t)
+			_, _, err = plugintest.SetupAPITestData("testTask", filepath.Join(cwd, "testdata", "testmodule.patch"), t)
 			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, task := range taskConfig.Project.Tasks {
@@ -112,7 +118,7 @@ func TestPatchPlugin(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
 				}

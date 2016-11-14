@@ -4,24 +4,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-)
-
-var (
-	projectConfig        = "testdata/project.config"
-	patchFile            = "testdata/patch.diff"
-	fullProjectPatchFile = "testdata/project.diff"
 )
 
 func TestMakePatchedConfig(t *testing.T) {
 	Convey("With calling MakePatchedConfig with a config and remote configuration path", t, func() {
+		cwd := testutil.GetDirectoryOfFile()
+
 		Convey("the config should be patched correctly", func() {
-			remoteConfigPath := "config/evergreen.yml"
-			fileBytes, err := ioutil.ReadFile(patchFile)
+			remoteConfigPath := filepath.Join("config", "evergreen.yml")
+			fileBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "patch.diff"))
 			So(err, ShouldBeNil)
 			// update patch with remove config path variable
 			diffString := fmt.Sprintf(string(fileBytes),
@@ -32,7 +29,7 @@ func TestMakePatchedConfig(t *testing.T) {
 					Githash: "revision",
 					PatchSet: patch.PatchSet{
 						Patch: diffString,
-						Summary: []thirdparty.Summary{{
+						Summary: []patch.Summary{{
 							Name:      remoteConfigPath,
 							Additions: 3,
 							Deletions: 3,
@@ -40,7 +37,7 @@ func TestMakePatchedConfig(t *testing.T) {
 					},
 				}},
 			}
-			projectBytes, err := ioutil.ReadFile(projectConfig)
+			projectBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.config"))
 			So(err, ShouldBeNil)
 			project, err := MakePatchedConfig(p, remoteConfigPath, string(projectBytes))
 			So(err, ShouldBeNil)
@@ -48,18 +45,19 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(len(project.Tasks), ShouldEqual, 2)
 		})
 		Convey("an empty base config should be patched correctly", func() {
-			remoteConfigPath := "model/testdata/project2.config"
-			fileBytes, err := ioutil.ReadFile(fullProjectPatchFile)
+			remoteConfigPath := filepath.Join("model", "testdata", "project2.config")
+			fileBytes, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "project.diff"))
 			So(err, ShouldBeNil)
 			p := &patch.Patch{
 				Patches: []patch.ModulePatch{{
 					Githash: "revision",
 					PatchSet: patch.PatchSet{
 						Patch:   string(fileBytes),
-						Summary: []thirdparty.Summary{{Name: remoteConfigPath}},
+						Summary: []patch.Summary{{Name: remoteConfigPath}},
 					},
 				}},
 			}
+
 			project, err := MakePatchedConfig(p, remoteConfigPath, "")
 			So(err, ShouldBeNil)
 			So(project, ShouldNotBeNil)
@@ -69,7 +67,6 @@ func TestMakePatchedConfig(t *testing.T) {
 			Reset(func() {
 				os.Remove(remoteConfigPath)
 			})
-
 		})
 	})
 }

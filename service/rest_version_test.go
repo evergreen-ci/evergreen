@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
@@ -52,10 +53,10 @@ func TestGetRecentVersions(t *testing.T) {
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding recent versions", t, func() {
@@ -64,7 +65,7 @@ func TestGetRecentVersions(t *testing.T) {
 
 		projectName := "project_test"
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
+		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 		otherProjectName := "my-other-project"
 		So(projectName, ShouldNotEqual, otherProjectName) // sanity-check
@@ -245,7 +246,7 @@ func TestGetVersionInfo(t *testing.T) {
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
 		Settings:    *versionTestConfig,
-		UserManager: testutil.MockUserManager{},
+		UserManager: MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
 
@@ -258,10 +259,10 @@ func TestGetVersionInfo(t *testing.T) {
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
+	err = modelutil.CreateTestLocalConfig(buildTestConfig, "mci-test", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config mci-test")
 
-	err = testutil.CreateTestLocalConfig(buildTestConfig, "render", "")
+	err = modelutil.CreateTestLocalConfig(buildTestConfig, "render", "")
 	testutil.HandleTestingErr(err, t, "Error loading local config render")
 
 	Convey("When finding info on a particular version", t, func() {
@@ -271,7 +272,7 @@ func TestGetVersionInfo(t *testing.T) {
 		versionId := "my-version"
 		projectName := "project_test"
 
-		err = testutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
+		err = modelutil.CreateTestLocalConfig(buildTestConfig, projectName, "")
 		So(err, ShouldBeNil)
 
 		v := &version.Version{
@@ -442,7 +443,7 @@ func TestActivateVersion(t *testing.T) {
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
 		Settings:    *versionTestConfig,
-		UserManager: testutil.MockUserManager{},
+		UserManager: MockUserManager{},
 	}
 
 	home := evergreen.FindEvergreenHome()

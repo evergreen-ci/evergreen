@@ -49,3 +49,4 @@ plugin/builtin/s3Plugin/testdata/
 .godeps
 
 npm-debug.log
+clients

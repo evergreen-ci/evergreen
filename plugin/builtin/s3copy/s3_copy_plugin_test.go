@@ -3,9 +3,10 @@ package s3copy_test
 import (
 	"testing"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
+	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -48,7 +49,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		taskConfig.Expansions.Update(map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,
@@ -63,7 +64,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{s3CopyPlugin.Name(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{s3CopyPlugin.Name(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig,
 						make(chan bool))
 					So(err, ShouldBeNil)

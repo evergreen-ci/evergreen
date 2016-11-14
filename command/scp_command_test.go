@@ -1,3 +1,8 @@
+// +build linux freebsd solaris darwin
+
+// the syscall.Umask call in this test is unix only. This test has
+// never run on non-linux platforms, but perhaps it should, in the future
+
 package command
 
 import (
@@ -14,7 +19,7 @@ import (
 )
 
 func TestScpCommand(t *testing.T) {
-	testutil.SkipUnlessAllTests(t, "scp command tests")
+	testutil.SkipTestUnlessAll(t, "TestScpCommand")
 
 	Convey("With files to scp", t, func() {
 

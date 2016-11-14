@@ -1,7 +1,10 @@
-package agent
+package comm
 
-import "time"
-import "github.com/10gen-labs/slogger/v1"
+import (
+	"time"
+
+	slogger "github.com/10gen-labs/slogger/v1"
+)
 
 // HeartbeatTicker manages heartbeat communication with the API server
 type HeartbeatTicker struct {
@@ -24,6 +27,12 @@ type HeartbeatTicker struct {
 	TaskCommunicator
 
 	Logger *slogger.Logger
+}
+
+func NewHeartbeatTicker(stopper <-chan struct{}) *HeartbeatTicker {
+	// TODO replace the stopper channel with a context that we
+	// pass to StartHeartbeating and eliminate the special constructor.
+	return &HeartbeatTicker{stop: stopper}
 }
 
 func (hbt *HeartbeatTicker) StartHeartbeating() {

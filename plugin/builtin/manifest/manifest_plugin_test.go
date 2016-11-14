@@ -3,9 +3,10 @@ package manifest
 import (
 	"testing"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
+	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -83,7 +84,7 @@ func TestManifestLoad(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldnt get task config from config file")
 
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
@@ -95,7 +96,7 @@ func TestManifestLoad(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{manifestPlugin.Name(),
+					pluginCom := &comm.TaskJSONCommunicator{manifestPlugin.Name(),
 						httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig,
 						make(chan bool))
@@ -123,7 +124,7 @@ func TestManifestLoad(t *testing.T) {
 						testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 						So(pluginCmds, ShouldNotBeNil)
 						So(err, ShouldBeNil)
-						pluginCom := &agent.TaskJSONCommunicator{manifestPlugin.Name(),
+						pluginCom := &comm.TaskJSONCommunicator{manifestPlugin.Name(),
 							httpCom}
 						err = pluginCmds[0].Execute(logger, pluginCom, taskConfig,
 							make(chan bool))

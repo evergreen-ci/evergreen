@@ -3,7 +3,7 @@ tasks:
       commands:
         - command: attach.results
           params:
-              file_location: "testdata/plugin_attach_results.json"
+              file_location: "plugin/builtin/attach/testdata/plugin_attach_results.json"
 
 buildvariants:
 - name: linux-64

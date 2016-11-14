@@ -2,6 +2,7 @@ package xunit
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,10 +13,13 @@ import (
 )
 
 func TestXMLParsing(t *testing.T) {
+	cwd := testutil.GetDirectoryOfFile()
+
 	Convey("With some test xml files", t, func() {
 		Convey("with a basic test junit file", func() {
-			file, err := os.Open("testdata/junit_1.xml")
+			file, err := os.Open(filepath.Join(cwd, "testdata", "junit_1.xml"))
 			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -35,8 +39,9 @@ func TestXMLParsing(t *testing.T) {
 		})
 
 		Convey("with a more complex test junit file", func() {
-			file, err := os.Open("testdata/junit_2.xml")
+			file, err := os.Open(filepath.Join(cwd, "testdata", "junit_2.xml"))
 			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -60,8 +65,9 @@ func TestXMLParsing(t *testing.T) {
 		})
 
 		Convey(`with a "real" pymongo xunit file`, func() {
-			file, err := os.Open("testdata/junit_3.xml")
+			file, err := os.Open(filepath.Join(cwd, "testdata", "junit_3.xml"))
 			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -86,8 +92,9 @@ func TestXMLParsing(t *testing.T) {
 			})
 		})
 		Convey(`with a "real" java driver xunit file`, func() {
-			file, err := os.Open("testdata/junit_4.xml")
+			file, err := os.Open(filepath.Join(cwd, "testdata", "junit_4.xml"))
 			testutil.HandleTestingErr(err, t, "Error reading file")
+			defer file.Close()
 
 			Convey("the file should parse without error", func() {
 				res, err := ParseXMLResults(file)
@@ -109,8 +116,9 @@ func TestXMLParsing(t *testing.T) {
 
 func TestXMLToModelConversion(t *testing.T) {
 	Convey("With a parsed XML file and a task", t, func() {
-		file, err := os.Open("testdata/junit_3.xml")
+		file, err := os.Open(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "junit_3.xml"))
 		testutil.HandleTestingErr(err, t, "Error reading file")
+		defer file.Close()
 		res, err := ParseXMLResults(file)
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)

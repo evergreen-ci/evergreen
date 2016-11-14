@@ -2,8 +2,10 @@ package model
 
 import (
 	"io/ioutil"
+	"path/filepath"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -45,7 +47,8 @@ func taskNames(v *BuildVariant) []string {
 func TestPythonMatrixIntegration(t *testing.T) {
 	Convey("With a sample matrix project mocking up a python driver", t, func() {
 		p := Project{}
-		bytes, err := ioutil.ReadFile("testdata/matrix_python.yml")
+		bytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
+			"testdata", "matrix_python.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
 			err := LoadProjectInto(bytes, "python", &p)
@@ -101,7 +104,8 @@ func TestPythonMatrixIntegration(t *testing.T) {
 func TestDepsMatrixIntegration(t *testing.T) {
 	Convey("With a sample matrix project mocking up a python driver", t, func() {
 		p := Project{}
-		bytes, err := ioutil.ReadFile("testdata/matrix_deps.yml")
+		bytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
+			"testdata", "matrix_deps.yml"))
 		So(err, ShouldBeNil)
 		Convey("the project should parse properly", func() {
 			err := LoadProjectInto(bytes, "deps", &p)

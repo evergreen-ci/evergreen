@@ -1,15 +1,6 @@
 package thirdparty
 
-import (
-	"fmt"
-)
-
-// this stores summary patch information
-type Summary struct {
-	Name      string `bson:"filename"`
-	Additions int    `bson:"additions"`
-	Deletions int    `bson:"deletions"`
-}
+import "fmt"
 
 // Infrastructure/communication-related errors
 

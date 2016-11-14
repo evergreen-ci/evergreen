@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -51,9 +50,16 @@ type ModulePatch struct {
 
 // this stores information about the actual patch
 type PatchSet struct {
-	Patch       string               `bson:"patch,omitempty"`
-	PatchFileId string               `bson:"patch_file_id,omitempty"`
-	Summary     []thirdparty.Summary `bson:"summary"`
+	Patch       string    `bson:"patch,omitempty"`
+	PatchFileId string    `bson:"patch_file_id,omitempty"`
+	Summary     []Summary `bson:"summary"`
+}
+
+// this stores summary patch information
+type Summary struct {
+	Name      string `bson:"filename"`
+	Additions int    `bson:"additions"`
+	Deletions int    `bson:"deletions"`
 }
 
 func (p *Patch) SetDescription(desc string) error {

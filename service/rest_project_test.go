@@ -28,7 +28,7 @@ func TestProjectRoutes(t *testing.T) {
 	uis := UIServer{
 		RootURL:     projectTestConfig.Ui.Url,
 		Settings:    *projectTestConfig,
-		UserManager: testutil.MockUserManager{},
+		UserManager: MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
 	uis.Render = render.New(render.Options{

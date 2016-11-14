@@ -7,15 +7,15 @@ echo "Installing plugins..."
 
 # set the $GOPATH appropriately. as the first entry in the $GOPATH,
 # the dependencies will be installed in vendor/
-. ./set_gopath.sh
+# . ./set_gopath.sh
 
+echo `pwd`
 # make sure the Plugins file is there
 deps_file="Plugins"
-[[ -f "$deps_file" ]] || (echo ">> $deps_file file does not exist." && exit 1)
+[[ -f "$deps_file" ]] || echo ">> $deps_file file does not exist." && exit 0
 
 # make sure go is installed
-(go version > /dev/null) ||
-  ( echo ">> Go is currently not installed or in your PATH" && exit 1)
+(go version > /dev/null) || echo ">> Go is currently not installed or in your PATH" && exit 1
 
 # iterate over Plugins file dependencies and set
 # the specified version on each of them.
@@ -32,12 +32,12 @@ while read line; do
     pluginname=${linearr[3]}
 
     if [[ "${pluginconf}" == "" ]]
-    then 
+    then
         echo ">> Error: must specify a plugin config file for ${package}"
         exit 1
     fi
 
-    install_path="vendor/src/${package%%/...}"
+    install_path="vendor/${package%%/...}"
 
     # clean out the install path
     rm -rf $install_path
@@ -63,23 +63,23 @@ while read line; do
     cd $SCRIPT_DIR/plugin/config
     $(rm $pluginconf || true)
     ln -s ../../$install_path/config/$pluginconf $pluginconf
-	if [ -d "../../$install_path/templates/" ]; then
-		echo "creating template links to service/plugins/$pluginname"
-		mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
-		# remove existing symlink if its already there
-		rm $SCRIPT_DIR/service/plugins/$pluginname/templates || true
-		ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/service/plugins/$pluginname/
-	fi
-	if [ -d "../../$install_path/static/" ]; then
-		echo "creating static links to service/plugins/$pluginname"
-		mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
-		# remove existing symlink if its already there
-		rm $SCRIPT_DIR/service/plugins/$pluginname/static
-		ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/service/plugins/$pluginname/
-	fi
+        if [ -d "../../$install_path/templates/" ]; then
+                echo "creating template links to service/plugins/$pluginname"
+                mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
+                # remove existing symlink if its already there
+                rm $SCRIPT_DIR/service/plugins/$pluginname/templates || true
+                ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/service/plugins/$pluginname/
+        fi
+        if [ -d "../../$install_path/static/" ]; then
+                echo "creating static links to service/plugins/$pluginname"
+                mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
+                # remove existing symlink if its already there
+                rm $SCRIPT_DIR/service/plugins/$pluginname/static
+                ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/service/plugins/$pluginname/
+        fi
     echo ">> Plugin successfully installed"
 
-  ) 
+  )
 done < $deps_file
 
 echo ">> All Done"

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -26,7 +26,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	}
 
 	httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
-	jsonCom := &agent.TaskJSONCommunicator{"shell", httpCom}
+	jsonCom := &comm.TaskJSONCommunicator{"shell", httpCom}
 
 	conf := &model.TaskConfig{Expansions: &command.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 

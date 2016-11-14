@@ -3,6 +3,7 @@ package cli
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -22,6 +23,7 @@ import (
 )
 
 var testConfig = evergreen.TestConfig()
+
 var testPatch = `diff --git a/README.md b/README.md
 index e69de29..e5dcf0f 100644
 --- a/README.md
@@ -69,7 +71,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(db.Clear(patch.Collection), ShouldBeNil)
 	So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
 	So((&user.DBUser{Id: "testuser", APIKey: "testapikey", EmailAddress: "tester@mongodb.com"}).Insert(), ShouldBeNil)
-	localConfBytes, err := ioutil.ReadFile("testdata/sample.yml")
+	localConfBytes, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "sample.yml"))
 	So(err, ShouldBeNil)
 
 	projectRef := &model.ProjectRef{

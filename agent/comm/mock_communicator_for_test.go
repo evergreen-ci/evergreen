@@ -1,18 +1,14 @@
-package agent
+package comm
 
 import (
 	"fmt"
 	"net/http"
-	"testing"
-	"time"
 
-	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	. "github.com/smartystreets/goconvey/convey"
 )
 
 type MockCommunicator struct {
@@ -23,11 +19,11 @@ type MockCommunicator struct {
 	logChan             chan []model.LogMessage
 }
 
-func (*MockCommunicator) tryGet(path string) (*http.Response, error) {
+func (*MockCommunicator) TryGet(path string) (*http.Response, error) {
 	return nil, nil
 }
 
-func (*MockCommunicator) tryPostJSON(path string, data interface{}) (*http.Response, error) {
+func (*MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
 	return nil, nil
 }
 
@@ -78,42 +74,4 @@ func (mc *MockCommunicator) Heartbeat() (bool, error) {
 
 func (*MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{}, nil
-}
-
-func TestHeartbeat(t *testing.T) {
-
-	Convey("With a simple heartbeat ticker", t, func() {
-		sigChan := make(chan Signal)
-		mockCommunicator := &MockCommunicator{}
-		hbTicker := &HeartbeatTicker{
-			MaxFailedHeartbeats: 10,
-			Interval:            10 * time.Millisecond,
-			SignalChan:          sigChan,
-			TaskCommunicator:    mockCommunicator,
-			Logger: &slogger.Logger{
-				Appenders: []slogger.Appender{},
-			},
-		}
-
-		Convey("abort signals detected by heartbeat are sent on sigChan", func() {
-			mockCommunicator.shouldFailHeartbeat = false
-			hbTicker.StartHeartbeating()
-			go func() {
-				time.Sleep(2 * time.Second)
-				mockCommunicator.abort = true
-			}()
-			signal := <-sigChan
-			So(signal, ShouldEqual, AbortedByUser)
-		})
-
-		Convey("failed heartbeats must signal failure on sigChan", func() {
-			mockCommunicator.abort = false
-			mockCommunicator.shouldFailHeartbeat = true
-			hbTicker.StartHeartbeating()
-			signal := <-sigChan
-			So(signal, ShouldEqual, HeartbeatMaxFailed)
-		})
-
-	})
-
 }

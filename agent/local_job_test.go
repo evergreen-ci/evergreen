@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -18,7 +19,7 @@ func TestLocalJob(t *testing.T) {
 			killChan := make(chan bool)
 			testCmd := &AgentCommand{
 				ScriptLine:   "echo 'hi stdout!'; echo 'hi stderr!' >&2;",
-				StreamLogger: NewTestLogger(appender),
+				StreamLogger: testutil.NewTestLogger(appender),
 				KillChan:     killChan,
 				Expansions:   command.NewExpansions(map[string]string{}),
 			}
@@ -46,7 +47,7 @@ func TestLocalJob(t *testing.T) {
 			killChan := make(chan bool)
 			newlineTestCmd := &AgentCommand{
 				ScriptLine:   "printf 'this is not a newline...'; printf 'this is a newline \n';",
-				StreamLogger: NewTestLogger(appender),
+				StreamLogger: testutil.NewTestLogger(appender),
 				KillChan:     killChan,
 				Expansions:   command.NewExpansions(map[string]string{}),
 			}
@@ -71,7 +72,7 @@ func TestLocalJob(t *testing.T) {
 		killChan := make(chan bool)
 		testCmd := &AgentCommand{
 			ScriptLine:   "echo 'hi'; sleep 4; echo 'i should not get run'",
-			StreamLogger: NewTestLogger(appender),
+			StreamLogger: testutil.NewTestLogger(appender),
 			KillChan:     killChan,
 			Expansions:   command.NewExpansions(map[string]string{}),
 		}

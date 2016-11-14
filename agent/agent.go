@@ -4,49 +4,19 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
-)
-
-const APIVersion = 2
-
-// Signal describes the various conditions under which the agent
-// will complete execution of a task.
-type Signal int64
-
-// Recognized agent signals.
-const (
-	// HeartbeatMaxFailed indicates that repeated attempts to send heartbeat to
-	// the API server fails.
-	HeartbeatMaxFailed Signal = iota
-	// IncorrectSecret indicates that the secret for the task the agent is running
-	// does not match the task secret held by API server.
-	IncorrectSecret
-	// AbortedByUser indicates a user decided to prematurely end the task.
-	AbortedByUser
-	// IdleTimeout indicates the task appears to be idle - e.g. no logs produced
-	// for the duration indicated by DefaultIdleTimeout.
-	IdleTimeout
-	// Completed indicates that the task completed without incident. This signal is
-	// used internally to shut down the signal handler.
-	Completed
-	// Directory Failure indicates that the task failed due to a problem for the agent
-	// creating or moving into a new directory.
-	DirectoryFailure
 )
 
 const (
@@ -100,27 +70,11 @@ type ExecTracker interface {
 	CheckIn(command model.PluginCommandConf, timeout time.Duration)
 }
 
-// TaskCommunicator is an interface that handles the remote procedure calls
-// between an agent and the remote server.
-type TaskCommunicator interface {
-	Start(pid string) error
-	End(detail *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error)
-	GetTask() (*task.Task, error)
-	GetProjectRef() (*model.ProjectRef, error)
-	GetDistro() (*distro.Distro, error)
-	GetVersion() (*version.Version, error)
-	Log([]model.LogMessage) error
-	Heartbeat() (bool, error)
-	FetchExpansionVars() (*apimodels.ExpansionVars, error)
-	tryGet(path string) (*http.Response, error)
-	tryPostJSON(path string, data interface{}) (*http.Response, error)
-}
-
 // SignalHandler is an implementation of TerminateHandler which runs the post-run
 // script when a task finishes, and reports its results back to the API server.
 type SignalHandler struct {
 	// signal channels for each background process
-	directoryChan, heartbeatChan, idleTimeoutChan, execTimeoutChan, communicatorChan chan Signal
+	directoryChan, heartbeatChan, idleTimeoutChan, execTimeoutChan, communicatorChan chan comm.Signal
 
 	// a single channel for stopping all background processes
 	stopBackgroundChan chan struct{}
@@ -132,7 +86,7 @@ type Agent struct {
 
 	// TaskCommunicator handles all communication with the API server -
 	// marking task started/ended, sending test results, logs, heartbeats, etc
-	TaskCommunicator
+	comm.TaskCommunicator
 
 	// ExecTracker keeps track of the agent's current stage of execution.
 	ExecTracker
@@ -149,7 +103,7 @@ type Agent struct {
 
 	// heartbeater handles triggering heartbeats at the correct intervals, and
 	// raises a signal if too many heartbeats fail consecutively.
-	heartbeater *HeartbeatTicker
+	heartbeater *comm.HeartbeatTicker
 
 	// statsCollector handles sending vital host system stats at the correct
 	// intervals, to the API server.
@@ -157,19 +111,19 @@ type Agent struct {
 
 	// logger handles all the logging (task, system, execution, local)
 	// by appending log messages for each type to the correct stream.
-	logger *StreamLogger
+	logger *comm.StreamLogger
 
 	// timeoutWatcher maintains a timer, and raises a signal if the running task
 	// does not produce output within a given time frame.
-	idleTimeoutWatcher *TimeoutWatcher
+	idleTimeoutWatcher *comm.TimeoutWatcher
 
 	// maxExecTimeoutWatcher maintains a timer, and raises a signal if the running task
 	// does not return within a given time frame.
-	maxExecTimeoutWatcher *TimeoutWatcher
+	maxExecTimeoutWatcher *comm.TimeoutWatcher
 
 	// APILogger is a slogger.Appender which sends log messages
 	// to the API server.
-	APILogger *APILogger
+	APILogger *comm.APILogger
 
 	// Holds the current command being executed by the agent.
 	currentCommand model.PluginCommandConf
@@ -261,17 +215,17 @@ func (agt *Agent) getTaskEndDetail() *apimodels.TaskEndDetail {
 
 // makeChannels allocates async channels for each background process.
 func (sh *SignalHandler) makeChannels() {
-	sh.heartbeatChan = make(chan Signal, 1)
-	sh.idleTimeoutChan = make(chan Signal, 1)
-	sh.execTimeoutChan = make(chan Signal, 1)
-	sh.communicatorChan = make(chan Signal, 1)
-	sh.directoryChan = make(chan Signal, 1)
+	sh.heartbeatChan = make(chan comm.Signal, 1)
+	sh.idleTimeoutChan = make(chan comm.Signal, 1)
+	sh.execTimeoutChan = make(chan comm.Signal, 1)
+	sh.communicatorChan = make(chan comm.Signal, 1)
+	sh.directoryChan = make(chan comm.Signal, 1)
 	sh.stopBackgroundChan = make(chan struct{})
 }
 
 // awaitSignal multiplexes inputs from the various background processes
-func (sh *SignalHandler) awaitSignal() Signal {
-	var sig Signal
+func (sh *SignalHandler) awaitSignal() comm.Signal {
+	var sig comm.Signal
 	select {
 	case sig = <-sh.heartbeatChan:
 	case sig = <-sh.idleTimeoutChan:
@@ -279,7 +233,7 @@ func (sh *SignalHandler) awaitSignal() Signal {
 	case sig = <-sh.communicatorChan:
 	case sig = <-sh.directoryChan:
 	case <-sh.stopBackgroundChan:
-		return Completed
+		return comm.Completed
 	}
 	return sig
 }
@@ -330,24 +284,24 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	receivedSignal := sh.awaitSignal()
 	detail := agt.getTaskEndDetail()
 	switch receivedSignal {
-	case Completed:
+	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
 		// everything went according to plan, so we just exit the signal handler routine
 		return
-	case IncorrectSecret:
+	case comm.IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
 		ExitAgent(agt.logger, 1, agt.pidFilePath)
-	case HeartbeatMaxFailed:
+	case comm.HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
 		ExitAgent(agt.logger, 1, agt.pidFilePath)
-	case AbortedByUser:
+	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
-	case DirectoryFailure:
+	case comm.DirectoryFailure:
 		detail.Status = evergreen.TaskFailed
 		detail.Type = model.SystemCommandType
 		agt.logger.LogTask(slogger.ERROR, "Directory creation failure - stopping.")
-	case IdleTimeout:
+	case comm.IdleTimeout:
 		agt.logger.LogTask(slogger.ERROR, "Task timed out: '%v'", detail.Description)
 		detail.TimedOut = true
 		if agt.taskConfig.Project.Timeout != nil {
@@ -430,31 +384,30 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFilePath string) (*
 	sh.makeChannels()
 
 	// set up communicator with API server
-	httpCommunicator, err := NewHTTPCommunicator(apiServerURL, taskId, taskSecret, cert, sh.communicatorChan)
+	httpCommunicator, err := comm.NewHTTPCommunicator(apiServerURL, taskId, taskSecret, cert, sh.communicatorChan)
 	if err != nil {
 		return nil, err
 	}
 
 	// set up logger to API server
-	apiLogger := NewAPILogger(httpCommunicator)
-	idleTimeoutWatcher := &TimeoutWatcher{duration: DefaultIdleTimeout, stop: sh.stopBackgroundChan}
+	apiLogger := comm.NewAPILogger(httpCommunicator)
+	idleTimeoutWatcher := comm.NewTimeoutWatcher(sh.stopBackgroundChan)
+	idleTimeoutWatcher.SetDuration(DefaultIdleTimeout)
 
 	// set up timeout logger, local and API logger streams
-	streamLogger, err := NewStreamLogger(idleTimeoutWatcher, apiLogger, logFile)
+	streamLogger, err := comm.NewStreamLogger(idleTimeoutWatcher, apiLogger, logFile)
 	if err != nil {
 		return nil, err
 	}
 	httpCommunicator.Logger = streamLogger.Execution
 
 	// set up the heartbeat ticker
-	hbTicker := &HeartbeatTicker{
-		MaxFailedHeartbeats: 10,
-		SignalChan:          sh.heartbeatChan,
-		TaskCommunicator:    httpCommunicator,
-		Logger:              httpCommunicator.Logger,
-		Interval:            DefaultHeartbeatInterval,
-		stop:                sh.stopBackgroundChan,
-	}
+	hbTicker := comm.NewHeartbeatTicker(sh.stopBackgroundChan)
+	hbTicker.MaxFailedHeartbeats = 10
+	hbTicker.SignalChan = sh.heartbeatChan
+	hbTicker.TaskCommunicator = httpCommunicator
+	hbTicker.Logger = httpCommunicator.Logger
+	hbTicker.Interval = DefaultHeartbeatInterval
 
 	// set up the system stats collector
 	statsCollector := NewSimpleStatsCollector(
@@ -492,7 +445,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 	agt.logger.LogExecution(slogger.INFO, "Execution logger initialized.")
 	agt.logger.LogSystem(slogger.INFO, "System logger initialized.")
 
-	httpAgentComm, ok := agt.TaskCommunicator.(*HTTPCommunicator)
+	httpAgentComm, ok := agt.TaskCommunicator.(*comm.HTTPCommunicator)
 	if ok && len(httpAgentComm.HttpsCert) == 0 {
 		agt.logger.LogTask(slogger.WARN, "Running agent without a https certificate.")
 	}
@@ -518,10 +471,9 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 	execTimeout := time.Duration(pt.ExecTimeoutSecs) * time.Second
 	// Set master task timeout, only if included in the taskConfig
 	if execTimeout != 0 {
-		agt.maxExecTimeoutWatcher = &TimeoutWatcher{
-			duration: execTimeout,
-			stop:     agt.signalHandler.stopBackgroundChan,
-		}
+		agt.maxExecTimeoutWatcher = comm.NewTimeoutWatcher(
+			agt.signalHandler.stopBackgroundChan)
+		agt.maxExecTimeoutWatcher.SetDuration(execTimeout)
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Fetching expansions for project %v...", taskConfig.Task.Project)
@@ -538,7 +490,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	err = agt.createTaskDirectory(taskConfig)
 	if err != nil {
-		agt.signalHandler.directoryChan <- DirectoryFailure
+		agt.signalHandler.directoryChan <- comm.DirectoryFailure
 		return nil, err
 	}
 	taskConfig.Expansions.Put("workdir", taskConfig.WorkDir)
@@ -651,10 +603,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 			}
 
 			// create a new command logger to wrap the agent logger
-			commandLogger := &CommandLogger{
-				commandName: fullCommandName,
-				logger:      agt.logger,
-			}
+			commandLogger := comm.NewCommandLogger(fullCommandName, agt.logger)
 
 			if len(commandInfo.Vars) > 0 {
 				for key, val := range commandInfo.Vars {
@@ -666,7 +615,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 				}
 			}
 
-			pluginCom := &TaskJSONCommunicator{cmd.Plugin(), agt.TaskCommunicator}
+			pluginCom := &comm.TaskJSONCommunicator{cmd.Plugin(), agt.TaskCommunicator}
 
 			agt.CheckIn(parsedCommand, timeoutPeriod)
 
@@ -688,7 +637,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 }
 
 // registerPlugins makes plugins available for use by the agent.
-func registerPlugins(registry plugin.Registry, plugins []plugin.CommandPlugin, logger *StreamLogger) error {
+func registerPlugins(registry plugin.Registry, plugins []plugin.CommandPlugin, logger *comm.StreamLogger) error {
 	for _, pl := range plugins {
 		if err := registry.Register(pl); err != nil {
 			return fmt.Errorf("Failed to register plugin %v: %v", pl.Name(), err)
@@ -778,7 +727,7 @@ func (agt *Agent) removeTaskDirectory() error {
 }
 
 // ExitAgent removes the pid file and exits the process with the given exit code.
-func ExitAgent(logger *StreamLogger, exitCode int, pidFile string) {
+func ExitAgent(logger *comm.StreamLogger, exitCode int, pidFile string) {
 	err := os.Remove(pidFile)
 	if err != nil {
 		if logger != nil {

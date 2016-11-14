@@ -10,7 +10,7 @@ import (
 )
 
 func TestRemoteCommand(t *testing.T) {
-	testutil.SkipUnlessAllTests(t, "remote command tests")
+	testutil.SkipTestUnlessAll(t, "TestRemoteCommand")
 
 	Convey("With a remote command", t, func() {
 

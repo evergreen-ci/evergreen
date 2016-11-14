@@ -12,8 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/command"
 	dbutil "github.com/evergreen-ci/evergreen/db"
@@ -40,9 +41,7 @@ var Verbose = testing.Verbose()
 var testConfig = evergreen.TestConfig()
 var testPidFile = "test_pid_file"
 
-var testSetups = []testConfigPath{
-	{"With plugin mode test config", "testdata/config_test_plugin"},
-}
+var testSetups []testConfigPath
 
 var buildVariantsToTest = []string{"linux-64", "windows8"}
 
@@ -85,6 +84,11 @@ func (ptm patchTestMode) String() string {
 
 func init() {
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(testConfig))
+	testSetups = []testConfigPath{
+		{"With plugin mode test config",
+			filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "config_test_plugin")},
+	}
+
 }
 
 func (*NoopSignalHandler) HandleSignals(_ *Agent) {
@@ -201,7 +205,7 @@ func TestBasicEndpoints(t *testing.T) {
 						time.Sleep(3 * time.Second)
 						timeoutSignal, ok := <-testAgent.signalHandler.idleTimeoutChan
 						So(ok, ShouldBeTrue)
-						So(timeoutSignal, ShouldEqual, IdleTimeout)
+						So(timeoutSignal, ShouldEqual, comm.IdleTimeout)
 					})
 				})
 			})
@@ -230,7 +234,7 @@ func TestHeartbeatSignals(t *testing.T) {
 				testServer.Listener.Close()
 				signal, ok := <-testAgent.signalHandler.heartbeatChan
 				So(ok, ShouldBeTrue)
-				So(signal, ShouldEqual, HeartbeatMaxFailed)
+				So(signal, ShouldEqual, comm.HeartbeatMaxFailed)
 			})
 		})
 	}
@@ -356,7 +360,7 @@ func TestSecrets(t *testing.T) {
 				testServer.Listener.Close()
 				signal, ok := <-testAgent.signalHandler.heartbeatChan
 				So(ok, ShouldBeTrue)
-				So(signal, ShouldEqual, HeartbeatMaxFailed)
+				So(signal, ShouldEqual, comm.HeartbeatMaxFailed)
 			})
 		})
 	}
@@ -1037,7 +1041,8 @@ func prependConfigToVersion(t *testing.T, versionId, configData string) {
 
 func TestMain(m *testing.M) {
 	var err error
-	testDirectory, err = os.Getwd()
+
+	testDirectory = testutil.GetDirectoryOfFile()
 	if err != nil {
 		panic(err)
 	}

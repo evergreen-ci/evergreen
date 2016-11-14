@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen/util"
+	slogger "github.com/10gen-labs/slogger/v1"
 )
 
 const (
@@ -78,6 +77,8 @@ const (
 
 	DefaultTaskActivator   = ""
 	APIServerTaskActivator = "apiserver"
+
+	AgentAPIVersion = 2
 )
 
 // evergreen package names
@@ -120,7 +121,7 @@ var (
 
 // SetLogger sets the global logger to write to the given path.
 func SetLogger(logPath string) {
-	logfile, err := util.GetAppendingFile(logPath)
+	logfile, err := GetAppendingFile(logPath)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create log file %v: %v", logPath, err))
 	}
@@ -129,6 +130,17 @@ func SetLogger(logPath string) {
 		Prefix:    "",
 		Appenders: []slogger.Appender{&slogger.FileAppender{logfile}},
 	}
+}
+
+// GetAppendingFile opens a file for appending. The file will be created
+// if it does not already exist.
+func GetAppendingFile(path string) (*os.File, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if _, err := os.Create(path); err != nil {
+			return nil, err
+		}
+	}
+	return os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
 }
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.

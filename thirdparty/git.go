@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 )
 
@@ -63,7 +64,7 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 // ParseGitSummary takes in a buffer of data and parses it into a slice of
 // git summaries. It returns an error if it is unable to parse the data
-func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []Summary, err error) {
+func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []patch.Summary, err error) {
 	// separate stats per file
 	fileStats := strings.Split(gitOutput.String(), "\n")
 
@@ -101,7 +102,7 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []Summary, err error) {
 			}
 		}
 
-		summary := Summary{
+		summary := patch.Summary{
 			Name:      details[2],
 			Additions: additions,
 			Deletions: deletions,

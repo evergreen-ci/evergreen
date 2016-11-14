@@ -1,11 +1,13 @@
 package attach_test
 
 import (
+	"path/filepath"
 	"testing"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
+	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -16,10 +18,12 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-const (
-	TotalResultCount = 677
-	SingleFileConfig = "testdata/plugin_attach_xunit.yml"
-	WildcardConfig   = "testdata/plugin_attach_xunit_wildcard.yml"
+const TotalResultCount = 677
+
+var (
+	workingDirectory = testutil.GetDirectoryOfFile()
+	SingleFileConfig = filepath.Join(workingDirectory, "testdata", "plugin_attach_xunit.yml")
+	WildcardConfig   = filepath.Join(workingDirectory, "testdata", "plugin_attach_xunit_wildcard.yml")
 )
 
 // runTest abstracts away common tests and setup between all attach xunit tests.
@@ -40,7 +44,7 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
 		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		logger := agent.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, projTask := range taskConfig.Project.Tasks {
@@ -50,7 +54,7 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &agent.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
+					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
 					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
 					So(err, ShouldBeNil)
 					testTask, err := task.FindOne(task.ById(httpCom.TaskId))

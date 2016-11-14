@@ -12,9 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/yaml.v2"
 )
@@ -90,7 +90,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 				Githash: "revision",
 				PatchSet: patch.PatchSet{
 					Patch: fmt.Sprintf(string(fileBytes), testPath, testPath, testPath, testPath),
-					Summary: []thirdparty.Summary{
+					Summary: []patch.Summary{
 						{Name: configFilePath, Additions: 4, Deletions: 80},
 						{Name: "random.txt", Additions: 6, Deletions: 0},
 					},
@@ -136,7 +136,7 @@ func resetProjectlessPatchSetup(t *testing.T, testPath string) *patch.Patch {
 				Githash: "revision",
 				PatchSet: patch.PatchSet{
 					Patch:   string(fileBytes),
-					Summary: []thirdparty.Summary{{Name: newConfigFilePath}},
+					Summary: []patch.Summary{{Name: newConfigFilePath}},
 				},
 			},
 		},
@@ -148,7 +148,7 @@ func resetProjectlessPatchSetup(t *testing.T, testPath string) *patch.Patch {
 
 func TestProjectRef(t *testing.T) {
 	Convey("When inserting a project ref", t, func() {
-		err := testutil.CreateTestLocalConfig(patchTestConfig, "mci-test", "")
+		err := modelutil.CreateTestLocalConfig(patchTestConfig, "mci-test", "")
 		So(err, ShouldBeNil)
 		projectRef, err := model.FindOneProjectRef("mci-test")
 		So(err, ShouldBeNil)

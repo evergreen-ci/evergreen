@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -98,8 +98,8 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	return model.NewTaskConfig(testDistro, testVersion, testProject, testTask, projectRef)
 }
 
-func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *agent.HTTPCommunicator {
-	agentCommunicator, err := agent.NewHTTPCommunicator(apiRootUrl, taskId, taskSecret, "", nil)
+func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *comm.HTTPCommunicator {
+	agentCommunicator, err := comm.NewHTTPCommunicator(apiRootUrl, taskId, taskSecret, "", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +108,7 @@ func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) 
 	return agentCommunicator
 }
 
-func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, error) {
+func SetupAPITestData(taskDisplayName string, patchPath string, t *testing.T) (*task.Task, *build.Build, error) {
 	//ignore errs here because the ns might just not exist.
 	testutil.HandleTestingErr(
 		db.ClearCollections(task.Collection, build.Collection,
@@ -137,7 +137,7 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 		Requester:    evergreen.RepotrackerVersionRequester,
 	}
 
-	if isPatch {
+	if patchPath != "" {
 		task.Requester = evergreen.PatchVersionRequester
 	}
 
@@ -145,8 +145,8 @@ func SetupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 
 	version := &version.Version{Id: "testVersionId", BuildIds: []string{task.BuildId}}
 	testutil.HandleTestingErr(version.Insert(), t, "failed to insert version %v")
-	if isPatch {
-		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
+	if patchPath != "" {
+		modulePatchContent, err := ioutil.ReadFile(patchPath)
 		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
 		patch := &patch.Patch{

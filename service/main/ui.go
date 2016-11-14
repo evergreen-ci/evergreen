@@ -10,7 +10,7 @@ import (
 	textTemplate "text/template"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"

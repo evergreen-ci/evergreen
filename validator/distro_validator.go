@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 )

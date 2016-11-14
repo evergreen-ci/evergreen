@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,9 @@ import (
 )
 
 func TestLocalCommands(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell command test doesn't make sense on windows")
+	}
 
 	Convey("When running local commands", t, func() {
 
@@ -74,10 +78,15 @@ func TestLocalCommands(t *testing.T) {
 				Stderr:           ioutil.Discard,
 				WorkingDirectory: workingDir,
 			}
-
 			// run the command - the working directory should be as specified
 			So(command.Run(), ShouldBeNil)
-			So(string(stdout.LastWritten), ShouldEqual, workingDir+"\n")
+
+			reportedPwd := string(stdout.LastWritten)
+			reportedPwd = reportedPwd[:len(reportedPwd)-1]
+			reportedPwd, err = filepath.EvalSymlinks(reportedPwd)
+			So(err, ShouldBeNil)
+
+			So(reportedPwd, ShouldEqual, workingDir)
 
 		})
 
@@ -198,6 +207,10 @@ func TestLocalCommandGroups(t *testing.T) {
 }
 
 func TestLocalScript(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell command test doesn't make sense on windows")
+	}
+
 	Convey("When running local commands in script mode", t, func() {
 
 		Convey("A multi-line script should run all lines", func() {
@@ -217,7 +230,12 @@ func TestLocalScript(t *testing.T) {
 
 			// run the command - the working directory should be as specified
 			So(command.Run(), ShouldBeNil)
-			So(string(stdout.LastWritten), ShouldEqual, workingDir+"\n")
+
+			reportedPwd := string(stdout.LastWritten)
+			reportedPwd = reportedPwd[:len(reportedPwd)-1]
+			reportedPwd, err = filepath.EvalSymlinks(reportedPwd)
+			So(err, ShouldBeNil)
+			So(reportedPwd, ShouldEqual, workingDir)
 		})
 
 	})
