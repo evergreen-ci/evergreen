@@ -24,3 +24,15 @@ directives.eventlogs.directive('hostevent', function() {
   };
 });
 
+directives.eventlogs.directive('distroevent', function() {
+  return {
+    scope:{
+      userTz:"=tz",
+      e:"=event"
+    },
+    restrict : 'E',
+    templateUrl : '/static/partials/distroevent.html',
+  };
+});
+
+

@@ -25,6 +25,9 @@ mciModule.controller('LogController', function($scope, $window) {
         <div ng-show="event.data.resource_type == 'TASK'">
           <taskevent event="event" tz="userTz"></taskevent>
         </div>
+        <div ng-show="event.data.resource_type == 'DISTRO'">
+          <distroevent event="event" tz="userTz"></taskevent>
+        </div>
     </div>
 </div>
 {{end}}

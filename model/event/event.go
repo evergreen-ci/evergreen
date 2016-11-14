@@ -50,6 +50,8 @@ func (dw DataWrapper) MarshalJSON() ([]byte, error) {
 		return json.Marshal(event)
 	case *SchedulerEventData:
 		return json.Marshal(event)
+	case *DistroEventData:
+		return json.Marshal(event)
 	default:
 		return nil, fmt.Errorf("cannot marshal data of type %T", dw.Data)
 	}

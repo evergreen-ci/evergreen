@@ -167,6 +167,10 @@ filters.common.filter('conditional', function() {
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
   };
+}).filter('pretty', function() {
+  return function(obj) {
+    return JSON.stringify(obj, null, 2);
+  };
 }).filter('ordinalNum', function() {
   // converts 1, 2, 3, etc. to 1st, 2nd, 3rd, etc.
   return function(n) {

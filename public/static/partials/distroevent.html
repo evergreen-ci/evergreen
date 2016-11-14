@@ -1,0 +1,12 @@
+<div class="eventlog">
+  <div class="timestamp">[[e.timestamp | convertDateToUserTimezone:userTz:'MMM D, YYYY h:mm:ss a']]</div>
+  <div class="event_details">
+    <div ng-switch="e.event_type">
+      <span ng-switch-when="DISTRO_ADDED"> Created by [[e.data.u_id]]</span>
+      <span ng-switch-when="DISTRO_MODIFIED"> Modified by [[e.data.u_id]]</span>
+      <span ng-switch-when="DISTRO_REMOVED"> Removed by [[e.data.u_id]]</span>
+    </div>
+  </div>
+  <div class="clearfix"></div>
+  <pre ng-hide="e.event_type=='DISTRO_REMOVED'"> [[e.data.dstr | pretty]] </pre>
+</div>

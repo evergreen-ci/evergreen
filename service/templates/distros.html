@@ -43,7 +43,8 @@ Evergreen - Distros
         <div ng-show="activeDistro">
           <h2 style="display:inline-block; padding-right:15px">Configure
           </h2>
-            <a ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a>
+            <a class="pointer" ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a> / 
+            <a ng-href="/event_log/distro/[[activeDistro._id]]"> view event log </a>
         </div>
         <div style="padding-top: -25px;" class="panel-body panel-default">
           <div>
