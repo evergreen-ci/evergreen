@@ -285,9 +285,6 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err = githubRequest("GET", url, oauthToken, nil)
-			if resp == nil {
-				err = fmt.Errorf("empty response on getting %v", url)
-			}
 			if err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "failed trying to call github GET on %v: %v", url, err)
 				return util.RetriableError{err}
@@ -325,9 +322,6 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 	retriableGet := util.RetriableFunc(
 		func() (retryError error) {
 			resp, err = githubRequest("POST", url, oauthToken, data)
-			if resp == nil {
-				err = fmt.Errorf("empty response on getting %v", url)
-			}
 			if err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "failed trying to call github POST on %v: %v", url, err)
 				return util.RetriableError{err}
