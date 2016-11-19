@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -143,6 +144,13 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case "set_priority":
+		if jsonMap.Priority > evergreen.MaxTaskPriority {
+			if !uis.isSuperUser(user) {
+				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", jsonMap.Priority, evergreen.MaxTaskPriority),
+					http.StatusBadRequest)
+				return
+			}
+		}
 		if err = model.SetVersionPriority(projCtx.Version.Id, jsonMap.Priority); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

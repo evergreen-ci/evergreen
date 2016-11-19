@@ -35,6 +35,15 @@ type CmpBasedTaskPrioritizer struct {
 	similarFailingCount map[string]int
 }
 
+// CmpBasedTaskQueues represents the three types of queues that are created for merging together into one queue.
+// The HighPriorityTasks list represent the tasks that are always placed at the front of the queue
+// PatchTasks and RepotrackerTasks are interleaved after the high priority tasks.
+type CmpBasedTaskQueues struct {
+	HighPriorityTasks []task.Task
+	PatchTasks        []task.Task
+	RepotrackerTasks  []task.Task
+}
+
 // NewCmpBasedTaskPrioritizer returns a new task prioritizer, using the default set of comparators
 // as well as the setup functions necessary for those comparators.
 func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
@@ -63,9 +72,9 @@ func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
 
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
-	repoTrackerTasks, patchTasks := self.splitTasksByRequester(tasks)
-	prioritizedTaskLists := make([][]task.Task, 0, 2)
-	for _, taskList := range [][]task.Task{repoTrackerTasks, patchTasks} {
+	taskQueues := self.splitTasksByRequester(tasks)
+	prioritizedTaskLists := make([][]task.Task, 0, 3)
+	for _, taskList := range [][]task.Task{taskQueues.RepotrackerTasks, taskQueues.PatchTasks, taskQueues.HighPriorityTasks} {
 
 		self.tasks = taskList
 
@@ -87,9 +96,13 @@ func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
 
 		prioritizedTaskLists = append(prioritizedTaskLists, self.tasks)
 	}
+	prioritizedTaskQueues := CmpBasedTaskQueues{
+		RepotrackerTasks:  prioritizedTaskLists[0],
+		PatchTasks:        prioritizedTaskLists[1],
+		HighPriorityTasks: prioritizedTaskLists[2],
+	}
 
-	self.tasks = self.mergeTasks(settings, prioritizedTaskLists[0],
-		prioritizedTaskLists[1])
+	self.tasks = self.mergeTasks(settings, &prioritizedTaskQueues)
 
 	return self.tasks, nil
 }
@@ -158,16 +171,19 @@ func (self *CmpBasedTaskPrioritizer) Swap(i, j int) {
 // Returns two slices - the tasks requested by the repotracker, and the tasks
 // requested in a patch.
 func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
-	allTasks []task.Task) ([]task.Task, []task.Task) {
+	allTasks []task.Task) *CmpBasedTaskQueues {
 
 	repoTrackerTasks := make([]task.Task, 0, len(allTasks))
 	patchTasks := make([]task.Task, 0, len(allTasks))
+	priorityTasks := make([]task.Task, 0, len(allTasks))
 
 	for _, task := range allTasks {
-		switch task.Requester {
-		case evergreen.RepotrackerVersionRequester:
+		switch {
+		case task.Priority > evergreen.MaxTaskPriority:
+			priorityTasks = append(priorityTasks, task)
+		case task.Requester == evergreen.RepotrackerVersionRequester:
 			repoTrackerTasks = append(repoTrackerTasks, task)
-		case evergreen.PatchVersionRequester:
+		case task.Requester == evergreen.PatchVersionRequester:
 			patchTasks = append(patchTasks, task)
 		default:
 			evergreen.Logger.Errorf(slogger.ERROR, "Unrecognized requester '%v'"+
@@ -175,15 +191,20 @@ func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
 		}
 	}
 
-	return repoTrackerTasks, patchTasks
+	return &CmpBasedTaskQueues{
+		HighPriorityTasks: priorityTasks,
+		RepotrackerTasks:  repoTrackerTasks,
+		PatchTasks:        patchTasks,
+	}
 }
 
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
 func (self *CmpBasedTaskPrioritizer) mergeTasks(settings *evergreen.Settings,
-	repoTrackerTasks []task.Task, patchTasks []task.Task) []task.Task {
+	tq *CmpBasedTaskQueues) []task.Task {
 
-	mergedTasks := make([]task.Task, 0, len(repoTrackerTasks)+len(patchTasks))
+	mergedTasks := make([]task.Task, 0, len(tq.RepotrackerTasks)+
+		len(tq.PatchTasks)+len(tq.HighPriorityTasks))
 
 	toggle := settings.Scheduler.MergeToggle
 	if toggle == 0 {
@@ -192,20 +213,23 @@ func (self *CmpBasedTaskPrioritizer) mergeTasks(settings *evergreen.Settings,
 
 	rIdx := 0
 	pIdx := 0
-	lenRepoTrackerTasks := len(repoTrackerTasks)
-	lenPatchTasks := len(patchTasks)
-	for idx := 0; idx < len(repoTrackerTasks)+len(patchTasks); idx++ {
+	lenRepoTrackerTasks := len(tq.RepotrackerTasks)
+	lenPatchTasks := len(tq.PatchTasks)
+
+	// add the high priority tasks to the start of the queue
+	mergedTasks = append(mergedTasks, tq.HighPriorityTasks...)
+	for idx := 0; idx < len(tq.RepotrackerTasks)+len(tq.PatchTasks); idx++ {
 		if pIdx >= lenPatchTasks { // overruns patch tasks
-			mergedTasks = append(mergedTasks, repoTrackerTasks[rIdx])
+			mergedTasks = append(mergedTasks, tq.RepotrackerTasks[rIdx])
 			rIdx++
 		} else if rIdx >= lenRepoTrackerTasks { // overruns repotracker tasks
-			mergedTasks = append(mergedTasks, patchTasks[pIdx])
+			mergedTasks = append(mergedTasks, tq.PatchTasks[pIdx])
 			pIdx++
 		} else if idx > 0 && (idx+1)%toggle == 0 { // turn for a repotracker task
-			mergedTasks = append(mergedTasks, repoTrackerTasks[rIdx])
+			mergedTasks = append(mergedTasks, tq.RepotrackerTasks[rIdx])
 			rIdx++
 		} else { // turn for a patch task
-			mergedTasks = append(mergedTasks, patchTasks[pIdx])
+			mergedTasks = append(mergedTasks, tq.PatchTasks[pIdx])
 			pIdx++
 		}
 	}

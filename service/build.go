@@ -142,6 +142,13 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Bad priority value; must be int", http.StatusBadRequest)
 			return
 		}
+		if priority > evergreen.MaxTaskPriority {
+			if !uis.isSuperUser(user) {
+				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set prior less than or equal to %v", priority, evergreen.MaxTaskPriority),
+					http.StatusBadRequest)
+				return
+			}
+		}
 		err = model.SetBuildPriority(projCtx.Build.Id, priority)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error setting priority on build %v", projCtx.Build.Id),

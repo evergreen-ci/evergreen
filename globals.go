@@ -67,6 +67,9 @@ const (
 	// maximum task (zero based) execution number
 	MaxTaskExecution = 3
 
+	// maximum task priority
+	MaxTaskPriority = 100
+
 	// LogMessage struct versions
 	LogmessageFormatTimestamp = 1
 	LogmessageCurrentVersion  = LogmessageFormatTimestamp

@@ -165,15 +165,40 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
 		}
 
-		repoTrackerTasks, patchTasks := taskPrioritizer.splitTasksByRequester(tasks)
-		So(len(repoTrackerTasks), ShouldEqual, 3)
+		tq := taskPrioritizer.splitTasksByRequester(tasks)
+		So(len(tq.RepotrackerTasks), ShouldEqual, 3)
+		repoTrackerTasks := tq.RepotrackerTasks
 		So(repoTrackerTasks[0].Id, ShouldEqual, taskIds[0])
 		So(repoTrackerTasks[1].Id, ShouldEqual, taskIds[3])
 		So(repoTrackerTasks[2].Id, ShouldEqual, taskIds[4])
-		So(len(patchTasks), ShouldEqual, 2)
+		So(len(tq.PatchTasks), ShouldEqual, 2)
+		patchTasks := tq.PatchTasks
 		So(patchTasks[0].Id, ShouldEqual, taskIds[1])
 		So(patchTasks[1].Id, ShouldEqual, taskIds[2])
 
+	})
+	Convey("Splitting tasks with priority greater than 100 should always put those tasks in the high priority queue", t, func() {
+		taskPrioritizer = NewCmpBasedTaskPrioritizer()
+
+		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
+		tasks := []task.Task{
+			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester, Priority: 101},
+			{Id: taskIds[1], Requester: evergreen.PatchVersionRequester, Priority: 101},
+			{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
+			{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
+			{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
+		}
+		tq := taskPrioritizer.splitTasksByRequester(tasks)
+		So(len(tq.RepotrackerTasks), ShouldEqual, 2)
+		repoTrackerTasks := tq.RepotrackerTasks
+		So(repoTrackerTasks[0].Id, ShouldEqual, taskIds[3])
+		So(repoTrackerTasks[1].Id, ShouldEqual, taskIds[4])
+		So(len(tq.PatchTasks), ShouldEqual, 1)
+		patchTasks := tq.PatchTasks
+		So(patchTasks[0].Id, ShouldEqual, taskIds[2])
+		So(len(tq.HighPriorityTasks), ShouldEqual, 2)
+		So(tq.HighPriorityTasks[0].Id, ShouldEqual, taskIds[0])
+		So(tq.HighPriorityTasks[1].Id, ShouldEqual, taskIds[1])
 	})
 
 	Convey("Merging tasks should merge the lists of repotracker and patch tasks, taking the toggle into account", t, func() {
@@ -196,11 +221,36 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
 			patchTasks := []task.Task{}
 
-			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
+			taskQueues := CmpBasedTaskQueues{
+				RepotrackerTasks: repoTrackerTasks,
+				PatchTasks:       patchTasks,
+			}
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &taskQueues)
 			So(len(mergedTasks), ShouldEqual, 3)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[0])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[1])
 			So(mergedTasks[2].Id, ShouldEqual, taskIds[2])
+
+			Convey("high priority tasks are inserted into the beginning of the queue", func() {
+				tasks[3].Requester = evergreen.RepotrackerVersionRequester
+				tasks[3].Priority = 101
+				tasks[4].Requester = evergreen.RepotrackerVersionRequester
+				tasks[4].Priority = 102
+
+				priorityTasks := []task.Task{tasks[3], tasks[4]}
+				tq := CmpBasedTaskQueues{
+					HighPriorityTasks: priorityTasks,
+					RepotrackerTasks:  repoTrackerTasks,
+				}
+				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tq)
+				So(len(mergedTasks), ShouldEqual, 5)
+				So(mergedTasks[0].Id, ShouldEqual, taskIds[3])
+				So(mergedTasks[1].Id, ShouldEqual, taskIds[4])
+				So(mergedTasks[2].Id, ShouldEqual, taskIds[0])
+				So(mergedTasks[3].Id, ShouldEqual, taskIds[1])
+				So(mergedTasks[4].Id, ShouldEqual, taskIds[2])
+
+			})
 		})
 
 		Convey("With no repotracker tasks, the list of patch tasks should be returned", func() {
@@ -210,7 +260,11 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			repoTrackerTasks := []task.Task{}
 			patchTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
 
-			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
+			taskQueues := CmpBasedTaskQueues{
+				RepotrackerTasks: repoTrackerTasks,
+				PatchTasks:       patchTasks,
+			}
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &taskQueues)
 			So(len(mergedTasks), ShouldEqual, 3)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[0])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[1])
@@ -225,7 +279,11 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
 				patchTasks := []task.Task{tasks[3], tasks[4], tasks[5]}
 
-				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
+				tqs := CmpBasedTaskQueues{
+					RepotrackerTasks: repoTrackerTasks,
+					PatchTasks:       patchTasks,
+				}
+				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 				So(len(mergedTasks), ShouldEqual, 6)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[3])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[0])
@@ -242,7 +300,11 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3]}
 				patchTasks := []task.Task{tasks[4], tasks[5]}
 
-				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
+				tqs := CmpBasedTaskQueues{
+					RepotrackerTasks: repoTrackerTasks,
+					PatchTasks:       patchTasks,
+				}
+				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 				So(len(mergedTasks), ShouldEqual, 6)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[4])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[5])
@@ -260,8 +322,12 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			taskPrioritizerTestConf.Scheduler.MergeToggle = 2
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1]}
 			patchTasks := []task.Task{tasks[2], tasks[3], tasks[4], tasks[5]}
+			tqs := CmpBasedTaskQueues{
+				RepotrackerTasks: repoTrackerTasks,
+				PatchTasks:       patchTasks,
+			}
 
-			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 			So(len(mergedTasks), ShouldEqual, 6)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[2])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[0])
@@ -277,7 +343,12 @@ func TestCmpBasedTaskPrioritizer(t *testing.T) {
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]}
 			patchTasks := []task.Task{tasks[5]}
 
-			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, repoTrackerTasks, patchTasks)
+			tqs := CmpBasedTaskQueues{
+				RepotrackerTasks: repoTrackerTasks,
+				PatchTasks:       patchTasks,
+			}
+
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 			So(len(mergedTasks), ShouldEqual, 6)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[5])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[0])

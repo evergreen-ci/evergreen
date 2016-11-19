@@ -618,6 +618,13 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Bad priority value, must be int", http.StatusBadRequest)
 			return
 		}
+		if priority > evergreen.MaxTaskPriority {
+			if !uis.isSuperUser(authUser) {
+				http.Error(w, fmt.Sprintf("Insufficient access to set priority %v, can only set priority less than or equal to %v", priority, evergreen.MaxTaskPriority),
+					http.StatusBadRequest)
+				return
+			}
+		}
 		if err = projCtx.Task.SetPriority(priority); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
