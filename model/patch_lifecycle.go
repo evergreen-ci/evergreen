@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -297,6 +297,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		Config:        string(p.PatchedConfig),
 		Status:        evergreen.PatchCreated,
 		Requester:     evergreen.PatchVersionRequester,
+		Branch:        project.Branch,
 	}
 
 	var pairs []TVPair
