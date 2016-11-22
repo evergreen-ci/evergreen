@@ -28,7 +28,7 @@ type Host struct {
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
 	// the task that is currently running on the host
-	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
+	RunningTask string `bson:"running_task" json:"running_task"`
 
 	// the pid of the task that is currently running on the host
 	Pid string `bson:"pid" json:"pid"`

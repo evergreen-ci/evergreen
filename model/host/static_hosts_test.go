@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -77,7 +78,7 @@ func TestDecommissionInactiveStaticHosts(t *testing.T) {
 			inactiveEC2One := &Host{
 				Id:       "inactiveEC2One",
 				Status:   evergreen.HostRunning,
-				Provider: evergreen.HostTypeEC2,
+				Provider: ec2.SpotProviderName,
 			}
 			So(inactiveEC2One.Insert(), ShouldBeNil)
 
