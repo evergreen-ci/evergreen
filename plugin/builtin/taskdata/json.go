@@ -42,12 +42,11 @@ func (jsp *TaskJSONPlugin) Name() string {
 // GetRoutes returns an API route for serving patch data.
 func (jsp *TaskJSONPlugin) GetAPIHandler() http.Handler {
 	r := mux.NewRouter()
-	r.HandleFunc("/tags/{task_name}/{name}", getTaskByTag)
 	r.HandleFunc("/history/{task_name}/{name}", apiGetTaskHistory)
 
-	r.HandleFunc("/data/{name}", insertTask)
-	r.HandleFunc("/data/{task_name}/{name}", getTaskByName)
-	r.HandleFunc("/data/{task_name}/{name}/{variant}", getTaskForVariant)
+	r.HandleFunc("/data/{name}", apiInsertTask)
+	r.HandleFunc("/data/{task_name}/{name}", apiGetTaskByName)
+	r.HandleFunc("/data/{task_name}/{name}/{variant}", apiGetTaskForVariant)
 	return r
 }
 
@@ -56,23 +55,23 @@ func (hwp *TaskJSONPlugin) GetUIHandler() http.Handler {
 
 	// version routes
 	r.HandleFunc("/version", getVersion)
-	r.HandleFunc("/version/{version_id}/{name}/", getTasksForVersion)
-	r.HandleFunc("/version/latest/{project_id}/{name}", getTasksForLatestVersion)
+	r.HandleFunc("/version/{version_id}/{name}/", uiGetTasksForVersion)
+	r.HandleFunc("/version/latest/{project_id}/{name}", uiGetTasksForLatestVersion)
 
 	// task routes
-	r.HandleFunc("/task/{task_id}/{name}/", getTaskById)
-	r.HandleFunc("/task/{task_id}/{name}/tags", getTags)
-	r.HandleFunc("/task/{task_id}/{name}/tag", handleTaskTag)
+	r.HandleFunc("/task/{task_id}/{name}/", uiGetTaskById)
+	r.HandleFunc("/task/{task_id}/{name}/tags", uiGetTags)
+	r.HandleFunc("/task/{task_id}/{name}/tag", uiHandleTaskTag).Methods("POST", "DELETE")
 
-	r.HandleFunc("/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", getTaskJSONByTag)
-	r.HandleFunc("/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", getCommit)
+	r.HandleFunc("/tag/{project_id}/{tag}/{variant}/{task_name}/{name}", uiGetTaskJSONByTag)
+	r.HandleFunc("/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", uiGetCommit)
 	r.HandleFunc("/history/{task_id}/{name}", uiGetTaskHistory)
 	return r
 }
 
 func fixPatchInHistory(taskId string, base *task.Task, history []TaskJSON) ([]TaskJSON, error) {
 	var jsonForTask *TaskJSON
-	err := db.FindOneQ(collection, db.Query(bson.M{"task_id": taskId}), &jsonForTask)
+	err := db.FindOneQ(collection, db.Query(bson.M{"task_id": taskId}), jsonForTask)
 	if err != nil {
 		return nil, err
 	}

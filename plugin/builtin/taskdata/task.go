@@ -12,10 +12,11 @@ import (
 	"net/http"
 )
 
-// getTaskById sends back a JSONTask with the corresponding task id.
-func getTaskById(w http.ResponseWriter, r *http.Request) {
-	var jsonForTask TaskJSON
-	err := db.FindOneQ(collection, db.Query(bson.M{TaskIdKey: mux.Vars(r)["task_id"], NameKey: mux.Vars(r)["name"]}), &jsonForTask)
+// uiGetTaskById sends back a JSONTask with the corresponding task id.
+func uiGetTaskById(w http.ResponseWriter, r *http.Request) {
+	taskId := mux.Vars(r)["task_id"]
+	name := mux.Vars(r)["name"]
+	jsonForTask, err := GetTaskById(taskId, name)
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -25,11 +26,19 @@ func getTaskById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, jsonForTask)
-
 }
 
-// getTask finds a json document by using thex task that is in the plugin.
-func getTaskByName(w http.ResponseWriter, r *http.Request) {
+// GetTaskById fetches a JSONTask with the corresponding task id.
+func GetTaskById(taskId, name string) (TaskJSON, error) {
+	var jsonForTask TaskJSON
+	err := db.FindOneQ(collection, db.Query(bson.M{TaskIdKey: taskId, NameKey: name}), &jsonForTask)
+	if err != nil {
+		return TaskJSON{}, err
+	}
+	return jsonForTask, nil
+}
+
+func apiGetTaskByName(w http.ResponseWriter, r *http.Request) {
 	t := plugin.GetTask(r)
 	if t == nil {
 		http.Error(w, "task not found", http.StatusNotFound)
@@ -38,9 +47,7 @@ func getTaskByName(w http.ResponseWriter, r *http.Request) {
 	name := mux.Vars(r)["name"]
 	taskName := mux.Vars(r)["task_name"]
 
-	var jsonForTask TaskJSON
-	err := db.FindOneQ(collection, db.Query(bson.M{VersionIdKey: t.Version, BuildIdKey: t.BuildId, NameKey: name,
-		TaskNameKey: taskName}), &jsonForTask)
+	jsonForTask, err := GetTaskByName(t.Version, t.BuildId, taskName, name)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			plugin.WriteJSON(w, http.StatusNotFound, nil)
@@ -56,9 +63,21 @@ func getTaskByName(w http.ResponseWriter, r *http.Request) {
 	plugin.WriteJSON(w, http.StatusOK, jsonForTask.Data)
 }
 
-// getTaskForVariant finds a task by name and variant and finds
+// GetTaskByName finds a taskdata document by using the name of the task
+// and other identifying information.
+func GetTaskByName(version, buildId, taskName, name string) (TaskJSON, error) {
+	var jsonForTask TaskJSON
+	err := db.FindOneQ(collection, db.Query(bson.M{VersionIdKey: version, BuildIdKey: buildId, NameKey: name,
+		TaskNameKey: taskName}), &jsonForTask)
+	if err != nil {
+		return TaskJSON{}, err
+	}
+	return jsonForTask, nil
+}
+
+// apiGetTaskForVariant finds a task by name and variant and finds
 // the document in the json collection associated with that task's id.
-func getTaskForVariant(w http.ResponseWriter, r *http.Request) {
+func apiGetTaskForVariant(w http.ResponseWriter, r *http.Request) {
 	t := plugin.GetTask(r)
 	if t == nil {
 		http.Error(w, "task not found", http.StatusNotFound)
@@ -68,24 +87,9 @@ func getTaskForVariant(w http.ResponseWriter, r *http.Request) {
 	taskName := mux.Vars(r)["task_name"]
 	variantId := mux.Vars(r)["variant"]
 	// Find the task for the other variant, if it exists
-	ts, err := task.Find(db.Query(bson.M{task.VersionKey: t.Version, task.BuildVariantKey: variantId,
-		task.DisplayNameKey: taskName}).Limit(1))
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			plugin.WriteJSON(w, http.StatusNotFound, nil)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if len(ts) == 0 {
-		plugin.WriteJSON(w, http.StatusNotFound, nil)
-		return
-	}
-	otherVariantTask := ts[0]
 
-	var jsonForTask TaskJSON
-	err = db.FindOneQ(collection, db.Query(bson.M{TaskIdKey: otherVariantTask.Id, NameKey: name}), &jsonForTask)
+	jsonForTask, err := GetTaskForVariant(t.Version, variantId, taskName, name)
+
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			plugin.WriteJSON(w, http.StatusNotFound, nil)
@@ -101,30 +105,24 @@ func getTaskForVariant(w http.ResponseWriter, r *http.Request) {
 	plugin.WriteJSON(w, http.StatusOK, jsonForTask.Data)
 }
 
-// getTaskByTag returns a TaskJSON with a specific task name and tag
-func getTaskByTag(w http.ResponseWriter, r *http.Request) {
-	t := plugin.GetTask(r)
-	if t == nil {
-		http.Error(w, "task not found", http.StatusNotFound)
-		return
-	}
-	tagged := []TaskJSON{}
-	jsonQuery := db.Query(bson.M{
-		ProjectIdKey: t.Project,
-		VariantKey:   t.BuildVariant,
-		TaskNameKey:  mux.Vars(r)["task_name"],
-		TagKey:       bson.M{"$exists": true, "$ne": ""},
-		NameKey:      mux.Vars(r)["name"]})
-	err := db.FindAllQ(collection, jsonQuery, &tagged)
+// GetTaskForVariant finds a task by name and variant and finds
+// the document in the json collection associated with that task's id.
+func GetTaskForVariant(version, variantId, taskName, name string) (TaskJSON, error) {
+	foundTask, err := task.FindOne(db.Query(bson.M{task.VersionKey: version, task.BuildVariantKey: variantId,
+		task.DisplayNameKey: taskName}))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return TaskJSON{}, err
 	}
-	plugin.WriteJSON(w, http.StatusOK, tagged)
+
+	var jsonForTask TaskJSON
+	err = db.FindOneQ(collection, db.Query(bson.M{TaskIdKey: foundTask.Id, NameKey: name}), &jsonForTask)
+	if err != nil {
+		return TaskJSON{}, err
+	}
+	return jsonForTask, nil
 }
 
-// insertTask creates a TaskJSON document with the data sent in the request body.
-func insertTask(w http.ResponseWriter, r *http.Request) {
+func apiInsertTask(w http.ResponseWriter, r *http.Request) {
 	t := plugin.GetTask(r)
 	if t == nil {
 		http.Error(w, "task not found", http.StatusNotFound)
@@ -137,6 +135,17 @@ func insertTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	err = InsertTask(t, name, rawData)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	plugin.WriteJSON(w, http.StatusOK, "ok")
+	return
+}
+
+// InsertTask creates a TaskJSON document in the plugin's collection.
+func InsertTask(t *task.Task, name string, data map[string]interface{}) error {
 	jsonBlob := TaskJSON{
 		TaskId:              t.Id,
 		TaskName:            t.DisplayName,
@@ -148,14 +157,12 @@ func insertTask(w http.ResponseWriter, r *http.Request) {
 		CreateTime:          t.CreateTime,
 		Revision:            t.Revision,
 		RevisionOrderNumber: t.RevisionOrderNumber,
-		Data:                rawData,
+		Data:                data,
 		IsPatch:             t.Requester == evergreen.PatchVersionRequester,
 	}
-	_, err = db.Upsert(collection, bson.M{TaskIdKey: t.Id, NameKey: name}, jsonBlob)
+	_, err := db.Upsert(collection, bson.M{TaskIdKey: t.Id, NameKey: name}, jsonBlob)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
-	plugin.WriteJSON(w, http.StatusOK, "ok")
-	return
+	return nil
 }

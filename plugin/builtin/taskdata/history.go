@@ -10,14 +10,13 @@ import (
 	"net/http"
 )
 
-func getTaskHistory(t *task.Task, w http.ResponseWriter, r *http.Request) {
+func GetTaskHistory(t *task.Task, name string) ([]TaskJSON, error) {
 	var t2 *task.Task = t
 	var err error
 	if t.Requester == evergreen.PatchVersionRequester {
 		t2, err = t.FindTaskOnBaseCommit()
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil, err
 		}
 		t.RevisionOrderNumber = t2.RevisionOrderNumber
 	}
@@ -29,12 +28,12 @@ func getTaskHistory(t *task.Task, w http.ResponseWriter, r *http.Request) {
 		RevisionOrderNumberKey: bson.M{"$lte": t.RevisionOrderNumber},
 		TaskNameKey:            t.DisplayName,
 		IsPatchKey:             false,
-		NameKey:                mux.Vars(r)["name"]})
+		NameKey:                name,
+	})
 	jsonQuery = jsonQuery.Sort([]string{"-order"}).Limit(100)
 	err = db.FindAllQ(collection, jsonQuery, &before)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 	//reverse order of "before" because we had to sort it backwards to apply the limit correctly:
 	for i, j := 0, len(before)-1; i < j; i, j = i+1, j-1 {
@@ -48,11 +47,10 @@ func getTaskHistory(t *task.Task, w http.ResponseWriter, r *http.Request) {
 		RevisionOrderNumberKey: bson.M{"$gt": t.RevisionOrderNumber},
 		TaskNameKey:            t.DisplayName,
 		IsPatchKey:             false,
-		NameKey:                mux.Vars(r)["name"]}).Sort([]string{"order"}).Limit(100)
+		NameKey:                name}).Sort([]string{"order"}).Limit(100)
 	err = db.FindAllQ(collection, jsonAfterQuery, &after)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
 
 	//concatenate before + after
@@ -62,11 +60,10 @@ func getTaskHistory(t *task.Task, w http.ResponseWriter, r *http.Request) {
 	if t.Requester == evergreen.PatchVersionRequester {
 		before, err = fixPatchInHistory(t.Id, t2, before)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
+			return nil, err
 		}
 	}
-	plugin.WriteJSON(w, http.StatusOK, before)
+	return before, nil
 }
 
 // getTaskHistory finds previous tasks by task name.
@@ -76,7 +73,11 @@ func apiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
-	getTaskHistory(t, w, r)
+	history, err := GetTaskHistory(t, mux.Vars(r)["name"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	plugin.WriteJSON(w, http.StatusOK, history)
 }
 
 func uiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
@@ -89,5 +90,10 @@ func uiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "{}", http.StatusNotFound)
 		return
 	}
-	getTaskHistory(t, w, r)
+
+	history, err := GetTaskHistory(t, mux.Vars(r)["name"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	plugin.WriteJSON(w, http.StatusOK, history)
 }

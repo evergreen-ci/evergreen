@@ -12,20 +12,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// getTags finds TaskJSONs that have tags
-func getTags(w http.ResponseWriter, r *http.Request) {
-	t, err := task.FindOne(task.ById(mux.Vars(r)["task_id"]))
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tags := []struct {
-		Tag string `bson:"_id" json:"tag"`
-	}{}
-	err = db.Aggregate(collection, []bson.M{
-		{"$match": bson.M{ProjectIdKey: t.Project, TagKey: bson.M{"$exists": true, "$ne": ""}}},
-		{"$project": bson.M{TagKey: 1}}, bson.M{"$group": bson.M{"_id": "$tag"}},
-	}, &tags)
+type TagContainer struct {
+	Tag string `bson:"_id" json:"tag`
+}
+
+func uiGetTags(w http.ResponseWriter, r *http.Request) {
+	taskId := mux.Vars(r)["task_id"]
+	tags, err := GetTags(taskId)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -33,60 +26,97 @@ func getTags(w http.ResponseWriter, r *http.Request) {
 	plugin.WriteJSON(w, http.StatusOK, tags)
 }
 
-// handleTaskTags will update the TaskJSON's tags depending on the request.
-func handleTaskTag(w http.ResponseWriter, r *http.Request) {
-	t, err := task.FindOne(task.ById(mux.Vars(r)["task_id"]))
+// GetTags finds TaskJSONs that have tags in the project associated with a
+// given task.
+func GetTags(taskId string) ([]TagContainer, error) {
+	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-	if t == nil {
-		http.Error(w, "{}", http.StatusNotFound)
-		return
+	tags := []TagContainer{}
+	err = db.Aggregate(collection, []bson.M{
+		{"$match": bson.M{ProjectIdKey: t.Project, TagKey: bson.M{"$exists": true, "$ne": ""}}},
+		{"$project": bson.M{TagKey: 1}}, bson.M{"$group": bson.M{"_id": "$tag"}},
+	}, &tags)
+	if err != nil {
+		return nil, err
 	}
-	if r.Method == "DELETE" {
-		if _, err = db.UpdateAll(collection,
-			bson.M{VersionIdKey: t.Version, NameKey: mux.Vars(r)["name"]},
-			bson.M{"$unset": bson.M{TagKey: 1}}); err != nil {
+	return tags, nil
+}
+
+// handleTaskTags will update the TaskJSON's tags depending on the request.
+func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
+	taskId := mux.Vars(r)["task_id"]
+	name := mux.Vars(r)["name"]
+
+	var err error
+	switch r.Method {
+	case http.MethodDelete:
+		err = DeleteTagFromTask(taskId, name)
+	case http.MethodPost:
+		tc := TagContainer{}
+		err = util.ReadJSONInto(r.Body, &tc)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		plugin.WriteJSON(w, http.StatusOK, "")
+		if tc.Tag == "" {
+			http.Error(w, "tag must not be blank", http.StatusBadRequest)
+			return
+		}
+		err = SetTagForTask(taskId, name, tc.Tag)
 	}
-	inTag := struct {
-		Tag string `json:"tag"`
-	}{}
-	err = util.ReadJSONInto(r.Body, &inTag)
+
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(w, "{}", http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if len(inTag.Tag) == 0 {
-		http.Error(w, "tag must not be blank", http.StatusBadRequest)
-		return
-	}
 
-	_, err = db.UpdateAll(collection,
-		bson.M{VersionIdKey: t.Version, NameKey: mux.Vars(r)["name"]},
-		bson.M{"$set": bson.M{TagKey: inTag.Tag}})
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	plugin.WriteJSON(w, http.StatusOK, "")
 }
 
-// getTaskJSONByTag finds a TaskJSON by a tag
-func getTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
-	var jsonForTask TaskJSON
-	err := db.FindOneQ(collection,
-		db.Query(bson.M{"project_id": mux.Vars(r)["project_id"],
-			TagKey:      mux.Vars(r)["tag"],
-			VariantKey:  mux.Vars(r)["variant"],
-			TaskNameKey: mux.Vars(r)["task_name"],
-			NameKey:     mux.Vars(r)["name"],
-		}), &jsonForTask)
+func DeleteTagFromTask(taskId, name string) error {
+	t, err := task.FindOne(task.ById(taskId))
+	if err != nil {
+		return err
+	}
+
+	_, err = db.UpdateAll(collection,
+		bson.M{VersionIdKey: t.Version, NameKey: name},
+		bson.M{"$unset": bson.M{TagKey: 1}})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SetTagForTask(taskId, name, tag string) error {
+	t, err := task.FindOne(task.ById(taskId))
+	if err != nil {
+		return err
+	}
+	_, err = db.UpdateAll(collection,
+		bson.M{VersionIdKey: t.Version, NameKey: name},
+		bson.M{"$set": bson.M{TagKey: tag}})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func uiGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
+	projectId := mux.Vars(r)["project_id"]
+	tag := mux.Vars(r)["tag"]
+	variant := mux.Vars(r)["variant"]
+	taskName := mux.Vars(r)["task_name"]
+	name := mux.Vars(r)["name"]
+
+	jsonForTask, err := GetTaskJSONByTag(projectId, tag, variant, taskName, name)
+
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -100,4 +130,20 @@ func getTaskJSONByTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+}
+
+// GetTaskJSONByTag finds a TaskJSON by a tag
+func GetTaskJSONByTag(projectId, tag, variant, taskName, name string) (*TaskJSON, error) {
+	jsonForTask := &TaskJSON{}
+	err := db.FindOneQ(collection,
+		db.Query(bson.M{"project_id": projectId,
+			TagKey:      tag,
+			VariantKey:  variant,
+			TaskNameKey: taskName,
+			NameKey:     name,
+		}), jsonForTask)
+	if err != nil {
+		return nil, err
+	}
+	return jsonForTask, nil
 }

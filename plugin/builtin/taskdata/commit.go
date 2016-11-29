@@ -10,16 +10,13 @@ import (
 	"regexp"
 )
 
-func getCommit(w http.ResponseWriter, r *http.Request) {
-	var jsonForTask TaskJSON
-	err := db.FindOneQ(collection,
-		db.Query(bson.M{ProjectIdKey: mux.Vars(r)["project_id"],
-			RevisionKey: bson.RegEx{"^" + regexp.QuoteMeta(mux.Vars(r)["revision"]), "i"},
-			VariantKey:  mux.Vars(r)["variant"],
-			TaskNameKey: mux.Vars(r)["task_name"],
-			NameKey:     mux.Vars(r)["name"],
-			IsPatchKey:  false,
-		}), &jsonForTask)
+func uiGetCommit(w http.ResponseWriter, r *http.Request) {
+	projectId := mux.Vars(r)["project_id"]
+	revision := mux.Vars(r)["revision"]
+	variant := mux.Vars(r)["variant"]
+	taskName := mux.Vars(r)["task_name"]
+	name := mux.Vars(r)["name"]
+	jsonForTask, err := GetCommit(projectId, revision, variant, taskName, name)
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -33,4 +30,22 @@ func getCommit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, jsonForTask)
+}
+
+// GetCommit gets the task data associated with a particular task by using
+// the commit hash to find the data.
+func GetCommit(projectId, revision, variant, taskName, name string) (TaskJSON, error) {
+	var jsonForTask TaskJSON
+	err := db.FindOneQ(collection,
+		db.Query(bson.M{ProjectIdKey: projectId,
+			RevisionKey: bson.RegEx{"^" + regexp.QuoteMeta(revision), "i"}, // make it case insensitive
+			VariantKey:  variant,
+			TaskNameKey: taskName,
+			NameKey:     name,
+			IsPatchKey:  false,
+		}), &jsonForTask)
+	if err != nil {
+		return TaskJSON{}, err
+	}
+	return jsonForTask, nil
 }

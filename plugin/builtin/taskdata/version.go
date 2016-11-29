@@ -57,8 +57,8 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 	plugin.WriteJSON(w, http.StatusOK, "1")
 }
 
-// findTasksForVersion sends back the list of TaskJSON documents associated with a version id.
-func findTasksForVersion(versionId, name string) ([]TaskJSON, error) {
+// GetTasksForVersion sends back the list of TaskJSON documents associated with a version id.
+func GetTasksForVersion(versionId, name string) ([]TaskJSON, error) {
 	var jsonForTasks []TaskJSON
 	err := db.FindAllQ(collection, db.Query(bson.M{VersionIdKey: versionId,
 		NameKey: name}).WithFields(DataKey, TaskIdKey, TaskNameKey), &jsonForTasks)
@@ -72,9 +72,8 @@ func findTasksForVersion(versionId, name string) ([]TaskJSON, error) {
 	return jsonForTasks, err
 }
 
-// getTasksForVersion sends back the list of TaskJSON documents associated with a version id.
-func getTasksForVersion(w http.ResponseWriter, r *http.Request) {
-	jsonForTasks, err := findTasksForVersion(mux.Vars(r)["version_id"], mux.Vars(r)["name"])
+func uiGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
+	jsonForTasks, err := GetTasksForVersion(mux.Vars(r)["version_id"], mux.Vars(r)["name"])
 	if jsonForTasks == nil {
 		http.Error(w, "{}", http.StatusNotFound)
 		return
@@ -87,8 +86,7 @@ func getTasksForVersion(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// getTasksForLatestVersion sends back the TaskJSON data associated with the latest version.
-func getTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
+func uiGetTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 	project := mux.Vars(r)["project_id"]
 	name := mux.Vars(r)["name"]
 	skip, err := util.GetIntValue(r, "skip", 0)
@@ -100,6 +98,22 @@ func getTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "negative skip", http.StatusBadRequest)
 		return
 	}
+
+	data, err := GetTasksForLatestVersion(project, name, skip)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			http.Error(w, "{}", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	plugin.WriteJSON(w, http.StatusOK, data)
+}
+
+// GetTasksForLatestVersion sends back the TaskJSON data associated with the latest version.
+func GetTasksForLatestVersion(project, name string, skip int) (*VersionData, error) {
 	pipeline := []bson.M{
 		// match on name and project
 		{"$match": bson.M{
@@ -138,15 +152,12 @@ func getTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tasksForVersions := []TasksForVersion{}
-	err = db.Aggregate(collection, pipeline, &tasksForVersions)
+	err := db.Aggregate(collection, pipeline, &tasksForVersions)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-
 	if len(tasksForVersions) == 0 {
-		http.Error(w, "no tasks found", http.StatusNotFound)
-		return
+		return nil, mgo.ErrNotFound
 	}
 
 	// we default have another revision
@@ -161,12 +172,7 @@ func getTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 	// get the version commit info
 	v, err := version.FindOne(version.ById(currentVersion.Id.VersionId))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if v == nil {
-		http.Error(w, "{}", http.StatusNotFound)
-		return
+		return nil, err
 	}
 
 	commitInfo := CommitInfo{
@@ -176,7 +182,7 @@ func getTasksForLatestVersion(w http.ResponseWriter, r *http.Request) {
 		Revision:   v.Revision,
 		VersionId:  v.Id,
 	}
+	data := &VersionData{currentVersion.Tasks, commitInfo, lastRevision}
+	return data, nil
 
-	data := VersionData{currentVersion.Tasks, commitInfo, lastRevision}
-	plugin.WriteJSON(w, http.StatusOK, data)
 }
