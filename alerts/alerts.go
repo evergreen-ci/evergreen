@@ -14,8 +14,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/render"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	EmailProvider = "email"
+	JiraProvider  = "jira"
 )
 
 // QueueProcessor handles looping over any unprocessed alerts in the queue and delivers them
@@ -166,11 +172,43 @@ func (qp *QueueProcessor) findProject(projectId string) (*model.ProjectRef, erro
 	return project, nil
 }
 
+func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Deliverer, error) {
+	// load and validate "project" JSON value
+	projectField, ok := alertConf.Settings["project"]
+	if !ok {
+		return nil, fmt.Errorf("malformed JIRA project")
+	}
+	project, ok := projectField.(string)
+	if !ok {
+		return nil, fmt.Errorf("JIRA project name must be string")
+	}
+	// validate Evergreen settings
+	if (qp.config.Jira.Host == "") || qp.config.Jira.Username == "" || qp.config.Jira.Password == "" {
+		return nil, fmt.Errorf(
+			"invalid JIRA settings (ensure a 'jira' field exists in Evergreen settings)")
+	}
+	if qp.config.Ui.Url == "" {
+		return nil, fmt.Errorf("'ui.url' must be set in Evergreen settings")
+	}
+	handler := thirdparty.NewJiraHandler(
+		qp.config.Jira.Host,
+		qp.config.Jira.Username,
+		qp.config.Jira.Password,
+	)
+	return &jiraDeliverer{
+		project: project,
+		handler: &handler,
+		uiRoot:  qp.config.Ui.Url,
+	}, nil
+}
+
 // getDeliverer returns the correct implementation of Deliverer according to the provider
 // specified in a project's alerts configuration.
 func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig) (Deliverer, error) {
-	// TODO email is the only delivery mechanism supported currently.
-	if alertConf.Provider == "email" {
+	switch alertConf.Provider {
+	case JiraProvider:
+		return qp.newJIRAProvider(alertConf)
+	case EmailProvider:
 		return &EmailDeliverer{
 			SMTPSettings{
 				Server:   qp.config.Alerts.SMTP.Server,
@@ -182,8 +220,9 @@ func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig) (Deliverer, 
 			},
 			qp.render,
 		}, nil
+	default:
+		return nil, fmt.Errorf("unknown provider: %v", alertConf.Provider)
 	}
-	return nil, fmt.Errorf("Unknown provider: %v", alertConf.Provider)
 }
 
 func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) error {

@@ -51,7 +51,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     if(!$scope.settingsFormData.alert_config[trigger.id]){
       $scope.settingsFormData.alert_config[trigger.id] = []
     }
-    $scope.settingsFormData.alert_config[trigger.id].push(NewEmailAlert(obj.email))
+    $scope.settingsFormData.alert_config[trigger.id].push(NewAlert(obj.email))
     obj.editing = false
   }
 
@@ -226,6 +226,9 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.getAlertDisplay =function(alertObj){
     if(alertObj.provider=='email'){
       return "Send an e-mail to " + alertObj.settings.recipient
+    }
+    if (alertObj.provider=='jira'){
+      return "File a JIRA ticket in "+ alertObj.settings.project
     }
     return 'unknown'
   }
