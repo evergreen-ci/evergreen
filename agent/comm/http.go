@@ -21,6 +21,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
+const httpMaxAttempts = 10
+
 var HeartbeatTimeout = time.Minute
 
 var HTTPConflictError = errors.New("Conflict")
@@ -49,7 +51,7 @@ func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan cha
 		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, evergreen.AgentAPIVersion),
 		TaskId:        taskId,
 		TaskSecret:    taskSecret,
-		MaxAttempts:   10,
+		MaxAttempts:   httpMaxAttempts,
 		RetrySleep:    time.Second * 3,
 		HttpsCert:     cert,
 		SignalChan:    sigChan,
@@ -464,7 +466,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 		},
 	)
 
-	retryFail, err := util.Retry(retriableGet, 10, 1*time.Second)
+	retryFail, err := util.Retry(retriableGet, httpMaxAttempts, 1*time.Second)
 	if err != nil {
 		// stop trying to make fetch happen, it's not going to happen
 		if retryFail {

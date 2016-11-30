@@ -1,6 +1,7 @@
 package plugin_test
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -275,6 +276,47 @@ func TestPluginExecution(t *testing.T) {
 					}
 				}
 			}
+		})
+	})
+}
+
+// helper for generating a string of a size
+func strOfLen(size int) string {
+	b := bytes.Buffer{}
+	for i := 0; i < size; i++ {
+		b.WriteByte('a')
+	}
+	return b.String()
+}
+
+func TestAttachLargeResults(t *testing.T) {
+	db.ClearCollections(task.Collection)
+	Convey("With a test task and server", t, func() {
+		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
+		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
+		So(err, ShouldBeNil)
+		So(httpCom, ShouldNotBeNil)
+		pluginCom := &agent.TaskJSONCommunicator{"test", httpCom}
+		_, err = createTestConfig("testdata/plugin_project.yml", t)
+		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
+
+		Convey("a test log < 16 MB should be accepted", func() {
+			id, err := pluginCom.TaskPostTestLog(&model.TestLog{
+				Name:  "woah",
+				Lines: []string{strOfLen(1024 * 1024 * 15)}, //15MB
+			})
+			So(id, ShouldNotEqual, "")
+			So(err, ShouldBeNil)
+		})
+		Convey("a test log > 16 MB should error", func() {
+			id, err := pluginCom.TaskPostTestLog(&model.TestLog{
+				Name:  "woah",
+				Lines: []string{strOfLen(1024 * 1024 * 17)}, //17MB
+			})
+			So(id, ShouldEqual, "")
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "size exceeds")
 		})
 	})
 }

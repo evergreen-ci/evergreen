@@ -53,9 +53,9 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error 
 			}
 		},
 	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, 10, 1)
+	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1)
 	if retryFail {
-		return fmt.Errorf("attaching test results failed after %v tries: %v", 10, err)
+		return fmt.Errorf("attaching test results failed after %v tries: %v", httpMaxAttempts, err)
 	}
 	return nil
 }
@@ -88,9 +88,9 @@ func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error 
 			}
 		},
 	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, 10, 1)
+	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1)
 	if retryFail {
-		return fmt.Errorf("attaching task files failed after %v tries: %v", 10, err)
+		return fmt.Errorf("attaching task files failed after %v tries: %v", httpMaxAttempts, err)
 	}
 	return nil
 }
@@ -130,9 +130,12 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 			return util.RetriableError{fmt.Errorf("failed posting logs: %v", string(bodyErr))}
 		},
 	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, 10, 1)
-	if retryFail {
-		return "", fmt.Errorf("attaching test logs failed after %v tries: %v", 10, err)
+	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1)
+	if err != nil {
+		if retryFail {
+			return "", fmt.Errorf("attaching test logs failed after %v tries: %v", httpMaxAttempts, err)
+		}
+		return "", fmt.Errorf("attaching test logs failed: %v", err)
 	}
 	return logId, nil
 }

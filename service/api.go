@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -39,6 +40,8 @@ import (
 type key int
 
 type taskKey int
+
+const maxTestLogSize = 16 * 1024 * 1024 // 16 MB
 
 const apiTaskKey taskKey = 0
 
@@ -468,8 +471,18 @@ func getNextDistroTask(currentTask *task.Task, host *host.Host) (
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
+	// define a LimitedReader to prevent overly large logs from getting into memory
+	lr := &io.LimitedReader{R: r.Body, N: maxTestLogSize}
+	// manually close Body since LimitedReader is not a ReadCloser
+	defer r.Body.Close()
 	log := &model.TestLog{}
-	err := util.ReadJSONInto(r.Body, log)
+	err := util.ReadJSONInto(ioutil.NopCloser(lr), log)
+	if lr.N == 0 {
+		// error if we used every available byte in the limit reader
+		as.LoggedError(w, r, http.StatusBadRequest,
+			fmt.Errorf("test log size exceeds %v bytes", maxTestLogSize))
+		return
+	}
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
