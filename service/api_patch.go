@@ -37,8 +37,8 @@ type PatchAPIRequest struct {
 	Description   string
 }
 
-func getSummaries(patchContent string) ([]thirdparty.Summary, error) {
-	summaries := []thirdparty.Summary{}
+func getSummaries(patchContent string) ([]patch.Summary, error) {
+	summaries := []patch.Summary{}
 	if patchContent != "" {
 		gitOutput, err := thirdparty.GitApplyNumstat(patchContent)
 		if err != nil {
