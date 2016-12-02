@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -524,6 +525,9 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 
 	ref, err = ac.GetProjectRef(params.Project)
 	if err != nil {
+		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
+			err = fmt.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
+		}
 		return
 	}
 

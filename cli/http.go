@@ -32,6 +32,7 @@ type APIClient struct {
 type APIError struct {
 	body   string
 	status string
+	code   int
 }
 
 func (ae APIError) Error() string {
@@ -43,7 +44,7 @@ func NewAPIError(resp *http.Response) APIError {
 	defer resp.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(resp.Body) // ignore error, request has already failed anyway
 	bodyStr := string(bodyBytes)
-	return APIError{bodyStr, resp.Status}
+	return APIError{bodyStr, resp.Status, resp.StatusCode}
 }
 
 // getAPIClients loads and returns user settings along with two APIClients: one configured for the API
