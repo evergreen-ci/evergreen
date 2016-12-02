@@ -32,8 +32,8 @@ var (
 		&monitor.Runner{},
 		&notify.Runner{},
 		&repotracker.Runner{},
-		&scheduler.Runner{},
 		&taskrunner.Runner{},
 		&alerts.QueueProcessor{},
+		&scheduler.Runner{},
 	}
 )
