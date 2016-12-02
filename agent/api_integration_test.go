@@ -288,7 +288,8 @@ func TestAgentDirectoryFailure(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With agent printing directory and live API server over "+tlsString, t, func() {
-			testTask, _, err := setupAPITestData(testConfig, "print_dir_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
+			testTask, _, err := setupAPITestData(testConfig, "print_dir_task", "linux-64",
+				filepath.Join(testDirectory, "testdata", "config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
@@ -309,7 +310,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			dirName := hex.EncodeToString(h.Sum(nil))
 			newDir := filepath.Join(distro.WorkDir, dirName)
 
-			_, err = os.Create(newDir)
+			newDirFile, err := os.Create(newDir)
 			testutil.HandleTestingErr(err, t, "Couldn't create file: %v", err)
 
 			_, err = testAgent.RunTask()
@@ -335,6 +336,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			err = os.Chdir(dir)
 			testutil.HandleTestingErr(err, t, "Failed to change directory back to main dir")
 
+			testutil.HandleTestingErr(newDirFile.Close(), t, "failed to close dummy directory, file")
 			err = os.Remove(newDir)
 			testutil.HandleTestingErr(err, t, "Failed to remove dummy directory file")
 		})

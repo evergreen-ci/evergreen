@@ -141,9 +141,9 @@ functions:
           rm -rf mongodb
           mkdir mongodb
           cd mongodb
-          curl ${mongodb_url} -o mongodb.tgz
+          curl ${mongodb_url} -o mongodb${archiveExt|.tgz}
 
-          tar -zxvf mongodb.tgz
+          ${decompress} mongodb${archiveExt|.tgz}
           chmod +x ./mongodb-*/bin/*
           mv ./mongodb-*/bin/* .
           rm -rf db_files
@@ -239,10 +239,10 @@ tasks:
     tags: ["nodb", "test"]
     name: test-db-bsonutil
   - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+    tags: ["nodb", "test", "agent"]
     name: test-agent-comm
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-agent
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -359,10 +359,10 @@ tasks:
     tags: ["nodb", "race"]
     name: race-db-bsonutil
   - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
+    tags: ["nodb", "race", "agent"]
     name: race-agent-comm
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-agent
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -505,9 +505,11 @@ buildvariants:
       build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes TEST_ARGS='evergreen.all evergreen.settingsOverride=`pwd`/creds.yml'"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.2.9.zip
       extension: ".exe"
+      archiveExt: ".zip"
     tasks:
       - name: "dist"
       - name: ".nodb .test !.burn_in"
+      - name: ".agent .test"
   - name: rhel62-gccgo
     display_name: RHEL 6.2 (gccgo)
     run_on:
@@ -524,9 +526,10 @@ buildvariants:
       - rhel71-power8-test
     expansions:
       build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes TEST_ARGS='evergreen.settingsOverride=`pwd`/creds.yml'"
-      mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
+      mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
+      - name: ".agent .test"
   - name: rhel71-s390x
     display_name: "RHEL7.1 s390x"
     run_on:
@@ -536,3 +539,4 @@ buildvariants:
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
+      - name: ".agent .test"
