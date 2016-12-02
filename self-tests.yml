@@ -70,6 +70,7 @@ variables:
 functions:
   run-make:
     command: shell.exec
+    type: test
     params:
        script: |
          set -o errexit
