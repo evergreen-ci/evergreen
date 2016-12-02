@@ -558,9 +558,7 @@ function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}
       return (
       React.createElement("div", {className: "row variant-row"}, 
         React.createElement("div", {className: "col-xs-2 build-variants"}, 
-          React.createElement("a", {href: "/build_variant/" + project + "/" + row.build_variant.id}, 
-            row.build_variant.display_name
-          )
+          row.build_variant.display_name
         ), 
         React.createElement("div", {className: "col-xs-10"}, 
           React.createElement("div", {className: "row build-cells"}, 

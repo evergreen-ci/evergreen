@@ -558,9 +558,7 @@ function Variant({row, versions, project, collapseInfo, taskFilter, currentTime}
       return (
       <div className="row variant-row">
         <div className="col-xs-2 build-variants"> 
-          <a href={"/build_variant/" + project + "/" + row.build_variant.id}>
-            {row.build_variant.display_name}
-          </a>
+          {row.build_variant.display_name}
         </div>
         <div className="col-xs-10"> 
           <div className="row build-cells">
