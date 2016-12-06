@@ -297,7 +297,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		Config:        string(p.PatchedConfig),
 		Status:        evergreen.PatchCreated,
 		Requester:     evergreen.PatchVersionRequester,
-		Branch:        project.Branch,
+		Branch:        projectRef.Branch,
 	}
 
 	var pairs []TVPair
