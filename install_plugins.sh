@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+set -o errexit
+set -o pipefail
 
 # make sure we're in the directory where the script lives
-SCRIPT_DIR="$(cd "$(dirname ${BASH_SOURCE[0]})" && pwd)"
+SCRIPT_DIR="$(pwd)"
 cd $SCRIPT_DIR
 echo "Installing plugins..."
 
@@ -12,10 +14,10 @@ echo "Installing plugins..."
 echo `pwd`
 # make sure the Plugins file is there
 deps_file="Plugins"
-[[ -f "$deps_file" ]] || echo ">> $deps_file file does not exist." && exit 0
+[[ -f "$deps_file" ]] || (echo ">> $deps_file file does not exist." && exit 1)
 
 # make sure go is installed
-(go version > /dev/null) || echo ">> Go is currently not installed or in your PATH" && exit 1
+(go version > /dev/null) || (echo ">> Go is currently not installed or in your PATH" && exit 1)
 
 # iterate over Plugins file dependencies and set
 # the specified version on each of them.
@@ -31,52 +33,46 @@ while read line; do
     pluginconf=${linearr[2]}
     pluginname=${linearr[3]}
 
-    if [[ "${pluginconf}" == "" ]]
-    then
+    if [[ "${pluginconf}" == "" ]]; then
         echo ">> Error: must specify a plugin config file for ${package}"
         exit 1
     fi
 
-    install_path="vendor/${package%%/...}"
+    install_path="$SCRIPT_DIR/vendor/${package}"
 
     # clean out the install path
     rm -rf $install_path
 
-    [[ -e "$install_path/.git/index.lock" ||
-       -e "$install_path/.hg/store/lock"  ||
-       -e "$install_path/.bzr/checkout/lock" ]] && wait
+    [[ -e "$install_path/.git/index.lock" ]] && wait
 
     echo ">> Getting package "$package""
-    go get -d "$package"
-
+    mkdir -p $(dirname vendor/$package)
+    repoName=$(echo $package | sed 's/github.com//')
+    git clone git@github.com:$repoName vendor/$package
     cd $install_path
-    hg update     "$version" > /dev/null 2>&1 || \
-    git checkout  "$version" > /dev/null 2>&1 || \
-    bzr revert -r "$version" > /dev/null 2>&1 || \
-    #svn has exit status of 0 when there is no .svn
-    { [ -d .svn ] && svn update -r "$version" > /dev/null 2>&1; } || \
-    { echo ">> Failed to set $package to version $version"; exit 1; }
-
+    git checkout "$version" || { echo ">> Failed to set $package to version $version"; exit 1; }
     echo ">> Set $package to version $version"
 
     echo ">> Linking in plugin config ${pluginconf} for package ${package}"
+    mkdir -p $SCRIPT_DIR/plugin/config
     cd $SCRIPT_DIR/plugin/config
     $(rm $pluginconf || true)
-    ln -s ../../$install_path/config/$pluginconf $pluginconf
-        if [ -d "../../$install_path/templates/" ]; then
-                echo "creating template links to service/plugins/$pluginname"
-                mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
-                # remove existing symlink if its already there
-                rm $SCRIPT_DIR/service/plugins/$pluginname/templates || true
-                ln -s $SCRIPT_DIR/$install_path/templates/ $SCRIPT_DIR/service/plugins/$pluginname/
-        fi
-        if [ -d "../../$install_path/static/" ]; then
-                echo "creating static links to service/plugins/$pluginname"
-                mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
-                # remove existing symlink if its already there
-                rm $SCRIPT_DIR/service/plugins/$pluginname/static
-                ln -s $SCRIPT_DIR/$install_path/static/ $SCRIPT_DIR/service/plugins/$pluginname/
-        fi
+    ln -s $install_path/config/$pluginconf $pluginconf
+    mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
+
+    if [ -d "$install_path/templates/" ]; then
+            echo "creating template links to service/plugins/$pluginname"
+            # remove existing symlink if its already there
+            rm $SCRIPT_DIR/service/plugins/$pluginname/templates || true
+            ln -s $install_path/templates/ $SCRIPT_DIR/service/plugins/$pluginname/
+    fi
+    if [ -d "$install_path/static/" ]; then
+            echo "creating static links to service/plugins/$pluginname"
+            # remove existing symlink if its already there
+            rm $SCRIPT_DIR/service/plugins/$pluginname/static || true
+            ln -s $install_path/static/ $SCRIPT_DIR/service/plugins/$pluginname/
+    fi
+
     echo ">> Plugin successfully installed"
 
   )

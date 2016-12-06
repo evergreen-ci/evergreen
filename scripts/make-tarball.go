@@ -51,7 +51,6 @@ func getContents(paths []string, exclusions []string) <-chan archiveWorkUnit {
 						return nil
 					}
 				}
-
 				output <- archiveWorkUnit{
 					path: p,
 					stat: info,
@@ -70,7 +69,12 @@ func getContents(paths []string, exclusions []string) <-chan archiveWorkUnit {
 }
 
 func addFile(tw *tar.Writer, prefix string, unit archiveWorkUnit) error {
-	file, err := os.Open(unit.path)
+	fn, err := filepath.EvalSymlinks(unit.path)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Open(fn)
 	if err != nil {
 		return err
 	}
@@ -90,7 +94,7 @@ func addFile(tw *tar.Writer, prefix string, unit archiveWorkUnit) error {
 		return err
 	}
 
-	// fmt.Println("DEBUG: added %s to archive", header.Name)
+	// fmt.Printf("DEBUG: added %s to archive\n", header.Name)
 	return nil
 }
 
@@ -112,7 +116,6 @@ func makeTarball(fileName, prefix string, paths []string, exclude []string) erro
 
 	for unit := range getContents(paths, exclude) {
 		err := addFile(tw, prefix, unit)
-
 		if err != nil {
 			return fmt.Errorf("error adding path: %s [%+v]: %v",
 				unit.path, unit, err)
