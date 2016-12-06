@@ -107,7 +107,7 @@ functions:
           set -o errexit
 
           echo "building creds file!"
-          cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<END_OF_CREDS
+          cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
           credentials:  {
             github: "${github_token}",
           }
@@ -130,7 +130,7 @@ functions:
           plugins:
             manifest:
               github_token: "${github_token}"
-          END_OF_CREDS
+          EOF
   set-up-mongodb:
     - command: shell.exec
       params:
