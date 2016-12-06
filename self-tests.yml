@@ -96,9 +96,9 @@ functions:
         set -o errexit
 
         echo "building Plugins file!"
-        cat > gopath/src/github.com/evergreen-ci/evergreen/Plugins <<END_OF_PLUGINS
+        cat > gopath/src/github.com/evergreen-ci/evergreen/Plugins <<EOF
         ${plugins_file}
-        END_OF_PLUGIN
+        EOF
   setup-credentials:
     - command: shell.exec
       params:
