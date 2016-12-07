@@ -2,6 +2,8 @@ package scheduler
 
 import (
 	"fmt"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/10gen-labs/slogger/v1"
@@ -76,51 +78,77 @@ func (s *Scheduler) Schedule() error {
 		return fmt.Errorf("Error getting expected task durations: %v", err)
 	}
 
+	distroInputChan := make(chan distroSchedulerInput, len(distros))
+
+	// put all of the needed input for the distro scheduler into a channel to be read by the
+	// distro scheduling loop.
+	for _, d := range distros {
+		runnableTasksForDistro := tasksByDistro[d.Id]
+		if len(runnableTasksForDistro) == 0 {
+			continue
+		}
+		distroInputChan <- distroSchedulerInput{
+			distroId:               d.Id,
+			runnableTasksForDistro: runnableTasksForDistro,
+		}
+
+	}
+
+	// close the channel to signal that the loop reading from it can terminate
+	close(distroInputChan)
+	workers := runtime.NumCPU()
+
+	wg := sync.WaitGroup{}
+	wg.Add(workers)
+
+	// make a channel to collect all of function results from scheduling the distros
+	distroSchedulerResultChan := make(chan *distroSchedulerResult)
+
+	// for each worker, create a new goroutine
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			// read the inputs for scheduling this distro
+			for d := range distroInputChan {
+				// schedule the distro
+				res := s.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
+				if res.err != nil {
+					evergreen.Logger.Logf(slogger.ERROR, "%v", err)
+				}
+
+				// write the results out to a results channel
+				distroSchedulerResultChan <- res
+
+			}
+		}()
+	}
+
 	// intialize a map of scheduler events
 	schedulerEvents := map[string]event.TaskQueueInfo{}
 
 	// prioritize the tasks, one distro at a time
 	taskQueueItems := make(map[string][]model.TaskQueueItem)
-	for _, d := range distros {
-		runnableTasksForDistro := tasksByDistro[d.Id]
-		evergreen.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
-			len(runnableTasksForDistro), d.Id)
 
-		prioritizedTasks, err := s.PrioritizeTasks(s.Settings,
-			runnableTasksForDistro)
-		if err != nil {
-			return fmt.Errorf("Error prioritizing tasks: %v", err)
+	var errResult error
+	go func() {
+		for res := range distroSchedulerResultChan {
+			if res.err != nil {
+				errResult = fmt.Errorf("error scheduling tasks on distro %v: %v", res.distroId, err)
+				return
+			}
+			schedulerEvents[res.distroId] = res.schedulerEvent
+			taskQueueItems[res.distroId] = res.taskQueueItem
 		}
+	}()
 
-		// persist the queue of tasks
-		evergreen.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...",
-			d.Id)
-		queuedTasks, err := s.PersistTaskQueue(d.Id, prioritizedTasks,
-			taskExpectedDuration)
-		if err != nil {
-			return fmt.Errorf("Error saving task queue: %v", err)
-		}
-
-		// track scheduled time for prioritized tasks
-		scheduledTime := time.Now()
-		err = task.SetTasksScheduledTime(prioritizedTasks, scheduledTime)
-		if err != nil {
-			return fmt.Errorf("Error setting scheduled time for prioritized "+
-				"tasks: %v", err)
-		}
-		taskQueueItems[d.Id] = queuedTasks
-
-		var summedNanoSeconds int64
-		for _, item := range queuedTasks {
-			summedNanoSeconds += item.ExpectedDuration.Nanoseconds()
-		}
-		// initialize the task queue info
-		schedulerEvents[d.Id] = event.TaskQueueInfo{
-			TaskQueueLength:  len(queuedTasks),
-			NumHostsRunning:  0,
-			ExpectedDuration: time.Duration(summedNanoSeconds),
-		}
+	if errResult != nil {
+		return errResult
 	}
+
+	// wait for the distro scheduler goroutines to complete to complete
+	wg.Wait()
+	// wait group has terminated so scheduler channel can be closed
+	close(distroSchedulerResultChan)
 
 	// split distros by name
 	distrosByName := make(map[string]distro.Distro)
@@ -197,6 +225,66 @@ func (s *Scheduler) Schedule() error {
 	}
 
 	return nil
+}
+
+type distroSchedulerInput struct {
+	distroId               string
+	runnableTasksForDistro []task.Task
+}
+
+type distroSchedulerResult struct {
+	distroId       string
+	schedulerEvent event.TaskQueueInfo
+	taskQueueItem  []model.TaskQueueItem
+	err            error
+}
+
+func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []task.Task,
+	taskExpectedDuration model.ProjectTaskDurations) *distroSchedulerResult {
+
+	res := distroSchedulerResult{
+		distroId: distroId,
+	}
+	evergreen.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
+		len(runnableTasksForDistro), distroId)
+
+	prioritizedTasks, err := s.PrioritizeTasks(s.Settings,
+		runnableTasksForDistro)
+	if err != nil {
+		res.err = fmt.Errorf("Error prioritizing tasks: %v", err)
+		return &res
+	}
+
+	// persist the queue of tasks
+	evergreen.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...", distroId)
+	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks,
+		taskExpectedDuration)
+	if err != nil {
+		res.err = fmt.Errorf("Error processing distro %v saving task queue: %v", distroId, err)
+		return &res
+	}
+
+	// track scheduled time for prioritized tasks
+	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
+	if err != nil {
+		res.err = fmt.Errorf("Error processing distro %v setting scheduled time for prioritized "+
+			"tasks: %v", distroId, err)
+		return &res
+	}
+	res.taskQueueItem = queuedTasks
+
+	var totalDuration time.Duration
+	for _, item := range queuedTasks {
+		totalDuration += item.ExpectedDuration
+	}
+	// initialize the task queue info
+	res.schedulerEvent = event.TaskQueueInfo{
+		TaskQueueLength:  len(queuedTasks),
+		NumHostsRunning:  0,
+		ExpectedDuration: totalDuration,
+	}
+	return &res
+
 }
 
 // Takes in a version id and a map of "key -> buildvariant" (where "key" is of
@@ -329,7 +417,7 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 
 			if len(allDistroHosts) >= d.PoolSize {
 				evergreen.Logger.Logf(slogger.ERROR, "Already at max (%v) hosts for distro '%v'",
-					d.Id,
+					distroId,
 					d.PoolSize)
 				continue
 			}

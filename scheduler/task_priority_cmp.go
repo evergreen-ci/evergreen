@@ -8,18 +8,18 @@ import (
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
-// takes in the task prioritizer because it may need access to additional info
+// takes in the task comparator because it may need access to additional info
 //  beyond just what's in the tasks
-type taskPriorityCmp func(task.Task, task.Task, *CmpBasedTaskPrioritizer) (
+type taskPriorityCmp func(task.Task, task.Task, *CmpBasedTaskComparator) (
 	int, error)
 
 // Importance comparison functions for tasks.  Used to prioritize tasks by the
-// CmpBasedTaskPrioritizer.
+// CmpBasedTaskComparator.
 
 // byPriority compares the explicit Priority field of the Task documents for
 // each Task.  The Task whose Priority field is higher will be considered
 // more important.
-func byPriority(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+func byPriority(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int,
 	error) {
 	if t1.Priority > t2.Priority {
 		return 1, nil
@@ -34,7 +34,7 @@ func byPriority(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 // byNumDeps compares the NumDependents field of the Task documents for
 // each Task.  The Task whose NumDependents field is higher will be considered
 // more important.
-func byNumDeps(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+func byNumDeps(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int,
 	error) {
 	if t1.NumDependents > t2.NumDependents {
 		return 1, nil
@@ -51,7 +51,7 @@ func byNumDeps(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 // byRevisionOrderNumber short circuits if the two tasks are not of the same
 // project, since RevisionOrderNumber is meaningless across projects.
 func byRevisionOrderNumber(t1, t2 task.Task,
-	prioritizer *CmpBasedTaskPrioritizer) (int, error) {
+	comparator *CmpBasedTaskComparator) (int, error) {
 
 	if t1.Project != t2.Project {
 		return 0, nil
@@ -69,7 +69,7 @@ func byRevisionOrderNumber(t1, t2 task.Task,
 // the task with the later CreateTime to be more important.  byCreateTime
 // short-circuits if the two tasks are from the same project, since
 // RevisionOrderNumber is a more reliable indicator on the same project.
-func byCreateTime(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
+func byCreateTime(t1, t2 task.Task, comparator *CmpBasedTaskComparator) (int,
 	error) {
 
 	if t1.Project == t2.Project {
@@ -89,13 +89,13 @@ func byCreateTime(t1, t2 task.Task, prioritizer *CmpBasedTaskPrioritizer) (int,
 // Task, and considers one more important if its previous execution resulted in
 // failure.
 func byRecentlyFailing(t1, t2 task.Task,
-	prioritizer *CmpBasedTaskPrioritizer) (int, error) {
-	firstPrev, present := prioritizer.previousTasksCache[t1.Id]
+	comparator *CmpBasedTaskComparator) (int, error) {
+	firstPrev, present := comparator.previousTasksCache[t1.Id]
 	if !present {
 		return 0, fmt.Errorf("No cached previous task available for task with"+
 			" id %v", t1.Id)
 	}
-	secondPrev, present := prioritizer.previousTasksCache[t2.Id]
+	secondPrev, present := comparator.previousTasksCache[t2.Id]
 	if !present {
 		return 0, fmt.Errorf("No cached previous task available for task with"+
 			" id %v", t2.Id)
@@ -118,19 +118,19 @@ func byRecentlyFailing(t1, t2 task.Task,
 // revision, project, display name and requester (but in one or more
 // buildvariants) that failed.
 func bySimilarFailing(t1, t2 task.Task,
-	prioritizer *CmpBasedTaskPrioritizer) (int, error) {
+	comparator *CmpBasedTaskComparator) (int, error) {
 	// this comparator only applies to tasks within the same revision
 	if t1.Revision != t2.Revision {
 		return 0, nil
 	}
 
-	numSimilarFailingOne, ok := prioritizer.similarFailingCount[t1.Id]
+	numSimilarFailingOne, ok := comparator.similarFailingCount[t1.Id]
 	if !ok {
 		return 0, fmt.Errorf("No similar failing count entry for task with "+
 			"id %v", t1.Id)
 	}
 
-	numSimilarFailingTwo, ok := prioritizer.similarFailingCount[t2.Id]
+	numSimilarFailingTwo, ok := comparator.similarFailingCount[t2.Id]
 	if !ok {
 		return 0, fmt.Errorf("No similar failing count entry for task with "+
 			"id %v", t2.Id)

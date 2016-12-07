@@ -9,14 +9,14 @@ import (
 
 // Function run before sorting all the tasks.  Used to fetch and store
 // information needed for prioritizing the tasks.
-type sortSetupFunc func(prioritizer *CmpBasedTaskPrioritizer) error
+type sortSetupFunc func(comparator *CmpBasedTaskComparator) error
 
 // Get all of the previous completed tasks for the ones to be sorted, and cache
 // them appropriately.
-func cachePreviousTasks(prioritizer *CmpBasedTaskPrioritizer) (err error) {
+func cachePreviousTasks(comparator *CmpBasedTaskComparator) (err error) {
 	// get the relevant previous completed tasks
-	prioritizer.previousTasksCache = make(map[string]task.Task)
-	for _, t := range prioritizer.tasks {
+	comparator.previousTasksCache = make(map[string]task.Task)
+	for _, t := range comparator.tasks {
 		prevTask := &task.Task{}
 
 		// only relevant for repotracker tasks
@@ -29,7 +29,7 @@ func cachePreviousTasks(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 				prevTask = &task.Task{}
 			}
 		}
-		prioritizer.previousTasksCache[t.Id] = *prevTask
+		comparator.previousTasksCache[t.Id] = *prevTask
 	}
 
 	return nil
@@ -37,10 +37,10 @@ func cachePreviousTasks(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 
 // cacheSimilarFailing fetches all failed tasks with the same display name,
 // revision, requester and project but in other buildvariants
-func cacheSimilarFailing(prioritizer *CmpBasedTaskPrioritizer) (err error) {
+func cacheSimilarFailing(comparator *CmpBasedTaskComparator) (err error) {
 	// find if there are any similar failing tasks
-	prioritizer.similarFailingCount = make(map[string]int)
-	for _, task := range prioritizer.tasks {
+	comparator.similarFailingCount = make(map[string]int)
+	for _, task := range comparator.tasks {
 		numSimilarFailing := 0
 
 		// only relevant for repotracker tasks
@@ -50,7 +50,7 @@ func cacheSimilarFailing(prioritizer *CmpBasedTaskPrioritizer) (err error) {
 				return fmt.Errorf("cacheSimilarFailing: %v", err)
 			}
 		}
-		prioritizer.similarFailingCount[task.Id] = numSimilarFailing
+		comparator.similarFailingCount[task.Id] = numSimilarFailing
 	}
 	return nil
 }
