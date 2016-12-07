@@ -87,7 +87,7 @@ lintArgs += --exclude "error return value not checked \(evergreen.Logger.Errorf.
 # start rules for binding agents
 #   build the server binaries:
 plugins:$(buildDir)/.plugins
-$(buildDir)/.plugins:Plugins
+$(buildDir)/.plugins:Plugins install_plugins.sh
 	./install_plugins.sh
 	@touch $@
 $(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(srcFiles) $(buildDir)/.plugins

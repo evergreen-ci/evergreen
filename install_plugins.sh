@@ -57,20 +57,20 @@ while read line; do
     mkdir -p $SCRIPT_DIR/plugin/config
     cd $SCRIPT_DIR/plugin/config
     $(rm $pluginconf || true)
-    ln -s $install_path/config/$pluginconf $pluginconf
+    cp $install_path/config/$pluginconf $pluginconf
     mkdir -p $SCRIPT_DIR/service/plugins/$pluginname
 
     if [ -d "$install_path/templates/" ]; then
             echo "creating template links to service/plugins/$pluginname"
             # remove existing symlink if its already there
-            rm $SCRIPT_DIR/service/plugins/$pluginname/templates || true
-            ln -s $install_path/templates/ $SCRIPT_DIR/service/plugins/$pluginname/
+            rm -rf $SCRIPT_DIR/service/plugins/$pluginname/templates
+            rsync --verbose --delete -recursive $install_path/templates $SCRIPT_DIR/service/plugins/$pluginname/
     fi
     if [ -d "$install_path/static/" ]; then
             echo "creating static links to service/plugins/$pluginname"
             # remove existing symlink if its already there
-            rm $SCRIPT_DIR/service/plugins/$pluginname/static || true
-            ln -s $install_path/static/ $SCRIPT_DIR/service/plugins/$pluginname/
+            rm -rf $SCRIPT_DIR/service/plugins/$pluginname/static
+            rsync --verbose --delete -recursive $install_path/static $SCRIPT_DIR/service/plugins/$pluginname/
     fi
 
     echo ">> Plugin successfully installed"
