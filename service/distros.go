@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
@@ -39,6 +40,7 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["distro_id"]
+	shouldDeco := r.FormValue("deco") == "true"
 
 	u := MustHaveUser(r)
 
@@ -93,9 +95,23 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if shouldDeco {
+		err = host.DecommissionHostsWithDistroId(newDistro.Id)
+		if err != nil {
+			message := fmt.Sprintf("error decommissioning hosts: %v", err)
+			PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
+			http.Error(w, message, http.StatusBadRequest)
+			return
+		}
+	}
+
 	event.LogDistroModified(id, u.Username(), newDistro)
 
-	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Distro %v successfully updated.", id)))
+	message := fmt.Sprintf("Distro %v successfully updated.", id)
+	if shouldDeco {
+		message = fmt.Sprintf("Distro %v successfully updated and running hosts decommissioned", id)
+	}
+	PushFlash(uis.CookieStore, r, w, NewSuccessFlash(message))
 	uis.WriteJSON(w, http.StatusOK, "distro successfully updated")
 }
 

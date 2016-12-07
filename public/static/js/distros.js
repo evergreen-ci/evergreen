@@ -62,7 +62,6 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   $scope.modalOpen = false;
 
-
   $scope.$on('$locationChangeStart', function(event) {
     $scope.hashLoad();
   });
@@ -208,7 +207,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     } else {
       mciDistroRestService.modifyDistro(
         $scope.activeDistro._id,
-        $scope.activeDistro, {
+        $scope.activeDistro, 
+        $scope.shouldDeco,
+        {
           success: function(distros, status) {
             $window.location.reload(true);
           },
@@ -225,7 +226,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   $scope.removeConfiguration = function() {
     mciDistroRestService.removeDistro(
-      $scope.activeDistro._id, {
+      $scope.activeDistro._id, 
+      $scope.shouldDeco, 
+      {
         success: function(distros, status) {
           $window.location.reload(true);
         },

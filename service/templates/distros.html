@@ -325,6 +325,10 @@ Evergreen - Distros
         </div>
         <div ng-hide="readOnly">
           <br><br>
+          <p class="distro-checkbox checkbox" style="margin-left: 5px">
+            <input ng-disabled="readOnly" type="checkbox" name="shouldDeco" ng-model="shouldDeco">
+            Decommission hosts of this distro for this update
+          </p>
           <button type="button" class="btn btn-primary" style="float: left; margin-left: 5px;" ng-disabled="form.$pristine || (form.$dirty && form.$invalid) || !validForm()" ng-click="saveConfiguration()">Save Configuration</button>
           <button type="button" class="btn btn-danger" style="float: right; margin-right: 5px;" ng-click="openConfirmationModal('removeDistro')" ng-disabled="activeDistro.new">Remove Configuration</button>
           <admin-modal>

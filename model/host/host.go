@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip/slogger"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -438,4 +438,16 @@ func (self *Host) Remove() error {
 			IdKey: self.Id,
 		},
 	)
+}
+
+func DecommissionHostsWithDistroId(distroId string) error {
+	err := UpdateAll(
+		ByDistroId(distroId),
+		bson.M{
+			"$set": bson.M{
+				StatusKey: evergreen.HostDecommissioned,
+			},
+		},
+	)
+	return err
 }

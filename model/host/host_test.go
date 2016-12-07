@@ -555,3 +555,63 @@ func TestUpsert(t *testing.T) {
 			})
 	})
 }
+
+func TestDecommissionHostsWithDistroId(t *testing.T) {
+
+	Convey("With a multiple hosts of different distros", t, func() {
+
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
+
+		distroA := "distro_a"
+		distroB := "distro_b"
+
+		// Insert 10 of distro a and 10 of distro b
+
+		for i := 0; i < 10; i++ {
+			hostWithDistroA := &Host{
+				Id:     fmt.Sprintf("hostA%v", i),
+				Host:   "host",
+				User:   "user",
+				Distro: distro.Distro{Id: distroA},
+				Status: evergreen.HostRunning,
+			}
+			hostWithDistroB := &Host{
+				Id:     fmt.Sprintf("hostB%v", i),
+				Host:   "host",
+				User:   "user",
+				Distro: distro.Distro{Id: distroB},
+				Status: evergreen.HostRunning,
+			}
+
+			testutil.HandleTestingErr(hostWithDistroA.Insert(), t, "Error inserting"+
+				"host into database")
+			testutil.HandleTestingErr(hostWithDistroB.Insert(), t, "Error inserting"+
+				"host into database")
+		}
+
+		Convey("When decommissioning hosts of type distro_a", func() {
+			err := DecommissionHostsWithDistroId(distroA)
+			So(err, ShouldBeNil)
+
+			Convey("Distro should be marked as decommissioned accordingly", func() {
+				hostsTypeA, err := Find(ByDistroId(distroA))
+				So(err, ShouldBeNil)
+
+				hostsTypeB, err := Find(ByDistroId(distroB))
+				So(err, ShouldBeNil)
+				for _, host := range hostsTypeA {
+
+					So(host.Status, ShouldEqual, evergreen.HostDecommissioned)
+				}
+
+				for _, host := range hostsTypeB {
+					So(host.Status, ShouldEqual, evergreen.HostRunning)
+
+				}
+			})
+
+		})
+
+	})
+}

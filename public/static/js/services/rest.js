@@ -293,15 +293,23 @@ mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function
         baseSvc.putResource(resource, [], config, callbacks);
     }
 
-    service.modifyDistro = function(distroId, data, callbacks) {
+    service.modifyDistro = function(distroId, data, shouldDeco, callbacks) {
         var config = {
-            data: data
+            data: data,
+            params: {
+              deco: shouldDeco
+            }
         };
         baseSvc.postResource(resource, [distroId], config, callbacks);
     }
 
-    service.removeDistro = function(distroId, callbacks) {
-        baseSvc.deleteResource(resource, [distroId], {}, callbacks);
+    service.removeDistro = function(distroId, shouldDeco, callbacks) {
+        var config = {
+            params: {
+              deco: shouldDeco
+            }
+        };
+        baseSvc.deleteResource(resource, [distroId], config, callbacks);
     }
 
     return service;
