@@ -19,9 +19,9 @@ type TaskPrioritizer interface {
 		[]task.Task, error)
 }
 
-// CmpBasedTaskComparator runs the tasks through a slice of comparator functions
+// CmpBasedTaskPrioritizer runs the tasks through a slice of comparator functions
 // determining which is more important.
-type CmpBasedTaskComparator struct {
+type CmpBasedTaskPrioritizer struct {
 	tasks          []task.Task
 	errsDuringSort []error
 	setupFuncs     []sortSetupFunc
@@ -44,10 +44,10 @@ type CmpBasedTaskQueues struct {
 	RepotrackerTasks  []task.Task
 }
 
-// NewCmpBasedTaskComparator returns a new task prioritizer, using the default set of comparators
+// NewCmpBasedTaskPrioritizer returns a new task prioritizer, using the default set of comparators
 // as well as the setup functions necessary for those comparators.
-func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
-	return &CmpBasedTaskComparator{
+func NewCmpBasedTaskPrioritizer() *CmpBasedTaskPrioritizer {
+	return &CmpBasedTaskPrioritizer{
 		setupFuncs: []sortSetupFunc{
 			cachePreviousTasks,
 			cacheSimilarFailing,
@@ -63,41 +63,38 @@ func NewCmpBasedTaskComparator() *CmpBasedTaskComparator {
 	}
 }
 
-type CmpBasedTaskPrioritizer struct{}
-
 // PrioritizeTask prioritizes the tasks to run. First splits the tasks into slices based on
 // whether they are part of patch versions or automatically created versions.
 // Then prioritizes each slice, and merges them.
 // Returns a full slice of the prioritized tasks, and an error if one occurs.
-func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
+func (self *CmpBasedTaskPrioritizer) PrioritizeTasks(
 	settings *evergreen.Settings, tasks []task.Task) ([]task.Task, error) {
 
-	comparator := NewCmpBasedTaskComparator()
 	// split the tasks into repotracker tasks and patch tasks, then prioritize
 	// individually and merge
-	taskQueues := comparator.splitTasksByRequester(tasks)
+	taskQueues := self.splitTasksByRequester(tasks)
 	prioritizedTaskLists := make([][]task.Task, 0, 3)
 	for _, taskList := range [][]task.Task{taskQueues.RepotrackerTasks, taskQueues.PatchTasks, taskQueues.HighPriorityTasks} {
 
-		comparator.tasks = taskList
+		self.tasks = taskList
 
-		err := comparator.setupForSortingTasks()
+		err := self.setupForSortingTasks()
 		if err != nil {
 			return nil, fmt.Errorf("Error running setup for sorting tasks: %v",
 				err)
 		}
 
-		sort.Sort(comparator)
+		sort.Sort(self)
 
-		if len(comparator.errsDuringSort) > 0 {
+		if len(self.errsDuringSort) > 0 {
 			errString := "The following errors were thrown while sorting:"
-			for _, e := range comparator.errsDuringSort {
+			for _, e := range self.errsDuringSort {
 				errString += fmt.Sprintf("\n    %v", e)
 			}
 			return nil, fmt.Errorf(errString)
 		}
 
-		prioritizedTaskLists = append(prioritizedTaskLists, comparator.tasks)
+		prioritizedTaskLists = append(prioritizedTaskLists, self.tasks)
 	}
 	prioritizedTaskQueues := CmpBasedTaskQueues{
 		RepotrackerTasks:  prioritizedTaskLists[0],
@@ -105,14 +102,14 @@ func (prioritizer *CmpBasedTaskPrioritizer) PrioritizeTasks(
 		HighPriorityTasks: prioritizedTaskLists[2],
 	}
 
-	comparator.tasks = comparator.mergeTasks(settings, &prioritizedTaskQueues)
+	self.tasks = self.mergeTasks(settings, &prioritizedTaskQueues)
 
-	return comparator.tasks, nil
+	return self.tasks, nil
 }
 
 // Run all of the setup functions necessary for prioritizing the tasks.
 // Returns an error if any of the setup funcs return an error.
-func (self *CmpBasedTaskComparator) setupForSortingTasks() error {
+func (self *CmpBasedTaskPrioritizer) setupForSortingTasks() error {
 	for _, setupFunc := range self.setupFuncs {
 		if err := setupFunc(self); err != nil {
 			return fmt.Errorf("Error running setup for sorting: %v", err)
@@ -124,7 +121,7 @@ func (self *CmpBasedTaskComparator) setupForSortingTasks() error {
 // Determine which of two tasks is more important, by running the tasks through
 // the comparator functions and returning the first definitive decision on which
 // is more important.
-func (self *CmpBasedTaskComparator) taskMoreImportantThan(task1,
+func (self *CmpBasedTaskPrioritizer) taskMoreImportantThan(task1,
 	task2 task.Task) (bool, error) {
 
 	// run through the comparators, and return the first definitive decision on
@@ -153,11 +150,11 @@ func (self *CmpBasedTaskComparator) taskMoreImportantThan(task1,
 
 // Functions that ensure the CmdBasedTaskPrioritizer implements sort.Interface
 
-func (self *CmpBasedTaskComparator) Len() int {
+func (self *CmpBasedTaskPrioritizer) Len() int {
 	return len(self.tasks)
 }
 
-func (self *CmpBasedTaskComparator) Less(i, j int) bool {
+func (self *CmpBasedTaskPrioritizer) Less(i, j int) bool {
 	moreImportant, err := self.taskMoreImportantThan(self.tasks[i],
 		self.tasks[j])
 	if err != nil {
@@ -166,14 +163,14 @@ func (self *CmpBasedTaskComparator) Less(i, j int) bool {
 	return moreImportant
 }
 
-func (self *CmpBasedTaskComparator) Swap(i, j int) {
+func (self *CmpBasedTaskPrioritizer) Swap(i, j int) {
 	self.tasks[i], self.tasks[j] = self.tasks[j], self.tasks[i]
 }
 
 // Split the tasks, based on the requester field.
 // Returns two slices - the tasks requested by the repotracker, and the tasks
 // requested in a patch.
-func (self *CmpBasedTaskComparator) splitTasksByRequester(
+func (self *CmpBasedTaskPrioritizer) splitTasksByRequester(
 	allTasks []task.Task) *CmpBasedTaskQueues {
 
 	repoTrackerTasks := make([]task.Task, 0, len(allTasks))
@@ -203,7 +200,7 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 
 // Merge the slices of tasks requested by the repotracker and in patches.
 // Returns a slice of the merged tasks.
-func (self *CmpBasedTaskComparator) mergeTasks(settings *evergreen.Settings,
+func (self *CmpBasedTaskPrioritizer) mergeTasks(settings *evergreen.Settings,
 	tq *CmpBasedTaskQueues) []task.Task {
 
 	mergedTasks := make([]task.Task, 0, len(tq.RepotrackerTasks)+

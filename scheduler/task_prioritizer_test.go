@@ -10,26 +10,26 @@ import (
 )
 
 var (
-	taskComparatorTestConf = evergreen.TestConfig()
+	taskPrioritizerTestConf = evergreen.TestConfig()
 )
 
 func init() {
 	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(taskComparatorTestConf))
-	if taskComparatorTestConf.Scheduler.LogFile != "" {
-		evergreen.SetLogger(taskComparatorTestConf.Scheduler.LogFile)
+		db.SessionFactoryFromConfig(taskPrioritizerTestConf))
+	if taskPrioritizerTestConf.Scheduler.LogFile != "" {
+		evergreen.SetLogger(taskPrioritizerTestConf.Scheduler.LogFile)
 	}
 }
 
-func TestCmpBasedTaskComparator(t *testing.T) {
+func TestCmpBasedTaskPrioritizer(t *testing.T) {
 
-	var taskComparator *CmpBasedTaskComparator
+	var taskPrioritizer *CmpBasedTaskPrioritizer
 	var taskIds []string
 	var tasks []task.Task
 
-	Convey("With a CmpBasedTaskComparator", t, func() {
+	Convey("With a CmpBasedTaskPrioritizer", t, func() {
 
-		taskComparator = NewCmpBasedTaskComparator()
+		taskPrioritizer = NewCmpBasedTaskPrioritizer()
 
 		taskIds = []string{"t1", "t2"}
 
@@ -38,22 +38,22 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 			{Id: taskIds[1]},
 		}
 
-		alwaysEqual := func(t1, t2 task.Task, p *CmpBasedTaskComparator) (
+		alwaysEqual := func(t1, t2 task.Task, p *CmpBasedTaskPrioritizer) (
 			int, error) {
 			return 0, nil
 		}
 
 		alwaysMoreImportant := func(t1, t2 task.Task,
-			p *CmpBasedTaskComparator) (int, error) {
+			p *CmpBasedTaskPrioritizer) (int, error) {
 			return 1, nil
 		}
 
 		alwaysLessImportant := func(t1, t2 task.Task,
-			p *CmpBasedTaskComparator) (int, error) {
+			p *CmpBasedTaskPrioritizer) (int, error) {
 			return -1, nil
 		}
 
-		idComparator := func(t1, t2 task.Task, p *CmpBasedTaskComparator) (
+		idComparator := func(t1, t2 task.Task, p *CmpBasedTaskPrioritizer) (
 			int, error) {
 			if t1.Id > t2.Id {
 				return 1, nil
@@ -69,14 +69,14 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("a nil comparator function slice should return the"+
 					" default (no error)", func() {
-					taskComparator.comparators = nil
+					taskPrioritizer.comparators = nil
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, err := taskPrioritizer.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, err = taskPrioritizer.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
@@ -84,14 +84,14 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("if there are no comparator functions, the default is"+
 					" always returned", func() {
-					taskComparator.comparators = []taskPriorityCmp{}
+					taskPrioritizer.comparators = []taskPriorityCmp{}
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, err := taskPrioritizer.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, err = taskPrioritizer.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
@@ -99,16 +99,16 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("if there is only one comparator function, that"+
 					" function is definitive", func() {
-					taskComparator.comparators = []taskPriorityCmp{
+					taskPrioritizer.comparators = []taskPriorityCmp{
 						alwaysMoreImportant,
 					}
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, err := taskPrioritizer.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, err = taskPrioritizer.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
@@ -116,19 +116,19 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 				Convey("if there are multiple comparator functions, the first"+
 					" definitive one wins", func() {
-					taskComparator.comparators = []taskPriorityCmp{
+					taskPrioritizer.comparators = []taskPriorityCmp{
 						alwaysEqual,
 						idComparator,
 						alwaysMoreImportant,
 						alwaysLessImportant,
 					}
 
-					moreImportant, err := taskComparator.taskMoreImportantThan(
+					moreImportant, err := taskPrioritizer.taskMoreImportantThan(
 						tasks[0], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeFalse)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, err = taskPrioritizer.taskMoreImportantThan(
 						tasks[1], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
@@ -136,12 +136,12 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					// for the next two, the ids are the same so the id
 					// comparator func isn't definitive
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, err = taskPrioritizer.taskMoreImportantThan(
 						tasks[0], tasks[0])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
 
-					moreImportant, err = taskComparator.taskMoreImportantThan(
+					moreImportant, err = taskPrioritizer.taskMoreImportantThan(
 						tasks[1], tasks[1])
 					So(err, ShouldBeNil)
 					So(moreImportant, ShouldBeTrue)
@@ -154,7 +154,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 	Convey("Splitting tasks by requester should separate tasks based on the Requester field", t, func() {
 
-		taskComparator = NewCmpBasedTaskComparator()
+		taskPrioritizer = NewCmpBasedTaskPrioritizer()
 
 		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks := []task.Task{
@@ -165,7 +165,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 			{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
 		}
 
-		tq := taskComparator.splitTasksByRequester(tasks)
+		tq := taskPrioritizer.splitTasksByRequester(tasks)
 		So(len(tq.RepotrackerTasks), ShouldEqual, 3)
 		repoTrackerTasks := tq.RepotrackerTasks
 		So(repoTrackerTasks[0].Id, ShouldEqual, taskIds[0])
@@ -178,7 +178,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 	})
 	Convey("Splitting tasks with priority greater than 100 should always put those tasks in the high priority queue", t, func() {
-		taskComparator = NewCmpBasedTaskComparator()
+		taskPrioritizer = NewCmpBasedTaskPrioritizer()
 
 		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
 		tasks := []task.Task{
@@ -188,7 +188,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 			{Id: taskIds[3], Requester: evergreen.RepotrackerVersionRequester},
 			{Id: taskIds[4], Requester: evergreen.RepotrackerVersionRequester},
 		}
-		tq := taskComparator.splitTasksByRequester(tasks)
+		tq := taskPrioritizer.splitTasksByRequester(tasks)
 		So(len(tq.RepotrackerTasks), ShouldEqual, 2)
 		repoTrackerTasks := tq.RepotrackerTasks
 		So(repoTrackerTasks[0].Id, ShouldEqual, taskIds[3])
@@ -225,7 +225,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				RepotrackerTasks: repoTrackerTasks,
 				PatchTasks:       patchTasks,
 			}
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &taskQueues)
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &taskQueues)
 			So(len(mergedTasks), ShouldEqual, 3)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[0])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[1])
@@ -242,7 +242,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					HighPriorityTasks: priorityTasks,
 					RepotrackerTasks:  repoTrackerTasks,
 				}
-				mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tq)
+				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tq)
 				So(len(mergedTasks), ShouldEqual, 5)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[3])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[4])
@@ -264,7 +264,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				RepotrackerTasks: repoTrackerTasks,
 				PatchTasks:       patchTasks,
 			}
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &taskQueues)
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &taskQueues)
 			So(len(mergedTasks), ShouldEqual, 3)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[0])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[1])
@@ -275,7 +275,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 			Convey("A MergeToggle of 2 should interleave tasks evenly", func() {
 
-				taskComparatorTestConf.Scheduler.MergeToggle = 2
+				taskPrioritizerTestConf.Scheduler.MergeToggle = 2
 				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2]}
 				patchTasks := []task.Task{tasks[3], tasks[4], tasks[5]}
 
@@ -283,7 +283,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					RepotrackerTasks: repoTrackerTasks,
 					PatchTasks:       patchTasks,
 				}
-				mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 				So(len(mergedTasks), ShouldEqual, 6)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[3])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[0])
@@ -296,7 +296,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 			Convey("A MergeToggle of 3 should interleave a patch task every third task", func() {
 
-				taskComparatorTestConf.Scheduler.MergeToggle = 3
+				taskPrioritizerTestConf.Scheduler.MergeToggle = 3
 				repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3]}
 				patchTasks := []task.Task{tasks[4], tasks[5]}
 
@@ -304,7 +304,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 					RepotrackerTasks: repoTrackerTasks,
 					PatchTasks:       patchTasks,
 				}
-				mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+				mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 				So(len(mergedTasks), ShouldEqual, 6)
 				So(mergedTasks[0].Id, ShouldEqual, taskIds[4])
 				So(mergedTasks[1].Id, ShouldEqual, taskIds[5])
@@ -319,7 +319,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 		Convey("With a lot of patch tasks, the extras should be added on the end", func() {
 
-			taskComparatorTestConf.Scheduler.MergeToggle = 2
+			taskPrioritizerTestConf.Scheduler.MergeToggle = 2
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1]}
 			patchTasks := []task.Task{tasks[2], tasks[3], tasks[4], tasks[5]}
 			tqs := CmpBasedTaskQueues{
@@ -327,7 +327,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				PatchTasks:       patchTasks,
 			}
 
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 			So(len(mergedTasks), ShouldEqual, 6)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[2])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[0])
@@ -339,7 +339,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 
 		Convey("With a lot of repotracker tasks, the extras should be added on the end", func() {
 
-			taskComparatorTestConf.Scheduler.MergeToggle = 2
+			taskPrioritizerTestConf.Scheduler.MergeToggle = 2
 			repoTrackerTasks := []task.Task{tasks[0], tasks[1], tasks[2], tasks[3], tasks[4]}
 			patchTasks := []task.Task{tasks[5]}
 
@@ -348,7 +348,7 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 				PatchTasks:       patchTasks,
 			}
 
-			mergedTasks := taskComparator.mergeTasks(taskComparatorTestConf, &tqs)
+			mergedTasks := taskPrioritizer.mergeTasks(taskPrioritizerTestConf, &tqs)
 			So(len(mergedTasks), ShouldEqual, 6)
 			So(mergedTasks[0].Id, ShouldEqual, taskIds[5])
 			So(mergedTasks[1].Id, ShouldEqual, taskIds[0])

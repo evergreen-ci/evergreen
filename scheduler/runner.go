@@ -31,7 +31,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	schedulerInstance := &Scheduler{
 		config,
 		&DBTaskFinder{},
-		&CmpBasedTaskPrioritizer{},
+		NewCmpBasedTaskPrioritizer(),
 		&DBTaskDurationEstimator{},
 		&DBTaskQueuePersister{},
 		&DurationBasedHostAllocator{},

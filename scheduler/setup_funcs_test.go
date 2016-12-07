@@ -24,13 +24,13 @@ func init() {
 
 func TestSetupFuncs(t *testing.T) {
 
-	var taskComparator *CmpBasedTaskComparator
+	var taskPrioritizer *CmpBasedTaskPrioritizer
 	var taskIds []string
 	var tasks []task.Task
 
 	Convey("When running the setup funcs for task prioritizing", t, func() {
 
-		taskComparator = &CmpBasedTaskComparator{}
+		taskPrioritizer = &CmpBasedTaskPrioritizer{}
 
 		taskIds = []string{"t1", "t2", "t3"}
 
@@ -106,14 +106,14 @@ func TestSetupFuncs(t *testing.T) {
 			So(prevTaskTwo.Insert(), ShouldBeNil)
 			So(prevTaskThree.Insert(), ShouldBeNil)
 
-			taskComparator.tasks = tasks
-			So(cachePreviousTasks(taskComparator), ShouldBeNil)
-			So(len(taskComparator.previousTasksCache), ShouldEqual, 3)
-			So(taskComparator.previousTasksCache[taskIds[0]].Id, ShouldEqual,
+			taskPrioritizer.tasks = tasks
+			So(cachePreviousTasks(taskPrioritizer), ShouldBeNil)
+			So(len(taskPrioritizer.previousTasksCache), ShouldEqual, 3)
+			So(taskPrioritizer.previousTasksCache[taskIds[0]].Id, ShouldEqual,
 				prevTaskIds[0])
-			So(taskComparator.previousTasksCache[taskIds[1]].Id, ShouldEqual,
+			So(taskPrioritizer.previousTasksCache[taskIds[1]].Id, ShouldEqual,
 				prevTaskIds[1])
-			So(taskComparator.previousTasksCache[taskIds[2]].Id, ShouldEqual,
+			So(taskPrioritizer.previousTasksCache[taskIds[2]].Id, ShouldEqual,
 				prevTaskIds[2])
 
 		})
