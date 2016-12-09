@@ -56,6 +56,7 @@ var defaultPatchesReturned = 5
 type localDiff struct {
 	fullPatch    string
 	patchSummary string
+	log          string
 	base         string
 }
 
@@ -266,7 +267,10 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	}
 
 	if !smc.SkipConfirm {
-		fmt.Println(diffData.patchSummary)
+		if diffData.patchSummary != "" {
+			fmt.Println(diffData.patchSummary)
+		}
+
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
 			return nil
 		}
@@ -304,7 +308,7 @@ func (pfc *PatchFileCommand) Execute(args []string) error {
 	if err != nil {
 		return fmt.Errorf("Error reading diff file: %v", err)
 	}
-	diffData := &localDiff{string(fullPatch), "", pfc.Base}
+	diffData := &localDiff{string(fullPatch), "", "", pfc.Base}
 
 	return createPatch(pfc.PatchCommandParams, ac, settings, diffData)
 }
@@ -589,6 +593,10 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISe
 		}
 	} else if !params.SkipConfirm && diffData.patchSummary != "" {
 		fmt.Println(diffData.patchSummary)
+		if diffData.log != "" {
+			fmt.Println(diffData.log)
+		}
+
 		if !confirm("This is a summary of the patch to be submitted. Continue? (y/n):", true) {
 			return nil
 		}
@@ -649,12 +657,16 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error getting diff summary: %v", err)
 	}
+	log, err := gitLog(mergeBase)
+	if err != nil {
+		return nil, fmt.Errorf("git log: %v", err)
+	}
 
 	patch, err := gitDiff(mergeBase, extraArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting patch: %v", err)
 	}
-	return &localDiff{patch, stat, mergeBase}, nil
+	return &localDiff{patch, stat, log, mergeBase}, nil
 }
 
 // gitMergeBase runs "git merge-base <branch1> <branch2>" and returns the
@@ -670,17 +682,30 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 
 // gitDiff runs "git diff <base> <diffargs ...>" and returns the output of the command as a string
 func gitDiff(base string, diffArgs ...string) (string, error) {
-	args := make([]string, 0, 2+len(diffArgs))
-	args = append(args, "diff")
+	args := make([]string, 0, 1+len(diffArgs))
 	args = append(args, "--no-ext-diff")
+	args = append(args, "--stat")
+	return gitCmd("diff", base, args...)
+}
+
+// getLog runs "git log <base>
+func gitLog(base string, logArgs ...string) (string, error) {
+	args := make([]string, 0, 1+len(logArgs))
+	args = append(logArgs, "--oneline")
+	return gitCmd("log", fmt.Sprintf("...%v", base), args...)
+}
+
+func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
+	args := make([]string, 0, 1+len(gitArgs))
+	args = append(args, cmdName)
 	if base != "" {
 		args = append(args, base)
 	}
-	args = append(args, diffArgs...)
+	args = append(args, gitArgs...)
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("'git %v' failed: %v", base, strings.Join(args, " "), err)
+		return "", fmt.Errorf("'git %v %v' failed with err %v", base, strings.Join(args, " "), err)
 	}
 	return string(out), err
 }
