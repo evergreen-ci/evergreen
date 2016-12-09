@@ -136,6 +136,11 @@ func (self *UpdateCommand) Execute(pluginLogger plugin.Logger,
 	}
 
 	if self.YamlFile != "" {
+		self.YamlFile, err = conf.Expansions.ExpandString(self.YamlFile)
+		if err != nil {
+			return err
+		}
+
 		pluginLogger.LogTask(slogger.INFO, "Updating expansions with keys from file: %v", self.YamlFile)
 		filename := filepath.Join(conf.WorkDir, self.YamlFile)
 		err := conf.Expansions.UpdateFromYaml(filename)
