@@ -70,10 +70,17 @@ func (lc *LocalCommand) Stop() error {
 
 func (lc *LocalCommand) PrepToRun(expansions *Expansions) error {
 	var err error
+
 	lc.CmdString, err = expansions.ExpandString(lc.CmdString)
 	if err != nil {
 		return err
 	}
+
+	lc.WorkingDirectory, err = expansions.ExpandString(lc.WorkingDirectory)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
