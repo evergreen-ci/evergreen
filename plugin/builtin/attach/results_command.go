@@ -36,6 +36,7 @@ func (self *AttachResultsCommand) ParseParams(params map[string]interface{}) err
 	if err := mapstructure.Decode(params, self); err != nil {
 		return fmt.Errorf("error decoding '%v' params: %v", self.Name(), err)
 	}
+
 	if err := self.validateAttachResultsParams(); err != nil {
 		return fmt.Errorf("error validating '%v' params: %v", self.Name(), err)
 	}
@@ -73,13 +74,18 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 
 	errChan := make(chan error)
 	go func() {
+		reportFileLoc := self.FileLoc
+		if !filepath.IsAbs(self.FileLoc) {
+			reportFileLoc = filepath.Join(taskConfig.WorkDir, self.FileLoc)
+		}
+
 		// attempt to open the file
-		reportFileLoc := filepath.Join(taskConfig.WorkDir, self.FileLoc)
 		reportFile, err := os.Open(reportFileLoc)
 		if err != nil {
 			errChan <- fmt.Errorf("Couldn't open report file: '%v'", err)
 			return
 		}
+
 		results := &task.TestResults{}
 		if err = util.ReadJSONInto(reportFile, results); err != nil {
 			errChan <- fmt.Errorf("Couldn't read report file: '%v'", err)
