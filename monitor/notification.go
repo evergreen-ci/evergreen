@@ -122,7 +122,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 			recipient: h.StartedBy,
 			subject:   fmt.Sprintf("%v host termination reminder", h.Distro.Id),
 			message: fmt.Sprintf("Your %v host with id %v will be terminated"+
-				" at %v, in %v minutes. Visit %v to extend its lifetime.",
+				" at %v. Visit %v to extend its lifetime.",
 				h.Distro.Id, h.Id,
 				expirationTimeFormatted,
 				h.ExpirationTime.Sub(time.Now()),
