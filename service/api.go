@@ -61,7 +61,7 @@ const (
 	PatchLockTitle     = "patches"
 )
 
-// New returns an APIServer initialized with the given settings and plugins.
+// NewAPIServer returns an APIServer initialized with the given settings and plugins.
 func NewAPIServer(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
@@ -966,6 +966,10 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	runtimes := apiRootOld.PathPrefix("/runtimes/").Subrouter()
 	runtimes.HandleFunc("/", as.listRuntimes).Methods("GET")
 	runtimes.HandleFunc("/timeout/{seconds:\\d*}", as.lateRuntimes).Methods("GET")
+
+	// Internal status
+	status := apiRootOld.PathPrefix("/status/").Subrouter()
+	status.HandleFunc("/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
 
 	// Hosts callback
 	host := r.PathPrefix("/host/{tag:[\\w_\\-\\@]+}/").Subrouter()

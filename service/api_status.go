@@ -12,6 +12,52 @@ import (
 	"github.com/gorilla/mux"
 )
 
+const (
+	apiStatusSuccess = "SUCCESS"
+	apiStatusError   = "ERROR"
+)
+
+type taskAssignmentResp struct {
+	Status  string   `json:"status"`
+	Errors  []string `json:"errors"`
+	TaskIds []string `json:"tasks"`
+	HostIds []string `json:"hosts"`
+}
+
+// consistentTaskAssignment returns any disparities between tasks' and hosts's views
+// of their mapping between each other. JSON responses take the form of
+//  {status: “ERROR/SUCCESS”, errors:[error strings], tasks:[ids], hosts:[ids]}
+func (as *APIServer) consistentTaskAssignment(w http.ResponseWriter, r *http.Request) {
+	disparities, err := model.AuditHostTaskConsistency()
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	resp := taskAssignmentResp{Status: apiStatusSuccess}
+	if len(disparities) > 0 {
+		resp.Status = apiStatusError
+		for _, d := range disparities {
+			resp.Errors = append(resp.Errors, d.Error())
+			if d.Task != "" {
+				resp.TaskIds = append(resp.TaskIds, d.Task)
+			}
+			if d.HostTaskCache != "" {
+				resp.TaskIds = append(resp.TaskIds, d.HostTaskCache)
+			}
+			if d.Host != "" {
+				resp.HostIds = append(resp.HostIds, d.Host)
+			}
+			if d.TaskHostCache != "" {
+				resp.HostIds = append(resp.HostIds, d.TaskHostCache)
+			}
+		}
+		// dedupe id slices before returning, for simplicity
+		resp.TaskIds = util.UniqueStrings(resp.TaskIds)
+		resp.HostIds = util.UniqueStrings(resp.HostIds)
+	}
+	as.WriteJSON(w, http.StatusOK, resp)
+}
+
 // Returns a list of all processes with runtime entries, i.e. all processes being tracked.
 func (as *APIServer) listRuntimes(w http.ResponseWriter, r *http.Request) {
 	runtimes, err := model.FindEveryProcessRuntime()
@@ -48,9 +94,9 @@ func (as *APIServer) lateRuntimes(w http.ResponseWriter, r *http.Request) {
 	timeoutResponse := apimodels.ProcessTimeoutResponse{}
 	timeoutResponse.LateProcesses = &runtimes
 	if len(runtimes) > 0 {
-		timeoutResponse.Status = "ERROR"
+		timeoutResponse.Status = apiStatusError
 	} else {
-		timeoutResponse.Status = "SUCCESS"
+		timeoutResponse.Status = apiStatusSuccess
 	}
 	as.WriteJSON(w, http.StatusOK, timeoutResponse)
 }
@@ -87,7 +133,7 @@ func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) 
 	distro := r.FormValue("distro")
 
 	distroNames := make(map[string]int)
-	status := "SUCCESS"
+	status := apiStatusSuccess
 
 	if distro != "" {
 		taskQueue, err := model.FindTaskQueueForDistro(distro)
@@ -97,7 +143,7 @@ func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) 
 		}
 		if taskQueue.Length() >= size {
 			distroNames[distro] = taskQueue.Length()
-			status = "ERROR"
+			status = apiStatusError
 		}
 	} else {
 		taskQueues, err := model.FindAllTaskQueues()
@@ -108,7 +154,7 @@ func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) 
 		for _, queue := range taskQueues {
 			if queue.Length() >= size {
 				distroNames[queue.Distro] = queue.Length()
-				status = "ERROR"
+				status = apiStatusError
 			}
 		}
 	}

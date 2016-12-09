@@ -349,7 +349,10 @@ func ByDispatchedWithIdsVersionAndStatus(taskIds []string, versionId string, sta
 }
 
 var (
-	IsUndispatched = ByStatusAndActivation(evergreen.TaskUndispatched, true)
+	IsUndispatched        = ByStatusAndActivation(evergreen.TaskUndispatched, true)
+	IsDispatchedOrStarted = db.Query(bson.M{
+		StatusKey: bson.M{"$in": []string{evergreen.TaskStarted, evergreen.TaskDispatched}},
+	})
 )
 
 // DB Boilerplate

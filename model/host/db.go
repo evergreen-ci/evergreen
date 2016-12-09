@@ -19,8 +19,8 @@ const (
 )
 
 var noRunningTask = []bson.D{
-	{{"running_task", ""}},
-	{{"running_task", bson.D{{"$exists", false}}}},
+	{{RunningTaskKey, ""}},
+	{{RunningTaskKey, bson.D{{"$exists", false}}}},
 }
 
 var (
@@ -165,6 +165,17 @@ var IsRunningAndSpawned = db.Query(
 	bson.M{
 		StartedByKey: bson.M{"$ne": evergreen.User},
 		StatusKey:    bson.M{"$ne": evergreen.HostTerminated},
+	},
+)
+
+// IsRunningTask is a query that returns all running hosts with a running task
+var IsRunningTask = db.Query(
+	bson.M{
+		StatusKey: bson.M{"$ne": evergreen.HostTerminated},
+		"$and": []bson.M{
+			{RunningTaskKey: bson.M{"$exists": true}},
+			{RunningTaskKey: bson.M{"$ne": ""}},
+		},
 	},
 )
 

@@ -29,14 +29,11 @@ func hostIdInSlice(hosts []Host, id string) bool {
 func TestGenericHostFinding(t *testing.T) {
 
 	Convey("When finding hosts", t, func() {
-
 		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
 			" '%v' collection", Collection)
 
 		Convey("when finding one host", func() {
-
 			Convey("the matching host should be returned", func() {
-
 				matchingHost := &Host{
 					Id: "matches",
 				}
@@ -52,14 +49,12 @@ func TestGenericHostFinding(t *testing.T) {
 				So(found.Id, ShouldEqual, matchingHost.Id)
 
 			})
-
 		})
 
 		Convey("when finding multiple hosts", func() {
 			dId := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
 
 			Convey("the hosts matching the query should be returned", func() {
-
 				matchingHostOne := &Host{
 					Id:     "matches",
 					Distro: distro.Distro{Id: "d1"},
@@ -86,9 +81,20 @@ func TestGenericHostFinding(t *testing.T) {
 
 			})
 
-			Convey("the specified projection, sort, skip, and limit should be"+
-				" used", func() {
+			Convey("when querying two hosts for running tasks", func() {
+				matchingHost := &Host{Id: "task", Status: evergreen.HostRunning, RunningTask: "t1"}
+				So(matchingHost.Insert(), ShouldBeNil)
+				nonMatchingHost := &Host{Id: "nope", Status: evergreen.HostRunning}
+				So(nonMatchingHost.Insert(), ShouldBeNil)
+				Convey("the host with the running task should be returned", func() {
+					found, err := Find(IsRunningTask)
+					So(err, ShouldBeNil)
+					So(len(found), ShouldEqual, 1)
+					So(found[0].Id, ShouldEqual, matchingHost.Id)
+				})
+			})
 
+			Convey("the specified projection, sort, skip, and limit should be used", func() {
 				matchingHostOne := &Host{
 					Id:     "matches",
 					Host:   "hostOne",
