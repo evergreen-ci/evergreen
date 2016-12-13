@@ -265,7 +265,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"Error marshalling patched project config from repository revision “%v”: %v",
+			"Error marshaling patched project config from repository revision “%v”: %v",
 			p.Githash, err)
 	}
 

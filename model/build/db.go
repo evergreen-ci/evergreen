@@ -125,7 +125,7 @@ func ByRecentlyActivatedForProjectAndVariant(revision int, project, variant, req
 }
 
 // ByRecentlySuccessfulForProjectAndVariant builds a query that returns all
-// builds before a given revision that were sucessful for a project + variant.
+// builds before a given revision that were successful for a project + variant.
 // Builds are sorted from most to least recent.
 func ByRecentlySuccessfulForProjectAndVariant(revision int, project, variant string) db.Q {
 	return db.Query(bson.M{

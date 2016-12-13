@@ -274,11 +274,11 @@ func TestCLIFunctions(t *testing.T) {
 							So(err, ShouldBeNil)
 							// After finalizing, the patch should now have a version populated
 							So(patches[0].Version, ShouldNotEqual, "")
-							Convey("Cancelling the patch should work", func() {
+							Convey("Canceling the patch should work", func() {
 								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
 								patches, err := ac.GetPatches(0)
 								So(err, ShouldBeNil)
-								// After cancelling, tasks in the version should be deactivated
+								// After canceling, tasks in the version should be deactivated
 								tasks, err := task.Find(task.ByVersion(patches[0].Version))
 								So(err, ShouldBeNil)
 								for _, t := range tasks {
@@ -382,7 +382,7 @@ func TestCLIFunctions(t *testing.T) {
 							patches, err := ac.GetPatches(0)
 							So(err, ShouldBeNil)
 							So(patches[0].Version, ShouldNotEqual, "")
-							Convey("Cancelling the patch should work and the version should be deactivated", func() {
+							Convey("Canceling the patch should work and the version should be deactivated", func() {
 								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
 								patches, err := ac.GetPatches(0)
 								So(err, ShouldBeNil)

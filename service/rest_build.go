@@ -40,7 +40,7 @@ type buildStatus struct {
 
 type buildStatusByTask map[string]buildStatus
 
-// Returns a JSON response with the marshalled output of the build
+// Returns a JSON response with the marshaled output of the build
 // specified in the request.
 func (restapi *restAPI) getBuildInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)

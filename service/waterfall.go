@@ -124,7 +124,7 @@ type taskStatusCount struct {
 // If the RolledUp field is false, then it contains information about
 // a single version and the metadata fields will be of length 1.
 // If the RolledUp field is true, this represents multiple inactive versions, with each element
-// in the metadata arrays corresponsing to one inactive version,
+// in the metadata arrays corresponding to one inactive version,
 // ordered from most recent inactive version to earliest.
 type waterfallVersion struct {
 

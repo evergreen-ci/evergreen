@@ -152,7 +152,7 @@ func newTagSelectorEvaluator(selectees []tagged) *tagSelectorEvaluator {
 	}
 }
 
-// evalSelector returns all names that fulfil a selector. This is done
+// evalSelector returns all names that fulfill a selector. This is done
 // by evaluating each criterion individually and taking the intersection.
 func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 	// keep a slice of results per criterion
@@ -178,7 +178,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 	return results, nil
 }
 
-// evalCriterion returns all names that fulfil a single selection criterion.
+// evalCriterion returns all names that fulfill a single selection criterion.
 func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, error) {
 	switch {
 	case sc.Validate() != nil:

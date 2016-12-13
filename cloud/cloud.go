@@ -16,7 +16,7 @@ const (
 	StatusUnknown = CloudStatus(iota)
 
 	//StatusPending indicates that it is not yet clear if the instance
-	//has been successfullly started or not (e.g., pending spot request)
+	//has been successfully started or not (e.g., pending spot request)
 	StatusPending
 
 	//StatusInitializing means the instance request has been successfully

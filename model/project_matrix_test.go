@@ -298,14 +298,14 @@ func TestBuildMatrixVariantSimple(t *testing.T) {
 				})
 			})
 		})
-		Convey("and a matrix value that references non-existant axis values", func() {
+		Convey("and a matrix value that references non-existent axis values", func() {
 			mv := matrixValue{"b": "2", "a": "4"}
 			Convey("should return an error", func() {
 				_, err := buildMatrixVariant(axes, mv, testMatrix, nil)
 				So(err, ShouldNotBeNil)
 			})
 		})
-		Convey("and a matrix value that references non-existant axis names", func() {
+		Convey("and a matrix value that references non-existent axis names", func() {
 			mv := matrixValue{"b": "2", "coolfun": "4"}
 			Convey("should return an error", func() {
 				_, err := buildMatrixVariant(axes, mv, testMatrix, nil)
@@ -433,7 +433,7 @@ func TestMatrixVariantsSimple(t *testing.T) {
 					{"brand": []string{"!skittles !m&ms"}, "color": []string{"red", "blue"}},
 				},
 			}
-			Convey("building a list of varations should succeed", func() {
+			Convey("building a list of variations should succeed", func() {
 				vs, errs := buildMatrixVariants(axes, ase, []matrix{m})
 				So(errs, ShouldBeNil)
 				Convey("and return the correct list of combinations", func() {

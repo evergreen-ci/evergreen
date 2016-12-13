@@ -83,7 +83,7 @@ type taskTestResultsByName map[string]taskTestResult
 
 type taskStatusByTest map[string]taskTestResult
 
-// Returns a JSON response with the marshalled output of the task
+// Returns a JSON response with the marshaled output of the task
 // specified in the request.
 func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)

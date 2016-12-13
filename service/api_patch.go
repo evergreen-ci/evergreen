@@ -161,7 +161,7 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
 	// add the project config
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error marshalling patched config: %v", err)
+		return nil, nil, fmt.Errorf("error marshaling patched config: %v", err)
 	}
 
 	// set the patch number based on patch author
@@ -469,7 +469,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		projectYamlBytes, err := yaml.Marshal(patchedProject)
 		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error marshalling patched config: %v", err))
+			as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error marshaling patched config: %v", err))
 			return
 		}
 		p.PatchedConfig = string(projectYamlBytes)

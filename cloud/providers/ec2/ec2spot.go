@@ -23,11 +23,11 @@ import (
 )
 
 const (
-	SpotStatusOpen      = "open"
-	SpotStatusActive    = "active"
-	SpotStatusClosed    = "closed"
-	SpotStatusCancelled = "cancelled"
-	SpotStatusFailed    = "failed"
+	SpotStatusOpen     = "open"
+	SpotStatusActive   = "active"
+	SpotStatusClosed   = "closed"
+	SpotStatusCanceled = "canceled"
+	SpotStatusFailed   = "failed"
 
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
 )
@@ -148,7 +148,7 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 //an ec2 spot-instance host. For unfulfilled spot requests, the behavior
 //is as follows:
 // Spot request open or active, but unfulfilled -> StatusPending
-// Spot request closed or cancelled             -> StatusTerminated
+// Spot request closed or canceled             -> StatusTerminated
 // Spot request failed due to bidding/capacity  -> StatusFailed
 //
 // For a *fulfilled* spot request (the spot request has an instance ID)
@@ -181,7 +181,7 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 		return cloud.StatusPending, nil
 	case SpotStatusClosed:
 		return cloud.StatusTerminated, nil
-	case SpotStatusCancelled:
+	case SpotStatusCanceled:
 		return cloud.StatusTerminated, nil
 	case SpotStatusFailed:
 		return cloud.StatusFailed, nil
@@ -349,7 +349,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			"failed to get spot request info for %v: %v", host.Id, err)
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Cancelling spot request %v", host.Id)
+	evergreen.Logger.Logf(slogger.INFO, "Canceling spot request %v", host.Id)
 	//First cancel the spot request
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	_, err = ec2Handle.CancelSpotRequests([]string{host.Id})
@@ -361,7 +361,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	//Canceling the spot request doesn't terminate the instance that fulfilled it,
 	// if it was fulfilled. We need to terminate the instance explicitly
 	if spotDetails.InstanceId != "" {
-		evergreen.Logger.Logf(slogger.INFO, "Spot request %v cancelled, now terminating instance %v",
+		evergreen.Logger.Logf(slogger.INFO, "Spot request %v canceled, now terminating instance %v",
 			spotDetails.InstanceId, host.Id)
 		resp, err := ec2Handle.TerminateInstances([]string{spotDetails.InstanceId})
 		if err != nil {
@@ -372,7 +372,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			evergreen.Logger.Logf(slogger.INFO, "Terminated %v", stateChange.InstanceId)
 		}
 	} else {
-		evergreen.Logger.Logf(slogger.INFO, "Spot request %v cancelled (no instances have fulfilled it)", host.Id)
+		evergreen.Logger.Logf(slogger.INFO, "Spot request %v canceled (no instances have fulfilled it)", host.Id)
 	}
 
 	// set the host status as terminated and update its termination time

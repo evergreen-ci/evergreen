@@ -317,7 +317,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		// We have a config, so turn it into a usable yaml string to store with the version doc
 		projectYamlBytes, err := yaml.Marshal(project)
 		if err != nil {
-			return nil, fmt.Errorf("Error marshalling config: %v", err)
+			return nil, fmt.Errorf("Error marshaling config: %v", err)
 		}
 		v.Config = string(projectYamlBytes)
 

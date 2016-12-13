@@ -475,7 +475,7 @@ func TestPluginSelfRegistration(t *testing.T) {
 	Convey("Assuming the plugin collection has run its init functions", t, func() {
 		So(len(plugin.CommandPlugins), ShouldBeGreaterThan, 0)
 		nameMap := map[string]uint{}
-		// count all occurances of a plugin name
+		// count all occurrences of a plugin name
 		for _, plugin := range plugin.CommandPlugins {
 			nameMap[plugin.Name()] = nameMap[plugin.Name()] + 1
 		}

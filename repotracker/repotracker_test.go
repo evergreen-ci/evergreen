@@ -244,7 +244,7 @@ func TestBatchTimes(t *testing.T) {
 		So(d.Insert(), ShouldBeNil)
 
 		Convey("If the project's batch time has not elapsed, and no buildvariants "+
-			"have overriden their batch times, no variants should be activated", func() {
+			"have overridden their batch times, no variants should be activated", func() {
 			project := createTestProject(nil, nil)
 			revisions := []model.Revision{
 				*createTestRevision("foo", time.Now()),

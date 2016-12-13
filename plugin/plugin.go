@@ -89,7 +89,7 @@ type Logger interface {
 type PluginCommunicator interface {
 
 	// Make a POST request to the given endpoint by submitting 'data' as
-	// the request body, marshalled as JSON.
+	// the request body, marshaled as JSON.
 	TaskPostJSON(endpoint string, data interface{}) (*http.Response, error)
 
 	// Make a GET request to the given endpoint with content type "application/json"

@@ -96,7 +96,7 @@ func TestFindLateRuntimes(t *testing.T) {
 		time.Sleep(time.Millisecond)
 		SetProcessRuntimeCompleted(allRuntimeIds[2], time.Duration(0))
 
-		Convey("Only times commited before the cutoff are returned", func() {
+		Convey("Only times committed before the cutoff are returned", func() {
 			all, err := FindEveryProcessRuntime()
 			So(len(all), ShouldEqual, 3)
 			So(err, ShouldBeNil)

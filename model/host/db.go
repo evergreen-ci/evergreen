@@ -137,7 +137,7 @@ var IsUninitialized = db.Query(
 )
 
 // ByUnproductiveSince produces a query that returns all hosts that
-// are not doign work and were created before the given time.
+// are not doing work and were created before the given time.
 func ByUnproductiveSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		"$or":         noRunningTask,

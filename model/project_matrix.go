@@ -292,7 +292,7 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 // buildMatrixVariant does the heavy lifting of building a matrix variant based on axis information.
 // We do this by iterating over all axes and merging the axis value's settings when applicable. Expansions
 // are evaluated during this process. Rules are parsed and added to the resulting parserBV for later
-// excecution.
+// execution.
 func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisSelectorEvaluator) (*parserBV, error) {
 	v := parserBV{
 		matrixVal:  mv,

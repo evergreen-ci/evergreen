@@ -227,7 +227,7 @@ func (c *YAMLCommandSet) UnmarshalYAML(unmarshal func(interface{}) error) error 
 	return err1
 }
 
-// TaskDependency holds configuraiton information about a task that must finish before
+// TaskDependency holds configuration information about a task that must finish before
 // the task that contains the dependency can run.
 type TaskDependency struct {
 	Name          string `yaml:"name,omitempty" bson:"name"`

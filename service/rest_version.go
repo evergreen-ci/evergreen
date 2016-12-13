@@ -189,7 +189,7 @@ func (restapi restAPI) getRecentVersions(w http.ResponseWriter, r *http.Request)
 	return
 }
 
-// Returns a JSON response with the marshalled output of the version
+// Returns a JSON response with the marshaled output of the version
 // specified in the request.
 func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
@@ -210,7 +210,7 @@ func (restapi restAPI) getVersionInfo(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// Returns a JSON response with the marshalled output of the version
+// Returns a JSON response with the marshaled output of the version
 // specified in the request.
 func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
@@ -225,7 +225,7 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	return
 }
 
-// Returns a JSON response with the marshalled output of the version
+// Returns a JSON response with the marshaled output of the version
 // specified by its revision and project name in the request.
 func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -260,7 +260,7 @@ func (restapi restAPI) getVersionInfoViaRevision(w http.ResponseWriter, r *http.
 }
 
 // Modifies part of the version specified in the request, and returns a
-// JSON response with the marshalled output of its new state.
+// JSON response with the marshaled output of its new state.
 func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)
 	user := MustHaveUser(r)

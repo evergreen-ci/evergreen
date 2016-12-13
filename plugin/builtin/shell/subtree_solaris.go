@@ -24,7 +24,7 @@ func trackProcess(key string, pid int, log plugin.Logger) {
 // []string{"VAR1=FOO", "VAR2=BAR", ...}
 // This function works by calling "pargs -e $pid" and parsing its output.
 func getEnv(pid int) ([]string, error) {
-	/* In Solaris we extract envrionment variables by calling 'pargs -e $pid'
+	/* In Solaris we extract environment variables by calling 'pargs -e $pid'
 	on each process in the system. The output of pargs looks like:
 	$ pargs -e 499
 	499:    /usr/perl5/bin/perl /usr/lib/intrd

@@ -51,7 +51,7 @@ func (ec *EvaluateCommand) Execute(args []string) error {
 
 	outYAML, err := yaml.Marshal(out)
 	if err != nil {
-		return fmt.Errorf("error marshalling evaluated project YAML: %v", err)
+		return fmt.Errorf("error marshaling evaluated project YAML: %v", err)
 	}
 	fmt.Println(string(outYAML))
 

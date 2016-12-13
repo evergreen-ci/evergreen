@@ -215,7 +215,7 @@ func encodeRFC2047(String string) string {
 }
 
 // cleanTestName returns the last item of a test's path.
-//   TODO: stop accomodating this.
+//   TODO: stop accommodating this.
 func cleanTestName(path string) string {
 	if unixIdx := strings.LastIndex(path, "/"); unixIdx != -1 {
 		// if the path ends in a slash, remove it and try again

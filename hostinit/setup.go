@@ -332,7 +332,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 	evergreen.Logger.Logf(slogger.INFO, "Setting up host %v", h.Id)
 	output, err := init.setupHost(h)
 
-	// deal with any errors that occured while running the setup
+	// deal with any errors that occurred while running the setup
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Error running setup script: %v", err)
 

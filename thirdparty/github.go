@@ -299,7 +299,7 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 			}
 			// read the results
 			rateMessage, _ := getGithubRateLimit(resp.Header)
-			evergreen.Logger.Logf(slogger.DEBUG, "Github API repsonse: %v. %v", resp.Status, rateMessage)
+			evergreen.Logger.Logf(slogger.DEBUG, "Github API response: %v. %v", resp.Status, rateMessage)
 			return nil
 		},
 	)

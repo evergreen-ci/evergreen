@@ -20,7 +20,7 @@ type RestPatch struct {
 	Patches     []patch.ModulePatch `json:"patches"`
 }
 
-// Returns a JSON response with the marshalled output of the task
+// Returns a JSON response with the marshaled output of the task
 // specified in the request.
 func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)

@@ -151,7 +151,7 @@ func CopyS3File(awsAuth *aws.Auth, fromS3URL string, toS3URL string, permissionA
 			return fmt.Errorf("Unrecognized S3 response: %v: %v", errMsg, xmlErr)
 		}
 		copyObjectError.ErrMsg = errMsg
-		// if we were able to parse out an error reponse, then we can reliably
+		// if we were able to parse out an error response, then we can reliably
 		// inform the user of the error
 		return copyObjectError
 	}
@@ -212,7 +212,7 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
 			return fmt.Errorf("Unrecognized S3 response: %v: %v", errMsg, xmlErr)
 		}
 		copyObjectError.ErrMsg = errMsg
-		// if we were able to parse out an error reponse, then we can reliably
+		// if we were able to parse out an error response, then we can reliably
 		// inform the user of the error
 		return copyObjectError
 	}
