@@ -26,7 +26,7 @@ const (
 	SpotStatusOpen     = "open"
 	SpotStatusActive   = "active"
 	SpotStatusClosed   = "closed"
-	SpotStatusCanceled = "canceled"
+	SpotStatusCanceled = "cancelled"
 	SpotStatusFailed   = "failed"
 
 	EC2ErrorSpotRequestNotFound = "InvalidSpotInstanceRequestID.NotFound"
