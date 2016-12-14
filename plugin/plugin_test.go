@@ -294,10 +294,10 @@ func TestAttachLargeResults(t *testing.T) {
 	Convey("With a test task and server", t, func() {
 		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom, err := agent.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
+		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
-		pluginCom := &agent.TaskJSONCommunicator{"test", httpCom}
+		pluginCom := &comm.TaskJSONCommunicator{"test", httpCom}
 		_, err = createTestConfig("testdata/plugin_project.yml", t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
