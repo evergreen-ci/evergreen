@@ -238,9 +238,17 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     $scope.isDirty = true;
   }
 
+  $scope.isValidMergeBaseRevision = function(revision){
+    return revision.length >= 40;
+  }
+
   $scope.setLastRevision = function() {
     if ($scope.settingsFormData.repotracker_error.exists) {
       var revisionUrl = '/project/' + $scope.settingsFormData.identifier + "/repo_revision";
+      if (!$scope.isValidMergeBaseRevision($scope.settingsFormData.repotracker_error.merge_base_revision)){
+        console.log("bad revision");
+        return;
+      }
       $http.put(revisionUrl, $scope.settingsFormData.repotracker_error.merge_base_revision).
         success(function(data, status) {
           $scope.settingsFormData.repotracker_error.exists = false;

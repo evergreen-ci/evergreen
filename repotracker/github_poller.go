@@ -168,6 +168,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 			revision,
 			firstCommit,
 		)
+		if len(revision) < 10 {
+			return nil, fmt.Errorf("invalid revision: %v", revision)
+		}
 		if err != nil {
 			// unable to get merge base commit so set projectRef revision details with a blank base revision
 			revisionDetails = &model.RepositoryErrorDetails{

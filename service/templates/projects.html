@@ -77,9 +77,10 @@ Evergreen Projects
             </div>
             <div class="col-lg-6">
               <input class="form-control" type="text" ng-model="settingsFormData.repotracker_error.merge_base_revision">
+              <label class="icon fa fa-warning project-error" ng-show="!isValidMergeBaseRevision(settingsFormData.repotracker_error.merge_base_revision)">&nbsp;Merge Base Revision must be a valid SHA GitHub Revision </label>
             </div>    
             <div class="col-lg-2">
-              <button class="form-control btn btn-primary" type="button" ng-click="setLastRevision()">
+              <button class="form-control btn btn-primary" type="button" ng-disabled="!isValidMergeBaseRevision(settingsFormData.repotracker_error.merge_base_revision)"ng-click="setLastRevision()">
                 <i class="fa fa-check"></i>
               </button>
             </div>  
