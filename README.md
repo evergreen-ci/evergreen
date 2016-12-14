@@ -4,14 +4,14 @@ Version 0.9.0 Alpha
 Evergreen is a distributed continuous integration system built by MongoDB.
 It dynamically allocates hosts (via AWS, digitalocean, etc) to run tasks in parallel across many machines at once to decrease the total amount of time needed to complete a test workload.
 
-Using Evergreen, we've significantly enhanced the productivity of our engineers. 
+Using Evergreen, we've significantly enhanced the productivity of our engineers.
 
 # Features
 
 #### Elastic Host Allocation
 Use only the computing resources you need.
 
-#### Clean UI 
+#### Clean UI
 Easily navigate the state of your tests, logs, and commit history.
 
 #### Multiplatform Support
@@ -20,7 +20,7 @@ Run jobs on Linux (including PowerPC and ZSeries), Windows, OSX, Solaris, and BS
 #### Spawn Hosts
 Spin up a copy of any machine in your test infrastructure for debugging.
 
-#### Patch Builds 
+#### Patch Builds
 See test results for your code changes before committing.
 
 #### Stepback on Failure
@@ -33,21 +33,40 @@ Evergreen requires the configuration of a main server along with a cloud provide
 Please refer to [our tutorial](https://github.com/evergreen-ci/evergreen/wiki/Getting-Started) for full installation instructions.
 
 ## System Requirements
- The Evergreen Agent and Command Line Tool are supported on Linux, OSX, Windows, and Solaris operating systems. 
- However, the Evergreen API Server, UI Server, and Runner program are currently only supported and tested on Linux and OSX.
+The Evergreen Agent and Command Line Tool are supported on Linux, OSX, Windows, and Solaris operating systems.
+However, the Evergreen API Server, UI Server, and Runner program are currently only supported and tested on Linux and OSX.
 
 ## Go Requirements
- * [Install Go 1.6 or later](https://golang.org/dl/).
+* [Install Go 1.7 or later](https://golang.org/dl/).
 
 ## Vendoring Dependencies
-Our dependencies live in the `vendor` subdirectory of the repo.
-The specifications for what version of each dependency is used resides in the Godeps file in the root of the repo.
-If you add a new dependency, or change the version of an existing one, run the `vendor.sh` script to refresh the downloaded versions in `vendor`.
+Our dependencies live in the `vendor` subdirectory of the repo, and
+are managed using [glide](https://github.com/Masterminds/glide). To
+add a new dependency, add the package to `glide.yaml` and the package
+name and revision to `glide.lock`, and run `glide install -s`. To
+refresh the entire `vendor` tree, run `make vendor-sync`
 
 ## Building the Binaries
-* Run the `build.sh` script in the root of the repo to generate binaries (in the `bin/` subdirectory) for the UI server, API server, and runner daemon.
-* To build the agent binaries for all platforms, run the `build_agent_gc.sh` script in the root of the repo. 
-* To run tests or build manually, you must update the GOPATH variable by running `. ./setgopath.sh` in your shell.
+
+Setup:
+
+* ensure that your `GOPATH` environment variable is set.
+* check out a copy of the repo into your gopath. You can use: `go get
+  github.com/evergreen-ci/evergreen`. If you have an existing checkout
+  of the evergreen repository that is not in
+  `$GOPATH/src/github.com/evergreen-ci/` move or create a symlink.
+* run `make vendor` to set up the vendoring environment.
+
+Possible Targets:
+
+* run `make build` to compile all server binaries for your local
+  system.
+* run `make agent cli` to compile the agent and cli for your local
+  platform.
+* run `make agents clis` to compile and cross compile all agent and
+  command line interface binaries.
+* run `make dist` to compile all server, commandline, and agent
+  binaries and create a *dist* tarball with all artifacts.
 
 ## Terminology
 * `distro`: A platform type (e.g. Windows or OSX) plus large-scale architectural details.  One of the targets that we produce executables for.
