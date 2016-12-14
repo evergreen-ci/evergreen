@@ -280,7 +280,7 @@ $(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testTimeout -test.coverprofile=$@ || true
+	$(testRunEnv) ./$< $(testTimeout) -test.coverprofile=$@ || true
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(vendorGopath) go tool cover -html=$< -o $@
