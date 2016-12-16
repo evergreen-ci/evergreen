@@ -41,6 +41,10 @@ func main() {
 	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 	home := evergreen.FindEvergreenHome()
+	if home == "" {
+		fmt.Println("EVGHOME environment variable must be set to run UI server")
+		os.Exit(1)
+	}
 	uis, err := service.NewUIServer(settings, home)
 	if err != nil {
 		fmt.Println("Failed to create ui server: %v", err)

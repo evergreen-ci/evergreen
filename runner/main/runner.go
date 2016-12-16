@@ -62,6 +62,11 @@ func main() {
 	if settings.Runner.LogFile != "" {
 		evergreen.SetLogger(settings.Runner.LogFile)
 	}
+	home := evergreen.FindEvergreenHome()
+	if home == "" {
+		fmt.Println("EVGHOME environment variable must be set to execute runner")
+		os.Exit(1)
+	}
 
 	go util.DumpStackOnSIGQUIT(os.Stdout)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))

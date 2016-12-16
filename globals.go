@@ -150,6 +150,7 @@ func FindEvergreenHome() string {
 	if len(root) > 0 {
 		return root
 	}
+	Logger.Logf(slogger.ERROR, "EVGHOME is unset")
 	return ""
 }
 
