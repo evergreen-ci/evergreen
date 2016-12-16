@@ -71,6 +71,10 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
 	repoOwner = projectRef.Owner
 	repo = projectRef.Repo
 
+	if !projectRef.Enabled {
+		return nil, nil, fmt.Errorf("project %v is disabled", projectRef.Identifier)
+	}
+
 	if len(pr.Githash) != 40 {
 		return nil, nil, fmt.Errorf("invalid githash")
 	}
