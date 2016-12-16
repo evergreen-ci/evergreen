@@ -150,6 +150,26 @@ func (ggpc GitGetProjectCommand) getPatchContents(conf *model.TaskConfig, com pl
 	return nil
 }
 
+// GetPatchCommands, given a module patch of a patch, will return the appropriate list of commands that
+// need to be executed. If the patch is empty it will not apply the patch.
+func GetPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []string {
+	patchCommands := []string{
+		fmt.Sprintf("set -o verbose"),
+		fmt.Sprintf("set -o errexit"),
+		fmt.Sprintf("ls"),
+		fmt.Sprintf("cd '%v'", dir),
+		fmt.Sprintf("git checkout '%v'", modulePatch.Githash),
+	}
+	if modulePatch.PatchSet.Patch == "" {
+		return patchCommands
+	}
+	return append(patchCommands, []string{
+		fmt.Sprintf("git apply --check --whitespace=fix '%v'", patchPath),
+		fmt.Sprintf("git apply --stat '%v'", patchPath),
+		fmt.Sprintf("git apply --whitespace=fix < '%v'", patchPath),
+	}...)
+}
+
 // applyPatch is used by the agent to copy patch data onto disk
 // and then call the necessary git commands to apply the patch file
 func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
@@ -197,28 +217,7 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 		tempAbsPath := tempFile.Name()
 
 		// this applies the patch using the patch files in the temp directory
-		patchCommandStrings := []string{
-			fmt.Sprintf("set -o verbose"),
-			fmt.Sprintf("set -o errexit"),
-			fmt.Sprintf("ls"),
-			fmt.Sprintf("cd '%v'", dir),
-			fmt.Sprintf("git checkout '%v'", patchPart.Githash),
-			fmt.Sprintf("git apply --check --whitespace=fix '%v'", tempAbsPath),
-			fmt.Sprintf("git apply --stat '%v'", tempAbsPath),
-			fmt.Sprintf("git apply --whitespace=fix < '%v'", tempAbsPath),
-		}
-
-		// if the patch is empty we do not want to apply the patch because it will fail.
-		if p.IsEmpty {
-			patchCommandStrings = []string{
-				fmt.Sprintf("set -o verbose"),
-				fmt.Sprintf("set -o errexit"),
-				fmt.Sprintf("ls"),
-				fmt.Sprintf("cd '%v'", dir),
-				fmt.Sprintf("git checkout '%v'", patchPart.Githash),
-			}
-		}
-
+		patchCommandStrings := GetPatchCommands(patchPart, dir, tempAbsPath)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
 		patchCmd := &command.LocalCommand{
 			CmdString:        cmdsJoined,

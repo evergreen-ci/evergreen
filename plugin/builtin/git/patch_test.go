@@ -1,4 +1,4 @@
-package git_test
+package git
 
 import (
 	"path/filepath"
@@ -9,10 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
-	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -123,6 +123,36 @@ func TestPatchPlugin(t *testing.T) {
 					So(err, ShouldBeNil)
 				}
 			}
+		})
+	})
+}
+
+func TestGetPatchCommands(t *testing.T) {
+	Convey("With a patch that has modules", t, func() {
+		testPatch := patch.Patch{
+			Patches: []patch.ModulePatch{
+				patch.ModulePatch{
+					ModuleName: "",
+					PatchSet: patch.PatchSet{
+						Patch: "",
+					},
+				},
+				patch.ModulePatch{
+					ModuleName: "anotherOne",
+					PatchSet: patch.PatchSet{
+						Patch: "these are words",
+					},
+				},
+			},
+		}
+
+		Convey("on an empty patch module, a set of commands that does not apply the patch should be returned", func() {
+			commands := GetPatchCommands(testPatch.Patches[0], "", "")
+			So(len(commands), ShouldEqual, 5)
+		})
+		Convey("on a patch with content, the set of commands should apply the patch", func() {
+			commands := GetPatchCommands(testPatch.Patches[1], "", "")
+			So(len(commands), ShouldEqual, 8)
 		})
 	})
 }

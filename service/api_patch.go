@@ -94,8 +94,6 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
 		return nil, nil, err
 	}
 
-	isEmpty := (pr.PatchContent == "")
-
 	if finalize && (len(pr.BuildVariants) == 0 || pr.BuildVariants[0] == "") {
 		return nil, nil, fmt.Errorf("no buildvariants specified")
 	}
@@ -114,7 +112,6 @@ func (pr *PatchAPIRequest) CreatePatch(finalize bool, oauthToken string,
 		Status:        evergreen.PatchCreated,
 		BuildVariants: pr.BuildVariants,
 		Tasks:         pr.Tasks,
-		IsEmpty:       isEmpty,
 		Patches: []patch.ModulePatch{
 			{
 				ModuleName: "",
