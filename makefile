@@ -13,7 +13,7 @@ projectPath := $(orgPath)/$(name)
 
 
 # start evergreen specific configuration
-xcPlatforms := windows_amd64 windows_386 linux_386 linux_s390x linux_arm64 linux_ppc64le solaris_amd64 darwin_amd64
+xcPlatforms := windows_amd64 windows_386 linux_386 linux_s390x linux_amd64 linux_arm64 linux_ppc64le solaris_amd64 darwin_amd64
 goos := $(shell go env GOOS)
 goarch := $(shell go env GOARCH)
 
