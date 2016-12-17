@@ -51,9 +51,10 @@ var ErrLockTimeout = errors.New("Timed out acquiring global lock")
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
 	*render.Render
-	UserManager auth.UserManager
-	Settings    evergreen.Settings
-	plugins     []plugin.APIPlugin
+	UserManager  auth.UserManager
+	Settings     evergreen.Settings
+	plugins      []plugin.APIPlugin
+	clientConfig *evergreen.ClientConfig
 }
 
 const (
@@ -68,7 +69,20 @@ func NewAPIServer(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*AP
 		return nil, err
 	}
 
-	return &APIServer{render.New(render.Options{}), authManager, *settings, plugins}, nil
+	clientConfig, err := getClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	as := &APIServer{
+		Render:       render.New(render.Options{}),
+		UserManager:  authManager,
+		Settings:     *settings,
+		plugins:      plugins,
+		clientConfig: clientConfig,
+	}
+
+	return as, nil
 }
 
 // MustHaveTask get the task from an HTTP Request.
@@ -908,12 +922,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 // Returns information about available updates for client binaries.
 // Replies 404 if this data is not configured.
 func (as *APIServer) getUpdate(w http.ResponseWriter, r *http.Request) {
-	if len(as.Settings.Api.Clients.LatestRevision) == 0 {
-		// auto-update is not configured
-		as.WriteJSON(w, http.StatusNotFound, "{}")
-		return
-	}
-	as.WriteJSON(w, http.StatusOK, as.Settings.Api.Clients)
+	as.WriteJSON(w, http.StatusOK, as.clientConfig)
 }
 
 // GetSettings returns the global evergreen settings.

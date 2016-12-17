@@ -8,7 +8,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
@@ -45,7 +45,7 @@ type UIServer struct {
 	Settings        evergreen.Settings
 	CookieStore     *sessions.CookieStore
 	PluginTemplates map[string]*htmlTemplate.Template
-
+	clientConfig    *evergreen.ClientConfig
 	plugin.PanelManager
 }
 
@@ -64,6 +64,12 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 		return nil, err
 	}
 	uis.UserManager = userManager
+
+	clientConfig, err := getClientConfig()
+	if err != nil {
+		return nil, err
+	}
+	uis.clientConfig = clientConfig
 
 	uis.CookieStore = sessions.NewCookieStore([]byte(settings.Ui.Secret))
 
@@ -220,6 +226,9 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 
 	// REST API
 	AttachRESTHandler(r, uis)
+
+	// Static Path handlers
+	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
 
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()

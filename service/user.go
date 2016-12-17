@@ -104,7 +104,7 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 		Binaries    []evergreen.ClientBinary
 		Flashes     []interface{}
 	}{projCtx, settingsData, currentUser, exampleConf,
-		uis.Settings.Api.Clients.ClientBinaries, flashes},
+		uis.clientConfig.ClientBinaries, flashes},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }
 

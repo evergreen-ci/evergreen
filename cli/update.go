@@ -29,7 +29,7 @@ type GetUpdateCommand struct {
 type VersionCommand struct{}
 
 func (vc *VersionCommand) Execute(args []string) error {
-	fmt.Println(evergreen.BuildRevision)
+	fmt.Println(evergreen.ClientVersion)
 	return nil
 }
 
@@ -128,15 +128,15 @@ func checkUpdate(ac *APIClient, silent bool) (updateStatus, error) {
 	}
 
 	// No update needed
-	if clients.LatestRevision == evergreen.BuildRevision {
-		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.BuildRevision)
+	if clients.LatestRevision == evergreen.ClientVersion {
+		fmt.Fprintf(outLog, "Binary is already up to date at revision %v - not updating.\n", evergreen.ClientVersion)
 		return updateStatus{nil, false, clients.LatestRevision}, nil
 	}
 
 	binarySource := findClientUpdate(*clients)
 	if binarySource == nil {
 		// Client is out of date but no update available
-		fmt.Fprintf(outLog, "Client is out of date (version %v) but update is unavailable.\n", evergreen.BuildRevision)
+		fmt.Fprintf(outLog, "Client is out of date (version %v) but update is unavailable.\n", evergreen.ClientVersion)
 		return updateStatus{nil, true, clients.LatestRevision}, nil
 	}
 

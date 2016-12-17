@@ -109,6 +109,7 @@ var (
 
 	// database and config directory, set to the testing version by default for safety
 	NotificationsFile = "mci-notifications.yml"
+	ClientDirectory   = "clients"
 
 	// version requester types
 	PatchVersionRequester       = "patch_request"

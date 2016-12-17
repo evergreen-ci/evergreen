@@ -9,8 +9,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Should be specified with -ldflags at build time
-var BuildRevision = ""
+var (
+	// Should be specified with -ldflags at build time
+	BuildRevision = ""
+
+	// Commandline Version String; used to control auto-updating.
+	ClientVersion = "e4185327b58797d5ebcc88f092b33e319d8c8521" // in the future this should probably be a date, but this is the legacy value
+)
 
 const (
 	// DefaultConfFile is the default config file path for Evergreen.
@@ -74,7 +79,6 @@ type ClientConfig struct {
 
 // APIConfig holds relevant encryption and log settings for the API server.
 type APIConfig struct {
-	Clients         ClientConfig `yaml:"clients"`
 	LogFile         string
 	HttpListenAddr  string
 	HttpsListenAddr string

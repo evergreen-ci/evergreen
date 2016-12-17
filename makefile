@@ -13,7 +13,7 @@ projectPath := $(orgPath)/$(name)
 
 
 # start evergreen specific configuration
-unixPlatforms := linux_386 linux_s390x linux_amd64 linux_arm64 linux_ppc64le solaris_amd64 darwin_amd64
+unixPlatforms := linux_amd64 linux_386 linux_s390x linux_arm64 linux_ppc64le solaris_amd64 darwin_amd64
 windowsPlatforms := windows_amd64 windows_386
 goos := $(shell go env GOOS)
 goarch := $(shell go env GOARCH)
@@ -23,7 +23,8 @@ clientBuildDir := clients
 
 agentBinaries := $(foreach platform,$(unixPlatforms),$(agentBuildDir)/$(platform)/main)
 agentBinaries += $(foreach platform,$(windowsPlatforms),$(agentBuildDir)/$(platform)/main.exe)
-clientBinaries := $(foreach platform,$(unixPlatforms) $(windowsPlatforms),$(clientBuildDir)/$(platform)/cli)
+clientBinaries := $(foreach platform,$(unixPlatforms) freebsd_amd64,$(clientBuildDir)/$(platform)/evergreen)
+clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
 raceBinaries := $(foreach bin,$(binaries),$(bin).race)
@@ -109,29 +110,25 @@ phony += $(binaries) $(raceBinaries)
 # end rules for building server binaries
 
 
-# start rules for building agents
+# start rules for building agents and clis
+ifeq ($(OS),Windows_NT)
+agent:$(agentBuildDir)/$(goos)_$(goarch)/main.exe
+cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+else
+agent:$(agentBuildDir)/$(goos)_$(goarch)/main
+cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
+endif
+agents:$(agentBinaries)
+clis:$(clientBinaries)
+$(agentBuildDir)/%/main $(agentBuildDir)/%/main.exe:$(buildDir)/build-cross-compile $(agentBuildDir)/version $(srcFiles)
+	$(crossCompile) -directory=$(agentBuildDir) -source=$(agentSource)
+$(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
+	$(crossCompile) -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 $(agentBuildDir)/version:
 	@mkdir -p $(dir $@)
 	git rev-parse HEAD >| $@
-ifeq ($(OS),Windows_NT)
-agent:$(agentBuildDir)/$(goos)_$(goarch)/main.exe
-else
-agent:$(agentBuildDir)/$(goos)_$(goarch)/main
-endif
-agents:$(agentBinaries)
-$(agentBuildDir)/%/main $(agentBuildDir)/%/main.exe:$(buildDir)/build-cross-compile $(agentBuildDir)/version $(srcFiles)
-	$(crossCompile) -directory=$(agentBuildDir) -source=$(agentSource)
-phony += agents agent $(agentBuildDir)/version
+phony += agents agent $(agentBuildDir)/version cli clis
 # end agent build directives
-
-
-# start client build directives
-cli:$(clientBuildDir)/$(goos)_$(goarch)/cli
-clis:$(clientBinaries)
-$(clientBuildDir)/%/cli:$(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -directory=$(clientBuildDir) -source=$(clientSource)
-phony += cli clis
-# end rules for building the client
 
 
 ######################################################################
@@ -237,6 +234,7 @@ $(buildDir)/makefile.vendor:$(buildDir)/render-gopath makefile
 vendor-sync:$(vendorDeps)
 	rm -rf vendor
 	glide install -s
+	rm vendor/github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus/terminal_freebsd.go
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1
