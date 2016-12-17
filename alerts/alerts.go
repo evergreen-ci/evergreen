@@ -176,11 +176,19 @@ func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Delivere
 	// load and validate "project" JSON value
 	projectField, ok := alertConf.Settings["project"]
 	if !ok {
-		return nil, fmt.Errorf("malformed JIRA project")
+		return nil, fmt.Errorf("missing JIRA project field")
 	}
 	project, ok := projectField.(string)
 	if !ok {
 		return nil, fmt.Errorf("JIRA project name must be string")
+	}
+	issueField, ok := alertConf.Settings["issue"]
+	if !ok {
+		return nil, fmt.Errorf("missing JIRA issue field")
+	}
+	issue, ok := issueField.(string)
+	if !ok {
+		return nil, fmt.Errorf("JIRA issue type must be string")
 	}
 	// validate Evergreen settings
 	if (qp.config.Jira.Host == "") || qp.config.Jira.Username == "" || qp.config.Jira.Password == "" {
@@ -196,9 +204,10 @@ func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Delivere
 		qp.config.Jira.Password,
 	)
 	return &jiraDeliverer{
-		project: project,
-		handler: &handler,
-		uiRoot:  qp.config.Ui.Url,
+		project:   project,
+		issueType: issue,
+		handler:   &handler,
+		uiRoot:    qp.config.Ui.Url,
 	}, nil
 }
 

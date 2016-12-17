@@ -228,7 +228,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       return "Send an e-mail to " + alertObj.settings.recipient
     }
     if (alertObj.provider=='jira'){
-      return "File a JIRA ticket in "+ alertObj.settings.project
+      return "File a "+alertObj.settings.issue+" JIRA ticket in "+ alertObj.settings.project
     }
     return 'unknown'
   }

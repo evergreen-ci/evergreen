@@ -40,9 +40,10 @@ type jiraCreator interface {
 
 // jiraDeliverer is an implementation of Deliverer that files JIRA tickets
 type jiraDeliverer struct {
-	project string
-	uiRoot  string
-	handler jiraCreator
+	project   string
+	issueType string
+	uiRoot    string
+	handler   jiraCreator
 }
 
 // Deliver posts the alert defined by the AlertContext to JIRA.
@@ -50,13 +51,14 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	var err error
 	request := map[string]interface{}{}
 	request["project"] = map[string]string{"key": jd.project}
+	request["issuetype"] = map[string]string{"name": jd.issueType}
 	request["summary"] = getSummary(ctx)
 	request["description"], err = getDescription(ctx, jd.uiRoot)
 	if err != nil {
 		return fmt.Errorf("error creating description: %v", err)
 	}
 	evergreen.Logger.Logf(slogger.INFO,
-		"Creating JIRA ticket in %v for failure %v", jd.project, ctx.Task.Id)
+		"Creating '%v' JIRA ticket in %v for failure %v", jd.issueType, jd.project, ctx.Task.Id)
 	result, err := jd.handler.CreateTicket(request)
 	if err != nil {
 		return fmt.Errorf("error creating JIRA ticket: %v", err)

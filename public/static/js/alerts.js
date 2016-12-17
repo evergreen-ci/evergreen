@@ -2,12 +2,14 @@
 // Only email supported for the moment. See EVG-43 for flowdock support.
 
 function NewAlert(recipient){
-  // JIRA alerts are denoted with "JIRA:project" format
+  // JIRA alerts are denoted with "JIRA:project:issue type" format
   if (recipient.startsWith("JIRA:")) {
+    var args = recipient.split(":")
     return {
       provider: "jira",
       settings: {
-        project: recipient.slice(5),
+        project: args[1],
+        issue: args[2],
       },
     }
   }

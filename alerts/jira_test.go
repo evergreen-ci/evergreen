@@ -266,7 +266,7 @@ func TestGetJIRADeliverer(t *testing.T) {
 	Convey("With a JIRA alertConf and QueueProcessor", t, func() {
 		alertConf := model.AlertConfig{
 			Provider: JiraProvider,
-			Settings: map[string]interface{}{"project": "TEST"},
+			Settings: map[string]interface{}{"project": "TEST", "issue": "Bug"},
 		}
 		qp := &QueueProcessor{}
 		Convey("a QueueProcessor with full settings should return the JIRA deliverer", func() {

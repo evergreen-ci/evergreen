@@ -57,6 +57,7 @@ func RunTaskFailureTriggers(taskId string) error {
 			Id:        bson.NewObjectId(),
 			Trigger:   trigger.Id(),
 			TaskId:    t.Id,
+			HostId:    t.HostId,
 			Execution: t.Execution,
 			BuildId:   t.BuildId,
 			VersionId: t.Version,
