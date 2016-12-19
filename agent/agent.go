@@ -165,11 +165,6 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 		agt.logger.LogTask(slogger.INFO, "Task completed - FAILURE.")
 	}
 
-	// run cleanup before and after the post operations.
-	if err := shell.KillSpawnedProcs(agt.taskConfig.Task.Id, agt.logger); err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes (before-post): %v", err)
-	}
-
 	// run post commands
 	if agt.taskConfig.Project.Post != nil {
 		agt.logger.LogTask(slogger.INFO, "Running post-task commands.")
@@ -181,11 +176,16 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 		agt.logger.LogTask(slogger.INFO, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
 
-	// run cleanup before and after the post operations.
-	if err := shell.KillSpawnedProcs(agt.taskConfig.Task.Id, agt.logger); err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes (after-post): %v", err)
+	t := agt.taskConfig.Project.FindProjectTask(agt.taskConfig.Task.DisplayName)
+	if agt.taskConfig.Project.DisableCleanup || (t != nil && t.DisableCleanup) {
+		agt.logger.LogExecution(slogger.INFO, "Skipping process cleanup.")
+	} else {
+		agt.logger.LogExecution(slogger.INFO, "Running process cleanup.")
+		err := shell.KillSpawnedProcs(agt.taskConfig.Task.Id, agt.logger)
+		if err != nil {
+			agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes: %v", err)
+		}
 	}
-
 	err := agt.removeTaskDirectory()
 	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error removing task directory: %v", err)
