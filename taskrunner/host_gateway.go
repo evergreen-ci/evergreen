@@ -107,7 +107,7 @@ func executableSubPath(id string) (string, error) {
 		mainName = "main.exe"
 	}
 
-	return filepath.Join("snapshot", d.Arch, mainName), nil
+	return filepath.Join(d.Arch, mainName), nil
 }
 
 func newCappedOutputLog() *util.CappedWriter {
