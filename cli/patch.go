@@ -250,14 +250,35 @@ func (vc *ValidateCommand) Execute(args []string) error {
 	return nil
 }
 
+// getModuleBranch returns the branch for the config.
+func getModuleBranch(moduleName string, proj *model.Project) (string, error) {
+	// find the module of the patch
+	for _, module := range proj.Modules {
+		if module.Name == moduleName {
+			return module.Branch, nil
+		}
+	}
+	return "", fmt.Errorf("module branch not found")
+}
+
 func (smc *SetModuleCommand) Execute(args []string) error {
-	ac, _, _, err := getAPIClients(smc.GlobalOpts)
+	ac, rc, _, err := getAPIClients(smc.GlobalOpts)
 	if err != nil {
 		return err
 	}
 	notifyUserUpdate(ac)
 
-	diffData, err := loadGitData("master", args...) // modules always diff relative to master. this is not great.
+	proj, err := rc.GetPatchedConfig(smc.PatchId)
+	if err != nil {
+		return err
+	}
+
+	moduleBranch, err := getModuleBranch(smc.Module, proj)
+	if err != nil {
+		return err
+	}
+	// diff against the module branch.
+	diffData, err := loadGitData(moduleBranch, args...)
 	if err != nil {
 		return err
 	}
@@ -267,6 +288,7 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	}
 
 	if !smc.SkipConfirm {
+		fmt.Printf("Using branch %v for module %v \n", moduleBranch, smc.Module)
 		if diffData.patchSummary != "" {
 			fmt.Println(diffData.patchSummary)
 		}

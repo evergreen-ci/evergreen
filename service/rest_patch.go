@@ -51,3 +51,15 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 	restapi.WriteJSON(w, http.StatusOK, destPatch)
 	return
 }
+
+// getPatchConfig returns the patched config for a given patch.
+func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
+	projCtx := MustHaveRESTContext(r)
+	if projCtx.Patch == nil {
+		restapi.WriteJSON(w, http.StatusNotFound, responseError{Message: "patch not found"})
+		return
+	}
+	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(projCtx.Patch.PatchedConfig))
+}

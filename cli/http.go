@@ -192,7 +192,7 @@ func (ac *APIClient) GetProjectRef(projectId string) (*model.ProjectRef, error) 
 	return ref, nil
 }
 
-// GetPatch fetches the config requests project details from the API server for a given project ID.
+// GetPatch gets a patch from the server given a patch id.
 func (ac *APIClient) GetPatch(patchId string) (*service.RestPatch, error) {
 	resp, err := ac.get(fmt.Sprintf("patches/%v", patchId), nil)
 	if err != nil {
@@ -203,6 +203,22 @@ func (ac *APIClient) GetPatch(patchId string) (*service.RestPatch, error) {
 	}
 	ref := &service.RestPatch{}
 	if err := util.ReadJSONInto(resp.Body, ref); err != nil {
+		return nil, err
+	}
+	return ref, nil
+}
+
+// GetPatchedConfig takes in patch id and returns the patched project config.
+func (ac *APIClient) GetPatchedConfig(patchId string) (*model.Project, error) {
+	resp, err := ac.get(fmt.Sprintf("patches/%v/config", patchId), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+	ref := &model.Project{}
+	if err := util.ReadYAMLInto(resp.Body, ref); err != nil {
 		return nil, err
 	}
 	return ref, nil
