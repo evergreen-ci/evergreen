@@ -684,7 +684,7 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 func gitDiff(base string, diffArgs ...string) (string, error) {
 	args := make([]string, 0, 1+len(diffArgs))
 	args = append(args, "--no-ext-diff")
-	args = append(args, "--stat")
+	args = append(args, diffArgs...)
 	return gitCmd("diff", base, args...)
 }
 
