@@ -20,7 +20,8 @@ const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}]
 Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
-{{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]{{end}}
+{{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
+{{end}}
 `
 
 // DescriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
