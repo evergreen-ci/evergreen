@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 )
@@ -18,6 +17,7 @@ func main() {
 		source    string
 		ldFlags   string
 		buildName string
+		output    string
 		goBin     string
 	)
 
@@ -28,6 +28,7 @@ func main() {
 	flag.StringVar(&ldFlags, "ldflags", "", "specify any ldflags to pass to go build")
 	flag.StringVar(&buildName, "buildName", "", "use GOOS_ARCH to specify target platform")
 	flag.StringVar(&goBin, "goBinary", "go", "specify path to go binary")
+	flag.StringVar(&output, "output", "", "specify the name of executable")
 	flag.Parse()
 
 	if buildName != "" {
@@ -42,7 +43,6 @@ func main() {
 		goBin = `c:\\go\\bin\\go`
 	}
 
-	output := filepath.Join(directory, buildName, "main")
 	cmd := exec.Command(goBin, "build")
 
 	cmd.Args = append(cmd.Args, "-o", output)

@@ -13,15 +13,17 @@ projectPath := $(orgPath)/$(name)
 
 
 # start evergreen specific configuration
-xcPlatforms := windows_amd64 windows_386 linux_386 linux_s390x linux_amd64 linux_arm64 linux_ppc64le solaris_amd64 darwin_amd64
+unixPlatforms := linux_386 linux_s390x linux_amd64 linux_arm64 linux_ppc64le solaris_amd64 darwin_amd64
+windowsPlatforms := windows_amd64 windows_386
 goos := $(shell go env GOOS)
 goarch := $(shell go env GOARCH)
 
 agentBuildDir := executables
 clientBuildDir := clients
 
-agentBinaries := $(foreach platform,$(xcPlatforms),$(agentBuildDir)/$(platform)/main)
-clientBinaries := $(foreach platform,$(xcPlatforms),$(clientBuildDir)/$(platform)/cli)
+agentBinaries := $(foreach platform,$(unixPlatforms),$(agentBuildDir)/$(platform)/main)
+agentBinaries += $(foreach platform,$(windowsPlatforms),$(agentBuildDir)/$(platform)/main.exe)
+clientBinaries := $(foreach platform,$(unixPlatforms) $(windowsPlatforms),$(clientBuildDir)/$(platform)/cli)
 
 binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
 raceBinaries := $(foreach bin,$(binaries),$(bin).race)
@@ -47,7 +49,7 @@ define buildRaceBinary
 endef
 
 define crossCompile
-	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags="-X=github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" -goBinary="`which go`"
+	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags="-X=github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" -goBinary="`which go`" -output=$@
 endef
 # end evergreen specific configuration
 
@@ -111,9 +113,13 @@ phony += $(binaries) $(raceBinaries)
 $(agentBuildDir)/version:
 	@mkdir -p $(dir $@)
 	git rev-parse HEAD >| $@
+ifeq ($(OS),Windows_NT)
+agent:$(agentBuildDir)/$(goos)_$(goarch)/main.exe
+else
 agent:$(agentBuildDir)/$(goos)_$(goarch)/main
+endif
 agents:$(agentBinaries)
-$(agentBuildDir)/%/main:$(buildDir)/build-cross-compile $(agentBuildDir)/version $(srcFiles)
+$(agentBuildDir)/%/main $(agentBuildDir)/%/main.exe:$(buildDir)/build-cross-compile $(agentBuildDir)/version $(srcFiles)
 	$(crossCompile) -directory=$(agentBuildDir) -source=$(agentSource)
 phony += agents agent $(agentBuildDir)/version
 # end agent build directives
