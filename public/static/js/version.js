@@ -99,7 +99,9 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     //calculate makespan and total processing time for the version
     var nonZeroTimeFilter = function(y){return (+y) != (+new Date(0))};
 
-    var tasks = version.Builds.map(function(x){ return _.pluck(x['Tasks'] || [], "Task") }).reduce(function(x,y){return x.concat(y)}, []);
+    var tasks = _.filter(version.Builds.map(function(x){ return _.pluck(x['Tasks'] || [], "Task") }).reduce(function(x,y){return x.concat(y)}, []), function(task){
+      return task.status == "success" || task.status == "failed"
+    });
     var taskStartTimes = _.filter(_.pluck(tasks, "start_time").map(function(x){return new Date(x)}), nonZeroTimeFilter).sort(dateSorter);
     var taskEndTimes = _.filter(tasks.map(function(x){
         if(x.time_taken == 0 || +new Date(x.start_time) == +new Date(0)){
