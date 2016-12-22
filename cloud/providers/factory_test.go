@@ -61,6 +61,7 @@ func TestGetCloudManager(t *testing.T) {
 }
 
 func TestIsHostReachable(t *testing.T) {
+	t.Skip("Test cannot SSH into local host without a valid key file. ")
 	Convey("A reachable static host should return true", t, func() {
 		// try with a reachable static host
 		reachableHost := &host.Host{
