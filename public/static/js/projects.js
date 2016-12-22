@@ -22,8 +22,8 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.isDirty = false;
 
 
-  // refreshTrackedProjects will populate the list of projects that should be displayed 
-  // depending on the user. 
+  // refreshTrackedProjects will populate the list of projects that should be displayed
+  // depending on the user.
   $scope.refreshTrackedProjects = function(trackedProjects) {
     $scope.trackedProjects = trackedProjects
     $scope.enabledProjects = _.filter($scope.trackedProjects, _.property('enabled'));
@@ -42,6 +42,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       return true
     }
     return !isNaN(Number(t)) && Number(t) >= 0
+  }
+
+  $scope.isValidAlertDefinition = function(spec) {
+    if (spec.startsWith("JIRA:") && spec.split(":").length < 3) {
+        return false
+    }
+    return true
   }
 
   $scope.addAlert = function(obj, trigger){
@@ -260,11 +267,11 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   }
 
   $scope.validKeyValue = function(keyName, value){
-    if (!(keyName)){ 
+    if (!(keyName)){
         $scope.invalidKeyMessage = "";
       return false;
     }
-    
+
     if (keyName.indexOf(".") != -1){
       $scope.invalidKeyMessage = "Project variable keys cannot have dots in them";
       return false;

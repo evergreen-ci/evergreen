@@ -54,7 +54,7 @@ Evergreen Projects
           <a ng-click="loadProject(project.identifier)" ng-class="{true:'current-project', false:''}[shouldHighlight(project)]" style="cursor:pointer;padding:5px">
             [[project.identifier]]
           </a>
-        </li>  
+        </li>
       </ul>
     </div>
     <admin-modal>
@@ -67,7 +67,7 @@ Evergreen Projects
     <div class="col-lg-8">
       <div class="panel panel-danger" ng-show="settingsFormData.repotracker_error.exists">
         <div class="panel-heading">
-          <i class="fa fa-exclamation-circle"></i> 
+          <i class="fa fa-exclamation-circle"></i>
           The current base revision ([[settingsFormData.repotracker_error.invalid_revision]]) cannot be found on branch, [[settingsFormData.branch_name]]. In order to resume tracking the repository, please confirm or enter a new base revision.
         </div>
         <div class="panel-body">
@@ -78,14 +78,14 @@ Evergreen Projects
             <div class="col-lg-6">
               <input class="form-control" type="text" ng-model="settingsFormData.repotracker_error.merge_base_revision">
               <label class="icon fa fa-warning project-error" ng-show="!isValidMergeBaseRevision(settingsFormData.repotracker_error.merge_base_revision)">&nbsp;Merge Base Revision must be a valid SHA GitHub Revision </label>
-            </div>    
+            </div>
             <div class="col-lg-2">
               <button class="form-control btn btn-primary" type="button" ng-disabled="!isValidMergeBaseRevision(settingsFormData.repotracker_error.merge_base_revision)"ng-click="setLastRevision()">
                 <i class="fa fa-check"></i>
               </button>
-            </div>  
+            </div>
           </div>
-        </div>    
+        </div>
       </div>
     </div>
     <form name="settingsForm" ng-submit="saveProject(settingsFormData)">
@@ -98,8 +98,8 @@ Evergreen Projects
             <label class="muted col-lg-offset-1"> Track incoming commits to the repo and create/schedule its tasks.</label>
           </div>
           <div class="radio">
-            <label class="control-label"> 
-              <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong> 
+            <label class="control-label">
+              <input type="radio" ng-model="settingsFormData.enabled" ng-value="false"> <strong> Disabled </strong>
             </label> <br>
             <label class="muted col-lg-offset-1">Don&#39;t track any new commits until re-enabled.</label>
           </div>
@@ -107,7 +107,7 @@ Evergreen Projects
       </div>
 
       <div class="form-group">
-        <div class="col-lg-2 col-header"> 
+        <div class="col-lg-2 col-header">
           <label class="control-label"> Display Name</label>
         </div>
         <div class="col-lg-4">
@@ -116,7 +116,7 @@ Evergreen Projects
       </div>
 
       <div class="form-group">
-        <div class="col-lg-2 col-header"> 
+        <div class="col-lg-2 col-header">
           <label class="control-label"> Config File</label>
         </div>
         <div class="col-lg-4">
@@ -125,7 +125,7 @@ Evergreen Projects
       </div>
 
       <div class="form-group">
-        <div class="col-lg-2 col-header"> 
+        <div class="col-lg-2 col-header">
           <label class="control-label">Batch Time</label>
         </div>
         <div class="col-lg-4">
@@ -137,7 +137,7 @@ Evergreen Projects
       <div id="github-info">
         <div class="h3"> Repository Info </div>
         <div class="form-group">
-          <div class="col-lg-3 col-header"> 
+          <div class="col-lg-3 col-header">
             <label class="control-label">Owner</label>
           </div>
           <div class="col-lg-5">
@@ -145,7 +145,7 @@ Evergreen Projects
           </div>
         </div>
         <div class="form-group">
-          <div class="col-lg-3 col-header"> 
+          <div class="col-lg-3 col-header">
             <label class="control-label">Repo Name</label>
           </div>
           <div class="col-lg-6">
@@ -153,7 +153,7 @@ Evergreen Projects
           </div>
         </div>
         <div class="form-group">
-          <div class="col-lg-3 col-header"> 
+          <div class="col-lg-3 col-header">
             <label class="control-label">Branch Name</label>
           </div>
           <div class="col-lg-6">
@@ -174,8 +174,8 @@ Evergreen Projects
                 <label class="muted col-lg-offset-1">Users must be logged in to see this project.</label>
               </div>
               <div class="radio">
-                <label class="control-label"> 
-                  <input type="radio" ng-model="settingsFormData.private" ng-value="false"> <strong> Public </strong> 
+                <label class="control-label">
+                  <input type="radio" ng-model="settingsFormData.private" ng-value="false"> <strong> Public </strong>
                 </label> <br>
                 <label class="muted col-lg-offset-1">Anyone can see this project.</label>
               </div>
@@ -187,7 +187,7 @@ Evergreen Projects
             <div class="col-header col-lg-4 form-control-static"> <h3> Admins </h3></div>
           </div>
           <div id="adminsList" class="form-group" ng-repeat="(index, admin) in settingsFormData.admins">
-            <div class="col-lg-4"> <label class="control-label">[[admin]]</label> </div>  
+            <div class="col-lg-4"> <label class="control-label">[[admin]]</label> </div>
             <div class="col-lg-2">
               <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeAdmin(index)">
                 <i class="fa fa-trash"></i>
@@ -210,7 +210,7 @@ Evergreen Projects
         <div id="scheduling-info">
           <div class="h3">Scheduling Settings</div>
           <div class="form-group">
-            <div class="col-lg-4 col-header"> 
+            <div class="col-lg-4 col-header">
               <label class="control-label">Unschedule old tasks on success&nbsp;&nbsp;
                 <input type="checkbox" name="deactivate_previous" ng-model="settingsFormData.deactivate_previous"/>
               </label>
@@ -235,7 +235,7 @@ Evergreen Projects
                     <div ng-show="editing==true" class="editalert-form">
                       <label>Send alert to:</label>
                       <input type="text" ng-model="email" ng-required/>
-                      <div class="btn btn-primary btn-xs" ng-click="addAlert(this, trigger)">Add</div>
+                      <div class="btn btn-primary btn-xs" ng-disabled="!isValidAlertDefinition(this.email)" ng-click="addAlert(this, trigger)">Add</div>
                       <div class="btn btn-default btn-xs" ng-click="editing=false">Cancel</div>
                     </div>
                     <div ng-show="getProjectAlertConfig(trigger.id).length==0 && !editing" class="do-nothing">do nothing.</div>
@@ -253,9 +253,9 @@ Evergreen Projects
             <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
           </div>
           <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
-            <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>  
-            <div class="col-lg-4" > 
-              <textarea class="form-control" style="font-family:monospace;" readonly>[[key]]</textarea> 
+            <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>
+            <div class="col-lg-4" >
+              <textarea class="form-control" style="font-family:monospace;" readonly>[[key]]</textarea>
             </div>
             <div class="col-lg-2">
               <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
@@ -280,7 +280,7 @@ Evergreen Projects
         </div>
         <br>
         <div class="row">
-          <div class="col-lg-2"> 
+          <div class="col-lg-2">
             <label>[[saveMessage]]</label>
           </div>
           <div class="col-lg-4">
