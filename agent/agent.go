@@ -414,6 +414,7 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFilePath string) (*
 		streamLogger.System,
 		DefaultStatsInterval,
 		sh.stopBackgroundChan,
+		"uptime",
 		"df -h",
 		"${ps|ps}",
 	)
