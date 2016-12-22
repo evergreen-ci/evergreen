@@ -4,6 +4,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"os"
+	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -18,6 +20,10 @@ type TestServer struct {
 }
 
 func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugins []plugin.APIPlugin, verbose bool) (*TestServer, error) {
+	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+		return nil, err
+	}
+
 	apiServer, err := NewAPIServer(settings, plugins)
 	if err != nil {
 		return nil, err

@@ -67,8 +67,7 @@ lintArgs := --tests --deadline=20m --vendor --enable-gc
 lintArgs += --disable="gotype" --disable="gas"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
-lintArgs += --enable="go fmt -s" --enable="goimports" --enable="misspell"
-lintargs += --enable="lll" --enable"unused"
+lintArgs += --enable="goimports" --enable="misspell" --enable="lll" --enable="unused"
 lintArgs += --line-length=100 --dupl-threshold=175
 #  two similar functions triggered the duplicate warning, but they're not.
 lintArgs += --exclude="file is not goimported" # test files aren't imported

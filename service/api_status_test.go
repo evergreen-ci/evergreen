@@ -2,6 +2,9 @@ package service
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -17,6 +20,10 @@ import (
 // GETs the consistent_task_assignment endpoint, and returns
 // the response.
 func getCTAEndpoint(t *testing.T) *http.Response {
+	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+		t.Fatal("could not create client directory required to start the API server:", err.Error())
+	}
+
 	as, err := NewAPIServer(evergreen.TestConfig(), nil)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)

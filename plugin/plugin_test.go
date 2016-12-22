@@ -426,7 +426,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	}
 	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
 	if isPatch {
-		mainPatchContent, err := ioutil.ReadFile("testdata/test.patch")
+		mainPatchContent, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.patch"))
 		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
 		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
 		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
