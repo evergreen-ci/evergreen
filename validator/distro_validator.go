@@ -18,6 +18,7 @@ var distroSyntaxValidators = []distroValidator{
 	ensureHasRequiredFields,
 	ensureValidSSHOptions,
 	ensureValidExpansions,
+	ensureStaticHostsAreNotSpawnable,
 }
 
 // CheckDistro checks if the distro configuration syntax is valid. Returns
@@ -39,6 +40,20 @@ func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]Val
 		validationErrs = append(validationErrs, v(d, s)...)
 	}
 	return validationErrs, nil
+}
+
+// ensureStaticHostsAreNotSpawnable makes sure that any static distro cannot also be spawnable.
+func ensureStaticHostsAreNotSpawnable(d *distro.Distro, s *evergreen.Settings) []ValidationError {
+	if d.SpawnAllowed && d.Provider == static.ProviderName {
+		return []ValidationError{
+			{
+				Message: fmt.Sprintf("static distro %s cannot be spawnable", d.Id),
+				Level:   Error,
+			},
+		}
+	}
+
+	return nil
 }
 
 // ensureHasRequiredFields check that the distro configuration has all the required fields
