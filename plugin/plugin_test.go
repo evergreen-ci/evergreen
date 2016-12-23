@@ -298,7 +298,7 @@ func TestAttachLargeResults(t *testing.T) {
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
 		pluginCom := &comm.TaskJSONCommunicator{"test", httpCom}
-		_, err = createTestConfig("testdata/plugin_project.yml", t)
+		_, err = createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml"), t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
 		Convey("a test log < 16 MB should be accepted", func() {
