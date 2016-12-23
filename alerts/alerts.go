@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/10gen-labs/slogger/v1"
+	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
@@ -153,7 +153,9 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 }
 
 // findProject is a wrapper around FindProjectRef that caches results by their ID to prevent
-// redundantly querying for the same projectref over and over again.
+// redundantly querying for the same projectref over and over
+// again. In the Run() method, we wipe the cache at the beginning of each
+// run to avoid stale configurations.
 func (qp *QueueProcessor) findProject(projectId string) (*model.ProjectRef, error) {
 	if qp.projectsCache == nil { // lazily initialize the cache
 		qp.projectsCache = map[string]*model.ProjectRef{}
@@ -264,6 +266,7 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	evergreen.Logger.Logf(slogger.INFO, "Starting alert queue processor run")
 	home := evergreen.FindEvergreenHome()
 	qp.config = config
+	qp.projectsCache = map[string]*model.ProjectRef{} // wipe the project cache between each run to prevent stale configs.
 	qp.render = render.New(render.Options{
 		Directory:    filepath.Join(home, "alerts", "templates"),
 		DisableCache: !config.Ui.CacheTemplates,
