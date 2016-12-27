@@ -181,7 +181,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Returns a JSON response with the status of the specified task.
+// getTaskStatus returns a JSON response with the status of the specified task.
 // The keys of the object are the test names.
 func (restapi restAPI) getTaskStatus(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveRESTContext(r)

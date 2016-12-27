@@ -35,7 +35,6 @@ func (ra *restAPI) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 		versionId := vars["version_id"]
 		patchId := vars["patch_id"]
 		projectId := vars["project_id"]
-
 		ctx, err := model.LoadContext(taskId, buildId, versionId, patchId, projectId)
 		if err != nil {
 			// Some database lookup failed when fetching the data - log it
@@ -88,6 +87,7 @@ func AttachRESTHandler(root *mux.Router, service restAPIService) http.Handler {
 	rtr.HandleFunc("/projects/{project_id}", rest.loadCtx(rest.getProject)).Name("project_info").Methods("GET")
 	rtr.HandleFunc("/projects/{project_id}/versions", rest.loadCtx(rest.getRecentVersions)).Name("recent_versions").Methods("GET")
 	rtr.HandleFunc("/projects/{project_id}/revisions/{revision}", rest.loadCtx(rest.getVersionInfoViaRevision)).Name("version_info_via_revision").Methods("GET")
+	rtr.HandleFunc("/projects/{project_id}/test_history", rest.loadCtx(rest.GetTestHistory)).Name("test_history").Methods("GET")
 	rtr.HandleFunc("/projects/{project_id}/last_green", rest.loadCtx(rest.lastGreen)).Name("last_green_version").Methods("GET")
 	rtr.HandleFunc("/patches/{patch_id}", rest.loadCtx(rest.getPatch)).Name("patch_info").Methods("GET")
 	rtr.HandleFunc("/patches/{patch_id}/config", rest.loadCtx(rest.getPatchConfig)).Name("patch_config").Methods("GET")

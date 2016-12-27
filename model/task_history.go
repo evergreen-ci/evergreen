@@ -2,15 +2,23 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	TaskTimeout       = "timeout"
+	TaskSystemFailure = "sysfail"
 )
 
 type taskHistoryIterator struct {
@@ -43,6 +51,56 @@ type aggregatedTaskHistory struct {
 	TimeTaken    time.Duration            `bson:"time_taken" json:"time_taken"`
 	BuildVariant string                   `bson:"build_variant" json:"build_variant"`
 	TestResults  apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
+}
+
+// TestHistoryResult represents what is returned by the aggregation
+type TestHistoryResult struct {
+	TestFile     string  `bson:"tf"`
+	TaskName     string  `bson:"tn"`
+	Status       string  `bson:"s"`
+	Revision     string  `bson:"r"`
+	Project      string  `bson:"p"`
+	TaskId       string  `bson:"tid"`
+	BuildVariant string  `bson:"bv"`
+	StartTime    float64 `bson:"st"`
+	EndTime      float64 `bson:"et"`
+	Execution    int     `bson:"ex"`
+	Url          string  `bson:"url"`
+	UrlRaw       string  `bson:"url_r"`
+	OldTaskId    string  `bson:"otid"`
+}
+
+// TestHistoryResult bson tags
+var (
+	TestFileKey     = bsonutil.MustHaveTag(TestHistoryResult{}, "TestFile")
+	TaskNameKey     = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskName")
+	StatusKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "Status")
+	RevisionKey     = bsonutil.MustHaveTag(TestHistoryResult{}, "Revision")
+	ProjectKey      = bsonutil.MustHaveTag(TestHistoryResult{}, "Project")
+	TaskIdKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskId")
+	BuildVariantKey = bsonutil.MustHaveTag(TestHistoryResult{}, "BuildVariant")
+	EndTimeKey      = bsonutil.MustHaveTag(TestHistoryResult{}, "EndTime")
+	StartTimeKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "StartTime")
+	ExecutionKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "Execution")
+	OldTaskIdKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "OldTaskId")
+	UrlKey          = bsonutil.MustHaveTag(TestHistoryResult{}, "Url")
+	UrlRawKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "UrlRaw")
+)
+
+// TestHistoryParameters are the parameters that are used
+// to retrieve Test Results.
+type TestHistoryParameters struct {
+	Project        string    `json:"project"`
+	TestNames      []string  `json:"test_names"`
+	TaskNames      []string  `json:"task_names"`
+	BuildVariants  []string  `json:"variants"`
+	TaskStatuses   []string  `json:"task_statuses"`
+	TestStatuses   []string  `json:"test_statuses"`
+	BeforeRevision string    `json:"before_revision"`
+	AfterRevision  string    `json:"after_revision"`
+	BeforeDate     time.Time `json:"before_date"`
+	AfterDate      time.Time `json:"after_date"`
+	Sort           int       `json:"sort"`
 }
 
 type TaskHistoryIterator interface {
@@ -277,4 +335,251 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 		}
 	}
 	return failedTestsMap, nil
+}
+
+// validate returns a list of validation error messages if there are any validation errors
+// and an empty list if there are none.
+// It checks that there is not both a date and revision time range,
+// checks that sort is either -1 or 1,
+// checks that the test statuses and task statuses are valid test or task statuses,
+// checks that there is a project id and either a list of test names or task names.
+func (t *TestHistoryParameters) validate() []string {
+	validationErrors := []string{}
+
+	if t.Project == "" {
+		validationErrors = append(validationErrors, "invalid project id")
+	}
+
+	if len(t.TestNames) == 0 && len(t.TaskNames) == 0 {
+		validationErrors = append(validationErrors, "must include test names or task names")
+	}
+	// test statuses can be failed, skipped or success.
+	validTestStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSkippedStatus, evergreen.TestSucceededStatus}
+	for _, status := range t.TestStatuses {
+		if !util.SliceContains(validTestStatuses, status) {
+			validationErrors = append(validationErrors, "invalid test status in parameters")
+		}
+	}
+
+	// task statuses can be fail, pass, or timeout.
+	validTaskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded, TaskTimeout, TaskSystemFailure}
+	for _, status := range t.TaskStatuses {
+		if !util.SliceContains(validTaskStatuses, status) {
+			validationErrors = append(validationErrors, "invalid task status in parameters")
+		}
+	}
+
+	if (!util.IsZeroTime(t.AfterDate) || !util.IsZeroTime(t.BeforeDate)) &&
+		(t.AfterRevision != "" || t.BeforeRevision != "") {
+		validationErrors = append(validationErrors, "cannot have both date and revision time range parameter")
+	}
+
+	if t.Sort != -1 && t.Sort != 1 {
+		validationErrors = append(validationErrors, "sort parameter can only be -1 or 1")
+	}
+	return validationErrors
+}
+
+// setDefaultsAndValidate sets the default for test history parameters that do not have values
+// and validates the test parameters.
+func (thp *TestHistoryParameters) SetDefaultsAndValidate() error {
+	if len(thp.TestStatuses) == 0 {
+		thp.TestStatuses = []string{evergreen.TestFailedStatus}
+	}
+	if len(thp.TaskStatuses) == 0 {
+		thp.TaskStatuses = []string{evergreen.TaskFailed}
+	}
+	if thp.Sort == 0 {
+		thp.Sort = -1
+	}
+	validationErrors := thp.validate()
+	if len(validationErrors) > 0 {
+		return fmt.Errorf("validation error on test history parameters: %v", strings.Join(validationErrors, ","))
+	}
+	return nil
+}
+
+// mergeResults merges the test results from the old tests and current tests so that all test results with the same
+// test file name and task id are adjacent to each other.
+// Since the tests results returned in the aggregation are sorted in the same way for both the tasks and old_tasks collection,
+// the sorted format should be the same - this is assuming that currentTestHistory and oldTestHistory are both sorted.
+func mergeResults(currentTestHistory []TestHistoryResult, oldTestHistory []TestHistoryResult) []TestHistoryResult {
+	if len(oldTestHistory) == 0 {
+		return currentTestHistory
+	}
+	if len(currentTestHistory) == 0 {
+		return oldTestHistory
+	}
+
+	allResults := make([]TestHistoryResult, len(currentTestHistory)+len(oldTestHistory))
+	oldIndex := 0
+
+	for i, testResult := range currentTestHistory {
+		// first add the element of the latest execution
+		allResults[i+oldIndex] = testResult
+		// check that there are more test results in oldTestHistory;
+		// check if the old task id, is the same as the original task id of the current test result
+		// and that the test file is the same.
+		for oldIndex < len(oldTestHistory) &&
+			oldTestHistory[oldIndex].OldTaskId == testResult.TaskId &&
+			oldTestHistory[oldIndex].TestFile == testResult.TestFile {
+			allResults[i+oldIndex+1] = oldTestHistory[oldIndex]
+			oldIndex += 1
+		}
+	}
+	return allResults
+}
+
+// buildTestHistoryQuery returns the aggregation pipeline that is executed given the test history parameters.
+func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson.M, error) {
+	// construct the task match query
+	taskMatchQuery := bson.M{
+		task.ProjectKey: testHistoryParameters.Project,
+	}
+
+	// construct the test match query
+	testMatchQuery := bson.M{
+		task.TestResultsKey + "." + task.TestResultStatusKey: bson.M{"$in": testHistoryParameters.TestStatuses},
+	}
+
+	// check test statuses for time outs
+	// need to check if Task.Details.
+	isTimeout := false
+	taskStatuses := []string{}
+	for _, status := range testHistoryParameters.TaskStatuses {
+		if status == TaskTimeout {
+			isTimeout = true
+		} else {
+			taskStatuses = append(taskStatuses, status)
+		}
+	}
+	statusQuery := []bson.M{
+		bson.M{task.StatusKey: bson.M{"$in": taskStatuses},
+			task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
+				"$ne": true,
+			},
+		},
+	}
+	if isTimeout {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey:                                     evergreen.TaskFailed,
+			task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
+		})
+	}
+	taskMatchQuery["$or"] = statusQuery
+
+	// check task, test, and build variants  and add them to the task query if necessary
+	if len(testHistoryParameters.TaskNames) > 0 {
+		taskMatchQuery[task.DisplayNameKey] = bson.M{"$in": testHistoryParameters.TaskNames}
+	}
+	if len(testHistoryParameters.BuildVariants) > 0 {
+		taskMatchQuery[task.BuildVariantKey] = bson.M{"$in": testHistoryParameters.BuildVariants}
+	}
+	if len(testHistoryParameters.TestNames) > 0 {
+		taskMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
+		testMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
+
+	}
+
+	// add in date to  task query if necessary
+	if !util.IsZeroTime(testHistoryParameters.BeforeDate) || !util.IsZeroTime(testHistoryParameters.AfterDate) {
+		startTimeClause := bson.M{}
+		if !util.IsZeroTime(testHistoryParameters.BeforeDate) {
+			startTimeClause["$lte"] = testHistoryParameters.BeforeDate
+		}
+		if !util.IsZeroTime(testHistoryParameters.AfterDate) {
+			startTimeClause["$gte"] = testHistoryParameters.AfterDate
+		}
+		taskMatchQuery[task.StartTimeKey] = startTimeClause
+	}
+
+	//  add in revision to task query if necessary
+	if testHistoryParameters.BeforeRevision != "" || testHistoryParameters.AfterRevision != "" {
+		revisionOrderNumberClause := bson.M{}
+		if testHistoryParameters.BeforeRevision != "" {
+			v, err := version.FindOne(version.ByProjectIdAndRevision(testHistoryParameters.Project,
+				testHistoryParameters.BeforeRevision).WithFields(version.RevisionOrderNumberKey))
+			if err != nil {
+				return nil, err
+			}
+			if v == nil {
+				return nil, fmt.Errorf("invalid revision : %v", testHistoryParameters.BeforeRevision)
+			}
+			revisionOrderNumberClause["$lte"] = v.RevisionOrderNumber
+		}
+
+		if testHistoryParameters.AfterRevision != "" {
+			v, err := version.FindOne(version.ByProjectIdAndRevision(testHistoryParameters.Project,
+				testHistoryParameters.AfterRevision).WithFields(version.RevisionOrderNumberKey))
+			if err != nil {
+				return nil, err
+			}
+			if v == nil {
+				return nil, fmt.Errorf("invalid revision : %v", testHistoryParameters.AfterRevision)
+			}
+			revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
+		}
+		taskMatchQuery[task.RevisionOrderNumberKey] = revisionOrderNumberClause
+	}
+
+	pipeline := []bson.M{
+		{"$match": taskMatchQuery},
+		{"$project": bson.M{
+			task.DisplayNameKey:         1,
+			task.BuildVariantKey:        1,
+			task.StatusKey:              1,
+			task.TestResultsKey:         1,
+			task.RevisionKey:            1,
+			task.IdKey:                  1,
+			task.ExecutionKey:           1,
+			task.RevisionOrderNumberKey: 1,
+			task.OldTaskIdKey:           1,
+			task.StartTimeKey:           1,
+			task.ProjectKey:             1,
+		}},
+		{"$unwind": "$" + task.TestResultsKey},
+		{"$match": testMatchQuery},
+		{"$sort": bson.M{
+			task.RevisionOrderNumberKey:                            testHistoryParameters.Sort,
+			task.TestResultsKey + "." + task.TestResultTestFileKey: testHistoryParameters.Sort,
+		}},
+		{"$project": bson.M{
+			TestFileKey:     "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
+			TaskIdKey:       "$" + task.IdKey,
+			StatusKey:       "$" + task.StatusKey,
+			RevisionKey:     "$" + task.RevisionKey,
+			ProjectKey:      "$" + task.ProjectKey,
+			TaskNameKey:     "$" + task.DisplayNameKey,
+			BuildVariantKey: "$" + task.BuildVariantKey,
+			StartTimeKey:    "$" + task.TestResultsKey + "." + task.TestResultStartTimeKey,
+			EndTimeKey:      "$" + task.TestResultsKey + "." + task.TestResultEndTimeKey,
+			ExecutionKey:    "$" + task.ExecutionKey + "." + task.ExecutionKey,
+			OldTaskIdKey:    "$" + task.OldTaskIdKey,
+			UrlKey:          "$" + task.TestResultsKey + "." + task.TestResultURLKey,
+			UrlRawKey:       "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
+		}},
+		{"$limit": 10}}
+	return pipeline, nil
+}
+
+// GetTestHistory takes in test history parameters, validates them, and returns the test results according to those parameters.
+// It sets tasks failed and tests failed as default statuses if none are provided, and defaults to all tasks, tests,
+// and variants if those are not set.
+func GetTestHistory(testHistoryParameters *TestHistoryParameters) ([]TestHistoryResult, error) {
+	pipeline, err := buildTestHistoryQuery(testHistoryParameters)
+	if err != nil {
+		return nil, err
+	}
+	aggTestResults := []TestHistoryResult{}
+	err = db.Aggregate(task.Collection, pipeline, &aggTestResults)
+	if err != nil {
+		return nil, err
+	}
+	aggOldTestResults := []TestHistoryResult{}
+	err = db.Aggregate(task.OldCollection, pipeline, &aggOldTestResults)
+	if err != nil {
+		return nil, err
+	}
+	return mergeResults(aggTestResults, aggOldTestResults), nil
+
 }

@@ -94,3 +94,12 @@ func GetBoolValue(r *http.Request, valueKey string, defaultValue bool) (bool, er
 	}
 	return boolVal, nil
 }
+
+// GetStringArrayValue returns a form value as a string array
+func GetStringArrayValue(r *http.Request, valueKey string, defaultValue []string) []string {
+	val := r.FormValue(valueKey)
+	if val == "" {
+		return defaultValue
+	}
+	return strings.Split(val, ",")
+}
