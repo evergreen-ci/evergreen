@@ -350,7 +350,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	module, err := project.GetModuleByName(moduleName)
 	if err != nil || module == nil {
-		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("No such module", moduleName))
+		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("No such module: %v", moduleName))
 		return
 	}
 
