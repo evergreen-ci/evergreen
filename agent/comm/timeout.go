@@ -44,15 +44,12 @@ func (tw *TimeoutWatcher) CheckIn() {
 func (tw *TimeoutWatcher) NotifyTimeouts(sigChan chan<- Signal) {
 	go func() {
 		tw.mutex.Lock()
-		if tw.duration <= 0 {
-			tw.mutex.Unlock()
-			panic("can't wait for timeouts with negative duration")
-		}
-
 		if tw.timer == nil {
+			if tw.duration <= 0 {
+				tw.mutex.Unlock()
+				panic("can't wait for timeouts with negative duration")
+			}
 			tw.timer = time.NewTimer(tw.duration)
-		} else {
-			tw.timer.Reset(tw.duration)
 		}
 		tw.mutex.Unlock()
 
