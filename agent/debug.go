@@ -21,7 +21,7 @@ const FilenameTimestamp = "2006-01-02_15_04_05"
 func DumpStackOnSIGQUIT(curAgent **Agent) {
 	in := make(chan os.Signal)
 	signal.Notify(in, syscall.SIGQUIT)
-	for _ = range in {
+	for range in {
 		agt := *curAgent
 		stackBytes := util.DebugTrace()
 		task, command := taskAndCommand(agt)
@@ -39,6 +39,7 @@ func taskAndCommand(agt *Agent) (string, string) {
 		if agt.taskConfig != nil {
 			task = agt.taskConfig.Task.Id
 		}
+
 		if cmd := agt.GetCurrentCommand(); cmd.Command != "" {
 			command = cmd.Command
 		}

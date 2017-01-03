@@ -41,6 +41,12 @@ func TestAgentDebugHandler(t *testing.T) {
 				done := make(chan struct{})
 				go func() {
 					time.Sleep(time.Second)
+
+					// this test is a racy because of how taskAndCommand works; and it doesn't
+					// matter, because the agent is in the process of dying whenever this happens in
+					// the wild and we wouldn't want to block during termination.
+
+					testAgent.KillChan <- true
 					task, command = taskAndCommand(testAgent)
 					stack = util.DebugTrace()
 					dumpToLogs(task, command, stack, testAgent)

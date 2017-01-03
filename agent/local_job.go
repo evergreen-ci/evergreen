@@ -76,7 +76,7 @@ func (ac *AgentCommand) Run(workingDir string) error {
 		}
 	case _ = <-ac.KillChan:
 		// try and kill the process
-		ac.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.Cmd.Process.Pid)
+		ac.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.GetPid())
 		if err := cmd.Stop(); err != nil {
 			ac.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
 		}

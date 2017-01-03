@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
@@ -19,6 +20,7 @@ type LocalCommand struct {
 	Stdout           io.Writer
 	Stderr           io.Writer
 	Cmd              *exec.Cmd
+	mutex            sync.RWMutex
 }
 
 func (lc *LocalCommand) Run() error {
@@ -26,10 +28,28 @@ func (lc *LocalCommand) Run() error {
 	if err != nil {
 		return err
 	}
+
+	lc.mutex.RLock()
+	defer lc.mutex.RUnlock()
+
 	return lc.Cmd.Wait()
 }
 
+func (lc *LocalCommand) GetPid() int {
+	lc.mutex.RLock()
+	defer lc.mutex.RUnlock()
+
+	if lc.Cmd == nil {
+		return -1
+	}
+
+	return lc.Cmd.Process.Pid
+}
+
 func (lc *LocalCommand) Start() error {
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
 	if lc.Shell == "" {
 		lc.Shell = "sh"
 	}
@@ -61,6 +81,9 @@ func (lc *LocalCommand) Start() error {
 }
 
 func (lc *LocalCommand) Stop() error {
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
 	if lc.Cmd != nil && lc.Cmd.Process != nil {
 		return lc.Cmd.Process.Kill()
 	}
@@ -69,6 +92,9 @@ func (lc *LocalCommand) Stop() error {
 }
 
 func (lc *LocalCommand) PrepToRun(expansions *Expansions) error {
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
 	var err error
 
 	lc.CmdString, err = expansions.ExpandString(lc.CmdString)

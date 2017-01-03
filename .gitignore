@@ -50,3 +50,5 @@ plugin/builtin/s3Plugin/testdata/
 
 npm-debug.log
 clients
+testdata/target.tgz
+Plugins

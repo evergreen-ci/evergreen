@@ -3,6 +3,7 @@ package comm
 import (
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -17,6 +18,7 @@ type MockCommunicator struct {
 	shouldFailHeartbeat bool
 	abort               bool
 	logChan             chan []model.LogMessage
+	sync.RWMutex
 }
 
 func (*MockCommunicator) TryGet(path string) (*http.Response, error) {
@@ -28,6 +30,9 @@ func (*MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Respo
 }
 
 func (mc *MockCommunicator) Start(pid string) error {
+	mc.RLock()
+	defer mc.RUnlock()
+
 	if mc.shouldFailStart {
 		return fmt.Errorf("failed to start!")
 	}
@@ -35,6 +40,9 @@ func (mc *MockCommunicator) Start(pid string) error {
 }
 
 func (mc *MockCommunicator) End(details *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error) {
+	mc.RLock()
+	defer mc.RUnlock()
+
 	if mc.shouldFailEnd {
 		return nil, fmt.Errorf("failed to end!")
 	}
@@ -57,7 +65,24 @@ func (*MockCommunicator) GetVersion() (*version.Version, error) {
 	return &version.Version{}, nil
 }
 
+func (mc *MockCommunicator) setAbort(b bool) {
+	mc.Lock()
+	defer mc.Unlock()
+
+	mc.abort = b
+}
+
+func (mc *MockCommunicator) setShouldFail(b bool) {
+	mc.Lock()
+	defer mc.Unlock()
+
+	mc.shouldFailHeartbeat = b
+}
+
 func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
+	mc.RLock()
+	defer mc.RUnlock()
+
 	if mc.shouldFailEnd {
 		return fmt.Errorf("failed to end!")
 	}
@@ -66,6 +91,9 @@ func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
 }
 
 func (mc *MockCommunicator) Heartbeat() (bool, error) {
+	mc.RLock()
+	defer mc.RUnlock()
+
 	if mc.shouldFailHeartbeat {
 		return false, fmt.Errorf("failed to heartbeat!")
 	}

@@ -9,6 +9,7 @@ import (
 )
 
 func TestSSHCommand(t *testing.T) {
+	t.Skipf("the fixtures for remote ssh are not properly configured/conceived.")
 
 	Convey("When sshing", t, func() {
 

@@ -24,19 +24,19 @@ func TestHeartbeat(t *testing.T) {
 		}
 
 		Convey("abort signals detected by heartbeat are sent on sigChan", func() {
-			mockCommunicator.shouldFailHeartbeat = false
+			mockCommunicator.setShouldFail(false)
 			hbTicker.StartHeartbeating()
 			go func() {
 				time.Sleep(2 * time.Second)
-				mockCommunicator.abort = true
+				mockCommunicator.setAbort(true)
 			}()
 			signal := <-sigChan
 			So(signal, ShouldEqual, AbortedByUser)
 		})
 
 		Convey("failed heartbeats must signal failure on sigChan", func() {
-			mockCommunicator.abort = false
-			mockCommunicator.shouldFailHeartbeat = true
+			mockCommunicator.setAbort(false)
+			mockCommunicator.setShouldFail(true)
 			hbTicker.StartHeartbeating()
 			signal := <-sigChan
 			So(signal, ShouldEqual, HeartbeatMaxFailed)

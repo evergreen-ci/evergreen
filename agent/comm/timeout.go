@@ -1,6 +1,7 @@
 package comm
 
 import (
+	"sync"
 	"time"
 )
 
@@ -10,6 +11,8 @@ type TimeoutWatcher struct {
 	timer    *time.Timer
 	stop     <-chan struct{}
 	disabled bool
+
+	mutex sync.Mutex
 }
 
 func NewTimeoutWatcher(stopChan <-chan struct{}) *TimeoutWatcher {
@@ -20,11 +23,17 @@ func NewTimeoutWatcher(stopChan <-chan struct{}) *TimeoutWatcher {
 
 // SetDuration sets the duration after which a timeout is triggered.
 func (tw *TimeoutWatcher) SetDuration(duration time.Duration) {
+	tw.mutex.Lock()
+	defer tw.mutex.Unlock()
+
 	tw.duration = duration
 }
 
 // CheckIn resets the idle timer to zero.
 func (tw *TimeoutWatcher) CheckIn() {
+	tw.mutex.Lock()
+	defer tw.mutex.Unlock()
+
 	if tw.timer != nil && !tw.disabled {
 		tw.timer.Reset(tw.duration)
 	}
@@ -34,11 +43,19 @@ func (tw *TimeoutWatcher) CheckIn() {
 // the current execution stage is reached.
 func (tw *TimeoutWatcher) NotifyTimeouts(sigChan chan<- Signal) {
 	go func() {
+		tw.mutex.Lock()
 		if tw.duration <= 0 {
+			tw.mutex.Unlock()
 			panic("can't wait for timeouts with negative duration")
 		}
 
-		tw.timer = time.NewTimer(tw.duration)
+		if tw.timer == nil {
+			tw.timer = time.NewTimer(tw.duration)
+		} else {
+			tw.timer.Reset(tw.duration)
+		}
+		tw.mutex.Unlock()
+
 		select {
 		case <-tw.timer.C:
 			// if execution reaches here, it's timed out.
