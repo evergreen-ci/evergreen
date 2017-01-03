@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
 )
 
 func init() {
