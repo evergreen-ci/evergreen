@@ -8,9 +8,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 // StreamLogger holds a set of stream-delineated loggers. Each logger is used
@@ -35,7 +36,7 @@ type StreamLogger struct {
 func (lgr *StreamLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 	return &evergreen.LoggingWriter{
 		Logger:   lgr.Task,
-		Severity: level,
+		Severity: level.Priority(),
 	}
 }
 
@@ -43,7 +44,7 @@ func (lgr *StreamLogger) GetTaskLogWriter(level slogger.Level) io.Writer {
 func (lgr *StreamLogger) GetSystemLogWriter(level slogger.Level) io.Writer {
 	return &evergreen.LoggingWriter{
 		Logger:   lgr.System,
-		Severity: level,
+		Severity: level.Priority(),
 	}
 }
 
@@ -138,39 +139,40 @@ func (cmdLgr *CommandLogger) Flush() {
 // NewStreamLogger creates a StreamLogger wrapper for the apiLogger with a given timeoutWatcher.
 // Any logged messages on the StreamLogger will reset the TimeoutWatcher.
 func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile string) (*StreamLogger, error) {
+	var err error
 	localLogger := slogger.StdOutAppender()
 
 	if logFile != "" {
-		appendingFile, err := evergreen.GetAppendingFile(logFile)
+		localLogger, err = send.MakeFileLogger(logFile)
 		if err != nil {
 			return nil, err
 		}
-		localLogger = &slogger.FileAppender{appendingFile}
 	}
 
-	localLoggers := []slogger.Appender{localLogger}
-	defaultLoggers := []slogger.Appender{localLogger, apiLgr}
+	apiSender := slogger.WrapAppender(apiLgr)
+	localLoggers := []send.Sender{localLogger}
+	defaultLoggers := []send.Sender{localLogger, apiSender}
 
-	timeoutLogger := &TimeoutResetLogger{timeoutWatcher, apiLgr}
+	timeoutLogger := slogger.WrapAppender(&TimeoutResetLogger{timeoutWatcher, slogger.WrapAppender(apiLgr)})
 
 	return &StreamLogger{
 		Local: &slogger.Logger{
-			Prefix:    "local",
+			Name:      "local",
 			Appenders: localLoggers,
 		},
 
 		System: &slogger.Logger{
-			Prefix:    model.SystemLogPrefix,
+			Name:      model.SystemLogPrefix,
 			Appenders: defaultLoggers,
 		},
 
 		Task: &slogger.Logger{
-			Prefix:    model.TaskLogPrefix,
-			Appenders: []slogger.Appender{localLogger, timeoutLogger},
+			Name:      model.TaskLogPrefix,
+			Appenders: []send.Sender{localLogger, timeoutLogger},
 		},
 
 		Execution: &slogger.Logger{
-			Prefix:    model.AgentLogPrefix,
+			Name:      model.AgentLogPrefix,
 			Appenders: defaultLoggers,
 		},
 	}, nil
@@ -180,13 +182,15 @@ func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile 
 // each time any log message is appended to it.
 type TimeoutResetLogger struct {
 	*TimeoutWatcher
-	slogger.Appender
+	send.Sender
 }
 
 // Append passes the message to the underlying appender, and resets the timeout
 func (trLgr *TimeoutResetLogger) Append(log *slogger.Log) error {
 	trLgr.TimeoutWatcher.CheckIn()
-	return trLgr.Appender.Append(log)
+	trLgr.Send(log)
+
+	return nil
 }
 
 // APILogger is a slogger.Appender which makes a call to the

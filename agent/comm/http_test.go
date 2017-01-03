@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -16,11 +15,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 func TestCommunicatorServerDown(t *testing.T) {
 	Convey("With an HTTP communicator and a dead HTTP server", t, func() {
-		logger := &slogger.Logger{"test", []slogger.Appender{}}
+		logger := &slogger.Logger{"test", []send.Sender{slogger.StdOutAppender()}}
 		downServer := httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 		)
@@ -54,7 +55,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 	Convey("With an HTTP communicator and live HTTP server", t, func() {
 		serveMux := http.NewServeMux()
 		ts := httptest.NewServer(serveMux)
-		logger := &slogger.Logger{"test", []slogger.Appender{}}
+		logger := &slogger.Logger{"test", []send.Sender{slogger.StdOutAppender()}}
 
 		agentCommunicator := HTTPCommunicator{
 			ServerURLRoot:   ts.URL,

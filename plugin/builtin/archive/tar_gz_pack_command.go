@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/archive"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 // Plugin command responsible for creating a tgz archive.
@@ -135,9 +136,10 @@ func (self *TarGzPackCommand) BuildArchive(workDir string, pluginLogger plugin.L
 	appender := &agentAppender{
 		pluginLogger: pluginLogger,
 	}
+
 	log := &slogger.Logger{
-		Prefix:    "",
-		Appenders: []slogger.Appender{appender},
+		Name:      "",
+		Appenders: []send.Sender{slogger.WrapAppender(appender)},
 	}
 
 	// create a targz writer for the target file

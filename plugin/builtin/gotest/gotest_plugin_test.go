@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/slogger"
 )
 
 func reset(t *testing.T) {
@@ -39,8 +40,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
@@ -105,8 +105,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
@@ -174,8 +173,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("test command should get a copy of custom environment variables", func() {
 			curWD, err := os.Getwd()

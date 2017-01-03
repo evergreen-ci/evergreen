@@ -224,8 +224,8 @@ vendor-deps:$(vendorDeps)
 #   for go1.4, we can delete most of this.
 -include $(buildDir)/makefile.vendor
 #   nested vendoring is used to support projects that have
-nestedVendored := ""
-# nestedVendored := $(foreach project,$(nestedVendored),$(project)/build/vendor)
+nestedVendored := vendor/github.com/tychoish/grip
+nestedVendored := $(foreach project,$(nestedVendored),$(project)/build/vendor)
 $(buildDir)/makefile.vendor:$(buildDir)/render-gopath makefile
 	@mkdir -p $(buildDir)
 	@echo "vendorGopath := \$$(shell \$$(buildDir)/render-gopath $(nestedVendored))" >| $@
@@ -238,6 +238,7 @@ change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1
 vendor:$(buildDir)/vendor/src
+	$(MAKE) $(makeArgs) -C vendor/github.com/tychoish/grip $@
 $(buildDir)/vendor/src:$(buildDir)/make-vendor $(buildDir)/render-gopath
 	@./$(buildDir)/make-vendor
 #   targets to build the small programs used to support vendoring.

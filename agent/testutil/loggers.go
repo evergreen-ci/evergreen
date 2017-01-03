@@ -1,33 +1,34 @@
 package testutil
 
 import (
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 // NewTestLogger creates a logger for testing. This Logger
 // stores everything in memory.
-func NewTestLogger(appender slogger.Appender) *comm.StreamLogger {
+func NewTestLogger(sender send.Sender) *comm.StreamLogger {
 	return &comm.StreamLogger{
 		Local: &slogger.Logger{
-			Prefix:    "local",
-			Appenders: []slogger.Appender{appender},
+			Name:      "local",
+			Appenders: []send.Sender{sender},
 		},
 
 		System: &slogger.Logger{
-			Prefix:    model.SystemLogPrefix,
-			Appenders: []slogger.Appender{appender},
+			Name:      model.SystemLogPrefix,
+			Appenders: []send.Sender{sender},
 		},
 
 		Task: &slogger.Logger{
-			Prefix:    model.TaskLogPrefix,
-			Appenders: []slogger.Appender{appender},
+			Name:      model.TaskLogPrefix,
+			Appenders: []send.Sender{sender},
 		},
 
 		Execution: &slogger.Logger{
-			Prefix:    model.AgentLogPrefix,
-			Appenders: []slogger.Appender{appender},
+			Name:      model.AgentLogPrefix,
+			Appenders: []send.Sender{sender},
 		},
 	}
 }

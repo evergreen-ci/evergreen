@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip/slogger"
 	digo "github.com/dynport/gocloud/digitalocean"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"

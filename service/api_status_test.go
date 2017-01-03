@@ -2,18 +2,17 @@ package service
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"testing"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/smartystreets/goconvey/convey"
-
-	"net/http"
-	"net/http/httptest"
-	"testing"
 )
 
 // getCTAEndpoint is a helper that creates a test API server,
@@ -37,6 +36,7 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	if err != nil {
 		t.Fatalf("building request: %v", err)
 	}
+
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
 	return w

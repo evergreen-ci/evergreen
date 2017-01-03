@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 func TestHeartbeat(t *testing.T) {
@@ -19,7 +20,7 @@ func TestHeartbeat(t *testing.T) {
 			SignalChan:          sigChan,
 			TaskCommunicator:    mockCommunicator,
 			Logger: &slogger.Logger{
-				Appenders: []slogger.Appender{},
+				Appenders: []send.Sender{slogger.StdOutAppender()},
 			},
 		}
 

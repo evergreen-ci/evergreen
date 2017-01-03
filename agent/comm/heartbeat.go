@@ -3,7 +3,7 @@ package comm
 import (
 	"time"
 
-	slogger "github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip/slogger"
 )
 
 // HeartbeatTicker manages heartbeat communication with the API server

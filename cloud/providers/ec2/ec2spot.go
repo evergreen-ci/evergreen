@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip/slogger"
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"

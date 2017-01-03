@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	slogger "github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 const (
@@ -117,8 +119,8 @@ var (
 
 	// Logger is our global logger. It can be changed for testing.
 	Logger = slogger.Logger{
-		Prefix:    "",
-		Appenders: []slogger.Appender{slogger.StdOutAppender()},
+		Name:      "evg",
+		Appenders: []send.Sender{slogger.StdOutAppender()},
 	}
 
 	// database and config directory, set to the testing version by default for safety
@@ -136,26 +138,18 @@ var (
 
 // SetLogger sets the global logger to write to the given path.
 func SetLogger(logPath string) {
-	logfile, err := GetAppendingFile(logPath)
+	sender, err := send.MakeFileLogger(logPath)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot create log file %v: %v", logPath, err))
 	}
 
-	Logger = slogger.Logger{
-		Prefix:    "",
-		Appenders: []slogger.Appender{&slogger.FileAppender{logfile}},
-	}
-}
+	grip.SetName("evg")
+	grip.SetSender(sender)
 
-// GetAppendingFile opens a file for appending. The file will be created
-// if it does not already exist.
-func GetAppendingFile(path string) (*os.File, error) {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if _, err := os.Create(path); err != nil {
-			return nil, err
-		}
+	Logger = slogger.Logger{
+		Name:      grip.Name(),
+		Appenders: []send.Sender{sender},
 	}
-	return os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
 }
 
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.

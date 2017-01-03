@@ -6,18 +6,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/send"
+	"github.com/tychoish/grip/slogger"
 )
 
 var logger *slogger.Logger
 
 func init() {
 	logger = &slogger.Logger{
-		Prefix:    "test",
-		Appenders: []slogger.Appender{slogger.StdOutAppender()},
+		Name:      "test",
+		Appenders: []send.Sender{slogger.StdOutAppender()},
 	}
 }
 

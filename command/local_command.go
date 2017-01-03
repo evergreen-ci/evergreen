@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip/slogger"
 )
 
 type LocalCommand struct {

@@ -7,12 +7,11 @@ import (
 	"path/filepath"
 	"strconv"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip/slogger"
 )
 
 func init() {
@@ -157,15 +156,10 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 		logWriterErr = pluginLogger.GetSystemLogWriter(slogger.ERROR)
 	}
 
-	outBufferWriter := util.NewLineBufferingWriter(logWriterInfo)
-	errorBufferWriter := util.NewLineBufferingWriter(logWriterErr)
-	defer outBufferWriter.Flush()
-	defer errorBufferWriter.Flush()
-
 	localCmd := &command.LocalCommand{
 		CmdString:  sec.Script,
-		Stdout:     outBufferWriter,
-		Stderr:     errorBufferWriter,
+		Stdout:     logWriterInfo,
+		Stderr:     logWriterErr,
 		ScriptMode: true,
 	}
 

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip/slogger"
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"

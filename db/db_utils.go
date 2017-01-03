@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/slogger"
 )
 
 func resetTasks(t *testing.T) {
@@ -45,8 +46,7 @@ func TestAttachResults(t *testing.T) {
 		taskConfig, err := plugintest.CreateTestConfig(configFile, t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, projTask := range taskConfig.Project.Tasks {
@@ -95,8 +95,7 @@ func TestAttachRawResults(t *testing.T) {
 		taskConfig, err := plugintest.CreateTestConfig(configFile, t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("when attaching a raw log ", func() {
 			for _, projTask := range taskConfig.Project.Tasks {

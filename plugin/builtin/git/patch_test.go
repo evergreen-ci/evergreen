@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/slogger"
 )
 
 func TestPatchPluginAPI(t *testing.T) {
@@ -35,8 +36,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		testTask, err := task.FindOne(task.ById("testTaskId"))
 		testutil.HandleTestingErr(err, t, "Couldn't set up test patch task")
 
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("calls to existing tasks with patches should succeed", func() {
 			httpCom := plugintest.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
@@ -98,8 +98,7 @@ func TestPatchPlugin(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
 			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)

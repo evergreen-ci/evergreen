@@ -2,13 +2,10 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
-	"github.com/10gen-labs/slogger/v1"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -22,6 +19,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 // Keys used for storing variables in request context with type safety.
@@ -510,8 +509,6 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 
 // Logger is a middleware handler that logs the request as it goes in and the response as it goes out.
 type Logger struct {
-	// Logger inherits from log.Logger used to log messages with the Logger middleware
-	*log.Logger
 	// ids is a channel producing unique, autoincrementing request ids that are included in logs.
 	ids chan int
 }
@@ -527,16 +524,17 @@ func NewLogger() *Logger {
 		}
 	}()
 
-	return &Logger{log.New(os.Stdout, "[evergreen] ", 0), ids}
+	return &Logger{ids}
 }
 
 func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
 	reqId := <-l.ids
-	l.Printf("Started (%v) %s %s %s", reqId, r.Method, r.URL.Path, r.RemoteAddr)
+
+	grip.Infof("Started (%v) %s %s %s", reqId, r.Method, r.URL.Path, r.RemoteAddr)
 
 	next(rw, r)
 
 	res := rw.(negroni.ResponseWriter)
-	l.Printf("Completed (%v) %v %s in %v", reqId, res.Status(), http.StatusText(res.Status()), time.Since(start))
+	grip.Infof("Completed (%v) %v %s in %v", reqId, res.Status(), http.StatusText(res.Status()), time.Since(start))
 }

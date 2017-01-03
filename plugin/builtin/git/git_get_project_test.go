@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip/slogger"
 )
 
 func init() {
@@ -37,8 +38,8 @@ func TestGitPlugin(t *testing.T) {
 			filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_clone.yml"),
 			t)
 		testutil.HandleTestingErr(err, t, "failed to create test config")
-		sliceAppender := &testutil.SliceAppender{}
-		logger := agentutil.NewTestLogger(sliceAppender)
+
+		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 		Convey("all commands in test project should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)

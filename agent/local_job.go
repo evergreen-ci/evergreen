@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip/level"
+	"github.com/tychoish/grip/slogger"
 )
 
 // AgentCommand encapsulates a running local command and streams logs
@@ -33,8 +33,8 @@ var InterruptedCmdError = errors.New("Command interrupted")
 func (ac *AgentCommand) Run(workingDir string) error {
 	ac.LogTask(slogger.INFO, "Running script task for command \n%v in directory %v", ac.ScriptLine, workingDir)
 
-	logWriterInfo := &evergreen.LoggingWriter{ac.Task, slogger.INFO}
-	logWriterErr := &evergreen.LoggingWriter{ac.Task, slogger.ERROR}
+	logWriterInfo := &evergreen.LoggingWriter{Logger: ac.Task, Severity: level.Info}
+	logWriterErr := &evergreen.LoggingWriter{Logger: ac.Task, Severity: level.Error}
 
 	ignoreErrors := false
 	if strings.HasPrefix(ac.ScriptLine, "-") {
@@ -42,16 +42,11 @@ func (ac *AgentCommand) Run(workingDir string) error {
 		ignoreErrors = true
 	}
 
-	outBufferWriter := util.NewLineBufferingWriter(logWriterInfo)
-	errorBufferWriter := util.NewLineBufferingWriter(logWriterErr)
-	defer outBufferWriter.Flush()
-	defer errorBufferWriter.Flush()
-
 	cmd := &command.LocalCommand{
 		CmdString:        ac.ScriptLine,
 		WorkingDirectory: workingDir,
-		Stdout:           outBufferWriter,
-		Stderr:           errorBufferWriter,
+		Stdout:           logWriterInfo,
+		Stderr:           logWriterErr,
 		Environment:      os.Environ(),
 	}
 	err := cmd.PrepToRun(ac.Expansions)
@@ -63,8 +58,7 @@ func (ac *AgentCommand) Run(workingDir string) error {
 
 	doneStatus := make(chan error)
 	go func() {
-		err := cmd.Run()
-		doneStatus <- err
+		doneStatus <- cmd.Run()
 	}()
 
 	select {
@@ -74,7 +68,7 @@ func (ac *AgentCommand) Run(workingDir string) error {
 		} else {
 			return err
 		}
-	case _ = <-ac.KillChan:
+	case <-ac.KillChan:
 		// try and kill the process
 		ac.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.GetPid())
 		if err := cmd.Stop(); err != nil {

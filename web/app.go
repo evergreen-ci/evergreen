@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/10gen-labs/slogger/v1"
+	"github.com/tychoish/grip/slogger"
 	"github.com/codegangsta/inject"
 	"github.com/evergreen-ci/evergreen"
 )
