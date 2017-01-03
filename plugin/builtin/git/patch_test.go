@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
@@ -36,7 +35,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		testTask, err := task.FindOne(task.ById("testTaskId"))
 		testutil.HandleTestingErr(err, t, "Couldn't set up test patch task")
 
-		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &testutil.SliceAppender{}
 		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("calls to existing tasks with patches should succeed", func() {
@@ -99,8 +98,7 @@ func TestPatchPlugin(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
-		//sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
-		sliceAppender := slogger.StdOutAppender()
+		sliceAppender := &testutil.SliceAppender{}
 		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {

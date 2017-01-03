@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
@@ -46,7 +45,7 @@ func TestAttachResults(t *testing.T) {
 		taskConfig, err := plugintest.CreateTestConfig(configFile, t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
-		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &testutil.SliceAppender{}
 		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
@@ -96,7 +95,7 @@ func TestAttachRawResults(t *testing.T) {
 		taskConfig, err := plugintest.CreateTestConfig(configFile, t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
 		taskConfig.WorkDir = "."
-		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &testutil.SliceAppender{}
 		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("when attaching a raw log ", func() {

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
@@ -38,7 +37,7 @@ func TestGitPlugin(t *testing.T) {
 			filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_clone.yml"),
 			t)
 		testutil.HandleTestingErr(err, t, "failed to create test config")
-		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &testutil.SliceAppender{}
 		logger := agentutil.NewTestLogger(sliceAppender)
 		Convey("all commands in test project should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {

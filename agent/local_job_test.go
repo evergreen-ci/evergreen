@@ -6,16 +6,16 @@ import (
 	"time"
 
 	slogger "github.com/10gen-labs/slogger/v1"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/command"
+	evgtestutil "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestLocalJob(t *testing.T) {
 	Convey("With an agent command", t, func() {
 		Convey("command's stdout/stderr should be captured by logger", func() {
-			appender := &evergreen.SliceAppender{[]*slogger.Log{}}
+			appender := &evgtestutil.SliceAppender{}
 			killChan := make(chan bool)
 			testCmd := &AgentCommand{
 				ScriptLine:   "echo 'hi stdout!'; echo 'hi stderr!' >&2;",
@@ -27,7 +27,8 @@ func TestLocalJob(t *testing.T) {
 			So(err, ShouldBeNil)
 			testCmd.FlushAndWait()
 			// 2 lines from the command, plus 2 lines from the Run() func itself
-			for _, v := range appender.Messages {
+			messages := appender.Messages()
+			for _, v := range messages {
 				fmt.Println(v.Message())
 			}
 
@@ -35,15 +36,15 @@ func TestLocalJob(t *testing.T) {
 				slogger.ERROR: "hi stderr!",
 				slogger.INFO:  "hi stdout!",
 			}
-			So(len(appender.Messages), ShouldEqual, 4)
-			MsgA := appender.Messages[len(appender.Messages)-2]
-			MsgB := appender.Messages[len(appender.Messages)-1]
+			So(len(messages), ShouldEqual, 4)
+			MsgA := messages[len(messages)-2]
+			MsgB := messages[len(messages)-1]
 			So(MsgA.Message(), ShouldEndWith, levelToString[MsgA.Level])
 			So(MsgB.Message(), ShouldEndWith, levelToString[MsgB.Level])
 		})
 
 		Convey("command's stdout/stderr should only print newlines with \\n", func() {
-			appender := &evergreen.SliceAppender{[]*slogger.Log{}}
+			appender := &evgtestutil.SliceAppender{}
 			killChan := make(chan bool)
 			newlineTestCmd := &AgentCommand{
 				ScriptLine:   "printf 'this is not a newline...'; printf 'this is a newline \n';",
@@ -56,19 +57,21 @@ func TestLocalJob(t *testing.T) {
 			So(err, ShouldBeNil)
 			newlineTestCmd.FlushAndWait()
 
+			messages := appender.Messages()
+
 			// 2 lines from the command, plus 1 lines from the Run() func itself
-			for _, v := range appender.Messages {
+			for _, v := range messages {
 				fmt.Println(v.Message())
 			}
-			So(len(appender.Messages), ShouldEqual, 3)
-			NewLineMessage := appender.Messages[len(appender.Messages)-1]
+			So(len(messages), ShouldEqual, 3)
+			NewLineMessage := messages[len(messages)-1]
 			So(NewLineMessage.Message(), ShouldEqual, "this is not a newline...this is a newline ")
 		})
 
 	})
 
 	Convey("With a long-running agent command", t, func() {
-		appender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		appender := &evgtestutil.SliceAppender{}
 		killChan := make(chan bool)
 		testCmd := &AgentCommand{
 			ScriptLine:   "echo 'hi'; sleep 4; echo 'i should not get run'",
@@ -91,11 +94,13 @@ func TestLocalJob(t *testing.T) {
 				close(killChan)
 			}()
 
+			messages := appender.Messages()
+
 			err := <-commandChan
 			So(err, ShouldEqual, InterruptedCmdError)
 			testCmd.Flush()
-			lastMessage := appender.Messages[len(appender.Messages)-1]
-			nextLastMessage := appender.Messages[len(appender.Messages)-2]
+			lastMessage := messages[len(messages)-1]
+			nextLastMessage := messages[len(messages)-2]
 			So(lastMessage.Message(), ShouldStartWith, "Got kill signal")
 			So(nextLastMessage.Message(), ShouldEqual, "hi")
 		})

@@ -7,18 +7,6 @@ import (
 	"github.com/10gen-labs/slogger/v1"
 )
 
-//SliceAppender is a slogger.Appender implemenation that just adds every
-//log message to an internal slice. Useful for testing when a test needs to
-//capture data sent to a slogger.Logger and verify what data was written.
-type SliceAppender struct {
-	Messages []*slogger.Log
-}
-
-func (self *SliceAppender) Append(log *slogger.Log) error {
-	self.Messages = append(self.Messages, log)
-	return nil
-}
-
 // LoggingWriter is a struct - with an associated log
 // level severity - that implements io.Writer
 type LoggingWriter struct {

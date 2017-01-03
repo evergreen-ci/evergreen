@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"testing"
 
-	slogger "github.com/10gen-labs/slogger/v1"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
@@ -216,7 +215,7 @@ func TestPluginFunctions(t *testing.T) {
 			So(httpCom, ShouldNotBeNil)
 
 			Convey("all commands in test project should execute successfully", func() {
-				sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+				sliceAppender := &testutil.SliceAppender{}
 				logger := agentutil.NewTestLogger(sliceAppender)
 				for _, newTask := range taskConfig.Project.Tasks {
 					So(len(newTask.Commands), ShouldNotEqual, 0)
@@ -258,7 +257,7 @@ func TestPluginExecution(t *testing.T) {
 		pluginConfigPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml")
 		taskConfig, err := createTestConfig(pluginConfigPath, t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
-		sliceAppender := &evergreen.SliceAppender{[]*slogger.Log{}}
+		sliceAppender := &testutil.SliceAppender{}
 		logger := agentutil.NewTestLogger(sliceAppender)
 
 		Convey("all commands in test project should execute successfully", func() {
