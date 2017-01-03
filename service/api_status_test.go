@@ -19,7 +19,7 @@ import (
 // getCTAEndpoint is a helper that creates a test API server,
 // GETs the consistent_task_assignment endpoint, and returns
 // the response.
-func getCTAEndpoint(t *testing.T) *http.Response {
+func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
@@ -39,7 +39,7 @@ func getCTAEndpoint(t *testing.T) *http.Response {
 	}
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, request)
-	return w.Result()
+	return w
 }
 
 func TestConsistentTaskAssignment(t *testing.T) {
@@ -64,7 +64,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 			resp := getCTAEndpoint(t)
 			So(resp, ShouldNotBeNil)
 			Convey("should return HTTP 200", func() {
-				So(resp.StatusCode, ShouldEqual, http.StatusOK)
+				So(resp.Code, ShouldEqual, http.StatusOK)
 				Convey("and JSON with a SUCCESS message and nothing else", func() {
 					tar := taskAssignmentResp{}
 					So(json.NewDecoder(resp.Body).Decode(&tar), ShouldBeNil)
@@ -91,7 +91,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 			resp := getCTAEndpoint(t)
 			So(resp, ShouldNotBeNil)
 			Convey("should return HTTP 200", func() {
-				So(resp.StatusCode, ShouldEqual, http.StatusOK)
+				So(resp.Code, ShouldEqual, http.StatusOK)
 				Convey("and JSON with an ERROR message and info about each issue", func() {
 					tar := taskAssignmentResp{}
 					So(json.NewDecoder(resp.Body).Decode(&tar), ShouldBeNil)
