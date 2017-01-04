@@ -58,12 +58,12 @@ func TestLocalJob(t *testing.T) {
 			newlineTestCmd.FlushAndWait()
 
 			messages := appender.Messages()
+			So(len(messages), ShouldEqual, 3)
 
 			// 2 lines from the command, plus 1 lines from the Run() func itself
 			for _, v := range messages {
 				fmt.Println(v.Message())
 			}
-			So(len(messages), ShouldEqual, 3)
 			NewLineMessage := messages[len(messages)-1]
 			So(NewLineMessage.Message(), ShouldEqual, "this is not a newline...this is a newline ")
 		})
@@ -94,13 +94,15 @@ func TestLocalJob(t *testing.T) {
 				close(killChan)
 			}()
 
-			messages := appender.Messages()
-
 			err := <-commandChan
 			So(err, ShouldEqual, InterruptedCmdError)
+
 			testCmd.Flush()
-			lastMessage := messages[len(messages)-1]
-			nextLastMessage := messages[len(messages)-2]
+			messages := appender.Messages()
+
+			So(len(messages), ShouldEqual, 6)
+			lastMessage := messages[len(messages)-3]
+			nextLastMessage := messages[len(messages)-4]
 			So(lastMessage.Message(), ShouldStartWith, "Got kill signal")
 			So(nextLastMessage.Message(), ShouldEqual, "hi")
 		})
