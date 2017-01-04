@@ -18,6 +18,7 @@ type Host struct {
 	Id       string        `bson:"_id" json:"id"`
 	Host     string        `bson:"host_id" json:"host"`
 	User     string        `bson:"user" json:"user"`
+	Secret   string        `bson:"secret" json:"secret"`
 	Tag      string        `bson:"tag" json:"tag"`
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
@@ -41,8 +42,10 @@ type Host struct {
 
 	LastTaskCompletedTime time.Time `bson:"last_task_completed_time" json:"last_task_completed_time"`
 	LastTaskCompleted     string    `bson:"last_task" json:"last_task"`
-	Status                string    `bson:"status" json:"status"`
-	StartedBy             string    `bson:"started_by" json:"started_by"`
+	LastCommunicationTime time.Time `bson:"last_communication" json:"last_communication"`
+
+	Status    string `bson:"status" json:"status"`
+	StartedBy string `bson:"started_by" json:"started_by"`
 	// True if this host was created manually by a user (i.e. with spawnhost)
 	UserHost      bool   `bson:"user_host" json:"user_host"`
 	AgentRevision string `bson:"agent_revision" json:"agent_revision"`
@@ -76,38 +79,38 @@ type ProvisionOptions struct {
 }
 
 // IdleTime returns how long has this host been idle
-func (self *Host) IdleTime() time.Duration {
+func (h *Host) IdleTime() time.Duration {
 
 	// if the host is currently running a task, it is not idle
-	if self.RunningTask != "" {
+	if h.RunningTask != "" {
 		return time.Duration(0)
 	}
 
 	// if the host has run a task before, then the idle time is just the time
 	// passed since the last task finished
-	if self.LastTaskCompleted != "" {
-		return time.Now().Sub(self.LastTaskCompletedTime)
+	if h.LastTaskCompleted != "" {
+		return time.Now().Sub(h.LastTaskCompletedTime)
 	}
 
 	// if the host has not run a task before, the idle time is just
 	// how long is has been since the host was created
-	return time.Now().Sub(self.CreationTime)
+	return time.Now().Sub(h.CreationTime)
 }
 
-func (self *Host) SetStatus(status string) error {
-	if self.Status == evergreen.HostTerminated {
+func (h *Host) SetStatus(status string) error {
+	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+
-			" %v because it is already terminated", self.Id, status)
+			" %v because it is already terminated", h.Id, status)
 		evergreen.Logger.Logf(slogger.WARN, msg)
 		return fmt.Errorf(msg)
 	}
 
-	event.LogHostStatusChanged(self.Id, self.Status, status)
+	event.LogHostStatusChanged(h.Id, h.Status, status)
 
-	self.Status = status
+	h.Status = status
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -119,10 +122,10 @@ func (self *Host) SetStatus(status string) error {
 
 // SetInitializing marks the host as initializing. Only allow this
 // if the host is uninitialized.
-func (self *Host) SetInitializing() error {
+func (h *Host) SetInitializing() error {
 	return UpdateOne(
 		bson.M{
-			IdKey:     self.Id,
+			IdKey:     h.Id,
 			StatusKey: evergreen.HostUninitialized,
 		},
 		bson.M{
@@ -133,30 +136,30 @@ func (self *Host) SetInitializing() error {
 	)
 }
 
-func (self *Host) SetDecommissioned() error {
-	return self.SetStatus(evergreen.HostDecommissioned)
+func (h *Host) SetDecommissioned() error {
+	return h.SetStatus(evergreen.HostDecommissioned)
 }
 
-func (self *Host) SetUninitialized() error {
-	return self.SetStatus(evergreen.HostUninitialized)
+func (h *Host) SetUninitialized() error {
+	return h.SetStatus(evergreen.HostUninitialized)
 }
 
-func (self *Host) SetRunning() error {
-	return self.SetStatus(evergreen.HostRunning)
+func (h *Host) SetRunning() error {
+	return h.SetStatus(evergreen.HostRunning)
 }
 
-func (self *Host) SetTerminated() error {
-	return self.SetStatus(evergreen.HostTerminated)
+func (h *Host) SetTerminated() error {
+	return h.SetStatus(evergreen.HostTerminated)
 }
 
-func (self *Host) SetUnreachable() error {
-	return self.SetStatus(evergreen.HostUnreachable)
+func (h *Host) SetUnreachable() error {
+	return h.SetStatus(evergreen.HostUnreachable)
 }
 
-func (self *Host) SetUnprovisioned() error {
+func (h *Host) SetUnprovisioned() error {
 	return UpdateOne(
 		bson.M{
-			IdKey:     self.Id,
+			IdKey:     h.Id,
 			StatusKey: evergreen.HostInitializing,
 		},
 		bson.M{
@@ -167,33 +170,62 @@ func (self *Host) SetUnprovisioned() error {
 	)
 }
 
-func (self *Host) SetQuarantined(status string) error {
-	return self.SetStatus(evergreen.HostQuarantined)
+func (h *Host) SetQuarantined(status string) error {
+	return h.SetStatus(evergreen.HostQuarantined)
 }
 
-func (self *Host) Terminate() error {
-	err := self.SetTerminated()
+// CreateSecret generates a host secret and updates the host both locally
+// and in the database.
+func (h *Host) CreateSecret() error {
+	secret := util.RandomString()
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{SecretKey: secret}},
+	)
 	if err != nil {
 		return err
 	}
-	self.TerminationTime = time.Now()
+	h.Secret = secret
+	return nil
+}
+
+// UpdateLastCommunicated sets the host's last communication time to the current time.
+func (h *Host) UpdateLastCommunicated() error {
+	now := time.Now()
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{LastCommunicationTimeKey: now}},
+	)
+	if err != nil {
+		return err
+	}
+	h.LastCommunicationTime = now
+	return nil
+}
+
+func (h *Host) Terminate() error {
+	err := h.SetTerminated()
+	if err != nil {
+		return err
+	}
+	h.TerminationTime = time.Now()
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				TerminationTimeKey: self.TerminationTime,
+				TerminationTimeKey: h.TerminationTime,
 			},
 		},
 	)
 }
 
 // SetDNSName updates the DNS name for a given host once
-func (self *Host) SetDNSName(dnsName string) error {
+func (h *Host) SetDNSName(dnsName string) error {
 	err := UpdateOne(
 		bson.M{
-			IdKey:  self.Id,
+			IdKey:  h.Id,
 			DNSKey: "",
 		},
 		bson.M{
@@ -203,8 +235,8 @@ func (self *Host) SetDNSName(dnsName string) error {
 		},
 	)
 	if err == nil {
-		self.Host = dnsName
-		event.LogHostDNSNameSet(self.Id, dnsName)
+		h.Host = dnsName
+		event.LogHostDNSNameSet(h.Id, dnsName)
 	}
 	if err == mgo.ErrNotFound {
 		return nil
@@ -212,14 +244,14 @@ func (self *Host) SetDNSName(dnsName string) error {
 	return err
 }
 
-func (self *Host) MarkAsProvisioned() error {
-	event.LogHostProvisioned(self.Id)
+func (h *Host) MarkAsProvisioned() error {
+	event.LogHostProvisioned(h.Id)
 
-	self.Status = evergreen.HostRunning
-	self.Provisioned = true
+	h.Status = evergreen.HostRunning
+	h.Provisioned = true
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -254,19 +286,19 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 }
 
 // Marks that the specified task was started on the host at the specified time.
-func (self *Host) SetRunningTask(taskId, agentRevision string,
+func (h *Host) SetRunningTask(taskId, agentRevision string,
 	taskDispatchTime time.Time) error {
 
 	// log the event
-	event.LogHostRunningTaskSet(self.Id, taskId)
+	event.LogHostRunningTaskSet(h.Id, taskId)
 
 	// update the in-memory host, then the database
-	self.RunningTask = taskId
-	self.AgentRevision = agentRevision
-	self.TaskDispatchTime = taskDispatchTime
+	h.RunningTask = taskId
+	h.AgentRevision = agentRevision
+	h.TaskDispatchTime = taskDispatchTime
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -279,13 +311,13 @@ func (self *Host) SetRunningTask(taskId, agentRevision string,
 }
 
 // SetExpirationTime updates the expiration time of a spawn host
-func (self *Host) SetExpirationTime(expirationTime time.Time) error {
+func (h *Host) SetExpirationTime(expirationTime time.Time) error {
 	// update the in-memory host, then the database
-	self.ExpirationTime = expirationTime
-	self.Notifications = make(map[string]bool)
+	h.ExpirationTime = expirationTime
+	h.Notifications = make(map[string]bool)
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -299,12 +331,12 @@ func (self *Host) SetExpirationTime(expirationTime time.Time) error {
 }
 
 // SetUserData updates the userdata field of a spawn host
-func (self *Host) SetUserData(userData string) error {
+func (h *Host) SetUserData(userData string) error {
 	// update the in-memory host, then the database
-	self.UserData = userData
+	h.UserData = userData
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -315,32 +347,32 @@ func (self *Host) SetUserData(userData string) error {
 }
 
 // SetExpirationNotification updates the notification time for a spawn host
-func (self *Host) SetExpirationNotification(thresholdKey string) error {
+func (h *Host) SetExpirationNotification(thresholdKey string) error {
 	// update the in-memory host, then the database
-	if self.Notifications == nil {
-		self.Notifications = make(map[string]bool)
+	if h.Notifications == nil {
+		h.Notifications = make(map[string]bool)
 	}
-	self.Notifications[thresholdKey] = true
+	h.Notifications[thresholdKey] = true
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				NotificationsKey: self.Notifications,
+				NotificationsKey: h.Notifications,
 			},
 		},
 	)
 }
 
-func (self *Host) ClearRunningTask() error {
-	event.LogHostRunningTaskCleared(self.Id, self.RunningTask)
-	self.RunningTask = ""
-	self.TaskDispatchTime = util.ZeroTime
-	self.Pid = ""
+func (h *Host) ClearRunningTask() error {
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	h.RunningTask = ""
+	h.TaskDispatchTime = util.ZeroTime
+	h.Pid = ""
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -352,11 +384,11 @@ func (self *Host) ClearRunningTask() error {
 	)
 }
 
-func (self *Host) SetTaskPid(pid string) error {
-	event.LogHostTaskPidSet(self.Id, pid)
+func (h *Host) SetTaskPid(pid string) error {
+	event.LogHostTaskPidSet(h.Id, pid)
 	return UpdateOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
@@ -403,39 +435,39 @@ func (h *Host) UpdateReachability(reachable bool) error {
 	return UpdateOne(bson.M{IdKey: h.Id}, update)
 }
 
-func (self *Host) Upsert() (*mgo.ChangeInfo, error) {
+func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 
 	return UpsertOne(
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 		bson.M{
 			"$set": bson.M{
-				DNSKey:         self.Host,
-				UserKey:        self.User,
-				DistroKey:      self.Distro,
-				ProvisionedKey: self.Provisioned,
-				StartedByKey:   self.StartedBy,
-				ProviderKey:    self.Provider,
+				DNSKey:         h.Host,
+				UserKey:        h.User,
+				DistroKey:      h.Distro,
+				ProvisionedKey: h.Provisioned,
+				StartedByKey:   h.StartedBy,
+				ProviderKey:    h.Provider,
 			},
 			"$setOnInsert": bson.M{
-				StatusKey:     self.Status,
-				CreateTimeKey: self.CreationTime,
+				StatusKey:     h.Status,
+				CreateTimeKey: h.CreationTime,
 			},
 		},
 	)
 }
 
-func (self *Host) Insert() error {
-	event.LogHostCreated(self.Id)
-	return db.Insert(Collection, self)
+func (h *Host) Insert() error {
+	event.LogHostCreated(h.Id)
+	return db.Insert(Collection, h)
 }
 
-func (self *Host) Remove() error {
+func (h *Host) Remove() error {
 	return db.Remove(
 		Collection,
 		bson.M{
-			IdKey: self.Id,
+			IdKey: h.Id,
 		},
 	)
 }

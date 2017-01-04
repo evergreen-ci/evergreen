@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -19,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip/slogger"
 )
 
 const httpMaxAttempts = 10
@@ -34,6 +34,8 @@ type HTTPCommunicator struct {
 	ServerURLRoot string
 	TaskId        string
 	TaskSecret    string
+	HostId        string
+	HostSecret    string
 	MaxAttempts   int
 	RetrySleep    time.Duration
 	SignalChan    chan Signal
@@ -46,11 +48,13 @@ type HTTPCommunicator struct {
 
 // NewHTTPCommunicator returns an initialized HTTPCommunicator.
 // The cert parameter may be blank if default system certificates are being used.
-func NewHTTPCommunicator(serverURL, taskId, taskSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
+func NewHTTPCommunicator(serverURL, taskId, taskSecret, hostId, hostSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
 	agentCommunicator := &HTTPCommunicator{
 		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, evergreen.AgentAPIVersion),
 		TaskId:        taskId,
 		TaskSecret:    taskSecret,
+		HostId:        hostId,
+		HostSecret:    hostSecret,
 		MaxAttempts:   httpMaxAttempts,
 		RetrySleep:    time.Second * 3,
 		HttpsCert:     cert,
@@ -393,6 +397,8 @@ func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, clie
 		req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
 	}
 	req.Header.Add(evergreen.TaskSecretHeader, h.TaskSecret)
+	req.Header.Add(evergreen.HostHeader, h.HostId)
+	req.Header.Add(evergreen.HostSecretHeader, h.HostSecret)
 	req.Header.Add("Content-Type", "application/json")
 	return client.Do(req)
 }

@@ -116,7 +116,13 @@ func setupTlsConfigs(t *testing.T) {
 }
 
 func createAgent(testServer *service.TestServer, testTask *task.Task) (*Agent, error) {
-	testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+	testAgent, err := New(Options{
+		APIURL:      testServer.URL,
+		TaskId:      testTask.Id,
+		TaskSecret:  testTask.Secret,
+		Certificate: testConfig.Api.HttpsCert,
+		PIDFilePath: testPidFile,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +254,8 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := createAgent(testServer, testTask)
+
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -293,7 +300,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := createAgent(testServer, testTask)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -600,7 +607,7 @@ func TestTaskTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := createAgent(testServer, testTask)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -635,7 +642,7 @@ func TestFunctionVariantExclusion(t *testing.T) {
 				testutil.HandleTestingErr(err, t, "Failed to find test task")
 				testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 				testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-				testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+				testAgent, err := createAgent(testServer, testTask)
 				So(err, ShouldBeNil)
 				So(testAgent, ShouldNotBeNil)
 				Convey("running the task", func() {
@@ -665,7 +672,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := createAgent(testServer, testTask)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 			prependConfigToVersion(t, testTask.Version, "callback_timeout_secs: 1\n")
@@ -704,7 +711,7 @@ func TestTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := createAgent(testServer, testTask)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -737,7 +744,7 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := createAgent(testServer, testTask)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 
@@ -972,6 +979,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
 		},
 		RunningTask:   taskOne.Id,
+		Secret:        "testHostSecret",
 		StartedBy:     evergreen.User,
 		AgentRevision: agentRevision,
 	}

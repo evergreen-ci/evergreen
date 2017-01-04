@@ -99,7 +99,7 @@ func CreateTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 }
 
 func TestAgentCommunicator(taskId string, taskSecret string, apiRootUrl string) *comm.HTTPCommunicator {
-	agentCommunicator, err := comm.NewHTTPCommunicator(apiRootUrl, taskId, taskSecret, "", nil)
+	agentCommunicator, err := comm.NewHTTPCommunicator(apiRootUrl, taskId, taskSecret, "", "", "", nil)
 	if err != nil {
 		panic(err)
 	}

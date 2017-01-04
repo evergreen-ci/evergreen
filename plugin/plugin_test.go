@@ -212,7 +212,7 @@ func TestPluginFunctions(t *testing.T) {
 				}
 			})
 
-			httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
+			httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
 			So(err, ShouldBeNil)
 			So(httpCom, ShouldNotBeNil)
 
@@ -251,7 +251,7 @@ func TestPluginExecution(t *testing.T) {
 		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, apiPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
-		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
+		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
 
@@ -294,7 +294,7 @@ func TestAttachLargeResults(t *testing.T) {
 	Convey("With a test task and server", t, func() {
 		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", nil)
+		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
 		pluginCom := &comm.TaskJSONCommunicator{"test", httpCom}

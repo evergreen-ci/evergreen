@@ -26,6 +26,7 @@ var noRunningTask = []bson.D{
 var (
 	IdKey                    = bsonutil.MustHaveTag(Host{}, "Id")
 	DNSKey                   = bsonutil.MustHaveTag(Host{}, "Host")
+	SecretKey                = bsonutil.MustHaveTag(Host{}, "Secret")
 	UserKey                  = bsonutil.MustHaveTag(Host{}, "User")
 	TagKey                   = bsonutil.MustHaveTag(Host{}, "Tag")
 	DistroKey                = bsonutil.MustHaveTag(Host{}, "Distro")
@@ -46,6 +47,7 @@ var (
 	NotificationsKey         = bsonutil.MustHaveTag(Host{}, "Notifications")
 	UserDataKey              = bsonutil.MustHaveTag(Host{}, "UserData")
 	LastReachabilityCheckKey = bsonutil.MustHaveTag(Host{}, "LastReachabilityCheck")
+	LastCommunicationTimeKey = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UnreachableSinceKey      = bsonutil.MustHaveTag(Host{}, "UnreachableSince")
 )
 

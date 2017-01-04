@@ -271,6 +271,32 @@ func TestMarkAsProvisioned(t *testing.T) {
 	})
 }
 
+func TestHostCreateSecret(t *testing.T) {
+	Convey("With a host with no secret", t, func() {
+
+		testutil.HandleTestingErr(db.Clear(Collection), t,
+			"Error clearing '%v' collection", Collection)
+
+		host := &Host{Id: "hostOne"}
+		So(host.Insert(), ShouldBeNil)
+
+		Convey("creating a secret", func() {
+			So(host.Secret, ShouldEqual, "")
+			So(host.CreateSecret(), ShouldBeNil)
+
+			Convey("should update the host in memory", func() {
+				So(host.Secret, ShouldNotEqual, "")
+
+				Convey("and in the database", func() {
+					dbHost, err := FindOne(ById(host.Id))
+					So(err, ShouldBeNil)
+					So(dbHost.Secret, ShouldEqual, host.Secret)
+				})
+			})
+		})
+	})
+}
+
 func TestHostSetRunningTask(t *testing.T) {
 
 	Convey("With a host", t, func() {

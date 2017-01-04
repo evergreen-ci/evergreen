@@ -72,6 +72,13 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 	// start the agent on the remote machine
 	evergreen.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...", hostObj.Id, taskToRun.Id)
 
+	// generate the host secret if none exists
+	if hostObj.Secret == "" {
+		if err := hostObj.CreateSecret(); err != nil {
+			return "", fmt.Errorf("creating secret for %v: %v", hostObj.Id, err)
+		}
+	}
+
 	err = startAgentOnRemote(settings.ApiUrl, &taskToRun, &hostObj, sshOptions)
 	if err != nil {
 		return "", err
@@ -217,9 +224,10 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
-		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -log_prefix "%v" -https_cert "%v" -pid_file "%v"`,
-		pathToExecutable, apiURL, task.Id, task.Secret, filepath.Join(hostObj.Distro.WorkDir,
-			agentFile), "", filepath.Join(hostObj.Distro.WorkDir, pidFile),
+		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -host_id "%v" -host_secret "%v" -log_prefix "%v" -https_cert "%v" -pid_file "%v"`,
+		pathToExecutable, apiURL, task.Id, task.Secret, hostObj.Id, hostObj.Secret,
+		filepath.Join(hostObj.Distro.WorkDir, agentFile), "",
+		filepath.Join(hostObj.Distro.WorkDir, pidFile),
 	)
 	evergreen.Logger.Logf(slogger.INFO, "%v", remoteCmd)
 

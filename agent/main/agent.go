@@ -29,6 +29,8 @@ func main() {
 	// Get the basic info needed to run the agent from command line flags.
 	taskId := flag.String("task_id", "", "id of task to run")
 	taskSecret := flag.String("task_secret", "", "secret of task to run")
+	hostId := flag.String("host_id", "", "id of machine agent is running on")
+	hostSecret := flag.String("host_secret", "", "secret for the current host")
 	apiServer := flag.String("api_server", "", "URL of API server")
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
 	logPrefix := flag.String("log_prefix", "", "prefix for the agent's log filename")
@@ -55,7 +57,15 @@ func main() {
 	}
 	grip.SetName("evg-agent")
 
-	agt, err := agent.New(*apiServer, *taskId, *taskSecret, httpsCert, *pidFile)
+	agt, err := agent.New(agent.Options{
+		APIURL:      *apiServer,
+		TaskId:      *taskId,
+		TaskSecret:  *taskSecret,
+		HostId:      *hostId,
+		HostSecret:  *hostSecret,
+		Certificate: httpsCert,
+		PIDFilePath: *pidFile,
+	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
@@ -88,7 +98,15 @@ func main() {
 			break
 		}
 
-		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, httpsCert, *pidFile)
+		agt, err = agent.New(agent.Options{
+			APIURL:      *apiServer,
+			TaskId:      resp.TaskId,
+			TaskSecret:  resp.TaskSecret,
+			HostId:      *hostId,
+			HostSecret:  *hostSecret,
+			Certificate: httpsCert,
+			PIDFilePath: *pidFile,
+		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
 			exitCode = 1

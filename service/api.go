@@ -40,10 +40,12 @@ import (
 type key int
 
 type taskKey int
-
-const maxTestLogSize = 16 * 1024 * 1024 // 16 MB
+type hostKey int
 
 const apiTaskKey taskKey = 0
+const apiHostKey hostKey = 0
+
+const maxTestLogSize = 16 * 1024 * 1024 // 16 MB
 
 // ErrLockTimeout is returned when the database lock takes too long to be acquired.
 var ErrLockTimeout = errors.New("Timed out acquiring global lock")
@@ -145,6 +147,60 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 		context.Set(r, apiTaskKey, t)
 		// also set the task in the context visible to plugins
 		plugin.SetTask(r, t)
+		next(w, r)
+	}
+}
+
+func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		hostId := mux.Vars(r)["hostId"]
+		if hostId == "" {
+			// fall back to the host header if host ids are not part of the path
+			hostId = r.Header.Get(evergreen.HostHeader)
+			if hostId == "" {
+				evergreen.Logger.Logf(slogger.WARN, "Request %v is missing host information", r.URL)
+				// skip all host logic and just go on to the route
+				next(w, r)
+				return
+				// TODO (EVG-1283) treat this as an error and fail the request
+			}
+		}
+		secret := r.Header.Get(evergreen.HostSecretHeader)
+
+		h, err := host.FindOne(host.ById(hostId))
+		if h == nil {
+			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Host %v not found", hostId))
+			return
+		}
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError,
+				fmt.Errorf("Error loading context for host %v: %v", hostId, err))
+			return
+		}
+		// if there is a secret, ensure we are using the correct one -- fail if we arent
+		if secret != "" && secret != h.Secret {
+			// TODO (EVG-1283) error if secret is not attached as well
+			as.LoggedError(w, r, http.StatusConflict, fmt.Errorf("Invalid host secret for host %v", h.Id))
+			return
+		}
+
+		// if the task is attached to the context, check host-task relationship
+		if ctxTask := context.Get(r, apiTaskKey); ctxTask != nil {
+			if t, ok := ctxTask.(*task.Task); ok {
+				if h.RunningTask != t.Id {
+					as.LoggedError(w, r, http.StatusConflict,
+						fmt.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
+					return
+				}
+			}
+		}
+		// update host access time
+		if err := h.UpdateLastCommunicated(); err != nil {
+			evergreen.Logger.Logf(slogger.WARN,
+				"Could not update host last communication time for %v: %v", h.Id)
+		}
+
+		context.Set(r, apiHostKey, h) // TODO is this worth doing?
 		next(w, r)
 	}
 }
@@ -991,18 +1047,18 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	spawns.HandleFunc("/distros/list/", requireUser(as.listDistros, nil)).Methods("GET")
 
 	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
-	taskRouter.HandleFunc("/start", as.checkTask(true, as.StartTask)).Methods("POST")
-	taskRouter.HandleFunc("/end", as.checkTask(true, as.EndTask)).Methods("POST")
-	taskRouter.HandleFunc("/log", as.checkTask(true, as.AppendTaskLog)).Methods("POST")
-	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.Heartbeat)).Methods("POST")
-	taskRouter.HandleFunc("/results", as.checkTask(true, as.AttachResults)).Methods("POST")
-	taskRouter.HandleFunc("/test_logs", as.checkTask(true, as.AttachTestLog)).Methods("POST")
-	taskRouter.HandleFunc("/distro", as.checkTask(false, as.GetDistro)).Methods("GET") // nosecret check
+	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
+	taskRouter.HandleFunc("/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
+	taskRouter.HandleFunc("/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
+	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
+	taskRouter.HandleFunc("/results", as.checkTask(true, as.checkHost(as.AttachResults))).Methods("POST")
+	taskRouter.HandleFunc("/test_logs", as.checkTask(true, as.checkHost(as.AttachTestLog))).Methods("POST")
+	taskRouter.HandleFunc("/files", as.checkTask(false, as.checkHost(as.AttachFiles))).Methods("POST")
+	taskRouter.HandleFunc("/distro", as.checkTask(false, as.GetDistro)).Methods("GET")
 	taskRouter.HandleFunc("/", as.checkTask(true, as.FetchTask)).Methods("GET")
 	taskRouter.HandleFunc("/version", as.checkTask(false, as.GetVersion)).Methods("GET")
 	taskRouter.HandleFunc("/project_ref", as.checkTask(false, as.GetProjectRef)).Methods("GET")
 	taskRouter.HandleFunc("/fetch_vars", as.checkTask(true, as.FetchProjectVars)).Methods("GET")
-	taskRouter.HandleFunc("/files", as.checkTask(false, as.AttachFiles)).Methods("POST")
 
 	// Install plugin routes
 	for _, pl := range as.plugins {

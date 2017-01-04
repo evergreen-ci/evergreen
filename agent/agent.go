@@ -133,6 +133,10 @@ type Agent struct {
 	// assigned task.
 	taskConfig *model.TaskConfig
 
+	// hostId holds the identifier of the host the agent thinks it is running on,
+	// for logging purposes.
+	hostId string
+
 	// Registry manages plugins available for the agent.
 	Registry plugin.Registry
 
@@ -385,13 +389,26 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 	return model.NewTaskConfig(confDistro, confVersion, confProject, confTask, confRef)
 }
 
+// Options represents an agent configuration.
+type Options struct {
+	APIURL      string
+	TaskId      string // TODO remove (EVG-1283)
+	TaskSecret  string
+	HostId      string
+	HostSecret  string
+	PIDFilePath string
+	Certificate string
+}
+
 // New creates a new agent to run a given task.
-func New(apiServerURL, taskId, taskSecret, cert, pidFilePath string) (*Agent, error) {
+func New(opts Options) (*Agent, error) {
 	sh := &SignalHandler{}
 	sh.makeChannels()
 
 	// set up communicator with API server
-	httpCommunicator, err := comm.NewHTTPCommunicator(apiServerURL, taskId, taskSecret, cert, sh.communicatorChan)
+	httpCommunicator, err := comm.NewHTTPCommunicator(
+		opts.APIURL, opts.TaskId, opts.TaskSecret, opts.HostId, opts.HostSecret,
+		opts.Certificate, sh.communicatorChan)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +454,7 @@ func New(apiServerURL, taskId, taskSecret, cert, pidFilePath string) (*Agent, er
 		Registry:           plugin.NewSimpleRegistry(),
 		KillChan:           make(chan bool),
 		endChan:            make(chan *apimodels.TaskEndDetail, 1),
-		pidFilePath:        pidFilePath,
+		pidFilePath:        opts.PIDFilePath,
 	}
 
 	return agt, nil
