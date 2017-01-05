@@ -91,6 +91,20 @@ const (
 	TaskSecretHeader = "Task-Secret"
 )
 
+// HTTP constants. Added after Go1.4. Here for compatibility with GCCGO
+// compatibility. Copied from: https://golang.org/pkg/net/http/#pkg-constants
+const (
+	MethodGet     = "GET"
+	MethodHead    = "HEAD"
+	MethodPost    = "POST"
+	MethodPut     = "PUT"
+	MethodPatch   = "PATCH" // RFC 5789
+	MethodDelete  = "DELETE"
+	MethodConnect = "CONNECT"
+	MethodOptions = "OPTIONS"
+	MethodTrace   = "TRACE"
+)
+
 var (
 	// UphostStatus is a list of all host statuses that are considered "up."
 	// This is used for query building.

@@ -3,6 +3,7 @@ package taskdata
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -16,7 +17,7 @@ type TagContainer struct {
 	Tag string `bson:"_id" json:"tag`
 }
 
-func uiGetTags(w http.ResponseWriter, r *http.Request) {
+fun: uiGetTags(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 	tags, err := GetTags(taskId)
 	if err != nil {
@@ -51,9 +52,9 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 	switch r.Method {
-	case http.MethodDelete:
+	case evergreen.MethodDelete:
 		err = DeleteTagFromTask(taskId, name)
-	case http.MethodPost:
+	case evergreen.MethodPost:
 		tc := TagContainer{}
 		err = util.ReadJSONInto(r.Body, &tc)
 		if err != nil {
