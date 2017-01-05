@@ -17,7 +17,7 @@ type TagContainer struct {
 	Tag string `bson:"_id" json:"tag`
 }
 
-fun: uiGetTags(w http.ResponseWriter, r *http.Request) {
+func uiGetTags(w http.ResponseWriter, r *http.Request) {
 	taskId := mux.Vars(r)["task_id"]
 	tags, err := GetTags(taskId)
 	if err != nil {
