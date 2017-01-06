@@ -130,7 +130,8 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 				"display_name": displayName,
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			So(putCmd.Put(), ShouldBeNil)
+			_, err := putCmd.Put()
+			So(err, ShouldBeNil)
 
 			// next, get the file, untarring it
 			getCmd = &S3GetCommand{}
@@ -322,7 +323,8 @@ func TestS3PutAndGetMultiFile(t *testing.T) {
 				"display_name":               displayNamePrefix,
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			So(putCmd.Put(), ShouldBeNil)
+			_, err := putCmd.Put()
+			So(err, ShouldBeNil)
 			Convey("the files should each be gotten without error", func() {
 				for _, f := range fileInfos {
 					// next, get the file
@@ -348,4 +350,102 @@ func TestS3PutAndGetMultiFile(t *testing.T) {
 		})
 
 	})
+}
+
+func TestAttachResults(t *testing.T) {
+	remoteFname := "remote_file"
+	localFpath := "path/to/local_file"
+	taskId := "testTask"
+	displayName := "display_name"
+	testBucket := "testBucket"
+	Convey("When putting to an s3 bucket", t, func() {
+		testutil.HandleTestingErr(
+			db.ClearCollections(task.Collection, artifact.Collection), t,
+			"error clearing test collections")
+
+		testTask := &task.Task{
+			Id: taskId,
+		}
+		testTask.Insert()
+
+		conf := evergreen.TestConfig()
+		testutil.ConfigureIntegrationTest(t, conf, "TestAttachResults")
+		server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+		So(err, ShouldBeNil)
+
+		httpCom := plugintest.TestAgentCommunicator(taskId, "taskSecret", server.URL)
+		pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
+
+		s3pc := S3PutCommand{
+			LocalFile:   localFpath,
+			RemoteFile:  remoteFname,
+			DisplayName: displayName,
+			Visibility:  "visible",
+			Bucket:      testBucket,
+		}
+		Convey("and attach is multi", func() {
+			s3pc.LocalFilesIncludeFilter = []string{"one", "two"}
+			s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
+				s3pc.LocalFile, s3pc.RemoteFile)
+			Convey("files should each be added properly", func() {
+				entry, err := artifact.FindOne(artifact.ByTaskId(taskId))
+				So(err, ShouldBeNil)
+				So(len(entry.Files), ShouldEqual, 1)
+				file := entry.Files[0]
+
+				So(file.Link, ShouldEqual, fmt.Sprintf("%s%s/%s%s", s3baseURL, testBucket, remoteFname, filepath.Base(localFpath)))
+				So(file.Name, ShouldEqual, fmt.Sprintf("%s%s", displayName, filepath.Base(localFpath)))
+			})
+		})
+		Convey("and attaching is singular", func() {
+			s3pc.LocalFilesIncludeFilter = []string{}
+			s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
+				s3pc.LocalFile, s3pc.RemoteFile)
+			Convey("file should be added properly", func() {
+				entry, err := artifact.FindOne(artifact.ByTaskId(taskId))
+				So(err, ShouldBeNil)
+				So(len(entry.Files), ShouldEqual, 1)
+				file := entry.Files[0]
+
+				So(file.Link, ShouldEqual, fmt.Sprintf("%s%s/%s", s3baseURL, testBucket, remoteFname))
+				So(file.Name, ShouldEqual, fmt.Sprintf("%s", displayName))
+			})
+		})
+		Convey("and attach is called many times", func() {
+			filesList := make([][]string, 10)
+			for i := 0; i < 10; i++ {
+				filesList[i] = []string{fmt.Sprintf("remote%d-", i), fmt.Sprintf("local%d", i)}
+			}
+			s3pc.LocalFilesIncludeFilter = []string{"one", "two"}
+			for _, fileData := range filesList {
+				s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
+					fileData[1], fileData[0])
+			}
+			Convey("files should each be added properly", func() {
+				entry, err := artifact.FindOne(artifact.ByTaskId(taskId))
+				So(err, ShouldBeNil)
+				So(len(entry.Files), ShouldEqual, 10)
+				for _, file := range entry.Files {
+					entryIndex := fetchFileIndex(file.Name, displayName, filesList)
+					So(entryIndex, ShouldNotEqual, -1)
+					So(file.Link, ShouldEqual, fmt.Sprintf("%s%s/%s%s", s3baseURL,
+						testBucket, filesList[entryIndex][0], filesList[entryIndex][1]))
+					So(file.Name, ShouldEqual, fmt.Sprintf("%s%s", displayName,
+						filesList[entryIndex][1]))
+					filesList = append(filesList[:entryIndex], filesList[entryIndex+1:]...)
+				}
+				So(len(filesList), ShouldEqual, 0)
+			})
+		})
+	})
+}
+
+func fetchFileIndex(fName, displayName string, filesList [][]string) int {
+	for index, fileData := range filesList {
+		fullDisplayName := fmt.Sprintf("%s%s", displayName, fileData[1])
+		if fName == fullDisplayName {
+			return index
+		}
+	}
+	return -1
 }

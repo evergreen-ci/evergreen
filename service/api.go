@@ -624,7 +624,6 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		as.WriteJSON(w, http.StatusBadRequest, message)
 		return
 	}
-	fmt.Printf("file entry is %#v\n", entry)
 
 	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", t.Id, err)

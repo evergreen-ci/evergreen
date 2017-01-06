@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip/slogger"
 )
 
 var (
@@ -27,11 +27,6 @@ var (
 )
 
 var errSkippedFile = errors.New("missing optional file was skipped")
-
-type S3PutCommandWrapper struct {
-	S3PutCommand
-	Files []string
-}
 
 // A plugin command to put a resource to an s3 bucket and download it to
 // the local machine.
@@ -220,17 +215,30 @@ func (s3pc *S3PutCommand) Execute(log plugin.Logger,
 
 }
 
-// Wrapper around the Put() function to retry it
+// Wrapper around the Put() function to retry it.
 func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommunicator) error {
 	retriablePut := util.RetriableFunc(
 		func() error {
-			err := s3pc.Put()
+			filesList, err := s3pc.Put()
 			if err != nil {
 				if err == errSkippedFile {
 					return err
 				}
 				log.LogExecution(slogger.ERROR, "Error putting to s3 bucket: %v", err)
 				return util.RetriableError{err}
+			}
+
+			for _, file := range filesList {
+				remoteName := s3pc.RemoteFile
+				if s3pc.isMulti() {
+					fname := filepath.Base(file)
+					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
+				}
+
+				err = s3pc.AttachTaskFiles(log, com, file, remoteName)
+				if err != nil {
+					return err
+				}
 			}
 			return nil
 		},
@@ -245,11 +253,12 @@ func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommu
 		log.LogExecution(slogger.ERROR, "S3 put failed with error: %v", err)
 		return err
 	}
-	return s3pc.AttachTaskFiles(log, com)
+
+	return nil
 }
 
 // Put the specified resource to s3.
-func (s3pc *S3PutCommand) Put() error {
+func (s3pc *S3PutCommand) Put() ([]string, error) {
 	var filesList []string
 
 	filesList = []string{s3pc.LocalFile}
@@ -258,7 +267,7 @@ func (s3pc *S3PutCommand) Put() error {
 	if s3pc.isMulti() {
 		filesList, err = util.BuildFileList(".", s3pc.LocalFilesIncludeFilter...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	for _, fpath := range filesList {
@@ -281,27 +290,31 @@ func (s3pc *S3PutCommand) Put() error {
 		if err != nil {
 			if !s3pc.isMulti() {
 				if s3pc.Optional && os.IsNotExist(err) {
-					return errSkippedFile
+					return nil, errSkippedFile
 				}
 			}
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return filesList, nil
 }
 
 // AttachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
 func (s3pc *S3PutCommand) AttachTaskFiles(log plugin.Logger,
-	com plugin.PluginCommunicator) error {
+	com plugin.PluginCommunicator, localFile, remoteFile string) error {
 
-	remoteFile := filepath.ToSlash(s3pc.RemoteFile)
-	fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFile
+	remoteFileName := filepath.ToSlash(remoteFile)
+	if s3pc.isMulti() {
+		remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(localFile))
+	}
+	fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
 
 	displayName := s3pc.DisplayName
-	if displayName == "" {
-		displayName = filepath.Base(s3pc.LocalFile)
+	if s3pc.isMulti() || displayName == "" {
+		displayName = fmt.Sprintf("%s%s", s3pc.DisplayName, filepath.Base(localFile))
 	}
+
 	file := &artifact.File{
 		Name:       displayName,
 		Link:       fileLink,
