@@ -129,8 +129,10 @@ func (s *Scheduler) Schedule() error {
 	// prioritize the tasks, one distro at a time
 	taskQueueItems := make(map[string][]model.TaskQueueItem)
 
+	resDoneChan := make(chan struct{})
 	var errResult error
 	go func() {
+		defer close(resDoneChan)
 		for res := range distroSchedulerResultChan {
 			if res.err != nil {
 				errResult = fmt.Errorf("error scheduling tasks on distro %v: %v", res.distroId, err)
@@ -141,14 +143,18 @@ func (s *Scheduler) Schedule() error {
 		}
 	}()
 
+	// wait for the distro scheduler goroutines to complete to complete
+	wg.Wait()
+
+	// wait group has terminated so scheduler channel can be closed
+	close(distroSchedulerResultChan)
+
+	// wait for the results to be collected
+	<-resDoneChan
+
 	if errResult != nil {
 		return errResult
 	}
-
-	// wait for the distro scheduler goroutines to complete to complete
-	wg.Wait()
-	// wait group has terminated so scheduler channel can be closed
-	close(distroSchedulerResultChan)
 
 	// split distros by name
 	distrosByName := make(map[string]distro.Distro)
