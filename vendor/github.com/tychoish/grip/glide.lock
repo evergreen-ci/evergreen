@@ -1,0 +1,22 @@
+hash: 4ebbd5afba4a96a96d61429f912861f3c5e29158a4c58456bd77ed1c13fdb5b2
+updated: 2016-06-14T12:03:19.851358667-04:00
+imports:
+- name: github.com/coreos/go-systemd
+  version: 6dc8b843c670f2027cc26b164935635840a40526
+  subpackages:
+  - journal
+- name: github.com/bluele/slack
+  version: 1f14901342cf5347555c2a6b0160d1a94f9c46ea
+- name: github.com/mattn/go-xmpp
+  version: f4550b5399387339df5ce4c3f88c1ef85333bdd5
+- name: github.com/shirou/gopsutil
+  version: 93564b314264efac01934715fad4c355ed6af1c5
+- name: github.com/shirou/w32
+  version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
+- name: github.com/StackExchange/wmi
+  version: e54cbda6595d7293a7a468ccf9525f6bc8887f99
+- name: github.com/go-ole/go-ole
+  version: 5e9c030faf78847db7aa77e3661b9cc449de29b7
+  subpackages:
+  - oleutil
+devImports: []
