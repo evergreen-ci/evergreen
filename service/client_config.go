@@ -15,7 +15,7 @@ import (
 //
 // If there are no built clients, this returns an empty config
 // version, but does *not* error.
-func getClientConfig() (*evergreen.ClientConfig, error) {
+func getClientConfig(settings *evergreen.Settings) (*evergreen.ClientConfig, error) {
 	c := &evergreen.ClientConfig{}
 	c.LatestRevision = evergreen.ClientVersion
 
@@ -33,7 +33,7 @@ func getClientConfig() (*evergreen.ClientConfig, error) {
 		buildInfo := strings.Split(parts[len(parts)-2], "_")
 
 		c.ClientBinaries = append(c.ClientBinaries, evergreen.ClientBinary{
-			URL: fmt.Sprintf("/%s/%s", evergreen.ClientDirectory,
+			URL: fmt.Sprintf("%s/%s/%s", settings.Ui.Url, evergreen.ClientDirectory,
 				strings.Join(parts[len(parts)-2:], "/")),
 			OS:   buildInfo[0],
 			Arch: buildInfo[1],

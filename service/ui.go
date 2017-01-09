@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/tychoish/grip/slogger"
 )
 
 const (
@@ -65,7 +65,7 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 	}
 	uis.UserManager = userManager
 
-	clientConfig, err := getClientConfig()
+	clientConfig, err := getClientConfig(settings)
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
@@ -35,6 +34,7 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip/slogger"
 )
 
 type key int
@@ -69,7 +69,7 @@ func NewAPIServer(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*AP
 		return nil, err
 	}
 
-	clientConfig, err := getClientConfig()
+	clientConfig, err := getClientConfig(settings)
 	if err != nil {
 		return nil, err
 	}
