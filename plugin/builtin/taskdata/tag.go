@@ -14,7 +14,7 @@ import (
 )
 
 type TagContainer struct {
-	Tag string `bson:"_id" json:"tag`
+	Tag string `bson:"_id" json:"tag"`
 }
 
 func uiGetTags(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +107,39 @@ func SetTagForTask(taskId, name, tag string) error {
 		return err
 	}
 	return nil
+}
+func apiGetTagsForTask(w http.ResponseWriter, r *http.Request) {
+	t := plugin.GetTask(r)
+	if t == nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+
+	taskName := mux.Vars(r)["task_name"]
+	name := mux.Vars(r)["name"]
+	tagged, err := GetTagsForTask(t.Project, t.BuildVariant, taskName, name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	plugin.WriteJSON(w, http.StatusOK, tagged)
+}
+
+// GetTagsForTask gets all of the tasks with tags for the given task name and
+// build variant.
+func GetTagsForTask(project, buildVariant, taskName, name string) ([]TaskJSON, error) {
+	tagged := []TaskJSON{}
+	jsonQuery := db.Query(bson.M{
+		ProjectIdKey: project,
+		VariantKey:   buildVariant,
+		TaskNameKey:  taskName,
+		TagKey:       bson.M{"$exists": true, "$ne": ""},
+		NameKey:      name})
+	err := db.FindAllQ(collection, jsonQuery, &tagged)
+	if err != nil {
+		return nil, err
+	}
+	return tagged, nil
 }
 
 func uiGetTaskJSONByTag(w http.ResponseWriter, r *http.Request) {

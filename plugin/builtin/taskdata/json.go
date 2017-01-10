@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip/slogger"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -42,6 +42,7 @@ func (jsp *TaskJSONPlugin) Name() string {
 // GetRoutes returns an API route for serving patch data.
 func (jsp *TaskJSONPlugin) GetAPIHandler() http.Handler {
 	r := mux.NewRouter()
+	r.HandleFunc("/tags/{task_name}/{name}", apiGetTagsForTask)
 	r.HandleFunc("/history/{task_name}/{name}", apiGetTaskHistory)
 
 	r.HandleFunc("/data/{name}", apiInsertTask)
