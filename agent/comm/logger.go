@@ -144,10 +144,10 @@ func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile 
 
 	if logFile != "" {
 		localLogger, err = send.MakeFileLogger(logFile)
-		localLogger.SetName("local")
 		if err != nil {
 			return nil, err
 		}
+		localLogger.SetName("local")
 	}
 
 	apiSender := slogger.WrapAppender(apiLgr)
