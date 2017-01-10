@@ -63,6 +63,10 @@ func main() {
 			"GOARCH="+arch)
 	}
 
+	if system == "darwin" {
+		cmd.Env = append(cmd.Env, "PATH=/usr/bin")
+	}
+
 	fmt.Println(strings.Join(cmd.Env, " "), strings.Join(cmd.Args, " "))
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("problem building %s: %v\n", output, err)
