@@ -16,10 +16,12 @@ func TestSubtreeCleanup(t *testing.T) {
 		id := "testID"
 		buf := &bytes.Buffer{}
 		env := os.Environ()
+		env = append(env, "EVR_TASK_ID=bogus")
+		env = append(env, "EVR_AGENT_PID=12345")
 		env = append(env, fmt.Sprintf("EVR_TASK_ID=%v", id))
 		env = append(env, fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid()))
 		localCmd := &command.LocalCommand{
-			CmdString:   "echo 'start'; sleep 100; echo 'finish'",
+			CmdString:   "(while true; do sleep 1; done; echo 'finish')",
 			Stdout:      buf,
 			Stderr:      buf,
 			ScriptMode:  true,
@@ -31,7 +33,6 @@ func TestSubtreeCleanup(t *testing.T) {
 		Convey("running KillSpawnedProcs should kill the process before it finishes", func() {
 			So(KillSpawnedProcs(id, &plugintest.MockLogger{}), ShouldBeNil)
 			So(localCmd.Cmd.Wait(), ShouldNotBeNil)
-			So(buf.String(), ShouldContainSubstring, "start")
 			So(buf.String(), ShouldNotContainSubstring, "finish")
 		})
 	})

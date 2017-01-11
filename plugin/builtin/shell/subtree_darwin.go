@@ -4,18 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/tychoish/grip/slogger"
 )
-
-// These regexes are used to parse the output of 'ps' in order to detect if any processes listed
-// are descendants of the agent process.
-var taskEnvRegex = regexp.MustCompile("^(\\d+)\\s+.*?EVR_TASK_ID=(\\S+).*")
-var agentPidRegex = regexp.MustCompile("^(\\d+)\\s+.*?EVR_AGENT_PID=(\\d+).*")
 
 func trackProcess(key string, pid int, log plugin.Logger) {
 	// trackProcess is a noop on OSX, because we detect all the processes to be killed in
@@ -46,30 +40,24 @@ func cleanup(key string, log plugin.Logger) error {
 
 	// Look through the output of the "ps" command and find the processes we need to kill.
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		// Use the regexes to extract the fields look for our 'tracer' variables
-		matchTask := taskEnvRegex.FindStringSubmatch(line)
-		matchAgent := agentPidRegex.FindStringSubmatch(line)
-		if matchTask == nil || matchAgent == nil {
+		if len(line) == 0 {
 			continue
 		}
-		pidStr := matchTask[1]
-		taskId := matchTask[2]
-		agentPid := matchAgent[2]
+		splitLine := strings.Fields(line)
+		pid := splitLine[0]
+		env := splitLine[2:]
+		pidMarker := fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid())
+		taskMarker := fmt.Sprintf("EVR_TASK_ID=%v", key)
 
-		// If the process is from a different task, agent process,
-		// or is the agent itself, leave it alone.
-		if pidStr == myPid || taskId != key || agentPid != myPid {
-			continue
+		if pid != myPid && envHasMarkers(env, pidMarker, taskMarker) {
+			// add it to the list of processes to clean up
+			pidAsInt, err := strconv.Atoi(pid)
+			if err != nil {
+				log.LogSystem(slogger.ERROR, "Cleaup failed to convert from string to int: %v", err)
+				continue
+			}
+			pidsToKill = append(pidsToKill, pidAsInt)
 		}
-
-		// Otherwise add it to the list of processes to clean up
-		pidAsInt, err := strconv.Atoi(pidStr)
-		if err != nil {
-			continue
-		}
-
-		pidsToKill = append(pidsToKill, pidAsInt)
 	}
 
 	// Iterate through the list of processes to kill that we just built, and actually kill them.
