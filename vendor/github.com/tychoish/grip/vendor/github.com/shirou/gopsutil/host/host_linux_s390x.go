@@ -1,7 +1,7 @@
 // +build linux
 // +build s390x
 // Created by cgo -godefs - DO NOT EDIT
-// cgo -godefs vendor/github.com/shirou/gopsutil/host/types_linux.go
+// cgo -godefs types_linux.go
 
 package host
 
@@ -31,7 +31,7 @@ type utmp struct {
 	Host              [256]int8
 	Exit              exit_status
 	Session           int32
-	Tv                Timeval
+	Tv                timeval
 	Addr_v6           [4]int32
 	X__glibc_reserved [20]int8
 }
@@ -39,7 +39,7 @@ type exit_status struct {
 	Termination int16
 	Exit        int16
 }
-type Timeval struct {
+type timeval struct {
 	Sec  int64
 	Usec int64
 }

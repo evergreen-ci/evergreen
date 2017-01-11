@@ -62,6 +62,11 @@ func (a *appenderSender) SetLevel(l send.LevelInfo) error {
 
 func (a *appenderSender) Send(m message.Composer) {
 	if a.level.ShouldLog(m) {
-		_ = a.appender.Append(NewLog(m))
+		log, ok := m.(*Log)
+		if ok {
+			_ = a.appender.Append(log)
+		} else {
+			_ = a.appender.Append(NewLog(m))
+		}
 	}
 }

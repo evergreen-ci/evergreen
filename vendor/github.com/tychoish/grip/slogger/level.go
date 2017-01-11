@@ -27,6 +27,8 @@ func (l Level) String() string {
 		return "info"
 	case WARN:
 		return "warn"
+	case ERROR:
+		return "error"
 	default:
 		return ""
 	}
@@ -43,6 +45,8 @@ func (l Level) Priority() level.Priority {
 		return level.Info
 	case WARN:
 		return level.Warning
+	case ERROR:
+		return level.Error
 	default:
 		return level.Notice
 	}
@@ -50,7 +54,9 @@ func (l Level) Priority() level.Priority {
 
 func convertFromPriority(l level.Priority) Level {
 	switch l {
-	case level.Emergency, level.Alert, level.Critical, level.Error, level.Warning:
+	case level.Emergency, level.Alert, level.Critical, level.Error:
+		return ERROR
+	case level.Warning:
 		return WARN
 	case level.Notice, level.Info:
 		return INFO

@@ -19,7 +19,7 @@ func TestSlackError(t *testing.T) {
 
 	assert.True(strings.HasPrefix(msg.Resolve(), "foo bar"))
 
-	assert.Equal("", NewStackError("").Resolve())
+	assert.Equal("", NewStackError("").message)
 
 	assert.Equal(NewStackError("").Resolve(), NewStackError("").Error())
 	assert.Equal(msg.Resolve(), msg.Error())
