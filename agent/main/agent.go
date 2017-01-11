@@ -10,6 +10,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/level"
+	"github.com/tychoish/grip/send"
 )
 
 func init() {
@@ -40,7 +43,19 @@ func main() {
 
 	logFile := *logPrefix + logSuffix()
 
-	agt, err := agent.New(*apiServer, *taskId, *taskSecret, logFile, httpsCert, *pidFile)
+	sender, err := send.NewFileLogger("evg.agent", logFile,
+		send.LevelInfo{Default: level.Info, Threshold: level.Debug})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not initialize logger %v\n", err)
+		os.Exit(1)
+	}
+	if err = grip.SetSender(sender); err != nil {
+		fmt.Fprintf(os.Stderr, "could not configure logger %v\n", err)
+		os.Exit(1)
+	}
+	grip.SetName("evg-agent")
+
+	agt, err := agent.New(*apiServer, *taskId, *taskSecret, httpsCert, *pidFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
@@ -73,7 +88,7 @@ func main() {
 			break
 		}
 
-		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, logFile, httpsCert, *pidFile)
+		agt, err = agent.New(*apiServer, resp.TaskId, resp.TaskSecret, httpsCert, *pidFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
 			exitCode = 1

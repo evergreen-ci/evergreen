@@ -10,6 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/message"
 	"github.com/tychoish/grip/send"
 	"github.com/tychoish/grip/slogger"
 )
@@ -48,12 +50,20 @@ func (lgr *StreamLogger) GetSystemLogWriter(level slogger.Level) io.Writer {
 	}
 }
 
+// appendMessages sends a log message to every component sender in a slogger.Logger
+func appendMessages(logger *slogger.Logger, msg *slogger.Log) {
+	for _, sender := range logger.Appenders {
+		sender.Send(msg)
+	}
+}
+
 // LogLocal logs a message to the agent logs on the machine's local file system.
 //
 // Anything logged by this method will not be sent to the server, so only use it
 // to log information that would only be useful when debugging locally.
 func (lgr *StreamLogger) LogLocal(level slogger.Level, messageFmt string, args ...interface{}) {
-	lgr.Local.Logf(level, messageFmt, args...)
+	msg := slogger.NewPrefixedLog(lgr.Local.Name, message.NewFormattedMessage(level.Priority(), messageFmt, args...))
+	appendMessages(lgr.Local, msg)
 }
 
 // LogExecution logs a message related to the agent's internal workings.
@@ -61,7 +71,8 @@ func (lgr *StreamLogger) LogLocal(level slogger.Level, messageFmt string, args .
 // Internally this is used to log things like heartbeats and command internals that
 // would pollute the regular task test output.
 func (lgr *StreamLogger) LogExecution(level slogger.Level, messageFmt string, args ...interface{}) {
-	lgr.Execution.Logf(level, messageFmt, args...)
+	msg := slogger.NewPrefixedLog(lgr.Execution.Name, message.NewFormattedMessage(level.Priority(), messageFmt, args...))
+	appendMessages(lgr.Execution, msg)
 }
 
 // LogTask logs a message to the task's logs.
@@ -69,14 +80,16 @@ func (lgr *StreamLogger) LogExecution(level slogger.Level, messageFmt string, ar
 // This log type is for main task input and output. LogTask should be used for logging
 // first-class information like test results and shell script output.
 func (lgr *StreamLogger) LogTask(level slogger.Level, messageFmt string, args ...interface{}) {
-	lgr.Task.Logf(level, messageFmt, args...)
+	msg := slogger.NewPrefixedLog(lgr.Task.Name, message.NewFormattedMessage(level.Priority(), messageFmt, args...))
+	appendMessages(lgr.Task, msg)
 }
 
 // LogSystem logs passive system messages.
 //
 // Internally this is used for periodically logging process information and CPU usage.
 func (lgr *StreamLogger) LogSystem(level slogger.Level, messageFmt string, args ...interface{}) {
-	lgr.System.Logf(level, messageFmt, args...)
+	msg := slogger.NewPrefixedLog(lgr.System.Name, message.NewFormattedMessage(level.Priority(), messageFmt, args...))
+	appendMessages(lgr.System, msg)
 }
 
 // Flush flushes the logs to the server. Returns immediately.
@@ -138,28 +151,14 @@ func (cmdLgr *CommandLogger) Flush() {
 
 // NewStreamLogger creates a StreamLogger wrapper for the apiLogger with a given timeoutWatcher.
 // Any logged messages on the StreamLogger will reset the TimeoutWatcher.
-func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile string) (*StreamLogger, error) {
-	var err error
-	localLogger := slogger.StdOutAppender()
-
-	if logFile != "" {
-		localLogger, err = send.MakeFileLogger(logFile)
-		if err != nil {
-			return nil, err
-		}
-		localLogger.SetName("local")
-	}
-
-	apiSender := slogger.WrapAppender(apiLgr)
-	localLoggers := []send.Sender{localLogger}
-	defaultLoggers := []send.Sender{localLogger, apiSender}
-
-	timeoutLogger := slogger.WrapAppender(&TimeoutResetLogger{timeoutWatcher, slogger.WrapAppender(apiLgr)})
+func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger) (*StreamLogger, error) {
+	defaultLoggers := []send.Sender{slogger.WrapAppender(apiLgr), grip.GetSender()}
+	timeoutLogger := slogger.WrapAppender(&TimeoutResetLogger{timeoutWatcher, apiLgr})
 
 	return &StreamLogger{
 		Local: &slogger.Logger{
 			Name:      "local",
-			Appenders: localLoggers,
+			Appenders: []send.Sender{grip.GetSender()},
 		},
 
 		System: &slogger.Logger{
@@ -169,7 +168,7 @@ func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile 
 
 		Task: &slogger.Logger{
 			Name:      model.TaskLogPrefix,
-			Appenders: []send.Sender{localLogger, timeoutLogger},
+			Appenders: []send.Sender{timeoutLogger, grip.GetSender()},
 		},
 
 		Execution: &slogger.Logger{
@@ -183,15 +182,14 @@ func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger, logFile 
 // each time any log message is appended to it.
 type TimeoutResetLogger struct {
 	*TimeoutWatcher
-	send.Sender
+	*APILogger
 }
 
 // Append passes the message to the underlying appender, and resets the timeout
 func (trLgr *TimeoutResetLogger) Append(log *slogger.Log) error {
 	trLgr.TimeoutWatcher.CheckIn()
-	trLgr.Send(log)
 
-	return nil
+	return trLgr.APILogger.Append(log)
 }
 
 // APILogger is a slogger.Appender which makes a call to the
@@ -279,12 +277,17 @@ func (apiLgr *APILogger) Append(log *slogger.Log) error {
 }
 
 func (apiLgr *APILogger) sendLogs(flushMsgs []model.LogMessage) int {
+	start := time.Now()
 	apiLgr.flushLock.Lock()
 	defer apiLgr.flushLock.Unlock()
 	if len(flushMsgs) == 0 {
 		return 0
 	}
-	apiLgr.TaskCommunicator.Log(flushMsgs)
+
+	grip.CatchError(apiLgr.TaskCommunicator.Log(flushMsgs))
+	grip.Infof("sent %d log messages to api server, in %s",
+		len(flushMsgs), time.Since(start))
+
 	return len(flushMsgs)
 }
 
@@ -297,9 +300,10 @@ func (apiLgr *APILogger) FlushAndWait() int {
 		return 0
 	}
 
-	err := apiLgr.sendLogs(apiLgr.messages)
+	numMessages := apiLgr.sendLogs(apiLgr.messages)
 	apiLgr.messages = make([]model.LogMessage, 0, apiLgr.SendAfterLines)
-	return err
+
+	return numMessages
 }
 
 // This function assumes that the caller already holds apiLgr.appendLock
@@ -313,6 +317,7 @@ func (apiLgr *APILogger) flushInternal() {
 	go apiLgr.sendLogs(messagesToSend)
 }
 
+// Flush pushes log messages (asynchronously, without waiting for messages to send.)
 func (apiLgr *APILogger) Flush() {
 	apiLgr.appendLock.Lock()
 	defer apiLgr.appendLock.Unlock()

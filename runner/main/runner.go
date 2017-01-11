@@ -12,13 +12,14 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/notify"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	. "github.com/evergreen-ci/evergreen/runner"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 func init() {
@@ -58,6 +59,7 @@ var (
 )
 
 func main() {
+	grip.SetName("runner")
 	settings := evergreen.GetSettingsOrExit()
 	if settings.Runner.LogFile != "" {
 		evergreen.SetLogger(settings.Runner.LogFile)

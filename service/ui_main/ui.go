@@ -10,13 +10,14 @@ import (
 	textTemplate "text/template"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
@@ -80,6 +81,7 @@ func main() {
 		fmt.Println("WARNING: Error initializing plugins:", err)
 	}
 
+	grip.SetName("ui-server")
 	n := negroni.New()
 	n.Use(negroni.NewStatic(http.Dir(webHome)))
 	n.Use(service.NewLogger())

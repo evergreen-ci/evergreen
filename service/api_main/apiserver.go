@@ -8,13 +8,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
@@ -34,6 +35,8 @@ func init() {
 }
 
 func main() {
+	grip.SetName("api-server")
+
 	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 	if settings.Api.LogFile != "" {

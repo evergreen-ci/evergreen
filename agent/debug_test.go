@@ -16,7 +16,7 @@ func TestAgentDebugHandler(t *testing.T) {
 	setupTlsConfigs(t)
 	for tlsString, tlsConfig := range tlsConfigs {
 		Convey("With an agent that has not been started", t, func() {
-			testAgent, err := New("", "task1", "task1", "", testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := New("", "task1", "task1", testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			Convey("no task or command should be listed", func() {
 				task, command := taskAndCommand(testAgent)
@@ -30,7 +30,7 @@ func TestAgentDebugHandler(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
-			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, "", testConfig.Api.HttpsCert, testPidFile)
+			testAgent, err := New(testServer.URL, testTask.Id, testTask.Secret, testConfig.Api.HttpsCert, testPidFile)
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
 

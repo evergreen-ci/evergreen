@@ -386,7 +386,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 }
 
 // New creates a new agent to run a given task.
-func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFilePath string) (*Agent, error) {
+func New(apiServerURL, taskId, taskSecret, cert, pidFilePath string) (*Agent, error) {
 	sh := &SignalHandler{}
 	sh.makeChannels()
 
@@ -402,7 +402,7 @@ func New(apiServerURL, taskId, taskSecret, logFile, cert, pidFilePath string) (*
 	idleTimeoutWatcher.SetDuration(DefaultIdleTimeout)
 
 	// set up timeout logger, local and API logger streams
-	streamLogger, err := comm.NewStreamLogger(idleTimeoutWatcher, apiLogger, logFile)
+	streamLogger, err := comm.NewStreamLogger(idleTimeoutWatcher, apiLogger)
 	if err != nil {
 		return nil, err
 	}
