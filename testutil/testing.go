@@ -6,10 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+)
+
+const (
+	envAll      = "EVERGREEN_ALL"
+	envOverride = "SETTINGS_OVERRIDE"
 )
 
 var (
@@ -51,7 +55,7 @@ func SkipTestUnlessAll(t *testing.T, testName string) {
 	// Note: in the future we could/should be able to eliminate
 	// the testName arg by using runtime.Caller(1)
 
-	if !(*runAllTests) || !strings.Contains(os.Getenv("TEST_ARGS"), "evergreen.all") {
+	if !(*runAllTests) && os.Getenv(envAll) == "" {
 		t.Skip(fmt.Sprintf("skipping %v because 'evergreen.all' is not specified...",
 			testName))
 	}
@@ -65,18 +69,10 @@ func ConfigureIntegrationTest(t *testing.T, testSettings *evergreen.Settings,
 	// make sure an override file is provided
 	if (*settingsOverride) == "" {
 		msg := "Integration tests need a settings override file to be provided"
-		keyName := "evergreen.settingsOverride"
-		if !strings.Contains(os.Getenv("TEST_ARGS"), keyName) {
+		if os.Getenv(envOverride) == "" {
 			panic(msg)
-		}
-		for _, k := range os.Environ() {
-			if strings.HasPrefix(k, keyName) {
-				parts := strings.Split(k, "=")
-				if len(parts) < 2 {
-					panic(msg)
-				}
-				*settingsOverride = parts[1]
-			}
+		} else {
+			*settingsOverride = os.Getenv(envOverride)
 		}
 	}
 
