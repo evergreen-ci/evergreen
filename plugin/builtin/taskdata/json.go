@@ -72,7 +72,7 @@ func (hwp *TaskJSONPlugin) GetUIHandler() http.Handler {
 
 func fixPatchInHistory(taskId string, base *task.Task, history []TaskJSON) ([]TaskJSON, error) {
 	var jsonForTask *TaskJSON
-	err := db.FindOneQ(collection, db.Query(bson.M{"task_id": taskId}), jsonForTask)
+	err := db.FindOneQ(collection, db.Query(bson.M{"task_id": taskId}), &jsonForTask)
 	if err != nil {
 		return nil, err
 	}

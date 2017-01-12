@@ -76,6 +76,7 @@ func apiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 	history, err := GetTaskHistory(t, mux.Vars(r)["name"])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, history)
 }
@@ -94,6 +95,7 @@ func uiGetTaskHistory(w http.ResponseWriter, r *http.Request) {
 	history, err := GetTaskHistory(t, mux.Vars(r)["name"])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	plugin.WriteJSON(w, http.StatusOK, history)
 }
