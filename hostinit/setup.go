@@ -10,10 +10,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip/slogger"
 	"gopkg.in/mgo.v2"
 )
 
@@ -388,12 +389,16 @@ func LocateCLIBinary(settings *evergreen.Settings, architecture string) (string,
 		clientsSubDir = settings.ClientBinariesDir
 	}
 
-	var path string
-	if filepath.IsAbs(clientsSubDir) {
-		path = filepath.Join(clientsSubDir, architecture, "main")
-	} else {
-		path = filepath.Join(evergreen.FindEvergreenHome(), clientsSubDir, architecture, "main")
+	binaryName := "evergreen"
+	if strings.HasPrefix("windows", architecture) {
+		binaryName += ".exe"
 	}
+
+	path := filepath.Join(clientsSubDir, architecture, binaryName)
+	if !filepath.IsAbs(clientsSubDir) {
+		path = filepath.Join(evergreen.FindEvergreenHome(), path)
+	}
+
 	_, err := os.Stat(path)
 	if err != nil {
 		return path, err
