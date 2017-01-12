@@ -47,7 +47,8 @@ func (self *LoggingWriter) Write(p []byte) (n int, err error) {
 		toString := string(val)
 		if strings.Trim(toString, " ") != "" {
 			for _, s := range self.Logger.Appenders {
-				s.Send(message.NewDefaultMessage(self.Severity, toString))
+				s.Send(slogger.NewPrefixedLog(self.Logger.Name,
+					message.NewDefaultMessage(self.Severity, toString)))
 			}
 		}
 	}
