@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -67,7 +68,6 @@ func TestManifestLoad(t *testing.T) {
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestManifestFetch")
-
 	Convey("With a SimpleRegistry and test project file", t, func() {
 
 		registry := plugin.NewSimpleRegistry()
@@ -80,7 +80,8 @@ func TestManifestLoad(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
-		taskConfig, err := plugintest.CreateTestConfig("testdata/mongodb-mongo-master.yml", t)
+		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
+			"testdata", "mongodb-mongo-master.yml"), t)
 		testutil.HandleTestingErr(err, t, "Couldnt get task config from config file")
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())

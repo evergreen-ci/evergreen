@@ -1,6 +1,7 @@
 package evergreen
 
 import (
+	"strings"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -23,8 +24,7 @@ func TestLoggingWriter(t *testing.T) {
 		Convey("data written to Writer should match data appended", func() {
 			So(sender.Len(), ShouldEqual, 1)
 
-			msg := sender.GetMessage()
-			So(msg.Rendered, ShouldEqual, testLogLine)
+			So(strings.HasSuffix(sender.GetMessage().Rendered, testLogLine), ShouldBeTrue)
 		})
 	})
 }

@@ -2,6 +2,7 @@ package gotest_test
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -27,6 +28,7 @@ func reset(t *testing.T) {
 }
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
+	currentDirectory := testutil.GetDirectoryOfFile()
 	testConfig := evergreen.TestConfig()
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
@@ -45,7 +47,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := plugintest.CreateTestConfig("testdata/bad.yml", t)
+			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(currentDirectory, "testdata", "bad.yml"), t)
 			// manually override working dirctory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
 			// to a temporary directory
@@ -92,6 +94,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 }
 
 func TestGotestPluginOnPassingTests(t *testing.T) {
+	currentDirectory := testutil.GetDirectoryOfFile()
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 		testConfig := evergreen.TestConfig()
@@ -110,7 +113,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := plugintest.CreateTestConfig("testdata/good.yml", t)
+			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(currentDirectory, "testdata", "good.yml"), t)
 			// manually override working directory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
 			// to a temporary directory
@@ -178,7 +181,10 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 		Convey("test command should get a copy of custom environment variables", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := plugintest.CreateTestConfig("testdata/env.yml", t)
+			taskConfig, err := plugintest.CreateTestConfig(
+				filepath.Join(testutil.GetDirectoryOfFile(),
+					"testdata", "env.yml"), t)
+
 			// manually override working directory to the main repo, since this
 			// is much easier than copying over the required testing dependencies
 			// to a temporary directory
@@ -191,7 +197,7 @@ func TestGotestPluginWithEnvironmentVariables(t *testing.T) {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
-					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
+					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v", command)
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
 					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}

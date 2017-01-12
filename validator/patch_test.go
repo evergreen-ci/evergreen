@@ -3,6 +3,7 @@ package validator
 import (
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -40,6 +41,11 @@ var (
 func init() {
 	db.SetGlobalSessionProvider(
 		db.SessionFactoryFromConfig(patchTestConfig))
+
+	current := testutil.GetDirectoryOfFile()
+	patchFile = filepath.Join(current, patchFile)
+	newConfigFilePath = filepath.Join(current, newConfigFilePath)
+	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)
 }
 
 func clearAll(t *testing.T) {

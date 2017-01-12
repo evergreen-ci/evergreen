@@ -197,7 +197,8 @@ func TestPluginFunctions(t *testing.T) {
 			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 
-			taskConfig, err := createTestConfig("testdata/plugin_project_functions.yml", t)
+			taskConfig, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
+				"testdata", "plugin_project_functions.yml"), t)
 			testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
 			Convey("all commands in project file should parse successfully", func() {
@@ -385,6 +386,7 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	//ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 
+	currentDirectory := testutil.GetDirectoryOfFile()
 	testutil.HandleTestingErr(
 		db.ClearCollections(
 			task.Collection, build.Collection, host.Collection,
@@ -425,9 +427,11 @@ func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task
 	}
 	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
 	if isPatch {
-		mainPatchContent, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.patch"))
+		mainPatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
+			"testdata", "test.patch"))
 		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
-		modulePatchContent, err := ioutil.ReadFile("testdata/testmodule.patch")
+		modulePatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
+			"testdata", "testmodule.patch"))
 		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
 
 		p := &patch.Patch{

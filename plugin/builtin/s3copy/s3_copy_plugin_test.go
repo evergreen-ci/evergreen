@@ -1,6 +1,7 @@
 package s3copy_test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -45,7 +46,8 @@ func TestS3CopyPluginExecution(t *testing.T) {
 
 		//server.InstallPlugin(s3CopyPlugin)
 
-		taskConfig, err := plugintest.CreateTestConfig("testdata/plugin_s3_copy.yml", t)
+		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
+			"testdata", "plugin_s3_copy.yml"), t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		taskConfig.WorkDir = "."
 
