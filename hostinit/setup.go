@@ -390,7 +390,7 @@ func LocateCLIBinary(settings *evergreen.Settings, architecture string) (string,
 	}
 
 	binaryName := "evergreen"
-	if strings.HasPrefix("windows", architecture) {
+	if strings.HasPrefix(architecture, "windows") {
 		binaryName += ".exe"
 	}
 
