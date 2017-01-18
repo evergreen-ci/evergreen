@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 type taskStatusContent struct {
@@ -127,7 +126,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	destTask.MinQueuePos, err = model.FindMinimumQueuePositionForTask(destTask.Id)
 	if err != nil {
 		msg := fmt.Sprintf("Error calculating task queue position for '%v'", srcTask.Id)
-		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		grip.Errorf("%v: %+v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 	}
@@ -156,7 +155,7 @@ func (restapi restAPI) getTaskInfo(w http.ResponseWriter, r *http.Request) {
 	entries, err := artifact.FindAll(artifact.ByTaskId(srcTask.Id))
 	if err != nil {
 		msg := fmt.Sprintf("Error finding task '%v'", srcTask.Id)
-		evergreen.Logger.Logf(slogger.ERROR, "%v: %v", msg, err)
+		grip.Errorf("%v: %+v", msg, err)
 		restapi.WriteJSON(w, http.StatusInternalServerError, responseError{Message: msg})
 		return
 

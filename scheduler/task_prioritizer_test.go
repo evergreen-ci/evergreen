@@ -6,7 +6,9 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -14,11 +16,8 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(taskComparatorTestConf))
-	if taskComparatorTestConf.Scheduler.LogFile != "" {
-		evergreen.SetLogger(taskComparatorTestConf.Scheduler.LogFile)
-	}
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskComparatorTestConf))
+	grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile))
 }
 
 func TestCmpBasedTaskComparator(t *testing.T) {

@@ -7,8 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 type LocalCommand struct {
@@ -87,7 +86,7 @@ func (lc *LocalCommand) Stop() error {
 	if lc.Cmd != nil && lc.Cmd.Process != nil {
 		return lc.Cmd.Process.Kill()
 	}
-	evergreen.Logger.Logf(slogger.WARN, "Trying to stop command but Cmd / Process was nil")
+	grip.Warning("Trying to stop command but Cmd / Process was nil")
 	return nil
 }
 

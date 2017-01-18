@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -42,9 +43,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	if testConfig.RepoTracker.LogFile != "" {
-		evergreen.SetLogger(testConfig.RepoTracker.LogFile)
-	}
+	grip.SetSender(testutil.SetupTestSender(testConfig.RepoTracker.LogFile))
 }
 
 func dropTestDB(t *testing.T) {

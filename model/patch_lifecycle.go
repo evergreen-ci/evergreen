@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -92,8 +92,7 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 			continue
 		}
 		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, pair.Variant, p.Activated, taskNames)
-		evergreen.Logger.Logf(slogger.INFO,
-			"Creating build for version %v, buildVariant %v, activated = %v",
+		grip.Infof("Creating build for version %s, buildVariant %s, activated=%t",
 			patchVersion.Id, pair.Variant, p.Activated)
 		if err != nil {
 			return err

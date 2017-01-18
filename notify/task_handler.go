@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -55,14 +54,14 @@ func (self *TaskNotificationHandler) getRecentlyFinishedTasksWithStatus(key *Not
 		// Copy by value to make pointer safe
 		curr := currentTask
 		if status == "" || curr.Status == status {
-			evergreen.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
+			grip.Debugf("Adding '%s' on %s %s notification",
 				curr.Id, key.Project, key.NotificationName)
 
 			// get the task's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(curr.Project); err != nil {
-				evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
-					"for task ”%v”: %v", curr.Id, err)
+				grip.Warningf("Unable to find project ref for task '%s': %v",
+					curr.Id, err)
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
 			}
@@ -85,7 +84,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 	// *This could potential break some buildlogger links when MCI changes version as in-progress
 	// tasks will still be using the previous version number.*
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error getting MCI version: %v", err)
+		grip.Errorln("Error getting MCI version:", err)
 		return
 	}
 

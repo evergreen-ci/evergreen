@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 )
 
 // responsible for cleaning up any tasks that need to be stopped
@@ -22,8 +22,7 @@ type TaskMonitor struct {
 // need to be cleaned up and taking appropriate action. takes in a map
 // of project name -> project info
 func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
-
-	evergreen.Logger.Logf(slogger.INFO, "Cleaning up tasks...")
+	grip.Info("Cleaning up tasks...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -49,7 +48,7 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Done cleaning up tasks")
+	grip.Info("Done cleaning up tasks")
 
 	return errors
 
@@ -57,23 +56,21 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 
 // clean up the passed-in slice of tasks
 func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Project) []error {
-
-	evergreen.Logger.Logf(slogger.INFO, "Cleaning up %v tasks...", len(taskWrappers))
+	grip.Infof("Cleaning up %d tasks...", len(taskWrappers))
 
 	// used to store any errors that occur
 	var errors []error
 
 	for _, wrapper := range taskWrappers {
 
-		evergreen.Logger.Logf(slogger.INFO, "Cleaning up task %v, for reason '%v'",
-			wrapper.task.Id, wrapper.reason)
+		grip.Infof("Cleaning up task %s, for reason '%s'", wrapper.task.Id, wrapper.reason)
 
 		// clean up the task. continue on error to let others be cleaned up
 		err := cleanUpTask(wrapper, projects)
 		if err != nil {
 			errors = append(errors, fmt.Errorf("error cleaning up task %v: %v", wrapper.task.Id, err))
 		} else {
-			evergreen.Logger.Logf(slogger.INFO, "Successfully cleaned up task %v", wrapper.task.Id)
+			grip.Infoln("Successfully cleaned up task", wrapper.task.Id)
 		}
 
 	}
@@ -100,7 +97,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 
 	// if there's no relevant host, something went wrong
 	if host == nil {
-		evergreen.Logger.Logf(slogger.ERROR, "no entry found for host %v", wrapper.task.HostId)
+		grip.Errorln("no entry found for host:", wrapper.task.HostId)
 		return wrapper.task.MarkUnscheduled()
 	}
 

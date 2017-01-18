@@ -15,14 +15,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	gcec2 "github.com/dynport/gocloud/aws/ec2"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -162,15 +161,19 @@ func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, erro
 
 	reservation := resp.Reservations
 	if len(reservation) < 1 {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "No reservation found for "+
-			"instance id: %v", instanceId)
+		err = fmt.Errorf("No reservation found for instance id: %s", instanceId)
+		grip.Error(err)
+		return nil, err
 	}
 
 	instances := reservation[0].Instances
 	if len(instances) < 1 {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "'%v' was not found in "+
-			"reservation '%v'", instanceId, resp.Reservations[0].ReservationId)
+		err = fmt.Errorf("'%v' was not found in reservation '%v'",
+			instanceId, resp.Reservations[0].ReservationId)
+		grip.Error(err)
+		return nil, err
 	}
+
 	return &instances[0], nil
 }
 
@@ -320,7 +323,7 @@ func (cpf *cachedEBSPriceFetcher) FetchEBSPrices() (map[string]float64, error) {
 func fetchEBSPricing() (map[string]float64, error) {
 	// there is no true EBS pricing API, so we have to wrangle it from EC2's frontend
 	endpoint := "http://a0.awsstatic.com/pricing/1/ebs/pricing-ebs.js"
-	evergreen.Logger.Logf(slogger.DEBUG, "Loading EBS pricing from %v", endpoint)
+	grip.Debugln("Loading EBS pricing from", endpoint)
 	resp, err := http.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -501,7 +504,7 @@ func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
 	cpf.prices = map[odInfo]float64{}
 	// the On Demand pricing API is not part of the normal EC2 API
 	endpoint := "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/index.json"
-	evergreen.Logger.Logf(slogger.DEBUG, "Loading On Demand pricing from %v", endpoint)
+	grip.Debugln("Loading On Demand pricing from", endpoint)
 	resp, err := http.Get(endpoint)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -509,7 +512,7 @@ func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
 	if err != nil {
 		return fmt.Errorf("fetching %v: %v", endpoint, err)
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "Parsing On Demand pricing")
+	grip.Debug("Parsing On Demand pricing")
 	details := struct {
 		Terms    Terms
 		Products map[string]struct {

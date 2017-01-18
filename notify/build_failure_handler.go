@@ -1,10 +1,10 @@
 package notify
 
 import (
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/web"
+	"github.com/tychoish/grip"
 )
 
 // Handler for build failure notifications. Implements NotificationHandler from
@@ -21,8 +21,9 @@ func (self *BuildFailureHandler) GetNotifications(ae *web.App, configName string
 	if key.NotificationRequester == evergreen.PatchVersionRequester {
 		preface = patchFailurePreface
 	}
-	triggeredNotifications, err :=
-		self.getRecentlyFinishedBuildsWithStatus(key, evergreen.BuildFailed, preface, failureSubject)
+
+	triggeredNotifications, err := self.getRecentlyFinishedBuildsWithStatus(key,
+		evergreen.BuildFailed, preface, failureSubject)
 
 	if err != nil {
 		return nil, err
@@ -31,7 +32,7 @@ func (self *BuildFailureHandler) GetNotifications(ae *web.App, configName string
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, configName, &triggered)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.WARN, "Error templating notification for build `%v`: %v",
+			grip.Warningf("Error templating notification for build '%s': %+v",
 				triggered.Current.Id, err)
 			continue
 		}

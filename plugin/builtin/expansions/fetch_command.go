@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 const FetchVarsRoute = "fetch_vars"
@@ -70,7 +70,7 @@ func FetchVarsHandler(w http.ResponseWriter, r *http.Request) {
 	projectVars, err := model.FindOneProjectVars(task.Project)
 	if err != nil {
 		message := fmt.Sprintf("Failed to fetch vars for task %v: %v", task.Id, err)
-		evergreen.Logger.Logf(slogger.ERROR, message)
+		grip.Error(message)
 		http.Error(w, message, http.StatusInternalServerError)
 		return
 	}

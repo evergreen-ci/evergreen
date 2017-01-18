@@ -22,7 +22,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
-	evergreen.SetLogger("/tmp/task_test.log")
+	testutil.SetLogger("/tmp/task_test.log")
 }
 
 var depTaskIds = []Dependency{

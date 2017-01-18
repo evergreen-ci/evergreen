@@ -3,9 +3,8 @@ package notify
 import (
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 // Interface around an email that may be sent as a notification. Provides
@@ -53,7 +52,7 @@ type BuildEmail struct {
 func (self *BuildEmail) ShouldSkip(skipVariants []string) bool {
 	buildVariant := self.Trigger.Current.BuildVariant
 	if util.SliceContains(skipVariants, buildVariant) {
-		evergreen.Logger.Logf(slogger.DEBUG, "Skipping buildvariant %v “%v” notification: “%v”",
+		grip.Debugf("Skipping buildvariant %s '%s' notification: '%s'",
 			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
 		return true
 	}
@@ -79,7 +78,7 @@ func (self *TaskEmail) ShouldSkip(skipVariants []string) bool {
 	// skip the buildvariant notification if necessary
 	buildVariant := self.Trigger.Current.BuildVariant
 	if util.SliceContains(skipVariants, buildVariant) {
-		evergreen.Logger.Logf(slogger.DEBUG, "Skipping buildvariant %v “%v” notification: “%v”",
+		grip.Debugf("Skipping buildvariant %s '%s' notification: '%s'",
 			buildVariant, self.Trigger.Key.NotificationName, self.Subject)
 		return true
 	}

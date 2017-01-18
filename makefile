@@ -75,7 +75,6 @@ lintArgs += --exclude="file is not goimported" # test files aren't imported
 lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude "error return value not checked \(defer.*"
-lintArgs += --exclude "error return value not checked \(evergreen.Logger.Errorf.*"
 # end lint suppressions
 
 

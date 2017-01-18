@@ -1,10 +1,9 @@
 package scheduler
 
 import (
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 )
 
 // TaskQueuePersister is responsible for taking a task queue for a particular distro
@@ -39,8 +38,7 @@ func (self *DBTaskQueuePersister) PersistTaskQueue(distro string,
 		})
 
 		if err := t.SetExpectedDuration(expectedTaskDuration); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error updating projected task "+
-				"duration for %v: %v", t.Id, err)
+			grip.Errorf("Error updating projected task duration for %s: %+v", t.Id, err)
 		}
 	}
 	return taskQueue, model.UpdateTaskQueue(distro, taskQueue)

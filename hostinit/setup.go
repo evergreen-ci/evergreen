@@ -26,7 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2"
 )
 
@@ -55,7 +55,7 @@ type HostInit struct {
 func (init *HostInit) setupReadyHosts() error {
 	// set SSH timeout duration
 	if timeoutSecs := init.Settings.HostInit.SSHTimeoutSeconds; timeoutSecs <= 0 {
-		evergreen.Logger.Logf(slogger.WARN, "SSH timeout set to %vs (<= 0s) using %vs instead", timeoutSecs, SSHTimeoutSeconds)
+		grip.Warningf("SSH timeout set to %vs (<= 0s) using %vs instead", timeoutSecs, SSHTimeoutSeconds)
 	} else {
 		SSHTimeoutSeconds = timeoutSecs
 	}
@@ -66,8 +66,7 @@ func (init *HostInit) setupReadyHosts() error {
 		return fmt.Errorf("error fetching uninitialized hosts: %v", err)
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "There are %v uninitialized hosts",
-		len(uninitializedHosts))
+	grip.Debugf("There are %d uninitialized hosts", len(uninitializedHosts))
 
 	// used for making sure we don't exit before a setup script is done
 	wg := &sync.WaitGroup{}
@@ -77,18 +76,17 @@ func (init *HostInit) setupReadyHosts() error {
 		// check whether or not the host is ready for its setup script to be run
 		ready, err := init.IsHostReady(&h)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error checking host %v for readiness: %v",
-				h.Id, err)
+			grip.Infof("Error checking host %s for readiness: %+v", h.Id, err)
 			continue
 		}
 
 		// if the host isn't ready (for instance, it might not be up yet), skip it
 		if !ready {
-			evergreen.Logger.Logf(slogger.DEBUG, "Host %v not ready for setup", h.Id)
+			grip.Debugf("Host %s not ready for setup", h.Id)
 			continue
 		}
 
-		evergreen.Logger.Logf(slogger.INFO, "Running setup script for host %v", h.Id)
+		grip.Infoln("Running setup script for host", h.Id)
 
 		// kick off the setup, in its own goroutine, so pending setups don't have
 		// to wait for it to finish
@@ -96,7 +94,7 @@ func (init *HostInit) setupReadyHosts() error {
 		go func(h host.Host) {
 
 			if err := init.ProvisionHost(&h); err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Error provisioning host %v: %v", h.Id, err)
+				grip.Errorf("Error provisioning host %s: %+v", h.Id, err)
 
 				// notify the admins of the failure
 				subject := fmt.Sprintf("%v Evergreen provisioning failure on %v",
@@ -105,7 +103,7 @@ func (init *HostInit) setupReadyHosts() error {
 				message := fmt.Sprintf("Provisioning failed on %v host -- %v: see %v",
 					h.Distro.Id, h.Id, hostLink)
 				if err := notify.NotifyAdmins(subject, message, init.Settings); err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+					grip.Errorf("Error sending email: %+v", err)
 				}
 			}
 
@@ -221,7 +219,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 	err = cloudMgr.OnUp(targetHost)
 	if err != nil {
 		// if this fails it is probably due to an API hiccup, so we keep going.
-		evergreen.Logger.Logf(slogger.WARN, "OnUp callback failed for host '%v': '%v'", targetHost.Id, err)
+		grip.Warningf("OnUp callback failed for host '%v': '%+v'", targetHost.Id, err)
 	}
 	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
 	if err != nil {
@@ -333,16 +331,16 @@ func (init *HostInit) expandScript(s string) (string, error) {
 func (init *HostInit) ProvisionHost(h *host.Host) error {
 
 	// run the setup script
-	evergreen.Logger.Logf(slogger.INFO, "Setting up host %v", h.Id)
+	grip.Infoln("Setting up host", h.Id)
 	output, err := init.setupHost(h)
 
 	// deal with any errors that occurred while running the setup
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error running setup script: %v", err)
+		grip.Errorf("Error running setup script: %+v", err)
 
 		// another hostinit process beat us there
 		if err == ErrHostAlreadyInitializing {
-			evergreen.Logger.Logf(slogger.DEBUG, "Attempted to initialize already initializing host %v", h.Id)
+			grip.Debugln("Attempted to initialize already initializing host %s", h.Id)
 			return nil
 		}
 
@@ -351,35 +349,35 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 
 		// setup script failed, mark the host's provisioning as failed
 		if err := h.SetUnprovisioned(); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "unprovisioning host %v failed: %v", h.Id, err)
+			grip.Errorf("unprovisioning host %s failed: %+v", h.Id, err)
 		}
 
-		return fmt.Errorf("error initializing host %v: %v", h.Id, err)
+		return fmt.Errorf("error initializing host %s: %+v", h.Id, err)
 
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Setup complete for host %v", h.Id)
+	grip.Infoln("Setup complete for host %s", h.Id)
 
 	if h.ProvisionOptions != nil &&
 		h.ProvisionOptions.LoadCLI &&
 		h.ProvisionOptions.OwnerId != "" {
-		evergreen.Logger.Logf(slogger.INFO, "Uploading client binary to host %v", h.Id)
+		grip.Infoln("Uploading client binary to host %s", h.Id)
 		lcr, err := init.LoadClient(h)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to load client binary onto host %v: %v", h.Id, err)
+			grip.Errorf("Failed to load client binary onto host %s: %+v", h.Id, err)
 		} else if err == nil && len(h.ProvisionOptions.TaskId) > 0 {
-			evergreen.Logger.Logf(slogger.INFO, "Fetching data for task %v onto host %v", h.ProvisionOptions.TaskId, h.Id)
+			grip.Infof("Fetching data for task %s onto host %s", h.ProvisionOptions.TaskId, h.Id)
 			err = init.fetchRemoteTaskData(h.ProvisionOptions.TaskId, lcr.BinaryPath, lcr.ConfigPath, h)
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to fetch data onto host %v: %v", h.Id, err)
+			grip.ErrorWhenf(err != nil, "Failed to fetch data onto host %s: %v", h.Id, err)
 		}
 	}
 
 	// the setup was successful. update the host accordingly in the database
 	if err := h.MarkAsProvisioned(); err != nil {
-		return fmt.Errorf("error marking host %v as provisioned: %v", err)
+		return fmt.Errorf("error marking host %s as provisioned: %+v", h.Id, err)
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Host %v successfully provisioned", h.Id)
+	grip.Infof("Host %s successfully provisioned", h.Id)
 
 	return nil
 }

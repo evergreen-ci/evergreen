@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -148,7 +148,7 @@ func flagExcessHosts(distros []distro.Distro, s *evergreen.Settings) ([]host.Hos
 				}
 			}
 
-			evergreen.Logger.Logf(slogger.INFO, "Found %v excess hosts for distro %v", counter, d.Id)
+			grip.Infof("Found %d excess hosts for distro %s", counter, d.Id)
 
 		}
 

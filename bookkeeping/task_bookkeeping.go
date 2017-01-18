@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -47,7 +46,7 @@ func findOneTaskBk(matcher interface{}, selector interface{}) (*TaskBookkeeping,
 	// establish a database connection
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing database connection: %v", err)
+		grip.Errorf("Error establishing database connection: %+v", err)
 		return nil, err
 	}
 
@@ -65,7 +64,7 @@ func findOneTaskBk(matcher interface{}, selector interface{}) (*TaskBookkeeping,
 
 	// failure
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Unexpected error retrieving task bookkeeping entry from database: %v",
+		grip.Errorf("Unexpected error retrieving task bookkeeping entry from database: %+v",
 			err)
 		return nil, err
 	}
@@ -80,7 +79,7 @@ func upsertOneTaskBk(matcher interface{}, update interface{}) error {
 	// establish a database connection
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing database connection: %v", err)
+		grip.Errorf("Error establishing database connection: %+v", err)
 		return err
 	}
 

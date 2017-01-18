@@ -8,11 +8,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
-	evergreen.SetLogger("/tmp/version_test.log")
+	grip.SetSender(testutil.SetupTestSender("/tmp/version_test.log"))
 }
 
 func TestLastKnownGoodConfig(t *testing.T) {

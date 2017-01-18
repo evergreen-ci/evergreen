@@ -3,8 +3,7 @@ package event
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -49,7 +48,7 @@ func LogTaskEvent(taskId string, eventType string, eventData TaskEventData) {
 
 	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(event); err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error logging task event: %v", err)
+		grip.Errorf("Error logging task event: %+v", err)
 	}
 }
 

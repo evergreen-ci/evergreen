@@ -1,9 +1,6 @@
 package model
 
-import (
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
-)
+import "github.com/tychoish/grip"
 
 type dependencyIncluder struct {
 	Project  *Project
@@ -50,8 +47,8 @@ func (di *dependencyIncluder) handle(pair TVPair) bool {
 	// since it contains the full scope of dependency information
 	bvt := di.Project.FindTaskForVariant(pair.TaskName, pair.Variant)
 	if bvt == nil {
-		evergreen.Logger.Logf(slogger.ERROR, "task %v does not exist in project %v",
-			pair.TaskName, di.Project.Identifier)
+		grip.Errorf("task %s does not exist in project %s", pair.TaskName,
+			di.Project.Identifier)
 		di.included[pair] = false
 		return false // task not found in project--skip it.
 	}

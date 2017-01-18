@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -171,9 +171,7 @@ func getTimelineData(projectName, requester string, versionsToSkip, versionsPerP
 
 		buildIds := version.BuildIds
 		dbBuilds, err := build.Find(build.ByIds(buildIds))
-		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Ids: %v", buildIds)
-		}
+		grip.ErrorWhenln(err != nil, "Ids:", buildIds)
 
 		buildsMap := make(map[string]build.Build)
 		for _, dbBuild := range dbBuilds {
@@ -343,10 +341,8 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 			if err != nil {
 				return nil, err
 			}
-			if task == nil {
-				evergreen.Logger.Logf(slogger.ERROR,
-					"Hosts page could not find task %v for host %v", dbHost.RunningTask, dbHost.Id)
-			}
+			grip.ErrorWhenf(task == nil, "Hosts page could not find task %s for host %s",
+				dbHost.RunningTask, dbHost.Id)
 			uiHosts[idx].RunningTask = task
 		}
 	}
@@ -373,22 +369,19 @@ func getHostData(hostId string) (*uiHost, error) {
 func getPluginDataAndHTML(pluginManager plugin.PanelManager, page plugin.PageScope, ctx plugin.UIContext) pluginData {
 	includes, err := pluginManager.Includes(page)
 	if err != nil {
-		evergreen.Logger.Errorf(
-			slogger.ERROR, "error getting include html from plugin manager on %v page: %v",
+		grip.Errorf("error getting include html from plugin manager on %v page: %v",
 			page, err)
 	}
 
 	panels, err := pluginManager.Panels(page)
 	if err != nil {
-		evergreen.Logger.Errorf(
-			slogger.ERROR, "error getting panel html from plugin manager on %v page: %v",
+		grip.Errorf("error getting panel html from plugin manager on %v page: %v",
 			page, err)
 	}
 
 	data, err := pluginManager.UIData(ctx, page)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error getting plugin data on %v page: %v",
-			page, err)
+		grip.Errorf("error getting plugin data on %v page: %+v", page, err)
 	}
 
 	return pluginData{includes, panels, data}

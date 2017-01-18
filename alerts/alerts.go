@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/render"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -62,7 +62,7 @@ func (qp *QueueProcessor) Description() string {
 
 // loadAlertContext fetches details from the database for all documents that are associated with the
 // AlertRequest. For example, it populates the task/build/version/project using the
-// task/build/version/project ids in the alert request document.
+// task/build/version/project ids in the alert requeset document.
 func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext, error) {
 	aCtx := &AlertContext{AlertRequest: a}
 	aCtx.Settings = qp.config
@@ -263,7 +263,7 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 
 // Run loops while there are any unprocessed alerts and attempts to deliver them.
 func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
-	evergreen.Logger.Logf(slogger.INFO, "Starting alert queue processor run")
+	grip.Info("Starting alert queue processor run")
 	home := evergreen.FindEvergreenHome()
 	qp.config = config
 	qp.projectsCache = map[string]*model.ProjectRef{} // wipe the project cache between each run to prevent stale configs.
@@ -275,11 +275,11 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	})
 
 	if len(qp.config.SuperUsers) == 0 {
-		evergreen.Logger.Logf(slogger.WARN, "WARNING: No superusers configured, some alerts may have no recipient")
+		grip.Warning("no superusers configured, some alerts may have no recipient")
 	}
 	superUsers, err := user.Find(user.ByIds(qp.config.SuperUsers...))
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error getting superuser list: %v", err)
+		grip.Errorf("Error getting superuser list: %+v", err)
 		return err
 	}
 	qp.superUsersConfigs = []model.AlertConfig{}
@@ -287,34 +287,36 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 		qp.superUsersConfigs = append(qp.superUsersConfigs, model.AlertConfig{"email", bson.M{"rcpt": u.Email()}})
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Running alert queue processing")
+	grip.Info("Running alert queue processing")
 	for {
 		nextAlert, err := alert.DequeueAlertRequest()
 
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to dequeue alert request: %v", err)
+			grip.Errorf("Failed to dequeue alert request: %+v", err)
 			return err
 		}
 		if nextAlert == nil {
-			evergreen.Logger.Logf(slogger.INFO, "Reached end of queue items - stopping.")
+			grip.Info("Reached end of queue items - stopping")
 			break
 		}
 
-		evergreen.Logger.Logf(slogger.DEBUG, "Processing queue item %v", nextAlert.Id.Hex())
+		grip.Debugf("Processing queue item %s", nextAlert.Id.Hex())
 
 		alertContext, err := qp.loadAlertContext(nextAlert)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to load alert context: %v", err)
+			grip.Errorf("Failed to load alert context: %s", err)
 			return err
 		}
 
-		evergreen.Logger.Logf(slogger.DEBUG, "Delivering queue item %v", nextAlert.Id.Hex())
+		grip.Debugln("Delivering queue item", nextAlert.Id.Hex())
+
 		err = qp.Deliver(nextAlert, alertContext)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Got error delivering message: %v", err)
+			grip.Errorf("Got error delivering message: %+v", err)
 		}
 
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Finished alert queue processor run.")
+
+	grip.Info("Finished alert queue processor run.")
 	return nil
 }

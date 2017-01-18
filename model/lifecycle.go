@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -15,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -358,7 +358,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 
 	// insert the tasks into the db
 	for _, task := range tasks {
-		evergreen.Logger.Logf(slogger.INFO, "Creating task “%v”", task.DisplayName)
+		grip.Infoln("Creating task:", task.DisplayName)
 		if err := task.Insert(); err != nil {
 			return nil, fmt.Errorf("error inserting task %v: %v", task.Id, err)
 		}
@@ -375,7 +375,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable,
 	buildName string, activated bool, taskNames []string) (string, error) {
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Creating %v %v build, activated: %v", v.Requester, buildName, activated)
+	grip.Debugf("Creating %v %v build, activated: %v", v.Requester, buildName, activated)
 
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(buildName)

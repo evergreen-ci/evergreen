@@ -12,7 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -21,9 +23,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
-	if schedulerTestConf.Scheduler.LogFile != "" {
-		evergreen.SetLogger(schedulerTestConf.Scheduler.LogFile)
-	}
+	grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile))
 }
 
 const versionProjectString = `

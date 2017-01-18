@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/command"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -153,11 +153,11 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	err := spawner.CreateHost(opts, authedUser)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "error spawning host: %v", err)
+		grip.Errorln("error spawning host:", err)
 		mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
 			err.Error(), notify.ConstructMailer(uis.Settings.Notify))
 		if mailErr != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
+			grip.Errorln("Failed to send notification:", mailErr)
 		}
 	}
 

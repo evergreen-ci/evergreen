@@ -1,11 +1,12 @@
 package notify
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/tychoish/grip"
 )
 
 type Runner struct{}
@@ -25,16 +26,18 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
-	evergreen.Logger.Logf(slogger.INFO, "Starting notifications at time %v", startTime)
+	grip.Infoln("Starting notifications at time", startTime)
 
 	if err := Run(config); err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "error running notify: %v", err)
+		err = fmt.Errorf("error running notify: %+v", err)
+		grip.Error(err)
+		return err
 	}
 
 	runtime := time.Now().Sub(startTime)
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error updating process status: %v", err)
+		grip.Errorln("error updating process status:", err)
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Notify took %v to run", runtime)
+	grip.Infoln("Notify took %v to run", runtime)
 	return nil
 }

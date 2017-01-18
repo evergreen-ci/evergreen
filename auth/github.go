@@ -7,10 +7,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 // GithubAuthManager implements the UserManager with GitHub authentication using Oauth authentication.
@@ -104,12 +104,12 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWrit
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.FormValue("code")
 		if code == "" {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error getting code from github for authentication")
+			grip.Error("Error getting code from github for authentication")
 			return
 		}
 		githubState := r.FormValue("state")
 		if githubState == "" {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error getting state from github for authentication")
+			grip.Error("Error getting state from github for authentication")
 			return
 		}
 		// if there is an internal redirect page, redirect the user back to that page
@@ -124,13 +124,14 @@ func (gum *GithubUserManager) GetLoginCallbackHandler() func(w http.ResponseWrit
 
 		// if the state doesn't match, log the error and redirect back to the login page
 		if githubState != state {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error unmatching states when authenticating with GitHub: ours: %v, theirs %v", state, githubState)
+			grip.Errorf("Error unmatching states when authenticating with GitHub: ours: %v, theirs %v",
+				state, githubState)
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 		githubResponse, err := thirdparty.GithubAuthenticate(code, gum.ClientId, gum.ClientSecret)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error sending code and authentication info to Github: %v", err)
+			grip.Errorf("Error sending code and authentication info to Github: %+v", err)
 			return
 		}
 		setLoginToken(githubResponse.AccessToken, w)

@@ -20,8 +20,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
 )
 
 type Mailer interface {
@@ -71,7 +70,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	from := mail.Address{"Evergreen Alerts", self.From}
 	err = c.Mail(self.From)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail sender (%v): %v", self.From, err)
+		grip.Errorf("Error establishing mail sender (%s): %+v", self.From, err)
 		return err
 	}
 
@@ -79,7 +78,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	for _, recipient := range recipients {
 		err = c.Rcpt(recipient)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail recipient (%v): %v", recipient, err)
+			grip.Errorf("Error establishing mail recipient (%s): %+v", recipient, err)
 			return err
 		}
 	}

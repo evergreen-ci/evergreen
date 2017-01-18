@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -17,11 +18,8 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(
-		taskDurationEstimatorTestConf))
-	if taskDurationEstimatorTestConf.Scheduler.LogFile != "" {
-		evergreen.SetLogger(taskDurationEstimatorTestConf.Scheduler.LogFile)
-	}
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskDurationEstimatorTestConf))
+	grip.SetSender(testutil.SetupTestSender(taskDurationEstimatorTestConf.Scheduler.LogFile))
 }
 
 func TestDBTaskDurationEstimator(t *testing.T) {

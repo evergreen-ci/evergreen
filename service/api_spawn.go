@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip"
 )
 
 type spawnRequest struct {
@@ -90,11 +90,11 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 
 	err = spawner.CreateHost(opts, user)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, err.Error())
+		grip.Error(err)
 		mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),
 			notify.ConstructMailer(as.Settings.Notify))
 		if mailErr != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to send notification: %v", mailErr)
+			grip.Errorln("Failed to send notification:", mailErr)
 		}
 		return
 	}
@@ -121,26 +121,29 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 
 	if status == evergreen.HostStatusSuccess {
 		if err := host.SetRunning(); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error marking host id %v as %v: %v", instanceId, evergreen.HostStatusSuccess, err)
+			grip.Errorf("Error marking host id %s as %s: %+v",
+				instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
 		alerts.RunHostProvisionFailTriggers(host)
 		if err = host.SetDecommissioned(); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error marking host %v for user %v as decommissioned: %v", host.Host, host.StartedBy, err)
+			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",
+				host.Host, host.StartedBy, err)
 		}
-		evergreen.Logger.Logf(slogger.INFO, "Decommissioned %v for user %v because provisioning failed", host.Host, host.StartedBy)
+		grip.Infof("Decommissioned %s for user %s because provisioning failed",
+			host.Host, host.StartedBy)
 
 		// send notification to the Evergreen team about this provisioning failure
 		subject := fmt.Sprintf("%v Spawn provisioning failure on %v", notify.ProvisionFailurePreface, host.Distro.Id)
 		message := fmt.Sprintf("Provisioning failed on %v host %v for user %v", host.Distro.Id, host.Host, host.StartedBy)
 		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			grip.Errorln("issue sending email:", err)
 		}
 
 		// get/store setup logs
 		setupLog, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, fmt.Sprintf("error reading request: %v", err))
+			grip.Errorln("problem reading request:", err)
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
@@ -158,9 +161,7 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 			"file in the machine's home directory to see more details")
 	}
 	err = notify.TrySendNotificationToUser(host.StartedBy, "Your host is ready", message, notify.ConstructMailer(as.Settings.Notify))
-	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
-	}
+	grip.ErrorWhenln(err != nil, "Error sending email", err)
 
 	as.WriteJSON(w, http.StatusOK, spawnResponse{HostInfo: *host})
 }

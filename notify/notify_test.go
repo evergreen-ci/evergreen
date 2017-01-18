@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -85,9 +87,8 @@ var (
 var TestConfig = evergreen.TestConfig()
 
 func TestNotify(t *testing.T) {
-	if evergreen.TestConfig().Notify.LogFile != "" {
-		evergreen.SetLogger(evergreen.TestConfig().Notify.LogFile)
-	}
+	grip.SetSender(testutil.SetupTestSender(evergreen.TestConfig().Notify.LogFile))
+
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(TestConfig))
 	emailSubjects = make([]string, 0)
 	emailBodies = make([]string, 0)

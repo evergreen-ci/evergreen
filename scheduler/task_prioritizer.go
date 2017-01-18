@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 )
 
 // TaskPrioritizer is responsible for taking in a slice of tasks, and ordering them
@@ -189,8 +189,7 @@ func (self *CmpBasedTaskComparator) splitTasksByRequester(
 		case task.Requester == evergreen.PatchVersionRequester:
 			patchTasks = append(patchTasks, task)
 		default:
-			evergreen.Logger.Errorf(slogger.ERROR, "Unrecognized requester '%v'"+
-				" for task %v:", task.Requester, task.Id)
+			grip.Errorf("Unrecognized requester '%s' for task %s", task.Requester, task.Id)
 		}
 	}
 

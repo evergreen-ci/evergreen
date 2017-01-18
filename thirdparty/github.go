@@ -12,7 +12,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/level"
 )
 
 const (
@@ -45,13 +46,13 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 		defer resp.Body.Close()
 	}
 	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url ‘%v’", commitsURL)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		errMsg := fmt.Sprintf("nil response from url '%v'", commitsURL)
+		grip.Error(errMsg)
 		return nil, nil, APIResponseError{errMsg}
 	}
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying ‘%v’: %v", commitsURL, err)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		errMsg := fmt.Sprintf("error querying '%v': %v", commitsURL, err)
+		grip.Error(errMsg)
 		return nil, nil, APIResponseError{errMsg}
 	}
 
@@ -61,8 +62,7 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -111,25 +111,24 @@ func GetGithubFile(oauthToken, fileURL string) (
 	githubFile *GithubFile, err error) {
 	resp, err := tryGithubGet(oauthToken, fileURL)
 	if resp == nil {
-		errMsg := fmt.Sprintf("nil response from url ‘%v’", fileURL)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		errMsg := fmt.Sprintf("nil response from url '%v'", fileURL)
+		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 	defer resp.Body.Close()
 
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying ‘%v’: %v", fileURL, err)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		errMsg := fmt.Sprintf("error querying '%v': %v", fileURL, err)
+		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		evergreen.Logger.Logf(slogger.ERROR, "Github API response: ‘%v’",
-			resp.Status)
+		grip.Errorf("Github API response: ‘%s’", resp.Status)
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, FileNotFoundError{fileURL}
 		}
-		return nil, fmt.Errorf("github API returned status ‘%v’", resp.Status)
+		return nil, fmt.Errorf("github API returned status '%v'", resp.Status)
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -137,8 +136,7 @@ func GetGithubFile(oauthToken, fileURL string) (
 		return nil, ResponseReadError{err.Error()}
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -173,7 +171,7 @@ func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string
 	}
 	if err != nil {
 		errMsg := fmt.Sprintf("error getting merge base commit response for url, %v: %v", url, err)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		grip.Error(errMsg)
 		return "", APIResponseError{errMsg}
 	}
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -203,15 +201,15 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 		githash,
 	)
 
-	evergreen.Logger.Logf(slogger.ERROR, "requesting github commit from url: %v", commitURL)
+	grip.Errorln("requesting github commit from url:", commitURL)
 
 	resp, err := tryGithubGet(oauthToken, commitURL)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying ‘%v’: %v", commitURL, err)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		errMsg := fmt.Sprintf("error querying '%v': %v", commitURL, err)
+		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
@@ -219,8 +217,7 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -247,7 +244,7 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 		branch,
 	)
 
-	evergreen.Logger.Logf(slogger.ERROR, "requesting github commit from url: %v", branchURL)
+	grip.Errorln("requesting github commit from url:", branchURL)
 
 	resp, err := tryGithubGet(oauthToken, branchURL)
 	if resp != nil {
@@ -255,8 +252,8 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 	}
 
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying ‘%v’: %v", branchURL, err)
-		evergreen.Logger.Logf(slogger.ERROR, errMsg)
+		errMsg := fmt.Sprintf("error querying '%v': %v", branchURL, err)
+		grip.Error(errMsg)
 		return nil, APIResponseError{errMsg}
 	}
 
@@ -264,8 +261,7 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -313,17 +309,17 @@ func githubRequest(method string, url string, oauthToken string, data interface{
 }
 
 func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
-	evergreen.Logger.Logf(slogger.INFO, "Attempting GitHub API call at ‘%v’", url)
+	grip.Infof("Attempting GitHub API call at '%s'", url)
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err = githubRequest("GET", url, oauthToken, nil)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "failed trying to call github GET on %v: %v", url, err)
+				grip.Errorf("failed trying to call github GET on %s: %+v", url, err)
 				return util.RetriableError{err}
 			}
 			if resp.StatusCode == http.StatusUnauthorized {
 				err = fmt.Errorf("Calling github GET on %v failed: got 'unauthorized' response", url)
-				evergreen.Logger.Logf(slogger.ERROR, err.Error())
+				grip.Error(err)
 				return err
 			}
 			if resp.StatusCode != http.StatusOK {
@@ -331,7 +327,7 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 			}
 			// read the results
 			rateMessage, _ := getGithubRateLimit(resp.Header)
-			evergreen.Logger.Logf(slogger.DEBUG, "Github API response: %v. %v", resp.Status, rateMessage)
+			grip.Debugf("Github API response: %s. %s", resp.Status, rateMessage)
 			return nil
 		},
 	)
@@ -340,7 +336,7 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 	if err != nil {
 		// couldn't get it
 		if retryFail {
-			evergreen.Logger.Logf(slogger.ERROR, "Github GET on %v used up all retries.", err)
+			grip.Errorf("Github GET on %v used up all retries.", err)
 		}
 		return nil, err
 	}
@@ -350,17 +346,17 @@ func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
 
 // tryGithubPost posts the data to the Github api endpoint with the url given
 func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.Response, err error) {
-	evergreen.Logger.Logf(slogger.ERROR, "Attempting GitHub API POST at ‘%v’", url)
+	grip.Errorf("Attempting GitHub API POST at ‘%s’", url)
 	retriableGet := util.RetriableFunc(
 		func() (retryError error) {
 			resp, err = githubRequest("POST", url, oauthToken, data)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "failed trying to call github POST on %v: %v", url, err)
+				grip.Errorf("failed trying to call github POST on %s: %+v", url, err)
 				return util.RetriableError{err}
 			}
 			if resp.StatusCode == http.StatusUnauthorized {
 				err = fmt.Errorf("Calling github POST on %v failed: got 'unauthorized' response", url)
-				evergreen.Logger.Logf(slogger.ERROR, err.Error())
+				grip.Error(err)
 				return err
 			}
 			if resp.StatusCode != http.StatusOK {
@@ -368,7 +364,8 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 			}
 			// read the results
 			rateMessage, loglevel := getGithubRateLimit(resp.Header)
-			evergreen.Logger.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
+
+			grip.Logf(loglevel, "Github API response: %v. %v", resp.Status, rateMessage)
 			return nil
 		},
 	)
@@ -377,7 +374,7 @@ func tryGithubPost(url string, oauthToken string, data interface{}) (resp *http.
 	if err != nil {
 		// couldn't post it
 		if retryFail {
-			evergreen.Logger.Logf(slogger.ERROR, "Github POST on %v used up all retries.")
+			grip.Errorf("Github POST to '%s' used up all retries.", url)
 		}
 		return nil, err
 	}
@@ -420,15 +417,15 @@ func NextGithubPageLink(header http.Header) string {
 
 // getGithubRateLimit interprets the limit headers, and produces an increasingly
 // alarmed message (for the caller to log) as we get closer and closer
-func getGithubRateLimit(header http.Header) (message string,
-	loglevel slogger.Level) {
+func getGithubRateLimit(header http.Header) (message string, loglevel level.Priority) {
 	h := (map[string][]string)(header)
 	limStr, okLim := h["X-Ratelimit-Limit"]
 	remStr, okRem := h["X-Ratelimit-Remaining"]
 
 	// ensure that we were able to read the rate limit header
 	if !okLim || !okRem || len(limStr) == 0 || len(remStr) == 0 {
-		message, loglevel = "Could not get rate limit data", slogger.WARN
+		loglevel = level.Warning
+		message = "Could not get rate limit data"
 		return
 	}
 
@@ -438,28 +435,29 @@ func getGithubRateLimit(header http.Header) (message string,
 
 	// ensure we successfully parsed the rate limits
 	if limErr != nil || remErr != nil {
-		message, loglevel = fmt.Sprintf("Could not parse rate limit data: "+
-			"limit=%q, rate=%q", limStr, okLim), slogger.WARN
+		loglevel = level.Warning
+		message = fmt.Sprintf("Could not parse rate limit data: limit=%q, rate=%t",
+			limStr, okLim)
 		return
 	}
 
 	// We're in good shape
 	if rem > int64(0.1*float32(lim)) {
-		message, loglevel = fmt.Sprintf("Rate limit: %v/%v", rem, lim),
-			slogger.INFO
+		loglevel = level.Info
+		message = fmt.Sprintf("Rate limit: %v/%v", rem, lim)
 		return
 	}
 
 	// we're running short
 	if rem > 20 {
-		message, loglevel = fmt.Sprintf("Rate limit significantly low: %v/%v",
-			rem, lim), slogger.WARN
+		loglevel = level.Warning
+		message = fmt.Sprintf("Rate limit significantly low: %v/%v", rem, lim)
 		return
 	}
 
 	// we're in trouble
-	message, loglevel = fmt.Sprintf("Throttling required - rate limit almost "+
-		"exhausted: %v/%v", rem, lim), slogger.ERROR
+	loglevel = level.Error
+	message = fmt.Sprintf("Throttling required - rate limit almost exhausted: %v/%v", rem, lim)
 	return
 }
 
@@ -486,8 +484,7 @@ func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *Gi
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "GitHub API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Debugf("GitHub API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if err = json.Unmarshal(respBody, &githubResponse); err != nil {
 		return nil, APIUnmarshalError{string(respBody), err.Error()}
@@ -514,8 +511,7 @@ func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizatio
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Github API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if err = json.Unmarshal(respBody, &githubUser); err != nil {
 		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
@@ -534,8 +530,7 @@ func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizatio
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Github API response: %v. %v bytes",
-		resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if err = json.Unmarshal(respBody, &githubOrganizations); err != nil {
 		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}

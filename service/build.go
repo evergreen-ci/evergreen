@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip"
 )
 
 // getUiTaskCache takes a build object and returns a slice of
@@ -74,8 +74,8 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if buildOnBaseCommit == nil {
-			evergreen.Logger.Logf(slogger.WARN,
-				"Could not find build for base commit of patch build: %v", projCtx.Build.Id)
+			grip.Warningln("Could not find build for base commit of patch build:",
+				projCtx.Build.Id)
 		}
 		diffs := model.StatusDiffBuilds(buildOnBaseCommit, projCtx.Build)
 

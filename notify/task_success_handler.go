@@ -1,10 +1,10 @@
 package notify
 
 import (
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/web"
+	"github.com/tychoish/grip"
 )
 
 // Handler for notifying users that a task succeeded. Implements
@@ -31,7 +31,7 @@ func (self *TaskSuccessHandler) GetNotifications(ae *web.App, configName string,
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, configName, &triggered)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.WARN, "Error templating notification for task `%v`: %v",
+			grip.Warningf("Error templating notification for task '%s': %+v",
 				triggered.Current.Id, err)
 			continue
 		}

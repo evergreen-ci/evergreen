@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	digo "github.com/dynport/gocloud/digitalocean"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -100,24 +100,27 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	}
 
 	if err := intentHost.Insert(); err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not insert intent "+
-			"host '%v': %v", intentHost.Id, err)
+		// TODO use github/pkg/errors for things like this
+		err = fmt.Errorf("Could not insert intent host '%v': %v", intentHost.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host '%v' "+
-		"for distro '%v' to signal cloud instance spawn intent", instanceName,
-		d.Id)
+	grip.Debugf("Successfully inserted intent host '%v' for distro '%v' to signal cloud "+
+		"instance spawn intent", instanceName, d.Id)
 
 	newDroplet, err := digoMgr.account.CreateDroplet(dropletReq)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "DigitalOcean create droplet API call failed"+
-			" for intent host '%v': %v", intentHost.Id, err)
+		grip.Errorf("DigitalOcean create droplet API call failed for intent host '%v': %+v",
+			intentHost.Id, err)
 
 		// remove the intent host document
 		rmErr := intentHost.Remove()
 		if rmErr != nil {
-			return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not remove intent host "+
-				"'%v': %v", intentHost.Id, rmErr)
+			err = fmt.Errorf("Could not remove intent host '%v': %+v",
+				intentHost.Id, rmErr)
+			grip.Error(err)
+			return nil, err
 		}
 		return nil, err
 	}
@@ -125,28 +128,33 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	// find old intent host
 	host, err := host.FindOne(host.ById(intentHost.Id))
 	if host == nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Can't locate "+
-			"record inserted for intended host “%v”", intentHost.Id)
+		err = fmt.Errorf("Can't locate record inserted for intended host '%v'",
+			intentHost.Id)
+		grip.Error(err)
+		return nil, err
 	}
 	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to look up intent host %v: %v",
-			intentHost.Id, err)
+		err = fmt.Errorf("Failed to look up intent host %v: %+v", intentHost.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 
 	host.Id = fmt.Sprintf("%v", newDroplet.Id)
 	host.Host = newDroplet.IpAddress
-	err = host.Insert()
-	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to insert new host %v"+
-			"for intent host %v: %v", host.Id, intentHost.Id, err)
+
+	if err = host.Insert(); err != nil {
+		err = fmt.Errorf("Failed to insert new host %v for intent host %v: %+v",
+			host.Id, intentHost.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 
 	// remove the intent host document
-	err = intentHost.Remove()
-	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not remove "+
-			"insert host “%v” (replaced by “%v”): %v", intentHost.Id, host.Id,
-			err)
+	if err = intentHost.Remove(); err != nil {
+		err = fmt.Errorf("Could not remove insert host '%v' (replaced by '%v'): %+v",
+			intentHost.Id, host.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 	return host, nil
 
@@ -157,8 +165,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet, error) {
 	droplet := digo.Droplet{Id: dropletId}
 	droplet.Account = digoMgr.account
-	err := droplet.Reload()
-	if err != nil {
+	if err := droplet.Reload(); err != nil {
 		return nil, err
 	}
 	return &droplet, nil
@@ -169,8 +176,11 @@ func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet
 func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, evergreen.Logger.Errorf(slogger.ERROR,
-			"Can't get status of '%v': DigitalOcean host id's must be integers", host.Id)
+		err = fmt.Errorf("Can't get status of '%v': DigitalOcean host id's "+
+			"must be integers", host.Id)
+		grip.Error(err)
+		return cloud.StatusUnknown, err
+
 	}
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
 	if err != nil {
@@ -196,9 +206,12 @@ func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		return "", evergreen.Logger.Errorf(slogger.ERROR,
-			"Can't get DNS name of '%v': DigitalOcean host id's must be integers", host.Id)
+		err = fmt.Errorf("Can't get DNS name of '%v': DigitalOcean host id's must be integers",
+			host.Id)
+		grip.Error(err)
+		return "", err
 	}
+
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
 	if err != nil {
 		return "", err
@@ -217,15 +230,22 @@ func (digoMgr *DigitalOceanManager) CanSpawn() (bool, error) {
 func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
+		err = fmt.Errorf("Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
+		grip.Error(err)
+		return err
 	}
 	response, err := digoMgr.account.DestroyDroplet(hostIdAsInt)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': %v", host.Id, err)
+		err = fmt.Errorf("Failed to destroy droplet '%v': %+v", host.Id, err)
+		grip.Error(err)
+		return err
 	}
 
 	if response.Status != "OK" {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to destroy droplet '%v': error message %v", err, response.ErrorMessage)
+		err = fmt.Errorf("Failed to destroy droplet: '%+v'. message: %v", err,
+			response.ErrorMessage)
+		grip.Error(err)
+		return err
 	}
 
 	return host.Terminate()

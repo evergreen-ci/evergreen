@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -72,14 +72,12 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 		// continue on error to stop the whole monitoring process from
 		// being held up
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "error finding project %v: %v",
-				ref.Identifier, err)
+			grip.Errorf("error finding project %s: %v", ref.Identifier, err)
 			continue
 		}
 
 		if project == nil {
-			evergreen.Logger.Logf(slogger.ERROR, "no project entry found for"+
-				" ref %v", ref.Identifier)
+			grip.Errorf("no project entry found for ref %s", ref.Identifier)
 			continue
 		}
 
@@ -95,7 +93,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	errs := withGlobalLock("task cleanup",
 		func() []error { return taskMonitor.CleanupTasks(projects) })
 	for _, err := range errs {
-		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up tasks: %v", err)
+		grip.Errorln("Error cleaning up tasks:", err)
 	}
 
 	// initialize the host monitor
@@ -107,15 +105,16 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	// clean up any necessary hosts
 	errs = withGlobalLock("host cleanup",
 		func() []error { return hostMonitor.CleanupHosts(distros, settings) })
+
 	for _, err := range errs {
-		evergreen.Logger.Logf(slogger.ERROR, "Error cleaning up hosts: %v", err)
+		grip.Errorf("Error cleaning up hosts:", err)
 	}
 
 	// run monitoring checks
 	errs = withGlobalLock("host monitoring",
 		func() []error { return hostMonitor.RunMonitoringChecks(settings) })
 	for _, err := range errs {
-		evergreen.Logger.Logf(slogger.ERROR, "Error running host monitoring checks: %v", err)
+		grip.Errorln("Error running host monitoring checks:", err)
 	}
 
 	// initialize the notifier
@@ -126,7 +125,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	// send notifications
 	errs = notifier.Notify(settings)
 	for _, err := range errs {
-		evergreen.Logger.Logf(slogger.ERROR, "Error sending notifications: %v", err)
+		grip.Errorln("Error sending notifications:", err)
 	}
 
 	// Do alerts for spawnhosts - collect all hosts expiring in the next 12 hours.
@@ -142,41 +141,36 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	for _, h := range expiringSoonHosts {
 		err := alerts.RunSpawnWarningTriggers(&h)
 
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error queueing alert: %v", err)
-		}
+		grip.ErrorWhenln(err != nil, "Error queueing alert:", err)
 	}
 
 	return nil
-
 }
 
 // withGlobalLock is a wrapper for grabbing the global lock for each segment of the monitor.
 func withGlobalLock(name string, f func() []error) (errs []error) {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for monitor %v", name)
+	grip.Debugln("Attempting to acquire global lock for monitor:", name)
 	// sleep for 1 second to give other spinning locks a chance to preempt this one
 	time.Sleep(time.Second)
 	acquired, err := db.WaitTillAcquireGlobalLock(name, db.LockTimeout)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock for monitor", err)
-		return []error{fmt.Errorf("error acquiring global lock for %v: %v", name, err)}
+		grip.Errorf("problem acquiring global lock for monitor %s: %+v", name, err)
+		return []error{fmt.Errorf("error acquiring global lock for %s: %v", name, err)}
 	}
 	if !acquired {
-		evergreen.Logger.Errorf(slogger.ERROR,
-			"Timed out attempting to acquire global lock for monitor %v", name)
-		return []error{fmt.Errorf("timed out acquiring global lock for monitor %v", name)}
+		grip.Errorln("Timed out attempting to acquire global lock for monitor:", name)
+		return []error{fmt.Errorf("timed out acquiring global lock for monitor %s", name)}
 	}
 	defer func() {
-		evergreen.Logger.Logf(slogger.DEBUG, "Releasing global lock for monitor %v", name)
+		grip.Debugln("Releasing global lock for monitor", name)
 		if err := db.ReleaseGlobalLock(name); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR,
-				"Error releasing global lock for monitor %v: %v", name, err)
+			grip.Errorf("Error releasing global lock for monitor %s: %+v", name, err)
 			errs = append(errs, fmt.Errorf("error releasing global lock for monitor %v: %v", name, err))
 		} else {
-			evergreen.Logger.Logf(slogger.DEBUG, "Released global lock for monitor %v", name)
+			grip.Debugln("Released global lock for monitor:", name)
 		}
 	}()
-	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for monitor %v", name)
+	grip.Debugln("Acquired global lock for monitor", name)
 	errs = f()
 	return errs
 }

@@ -6,8 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
 )
 
 type RemoteCommand struct {
@@ -31,15 +30,15 @@ type RemoteCommand struct {
 }
 
 func (rc *RemoteCommand) Run() error {
-	evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) beginning Run()", rc.Id)
+	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
 	err := rc.Start()
 	if err != nil {
 		return err
 	}
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
-		evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) started process %v", rc.Id, rc.Cmd.Process.Pid)
+		grip.Debugf("RemoteCommand(%s) started process %d", rc.Id, rc.Cmd.Process.Pid)
 	} else {
-		evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) has nil Cmd or Cmd.Process in Run()", rc.Id)
+		grip.Debugf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
 	return rc.Cmd.Wait()
 }
@@ -66,10 +65,8 @@ func (rc *RemoteCommand) Start() error {
 	}
 	cmdArray = append(cmdArray, cmdString)
 
-	if !rc.LoggingDisabled {
-		evergreen.Logger.Logf(slogger.WARN, "Remote command executing: '%#v'",
-			strings.Join(cmdArray, " "))
-	}
+	grip.WarningWhenf(!rc.LoggingDisabled, "Remote command executing: '%#v'",
+		strings.Join(cmdArray, " "))
 
 	// set up execution
 	cmd := exec.Command("ssh", cmdArray...)
@@ -83,9 +80,9 @@ func (rc *RemoteCommand) Start() error {
 
 func (rc *RemoteCommand) Stop() error {
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
-		evergreen.Logger.Logf(slogger.DEBUG, "RemoteCommand(%v) killing process %v", rc.Id, rc.Cmd.Process.Pid)
+		grip.Debugf("RemoteCommand(%s) killing process %d", rc.Id, rc.Cmd.Process.Pid)
 		return rc.Cmd.Process.Kill()
 	}
-	evergreen.Logger.Logf(slogger.WARN, "RemoteCommand(%v) Trying to stop command but Cmd / Process was nil", rc.Id)
+	grip.Warningf("RemoteCommand(%s) Trying to stop command but Cmd / Process was nil", rc.Id)
 	return nil
 }

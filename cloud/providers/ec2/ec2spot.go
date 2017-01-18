@@ -20,7 +20,6 @@ import (
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
 )
 
 const (
@@ -111,8 +110,10 @@ func (cloudManager *EC2SpotManager) GetSSHOptions(h *host.Host, keyPath string) 
 func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
 	instanceStatus, err := cloudManager.GetInstanceStatus(host)
 	if err != nil {
-		return false, evergreen.Logger.Errorf(slogger.ERROR,
-			"Failed to check if host %v is up: %v", host.Id, err)
+		err = fmt.Errorf("Failed to check if host %v is up: %+v", host.Id, err)
+		grip.Error(err)
+		return false, err
+
 	}
 
 	if instanceStatus == cloud.StatusRunning {
@@ -129,11 +130,13 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	if err != nil {
 		return err
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "Running initialization function for "+
-		"host “%v” with id: %v", host.Id, spotReq.InstanceId)
+	grip.Debugf("Running initialization function for host '%v' with id: %v",
+		host.Id, spotReq.InstanceId)
 	if spotReq.InstanceId == "" {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Could not retrieve instanceID for filled SpotRequest '%v'",
+		err = fmt.Errorf("Could not retrieve instanceID for filled SpotRequest '%+v'",
 			host.Id)
+		grip.Error(err)
+		return err
 	}
 	return attachTags(getUSEast(*cloudManager.awsCredentials), tags, spotReq.InstanceId)
 }
@@ -144,8 +147,7 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 		return false, err
 	}
 	reachable, err := hostutil.CheckSSHResponse(host, sshOpts)
-	evergreen.Logger.Logf(slogger.DEBUG, "Checking host “%v” ssh reachability: ",
-		host.Id, reachable)
+	grip.Debugf("Checking host '%v' ssh reachability: %t", host.Id, reachable)
 
 	return reachable, err
 }
@@ -163,8 +165,9 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, evergreen.Logger.Errorf(slogger.ERROR,
-			"failed to get spot request info for %v: %v", host.Id, err)
+		err = fmt.Errorf("failed to get spot request info for %v: %v", host.Id, err)
+		grip.Error(err)
+		return cloud.StatusUnknown, err
 	}
 
 	//Spot request has been fulfilled, so get status of the instance itself
@@ -172,7 +175,7 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 		ec2Handle := getUSEast(*cloudManager.awsCredentials)
 		instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Got an error checking spot details %v", err)
+			grip.Errorf("Got an error checking spot details %+v", err)
 			return cloud.StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(instanceInfo.State.Name), nil
@@ -192,7 +195,7 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 	case SpotStatusFailed:
 		return cloud.StatusFailed, nil
 	default:
-		evergreen.Logger.Logf(slogger.ERROR, "Unexpected status code in spot req: %v", spotDetails.State)
+		grip.Errorf("Unexpected status code in spot req: %v", spotDetails.State)
 		return cloud.StatusUnknown, nil
 	}
 }
@@ -204,7 +207,9 @@ func (cloudManager *EC2SpotManager) CanSpawn() (bool, error) {
 func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		return "", evergreen.Logger.Errorf(slogger.ERROR, "failed to get spot request info for %v: %v", host.Id, err)
+		err = fmt.Errorf("failed to get spot request info for %v: %+v", host.Id, err)
+		grip.Error(err)
+		return "", err
 	}
 
 	//Spot request has not been fulfilled yet, so there is still no DNS name
@@ -248,13 +253,13 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 
 	// record this 'intent host'
 	if err := intentHost.Insert(); err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not insert intent "+
-			"host “%v”: %v", intentHost.Id, err)
+		err = fmt.Errorf("Could not insert intent host '%v': %+v", intentHost.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted intent host “%v” "+
-		"for distro “%v” to signal cloud instance spawn intent", instanceName,
-		d.Id)
+	grip.Debugf("Inserted intent host '%v' for distro '%v' to signal instance spawn intent",
+		instanceName, d.Id)
 
 	spotRequest := &ec2.RequestSpotInstances{
 		SpotPrice:      fmt.Sprintf("%v", ec2Settings.BidPrice),
@@ -277,46 +282,54 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	if err != nil {
 		//Remove the intent host if the API call failed
 		if err := intentHost.Remove(); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Failed to remove intent host %v: %v", intentHost.Id, err)
+			grip.Errorf("Failed to remove intent host %s: %+v", intentHost.Id, err)
 		}
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed starting spot instance "+
-			" for distro '%v' on intent host %v: %v", d.Id, intentHost.Id, err)
+		err = fmt.Errorf("Failed starting spot instance for distro '%s' on intent host %s: %+v",
+			d.Id, intentHost.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 
 	spotReqRes := spotResp.SpotRequestResults[0]
 	if spotReqRes.State != SpotStatusOpen && spotReqRes.State != SpotStatusActive {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Spot request %v was found in "+
-			" state %v on intent host %v", spotReqRes.SpotRequestId, spotReqRes.State, intentHost.Id)
+		err = fmt.Errorf("Spot request %v was found in  state %v on intent host %v",
+			spotReqRes.SpotRequestId, spotReqRes.State, intentHost.Id)
+		grip.Error(err)
+		return nil, err
 	}
 
 	intentHost.Id = spotReqRes.SpotRequestId
 	err = intentHost.Insert()
 	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not insert updated host info with id %v"+
-			" for intent host %v: %v", intentHost.Id, instanceName, err)
+		err = fmt.Errorf("Could not insert updated host info with id %v  for intent host "+
+			"%v: %+v", intentHost.Id, instanceName, err)
+		grip.Error(err)
+		return nil, err
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Inserting updated intent host %v "+
-		"with request id: %v and name %v", intentHost.Id, spotReqRes.SpotRequestId, instanceName)
+	grip.Debugf("Inserting updated intent host %v with request id: %v and name %v",
+		intentHost.Id, spotReqRes.SpotRequestId, instanceName)
 	//find the old intent host and remove it, since we now have the real
 	//host doc successfully stored.
 	oldIntenthost, err := host.FindOne(host.ById(instanceName))
 	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Can't locate "+
-			"record inserted for intended host '%v' due to error: %v",
-			instanceName, err)
+		err = fmt.Errorf("Can't locate record inserted for intended host '%s' "+
+			"due to error: %+v", instanceName, err)
+		grip.Error(err)
+		return nil, err
 	}
 	if oldIntenthost == nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Can't locate "+
-			"record inserted for intended host '%v'", instanceName)
+		err = fmt.Errorf("Can't locate record inserted for intended host '%s'",
+			instanceName)
+		grip.Error(err)
+		return nil, err
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Removing old intent host %v "+
-		"with id: %v and name %v", oldIntenthost.Id, spotReqRes.SpotRequestId, instanceName)
+	grip.Debugf("Removing old intent host %v with id: %v and name %v",
+		oldIntenthost.Id, spotReqRes.SpotRequestId, instanceName)
 	err = oldIntenthost.Remove()
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Could not remove intent host "+
-			"“%v”: %v", oldIntenthost.Id, err)
+		grip.Errorf("Could not remove intent host '%s': %+v", oldIntenthost.Id, err)
 		return nil, err
 	}
 
@@ -327,11 +340,9 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	err = attachTags(ec2Handle, tags, intentHost.Id)
 
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Unable to attach tags for %v: %v",
-			intentHost.Id, err)
+		grip.Errorf("Unable to attach tags for %s: %+v", intentHost.Id, err)
 	} else {
-		evergreen.Logger.Logf(slogger.DEBUG, "Attached tag name “%v” for “%v”",
-			instanceName, intentHost.Id)
+		grip.Debugf("Attached tag name '%s' for '%s'", instanceName, intentHost.Id)
 	}
 	return intentHost, nil
 }
@@ -341,7 +352,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	if host.Status == evergreen.HostTerminated {
 		errMsg := fmt.Errorf("Can not terminate %v - already marked as "+
 			"terminated!", host.Id)
-		evergreen.Logger.Errorf(slogger.ERROR, errMsg.Error())
+		grip.Error(errMsg.Error())
 		return errMsg
 	}
 
@@ -351,41 +362,46 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 		if ok && ec2err.Code == EC2ErrorSpotRequestNotFound {
 			// EC2 says the spot request is not found - assume this means amazon
 			// terminated our spot instance
-			evergreen.Logger.Logf(slogger.WARN, "EC2 could not find spot instance '%v', "+
-				"marking as terminated [%+v]", host.Id, ec2err)
+			grip.Warningf("EC2 could not find spot instance '%s', marking as terminated: [%+v]",
+				host.Id, ec2err)
 			return host.Terminate()
 		}
-		return evergreen.Logger.Errorf(slogger.ERROR, "Couldn't terminate, "+
-			"failed to get spot request info for %v: %v", host.Id, err)
+		err = fmt.Errorf("Couldn't terminate, failed to get spot request info for %v: %+v",
+			host.Id, err)
+		grip.Error(err)
+		return err
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Canceling spot request %v", host.Id)
+	grip.Infoln("Canceling spot request", host.Id)
 	//First cancel the spot request
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	resp, err := ec2Handle.CancelSpotRequests([]string{host.Id})
 	grip.Debugf("host=%s, cancelResp=%+v", host.Id, resp)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to cancel spot request for host %v: %v",
-			host.Id, err)
+		err = fmt.Errorf("Failed to cancel spot request for host %v: %+v", host.Id, err)
+		grip.Error(err)
+		return err
 	}
 
 	//Canceling the spot request doesn't terminate the instance that fulfilled it,
 	// if it was fulfilled. We need to terminate the instance explicitly
 	if spotDetails.InstanceId != "" {
-		evergreen.Logger.Logf(slogger.INFO, "Spot request %v canceled, now terminating instance %v",
+		grip.Infof("Spot request %s canceled, now terminating instance %s",
 			spotDetails.InstanceId, host.Id)
 		resp, err := ec2Handle.TerminateInstances([]string{spotDetails.InstanceId})
 		if err != nil {
-			return evergreen.Logger.Errorf(slogger.INFO, "Failed to terminate host %v: %v", host.Id, err)
+			err = fmt.Errorf("Failed to terminate host %v: %v", host.Id, err)
+			grip.Error(err)
+			return err
 		}
 
 		for idx, stateChange := range resp.StateChanges {
 			grip.Debugf("change=%d, host=%s, state=[%+v]", idx, host.Id, stateChange)
-			evergreen.Logger.Logf(slogger.INFO, "Terminated %v", stateChange.InstanceId)
+			grip.Infof("Terminated %s", stateChange.InstanceId)
 		}
 	} else {
-		evergreen.Logger.Logf(slogger.INFO, "Spot request %v canceled (no instances have fulfilled it)", host.Id)
+		grip.Infof("Spot request %s canceled (no instances have fulfilled it)", host.Id)
 	}
 
 	// set the host status as terminated and update its termination time
@@ -402,12 +418,16 @@ func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.
 		return nil, err
 	}
 	if resp == nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Received a nil response from EC2 looking up spot request %v",
+		err = fmt.Errorf("Received a nil response from EC2 looking up spot request %v",
 			spotReqId)
+		grip.Error(err)
+		return nil, err
 	}
 	if len(resp.SpotRequestResults) != 1 {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Expected one spot request info, but got %v",
+		err = fmt.Errorf("Expected one spot request info, but got %d",
 			len(resp.SpotRequestResults))
+		grip.Error(err)
+		return nil, err
 	}
 	return &resp.SpotRequestResults[0], nil
 }

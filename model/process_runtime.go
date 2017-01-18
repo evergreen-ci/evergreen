@@ -3,10 +3,9 @@ package model
 import (
 	"time"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -111,10 +110,10 @@ func UpsertOneProcessRuntime(query interface{}, update interface{}) error {
 	if err != nil {
 		return err
 	}
-	if info.UpsertedId != nil {
-		evergreen.Logger.Logf(slogger.INFO, "Added \"%s\" process to ProcessRuntime"+
-			" db", info.UpsertedId)
-	}
+
+	grip.InfoWhenf(info.UpsertedId != nil, "Added '%s' process to ProcessRuntime  db",
+		info.UpsertedId)
+
 	return nil
 }
 

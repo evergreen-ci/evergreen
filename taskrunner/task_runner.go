@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 )
 
 type TaskRunner struct {
@@ -45,16 +45,14 @@ func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 // out the next appropriate task for each of the hosts and kicking them off.
 // Returns an error if any error is thrown along the way.
 func (self *TaskRunner) Run() error {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding hosts available to take a task...")
+	grip.Info("Finding hosts available to take a task...")
 
 	// find all hosts available to take a task
 	availableHosts, err := self.FindAvailableHosts()
 	if err != nil {
 		return fmt.Errorf("error finding available hosts: %v", err)
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Found %v host(s) available to take a task",
-		len(availableHosts))
+	grip.Infof("Found %d host(s) available to take a task", len(availableHosts))
 	hostsByDistro := self.splitHostsByDistro(availableHosts)
 
 	// assign the free hosts for each distro to the tasks they need to run
@@ -63,7 +61,7 @@ func (self *TaskRunner) Run() error {
 			return err
 		}
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Finished kicking off all pending tasks")
+	grip.Info("Finished kicking off all pending tasks")
 	return nil
 }
 
@@ -75,15 +73,18 @@ func (self *TaskRunner) processDistro(distroId string) error {
 	time.Sleep(time.Second)
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(lockKey, db.LockTimeout)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "error acquiring global lock for %v: %v", lockKey, err)
+		err = fmt.Errorf("error acquiring global lock for %v: %+v", lockKey, err)
+		grip.Error(err)
+		return err
 	}
 	if !lockAcquired {
-		return evergreen.Logger.Errorf(slogger.ERROR, "timed out acquiring global lock for %v", lockKey)
+		err = fmt.Errorf("timed out acquiring global lock for %v", lockKey)
+		grip.Error(err)
+		return err
 	}
 	defer func() {
-		err := db.ReleaseGlobalLock(lockKey)
-		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "error releasing global lock for %v: %v", lockKey, err)
+		if err = db.ReleaseGlobalLock(lockKey); err != nil {
+			grip.Errorf("error releasing global lock for %s: %v", lockKey, err)
 		}
 	}()
 
@@ -91,16 +92,17 @@ func (self *TaskRunner) processDistro(distroId string) error {
 	if err != nil {
 		return fmt.Errorf("loading available %v hosts: %v", distroId, err)
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Found %v %v host(s) available to take a task",
-		len(freeHostsForDistro), distroId)
-	evergreen.Logger.Logf(slogger.INFO, "Kicking off tasks on distro %v...", distroId)
+
+	grip.Infof("Found %d %s host(s) available for tasks", len(freeHostsForDistro), distroId)
+	grip.Infof("Kicking off tasks on distro %s...", distroId)
+
 	taskQueue, err := self.FindTaskQueue(distroId)
 	if err != nil {
 		return fmt.Errorf("error finding task queue for distro %v: %v",
 			distroId, err)
 	}
 	if taskQueue == nil {
-		evergreen.Logger.Logf(slogger.INFO, "nil task queue found for distro '%v'", distroId)
+		grip.Infoln("nil task queue found for distro:", distroId)
 		return nil // nothing to do
 	}
 
@@ -129,27 +131,23 @@ func (self *TaskRunner) processDistro(distroId string) error {
 			agentRevision, err := self.RunTaskOnHost(self.Settings,
 				t, nextHost)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "error kicking off task %v"+
-					" on host %v: %v", t.Id, nextHost.Id, err)
+				grip.Errorf("error kicking off task %s on host %s: %v",
+					t.Id, nextHost.Id, err)
 
-				if err := model.MarkTaskUndispatched(nextTask); err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "error marking task %v as undispatched "+
-						"on host %v: %v", t.Id, nextHost.Id, err)
-				}
+				err = model.MarkTaskUndispatched(nextTask)
+
+				grip.ErrorWhenf(err != nil, "error marking task %v as undispatched on host "+
+					"%v: %v", t.Id, nextHost.Id, err)
 				return
-			} else {
-				evergreen.Logger.Logf(slogger.INFO, "Task %v successfully kicked"+
-					" off on host %v", t.Id, nextHost.Id)
 			}
+
+			grip.Infof("Task %v successfully kicked off on host %v", t.Id, nextHost.Id)
 
 			// now update the host's running task/agent revision fields
 			// accordingly
 			err = nextHost.SetRunningTask(t.Id, agentRevision, time.Now())
-			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "error updating running "+
-					"task %v on host %v: %v", t.Id,
-					nextHost.Id, err)
-			}
+			grip.ErrorWhenf(err != nil, "error updating running task %s on host %s: %+v",
+				t.Id, nextHost.Id, err)
 		}(*nextTask)
 	}
 	waitGroup.Wait()
@@ -189,9 +187,9 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 		// validate that the task can be run, if not fetch the next one in
 		// the queue
 		if shouldSkipTask(nextTask) {
-			evergreen.Logger.Logf(slogger.WARN, "Skipping task %v, which was "+
+			grip.Warningf("Skipping task %s, which was "+
 				"picked up to be run but is not runnable - "+
-				"status (%v) activated (%v)", nextTask.Id, nextTask.Status,
+				"status (%s) activated (%t)", nextTask.Id, nextTask.Status,
 				nextTask.Activated)
 			continue
 		}

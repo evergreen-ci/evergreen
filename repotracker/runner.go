@@ -1,6 +1,7 @@
 package repotracker
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
 )
 
 type Runner struct{}
@@ -42,25 +42,31 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	}
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
+		err = fmt.Errorf("Error acquiring global lock: %+v", err)
+		grip.Error(err)
+		return err
 	}
 
 	if !lockAcquired {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Timed out acquiring global lock")
+		err = errors.New("Timed out acquiring global lock")
+		grip.Error(err)
+		return err
 	}
 
 	defer func() {
 		if err := db.ReleaseGlobalLock(RunnerName); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock: %v", err)
+			grip.Errorln("Error releasing global lock:", err)
 		}
 	}()
 
 	startTime := time.Now()
-	evergreen.Logger.Logf(slogger.INFO, "Running repository tracker with db “%v”", config.Database.DB)
+	grip.Infoln("Running repository tracker with db:", config.Database.DB)
 
 	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Error finding tracked projects %v", err)
+		err = fmt.Errorf("Error finding tracked projects %+v", err)
+		grip.Error(err)
+		return err
 	}
 
 	numNewRepoRevisionsToFetch := config.RepoTracker.NumNewRepoRevisionsToFetch
@@ -82,7 +88,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 			err = tracker.FetchRevisions(numNewRepoRevisionsToFetch)
 			if err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error fetching revisions: %v", err)
+				grip.Errorln("Error fetching revisions:", err)
 			}
 		}(projectRef)
 	}
@@ -90,8 +96,10 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	runtime := time.Now().Sub(startTime)
 	if err = model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Error updating process status: %v", err)
+		err = fmt.Errorf("Error updating process status: %+v", err)
+		grip.Error(err)
+		return err
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Repository tracker took %v to run", runtime)
+	grip.Infof("Repository tracker took %s to run", runtime)
 	return nil
 }

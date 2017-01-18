@@ -3,8 +3,7 @@ package event
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -40,7 +39,7 @@ func LogDistroEvent(distroId string, eventType string, eventData DistroEventData
 	}
 
 	if err := NewDBEventLogger(AllLogCollection).LogEvent(event); err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error logging distro event: %v", err)
+		grip.Errorf("Error logging distro event: %+v", err)
 	}
 }
 

@@ -42,25 +42,20 @@ func main() {
 	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 
-	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not decode https certificate file: %v\n", err)
-		os.Exit(1)
-	}
-
 	logFile := *logPrefix + logSuffix()
 
-	sender, err := send.NewFileLogger("evg.agent", logFile,
-		send.LevelInfo{Default: level.Info, Threshold: level.Debug})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not initialize logger %v\n", err)
-		os.Exit(1)
-	}
-	if err = grip.SetSender(sender); err != nil {
-		fmt.Fprintf(os.Stderr, "could not configure logger %v\n", err)
-		os.Exit(1)
-	}
+	sender, err := send.MakeCallSiteFileLogger(logFile, 2)
+	grip.CatchEmergencyFatal(err)
+	defer sender.Close()
+	grip.CatchEmergencyFatal(grip.SetSender(sender))
+	grip.SetDefaultLevel(level.Info)
+	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
+
+	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
+	if err != nil {
+		grip.EmergencyFatalf("could not decode https certificate file: %+v", err)
+	}
 
 	initialOptions := agent.Options{
 		APIURL:      *apiServer,
@@ -77,12 +72,10 @@ func main() {
 
 	agt, err := agent.New(initialOptions)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
-		os.Exit(1)
+		grip.EmergencyFatalf("could not create new agent: %+v", err)
 	}
 	if err := agt.CreatePidFile(*pidFile); err != nil {
-		fmt.Fprintf(os.Stderr, "error creating pidFile: %v\n", err)
-		os.Exit(1)
+		grip.EmergencyFatalf("error creating pidFile: %+v", err)
 	}
 
 	// enable debug traces on SIGQUIT signaling
@@ -94,13 +87,13 @@ func main() {
 	for {
 		resp, err := agt.RunTask()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error running task: %v\n", err)
+			grip.Criticalf("error running task: %+v", err)
 			exitCode = 1
 			break
 		}
 
 		if resp == nil {
-			fmt.Fprintf(os.Stderr, "received nil response from API server\n")
+			grip.Criticalf("received nil response from API server")
 			exitCode = 1
 			break
 		}
@@ -119,11 +112,12 @@ func main() {
 			PIDFilePath: *pidFile,
 		})
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not create new agent for next task '%v': %v\n", resp.TaskId, err)
+			grip.Criticalf("could not create new agent for next task '%s': %+v", resp.TaskId, err)
 			exitCode = 1
 			break
 		}
 	}
+
 	agent.ExitAgent(nil, exitCode, *pidFile)
 }
 

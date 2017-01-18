@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
+
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -86,8 +86,7 @@ func FindOne(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
 		return err
 	}
 	defer session.Close()
@@ -107,8 +106,8 @@ func FindAll(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return err
 	}
 	defer session.Close()
@@ -126,8 +125,8 @@ func Update(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return err
 	}
 	defer session.Close()
@@ -140,8 +139,8 @@ func UpdateId(collection string, id, update interface{}) error {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return err
 	}
 	defer session.Close()
@@ -155,8 +154,8 @@ func UpdateAll(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return nil, err
 	}
 	defer session.Close()
@@ -170,8 +169,8 @@ func Upsert(collection string, query interface{},
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return nil, err
 	}
 	defer session.Close()
@@ -184,8 +183,8 @@ func Count(collection string, query interface{}) (int, error) {
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return 0, err
 	}
 	defer session.Close()
@@ -200,8 +199,8 @@ func FindAndModify(collection string, query interface{}, sort []string,
 
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v",
-			err)
+		grip.Errorf("error establishing db connection: %+v", err)
+
 		return nil, err
 	}
 	defer session.Close()
@@ -253,7 +252,7 @@ func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
 func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error establishing db connection: %v", err)
+		grip.Errorf("error establishing db connection: %+v", err)
 		return err
 	}
 	defer session.Close()

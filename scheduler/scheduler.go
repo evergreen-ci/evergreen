@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
@@ -42,7 +42,7 @@ type versionBuildVariant struct {
 // for each distro, and spins them up.
 func (s *Scheduler) Schedule() error {
 	// make sure the correct static hosts are in the database
-	evergreen.Logger.Logf(slogger.INFO, "Updating static hosts...")
+	grip.Info("Updating static hosts...")
 
 	err := model.UpdateStaticHosts(s.Settings)
 	if err != nil {
@@ -50,14 +50,14 @@ func (s *Scheduler) Schedule() error {
 	}
 
 	// find all tasks ready to be run
-	evergreen.Logger.Logf(slogger.INFO, "Finding runnable tasks...")
+	grip.Info("Finding runnable tasks...")
 
 	runnableTasks, err := s.FindRunnableTasks()
 	if err != nil {
 		return fmt.Errorf("Error finding runnable tasks: %v", err)
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "There are %v tasks ready to be run", len(runnableTasks))
+	grip.Infoln("There are %v tasks ready to be run", len(runnableTasks))
 
 	// split the tasks by distro
 	tasksByDistro, taskRunDistros, err := s.splitTasksByDistro(runnableTasks)
@@ -113,7 +113,7 @@ func (s *Scheduler) Schedule() error {
 				// schedule the distro
 				res := s.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
 				if res.err != nil {
-					evergreen.Logger.Logf(slogger.ERROR, "%v", err)
+					grip.Error(err)
 				}
 
 				// write the results out to a results channel
@@ -205,12 +205,11 @@ func (s *Scheduler) Schedule() error {
 	}
 
 	if len(hostsSpawned) != 0 {
-		evergreen.Logger.Logf(slogger.INFO, "Hosts spawned (%v total), by distro: ",
-			len(hostsSpawned))
+		grip.Infof("Hosts spawned (%d distros total), by:", len(hostsSpawned))
 		for distro, hosts := range hostsSpawned {
-			evergreen.Logger.Logf(slogger.INFO, "  %v ->", distro)
+			grip.Infoln("\t", "scheduling distro:", distro)
 			for _, host := range hosts {
-				evergreen.Logger.Logf(slogger.INFO, "    %v", host.Id)
+				grip.Infoln("\t\t", host.Id)
 			}
 
 			taskQueueInfo := schedulerEvents[distro]
@@ -218,7 +217,7 @@ func (s *Scheduler) Schedule() error {
 			schedulerEvents[distro] = taskQueueInfo
 		}
 	} else {
-		evergreen.Logger.Logf(slogger.INFO, "No new hosts spawned")
+		grip.Info("No new hosts spawned")
 	}
 
 	for d, t := range schedulerEvents {
@@ -251,8 +250,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	res := distroSchedulerResult{
 		distroId: distroId,
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Prioritizing %v tasks for distro %v...",
-		len(runnableTasksForDistro), distroId)
+	grip.Infof("Prioritizing %d tasks for distro: %s", len(runnableTasksForDistro), distroId)
 
 	prioritizedTasks, err := s.PrioritizeTasks(s.Settings,
 		runnableTasksForDistro)
@@ -262,7 +260,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	}
 
 	// persist the queue of tasks
-	evergreen.Logger.Logf(slogger.INFO, "Saving task queue for distro %v...", distroId)
+	grip.Infoln("Saving task queue for distro", distroId)
 	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks,
 		taskExpectedDuration)
 	if err != nil {
@@ -339,8 +337,8 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if _, exists := versionBuildVarMap[key]; !exists {
 			err := s.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.WARN, "error getting buildvariant "+
-					"map for task %v: %v", task.Id, err)
+				grip.Warningf("error getting buildvariant map for task %s: %+v",
+					task.Id, err)
 				continue
 			}
 		}
@@ -348,8 +346,8 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		// get the build variant for the task
 		buildVariant, ok := versionBuildVarMap[key]
 		if !ok {
-			evergreen.Logger.Logf(slogger.WARN, "task %v has no buildvariant called "+
-				"'%v' on project %v", task.Id, task.BuildVariant, task.Project)
+			grip.Warningf("task %s has no buildvariant called '%s' on project %s",
+				task.Id, task.BuildVariant, task.Project)
 			continue
 		}
 
@@ -364,9 +362,8 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 
 		// if no matching spec was found log it and continue
 		if taskSpec.Name == "" {
-			evergreen.Logger.Logf(slogger.WARN, "task %v has no matching spec for "+
-				"build variant %v on project %v", task.Id,
-				task.BuildVariant, task.Project)
+			grip.Warningf("task %s has no matching spec for build variant %s on project %s",
+				task.Id, task.BuildVariant, task.Project)
 			continue
 		}
 
@@ -412,26 +409,25 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 		for i := 0; i < numHostsToSpawn; i++ {
 			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroId, err)
+				grip.Errorf("Failed to find distro '%s': %+v", distroId, err)
 				continue
 			}
 
 			allDistroHosts, err := host.Find(host.ByDistroId(distroId))
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Error getting hosts for distro %v: %v", distroId, err)
+				grip.Errorf("Error getting hosts for distro %s: %+v", distroId, err)
 				continue
 			}
 
 			if len(allDistroHosts) >= d.PoolSize {
-				evergreen.Logger.Logf(slogger.ERROR, "Already at max (%v) hosts for distro '%v'",
-					distroId,
-					d.PoolSize)
+				grip.Errorf("Already at max (%d) hosts for distro '%s'",
+					d.PoolSize, distroId)
 				continue
 			}
 
 			cloudManager, err := providers.GetCloudManager(d.Provider, s.Settings)
 			if err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error getting cloud manager for distro: %v", err)
+				grip.Errorln("Error getting cloud manager for distro:", err)
 				continue
 			}
 
@@ -441,8 +437,7 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 			}
 			newHost, err := cloudManager.SpawnInstance(d, hostOptions)
 			if err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error spawning instance: %v,",
-					err)
+				grip.Errorln("Error spawning instance:", err)
 				continue
 			}
 			hostsSpawnedPerDistro[distroId] =

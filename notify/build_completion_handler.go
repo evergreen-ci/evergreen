@@ -1,10 +1,10 @@
 package notify
 
 import (
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/web"
+	"github.com/tychoish/grip"
 )
 
 // Handler for build completion notifications, i.e. send notifications whenever
@@ -31,7 +31,7 @@ func (self *BuildCompletionHandler) GetNotifications(ae *web.App, configName str
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, configName, &triggered)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.WARN, "Error templating notification for build `%v`: %v",
+			grip.Warningf("Error templating notification for build '%s': %+v",
 				triggered.Current.Id, err)
 			continue
 		}

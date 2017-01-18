@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -19,6 +17,8 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 func init() {
@@ -291,7 +291,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	s3CopyReq := &S3CopyRequest{}
 	err := util.ReadJSONInto(r.Body, s3CopyReq)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "error reading push request: %v", err)
+		grip.Errorln("error reading push request:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -300,7 +300,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	// any already-done pushes
 	v, err := version.FindOne(version.ById(task.Version))
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "error querying task %v with version id %v: %v",
+		grip.Errorf("error querying task %s with version id %s: %v",
 			task.Id, task.Version, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -309,7 +309,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	// Check for an already-pushed file with this same file path,
 	// but from a conflicting or newer commit sequence num
 	if v == nil {
-		evergreen.Logger.Logf(slogger.ERROR, "no version found for build %v", task.BuildId)
+		grip.Errorln("no version found for build", task.BuildId)
 		http.Error(w, "version not found", http.StatusNotFound)
 		return
 	}
@@ -319,13 +319,13 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "error querying for push log at %v: %v", copyToLocation, err)
+		grip.Errorf("error querying for push log at %s: %+v", copyToLocation, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if newestPushLog != nil {
-		evergreen.Logger.Logf(slogger.WARN, "conflict with existing pushed file: "+"%v", copyToLocation)
+		grip.Warningln("conflict with existing pushed file:", copyToLocation)
 		return
 	}
 
@@ -333,7 +333,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 	newPushLog := model.NewPushLog(v, task, copyToLocation)
 	err = newPushLog.Insert()
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "failed to create new push log: %v %v", newPushLog, err)
+		grip.Errorf("failed to create new push log: %+v %+v", newPushLog, err)
 		http.Error(w, fmt.Sprintf("failed to create push log: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -344,8 +344,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 		SecretKey: s3CopyReq.AwsSecret,
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "performing S3 copy: '%v' => '%v'",
-		copyFromLocation, copyToLocation)
+	grip.Infof("performing S3 copy: '%s' => '%s'", copyFromLocation, copyToLocation)
 
 	_, err = util.RetryArithmeticBackoff(func() error {
 		err := thirdparty.S3CopyFile(auth,
@@ -356,14 +355,12 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 			string(s3.PublicRead),
 		)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "S3 copy failed for task %v, "+
-				"retrying: %v", task.Id, err)
+			grip.Errorf("S3 copy failed for task %s, retrying: %+v", task.Id, err)
 			return util.RetriableError{err}
 		} else {
 			err := newPushLog.UpdateStatus(model.PushLogSuccess)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "updating pushlog status failed"+
-					" for task %v: %v", task.Id, err)
+				grip.Errorf("updating pushlog status failed for task %s: %+v", task.Id, err)
 			}
 			return err
 		}
@@ -371,10 +368,10 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		message := fmt.Sprintf("S3 copy failed for task %v: %v", task.Id, err)
-		evergreen.Logger.Logf(slogger.ERROR, message)
+		grip.Error(message)
 		err = newPushLog.UpdateStatus(model.PushLogFailed)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "updating pushlog status failed: %v", err)
+			grip.Errorln("updating pushlog status failed:", err)
 		}
 		http.Error(w, message, http.StatusInternalServerError)
 		return

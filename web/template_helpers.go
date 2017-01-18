@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 type timePeriod struct {
@@ -48,7 +48,7 @@ func (self *MutableVar) Set(v interface{}) interface{} {
 func convertToTimezone(when time.Time, timezone string, layout string) string {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.WARN, "Could not load location from timezone %v: %v", timezone, err)
+		grip.Warningf("Could not load location from timezone %v: %+v", timezone, err)
 		return when.Format(layout)
 	}
 

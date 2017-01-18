@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/slogger"
 )
 
@@ -242,13 +242,13 @@ func servePatch(w http.ResponseWriter, r *http.Request) {
 	patch, err := patch.FindOne(patch.ByVersion(task.Version))
 	if err != nil {
 		msg := fmt.Sprintf("error fetching patch for task %v from db: %v", task.Id, err)
-		evergreen.Logger.Logf(slogger.ERROR, msg)
+		grip.Error(msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 	if patch == nil {
 		msg := fmt.Sprintf("no patch found for task %v", task.Id)
-		evergreen.Logger.Errorf(slogger.ERROR, msg)
+		grip.Error(msg)
 		http.Error(w, msg, http.StatusNotFound)
 		return
 	}

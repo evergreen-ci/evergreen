@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -19,9 +21,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskRunnerTestConf))
-	if taskRunnerTestConf.TaskRunner.LogFile != "" {
-		evergreen.SetLogger(taskRunnerTestConf.TaskRunner.LogFile)
-	}
+	grip.SetSender(testutil.SetupTestSender(taskRunnerTestConf.TaskRunner.LogFile))
 }
 
 // mock implementations, for testing purposes

@@ -9,11 +9,11 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/render"
+	"github.com/tychoish/grip"
 )
 
 const EmailSubjectPrologue = "[Evergreen]"
@@ -38,7 +38,7 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	if !ok {
 		return fmt.Errorf("missing email address")
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Sending email to %v", rcptRaw)
+	grip.Infof("Sending email to %v", rcptRaw)
 
 	var rcpt string
 	if rcpt, ok = rcptRaw.(string); !ok {
@@ -78,13 +78,13 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	from := mail.Address{"Evergreen Alerts", es.From}
 	err = c.Mail(es.From)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail sender (%v): %v", es.From, err)
+		grip.Errorf("Error establishing mail sender (%s): %+v", es.From, err)
 		return err
 	}
 
 	err = c.Rcpt(rcpt)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error establishing mail recipient (%v): %v", rcpt, err)
+		grip.Errorf("Error establishing mail recipient (%s): %+v", rcpt, err)
 		return err
 	}
 

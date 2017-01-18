@@ -3,9 +3,9 @@ package monitor
 import (
 	"fmt"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/tychoish/grip"
 )
 
 type Notifier struct {
@@ -16,9 +16,7 @@ type Notifier struct {
 
 // create and send any notifications that need to be sent
 func (self *Notifier) Notify(settings *evergreen.Settings) []error {
-
-	evergreen.Logger.Logf(slogger.INFO, "Building and sending necessary"+
-		" notifications...")
+	grip.Info("Building and sending necessary notifications...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -48,7 +46,7 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Done building and sending notifications")
+	grip.Info("Done building and sending notifications")
 
 	return errors
 }
@@ -59,8 +57,7 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 func sendNotifications(notifications []notification,
 	settings *evergreen.Settings) []error {
 
-	evergreen.Logger.Logf(slogger.INFO, "Sending %v notifications...",
-		len(notifications))
+	grip.Infof("Sending %d notifications...", len(notifications))
 
 	// used to store any errors that occur
 	var errors []error

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -17,9 +18,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostFinderTestConf))
-	if hostFinderTestConf.TaskRunner.LogFile != "" {
-		evergreen.SetLogger(hostFinderTestConf.TaskRunner.LogFile)
-	}
+	grip.SetSender(testutil.SetupTestSender(hostFinderTestConf.TaskRunner.LogFile))
 }
 
 func TestDBHostFinder(t *testing.T) {

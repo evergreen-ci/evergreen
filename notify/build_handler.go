@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
+	"github.com/tychoish/grip"
 )
 
 // "Base class" for all build_*_handler.go structs. Contains code that's common
@@ -47,14 +46,14 @@ func (self *BuildNotificationHandler) getRecentlyFinishedBuildsWithStatus(key *N
 		// Copy by value to make pointer safe
 		curr := currentBuild
 		if status == "" || curr.Status == status {
-			evergreen.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
-				curr.Id, key.Project, key.NotificationName)
+			grip.Debugf("Adding '%s' on %s %s notification", curr.Id, key.Project,
+				key.NotificationName)
 
 			// get the build's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(curr.Project); err != nil {
-				evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
-					"for build ”%v”: %v", curr.Id, err)
+				grip.Warningf("Unable to find project ref for build '%s': %+v",
+					curr.Id, err)
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
 			}

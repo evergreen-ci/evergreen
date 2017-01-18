@@ -5,8 +5,7 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
 )
 
 type ScpCommand struct {
@@ -30,16 +29,18 @@ type ScpCommand struct {
 }
 
 func (self *ScpCommand) Run() error {
-	evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) beginning Run()", self.Id)
-	err := self.Start()
-	if err != nil {
+	grip.Debugf("SCPCommand(%s) beginning Run()", self.Id)
+
+	if err := self.Start(); err != nil {
 		return err
 	}
+
 	if self.Cmd != nil && self.Cmd.Process != nil {
-		evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) started process %v", self.Id, self.Cmd.Process.Pid)
+		grip.Debugf("SCPCommand(%s) started process %d", self.Id, self.Cmd.Process.Pid)
 	} else {
-		evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) has nil Cmd or Cmd.Process in Run()", self.Id)
+		grip.Debugf("SCPCommand(%s) has nil Cmd or Cmd.Process in Run()", self.Id)
 	}
+
 	return self.Cmd.Wait()
 }
 
@@ -76,9 +77,9 @@ func (self *ScpCommand) Start() error {
 
 func (self *ScpCommand) Stop() error {
 	if self.Cmd != nil && self.Cmd.Process != nil {
-		evergreen.Logger.Logf(slogger.DEBUG, "SCPCommand(%v) killing process %v", self.Id, self.Cmd.Process.Pid)
+		grip.Debugf("SCPCommand(%s) killing process %d", self.Id, self.Cmd.Process.Pid)
 		return self.Cmd.Process.Kill()
 	}
-	evergreen.Logger.Logf(slogger.WARN, "SCPCommand(%v) Trying to stop command but Cmd / Process was nil", self.Id)
+	grip.Warningf("SCPCommand(%s) Trying to stop command but Cmd / Process was nil", self.Id)
 	return nil
 }

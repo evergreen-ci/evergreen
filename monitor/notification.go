@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/tychoish/grip"
 )
 
 // the warning thresholds for spawned hosts, in decreasing order of recency
@@ -48,14 +48,12 @@ type notification struct {
 func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 	error) {
 
-	evergreen.Logger.Logf(slogger.INFO, "Building spawned host expiration"+
-		" warnings...")
+	grip.Info("Building spawned host expiration warnings...")
 
 	// sanity check, since the thresholds are supplied in code
 	if len(spawnWarningThresholds) == 0 {
-		evergreen.Logger.Logf(slogger.WARN, "there are no currently set warning"+
-			" thresholds for spawned hosts - users will not receive emails"+
-			" warning them of imminent host expiration")
+		grip.Warningln("there are no currently set warning thresholds for spawned hosts;",
+			"users will not receive emails warning them of imminent host expiration")
 		return nil, nil
 	}
 
@@ -90,8 +88,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 			continue
 		}
 
-		evergreen.Logger.Logf(slogger.INFO, "Warning needs to be sent for threshold"+
-			" '%v' for host %v", thresholdKey, h.Id)
+		grip.Infof("Warning needed for threshold '%s' for host %s", thresholdKey, h.Id)
 
 		// fetch information about the user we are notifying
 		userToNotify, err := user.FindOne(user.ById(h.StartedBy))
@@ -112,7 +109,8 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 		// (if time zone is empty, defaults to UTC)
 		loc, err := time.LoadLocation(timezone)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error loading timezone for email format with user_id %v: %v", userToNotify.Id, err)
+			grip.Errorf("loading timezone for email format with user_id %s: %+v",
+				userToNotify.Id, err)
 			expirationTimeFormatted = h.ExpirationTime.Format(time.RFC1123)
 		} else {
 			expirationTimeFormatted = h.ExpirationTime.In(loc).Format(time.RFC1123)
@@ -138,8 +136,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Built %v warnings about imminently"+
-		" expiring hosts", len(warnings))
+	grip.Infof("Built %d warnings about imminently expiring hosts", len(warnings))
 
 	return warnings, nil
 }
@@ -170,8 +167,7 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification,
 	error) {
 
-	evergreen.Logger.Logf(slogger.INFO, "Building warnings for hosts taking a long"+
-		" time to provision...")
+	grip.Info("Building warnings for hosts taking a long time to provision...")
 
 	if settings.Notify.SMTP == nil {
 		return []notification{}, fmt.Errorf("no notification emails configured")
@@ -194,8 +190,7 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification,
 			continue
 		}
 
-		evergreen.Logger.Logf(slogger.INFO, "Slow-provisioning warning needs to"+
-			" be sent for host %v", h.Id)
+		grip.Infoln("Slow-provisioning warning needs to be sent for host", h.Id)
 
 		// build the notification
 		hostNotification := notification{
@@ -216,8 +211,7 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification,
 
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Built %v warnings about hosts taking a"+
-		" long time to provision", len(warnings))
+	grip.Infof("Built %d warnings about hosts taking a long time to provision", len(warnings))
 
 	return warnings, nil
 }

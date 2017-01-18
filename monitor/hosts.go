@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 // responsible for running regular monitoring of hosts
@@ -28,8 +28,7 @@ type HostMonitor struct {
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
 func (hm *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error {
-
-	evergreen.Logger.Logf(slogger.INFO, "Running host monitoring checks...")
+	grip.Info("Running host monitoring checks...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -45,7 +44,7 @@ func (hm *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error
 
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Finished running host monitoring checks")
+	grip.Info("Finished running host monitoring checks")
 
 	return errors
 
@@ -55,16 +54,16 @@ func (hm *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error
 // need to be terminated and terminating them
 func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.Settings) []error {
 
-	evergreen.Logger.Logf(slogger.INFO, "Running host cleanup...")
+	grip.Info("Running host cleanup...")
 
 	// used to store any errors that occur
 	var errors []error
 
 	for idx, flagger := range hm.flaggingFuncs {
-		evergreen.Logger.Logf(slogger.INFO, "Searching for flagged hosts under criteria: %v", flagger.Reason)
+		grip.Infoln("Searching for flagged hosts under criteria:", flagger.Reason)
 		// find the next batch of hosts to terminate
 		hostsToTerminate, err := flagger.hostFlaggingFunc(distros, settings)
-		evergreen.Logger.Logf(slogger.INFO, "Found %v hosts flagged for '%v'", len(hostsToTerminate), flagger.Reason)
+		grip.Infof("Found %v hosts flagged for '%v'", len(hostsToTerminate), flagger.Reason)
 
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
@@ -73,7 +72,7 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 			continue
 		}
 
-		evergreen.Logger.Logf(slogger.INFO, "Check %v: found %v hosts to be terminated", idx, len(hostsToTerminate))
+		grip.Infof("Check %v: found %v hosts to be terminated", idx, len(hostsToTerminate))
 
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
@@ -95,7 +94,7 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason string) []error {
 	errChan := make(chan error)
 	for _, h := range hosts {
-		evergreen.Logger.Logf(slogger.INFO, "Terminating host %v", h.Id)
+		grip.Infof("Terminating host %v", h.Id)
 		// terminate the host in a goroutine, passing the host in as a parameter
 		// so that the variable isn't reused for subsequent iterations
 		go func(hostToTerminate host.Host) {
@@ -110,7 +109,7 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason stri
 					}
 					return fmt.Errorf("error terminating host %v: %v", hostToTerminate.Id, err)
 				}
-				evergreen.Logger.Logf(slogger.INFO, "Successfully terminated host %v", hostToTerminate.Id)
+				grip.Infoln("Successfully terminated host", hostToTerminate.Id)
 				return nil
 			}()
 		}(h)
@@ -135,13 +134,13 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 
 	// run teardown script if we have one, sending notifications if things go awry
 	if host.Distro.Teardown != "" && host.Provisioned {
-		evergreen.Logger.Logf(slogger.ERROR, "Running teardown script for host %v", host.Id)
+		grip.Errorln("Running teardown script for host:", host.Id)
 		if err := runHostTeardown(host, cloudHost); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error running teardown script for %v: %v", host.Id, err)
+			grip.Errorf("Error running teardown script for %s: %+v", host.Id, err)
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
 				notify.TeardownFailurePreface, host.Id)
 			if err := notify.NotifyAdmins(subj, err.Error(), settings); err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+				grip.Errorln("Error sending email:", err)
 			}
 		}
 	}

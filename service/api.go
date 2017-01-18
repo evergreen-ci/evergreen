@@ -34,8 +34,8 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/message"
-	"github.com/tychoish/grip/slogger"
 )
 
 type key int
@@ -139,7 +139,8 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 
 			// Check the secret - if it doesn't match, write error back to the client
 			if secret != t.Secret {
-				evergreen.Logger.Logf(slogger.ERROR, "Wrong secret sent for task %v: Expected %v but got %v", taskId, t.Secret, secret)
+				grip.Errorf("Wrong secret sent for task %s: Expected %s but got %s",
+					taskId, t.Secret, secret)
 				http.Error(w, "wrong secret!", http.StatusConflict)
 				return
 			}
@@ -159,7 +160,7 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			// fall back to the host header if host ids are not part of the path
 			hostId = r.Header.Get(evergreen.HostHeader)
 			if hostId == "" {
-				evergreen.Logger.Logf(slogger.WARN, "Request %v is missing host information", r.URL)
+				grip.Warningf("Request %s is missing host information", r.URL)
 				// skip all host logic and just go on to the route
 				next(w, r)
 				return
@@ -197,8 +198,7 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 		}
 		// update host access time
 		if err := h.UpdateLastCommunicated(); err != nil {
-			evergreen.Logger.Logf(slogger.WARN,
-				"Could not update host last communication time for %v: %v", h.Id)
+			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 		}
 
 		context.Set(r, apiHostKey, h) // TODO is this worth doing?
@@ -251,7 +251,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 	defer releaseGlobalLock(r.RemoteAddr, t.Id)
 
-	evergreen.Logger.Logf(slogger.INFO, "Marking task started: %v", t.Id)
+	grip.Infoln("Marking task started:", t.Id)
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
 	if err := util.ReadJSONInto(r.Body, taskStartInfo); err != nil {
@@ -274,7 +274,7 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 
 	// Fall back to checking host field on task doc
 	if h == nil && len(t.HostId) > 0 {
-		evergreen.Logger.Logf(slogger.DEBUG, "Falling back to host field of task: %v", t.Id)
+		grip.Debugln("Falling back to host field of task:", t.Id)
 		h, err = host.FindOne(host.ById(t.HostId))
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
@@ -350,11 +350,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Requester != evergreen.PatchVersionRequester {
-		evergreen.Logger.Logf(slogger.INFO, "Processing alert triggers for task %v", t.Id)
+		grip.Infoln("Processing alert triggers for task", t.Id)
 		err := alerts.RunTaskFailureTriggers(t.Id)
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error processing alert triggers for task %v: %v", t.Id, err)
-		}
+		grip.ErrorWhenf(err != nil, "processing alert triggers for task %s: %+v", t.Id, err)
 	} else {
 		//TODO(EVG-223) process patch-specific triggers
 	}
@@ -363,7 +361,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if details.Status == evergreen.TaskUndispatched {
 		if err = model.SetActiveState(t.Id, "", false); err != nil {
 			message := fmt.Sprintf("Error deactivating task after abort: %v", err)
-			evergreen.Logger.Logf(slogger.ERROR, message)
+			grip.Error(message)
 			taskEndResponse.Message = message
 			as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 			return
@@ -376,12 +374,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// update the bookkeeping entry for the task
 	err = bookkeeping.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error updating expected duration: %v",
-			err)
+		grip.Errorln("Error updating expected duration:", err)
 	}
 
 	// log the task as finished
-	evergreen.Logger.Logf(slogger.INFO, "Successfully marked task %v as finished", t.Id)
+	grip.Infof("Successfully marked task %s as finished", t.Id)
 
 	// construct and return the appropriate response for the agent
 	as.taskFinished(w, t, finishTime)
@@ -394,21 +391,18 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.Time) {
 	manager, err := providers.GetCloudManager(h.Provider, &as.Settings)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR,
-			"Error loading provider for host %v cost calculation: %v ", t.HostId, err)
+		grip.Errorf("Error loading provider for host %s cost calculation: %+v", t.HostId, err)
 		return
 	}
 	if calc, ok := manager.(cloud.CloudCostCalculator); ok {
-		evergreen.Logger.Logf(slogger.INFO, "Calculating cost for task %v", t.Id)
+		grip.Infoln("Calculating cost for task:", t.Id)
 		cost, err := calc.CostForDuration(h, t.StartTime, finishTime)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR,
-				"Error calculating cost for task %v: %v ", t.Id, err)
+			grip.Errorf("calculating cost for task %s: %+v ", t.Id, err)
 			return
 		}
 		if err := t.SetCost(cost); err != nil {
-			evergreen.Logger.Logf(slogger.ERROR,
-				"Error updating cost for task %v: %v ", t.Id, err)
+			grip.Errorf("Error updating cost for task %s: %+v ", t.Id, err)
 			return
 		}
 	}
@@ -417,8 +411,7 @@ func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.
 func markHostRunningTaskFinished(h *host.Host, t *task.Task, newTaskId string) {
 	// update the given host's running_task field accordingly
 	if err := h.UpdateRunningTask(t.Id, newTaskId, time.Now()); err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error updating running task "+
-			"%v on host %v to '': %v", t.Id, h.Id, err)
+		grip.Errorf("%s on host %s to '': %+v", t.Id, h.Id, err)
 	}
 }
 
@@ -442,7 +435,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 	if err != nil {
 		message := fmt.Sprintf("Error locating host for task %v - set to %v: %v", t.Id,
 			t.HostId, err)
-		evergreen.Logger.Logf(slogger.ERROR, message)
+		grip.Error(message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
@@ -450,7 +443,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 	if host == nil {
 		message := fmt.Sprintf("Error finding host running for task %v - set to %v", t.Id,
 			t.HostId)
-		evergreen.Logger.Logf(slogger.ERROR, message)
+		grip.Error(message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
@@ -459,7 +452,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 		markHostRunningTaskFinished(host, t, "")
 		message := fmt.Sprintf("Host %v - running %v - is in state '%v'. Agent will terminate",
 			t.HostId, t.Id, host.Status)
-		evergreen.Logger.Logf(slogger.INFO, message)
+		grip.Info(message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
@@ -473,7 +466,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 	agentRevision, err := taskRunnerInstance.HostGateway.GetAgentRevision()
 	if err != nil {
 		markHostRunningTaskFinished(host, t, "")
-		evergreen.Logger.Logf(slogger.ERROR, "failed to get agent revision: %v", err)
+		grip.Errorln("failed to get agent revision:", err)
 		taskEndResponse.Message = err.Error()
 		as.WriteJSON(w, http.StatusInternalServerError, taskEndResponse)
 		return
@@ -481,7 +474,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 	if host.AgentRevision != agentRevision {
 		markHostRunningTaskFinished(host, t, "")
 		message := fmt.Sprintf("Remote agent needs to be rebuilt")
-		evergreen.Logger.Logf(slogger.INFO, message)
+		grip.Error(message)
 		taskEndResponse.Message = message
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
@@ -491,7 +484,7 @@ func (as *APIServer) taskFinished(w http.ResponseWriter, t *task.Task, finishTim
 	nextTask, err := getNextDistroTask(t, host)
 	if err != nil {
 		markHostRunningTaskFinished(host, t, "")
-		evergreen.Logger.Logf(slogger.ERROR, err.Error())
+		grip.Error(err)
 		taskEndResponse.Message = err.Error()
 		as.WriteJSON(w, http.StatusOK, taskEndResponse)
 		return
@@ -610,7 +603,7 @@ func (as *APIServer) FetchProjectVars(w http.ResponseWriter, r *http.Request) {
 // AttachFiles updates file mappings for a task or build
 func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	evergreen.Logger.Logf(slogger.INFO, "Attaching files to task %v", t.Id)
+	grip.Infoln("Attaching files to task:", t.Id)
 
 	entry := &artifact.Entry{
 		TaskId:          t.Id,
@@ -621,14 +614,14 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 	err := util.ReadJSONInto(r.Body, &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
-		evergreen.Logger.Errorf(slogger.ERROR, message)
+		grip.Error(message)
 		as.WriteJSON(w, http.StatusBadRequest, message)
 		return
 	}
 
 	if err := entry.Upsert(); err != nil {
 		message := fmt.Sprintf("Error updating artifact file info for task %v: %v", t.Id, err)
-		evergreen.Logger.Errorf(slogger.ERROR, message)
+		grip.Error(message)
 		as.WriteJSON(w, http.StatusInternalServerError, message)
 		return
 	}
@@ -700,12 +693,12 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 
 	heartbeatResponse := apimodels.HeartbeatResponse{}
 	if t.Aborted {
-		//evergreen.Logger.Logf(slogger.INFO, "Sending abort signal for task %v", task.Id)
+		// grip.Infofln("Sending abort signal for task %s", task.Id)
 		heartbeatResponse.Abort = true
 	}
 
 	if err := t.UpdateHeartbeat(); err != nil {
-		//evergreen.Logger.Errorf(slogger.ERROR, "Error updating heartbeat for task %v : %v", task.Id, err)
+		// grip.Errorf("Error updating heartbeat for task %s : %+v", task.Id, err)
 	}
 	as.WriteJSON(w, http.StatusOK, heartbeatResponse)
 }
@@ -805,7 +798,7 @@ func getHostFromRequest(r *http.Request) (*host.Host, error) {
 func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	hostObj, err := getHostFromRequest(r)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, err.Error())
+		grip.Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -813,7 +806,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 	// if the host failed
 	setupSuccess := mux.Vars(r)["status"]
 	if setupSuccess == evergreen.HostStatusFailed {
-		evergreen.Logger.Logf(slogger.INFO, "Initializing host %v failed", hostObj.Id)
+		grip.Infof("Initializing host %s failed", hostObj.Id)
 		// send notification to the Evergreen team about this provisioning failure
 		subject := fmt.Sprintf("%v Evergreen provisioning failure on %v", notify.ProvisionFailurePreface, hostObj.Distro.Id)
 
@@ -821,7 +814,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("Provisioning failed on %v host -- %v (%v). %v",
 			hostObj.Distro.Id, hostObj.Id, hostObj.Host, hostLink)
 		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			grip.Errorln("Error sending email:", err)
 		}
 
 		// get/store setup logs
@@ -851,7 +844,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("Failed to get cloud manager for host %v with provider %v: %v",
 			hostObj.Id, hostObj.Provider, err)
 		if err = notify.NotifyAdmins(subject, message, &as.Settings); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error sending email: %v", err)
+			grip.Errorln("Error sending email:", err)
 		}
 		return
 	}
@@ -868,7 +861,7 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Successfully marked host “%v” with dns “%v” as provisioned", hostObj.Id, dns)
+	grip.Infof("Successfully marked host '%s' with dns '%s' as provisioned", hostObj.Id, dns)
 }
 
 // fetchProjectRef returns a project ref given the project identifier
@@ -967,35 +960,35 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 // helper function for grabbing the global lock
 func getGlobalLock(client, taskId string) bool {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to acquire global lock for %v (remote addr: %v)", taskId, client)
+	grip.Debugf("Attempting to acquire global lock for %s (remote addr: %s)", taskId, client)
 
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(client, db.LockTimeout)
 	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock for %v (remote addr: %v): %v", taskId, client, err)
+		grip.Errorf("Error acquiring global lock for %s (remote addr: %s): %+v", taskId, client, err)
 		return false
 	}
 	if !lockAcquired {
-		evergreen.Logger.Errorf(slogger.ERROR, "Timed out attempting to acquire global lock for %v (remote addr: %v)", taskId, client)
+		grip.Errorf("Timed out attempting to acquire global lock for %s (remote addr: %s)", taskId, client)
 		return false
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Acquired global lock for %v (remote addr: %v)", taskId, client)
+	grip.Debugf("Acquired global lock for %s (remote addr: %s)", taskId, client)
 	return true
 }
 
 // helper function for releasing the global lock
 func releaseGlobalLock(client, taskId string) {
-	evergreen.Logger.Logf(slogger.DEBUG, "Attempting to release global lock for %v (remote addr: %v)", taskId, client)
+	grip.Debugf("Attempting to release global lock for %s (remote addr: %s)", taskId, client)
 	if err := db.ReleaseGlobalLock(client); err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error releasing global lock for %v (remote addr: %v) - this is really bad: %v", taskId, client, err)
+		grip.Errorf("Error releasing global lock for %s (remote addr: %s) - this is really bad: %s", taskId, client, err)
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "Released global lock for %v (remote addr: %v)", taskId, client)
+	grip.Debugf("Released global lock for %s (remote addr: %s)", taskId, client)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	evergreen.Logger.Logf(slogger.ERROR, fmt.Sprintf("%v %v %v", r.Method, r.URL, err.Error()))
+	grip.Errorln(r.Method, r.URL, err)
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
 		as.WriteJSON(w, code, struct {
@@ -1102,15 +1095,15 @@ func (as *APIServer) Handler() (http.Handler, error) {
 		pluginSettings := as.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to configure plugin %v: %v", pl.Name(), err)
+			return nil, fmt.Errorf("Failed to configure plugin %s: %v", pl.Name(), err)
 		}
 		handler := pl.GetAPIHandler()
 		if handler == nil {
-			evergreen.Logger.Logf(slogger.WARN, "no API handlers to install for %v plugin", pl.Name())
+			grip.Warningf("no API handlers to install for %s plugin", pl.Name())
 			continue
 		}
-		evergreen.Logger.Logf(slogger.DEBUG, "Installing API handlers for %v plugin", pl.Name())
-		util.MountHandler(taskRouter, fmt.Sprintf("/%v/", pl.Name()), as.checkTask(false, handler.ServeHTTP))
+		grip.Debugf("Installing API handlers for %s plugin", pl.Name())
+		util.MountHandler(taskRouter, fmt.Sprintf("/%s/", pl.Name()), as.checkTask(false, handler.ServeHTTP))
 	}
 
 	n := negroni.New()

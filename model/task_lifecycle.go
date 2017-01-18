@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 func SetActiveState(taskId string, caller string, active bool) error {
@@ -119,13 +119,13 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 		// restarting from the UI bypasses the restart cap
 		message := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
 		if origin == evergreen.UIPackage {
-			evergreen.Logger.Logf(slogger.DEBUG, "%v allowing exception for %v", message, user)
+			grip.Debugln(message, "allowing exception for", user)
 		} else {
-			evergreen.Logger.Logf(slogger.DEBUG, "%v marking as failed", message)
+			grip.Debugln(message, "marking as failed")
 			if detail != nil {
 				return MarkEnd(t.Id, origin, time.Now(), detail, p, false)
 			} else {
-				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %v", origin))
+				panic(fmt.Sprintf("TryResetTask called with nil TaskEndDetail by %s", origin))
 			}
 		}
 	}
@@ -134,8 +134,10 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	if !task.IsFinished(*t) {
 		// this is to disallow terminating running tasks via the UI
 		if origin == evergreen.UIPackage {
-			evergreen.Logger.Logf(slogger.DEBUG, "Unsatisfiable '%v' reset request on '%v' (status: '%v')", user, t.Id, t.Status)
-			return fmt.Errorf("Task '%v' is currently '%v' - can not reset task in this status", t.Id, t.Status)
+			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
+				user, t.Id, t.Status)
+			return fmt.Errorf("Task '%v' is currently '%v' - can not reset task in this status",
+				t.Id, t.Status)
 		}
 	}
 
@@ -166,7 +168,7 @@ func AbortTask(taskId, caller string) error {
 			" in this status", t.Id, t.Status)
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Aborting task %v", t.Id)
+	grip.Debugln("Aborting task", t.Id)
 	// set the active state and then set the abort
 	if err = SetActiveState(t.Id, caller, false); err != nil {
 		return err
@@ -262,7 +264,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	}
 
 	if t.Status == detail.Status {
-		evergreen.Logger.Logf(slogger.WARN, "Tried to mark task %v as finished twice", t.Id)
+		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
 		return nil
 	}
 
@@ -299,7 +301,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 				return fmt.Errorf("Error during step back: %v", err.Error())
 			}
 		} else {
-			evergreen.Logger.Logf(slogger.DEBUG, "Not stepping backwards on task failure: %v", t.Id)
+			grip.Debugln("Not stepping backwards on task failure:", t.Id)
 		}
 
 	} else if deactivatePrevious {
@@ -375,7 +377,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 					finishedTasks = -1
 					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
-						evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+						grip.Errorln("Error marking build as finished:", err)
 						return err
 					}
 					break
@@ -386,7 +388,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				if t.Status != evergreen.TaskSucceeded {
 					err = b.UpdateStatus(evergreen.BuildFailed)
 					if err != nil {
-						evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+						grip.Errorln("Error updating build status:", err)
 						return err
 					}
 					pushSuccess = false
@@ -396,7 +398,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				if t.Status != evergreen.TaskSucceeded {
 					err = b.UpdateStatus(evergreen.BuildFailed)
 					if err != nil {
-						evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+						grip.Errorln("Error updating build status:", err)
 						return err
 					}
 					failedTask = true
@@ -409,7 +411,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	if !failedTask {
 		err = b.UpdateStatus(evergreen.BuildStarted)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+			grip.Errorln("Error updating build status:", err)
 			return err
 		}
 	}
@@ -424,13 +426,13 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.
 					err = b.MarkFinished(evergreen.BuildSucceeded, finishTime)
 					if err != nil {
-						evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+						grip.Errorln("Error marking build as finished", err)
 						return err
 					}
 				} else if pushCompleted && !pushSuccess { // the push failed, mark build failed.
 					err = b.MarkFinished(evergreen.BuildFailed, finishTime)
 					if err != nil {
-						evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+						grip.Errorln("Error marking build as finished", err)
 						return err
 					}
 				} else {
@@ -438,39 +440,39 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 					//So do nothing, since we don't know the status yet.
 				}
 				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
+					grip.Errorln("Error marking version as finished", err)
 					return err
 				}
 			} else { // this build has no push task. so go ahead and mark it success/failure.
 				if err = b.MarkFinished(evergreen.BuildSucceeded, finishTime); err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+					grip.Errorln("Error marking build as finished", err)
 					return err
 				}
 				if b.Requester == evergreen.PatchVersionRequester {
 					if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
-						evergreen.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
+						grip.Errorln("Error marking patch as finished", err)
 						return err
 					}
 				}
 				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
+					grip.Errorln("Error marking version as finished", err)
 					return err
 				}
 			}
 		} else {
 			// some task failed
 			if err = b.MarkFinished(evergreen.BuildFailed, finishTime); err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error marking build as finished: %v", err)
+				grip.Errorln("Error marking build as finished", err)
 				return err
 			}
 			if b.Requester == evergreen.PatchVersionRequester {
 				if err = TryMarkPatchBuildFinished(b, finishTime); err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error marking patch as finished: %v", err)
+					grip.Errorln("Error marking patch as finished", err)
 					return err
 				}
 			}
 			if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error marking version as finished: %v", err)
+				grip.Errorln("Error marking version as finished", err)
 				return err
 			}
 		}
@@ -478,7 +480,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 		// update the build's makespan information if the task has finished
 		err = updateMakespans(b)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error updating makespan information: %v", err)
+			grip.Errorln("Error updating makespan information", err)
 			return err
 		}
 	}
@@ -487,7 +489,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	if finishedTasks == 0 {
 		err = b.UpdateStatus(evergreen.BuildCreated)
 		if err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error updating build status: %v", err)
+			grip.Errorln("Error updating build status", err)
 			return err
 		}
 	}

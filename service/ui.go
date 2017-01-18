@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -51,8 +51,8 @@ type UIServer struct {
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 	uis := &UIServer{}
-	if settings.Ui.LogFile != "" {
-		evergreen.SetLogger(settings.Ui.LogFile)
+	if len(evergreen.Logger.Appenders) == 0 {
+		evergreen.SetLegacyLogger()
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
@@ -254,7 +254,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			panic(fmt.Sprintf("Error getting UI config for plugin %v: %v", pl.Name(), err))
 		}
 		if uiConf == nil {
-			evergreen.Logger.Logf(slogger.DEBUG, "No UI config needed for plugin %v, skipping", pl.Name())
+			grip.Debugf("No UI config needed for plugin %s, skipping", pl.Name())
 			continue
 		}
 
@@ -264,7 +264,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		// set up a fileserver in plugin's static root, if one is provided
 		pluginStaticPath := filepath.Join(uis.Home, "service", "plugins", pl.Name(), "static")
 
-		evergreen.Logger.Logf(slogger.INFO, "Registering static path for plugin '%v' in %v", pl.Name(), pluginStaticPath)
+		grip.Infof("Registering static path for plugin '%s' in %s", pl.Name(), pluginStaticPath)
 		plRouter.PathPrefix("/static/").Handler(
 			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
 				http.FileServer(http.Dir(pluginStaticPath))),
@@ -280,7 +280,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
 	stack := debug.Stack()
-	evergreen.Logger.Logf(slogger.ERROR, fmt.Sprintf("%v %v %v", r.Method, r.URL, err.Error(), string(stack)))
+	grip.Errorln(r.Method, r.URL, err.Error(), string(stack))
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
 		uis.WriteJSON(w, code, struct {

@@ -6,13 +6,13 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/tychoish/grip"
 )
 
 // DescriptionTemplateString defines the content of the alert ticket.
@@ -58,13 +58,13 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	if err != nil {
 		return fmt.Errorf("error creating description: %v", err)
 	}
-	evergreen.Logger.Logf(slogger.INFO,
-		"Creating '%v' JIRA ticket in %v for failure %v", jd.issueType, jd.project, ctx.Task.Id)
+	grip.Infof("Creating '%v' JIRA ticket in %v for failure %v",
+		jd.issueType, jd.project, ctx.Task.Id)
 	result, err := jd.handler.CreateTicket(request)
 	if err != nil {
 		return fmt.Errorf("error creating JIRA ticket: %v", err)
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Created JIRA ticket %v successfully", result.Key)
+	grip.Infof("Created JIRA ticket %v successfully", result.Key)
 	return nil
 }
 

@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -145,12 +145,12 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
 				distroScheduleData, settings)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error getting num hosts for distro: %v", err)
+			grip.Errorln("Error getting num hosts for distro:", err)
 			return nil, err
 		}
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Reporting hosts needed: %#v", newHostsNeeded)
+	grip.Infof("Reporting hosts needed: %#v", newHostsNeeded)
 	return newHostsNeeded, nil
 }
 
@@ -478,14 +478,16 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 	if err != nil {
-		return 0, evergreen.Logger.Errorf(slogger.ERROR, "Couldn't get cloud manager for %v (%v): %v",
+		err = fmt.Errorf("Couldn't get cloud manager for %s (%s): %+v",
 			distro.Provider, distro.Id, err)
+		grip.Error(err)
+		return 0, err
 	}
 
 	can, err := cloudManager.CanSpawn()
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR,
-			"Error checking if '%v' provider can spawn hosts: %v", distro.Provider, err)
+		grip.Errorf("Problem checking if '%v' provider can spawn hosts: %+v",
+			distro.Provider, err)
 		return 0, nil
 	}
 	if !can {
@@ -496,13 +498,10 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 	numNewHosts = orderedScheduleNumNewHosts(distroScheduleData, distro.Id,
 		MaxDurationPerDistroHost, SharedTasksAllocationProportion)
 
-	evergreen.Logger.Logf(slogger.INFO, "Spawning %v additional hosts for %v - "+
-		"currently at %v existing hosts (%v free)", numNewHosts, distro.Id,
-		len(existingDistroHosts), numFreeHosts)
-
-	evergreen.Logger.Logf(slogger.INFO, "Total estimated time to process all '%v' "+
-		"scheduled tasks is %v; %v running tasks at %v, %v pending tasks at "+
-		"%v (shared tasks duration map: %v)",
+	grip.Infof("Spawning %d additional hosts for %s - currently at %d existing hosts (%d free)",
+		numNewHosts, distro.Id, len(existingDistroHosts), numFreeHosts)
+	grip.Infof("Total estimated time to process all '%s' scheduled tasks is %s; %d running "+
+		"tasks at %s, %d pending tasks at %s (shared tasks duration map: %v)",
 		distro.Id,
 		time.Duration(scheduledTasksDuration+runningTasksDuration)*time.Second,
 		len(existingDistroHosts)-numFreeHosts,

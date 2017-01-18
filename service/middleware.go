@@ -20,7 +20,6 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
 )
 
 // Keys used for storing variables in request context with type safety.
@@ -481,12 +480,12 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 		if len(token) > 0 {
 			dbUser, err := um.GetUserByToken(token)
 			if err != nil {
-				evergreen.Logger.Logf(slogger.INFO, "Error getting user %v: %v", authDataName, err)
+				grip.Infof("Error getting user %s: %+v", authDataName, err)
 			} else {
 				// Get the user's full details from the DB or create them if they don't exists
 				dbUser, err := model.GetOrCreateUser(dbUser.Username(), dbUser.DisplayName(), dbUser.Email())
 				if err != nil {
-					evergreen.Logger.Logf(slogger.INFO, "Error looking up user %v: %v", dbUser.Username(), err)
+					grip.Infof("Error looking up user %s: %+v", dbUser.Username(), err)
 				} else {
 					context.Set(r, RequestUser, dbUser)
 				}
@@ -500,7 +499,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				}
 				context.Set(r, RequestUser, dbUser)
 			} else {
-				evergreen.Logger.Logf(slogger.ERROR, "Error getting user: %v", err)
+				grip.Errorln("Error getting user:", err)
 			}
 		}
 		next(rw, r)

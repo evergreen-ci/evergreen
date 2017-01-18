@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -24,8 +24,7 @@ type hostMonitoringFunc func(*evergreen.Settings) []error
 // monitorReachability is a hostMonitoringFunc responsible for seeing if
 // hosts are reachable or not. returns a slice of any errors that occur
 func monitorReachability(settings *evergreen.Settings) []error {
-
-	evergreen.Logger.Logf(slogger.INFO, "Running reachability checks...")
+	grip.Info("Running reachability checks...")
 
 	// used to store any errors that occur
 	var errors []error
@@ -85,7 +84,7 @@ func monitorReachability(settings *evergreen.Settings) []error {
 
 // check reachability for a single host, and take any necessary action
 func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
-	evergreen.Logger.Logf(slogger.INFO, "Running reachability check for host %v...", host.Id)
+	grip.Infoln("Running reachability check for host:", host.Id)
 
 	// get a cloud version of the host
 	cloudHost, err := providers.GetCloudHost(&host, settings)
@@ -110,9 +109,9 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 
 		// log the status update if the reachability of the host is changing
 		if host.Status == evergreen.HostUnreachable && reachable {
-			evergreen.Logger.Logf(slogger.INFO, "Setting host %v as reachable", host.Id)
+			grip.Infof("Setting host %s as reachable", host.Id)
 		} else if host.Status != evergreen.HostUnreachable && !reachable {
-			evergreen.Logger.Logf(slogger.INFO, "Setting host %v as unreachable", host.Id)
+			grip.Infof("Setting host %s as unreachable", host.Id)
 		}
 
 		// mark the host appropriately
@@ -120,7 +119,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 			return fmt.Errorf("error updating reachability for host %v: %v", host.Id, err)
 		}
 	case cloud.StatusTerminated:
-		evergreen.Logger.Logf(slogger.INFO, "Host %v terminated externally; updating db status to terminated", host.Id)
+		grip.Infof("Host %s terminated externally; updating db status to terminated", host.Id)
 
 		// the instance was terminated from outside our control
 		if err := host.SetTerminated(); err != nil {

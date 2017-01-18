@@ -10,10 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
@@ -75,16 +74,16 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []patch.Summary, err er
 		// we expect to get the number of additions,
 		// the number of deletions, and the filename
 		if len(details) != 3 {
-			evergreen.Logger.Errorf(slogger.ERROR, "File stat details for '%v' has "+
-				"length '%v'", details, len(details))
+			grip.Errorf("File stat details for '%v' has length '%v'",
+				details, len(details))
 			continue
 		}
 
 		additions, err = strconv.Atoi(details[0])
 		if err != nil {
 			if details[0] == "-" {
-				evergreen.Logger.Logf(slogger.WARN, "Line addition count for %v is '%v' "+
-					"assuming binary data diff so using 0", details[2], details[0])
+				grip.Warningf("Line addition count for %v is '%v' assuming "+
+					"binary data diff, using 0", details[2], details[0])
 				additions = 0
 			} else {
 				return nil, fmt.Errorf("Error getting patch additions summary: %v", err)
@@ -94,8 +93,8 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []patch.Summary, err er
 		deletions, err = strconv.Atoi(details[1])
 		if err != nil {
 			if details[1] == "-" {
-				evergreen.Logger.Logf(slogger.WARN, "Line deletion count for %v is '%v' "+
-					"assuming binary data diff so using 0", details[2], details[1])
+				grip.Warningf("Line deletion count for %v is '%v' assuming "+
+					"binary data diff, using 0", details[2], details[1])
 				deletions = 0
 			} else {
 				return nil, fmt.Errorf("Error getting patch deletions summary: %v", err)

@@ -2,19 +2,20 @@ package docker
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/rand"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/fsouza/go-dockerclient"
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -98,7 +99,7 @@ func generateClient(d *distro.Distro) (*docker.Client, *Settings, error) {
 	endpoint := fmt.Sprintf("tcp://%s:%v", settings.HostIp, settings.ClientPort)
 	client, err := docker.NewTLSClientFromBytes(endpoint, cert, key, ca)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Docker initialize client API call failed for host '%s': %v", endpoint, err)
+		grip.Errorf("Docker initialize client API call failed for host '%s': %v", endpoint, err)
 	}
 	return client, settings, err
 }
@@ -115,7 +116,7 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 	// Get all the things!
 	containers, err := client.ListContainers(docker.ListContainersOptions{})
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Docker list containers API call failed. %v", err)
+		grip.Errorf("Docker list containers API call failed. %v", err)
 		return err
 	}
 	reservedPorts := make(map[int64]bool)
@@ -147,7 +148,9 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 
 	// If map is empty, no ports were available.
 	if len(hostConfig.PortBindings) == 0 {
-		return evergreen.Logger.Errorf(slogger.ERROR, "No available ports in specified range.")
+		err := errors.New("No available ports in specified range.")
+		grip.Error(err)
+		return err
 	}
 	return nil
 }
@@ -226,7 +229,7 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	hostConfig := &docker.HostConfig{}
 	err = populateHostConfig(hostConfig, d)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Unable to populate docker host config for host '%s': %v", settings.HostIp, err)
+		grip.Errorf("Unable to populate docker host config for host '%s': %v", settings.HostIp, err)
 		return nil, err
 	}
 
@@ -246,7 +249,7 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		},
 	)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Docker create container API call failed for host '%s': %v", settings.HostIp, err)
+		grip.Errorf("Docker create container API call failed for host '%s': %v", settings.HostIp, err)
 		return nil, err
 	}
 
@@ -263,20 +266,20 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		if err2 != nil {
 			err = fmt.Errorf("%v. And was unable to clean up container %v: %v", err, newContainer.ID, err2)
 		}
-		evergreen.Logger.Logf(slogger.ERROR, "Docker start container API call failed for host '%s': %v", settings.HostIp, err)
+		grip.Errorf("Docker start container API call failed for host '%s': %v", settings.HostIp, err)
 		return nil, err
 	}
 
 	// Retrieve container details
 	newContainer, err = dockerClient.InspectContainer(newContainer.ID)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Docker inspect container API call failed for host '%s': %v", settings.HostIp, err)
+		grip.Errorf("Docker inspect container API call failed for host '%s': %v", settings.HostIp, err)
 		return nil, err
 	}
 
 	hostPort, err := retrieveOpenPortBinding(newContainer)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error with docker container '%v': %v", newContainer.ID, err)
+		grip.Errorf("Error with docker container '%v': %v", newContainer.ID, err)
 		return nil, err
 	}
 
@@ -290,10 +293,12 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 
 	err = intentHost.Insert()
 	if err != nil {
-		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Failed to insert new host '%s': %v", intentHost.Id, err)
+		err = fmt.Errorf("Failed to insert new host '%s': %+v", intentHost.Id, err)
+		grip.Error(err)
+		return nil, err
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Successfully inserted new host '%v' for distro '%v'", intentHost.Id, d.Id)
+	grip.Debugf("Successfully inserted new host '%s' for distro '%s'", intentHost.Id, d.Id)
 
 	return intentHost, nil
 }
@@ -362,7 +367,9 @@ func (dockerMgr *DockerManager) TerminateInstance(host *host.Host) error {
 
 	err = dockerClient.StopContainer(host.Id, TimeoutSeconds)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to stop container '%v': %v", host.Id, err)
+		err = fmt.Errorf("Failed to stop container '%v': %+v", host.Id, err)
+		grip.Error(err)
+		return err
 	}
 
 	err = dockerClient.RemoveContainer(
@@ -371,7 +378,9 @@ func (dockerMgr *DockerManager) TerminateInstance(host *host.Host) error {
 		},
 	)
 	if err != nil {
-		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to remove container '%v': %v", host.Id, err)
+		err = fmt.Errorf("Failed to remove container '%v': %+v", host.Id, err)
+		grip.Error(err)
+		return err
 	}
 
 	return host.Terminate()

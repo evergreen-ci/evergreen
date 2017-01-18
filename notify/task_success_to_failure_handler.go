@@ -3,11 +3,11 @@ package notify
 import (
 	"fmt"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/web"
+	"github.com/tychoish/grip"
 )
 
 // Handler for notifications generated specifically when a task fails and the
@@ -38,15 +38,14 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 		// get previous task for this project/build variant
 		previousTask, err := currentTask.PreviousCompletedTask(key.Project, []string{})
 		if previousTask == nil {
-			evergreen.Logger.Logf(slogger.DEBUG,
-				"No previous completed task found for ”%v” on %v %v notification",
-				currentTask.Id, key.Project, key.NotificationName)
+			grip.Debugf("No previous completed task found for %s in %s "+
+				"with %s notification", currentTask.Id, key.Project,
+				key.NotificationName)
 			continue
 		} else if err != nil {
 			return nil, err
 		}
-		evergreen.Logger.Logf(slogger.DEBUG,
-			"Previous completed task found for ”%v” on %v %v notification is %v",
+		grip.Debugf("Previous completed task found for %s on %s %s notification is %s",
 			currentTask.Id, key.Project, key.NotificationName, previousTask.Id)
 
 		if previousTask.Status == evergreen.TaskSucceeded &&
@@ -60,22 +59,21 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 
 			// if there's an error log it and move on
 			if err != nil {
-				evergreen.Logger.Errorf(slogger.ERROR, "Error finding notification record: %v", err)
+				grip.Errorln("Error finding notification record:", err)
 				continue
 			}
 
 			// get the task's project to add to the notification subject line
 			branchName := UnknownProjectBranch
 			if projectRef, err := getProjectRef(currentTask.Project); err != nil {
-				evergreen.Logger.Logf(slogger.WARN, "Unable to find project ref "+
-					"for task ”%v”: %v", currentTask.Id, err)
+				grip.Warningf("Unable to find project ref for task '%s': %+v", currentTask.Id, err)
 			} else if projectRef != nil {
 				branchName = projectRef.Branch
 			}
 
 			// if no notification for this handler has been registered, register it
 			if history == nil {
-				evergreen.Logger.Logf(slogger.DEBUG, "Adding ”%v” on %v %v notification",
+				grip.Debugf("Adding '%s' on %s %s notification",
 					currentTask.Id, key.NotificationName, key.Project)
 				notification := TriggeredTaskNotification{
 					Current:    &curr,
@@ -87,7 +85,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 
 				email, err := self.TemplateNotification(ae, configName, &notification)
 				if err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error executing template for `%v`: %v",
+					grip.Errorf("Error executing template for '%s: %s",
 						currentTask.Id, err)
 					continue
 				}
@@ -98,11 +96,11 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 					key.NotificationName, getType(key.NotificationName), key.Project,
 					evergreen.RepotrackerVersionRequester)
 				if err != nil {
-					evergreen.Logger.Errorf(slogger.ERROR, "Error inserting notification record: %v", err)
+					grip.Errorln("Error inserting notification record:", err)
 					continue
 				}
 			} else {
-				evergreen.Logger.Logf(slogger.DEBUG, "Skipping intermediate %v handler trigger on ”%v”",
+				grip.Debugf("Skipping intermediate %s handler trigger on '%s'",
 					key.NotificationName, currentTask.Id)
 			}
 		}

@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 )
 
 // ui version of a task queue item
@@ -163,7 +163,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		tasks, err := task.Find(task.ByIds(taskIds).WithFields(task.VersionKey, task.BuildIdKey))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding tasks: %v", err)
-			evergreen.Logger.Errorf(slogger.ERROR, msg)
+			grip.Error(msg)
 			http.Error(w, msg, http.StatusInternalServerError)
 			return
 		}
@@ -198,13 +198,13 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 					)
 					if err != nil {
 						msg := fmt.Sprintf("Error finding patch: %v", err)
-						evergreen.Logger.Errorf(slogger.ERROR, msg)
+						grip.Error(msg)
 						http.Error(w, msg, http.StatusInternalServerError)
 						return
 					}
 					if p == nil {
 						msg := fmt.Sprintf("Couldn't find patch for version %v", queueItemAsUI.Version)
-						evergreen.Logger.Errorf(slogger.ERROR, msg)
+						grip.Error(msg)
 						http.Error(w, msg, http.StatusInternalServerError)
 						return
 					}
@@ -224,14 +224,14 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	idleHosts, err := host.Find(host.IsIdle)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding idle hosts: %v", err)
-		evergreen.Logger.Errorf(slogger.ERROR, msg)
+		grip.Error(msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 	activeHosts, err := host.Find(host.IsLive)
 	if err != nil {
 		msg := fmt.Sprintf("Error finding active hosts: %v", err)
-		evergreen.Logger.Errorf(slogger.ERROR, msg)
+		grip.Error(msg)
 		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}

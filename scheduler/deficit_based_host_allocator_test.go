@@ -3,20 +3,18 @@ package scheduler
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(hostAllocatorTestConf))
-	if hostAllocatorTestConf.Scheduler.LogFile != "" {
-		evergreen.SetLogger(hostAllocatorTestConf.Scheduler.LogFile)
-	}
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostAllocatorTestConf))
+	grip.SetSender(testutil.SetupTestSender(hostAllocatorTestConf.Scheduler.LogFile))
 }
 
 func TestDeficitBasedHostAllocator(t *testing.T) {

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/tychoish/grip"
 )
 
 const ProviderName = "static"
@@ -65,15 +65,13 @@ func (staticMgr *StaticManager) CanSpawn() (bool, error) {
 func (staticMgr *StaticManager) TerminateInstance(host *host.Host) error {
 	// a decommissioned static host will be removed from the database
 	if host.Status == evergreen.HostDecommissioned {
-		evergreen.Logger.Logf(slogger.DEBUG, "Removing decommissioned %v "+
-			"static host (%v)", host.Distro, host.Host)
+		grip.Debugf("Removing decommissioned %s static host (%s)", host.Distro, host.Host)
 		if err := host.Remove(); err != nil {
-			evergreen.Logger.Errorf(slogger.ERROR, "Error removing "+
-				"decommissioned %v static host (%v): %v",
+			grip.Errorf("Error removing decommissioned %s static host (%s): %+v",
 				host.Distro, host.Host, err)
 		}
 	}
-	evergreen.Logger.Logf(slogger.DEBUG, "Not terminating static %v host: %v", host.Distro, host.Host)
+	grip.Debugf("Not terminating static %s host: %s", host.Distro, host.Host)
 	return nil
 }
 

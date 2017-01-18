@@ -3,12 +3,12 @@ package scheduler
 import (
 	"fmt"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 // DeficitBasedHostAllocator uses the difference between the number of free hosts
@@ -52,14 +52,14 @@ func (self *DeficitBasedHostAllocator) numNewHostsForDistro(
 	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Couldn't get cloud manager for distro %v with provider %v: %v",
+		grip.Errorf("Couldn't get cloud manager for distro %s with provider %s: %+v",
 			distro.Id, distro.Provider, err)
 		return 0
 	}
 
 	can, err := cloudManager.CanSpawn()
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Couldn't check if cloud provider %v is spawnable: %v",
+		grip.Errorf("Couldn't check if cloud provider %s is spawnable: %+v",
 			distro.Provider, err)
 		return 0
 	}

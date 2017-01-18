@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/command"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -62,15 +62,15 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 	}
 
 	// prep the remote host
-	evergreen.Logger.Logf(slogger.INFO, "Prepping remote host %v...", hostObj.Id)
+	grip.Infof("Prepping remote host %v...", hostObj.Id)
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions)
 	if err != nil {
 		return "", fmt.Errorf("error prepping remote host %v: %v", hostObj.Id, err)
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Prepping host %v finished successfully", hostObj.Id)
+	grip.Infof("Prepping host %v finished successfully", hostObj.Id)
 
 	// start the agent on the remote machine
-	evergreen.Logger.Logf(slogger.INFO, "Starting agent on host %v for task %v...", hostObj.Id, taskToRun.Id)
+	grip.Infof("Starting agent on host %v for task %v...", hostObj.Id, taskToRun.Id)
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
@@ -83,7 +83,7 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 	if err != nil {
 		return "", err
 	}
-	evergreen.Logger.Logf(slogger.INFO, "Agent successfully started for task %v", taskToRun.Id)
+	grip.Infof("Agent successfully started for task %v", taskToRun.Id)
 
 	return agentRevision, nil
 }
@@ -150,7 +150,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		Background:     false,
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Directories command: '%#v'", makeShellCmd)
+	grip.Infof("Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
 	err = util.RunFunctionWithTimeout(makeShellCmd.Run, MakeShellTimeout)
@@ -184,10 +184,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// get the agent's revision before scp'ing over the executable
 	preSCPAgentRevision, err := agbh.GetAgentRevision()
-	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error getting pre scp agent "+
-			"revision: %v", err)
-	}
+	grip.ErrorWhenln(err != nil, "Error getting pre scp agent revision:", err)
 
 	// run the command to scp the agent with a timeout
 	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
@@ -202,17 +199,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// get the agent's revision after scp'ing over the executable
 	postSCPAgentRevision, err := agbh.GetAgentRevision()
-	if err != nil {
-		evergreen.Logger.Errorf(slogger.ERROR, "Error getting post scp agent "+
-			"revision: %v", err)
-	}
+	grip.ErrorWhenln(err != nil, "Error getting post scp agent revision:", err)
 
-	if preSCPAgentRevision != postSCPAgentRevision {
-		evergreen.Logger.Logf(slogger.WARN, "Agent revision was %v before scp "+
-			"but is now %v. Using previous revision %v for host %v",
-			preSCPAgentRevision, postSCPAgentRevision, preSCPAgentRevision,
-			hostObj.Id)
-	}
+	grip.WarningWhenf(preSCPAgentRevision != postSCPAgentRevision,
+		"Agent revision was %v before scp but is now %v. Using previous revision %v for host %v",
+		preSCPAgentRevision, postSCPAgentRevision, preSCPAgentRevision, hostObj.Id)
 
 	return preSCPAgentRevision, nil
 }
@@ -229,7 +220,7 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 		filepath.Join(hostObj.Distro.WorkDir, agentFile), "",
 		filepath.Join(hostObj.Distro.WorkDir, pidFile),
 	)
-	evergreen.Logger.Logf(slogger.INFO, "%v", remoteCmd)
+	grip.Info(remoteCmd)
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)

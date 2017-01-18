@@ -1,6 +1,7 @@
 package host
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -101,8 +102,8 @@ func (h *Host) SetStatus(status string) error {
 	if h.Status == evergreen.HostTerminated {
 		msg := fmt.Sprintf("Refusing to mark host %v as"+
 			" %v because it is already terminated", h.Id, status)
-		evergreen.Logger.Logf(slogger.WARN, msg)
-		return fmt.Errorf(msg)
+		grip.Warning(msg)
+		return errors.New(msg)
 	}
 
 	event.LogHostStatusChanged(h.Id, h.Status, status)

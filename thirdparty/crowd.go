@@ -8,8 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
 )
 
 type CrowdUser struct {
@@ -76,7 +75,6 @@ func NewRESTCrowdService(crowdUsername string, crowdPassword string, baseUrl str
 
 func (self *RESTCrowdService) GetUser(username string) (*CrowdUser, error) {
 	values := url.Values{}
-	evergreen.Logger.Logf(slogger.DEBUG, "Requesting %v from crowd", username)
 	values.Add("username", username)
 	subUrl, err := self.apiRoot.Parse("/crowd/rest/usermanagement/latest/user?" + values.Encode())
 	if err != nil {
@@ -160,7 +158,7 @@ func (self *RESTCrowdService) GetUserFromToken(token string) (*CrowdUser, error)
 }
 
 func (self *RESTCrowdService) CreateSession(username, password string) (*Session, error) {
-	evergreen.Logger.Logf(slogger.DEBUG, "Requesting user session for '%v' from crowd", username)
+	grip.Debugf("Requesting user session for '%v' from crowd", username)
 	subUrl, err := self.apiRoot.Parse("/crowd/rest/usermanagement/latest/session")
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %v", err)

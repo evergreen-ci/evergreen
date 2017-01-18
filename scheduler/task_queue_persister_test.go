@@ -8,7 +8,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 var (
@@ -16,11 +18,8 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(
-		taskQueuePersisterTestConf))
-	if taskQueuePersisterTestConf.Scheduler.LogFile != "" {
-		evergreen.SetLogger(taskQueuePersisterTestConf.Scheduler.LogFile)
-	}
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueuePersisterTestConf))
+	grip.SetSender(testutil.SetupTestSender(taskQueuePersisterTestConf.Scheduler.LogFile))
 }
 
 func TestDBTaskQueuePersister(t *testing.T) {

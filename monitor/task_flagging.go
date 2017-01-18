@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 )
 
 const (
@@ -35,8 +34,7 @@ type doomedTaskWrapper struct {
 // flagTimedOutHeartbeats is a taskFlaggingFunc to flag any tasks whose
 // heartbeats have timed out
 func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
-
-	evergreen.Logger.Logf(slogger.INFO, "Finding tasks with timed-out heartbeats...")
+	grip.Info("Finding tasks with timed-out heartbeats...")
 
 	// fetch any running tasks whose last heartbeat was too long in the past
 	threshold := time.Now().Add(-HeartbeatTimeoutThreshold)
@@ -54,8 +52,7 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 		wrappers = append(wrappers, doomedTaskWrapper{task, HeartbeatTimeout})
 	}
 
-	evergreen.Logger.Logf(slogger.INFO, "Found %v tasks whose heartbeats timed out",
-		len(wrappers))
+	grip.Infof("Found %d tasks whose heartbeats timed out", len(wrappers))
 
 	return wrappers, nil
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/tychoish/grip"
 )
 
 type mockClock struct {
@@ -25,9 +26,7 @@ func (c mockClock) Now() time.Time {
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	if testConfig.RepoTracker.LogFile != "" {
-		evergreen.SetLogger(testConfig.RepoTracker.LogFile)
-	}
+	grip.SetSender(testutil.SetupTestSender(testConfig.RepoTracker.LogFile))
 }
 
 func TestFetchRevisions(t *testing.T) {

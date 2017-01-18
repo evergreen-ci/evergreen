@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -159,9 +159,7 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		if beforeCommit == nil {
-			evergreen.Logger.Logf(slogger.WARN, "'before' was specified but query returned nil")
-		}
+		grip.WarningWhen(beforeCommit == nil, "'before' was specified but query returned nil")
 	}
 
 	project, err := model.FindProject("", projCtx.ProjectRef)

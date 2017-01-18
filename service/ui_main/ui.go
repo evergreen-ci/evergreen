@@ -17,7 +17,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/render"
 	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip/level"
+	"github.com/tychoish/grip/send"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
@@ -39,8 +40,25 @@ func init() {
 }
 
 func main() {
+	grip.SetName("ui-server")
+
 	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
+
+	if settings.Ui.LogFile == "" {
+		sender := send.MakeCallSiteConsoleLogger(2)
+		defer sender.Close()
+		grip.CatchEmergencyFatal(grip.SetSender(sender))
+	} else {
+		sender, err := send.MakeCallSiteFileLogger(settings.Ui.LogFile, 2)
+		grip.CatchEmergencyFatal(err)
+		defer sender.Close()
+		grip.CatchEmergencyFatal(grip.SetSender(sender))
+	}
+	evergreen.SetLegacyLogger()
+	grip.SetDefaultLevel(level.Info)
+	grip.SetThreshold(level.Debug)
+
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
 		fmt.Println("EVGHOME environment variable must be set to run UI server")
@@ -78,15 +96,14 @@ func main() {
 	})
 	err = uis.InitPlugins()
 	if err != nil {
-		fmt.Println("WARNING: Error initializing plugins:", err)
+		grip.Warningln("problem initializing plugins:", err)
 	}
 
-	grip.SetName("ui-server")
 	n := negroni.New()
 	n.Use(negroni.NewStatic(http.Dir(webHome)))
 	n.Use(service.NewLogger())
 	n.Use(negroni.HandlerFunc(service.UserMiddleware(uis.UserManager)))
 	n.UseHandler(router)
 	graceful.Run(settings.Ui.HttpListenAddr, requestTimeout, n)
-	evergreen.Logger.Logf(slogger.INFO, "UI server cleanly terminated")
+	grip.Info("UI server cleanly terminated")
 }

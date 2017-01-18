@@ -1,9 +1,8 @@
 package scheduler
 
 import (
-	"github.com/tychoish/grip/slogger"
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip"
 )
 
 // TaskFinder finds all tasks that are ready to be run.
@@ -33,8 +32,7 @@ func (self *DBTaskFinder) FindRunnableTasks() ([]task.Task, error) {
 	for _, task := range undispatchedTasks {
 		depsMet, err := task.DependenciesMet(dependencyCaches)
 		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error checking dependencies for"+
-				" task %v: %v", task.Id, err)
+			grip.Errorf("Error checking dependencies for task %s: %+v", task.Id, err)
 			continue
 		}
 		if depsMet {

@@ -19,7 +19,7 @@ import (
 	. "github.com/evergreen-ci/evergreen/runner"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
+	"github.com/tychoish/grip/send"
 )
 
 func init() {
@@ -61,14 +61,20 @@ var (
 func main() {
 	settings := evergreen.GetSettingsOrExit()
 	if settings.Runner.LogFile != "" {
-		evergreen.SetLogger(settings.Runner.LogFile)
+		sender, err := send.MakeCallSiteFileLogger(settings.Runner.LogFile, 2)
+		grip.CatchEmergencyFatal(err)
+		defer sender.Close()
+		grip.CatchEmergencyFatal(grip.SetSender(sender))
+	} else {
+		sender := send.MakeCallSiteConsoleLogger(2)
+		defer sender.Close()
+		grip.CatchEmergencyFatal(grip.SetSender(sender))
 	}
 	grip.SetName("runner")
 
 	home := evergreen.FindEvergreenHome()
 	if home == "" {
-		fmt.Println("EVGHOME environment variable must be set to execute runner")
-		os.Exit(1)
+		grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
 	}
 
 	go util.DumpStackOnSIGQUIT(os.Stdout)
@@ -76,16 +82,11 @@ func main() {
 
 	// just run one process if an argument was passed in
 	if flag.Arg(0) != "" {
-		err := runProcessByName(flag.Arg(0), settings)
-		if err != nil {
-			evergreen.Logger.Logf(slogger.ERROR, "Error: %v", err)
-			os.Exit(1)
-		}
-		return
+		grip.CatchEmergencyFatal(runProcessByName(flag.Arg(0), settings))
 	}
 
 	if settings.Runner.IntervalSeconds <= 0 {
-		evergreen.Logger.Logf(slogger.WARN, "Interval set to %vs (<= 0s) using %vs instead",
+		grip.Warningf("Interval set to %s (<= 0s) using %s instead",
 			settings.Runner.IntervalSeconds, runInterval)
 	} else {
 		runInterval = settings.Runner.IntervalSeconds
@@ -98,7 +99,7 @@ func main() {
 
 	// wait for all the processes to exit
 	wg.Wait()
-	evergreen.Logger.Logf(slogger.INFO, "Cleanly terminated all %v processes", len(Runners))
+	grip.Infof("Cleanly terminated all %d processes", len(Runners))
 }
 
 // startRunners starts a goroutine for each runner exposed via Runners. It
@@ -114,16 +115,16 @@ func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan bool {
 		go func(r ProcessRunner, s *evergreen.Settings, terminateChan chan bool) {
 			defer wg.Done()
 
-			evergreen.Logger.Logf(slogger.INFO, "Starting %v", r.Name())
+			grip.Infoln("Starting runner process:", r.Name())
 
 			loop := true
 
 			for loop {
 				if err := r.Run(s); err != nil {
 					subject := fmt.Sprintf("%v failure", r.Name())
-					evergreen.Logger.Logf(slogger.ERROR, "%v", err)
+					grip.Error(err)
 					if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
-						evergreen.Logger.Logf(slogger.ERROR, "Error sending email: %v", err)
+						grip.Errorln("sending email: %+v", err)
 					}
 				}
 				select {
@@ -131,7 +132,7 @@ func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan bool {
 				case loop = <-terminateChan:
 				}
 			}
-			evergreen.Logger.Logf(slogger.INFO, "Cleanly terminated %v", r.Name())
+			grip.Infoln("Cleanly terminated runner process:", r.Name())
 		}(r, s, c)
 	}
 	return c
@@ -145,7 +146,7 @@ func listenForSIGTERM(ch chan bool) {
 	// notify us when SIGTERM is received
 	signal.Notify(sigChan, syscall.SIGTERM)
 	<-sigChan
-	evergreen.Logger.Logf(slogger.INFO, "Terminating %v processes", len(Runners))
+	grip.Infof("Terminating %d processes", len(Runners))
 	close(ch)
 }
 
@@ -154,9 +155,9 @@ func listenForSIGTERM(ch chan bool) {
 func runProcessByName(name string, settings *evergreen.Settings) error {
 	for _, r := range Runners {
 		if r.Name() == name {
-			evergreen.Logger.Logf(slogger.INFO, "Running standalone %v process", name)
+			grip.Infof("Running standalone %s process", name)
 			if err := r.Run(settings); err != nil {
-				evergreen.Logger.Logf(slogger.ERROR, "Error: %v", err)
+				grip.Error(err)
 			}
 			return nil
 		}

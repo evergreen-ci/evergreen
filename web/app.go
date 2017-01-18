@@ -11,9 +11,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/codegangsta/inject"
-	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
 )
 
 const JSONMarshalError = "Could not marshal data to JSON"
@@ -207,7 +206,7 @@ func (jr JSONResponse) Render(w http.ResponseWriter) error {
 	statusCode := jr.StatusCode
 	jsonBytes, err := json.Marshal(jr.Data)
 	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "ERROR MARSHALING JSON: %v", err)
+		grip.Errorf("marshaling json: %+v", err)
 		statusCode = http.StatusInternalServerError
 		jsonBytes = []byte(fmt.Sprintf(`{"error":"%v"}`, JSONMarshalError))
 	}
