@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen/agent"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/tychoish/grip"
@@ -25,6 +27,8 @@ func init() {
 	}
 }
 
+const statsPort = 2285
+
 func main() {
 	// Get the basic info needed to run the agent from command line flags.
 	taskId := flag.String("task_id", "", "id of task to run")
@@ -35,6 +39,7 @@ func main() {
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
 	logPrefix := flag.String("log_prefix", "", "prefix for the agent's log filename")
 	pidFile := flag.String("pid_file", "", "path to pid file")
+	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 
 	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
@@ -57,7 +62,7 @@ func main() {
 	}
 	grip.SetName("evg-agent")
 
-	agt, err := agent.New(agent.Options{
+	initialOptions := agent.Options{
 		APIURL:      *apiServer,
 		TaskId:      *taskId,
 		TaskSecret:  *taskSecret,
@@ -65,7 +70,12 @@ func main() {
 		HostSecret:  *hostSecret,
 		Certificate: httpsCert,
 		PIDFilePath: *pidFile,
-	})
+	}
+
+	// Start a small HTTP server that has a single status endpoint
+	go runStatusServer(*port, initialOptions)
+
+	agt, err := agent.New(initialOptions)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not create new agent: %v\n", err)
 		os.Exit(1)
@@ -79,6 +89,7 @@ func main() {
 	go agent.DumpStackOnSIGQUIT(&agt)
 
 	exitCode := 0
+
 	// run all tasks until an API server's response has RunNext set to false
 	for {
 		resp, err := agt.RunTask()
@@ -116,7 +127,7 @@ func main() {
 	agent.ExitAgent(nil, exitCode, *pidFile)
 }
 
-// logSuffix generates a unique log filename suffic that is namespaced
+// logSuffix a unique log filename suffix that is namespaced
 // to the PID and Date of the agent's execution.
 func logSuffix() string {
 	return fmt.Sprintf("_%v_pid_%v.log", time.Now().Format(agent.FilenameTimestamp), os.Getpid())
@@ -142,4 +153,19 @@ func getHTTPSCertFile(httpsCertFile string) (string, error) {
 		}
 	}
 	return string(httpsCert), nil
+}
+
+// runStatusServer starts an http server ruining on the specified
+// port. This will exit (e.g. os.Exit()) if the service fails to start.
+func runStatusServer(port int, opts agent.Options) {
+	// TODO (EVG-1440) eventually this should be a method on the agent
+	// object, when the loop (currently in main) is in the agent
+	// implementation itself.
+	n := negroni.New()
+	n.Use(negroni.NewRecovery())
+	n.UseHandler(agent.GetStatusRouter(opts))
+
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	grip.Infoln("starting status service on:", addr)
+	grip.CatchEmergencyFatal(http.ListenAndServe(addr, n))
 }
