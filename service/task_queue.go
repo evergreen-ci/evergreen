@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -15,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip/slogger"
 )
 
 // ui version of a task queue item
