@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip/slogger"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
@@ -413,6 +413,7 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
 				evergreen.Logger.Logf(slogger.ERROR, "Failed to find distro '%v': %v", distroId, err)
+				continue
 			}
 
 			allDistroHosts, err := host.Find(host.ByDistroId(distroId))

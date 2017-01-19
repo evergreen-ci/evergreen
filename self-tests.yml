@@ -258,6 +258,9 @@ tasks:
     name: test-cloud-providers-ec2
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-hostinit
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-repotracker
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]

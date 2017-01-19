@@ -82,38 +82,6 @@ func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *evergreen.
 	return nil, fmt.Errorf("NewHostsNeeded not implemented")
 }
 
-type MockCloudManager struct{}
-
-func (self *MockCloudManager) StartInstance(distroId string) (bool, error) {
-	return false, fmt.Errorf("StartInstance not implemented")
-}
-
-func (self *MockCloudManager) SpawnInstance(distroId string,
-	configDir string) (*host.Host, error) {
-	return &host.Host{Distro: distro.Distro{Id: distroId}}, nil
-}
-
-func (self *MockCloudManager) GetInstanceStatus(inst *host.Host) (
-	string, error) {
-	return "", fmt.Errorf("GetInstanceStatus not implemented")
-}
-
-func (self *MockCloudManager) GetInstanceDNS(inst *host.Host) (string, error) {
-	return "", fmt.Errorf("GetInstanceDNS not implemented")
-}
-
-func (self *MockCloudManager) ReconcileInstanceLists() (bool, error) {
-	return false, fmt.Errorf("ReconcileInstanceLists not implemented")
-}
-
-func (self *MockCloudManager) StopInstance(inst *host.Host) error {
-	return fmt.Errorf("StopInstance not implemented")
-}
-
-func (self *MockCloudManager) TerminateInstance(inst *host.Host) error {
-	return fmt.Errorf("TerminateInstance not implemented")
-}
-
 func TestUpdateVersionBuildVarMap(t *testing.T) {
 	Convey("When updating a version build variant mapping... ", t, func() {
 		versionBuildVarMap := make(map[versionBuildVariant]model.BuildVariant)
@@ -203,7 +171,7 @@ func TestSpawnHosts(t *testing.T) {
 			}
 
 			for _, id := range distroIds {
-				d := distro.Distro{Id: id, PoolSize: 1, Provider: mock.ProviderName}
+				d := distro.Distro{Id: id, PoolSize: 3, Provider: mock.ProviderName}
 				So(d.Insert(), ShouldBeNil)
 			}
 
@@ -223,6 +191,7 @@ func TestSpawnHosts(t *testing.T) {
 
 		Reset(func() {
 			db.Clear(distro.Collection)
+			db.Clear(host.Collection)
 		})
 
 	})

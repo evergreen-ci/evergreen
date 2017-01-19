@@ -22,7 +22,7 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.C
 	case static.ProviderName:
 		provider = &static.StaticManager{}
 	case mock.ProviderName:
-		provider = &mock.MockCloudManager{}
+		provider = mock.FetchMockProvider()
 	case digitalocean.ProviderName:
 		provider = &digitalocean.DigitalOceanManager{}
 	case ec2.OnDemandProviderName:
@@ -36,7 +36,7 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.C
 	}
 
 	if err := provider.Configure(settings); err != nil {
-		return nil, fmt.Errorf("Failed to configure ec2 provider: %v", err)
+		return nil, fmt.Errorf("Failed to configure cloud provider: %v", err)
 	}
 
 	return provider, nil

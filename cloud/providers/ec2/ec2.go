@@ -174,7 +174,7 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	}
 
 	// start the instance - starting an instance does not mean you can connect
-	// to it immediately you have to use GetInstanceStatus below to ensure that
+	// to it immediately you have to use GetInstanceStatus to ensure that
 	// it's actually running
 	newHost, resp, err := startEC2Instance(ec2Handle, &options, intentHost)
 	grip.Debugf("id=%s, intentHost=%s, starResp=%+v, newHost=%+v",

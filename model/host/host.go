@@ -246,7 +246,6 @@ func (h *Host) SetDNSName(dnsName string) error {
 
 func (h *Host) MarkAsProvisioned() error {
 	event.LogHostProvisioned(h.Id)
-
 	h.Status = evergreen.HostRunning
 	h.Provisioned = true
 	return UpdateOne(
