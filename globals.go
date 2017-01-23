@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/level"
 	"github.com/tychoish/grip/send"
 	"github.com/tychoish/grip/slogger"
 )
@@ -147,6 +148,8 @@ func SetLogger(logPath string) {
 
 	grip.SetName("evg")
 	grip.SetSender(sender)
+	grip.SetThreshold(level.Debug)
+	grip.SetDefaultLevel(level.Info)
 
 	Logger = slogger.Logger{
 		Name:      grip.Name(),

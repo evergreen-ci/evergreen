@@ -35,13 +35,12 @@ func init() {
 }
 
 func main() {
-	grip.SetName("api-server")
-
 	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 	if settings.Api.LogFile != "" {
 		evergreen.SetLogger(settings.Api.LogFile)
 	}
+	grip.SetName("api-server")
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
