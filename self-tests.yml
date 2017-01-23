@@ -490,7 +490,7 @@ buildvariants:
     run_on:
       - osx-1010
     expansions:
-      build_env: "EVERGREEN_ALL=true=true DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
     tasks:
       - name: "dist"
@@ -517,7 +517,7 @@ buildvariants:
       - rhel62-small
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes EVERGREEN_ALL=true SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
     tasks:
       - name: ".test"
   - name: rhel71-power
@@ -525,7 +525,7 @@ buildvariants:
     run_on:
       - rhel71-power8-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes EVERGREEN_ALL=true SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
@@ -535,7 +535,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes EVERGREEN_ALL=true SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
