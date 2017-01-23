@@ -112,7 +112,7 @@ func TestGetRevisionsSince(t *testing.T) {
 		})
 		Convey("If the revision is not valid because it has less than 10 characters, should return an error", func() {
 			_, err := self.GetRevisionsSince("master", 10)
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 		})
 	})
 }
