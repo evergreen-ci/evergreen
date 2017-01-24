@@ -353,7 +353,8 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	evergreen.Logger.Logf(slogger.INFO, "Canceling spot request %v", host.Id)
 	//First cancel the spot request
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
-	resp, err = ec2Handle.CancelSpotRequests([]string{host.Id})
+
+	resp, err := ec2Handle.CancelSpotRequests([]string{host.Id})
 	grip.Debugf("host=%s, cancelResp=%+v", host.Id, resp)
 	if err != nil {
 		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to cancel spot request for host %v: %v",

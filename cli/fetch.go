@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	humanize "github.com/dustin/go-humanize"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
@@ -143,9 +144,6 @@ type cloneOptions struct {
 	rootDir  string
 	depth    uint
 }
-
-// TODO (EVG-1480): refactor clone and friends to be reusable and
-// share code with git.get_project related operations.
 
 func clone(opts cloneOptions, verbose bool) error {
 	// clone the repo first
