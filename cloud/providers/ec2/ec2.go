@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
@@ -15,6 +14,8 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 // EC2Manager implements the CloudManager interface for Amazon EC2
@@ -176,6 +177,8 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	// to it immediately you have to use GetInstanceStatus below to ensure that
 	// it's actually running
 	newHost, resp, err := startEC2Instance(ec2Handle, &options, intentHost)
+	grip.Debugf("id=%s, intentHost=%s, starResp=%+v, newHost=%+v",
+		instanceName, intentHost.Id, resp, newHost)
 
 	if err != nil {
 		return nil, evergreen.Logger.Errorf(slogger.ERROR, "Could not start new "+
@@ -184,6 +187,7 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	}
 
 	instance := resp.Instances[0]
+	grip.Debugf("new instance: instance=%s, object=%s", instanceName, instance)
 
 	// create some tags based on user, hostname, owner, time, etc.
 	tags := makeTags(intentHost)

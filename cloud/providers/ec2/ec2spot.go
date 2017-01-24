@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,6 +19,8 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 const (
@@ -342,7 +343,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			// EC2 says the spot request is not found - assume this means amazon
 			// terminated our spot instance
 			evergreen.Logger.Logf(slogger.WARN, "EC2 could not find spot instance '%v', "+
-				"marking as terminated", host.Id)
+				"marking as terminated [%+v]", host.Id, ec2err)
 			return host.Terminate()
 		}
 		return evergreen.Logger.Errorf(slogger.ERROR, "Couldn't terminate, "+
@@ -352,7 +353,8 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	evergreen.Logger.Logf(slogger.INFO, "Canceling spot request %v", host.Id)
 	//First cancel the spot request
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
-	_, err = ec2Handle.CancelSpotRequests([]string{host.Id})
+	resp, err = ec2Handle.CancelSpotRequests([]string{host.Id})
+	grip.Debugf("host=%s, cancelResp=%+v", host.Id, resp)
 	if err != nil {
 		return evergreen.Logger.Errorf(slogger.ERROR, "Failed to cancel spot request for host %v: %v",
 			host.Id, err)
@@ -368,7 +370,8 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			return evergreen.Logger.Errorf(slogger.INFO, "Failed to terminate host %v: %v", host.Id, err)
 		}
 
-		for _, stateChange := range resp.StateChanges {
+		for idx, stateChange := range resp.StateChanges {
+			grip.Debugf("change=%d, host=%s, state=[%+v]", idx, host.Id, stateChange)
 			evergreen.Logger.Logf(slogger.INFO, "Terminated %v", stateChange.InstanceId)
 		}
 	} else {
