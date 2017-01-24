@@ -70,17 +70,12 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("set -o verbose"),
 		fmt.Sprintf("rm -rf %s", ggpc.Directory),
-		fmt.Sprintf("git clone '%s' '%s' --branch '%s' --depth 25", location, ggpc.Directory, conf.Project.Branch),
-		fmt.Sprintln("cd", ggpc.Directory),
-		fmt.Sprintf("if $(git reset --hard %s); then exit 0; fi", conf.Task.Revision),
-		fmt.Sprintf("git fetch --unshallow"),
-		fmt.Sprintf("git reset --hard %s", conf.Task.Revision),
+		fmt.Sprintf("git clone '%s' '%s' --branch '%s'", location, ggpc.Directory, conf.Project.Branch),
+		fmt.Sprintf("cd %v; git reset --hard %s", ggpc.Directory, conf.Task.Revision),
 	}
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
 
-	// TODO (EVG-1480): refactor this to avoid using LocalCommand
-	// which can break if a branch name injects valid shell.
 	fetchSourceCmd := &command.LocalCommand{
 		CmdString:        cmdsJoined,
 		WorkingDirectory: conf.WorkDir,
