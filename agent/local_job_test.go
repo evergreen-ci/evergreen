@@ -78,7 +78,7 @@ func TestLocalJob(t *testing.T) {
 			secondMessage := sender.GetMessage().Rendered
 			fmt.Println("first", firstMessage)
 			fmt.Println("second", secondMessage)
-			So(firstMessage, ShouldEqual, "hi")
+			So(firstMessage, ShouldEndWith, "hi")
 			So(secondMessage, ShouldContainSubstring, "Got kill signal")
 		})
 

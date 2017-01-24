@@ -110,8 +110,7 @@ tasks:
             echo "stuff" >> jstests/dont_archive_me_test.pdb
             echo "i am sanity testing!"
             echo ${fetch_key}
-            printf "this should be on the same line..."
-            printf "as this.\n"
+            printf "this should be on the same line..."; printf "as this.\n"
             cat doc.go recursive/clone/recursive/doc.go
     - command: archive.targz_pack
       params:

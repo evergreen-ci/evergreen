@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
+	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -427,9 +428,6 @@ func TestTaskSuccess(t *testing.T) {
 							So(scanLogsForTask(testTask.Id, "", "step 1 of multi-command func"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "", "step 2 of multi-command func"), ShouldBeTrue)
 							So(scanLogsForTask(testTask.Id, "", "step 3 of multi-command func"), ShouldBeTrue)
-
-							// Check that logging output is only flushing on a newline
-							So(scanLogsForTask(testTask.Id, "", "this should be on the same line...as this."), ShouldBeTrue)
 
 							testTask, err = task.FindOne(task.ById(testTask.Id))
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
