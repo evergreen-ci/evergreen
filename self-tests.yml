@@ -242,6 +242,9 @@ tasks:
     tags: ["db", "test", "agent"]
     name: test-agent
   - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-apiv3-servicecontext
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
     name: test-cli
   - <<: *run-go-test-suite-with-mongodb

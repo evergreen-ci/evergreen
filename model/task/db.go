@@ -213,6 +213,18 @@ func ByBeforeRevision(revisionOrder int, buildVariant, displayName, project, req
 	}).Sort([]string{"-" + RevisionOrderNumberKey})
 }
 
+// ByBuildIdAfterTaskId provides a way to get an ordered list of tasks from a
+// build. Providing a taskId allows indexing into the list of tasks that
+// naturally exists when tasks are sorted by taskId.
+func ByBuildIdAfterTaskId(buildId, taskId string) db.Q {
+	return db.Query(bson.M{
+		BuildIdKey: buildId,
+		IdKey: bson.M{
+			"$gte": taskId,
+		},
+	}).Sort([]string{"+" + IdKey})
+}
+
 func ByBeforeRevisionWithStatuses(revisionOrder int, statuses []string, buildVariant, displayName, project string) db.Q {
 	return db.Query(bson.M{
 		BuildVariantKey: buildVariant,
