@@ -231,9 +231,6 @@ tasks:
     name: test-auth
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
-    name: test-cli
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
     name: test-command
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -244,6 +241,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-agent
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test", "cli"]
+    name: test-cli
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-db
@@ -351,9 +351,6 @@ tasks:
     name: race-auth
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
-    name: race-cli
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
     name: race-command
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
@@ -361,6 +358,9 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
     name: race-agent-comm
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race", "cli"]
+    name: race-cli
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-agent
@@ -510,6 +510,7 @@ buildvariants:
       - name: "dist"
       - name: ".nodb .test !.burn_in"
       - name: ".agent .test"
+      - name: ".cli .test"
   - name: rhel62-gccgo
     display_name: RHEL 6.2 (gccgo)
     run_on:
@@ -530,6 +531,7 @@ buildvariants:
     tasks:
       - name: ".nodb .test !.burn_in"
       - name: ".agent .test"
+      - name: ".cli .test"
   - name: rhel71-s390x
     display_name: "RHEL7.1 s390x"
     run_on:
@@ -540,3 +542,4 @@ buildvariants:
     tasks:
       - name: ".nodb .test !.burn_in"
       - name: ".agent .test"
+      - name: ".cli .test"
