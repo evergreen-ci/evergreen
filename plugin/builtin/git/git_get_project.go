@@ -19,11 +19,11 @@ import (
 type GitGetProjectCommand struct {
 	// The root directory (locally) that the code should be checked out into.
 	// Must be a valid non-blank directory name.
-	Directory string
+	Directory string `plugin:"expand"`
 
 	// Revisions are the optional revisions associated with the modules of a project.
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
-	Revisions map[string]string
+	Revisions map[string]string `plugin:"expand"`
 }
 
 func (ggpc *GitGetProjectCommand) Name() string {
@@ -56,7 +56,7 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	stop chan bool) error {
 
 	// expand the github parameters before running the task
-	if err := plugin.ExpandValues(&ggpc.Revisions, conf.Expansions); err != nil {
+	if err := plugin.ExpandValues(ggpc, conf.Expansions); err != nil {
 		return err
 	}
 
@@ -69,9 +69,9 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	gitCommands := []string{
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("set -o verbose"),
-		fmt.Sprintf("rm -rf %v", ggpc.Directory),
-		fmt.Sprintf("git clone %v '%v'", location, ggpc.Directory),
-		fmt.Sprintf("cd %v; git checkout %v", ggpc.Directory, conf.Task.Revision),
+		fmt.Sprintf("rm -rf %s", ggpc.Directory),
+		fmt.Sprintf("git clone '%s' '%s' --branch '%s'", location, ggpc.Directory, conf.Project.Branch),
+		fmt.Sprintf("cd %v; git reset --hard %s", ggpc.Directory, conf.Task.Revision),
 	}
 
 	cmdsJoined := strings.Join(gitCommands, "\n")

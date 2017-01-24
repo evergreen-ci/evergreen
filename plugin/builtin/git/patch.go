@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/tychoish/grip/slogger"
 )
 
 // GitApplyPatchCommand is deprecated. Its functionality is now a part of GitGetProjectCommand.
@@ -157,8 +157,8 @@ func GetPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []st
 		fmt.Sprintf("set -o verbose"),
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("ls"),
-		fmt.Sprintf("cd '%v'", dir),
-		fmt.Sprintf("git checkout '%v'", modulePatch.Githash),
+		fmt.Sprintf("cd '%s'", dir),
+		fmt.Sprintf("git reset --hard '%s'", modulePatch.Githash),
 	}
 	if modulePatch.PatchSet.Patch == "" {
 		return patchCommands
