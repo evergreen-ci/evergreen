@@ -1,7 +1,6 @@
 package s3copy_test
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -53,17 +52,10 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		taskConfig.WorkDir = "."
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
-
-		// the copy command needs the path to the test file,
-		// relative to the local path, and so we resolve the
-		// current working directory, and extract the needed
-		// relative path from the path of the file.
-		wd, _ := os.Getwd()
-		wd, _ = os.Readlink(wd)
 		taskConfig.Expansions.Update(map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,
 			"aws_secret": testConfig.Providers.AWS.Secret,
-			"pwd":        pwd[len(wd)+1:],
+			"pwd":        pwd,
 		})
 
 		Convey("the s3 copy command should execute successfully", func() {
