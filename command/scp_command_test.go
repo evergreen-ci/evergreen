@@ -13,13 +13,12 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestScpCommand(t *testing.T) {
-	testutil.SkipTestUnlessAll(t, "TestScpCommand")
+	t.Skip("skipping because local testing ssh configuration is not implemented")
 
 	Convey("With files to scp", t, func() {
 
