@@ -1,6 +1,7 @@
 package s3copy_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			db.ClearCollections(model.PushlogCollection, version.Collection), t,
 			"error clearing test collections")
 		version := &version.Version{
-			Id: "",
+			Id: "versionId",
 		}
 		So(version.Insert(), ShouldBeNil)
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
@@ -46,16 +47,23 @@ func TestS3CopyPluginExecution(t *testing.T) {
 
 		//server.InstallPlugin(s3CopyPlugin)
 
-		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
-			"testdata", "plugin_s3_copy.yml"), t)
+		pwd := testutil.GetDirectoryOfFile()
+		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(pwd, "testdata", "plugin_s3_copy.yml"), t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 		taskConfig.WorkDir = "."
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
+		// the copy command needs the path to the test file,
+		// relative to the local path, and so we resolve the
+		// current working directory, and extract the needed
+		// relative path from the path of the file.
+		wd, _ := os.Getwd()
+		wd, _ = os.Readlink(wd)
 		taskConfig.Expansions.Update(map[string]string{
 			"aws_key":    testConfig.Providers.AWS.Id,
 			"aws_secret": testConfig.Providers.AWS.Secret,
+			"pwd":        pwd[len(wd)+1:],
 		})
 
 		Convey("the s3 copy command should execute successfully", func() {
