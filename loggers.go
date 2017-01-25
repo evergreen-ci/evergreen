@@ -10,11 +10,14 @@ import (
 	"github.com/tychoish/grip/slogger"
 )
 
+const newLine = []byte{'\n'}
+
 // LoggingWriter is a struct - with an associated log
 // level severity - that implements io.Writer
 type LoggingWriter struct {
 	Logger   *slogger.Logger
 	Severity level.Priority
+	buffer   []byte
 	mutex    sync.Mutex
 }
 
@@ -42,7 +45,24 @@ func (self *LoggingWriter) Write(p []byte) (n int, err error) {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
-	lines := bytes.Split(p, []byte{'\n'})
+	// if the logged message does *not* end in a new line, we
+	// should buffer it until we find one that does.
+	if !bytes.HasSuffix(p, newLine) {
+		self.buffer = append(self.buffer, p...)
+		return
+	}
+
+	// we're ready to write the log message
+
+	// if we had something in the buffer, we should prepend it to
+	// the current message, and clear the buffer.
+	if len(self.buffer) >= 1 {
+		p = append(self.buffer, p...)
+		self.buffer = []byte{}
+	}
+
+	// Now send each log message:
+	lines := bytes.Split(p, newLine)
 	for _, val := range lines {
 		toString := string(val)
 		if strings.Trim(toString, " ") != "" {
