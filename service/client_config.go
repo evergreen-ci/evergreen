@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip"
 )
 
 // getClientConfig should be called once at startup and looks at the
@@ -20,6 +21,13 @@ func getClientConfig(settings *evergreen.Settings) (*evergreen.ClientConfig, err
 	c.LatestRevision = evergreen.ClientVersion
 
 	root := filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory)
+
+	if _, err := os.Stat(root); os.IsNotExist(err) {
+		grip.Warningf("client directory '%s' does not exist, creating empty "+
+			"directory and continuing with caution", root)
+		os.MkdirAll(root, 0755)
+	}
+
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
