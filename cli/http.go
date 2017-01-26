@@ -486,3 +486,24 @@ func (ac *APIClient) GetOptimalMakespans(numberBuilds int, csv bool) (io.ReadClo
 
 	return resp.Body, nil
 }
+
+// GetTestHistory takes in a project identifier, the url query parameter string, and a csv flag and
+// returns the body of the response of the test_history api endpoint.
+func (ac *APIClient) GetTestHistory(project, queryParams string, isCSV bool) (io.ReadCloser, error) {
+	if isCSV {
+		queryParams += "&csv=true"
+	}
+	resp, err := ac.get(fmt.Sprintf("projects/%v/test_history?%v", project, queryParams), nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("not found")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewAPIError(resp)
+	}
+
+	return resp.Body, nil
+}

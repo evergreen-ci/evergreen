@@ -3,6 +3,7 @@ package cli
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -26,4 +27,21 @@ func TestGitCmd(t *testing.T) {
 
 	})
 
+}
+
+func TestGetHistoryCreateUrlQuery(t *testing.T) {
+	Convey("with a test history parameter", t, func() {
+		thp := model.TestHistoryParameters{
+			Project:        "sample",
+			TaskNames:      []string{"a", "b"},
+			TestNames:      []string{"c", "d"},
+			TestStatuses:   []string{"blah"},
+			TaskStatuses:   []string{"one", "two"},
+			BeforeRevision: "abc",
+		}
+		Convey("query parameter should have all relevant values", func() {
+			So(createUrlQuery(thp), ShouldEqual,
+				"testStatuses=blah&taskStatuses=one,two&tasks=a,b&tests=c,d&beforeRevision=abc")
+		})
+	})
 }

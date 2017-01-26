@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/tychoish/grip/slogger"
 )
 
 type taskStatusContent struct {

@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -14,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -66,6 +69,7 @@ func setupCLITestHarness() cliTestHarness {
 			patch.Collection,
 			model.ProjectRefCollection,
 			artifact.Collection,
+			version.Collection,
 		),
 		ShouldBeNil)
 	So(db.Clear(patch.Collection), ShouldBeNil)
@@ -218,6 +222,81 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			})
 		})
 	})
+}
+
+func TestCLITestHistory(t *testing.T) {
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLITestHistory")
+	Convey("with API test server running", t, func() {
+		testSetup := setupCLITestHarness()
+
+		Convey("with a set of tasks being inserted into the database", func() {
+			now := time.Now()
+			revisionBeginning := "101112dfac9f1251466afe7c4bf9f56b"
+			project := "sample"
+			testVersion := version.Version{
+				Id:                  "version1",
+				Revision:            fmt.Sprintf("%vversion1", revisionBeginning),
+				RevisionOrderNumber: 1,
+				Identifier:          project,
+				Requester:           evergreen.RepotrackerVersionRequester,
+			}
+			So(testVersion.Insert(), ShouldBeNil)
+			testVersion2 := version.Version{
+				Id:                  "version2",
+				Revision:            fmt.Sprintf("%vversion2", revisionBeginning),
+				RevisionOrderNumber: 2,
+				Identifier:          project,
+				Requester:           evergreen.RepotrackerVersionRequester,
+			}
+			So(testVersion2.Insert(), ShouldBeNil)
+			testVersion3 := version.Version{
+				Id:                  "version3",
+				Revision:            fmt.Sprintf("%vversion3", revisionBeginning),
+				RevisionOrderNumber: 4,
+				Identifier:          project,
+				Requester:           evergreen.RepotrackerVersionRequester,
+			}
+			So(testVersion3.Insert(), ShouldBeNil)
+			// create tasks with three different display names that start and finish at various times
+			for i := 0; i < 10; i++ {
+				startTime := now.Add(time.Minute * time.Duration(i))
+				endTime := now.Add(time.Minute * time.Duration(i+1))
+				passingResult := task.TestResult{
+					TestFile:  "passingTest",
+					Status:    evergreen.TestSucceededStatus,
+					StartTime: float64(startTime.Unix()),
+					EndTime:   float64(endTime.Unix()),
+				}
+				failedResult := task.TestResult{
+					TestFile:  "failingTest",
+					Status:    evergreen.TestFailedStatus,
+					StartTime: float64(startTime.Unix()),
+					EndTime:   float64(endTime.Unix()),
+				}
+				t := task.Task{
+					Id:           fmt.Sprintf("task_%v", i),
+					Project:      project,
+					DisplayName:  fmt.Sprintf("testTask_%v", i%3),
+					Revision:     fmt.Sprintf("%vversion%v", revisionBeginning, i%3),
+					Version:      fmt.Sprintf("version%v", i%3),
+					BuildVariant: "osx",
+					Status:       evergreen.TaskFailed,
+					TestResults:  []task.TestResult{passingResult, failedResult},
+				}
+				So(t.Insert(), ShouldBeNil)
+			}
+
+			Convey("with a CLI test history command with tasks, executing should set defaults and print out results", func() {
+				thc := TestHistoryCommand{
+					GlobalOpts: &Options{testSetup.settingsFilePath},
+					Project:    project,
+					Tasks:      []string{"testTask_1"},
+				}
+				So(thc.Execute([]string{}), ShouldBeNil)
+			})
+		})
+	})
+
 }
 
 func TestCLIFunctions(t *testing.T) {

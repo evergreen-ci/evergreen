@@ -61,8 +61,6 @@ func (ec *ExportCommand) Execute(args []string) error {
 	var body io.ReadCloser
 	switch ec.StatsType {
 
-	// TODO: Average Scheduler Statistics - https://jira.mongodb.org/browse/EVG-1275
-	// TODO: Optimal Makespan Statistics - https://jira.mongodb.org/browse/EVG-1274
 	case HostUtilizationStat:
 		granSeconds, err := convertGranularityToSeconds(ec.Granularity)
 		if err != nil {
@@ -91,11 +89,11 @@ func (ec *ExportCommand) Execute(args []string) error {
 		}
 
 	default:
-		return fmt.Errorf("%v is not a valid stats type. The current valid one is 'host'", ec.StatsType)
+		return fmt.Errorf("%v is not a valid stats type. The current valid types include, host, avg, and makespan", ec.StatsType)
 
 	}
 
-	return writeToFile(body, ec.Filepath)
+	return WriteToFile(body, ec.Filepath)
 }
 
 // convertGranularityToSeconds takes in a string granularity and returns its
@@ -114,8 +112,9 @@ func convertGranularityToSeconds(granString string) (int, error) {
 	}
 }
 
-// writeToFile takes in a body and filepath and writes out the data in the body
-func writeToFile(body io.ReadCloser, filepath string) error {
+// WriteToFile takes in a body and filepath and writes out the data in the body
+func WriteToFile(body io.ReadCloser, filepath string) error {
+	defer body.Close()
 	file := os.Stdout
 	var err error
 	if filepath != "" {

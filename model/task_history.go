@@ -345,9 +345,8 @@ func (self *taskHistoryIterator) GetFailedTests(aggregatedTasks *mgo.Pipe) (map[
 // checks that there is a project id and either a list of test names or task names.
 func (t *TestHistoryParameters) validate() []string {
 	validationErrors := []string{}
-
 	if t.Project == "" {
-		validationErrors = append(validationErrors, "invalid project id")
+		validationErrors = append(validationErrors, "no project id specified")
 	}
 
 	if len(t.TestNames) == 0 && len(t.TaskNames) == 0 {
@@ -357,7 +356,7 @@ func (t *TestHistoryParameters) validate() []string {
 	validTestStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSkippedStatus, evergreen.TestSucceededStatus}
 	for _, status := range t.TestStatuses {
 		if !util.SliceContains(validTestStatuses, status) {
-			validationErrors = append(validationErrors, "invalid test status in parameters")
+			validationErrors = append(validationErrors, fmt.Sprintf("invalid test status in parameters: %v", status))
 		}
 	}
 
@@ -365,7 +364,7 @@ func (t *TestHistoryParameters) validate() []string {
 	validTaskStatuses := []string{evergreen.TaskFailed, evergreen.TaskSucceeded, TaskTimeout, TaskSystemFailure}
 	for _, status := range t.TaskStatuses {
 		if !util.SliceContains(validTaskStatuses, status) {
-			validationErrors = append(validationErrors, "invalid task status in parameters")
+			validationErrors = append(validationErrors, fmt.Sprintf("invalid task status in parameters: %v", status))
 		}
 	}
 

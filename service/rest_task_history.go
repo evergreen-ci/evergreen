@@ -17,20 +17,26 @@ const (
 	MaxRestNumRevisions = 10
 )
 
+var (
+	jsonFormat   = "json"
+	csvFormat    = "csv"
+	prettyFormat = "pretty"
+)
+
 type RestTestHistoryResult struct {
-	TestFile     string        `json:"test_file"`
-	TaskName     string        `json:"task_name"`
-	Status       string        `json:"status"`
-	Revision     string        `json:"revision"`
-	Project      string        `json:"project"`
-	TaskId       string        `json:"task_id"`
-	BuildVariant string        `json:"variant"`
-	StartTime    time.Time     `json:"start_time"`
-	EndTime      time.Time     `json:"end_time"`
-	DurationMS   time.Duration `json:"duration"`
-	Execution    int           `json:"execution"`
-	Url          string        `json:"url"`
-	UrlRaw       string        `json:"url_raw"`
+	TestFile     string        `json:"test_file" csv:"test_file"`
+	TaskName     string        `json:"task_name" csv:"task_name"`
+	Status       string        `json:"status" csv:"status"`
+	Revision     string        `json:"revision" csv:"revision"`
+	Project      string        `json:"project" csv:"project"`
+	TaskId       string        `json:"task_id" csv:"task_id"`
+	BuildVariant string        `json:"variant" csv:"variant"`
+	StartTime    time.Time     `json:"start_time" csv:"start_time"`
+	EndTime      time.Time     `json:"end_time" csv:"end_time"`
+	DurationMS   time.Duration `json:"duration" csv:"duration"`
+	Execution    int           `json:"execution" csv:"execution"`
+	Url          string        `json:"url" csv:"url"`
+	UrlRaw       string        `json:"url_raw" csv:"url_raw"`
 }
 
 func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
@@ -114,7 +120,14 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := params.SetDefaultsAndValidate()
+	// export format
+	isCSV, err := util.GetBoolValue(r, "csv", false)
+	if err != nil {
+		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	err = params.SetDefaultsAndValidate()
 	if err != nil {
 		restapi.WriteJSON(w, http.StatusBadRequest, err.Error())
 		return
@@ -144,5 +157,10 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 			Execution:    result.Execution,
 		})
 	}
+	if isCSV {
+		util.WriteCSVResponse(w, http.StatusOK, restHistoryResults)
+		return
+	}
 	restapi.WriteJSON(w, http.StatusOK, restHistoryResults)
+
 }
