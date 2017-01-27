@@ -92,18 +92,18 @@ plugins:$(buildDir)/.plugins
 $(buildDir)/.plugins:Plugins install_plugins.sh
 	./install_plugins.sh
 	@touch $@
-$(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(srcFiles) $(buildDir)/.plugins
+$(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(srcFiles)
 	$(buildBinary)
-$(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(srcFiles) $(buildDir)/.plugins
+$(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(srcFiles)
 	$(buildBinary)
-$(buildDir)/evergreen_runner:runner/main/runner.go $(srcFiles) $(buildDir)/.plugins
+$(buildDir)/evergreen_runner:runner/main/runner.go $(srcFiles)
 	$(buildBinary)
 #   build the server binaries with the race detector:
-$(buildDir)/evergreen_api_server.race:service/api_main/apiserver.go $(srcFiles) $(buildDir)/.plugins
+$(buildDir)/evergreen_api_server.race:service/api_main/apiserver.go $(srcFiles)
 	$(buildRaceBinary)
-$(buildDir)/evergreen_runner.race:runner/main/runner.go $(srcFiles) $(buildDir)/.plugins
+$(buildDir)/evergreen_runner.race:runner/main/runner.go $(srcFiles)
 	$(buildRaceBinary)
-$(buildDir)/evergreen_ui_server.race:service/ui_main/ui.go $(srcFiles) $(buildDir)/.plugins
+$(buildDir)/evergreen_ui_server.race:service/ui_main/ui.go $(srcFiles)
 	$(buildRaceBinary)
 phony += $(binaries) $(raceBinaries)
 # end rules for building server binaries
