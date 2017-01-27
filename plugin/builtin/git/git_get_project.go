@@ -70,9 +70,16 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 		fmt.Sprintf("set -o errexit"),
 		fmt.Sprintf("set -o verbose"),
 		fmt.Sprintf("rm -rf %s", ggpc.Directory),
-		fmt.Sprintf("git clone '%s' '%s' --branch '%s'", location, ggpc.Directory, conf.Project.Branch),
-		fmt.Sprintf("cd %v; git reset --hard %s", ggpc.Directory, conf.Task.Revision),
 	}
+
+	cloneCmd := fmt.Sprintf("git clone '%s' '%s'", location, ggpc.Directory)
+	if conf.ProjectRef.Branch != "" {
+		cloneCmd = fmt.Sprintf("%s --branch '%s'", cloneCmd, conf.ProjectRef.Branch)
+	}
+
+	gitCommands = append(gitCommands,
+		cloneCmd,
+		fmt.Sprintf("cd %v; git reset --hard %s", ggpc.Directory, conf.Task.Revision))
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
 
