@@ -10,7 +10,7 @@ import (
 	"github.com/tychoish/grip/slogger"
 )
 
-const newLine = []byte{'\n'}
+var newLine = []byte{'\n'}
 
 // LoggingWriter is a struct - with an associated log
 // level severity - that implements io.Writer
