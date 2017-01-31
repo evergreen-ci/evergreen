@@ -38,7 +38,8 @@ func TestLoggingWriter(t *testing.T) {
 				content := []byte(msg)
 				n, err := logWriter.Write(content)
 				So(err, ShouldBeNil)
-				So(n, ShouldNotEqual, 0)
+				So(n, ShouldEqual, len(content))
+
 			}
 			So(sender.Len(), ShouldEqual, 1)
 			So(sender.GetMessage().Rendered, ShouldEndWith, strings.Trim(strings.Join(msgs, ""), "\n"))

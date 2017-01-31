@@ -45,11 +45,15 @@ func (self *LoggingWriter) Write(p []byte) (int, error) {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
+	// capture the number of bytes in the input so we can return
+	// the proper amount
+	n := len(p)
+
 	// if the logged message does *not* end in a new line, we
 	// should buffer it until we find one that does.
 	if !bytes.HasSuffix(p, newLine) {
 		self.buffer = append(self.buffer, p...)
-		return len(p), nil
+		return n, nil
 	}
 
 	// we're ready to write the log message
@@ -72,5 +76,5 @@ func (self *LoggingWriter) Write(p []byte) (int, error) {
 			}
 		}
 	}
-	return len(p), nil
+	return n, nil
 }
