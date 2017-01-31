@@ -41,7 +41,7 @@ func NewErrorLoggingWriter(logger *slogger.Logger) *LoggingWriter {
 
 // Since LoggingWriter is an io.Writer,
 // it must implement the Write function
-func (self *LoggingWriter) Write(p []byte) (n int, err error) {
+func (self *LoggingWriter) Write(p []byte) (int, error) {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 
@@ -49,7 +49,7 @@ func (self *LoggingWriter) Write(p []byte) (n int, err error) {
 	// should buffer it until we find one that does.
 	if !bytes.HasSuffix(p, newLine) {
 		self.buffer = append(self.buffer, p...)
-		return
+		return len(p), nil
 	}
 
 	// we're ready to write the log message
