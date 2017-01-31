@@ -35,9 +35,14 @@ func TestLoggingWriter(t *testing.T) {
 
 			msgs := []string{"foo bar", "bar", "foo", "baz baz baz!!!\n"}
 			for _, msg := range msgs {
-				logWriter.Write([]byte(msg))
+				content := []byte(msg)
+				n, err := logWriter.Write(content)
+				So(err, ShouldBeNil)
+				So(n, ShouldNotEqual, 0)
 			}
+			So(sender.Len(), ShouldEqual, 1)
 			So(sender.GetMessage().Rendered, ShouldEndWith, strings.Trim(strings.Join(msgs, ""), "\n"))
 		})
 	})
+
 }
