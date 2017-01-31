@@ -46,8 +46,14 @@ func GetPatchedProject(p *patch.Patch, settings *evergreen.Settings) (*model.Pro
 	}
 
 	project := &model.Project{}
+
+	// if the patched config exists, use that as the project file bytes.
+	if p.PatchedConfig != "" {
+		projectFileBytes = []byte(p.PatchedConfig)
+	}
+
 	// apply remote configuration patch if needed
-	if p.ConfigChanged(projectRef.RemotePath) {
+	if p.ConfigChanged(projectRef.RemotePath) && p.PatchedConfig == "" {
 		project, err = model.MakePatchedConfig(p, projectRef.RemotePath, string(projectFileBytes))
 		if err != nil {
 			return nil, fmt.Errorf("Could not patch remote configuration file: %v", err)
