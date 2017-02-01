@@ -155,7 +155,6 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 	// Signal all background actions to stop. If HandleSignals is still running,
 	// this will cause it to return.
 	close(agt.signalHandler.stopBackgroundChan)
-
 	var detail *apimodels.TaskEndDetail
 	select {
 	case detail = <-agt.endChan:
@@ -197,11 +196,11 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
+	agt.APILogger.FlushAndWait() // ensure that logs are sent before task ends.
 	ret, err := agt.End(detail)
 	if ret != nil && !ret.RunNext {
 		agt.logger.LogExecution(slogger.INFO, "No new tasks to run. Agent will shut down.")
 	}
-	agt.APILogger.FlushAndWait() // ensure we send any logs from End()
 	return ret, err
 }
 
@@ -549,6 +548,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 func (agt *Agent) RunTaskCommands() (*apimodels.TaskEndResponse, error) {
 	conf := agt.taskConfig
 	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
+
 	if task == nil {
 		agt.logger.LogExecution(slogger.ERROR, "Can't find task: %v", conf.Task.DisplayName)
 		return agt.finishAndAwaitCleanup(evergreen.TaskFailed)
@@ -763,6 +763,10 @@ func ExitAgent(logger *comm.StreamLogger, exitCode int, pidFile string) {
 		}
 		// exit with code 2 to indicate pid file removal error
 		os.Exit(2)
+	}
+	// if the pid file is removed also flush if necessary
+	if logger != nil {
+		logger.Flush()
 	}
 	os.Exit(exitCode)
 }

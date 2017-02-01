@@ -638,7 +638,6 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-
 	if err := util.ReadJSONInto(r.Body, taskLog); err != nil {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return

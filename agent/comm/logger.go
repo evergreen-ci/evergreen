@@ -306,7 +306,7 @@ func (apiLgr *APILogger) FlushAndWait() int {
 	return numMessages
 }
 
-// This function assumes that the caller already holds apiLgr.appendLock
+// flushInternal assumes that the caller already holds apiLgr.appendLock
 func (apiLgr *APILogger) flushInternal() {
 	apiLgr.lastFlush = time.Now()
 
