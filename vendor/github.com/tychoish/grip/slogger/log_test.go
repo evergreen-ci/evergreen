@@ -29,21 +29,21 @@ func TestLogType(t *testing.T) {
 	assert.True(plog.Loggable())
 
 	// ensure that the resolve and the message handlers return different things.
-	assert.True(strings.HasSuffix(log.Resolve(), "hello world"), log.Resolve())
-	assert.True(strings.HasSuffix(plog.Resolve(), "hello world"), log.Resolve())
+	assert.True(strings.HasSuffix(log.String(), "hello world"), log.String())
+	assert.True(strings.HasSuffix(plog.String(), "hello world"), log.String())
 	assert.Equal("hello world", log.Message())
 	assert.Equal("hello world", plog.Message())
-	assert.NotEqual(log.Message(), log.Resolve())
-	assert.NotEqual(plog.Message(), plog.Resolve())
+	assert.NotEqual(log.Message(), log.String())
+	assert.NotEqual(plog.Message(), plog.String())
 
 	// prefixing should persist
 	assert.Equal(log.Prefix, "")
 	assert.Equal(plog.Prefix, "grip")
-	assert.True(strings.Contains(plog.Resolve(), "grip"), fmt.Sprintf("%+v", log))
-	assert.False(strings.Contains(log.Resolve(), "grip"), fmt.Sprintf("%+v", log))
+	assert.True(strings.Contains(plog.String(), "grip"), fmt.Sprintf("%+v", log))
+	assert.False(strings.Contains(log.String(), "grip"), fmt.Sprintf("%+v", log))
 	fmt.Println(fmt.Sprintf("%+v", log))
-	assert.Equal(FormatLog(log), log.Resolve())
-	assert.Equal(FormatLog(plog), plog.Resolve())
+	assert.Equal(FormatLog(log), log.String())
+	assert.Equal(FormatLog(plog), plog.String())
 
 	for _, l := range []Level{WARN, INFO, DEBUG} {
 		assert.NoError(log.SetPriority(l.Priority()))

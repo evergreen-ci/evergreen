@@ -5,7 +5,9 @@ import (
 	"github.com/tychoish/grip/message"
 )
 
-// Internal helpers to manage sending interaction
+///////////////////////////////////////////////////////////////////////////
+//
+// Multi Send
 
 func (g *Grip) multiSend(l level.Priority, msgs []message.Composer) {
 	for _, m := range msgs {
@@ -52,4 +54,56 @@ func (g *Grip) InfoMany(msgs ...message.Composer) {
 
 func (g *Grip) DebugMany(msgs ...message.Composer) {
 	g.multiSend(level.Debug, msgs)
+}
+
+///////////////////////////////////////////////////////////////////////////
+//
+// Conditional Multi Send
+
+func (g *Grip) conditionalMultiSend(conditional bool, l level.Priority, msgs []message.Composer) {
+	if !conditional {
+		return
+	}
+
+	g.multiSend(l, msgs)
+}
+
+func (g *Grip) LogManyWhen(conditional bool, l level.Priority, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, l, msgs)
+}
+
+func (g *Grip) DefaultManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, g.Level().Default, msgs)
+}
+
+func (g *Grip) EmergencyManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Emergency, msgs)
+}
+
+func (g *Grip) AlertManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Alert, msgs)
+}
+
+func (g *Grip) CriticalManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Critical, msgs)
+}
+
+func (g *Grip) ErrorManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Critical, msgs)
+}
+
+func (g *Grip) WarningManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Warning, msgs)
+}
+
+func (g *Grip) NoticeManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Notice, msgs)
+}
+
+func (g *Grip) InfoManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Info, msgs)
+}
+
+func (g *Grip) DebugManyWhen(conditional bool, msgs ...message.Composer) {
+	g.conditionalMultiSend(conditional, level.Debug, msgs)
 }

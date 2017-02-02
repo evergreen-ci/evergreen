@@ -7,15 +7,13 @@ import (
 	"log"
 	"log/syslog"
 	"os"
-	"strings"
 
 	"github.com/tychoish/grip/level"
 	"github.com/tychoish/grip/message"
 )
 
 type syslogger struct {
-	logger   *syslog.Writer
-	fallback *log.Logger
+	logger *syslog.Writer
 	*base
 }
 
@@ -27,15 +25,7 @@ type syslogger struct {
 // to the local syslog interface before writing messages to standard
 // output.
 func NewSyslogLogger(name, network, raddr string, l LevelInfo) (Sender, error) {
-	s := MakeSysLogger(network, raddr)
-
-	if err := s.SetLevel(l); err != nil {
-		return nil, err
-	}
-
-	s.SetName(name)
-
-	return s, nil
+	return setup(MakeSysLogger(network, raddr), name, l)
 }
 
 // MakeSysLogger constructs a minimal and unconfigured logger that
@@ -44,16 +34,23 @@ func NewSyslogLogger(name, network, raddr string, l LevelInfo) (Sender, error) {
 func MakeSysLogger(network, raddr string) Sender {
 	s := &syslogger{base: newBase("")}
 
-	s.reset = func() {
-		s.fallback = log.New(os.Stderr, strings.Join([]string{"[", s.Name(), "] "}, ""), log.LstdFlags)
+	fallback := log.New(os.Stdout, "", log.LstdFlags)
+	s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
 
-		if err := s.Close(); err != nil {
-			s.fallback.Printf("problem closing existing syslogger: %+v", err)
+	s.reset = func() {
+		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
+
+		if s.logger != nil {
+			if err := s.logger.Close(); err != nil {
+				s.errHandler(err, message.NewErrorWrapMessage(level.Error, err,
+					"problem closing syslogger"))
+			}
 		}
 
 		w, err := syslog.Dial(network, raddr, syslog.LOG_DEBUG, s.Name())
 		if err != nil {
-			s.fallback.Printf("error restarting syslog [%s] for logger: %s", err.Error(), s.Name())
+			s.errHandler(err, message.NewErrorWrapMessage(level.Error, err,
+				"error restarting syslog [%s] for logger: %s", err.Error(), s.Name()))
 			return
 		}
 
@@ -76,16 +73,12 @@ func MakeLocalSyslogLogger() Sender {
 	return MakeSysLogger("", "")
 }
 
-func (s *syslogger) Close() error     { return s.logger.Close() }
-func (s *syslogger) Type() SenderType { return Syslog }
+func (s *syslogger) Close() error { return s.logger.Close() }
 
 func (s *syslogger) Send(m message.Composer) {
 	if s.level.ShouldLog(m) {
-		msg := m.Resolve()
-
-		if err := s.sendToSysLog(m.Priority(), msg); err != nil {
-			s.fallback.Println("syslog error:", err.Error())
-			s.fallback.Printf("[p=%d]: %s\n", m.Priority(), msg)
+		if err := s.sendToSysLog(m.Priority(), m.String()); err != nil {
+			s.errHandler(err, m)
 		}
 	}
 }

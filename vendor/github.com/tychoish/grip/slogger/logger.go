@@ -51,7 +51,7 @@ func (l *Logger) Errorf(level Level, messageFmt string, args ...interface{}) err
 		send.Send(log)
 	}
 
-	return errors.New(m.Resolve())
+	return errors.New(m.String())
 }
 
 // Stackf is designed to work in tandem with `NewStackError`. This

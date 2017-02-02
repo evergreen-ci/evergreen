@@ -24,19 +24,21 @@ func (s *GripSuite) SetupSuite() {
 
 func (s *GripSuite) SetupTest() {
 	s.grip.SetName(s.name)
-	s.NoError(s.grip.SetSender(send.NewBootstrapLogger(s.name, s.grip.GetSender().Level())))
+	sender, err := send.NewNativeLogger(s.name, s.grip.GetSender().Level())
+	s.NoError(err)
+	s.NoError(s.grip.SetSender(sender))
 }
 
 func (s *GripSuite) TestDefaultJournalerIsBootstrap() {
-	s.Equal(s.grip.GetSender().Type(), send.Bootstrap)
-
+	firstName := s.grip.Name()
 	// the bootstrap sender is a bit special because you can't
 	// change it's name, therefore:
 	secondName := "something_else"
 	s.grip.SetName(secondName)
 
-	s.Equal(s.grip.GetSender().Type(), send.Bootstrap)
 	s.Equal(s.grip.Name(), secondName)
+	s.NotEqual(s.grip.Name(), firstName)
+	s.NotEqual(firstName, secondName)
 }
 
 func (s *GripSuite) TestNameSetterAndGetter() {

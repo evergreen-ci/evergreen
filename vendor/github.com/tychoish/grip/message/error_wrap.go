@@ -38,7 +38,7 @@ func NewErrorWrapMessage(p level.Priority, err error, base string, args ...inter
 // message for non-nil errors with a normal formatted message
 // (e.g. fmt.Sprintf). These messages only log if the error is
 // non-nil.
-func NewErrorWrapDefault(err error, base string, args ...interface{}) Composer {
+func NewErrorWrap(err error, base string, args ...interface{}) Composer {
 	return &errorWrapMessage{
 		base: base,
 		args: args,
@@ -46,7 +46,7 @@ func NewErrorWrapDefault(err error, base string, args ...interface{}) Composer {
 	}
 }
 
-func (m *errorWrapMessage) Resolve() string {
+func (m *errorWrapMessage) String() string {
 	if m.Message != "" {
 		return m.Message
 	}
@@ -71,7 +71,7 @@ func (m *errorWrapMessage) Resolve() string {
 	return m.Message
 }
 func (m *errorWrapMessage) Raw() interface{} {
-	_ = m.Resolve()
+	_ = m.String()
 	_ = m.Collect()
 
 	return m

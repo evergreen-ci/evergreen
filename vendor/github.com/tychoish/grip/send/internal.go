@@ -53,12 +53,11 @@ func MakeInternalLogger() *internalSender {
 	}
 }
 
-func (s *internalSender) Name() string     { return s.name }
-func (s *internalSender) SetName(n string) { s.name = n }
-func (s *internalSender) Close() error     { close(s.output); return nil }
-func (s *internalSender) Type() SenderType { return Internal }
-func (s *internalSender) Level() LevelInfo { return s.level }
-
+func (s *internalSender) Name() string                         { return s.name }
+func (s *internalSender) SetName(n string)                     { s.name = n }
+func (s *internalSender) Close() error                         { close(s.output); return nil }
+func (s *internalSender) Level() LevelInfo                     { return s.level }
+func (s *internalSender) SetErrorHandler(_ ErrorHandler) error { return nil }
 func (s *internalSender) SetLevel(l LevelInfo) error {
 	if !l.Valid() {
 		return errors.New("invalid level")
@@ -79,7 +78,7 @@ func (s *internalSender) Send(m message.Composer) {
 	s.output <- &internalMessage{
 		Message:  m,
 		Priority: m.Priority(),
-		Rendered: m.Resolve(),
+		Rendered: m.String(),
 		Logged:   s.level.ShouldLog(m),
 	}
 }

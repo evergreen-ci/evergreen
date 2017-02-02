@@ -15,13 +15,13 @@ import (
 // collects system-wide resource utilization statistics about memory,
 // CPU, and network use, along with an optional message.
 type SystemInfo struct {
-	Message  string                 `json:"message,omitempty"`
-	CPU      cpu.TimesStat          `json:"cpu,omitempty"`
-	NumCPU   int                    `json:"num_cpus,omitempty"`
-	VMStat   *mem.VirtualMemoryStat `json:"vmstat,omitempty"`
-	NetStat  net.IOCountersStat     `json:"netstat,omitempty"`
-	Errors   []string               `json:"errors,omitempty"`
-	Base     `json:"metadata"`
+	Message  string                `json:"message,omitempty" bson:"message,omitempty"`
+	CPU      cpu.TimesStat         `json:"cpu,omitempty" bson:"cpu,omitempty"`
+	NumCPU   int                   `json:"num_cpus,omitempty" bson:"num_cpus,omitempty"`
+	VMStat   mem.VirtualMemoryStat `json:"vmstat,omitempty" bson:"vmstat,omitempty"`
+	NetStat  net.IOCountersStat    `json:"netstat,omitempty" bson:"netstat,omitempty"`
+	Errors   []string              `json:"errors,omitempty" bson:"errors,omitempty"`
+	Base     `json:"metadata,omitempty" bson:"metadata,omitempty"`
 	loggable bool
 }
 
@@ -60,8 +60,11 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 		s.CPU = times[0]
 	}
 
-	s.VMStat, err = mem.VirtualMemory()
+	vmstat, err := mem.VirtualMemory()
 	s.saveError(err)
+	if err != nil {
+		s.VMStat = *vmstat
+	}
 
 	netstat, err := net.IOCounters(false)
 	s.saveError(err)
@@ -74,7 +77,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 
 func (s *SystemInfo) Loggable() bool   { return s.loggable }
 func (s *SystemInfo) Raw() interface{} { _ = s.Collect(); return s }
-func (s *SystemInfo) Resolve() string {
+func (s *SystemInfo) String() string {
 	data, err := json.MarshalIndent(s, "  ", " ")
 	if err != nil {
 		return s.Message

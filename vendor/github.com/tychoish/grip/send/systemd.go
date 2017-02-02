@@ -3,9 +3,9 @@
 package send
 
 import (
+	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/coreos/go-systemd/journal"
 	"github.com/tychoish/grip/level"
@@ -13,8 +13,7 @@ import (
 )
 
 type systemdJournal struct {
-	options  map[string]string
-	fallback *log.Logger
+	options map[string]string
 	*base
 }
 
@@ -23,15 +22,7 @@ type systemdJournal struct {
 // error with the sending to the journald, messages fallback to
 // writing to standard output.
 func NewSystemdLogger(name string, l LevelInfo) (Sender, error) {
-	s := MakeSystemdLogger()
-
-	if err := s.SetLevel(l); err != nil {
-		return nil, err
-	}
-
-	s.SetName(name)
-
-	return s, nil
+	return setup(MakeSystemdLogger(), name, l)
 }
 
 // MakeSystemdLogger constructs an unconfigured systemd journald
@@ -42,24 +33,23 @@ func MakeSystemdLogger() Sender {
 		base:    newBase(""),
 	}
 
+	fallback := log.New(os.Stdout, "", log.LstdFlags)
+	s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
+
 	s.reset = func() {
-		s.fallback = log.New(os.Stdout, strings.Join([]string{"[", s.Name(), "] "}, ""), log.LstdFlags)
+		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
 	}
 
 	return s
 }
 
-func (s *systemdJournal) Close() error     { return nil }
-func (s *systemdJournal) Type() SenderType { return Systemd }
+func (s *systemdJournal) Close() error { return nil }
 
 func (s *systemdJournal) Send(m message.Composer) {
 	if s.level.ShouldLog(m) {
-		msg := m.Resolve()
-		p := m.Priority()
-		err := journal.Send(msg, s.level.convertPrioritySystemd(p), s.options)
+		err := journal.Send(m.String(), s.level.convertPrioritySystemd(m.Priority()), s.options)
 		if err != nil {
-			s.fallback.Println("systemd journaling error:", err.Error())
-			s.fallback.Printf("[p=%s]: %s", p, msg)
+			s.errHandler(err, m)
 		}
 	}
 }

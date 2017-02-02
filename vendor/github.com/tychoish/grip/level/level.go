@@ -12,7 +12,7 @@ import "strings"
 
 // Priority is an integer that tracks log levels. Use with one of the
 // defined constants.
-type Priority int
+type Priority int16
 
 // Constants defined for easy access to
 const (

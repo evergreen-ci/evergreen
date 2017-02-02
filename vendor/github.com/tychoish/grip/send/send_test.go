@@ -2,7 +2,9 @@ package send
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"os"
 	"testing"
 	"time"
 
@@ -13,7 +15,7 @@ import (
 )
 
 type SenderSuite struct {
-	senders map[SenderType]Sender
+	senders map[string]Sender
 	require *require.Assertions
 	rand    *rand.Rand
 	suite.Suite
@@ -29,23 +31,25 @@ func (s *SenderSuite) SetupSuite() {
 }
 func (s *SenderSuite) SetupTest() {
 	l := LevelInfo{level.Info, level.Notice}
-	s.senders = map[SenderType]Sender{
-		Slack:     &slackJournal{base: newBase("slack")},
-		File:      &fileLogger{base: newBase("file")},
-		XMPP:      &xmppLogger{base: newBase("xmpp")},
-		JSON:      &jsonLogger{base: newBase("json")},
-		Stream:    &streamLogger{base: newBase("stream")},
-		Bootstrap: &bootstrapLogger{},
+	s.senders = map[string]Sender{
+		"slack":  &slackJournal{base: newBase("slack")},
+		"xmpp":   &xmppLogger{base: newBase("xmpp")},
+		"json":   &jsonLogger{base: newBase("json")},
+		"stream": &streamLogger{base: newBase("stream")},
 	}
 
 	internal := new(internalSender)
 	internal.name = "internal"
 	internal.output = make(chan *internalMessage)
-	s.senders[Internal] = internal
+	s.senders["internal"] = internal
+
+	callsite := &callSiteLogger{base: newBase("callsite"), depth: 1}
+	callsite.logger = log.New(os.Stdout, "callsite", log.LstdFlags)
+	s.senders["callsite"] = callsite
 
 	native, err := NewNativeLogger("native", l)
 	s.require.NoError(err)
-	s.senders[Native] = native
+	s.senders["native"] = native
 
 	var sender Sender
 	multiSenders := []Sender{}
@@ -57,16 +61,15 @@ func (s *SenderSuite) SetupTest() {
 
 	multi, err := NewMultiSender("multi", l, multiSenders)
 	s.require.NoError(err)
-	s.senders[Multi] = multi
-
+	s.senders["multi"] = multi
 }
 
-func (s *SenderSuite) functionalMockSenders() map[SenderType]Sender {
-	out := map[SenderType]Sender{}
+func (s *SenderSuite) functionalMockSenders() map[string]Sender {
+	out := map[string]Sender{}
 	for t, sender := range s.senders {
-		if t == Slack || t == File || t == Stream || t == Internal || t == XMPP {
+		if t == "slack" || t == "stream" || t == "internal" || t == "xmpp" {
 			continue
-		} else if t == JSON {
+		} else if t == "json" {
 			var err error
 			out[t], err = NewJSONConsoleLogger("json", LevelInfo{level.Info, level.Notice})
 			s.require.NoError(err)
@@ -78,7 +81,7 @@ func (s *SenderSuite) functionalMockSenders() map[SenderType]Sender {
 }
 
 func (s *SenderSuite) TeardownSuite() {
-	s.NoError(s.senders[Internal].Close())
+	s.NoError(s.senders["internal"].Close())
 }
 
 func (s *SenderSuite) TestSenderImplementsInterface() {
@@ -102,12 +105,11 @@ func randomString(n int, r *rand.Rand) string {
 
 func (s *SenderSuite) TestNameSetterRoundTrip() {
 	for n, sender := range s.senders {
-		s.Equal(sender.Type(), n)
 		for i := 0; i < 100; i++ {
 			name := randomString(12, s.rand)
-			s.NotEqual(sender.Name(), name)
+			s.NotEqual(sender.Name(), name, n)
 			sender.SetName(name)
-			s.Equal(sender.Name(), name)
+			s.Equal(sender.Name(), name, n)
 		}
 	}
 }

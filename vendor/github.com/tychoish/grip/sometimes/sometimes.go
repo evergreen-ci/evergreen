@@ -42,3 +42,18 @@ func ThreeQuarters() bool {
 func TwoThirds() bool {
 	return getRandNumber() > 34
 }
+
+// Percent takes a number (p) and returns true that percent of the
+// time. If p is greater than or equal to 100, Percent always returns
+// true. If p is less than or equal to 0, percent always returns false.
+func Percent(p int) bool {
+	if p >= 100 {
+		return true
+	}
+
+	if p <= 0 {
+		return false
+	}
+
+	return getRandNumber() > (100 - p)
+}

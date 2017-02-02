@@ -24,7 +24,7 @@ func NewString(m string) Composer {
 	return &stringMessage{Message: m}
 }
 
-func (s *stringMessage) Resolve() string {
+func (s *stringMessage) String() string {
 	return s.Message
 }
 

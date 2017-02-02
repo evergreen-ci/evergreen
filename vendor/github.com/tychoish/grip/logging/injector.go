@@ -1,6 +1,10 @@
 package logging
 
-import "github.com/tychoish/grip/send"
+import (
+	"errors"
+
+	"github.com/tychoish/grip/send"
+)
 
 // SetSender swaps send.Sender() implementations in a logging
 // instance. Calls the Close() method on the existing instance before
@@ -8,6 +12,10 @@ import "github.com/tychoish/grip/send"
 // will configure the incoming sender to have the same name as well as
 // default and threshold level as the outgoing sender.
 func (g *Grip) SetSender(s send.Sender) error {
+	if s == nil {
+		return errors.New("cannot set the sender to nil")
+	}
+
 	if err := s.SetLevel(g.Sender.Level()); err != nil {
 		return err
 	}

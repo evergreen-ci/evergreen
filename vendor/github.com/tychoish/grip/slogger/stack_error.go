@@ -37,7 +37,7 @@ func (s *StackError) Raw() interface{} {
 		Stacktrace []string    `bson:"stacktrace" json:"stacktrace" yaml:"stacktrace"`
 		Metadata   interface{} `bson:"metadata" json:"metadata" yaml:"metadata"`
 	}{
-		Message:    s.Composer.Resolve(),
+		Message:    s.Composer.String(),
 		Stacktrace: s.Stacktrace,
 		Metadata:   s.Composer.Raw(),
 	}
@@ -45,17 +45,17 @@ func (s *StackError) Raw() interface{} {
 
 // Error returns the resolved error message for the StackError
 // instance and satisfies the error interface.
-func (s *StackError) Error() string { return s.Resolve() }
+func (s *StackError) Error() string { return s.String() }
 
-// Resolve lazily resolves a message for the instance and caches that
+// String lazily resolves a message for the instance and caches that
 // message internally.
-func (s *StackError) Resolve() string {
+func (s *StackError) String() string {
 	if s.message != "" {
 		return s.message
 	}
 
 	s.message = fmt.Sprintf("%s\n\t%s",
-		s.Composer.Resolve(),
+		s.Composer.String(),
 		strings.Join(s.Stacktrace, "\n\t"))
 
 	return s.message

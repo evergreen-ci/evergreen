@@ -51,3 +51,43 @@ func InfoMany(msgs ...message.Composer) {
 func DebugMany(msgs ...message.Composer) {
 	std.DebugMany(msgs...)
 }
+
+func LogManyWhen(conditional bool, l level.Priority, msgs ...message.Composer) {
+	std.LogManyWhen(conditional, l, msgs...)
+}
+
+func DefaultManyWhen(conditional bool, msgs ...message.Composer) {
+	std.DefaultManyWhen(conditional, msgs...)
+}
+
+func EmergencyManyWhen(conditional bool, msgs ...message.Composer) {
+	std.EmergencyManyWhen(conditional, msgs...)
+}
+
+func AlertManyWhen(conditional bool, msgs ...message.Composer) {
+	std.AlertManyWhen(conditional, msgs...)
+}
+
+func CriticalManyWhen(conditional bool, msgs ...message.Composer) {
+	std.CriticalManyWhen(conditional, msgs...)
+}
+
+func ErrorManyWhen(conditional bool, msgs ...message.Composer) {
+	std.ErrorManyWhen(conditional, msgs...)
+}
+
+func WarningManyWhen(conditional bool, msgs ...message.Composer) {
+	std.WarningManyWhen(conditional, msgs...)
+}
+
+func NoticeManyWhen(conditional bool, msgs ...message.Composer) {
+	std.NoticeManyWhen(conditional, msgs...)
+}
+
+func InfoManyWhen(conditional bool, msgs ...message.Composer) {
+	std.InfoManyWhen(conditional, msgs...)
+}
+
+func DebugManyWhen(conditional bool, msgs ...message.Composer) {
+	std.DebugManyWhen(conditional, msgs...)
+}

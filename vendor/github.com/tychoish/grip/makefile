@@ -1,7 +1,7 @@
 # project configuration
 name := grip
 buildDir := build
-packages := logging send slogger $(name)
+packages := logging message send slogger $(name)
 orgPath := github.com/tychoish
 projectPath := $(orgPath)/$(name)
 # end project configuration
@@ -161,6 +161,8 @@ vendor-clean:
 	rm -rf vendor/github.com/stretchr/testify/vendor/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/github.com/tychoish/grip/
 	rm -rf vendor/github.com/mongodb/amboy/vendor/golang.org/x/net/
+	sed -ri 's/json:"(.*)"/json:"\1" bson:"\1"/' `grep -R -l 'json:\".*\" [^bson]' vendor/github.com/shirou/gopsutil/*` || true
+	find vendor/github.com/shirou/gopsutil/ -name "*.go" | xargs -n 1 go fmt || true
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -fr
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath

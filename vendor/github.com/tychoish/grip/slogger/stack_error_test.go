@@ -17,12 +17,12 @@ func TestSlackError(t *testing.T) {
 	assert.Implements((*error)(nil), msg)
 	assert.True(len(msg.Stacktrace) > 0)
 
-	assert.True(strings.HasPrefix(msg.Resolve(), "foo bar"))
+	assert.True(strings.HasPrefix(msg.String(), "foo bar"))
 
 	assert.Equal("", NewStackError("").message)
 
-	assert.Equal(NewStackError("").Resolve(), NewStackError("").Error())
-	assert.Equal(msg.Resolve(), msg.Error())
+	assert.Equal(NewStackError("").String(), NewStackError("").Error())
+	assert.Equal(msg.String(), msg.Error())
 
 	// the raw structure always has stack data, generated in the
 	// constructor, even if the message is nil.

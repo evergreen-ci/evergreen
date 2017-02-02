@@ -21,6 +21,15 @@ backend, and the send package provides a number of alternate
 implementations of logging systems, including: systemd's journal,
 logging to standard output, logging to a file, and generic syslog
 support.
+
+Messages
+
+The message.Composer interface is the representation of all
+messages. They are implemented to provide a raw structured form as
+well as a string representation for more conentional logging
+output. Furthermore they are intended to be easy to produce, and defer
+more expensive processing until they're being logged, to prevent
+expensive operations producing messages that are below threshold.
 */
 package grip
 

@@ -93,8 +93,7 @@ func (s *multiSender) add(sender Sender) error {
 	return nil
 }
 
-func (s *multiSender) Type() SenderType { return Multi }
-func (s *multiSender) Name() string     { return s.base.Name() }
+func (s *multiSender) Name() string { return s.base.Name() }
 func (s *multiSender) SetName(n string) {
 	s.base.SetName(n)
 

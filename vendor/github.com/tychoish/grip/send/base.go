@@ -1,23 +1,28 @@
 package send
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/tychoish/grip/message"
 )
 
 type base struct {
-	name   string
-	level  LevelInfo
-	reset  func()
-	closer func() error
+	name       string
+	level      LevelInfo
+	reset      func()
+	closer     func() error
+	errHandler ErrorHandler
 	sync.RWMutex
 }
 
 func newBase(n string) *base {
 	return &base{
-		name:   n,
-		reset:  func() {},
-		closer: func() error { return nil },
+		name:       n,
+		reset:      func() {},
+		closer:     func() error { return nil },
+		errHandler: func(error, message.Composer) {},
 	}
 }
 
@@ -36,6 +41,18 @@ func (b *base) SetName(name string) {
 	b.Unlock()
 
 	b.reset()
+}
+
+func (b *base) SetErrorHandler(eh ErrorHandler) error {
+	if eh == nil {
+		return errors.New("error handler must be non-nil")
+	}
+
+	b.Lock()
+	defer b.Unlock()
+	b.errHandler = eh
+
+	return nil
 }
 
 func (b *base) SetLevel(l LevelInfo) error {

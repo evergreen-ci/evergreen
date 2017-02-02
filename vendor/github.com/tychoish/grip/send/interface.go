@@ -20,10 +20,6 @@ type Sender interface {
 	Name() string
 	SetName(string)
 
-	// returns a constant for the type of the sender. Used by the
-	// loggers as part of their dependency injection mechanism.
-	Type() SenderType
-
 	// Method that actually sends messages (the string) to the
 	// logging capture system. The Send() method filters out
 	// logged messages based on priority, typically using the
@@ -37,6 +33,12 @@ type Sender interface {
 
 	// Level returns the level configuration document.
 	Level() LevelInfo
+
+	// SetErrorHandler provides a method to inject error handling
+	// behavior to a sender. Not all sender implementations use
+	// the error handler, although some, use a default handler to
+	// write logging errors to standard output.
+	SetErrorHandler(ErrorHandler) error
 
 	// If the logging sender holds any resources that require
 	// desecration, they should be cleaned up tin the Close()
@@ -63,4 +65,14 @@ func (l LevelInfo) Valid() bool {
 func (l LevelInfo) ShouldLog(m message.Composer) bool {
 	// priorities are 0 = Emergency; 7 = debug
 	return m.Loggable() && (m.Priority() >= l.Threshold)
+}
+
+func setup(s Sender, name string, l LevelInfo) (Sender, error) {
+	if err := s.SetLevel(l); err != nil {
+		return nil, err
+	}
+
+	s.SetName(name)
+
+	return s, nil
 }

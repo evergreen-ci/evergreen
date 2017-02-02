@@ -20,6 +20,7 @@ type buildlogger struct {
 	conf   *BuildloggerConfig
 	name   string
 	testID string
+	cache  chan []interface{}
 	client *http.Client
 	*base
 }
@@ -42,6 +43,9 @@ type BuildloggerConfig struct {
 	Builder string
 	Test    string
 	Command string
+
+	BufferCount    int
+	BufferInterval time.Duration
 
 	// Configure a local sender for "fallback" operations and to
 	// collect the location (URLS) of the buildlogger output
@@ -101,6 +105,13 @@ func (c *BuildloggerConfig) SetCredentials(username, password string) {
 // use a single Buildlogger config instance to create individual
 // Sender instances that target each of these output formats.
 //
+// The Buildlogger config has a Local attribute which is used by the
+// logger config when: the Buildlogger instance cannot contact the
+// messages sent to the buildlogger. Additional the Local Sender also
+// logs the remote location of the build logs. This Sender
+// implementation is used in the default ErrorHandler for this
+// implementation.
+//
 // Create a BuildloggerConfig instance, set up the crednetials if
 // needed, and create a sender. This will be the "global" log, in
 // buildlogger terminology. Then, set set the CreateTest attribute,
@@ -113,10 +124,12 @@ func (c *BuildloggerConfig) SetCredentials(username, password string) {
 //    testOne := MakeBuildlogger("<name>-testOne", conf)
 func GetBuildloggerConfig() (*BuildloggerConfig, error) {
 	conf := &BuildloggerConfig{
-		URL:     os.Getenv("BULDLOGGER_URL"),
-		Phase:   os.Getenv("MONGO_PHASE"),
-		Builder: os.Getenv("MONGO_BUILDER_NAME"),
-		Test:    os.Getenv("MONGO_TEST_FILENAME"),
+		URL:            os.Getenv("BULDLOGGER_URL"),
+		Phase:          os.Getenv("MONGO_PHASE"),
+		Builder:        os.Getenv("MONGO_BUILDER_NAME"),
+		Test:           os.Getenv("MONGO_TEST_FILENAME"),
+		BufferCount:    1000,
+		BufferInterval: 20 * time.Second,
 	}
 
 	if creds := os.Getenv("BUILDLOGGER_CREDENTIALS"); creds != "" {
@@ -151,11 +164,7 @@ func NewBuildlogger(name string, conf *BuildloggerConfig, l LevelInfo) (Sender, 
 		return nil, err
 	}
 
-	if err := s.SetLevel(l); err != nil {
-		return nil, err
-	}
-
-	return s, nil
+	return setup(s, name, l)
 }
 
 // MakeBuildlogger constructs a buildlogger targeting sender using the
@@ -170,12 +179,17 @@ func MakeBuildlogger(name string, conf *BuildloggerConfig) (Sender, error) {
 	b := &buildlogger{
 		name:   name,
 		conf:   conf,
+		cache:  make(chan []interface{}),
 		client: &http.Client{Timeout: 10 * time.Second},
 		base:   newBase(name),
 	}
 
 	if b.conf.Local == nil {
 		b.conf.Local = MakeNative()
+	}
+
+	if err := b.SetErrorHandler(ErrorHandlerFromSender(b.conf.Local)); err != nil {
+		return nil, err
 	}
 
 	if b.conf.buildID == "" {
@@ -224,25 +238,76 @@ func MakeBuildlogger(name string, conf *BuildloggerConfig) (Sender, error) {
 			conf.URL, b.conf.buildID, b.testID))
 	}
 
+	stop := make(chan struct{})
+	finished := make(chan struct{})
+	b.closer = func() error {
+		signal := struct{}{}
+		for {
+			select {
+			case stop <- signal:
+				continue
+			case <-finished:
+				return nil
+			}
+		}
+	}
+	go b.backgroundSender(stop, finished)
+
 	return b, nil
 }
 
-func (b *buildlogger) Type() SenderType { return Buildlogger }
 func (b *buildlogger) Send(m message.Composer) {
 	if b.level.ShouldLog(m) {
-		msg := m.Resolve()
+		b.cache <- []interface{}{float64(time.Now().Unix()), m.String()}
+	}
+}
 
-		line := [][]interface{}{{float64(time.Now().Unix()), msg}}
-		out, err := json.Marshal(line)
-		if err != nil {
-			b.conf.Local.Send(message.NewErrorMessage(m.Priority(), err))
-		}
+func (b *buildlogger) backgroundSender(stop <-chan struct{}, finished chan<- struct{}) {
+	buffer := [][]interface{}{}
 
-		if err := b.postLines(bytes.NewBuffer(out)); err != nil {
-			b.conf.Local.Send(message.NewErrorMessage(m.Priority(), err))
-			b.conf.Local.Send(m)
+	timer := time.NewTimer(b.conf.BufferInterval)
+
+	for {
+		select {
+		case msg := <-b.cache:
+			buffer = append(buffer, msg)
+
+			if len(buffer) > b.conf.BufferCount {
+				b.sendMessages(buffer)
+
+				buffer = [][]interface{}{}
+				timer.Reset(b.conf.BufferInterval)
+			}
+		case <-timer.C:
+			b.sendMessages(buffer)
+			buffer = [][]interface{}{}
+			timer.Reset(b.conf.BufferInterval)
+		case <-stop:
+			b.sendMessages(buffer)
+			close(finished)
+			return
 		}
 	}
+
+}
+
+func (b *buildlogger) sendMessages(buffer [][]interface{}) {
+	if len(buffer) == 0 {
+		return
+	}
+	out, err := json.Marshal(buffer)
+	if err != nil {
+		b.conf.Local.Send(message.NewErrorMessage(level.Error, err))
+	}
+
+	if err := b.postLines(bytes.NewBuffer(out)); err != nil {
+		b.errHandler(err, message.NewBytesMessage(b.level.Default, out))
+	}
+}
+
+func (b *buildlogger) SetName(n string) {
+	b.conf.Local.SetName(n)
+	b.base.SetName(n)
 }
 
 func (b *buildlogger) SetLevel(l LevelInfo) error {
@@ -250,7 +315,10 @@ func (b *buildlogger) SetLevel(l LevelInfo) error {
 		return err
 	}
 
-	_ = b.conf.Local.SetLevel(l)
+	if err := b.conf.Local.SetLevel(l); err != nil {
+		return err
+	}
+
 	return nil
 }
 
