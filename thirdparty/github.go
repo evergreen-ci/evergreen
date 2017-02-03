@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/tychoish/grip/slogger"
 )
 
 const (
@@ -20,6 +20,11 @@ const (
 	NumGithubRetries    = 3
 	GithubSleepTimeSecs = 1
 	GithubAPIBase       = "https://api.github.com"
+	GithubStatusBase    = "https://status.github.com"
+
+	GithubAPIStatusMinor = "minor"
+	GithubAPIStatusMajor = "major"
+	GithubAPIStatusGood  = "good"
 )
 
 type GithubUser struct {
@@ -71,6 +76,33 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}
 	}
 	return
+}
+
+func GetGithubAPIStatus() (string, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%v/api/status.json", GithubStatusBase), nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("github request failed: %v", err)
+	}
+
+	gitStatus := struct {
+		Status      string    `json:"status"`
+		LastUpdated time.Time `json:"last_updated"`
+	}{}
+
+	err = util.ReadJSONInto(resp.Body, &gitStatus)
+	if err != nil {
+		return "", fmt.Errorf("json read failed: %v", err)
+
+	}
+	return gitStatus.Status, nil
 }
 
 // GetGithubFile returns a struct that contains the contents of files within

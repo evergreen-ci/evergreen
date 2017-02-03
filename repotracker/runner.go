@@ -1,13 +1,16 @@
 package repotracker
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/tychoish/grip"
+	"github.com/tychoish/grip/slogger"
 )
 
 type Runner struct{}
@@ -26,6 +29,17 @@ func (r *Runner) Description() string {
 }
 
 func (r *Runner) Run(config *evergreen.Settings) error {
+	status, err := thirdparty.GetGithubAPIStatus()
+	if err != nil {
+		errM := fmt.Errorf("contacting github: %v", err)
+		grip.Error(errM)
+		return errM
+	}
+	if status != thirdparty.GithubAPIStatusGood {
+		errM := fmt.Errorf("bad github api status: %v", status)
+		grip.Error(errM)
+		return errM
+	}
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
 		return evergreen.Logger.Errorf(slogger.ERROR, "Error acquiring global lock: %v", err)
