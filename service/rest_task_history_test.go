@@ -181,7 +181,7 @@ func TestGetTestHistory(t *testing.T) {
 			So(results[0].Project, ShouldEqual, project)
 			So(results[0].TaskId, ShouldEqual, "task2")
 			So(results[0].BuildVariant, ShouldEqual, "osx")
-			So(results[0].StartTime, ShouldResemble, time.Unix(int64(task2.TestResults[1].StartTime), 0))
+			So(results[0].StartTime.Unix(), ShouldResemble, int64(task2.TestResults[1].StartTime))
 			So(results[0].DurationMS, ShouldEqual, time.Duration(30*time.Second))
 			So(results[0].Url, ShouldEqual, "anotherurl")
 
