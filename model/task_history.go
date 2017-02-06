@@ -52,39 +52,49 @@ type aggregatedTaskHistory struct {
 	BuildVariant string                   `bson:"build_variant" json:"build_variant"`
 	TestResults  apimodels.TaskEndDetails `bson:"status_details" json:"status_details"`
 }
+type TaskDetails struct {
+	TimedOut bool   `bson:"timed_out"`
+	Status   string `bson:"st"`
+}
 
 // TestHistoryResult represents what is returned by the aggregation
 type TestHistoryResult struct {
-	TestFile     string  `bson:"tf"`
-	TaskName     string  `bson:"tn"`
-	Status       string  `bson:"s"`
-	Revision     string  `bson:"r"`
-	Project      string  `bson:"p"`
-	TaskId       string  `bson:"tid"`
-	BuildVariant string  `bson:"bv"`
-	StartTime    float64 `bson:"st"`
-	EndTime      float64 `bson:"et"`
-	Execution    int     `bson:"ex"`
-	Url          string  `bson:"url"`
-	UrlRaw       string  `bson:"url_r"`
-	OldTaskId    string  `bson:"otid"`
+	TestFile        string  `bson:"tf"`
+	TaskName        string  `bson:"tn"`
+	TaskStatus      string  `bson:"task_status"`
+	TestStatus      string  `bson:"test_status"`
+	Revision        string  `bson:"r"`
+	Project         string  `bson:"p"`
+	TaskId          string  `bson:"tid"`
+	BuildVariant    string  `bson:"bv"`
+	StartTime       float64 `bson:"st"`
+	EndTime         float64 `bson:"et"`
+	Execution       int     `bson:"ex"`
+	Url             string  `bson:"url"`
+	UrlRaw          string  `bson:"url_r"`
+	OldTaskId       string  `bson:"otid"`
+	TaskTimedOut    bool    `bson:"to"`
+	TaskDetailsType string  `bson:"tdt"`
 }
 
 // TestHistoryResult bson tags
 var (
-	TestFileKey     = bsonutil.MustHaveTag(TestHistoryResult{}, "TestFile")
-	TaskNameKey     = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskName")
-	StatusKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "Status")
-	RevisionKey     = bsonutil.MustHaveTag(TestHistoryResult{}, "Revision")
-	ProjectKey      = bsonutil.MustHaveTag(TestHistoryResult{}, "Project")
-	TaskIdKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskId")
-	BuildVariantKey = bsonutil.MustHaveTag(TestHistoryResult{}, "BuildVariant")
-	EndTimeKey      = bsonutil.MustHaveTag(TestHistoryResult{}, "EndTime")
-	StartTimeKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "StartTime")
-	ExecutionKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "Execution")
-	OldTaskIdKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "OldTaskId")
-	UrlKey          = bsonutil.MustHaveTag(TestHistoryResult{}, "Url")
-	UrlRawKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "UrlRaw")
+	TestFileKey        = bsonutil.MustHaveTag(TestHistoryResult{}, "TestFile")
+	TaskNameKey        = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskName")
+	TaskStatusKey      = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskStatus")
+	TestStatusKey      = bsonutil.MustHaveTag(TestHistoryResult{}, "TestStatus")
+	RevisionKey        = bsonutil.MustHaveTag(TestHistoryResult{}, "Revision")
+	ProjectKey         = bsonutil.MustHaveTag(TestHistoryResult{}, "Project")
+	TaskIdKey          = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskId")
+	BuildVariantKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "BuildVariant")
+	EndTimeKey         = bsonutil.MustHaveTag(TestHistoryResult{}, "EndTime")
+	StartTimeKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "StartTime")
+	ExecutionKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "Execution")
+	OldTaskIdKey       = bsonutil.MustHaveTag(TestHistoryResult{}, "OldTaskId")
+	UrlKey             = bsonutil.MustHaveTag(TestHistoryResult{}, "Url")
+	UrlRawKey          = bsonutil.MustHaveTag(TestHistoryResult{}, "UrlRaw")
+	TaskTimedOutKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskTimedOut")
+	TaskDetailsTypeKey = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskDetailsType")
 )
 
 // TestHistoryParameters are the parameters that are used
@@ -441,30 +451,49 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		task.TestResultsKey + "." + task.TestResultStatusKey: bson.M{"$in": testHistoryParameters.TestStatuses},
 	}
 
-	// check test statuses for time outs
-	// need to check if Task.Details.
+	// separate out pass/fail from timeouts and system failures
 	isTimeout := false
+	isSysFail := false
 	taskStatuses := []string{}
 	for _, status := range testHistoryParameters.TaskStatuses {
-		if status == TaskTimeout {
+		switch status {
+		case TaskTimeout:
 			isTimeout = true
-		} else {
+		case TaskSystemFailure:
+			isSysFail = true
+		default:
 			taskStatuses = append(taskStatuses, status)
 		}
 	}
-	statusQuery := []bson.M{
-		bson.M{task.StatusKey: bson.M{"$in": taskStatuses},
-			task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
-				"$ne": true,
-			},
-		},
+	statusQuery := []bson.M{}
+
+	// if there are any pass/fail tasks create a query that isn't a timeout or a system failure.
+	if len(taskStatuses) > 0 {
+		statusQuery = append(statusQuery,
+			bson.M{
+				task.StatusKey: bson.M{"$in": taskStatuses},
+				task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
+					"$ne": true,
+				},
+				task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+					"$ne": "system",
+				},
+			})
 	}
+
 	if isTimeout {
 		statusQuery = append(statusQuery, bson.M{
 			task.StatusKey:                                     evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailTimedOut: true,
 		})
 	}
+	if isSysFail {
+		statusQuery = append(statusQuery, bson.M{
+			task.StatusKey:                                 evergreen.TaskFailed,
+			task.DetailsKey + "." + task.TaskEndDetailType: "system",
+		})
+	}
+
 	taskMatchQuery["$or"] = statusQuery
 
 	// check task, test, and build variants  and add them to the task query if necessary
@@ -535,27 +564,31 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.OldTaskIdKey:           1,
 			task.StartTimeKey:           1,
 			task.ProjectKey:             1,
+			task.DetailsKey:             1,
 		}},
 		{"$unwind": "$" + task.TestResultsKey},
 		{"$match": testMatchQuery},
-		{"$sort": bson.M{
-			task.RevisionOrderNumberKey:                            testHistoryParameters.Sort,
-			task.TestResultsKey + "." + task.TestResultTestFileKey: testHistoryParameters.Sort,
+		{"$sort": bson.D{
+			{task.RevisionOrderNumberKey, testHistoryParameters.Sort},
+			{task.TestResultsKey + "." + task.TestResultTestFileKey, testHistoryParameters.Sort},
 		}},
 		{"$project": bson.M{
-			TestFileKey:     "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
-			TaskIdKey:       "$" + task.IdKey,
-			StatusKey:       "$" + task.StatusKey,
-			RevisionKey:     "$" + task.RevisionKey,
-			ProjectKey:      "$" + task.ProjectKey,
-			TaskNameKey:     "$" + task.DisplayNameKey,
-			BuildVariantKey: "$" + task.BuildVariantKey,
-			StartTimeKey:    "$" + task.TestResultsKey + "." + task.TestResultStartTimeKey,
-			EndTimeKey:      "$" + task.TestResultsKey + "." + task.TestResultEndTimeKey,
-			ExecutionKey:    "$" + task.ExecutionKey + "." + task.ExecutionKey,
-			OldTaskIdKey:    "$" + task.OldTaskIdKey,
-			UrlKey:          "$" + task.TestResultsKey + "." + task.TestResultURLKey,
-			UrlRawKey:       "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
+			TestFileKey:        "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
+			TaskIdKey:          "$" + task.IdKey,
+			TestStatusKey:      "$" + task.TestResultsKey + "." + task.TestResultStatusKey,
+			TaskStatusKey:      "$" + task.StatusKey,
+			RevisionKey:        "$" + task.RevisionKey,
+			ProjectKey:         "$" + task.ProjectKey,
+			TaskNameKey:        "$" + task.DisplayNameKey,
+			BuildVariantKey:    "$" + task.BuildVariantKey,
+			StartTimeKey:       "$" + task.TestResultsKey + "." + task.TestResultStartTimeKey,
+			EndTimeKey:         "$" + task.TestResultsKey + "." + task.TestResultEndTimeKey,
+			ExecutionKey:       "$" + task.ExecutionKey + "." + task.ExecutionKey,
+			OldTaskIdKey:       "$" + task.OldTaskIdKey,
+			UrlKey:             "$" + task.TestResultsKey + "." + task.TestResultURLKey,
+			UrlRawKey:          "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
+			TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
+			TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
 		}},
 		{"$limit": 10}}
 	return pipeline, nil

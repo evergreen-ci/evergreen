@@ -26,7 +26,8 @@ var (
 type RestTestHistoryResult struct {
 	TestFile     string        `json:"test_file" csv:"test_file"`
 	TaskName     string        `json:"task_name" csv:"task_name"`
-	Status       string        `json:"status" csv:"status"`
+	TestStatus   string        `json:"test_status" csv:"test_status"`
+	TaskStatus   string        `json:"task_status" csv:"task_status"`
 	Revision     string        `json:"revision" csv:"revision"`
 	Project      string        `json:"project" csv:"project"`
 	TaskId       string        `json:"task_id" csv:"task_id"`
@@ -141,10 +142,20 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	for _, result := range results {
 		startTime := time.Unix(int64(result.StartTime), 0)
 		endTime := time.Unix(int64(result.EndTime), 0)
+		taskStatus := result.TaskStatus
+		if result.TaskStatus == evergreen.TaskFailed {
+			if result.TaskTimedOut {
+				taskStatus = model.TaskTimeout
+			}
+			if result.TaskDetailsType == "system" {
+				taskStatus = model.TaskSystemFailure
+			}
+		}
 		restHistoryResults = append(restHistoryResults, RestTestHistoryResult{
 			TestFile:     result.TestFile,
 			TaskName:     result.TaskName,
-			Status:       result.Status,
+			TestStatus:   result.TestStatus,
+			TaskStatus:   taskStatus,
 			Revision:     result.Revision,
 			Project:      result.Project,
 			TaskId:       result.TaskId,
