@@ -17,8 +17,8 @@ func init() {
 func TestLoggingTaskEvents(t *testing.T) {
 	Convey("Test task event logging", t, func() {
 
-		testutil.HandleTestingErr(db.Clear(Collection), t,
-			"Error clearing '%v' collection", Collection)
+		testutil.HandleTestingErr(db.Clear(AllLogCollection), t,
+			"Error clearing '%v' collection", AllLogCollection)
 
 		Convey("All task events should be logged correctly", func() {
 			taskId := "task_id"
@@ -34,7 +34,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			time.Sleep(1 * time.Millisecond)
 			LogTaskFinished(taskId, hostId, evergreen.TaskSucceeded)
 
-			eventsForTask, err := Find(TaskEventsInOrder(taskId))
+			eventsForTask, err := Find(AllLogCollection, TaskEventsInOrder(taskId))
 			So(err, ShouldEqual, nil)
 
 			event := eventsForTask[0]

@@ -7,9 +7,11 @@ import (
 
 // === DB Logic ===
 
-func Find(query db.Q) ([]Event, error) {
+// Find takes a collection storing events and a query, generated
+// by one of the query functions, and returns a slice of events.
+func Find(coll string, query db.Q) ([]Event, error) {
 	events := []Event{}
-	err := db.FindAllQ(Collection, query, &events)
+	err := db.FindAllQ(coll, query, &events)
 	return events, err
 }
 
@@ -73,4 +75,28 @@ func SchedulerEventsForId(distroId string) db.Q {
 
 func RecentSchedulerEvents(distroId string, n int) db.Q {
 	return SchedulerEventsForId(distroId).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
+// TaskSystemInfoEvents builds a query for system info,
+// (e.g. aggregate information about the system as a whole) collected
+// during a task.
+func TaskSystemInfoEvents(taskId string, n int) db.Q {
+	// TODO: (EVG-1497) decide on an better index/sort
+	return db.Query(bson.D{
+		{DataKey + "." + ResourceTypeKey, EventTaskSystemInfo},
+		{ResourceIdKey, taskId},
+		{TypeKey, EventTaskSystemInfo},
+	}).Sort([]string{TimestampKey}).Limit(n)
+}
+
+// TaskProcessInfoEvents builds a query for process info, which
+// returns information about each process (and children) spawned
+// during task execution.
+func TaskProcessInfoEvents(taskId string, n int) db.Q {
+	// TODO: (EVG-1497) decide on an better index/sort
+	return db.Query(bson.D{
+		{DataKey + "." + ResourceTypeKey, EventTaskProcessInfo},
+		{ResourceIdKey, taskId},
+		{TypeKey, EventTaskProcessInfo},
+	}).Sort([]string{TimestampKey}).Limit(n)
 }

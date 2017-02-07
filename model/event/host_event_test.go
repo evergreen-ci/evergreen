@@ -16,7 +16,7 @@ func init() {
 func TestLoggingHostEvents(t *testing.T) {
 	Convey("When logging host events", t, func() {
 
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(AllLogCollection), ShouldBeNil)
 
 		Convey("all events logged should be persisted to the database, and"+
 			" fetching them in order should sort by the time they were"+
@@ -46,7 +46,7 @@ func TestLoggingHostEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForHost, err := Find(HostEventsInOrder(hostId))
+			eventsForHost, err := Find(AllLogCollection, HostEventsInOrder(hostId))
 			So(err, ShouldBeNil)
 
 			event := eventsForHost[0]

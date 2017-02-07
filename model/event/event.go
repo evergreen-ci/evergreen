@@ -11,7 +11,8 @@ import (
 
 const (
 	// db constants
-	Collection = "event_log"
+	AllLogCollection  = "event_log"
+	TaskLogCollection = "task_event_log"
 )
 
 type Event struct {
@@ -52,6 +53,10 @@ func (dw DataWrapper) MarshalJSON() ([]byte, error) {
 		return json.Marshal(event)
 	case *DistroEventData:
 		return json.Marshal(event)
+	case *TaskSystemResourceData:
+		return json.Marshal(event)
+	case *TaskProcessResourceData:
+		return json.Marshal(event)
 	default:
 		return nil, fmt.Errorf("cannot marshal data of type %T", dw.Data)
 	}
@@ -62,7 +67,10 @@ func (dw DataWrapper) GetBSON() (interface{}, error) {
 }
 
 func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
-	for _, impl := range []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}, &SchedulerEventData{}} {
+	impls := []interface{}{&TaskEventData{}, &HostEventData{}, &DistroEventData{}, &SchedulerEventData{},
+		&TaskSystemResourceData{}, &TaskProcessResourceData{}}
+
+	for _, impl := range impls {
 		err := raw.Unmarshal(impl)
 		if err != nil {
 			return err

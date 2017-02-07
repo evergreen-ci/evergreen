@@ -16,7 +16,7 @@ func init() {
 func TestLoggingDistroEvents(t *testing.T) {
 	Convey("When logging distro events, ", t, func() {
 
-		So(db.Clear(Collection), ShouldBeNil)
+		So(db.Clear(AllLogCollection), ShouldBeNil)
 
 		Convey("logged events should be stored and queryable in sorted order", func() {
 			distroId := "distro_id"
@@ -33,7 +33,7 @@ func TestLoggingDistroEvents(t *testing.T) {
 			// fetch all the events from the database, make sure they are
 			// persisted correctly
 
-			eventsForDistro, err := Find(DistroEventsInOrder(distroId))
+			eventsForDistro, err := Find(AllLogCollection, DistroEventsInOrder(distroId))
 			So(err, ShouldBeNil)
 
 			event := eventsForDistro[0]

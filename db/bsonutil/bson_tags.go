@@ -10,14 +10,23 @@ import (
 // the "data" struct, stripping any tag modifiers such as "omitempty".
 // Returns the empty string if there is no tag, and an error if the field
 // does not exist in the struct.
+//
+// If data is a slice of structs, this check applies to the type of
+// struct in the slice.
 func Tag(data interface{}, fieldName string) (string, error) {
 	dataType := reflect.TypeOf(data)
-	if dataType.Kind() != reflect.Struct {
-		return "", fmt.Errorf("must pass in a struct data type")
+	if dataType.Kind() == reflect.Slice {
+		dataType = dataType.Elem()
 	}
+
+	if dataType.Kind() != reflect.Struct {
+		return "", fmt.Errorf("must pass in a struct data type [%T]", data)
+	}
+
 	field, found := dataType.FieldByName(fieldName)
 	if !found {
-		return "", fmt.Errorf("struct does not have a field %v", fieldName)
+		return "", fmt.Errorf("struct of type '%T' does not have a field %v",
+			data, fieldName)
 	}
 	tag := field.Tag.Get("bson")
 

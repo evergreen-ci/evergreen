@@ -25,7 +25,7 @@ func (uis *UIServer) getSchedulerPage(w http.ResponseWriter, r *http.Request) {
 func (uis *UIServer) getSchedulerLogs(w http.ResponseWriter, r *http.Request) {
 	distroId := mux.Vars(r)["distro_id"]
 
-	loggedEvents, err := event.Find(event.RecentSchedulerEvents(distroId, 500))
+	loggedEvents, err := event.Find(event.AllLogCollection, event.RecentSchedulerEvents(distroId, 500))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

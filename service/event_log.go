@@ -40,7 +40,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	loggedEvents, err := event.Find(eventQuery)
+	loggedEvents, err := event.Find(event.AllLogCollection, eventQuery)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, err)
 		return

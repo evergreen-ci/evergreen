@@ -3,8 +3,8 @@ package event
 import (
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/tychoish/grip/slogger"
 )
 
 const (
@@ -44,7 +44,7 @@ func LogSchedulerEvent(eventData SchedulerEventData) {
 		Data:       DataWrapper{eventData},
 	}
 
-	logger := NewDBEventLogger(Collection)
+	logger := NewDBEventLogger(AllLogCollection)
 	if err := logger.LogEvent(event); err != nil {
 		evergreen.Logger.Errorf(slogger.ERROR, "Error logging host event: %v", err)
 	}

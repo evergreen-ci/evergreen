@@ -29,6 +29,46 @@ func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskTestConfig))
 }
 
+func insertTaskForTesting(taskId, versionId, projectName string, testResult task.TestResult) (*task.Task, error) {
+	task := &task.Task{
+		Id:                  taskId,
+		CreateTime:          time.Now().Add(-20 * time.Minute),
+		ScheduledTime:       time.Now().Add(-15 * time.Minute),
+		DispatchTime:        time.Now().Add(-14 * time.Minute),
+		StartTime:           time.Now().Add(-10 * time.Minute),
+		FinishTime:          time.Now().Add(-5 * time.Second),
+		PushTime:            time.Now().Add(-1 * time.Millisecond),
+		Version:             versionId,
+		Project:             projectName,
+		Revision:            fmt.Sprintf("%x", rand.Int()),
+		Priority:            10,
+		LastHeartbeat:       time.Now(),
+		Activated:           false,
+		BuildId:             "some-build-id",
+		DistroId:            "some-distro-id",
+		BuildVariant:        "some-build-variant",
+		DependsOn:           []task.Dependency{{"some-other-task", ""}},
+		DisplayName:         "My task",
+		HostId:              "some-host-id",
+		Restarts:            0,
+		Execution:           0,
+		Archived:            false,
+		RevisionOrderNumber: 42,
+		Requester:           evergreen.RepotrackerVersionRequester,
+		Status:              "success",
+		Details: apimodels.TaskEndDetail{
+			TimedOut:    false,
+			Description: "some-stage",
+		},
+		Aborted:          false,
+		TimeTaken:        time.Duration(100 * time.Millisecond),
+		ExpectedDuration: time.Duration(99 * time.Millisecond),
+		TestResults:      []task.TestResult{testResult},
+	}
+
+	return task, task.Insert()
+}
+
 func TestGetTaskInfo(t *testing.T) {
 
 	userManager, err := auth.LoadUserManager(taskTestConfig.AuthConfig)
@@ -65,41 +105,7 @@ func TestGetTaskInfo(t *testing.T) {
 			StartTime: float64(time.Now().Add(-9 * time.Minute).Unix()),
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
-		testTask := &task.Task{
-			Id:                  taskId,
-			CreateTime:          time.Now().Add(-20 * time.Minute),
-			ScheduledTime:       time.Now().Add(-15 * time.Minute),
-			DispatchTime:        time.Now().Add(-14 * time.Minute),
-			StartTime:           time.Now().Add(-10 * time.Minute),
-			FinishTime:          time.Now().Add(-5 * time.Second),
-			PushTime:            time.Now().Add(-1 * time.Millisecond),
-			Version:             versionId,
-			Project:             projectName,
-			Revision:            fmt.Sprintf("%x", rand.Int()),
-			Priority:            10,
-			LastHeartbeat:       time.Now(),
-			Activated:           false,
-			BuildId:             "some-build-id",
-			DistroId:            "some-distro-id",
-			BuildVariant:        "some-build-variant",
-			DependsOn:           []task.Dependency{{"some-other-task", ""}},
-			DisplayName:         "My task",
-			HostId:              "some-host-id",
-			Restarts:            0,
-			Execution:           0,
-			Archived:            false,
-			RevisionOrderNumber: 42,
-			Requester:           evergreen.RepotrackerVersionRequester,
-			Status:              "success",
-			Details: apimodels.TaskEndDetail{
-				TimedOut:    false,
-				Description: "some-stage",
-			},
-			Aborted:          false,
-			TimeTaken:        time.Duration(100 * time.Millisecond),
-			ExpectedDuration: time.Duration(99 * time.Millisecond),
-			TestResults:      []task.TestResult{testResult},
-		}
+		testTask, err := insertTaskForTesting(taskId, versionId, projectName, testResult)
 		So(testTask.Insert(), ShouldBeNil)
 
 		file := artifact.File{
