@@ -48,6 +48,10 @@ func (u *DBUser) Email() string {
 	return u.EmailAddress
 }
 
+func (u *DBUser) GetAPIKey() string {
+	return u.APIKey
+}
+
 func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 	for _, publicKey := range u.PubKeys {
 		if publicKey.Name == keyname {

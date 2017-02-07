@@ -8,21 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 )
 
-// TaskConnector is an interface which abstracts the service layer's fetching
-// and modifactions of tasks.
-type TaskConnector interface {
-
-	// FindTaskById is a method to find a specific task given its ID.
-	FindTaskById(string) (*task.Task, error)
-
-	// FindTasksByBuildId is a method to find a set of tasks which all have the same
-	// BuildId. It takes the buildId being queried for as its parameter and
-	// returns a list of tasks which match.
-	FindTasksByBuildId(string, string, int) ([]task.Task, error)
-}
-
-// DBTaskConnector is a struct that implements the TaskConnector interface
-// through interactions with the backing database.
+// DBTaskConnector is a struct that implements the Task related methods
+// from the ServiceContext through interactions witht he backing database.
 type DBTaskConnector struct{}
 
 // FindTaskById uses the service layer's task type to query the backing database for
@@ -71,21 +58,21 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit
 }
 
 // MockTaskConnector stores a cached set of tasks that are queried against by the
-// implementations of the TaskConnector interface's functions.
+// implementations of the ServiceContext interface's Task related functions.
 type MockTaskConnector struct {
 	CachedTasks []task.Task
 }
 
-// FindTaskById provides a mock implementation of a TaskConnector that does not
-// need to use a database. It returns results based on the cached tasks
-// in the MockTaskConnector.
+// FindTaskById provides a mock implementation of the functions for the
+// ServiceContext interface without needing to use a database. It returns results
+// based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return &mdf.CachedTasks[0], nil
 }
 
-// FindTasksByBuildId provides a mock implementation of a TaskConnector that does not
-// need to use a database. It returns results based on the cached tasks
-// in the MockTaskConnector.
+// FindTaskByBuildId provides a mock implementation of the function for the
+// ServiceContext interface without needing to use a database. It returns results
+// based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit int) ([]task.Task, error) {
 	return mdf.CachedTasks, nil
 }

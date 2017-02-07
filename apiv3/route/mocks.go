@@ -30,7 +30,7 @@ func (m *mockRequestHandler) Validate() error {
 	return m.validateErr
 }
 
-func (m *mockRequestHandler) Execute(sc *servicecontext.ServiceContext) (model.Model, error) {
+func (m *mockRequestHandler) Execute(sc servicecontext.ServiceContext) (model.Model, error) {
 	return m.storedModel, m.executeErr
 }
 
@@ -41,6 +41,6 @@ type mockAuthenticator struct {
 }
 
 // Authenticate returns the error embeded in the mock authenticator.
-func (m *mockAuthenticator) Authenticate(r *http.Request) error {
+func (m *mockAuthenticator) Authenticate(sc servicecontext.ServiceContext, r *http.Request) error {
 	return m.err
 }

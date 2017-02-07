@@ -54,7 +54,7 @@ func TestMakeRoute(t *testing.T) {
 			MethodType:     evergreen.MethodDelete,
 		}
 		Convey("then adding and registering should result in a correct route", func() {
-			sc := servicecontext.NewMockServiceContext()
+			sc := &servicecontext.MockServiceContext{}
 			r := mux.NewRouter()
 			route := &RouteManager{
 				Version: 2,

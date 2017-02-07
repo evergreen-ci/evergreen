@@ -21,7 +21,7 @@ func TestFindTaskById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTaskById")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := NewServiceContext()
+	serviceContext := &DBServiceContext{}
 	numTasks := 10
 
 	Convey("When there are task documents in the database", t, func() {
@@ -61,7 +61,7 @@ func TestFindTasksByBuildId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTaskById")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := NewServiceContext()
+	serviceContext := &DBServiceContext{}
 	numTasks := 10
 
 	Convey("When there are task documents in the database", t, func() {

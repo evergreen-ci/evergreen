@@ -56,15 +56,14 @@ func setLoginToken(token string, w http.ResponseWriter) {
 // IsSuperUser verifies that a given user has super user permissions.
 // A user has these permission if they are in the super users list or if the list is empty,
 // in which case all users are super users.
-func IsSuperUser(settings evergreen.Settings, u User) bool {
+func IsSuperUser(superUsers []string, u User) bool {
 	if u == nil {
 		return false
 	}
-	if util.SliceContains(settings.SuperUsers, u.Username()) ||
-		len(settings.SuperUsers) == 0 {
+	if util.SliceContains(superUsers, u.Username()) ||
+		len(superUsers) == 0 {
 		return true
 	}
-
 	return false
 
 }

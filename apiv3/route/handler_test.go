@@ -111,7 +111,7 @@ func TestMakeHandler(t *testing.T) {
 func checkResultMatches(m MethodHandler, expectedErr error,
 	expectedModel model.Model, expectedStatusCode int, t *testing.T) {
 
-	handler := makeHandler(m, servicecontext.NewMockServiceContext())
+	handler := makeHandler(m, &servicecontext.MockServiceContext{})
 	req := &http.Request{}
 	resp := httptest.NewRecorder()
 	handler(resp, req)

@@ -11,6 +11,12 @@ type User interface {
 	Username() string
 }
 
+// User describes an Evergreen user that is going through the API.
+type APIUser interface {
+	User
+	GetAPIKey() string
+}
+
 // UserManager sets and gets user tokens for implemented authentication mechanisms,
 // and provides the data that is sent by the api and ui server after authenticating
 type UserManager interface {

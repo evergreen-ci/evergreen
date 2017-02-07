@@ -328,7 +328,7 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	projectId := uis.getRequestProjectId(r)
 
 	pc := projectContext{AuthRedirect: uis.UserManager.IsRedirect()}
-	isSuperUser := (dbUser != nil) && auth.IsSuperUser(uis.Settings, dbUser)
+	isSuperUser := (dbUser != nil) && auth.IsSuperUser(uis.Settings.SuperUsers, dbUser)
 	err := pc.populateProjectRefs(dbUser != nil, isSuperUser, dbUser)
 	if err != nil {
 		return pc, err

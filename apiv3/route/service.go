@@ -13,9 +13,10 @@ import (
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a ServiceContext then attaches each of the main functions for
 // the api to the router.
-func AttachHandler(root *mux.Router) http.Handler {
-	sc := servicecontext.NewServiceContext()
+func AttachHandler(root *mux.Router, settings *evergreen.Settings) http.Handler {
+	sc := &servicecontext.DBServiceContext{}
 
+	sc.SetSuperUsers(settings.SuperUsers)
 	return getHandler(root, sc)
 }
 
@@ -55,7 +56,7 @@ func (p *PlaceHolderRequestHandler) Validate() error {
 	return nil
 }
 
-func (p *PlaceHolderRequestHandler) Execute(sc *servicecontext.ServiceContext) (model.Model, error) {
+func (p *PlaceHolderRequestHandler) Execute(sc servicecontext.ServiceContext) (model.Model, error) {
 	return nil, apiv3.APIError{
 		StatusCode: 200,
 		Message:    "this is a placeholder for now",

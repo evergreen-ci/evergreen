@@ -9,6 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
 )
 
+const (
+	JsonMimeType = "application/json; charset=utf-8"
+)
+
 // MethodHandler contains all of the methods necessary for completely processing
 // an API request. It contains an Authenticator to control access to the method
 // and a RequestHandler to perform the required work for the request.
@@ -38,7 +42,7 @@ type RequestHandler interface {
 
 	// Execute performs the necessary work on the evergreen backend and returns
 	// an API model to be surfaced to the user.
-	Execute(*servicecontext.ServiceContext) (model.Model, error)
+	Execute(servicecontext.ServiceContext) (model.Model, error)
 }
 
 // makeHandler makes an http.HandlerFunc that wraps calls to each of the api
@@ -47,27 +51,24 @@ type RequestHandler interface {
 // a JSON error and sending it as the response.
 func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Type", JsonMimeType)
 
-		var err error
-		err = methodHandler.Authenticate(r)
-		if err != nil {
+		if err := methodHandler.Authenticate(sc, r); err != nil {
 			handleAPIError(err, w)
 			return
 		}
+
 		reqHandler := methodHandler.RequestHandler.Handler()
 
-		err = reqHandler.Parse(r)
-		if err != nil {
+		if err := reqHandler.Parse(r); err != nil {
 			handleAPIError(err, w)
 			return
 		}
-		err = reqHandler.Validate()
-		if err != nil {
+		if err := reqHandler.Validate(); err != nil {
 			handleAPIError(err, w)
 			return
 		}
-		result, err := reqHandler.Execute(&sc)
+		result, err := reqHandler.Execute(sc)
 		if err != nil {
 			handleAPIError(err, w)
 			return
