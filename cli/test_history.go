@@ -21,7 +21,7 @@ var (
 )
 
 const (
-	prettyStringFormat = "%-25s %-15s %-15s%-20s %-15s %-20s \n"
+	prettyStringFormat = "%-25s %-15s %-20s%-40s %-15s %-40s \n"
 )
 
 // TestHistoryCommand represents the test-history command in the CLI
@@ -162,7 +162,7 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 	if thc.Format == prettyFormat {
 		results := []service.RestTestHistoryResult{}
 		util.ReadJSONInto(body, &results)
-		fmt.Printf(prettyStringFormat, "Start Time", "Duration(ms)", "Variant", "TaskName", "TestName", "URL")
+		fmt.Printf(prettyStringFormat, "Start Time", "Duration(ms)", "Variant", "Task Name", "Test File", "URL")
 		for _, thr := range results {
 			formattedStart := thr.StartTime.Format(time.ANSIC)
 			fmt.Printf(prettyStringFormat, formattedStart, thr.DurationMS, thr.BuildVariant,
