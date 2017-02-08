@@ -73,7 +73,6 @@ func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
 	if !util.IsZeroTime(testHistoryParameters.AfterDate) {
 		queryString += fmt.Sprintf("&afterDate=%v", testHistoryParameters.AfterDate)
 	}
-	fmt.Println(queryString)
 	return queryString
 }
 
