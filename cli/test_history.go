@@ -163,9 +163,11 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 		util.ReadJSONInto(body, &results)
 		fmt.Printf(prettyStringFormat, "Start Time", "Duration(ms)", "Variant", "Task Name", "Test File", "URL")
 		for _, thr := range results {
-			formattedStart := thr.StartTime.Format(time.ANSIC)
-			fmt.Printf(prettyStringFormat, formattedStart, thr.DurationMS, thr.BuildVariant,
-				thr.TaskName, thr.TestFile, thr.Url)
+			if !util.IsZeroTime(thr.StartTime) {
+				formattedStart := thr.StartTime.Format(time.ANSIC)
+				fmt.Printf(prettyStringFormat, formattedStart, thr.DurationMS, thr.BuildVariant,
+					thr.TaskName, thr.TestFile, thr.Url)
+			}
 		}
 		return nil
 	}
