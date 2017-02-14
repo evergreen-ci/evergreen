@@ -70,7 +70,6 @@ func (self *EC2SpotSettings) Validate() error {
 	if self.SecurityGroup == "" {
 		return fmt.Errorf("Security group must not be blank")
 	}
-
 	if self.KeyName == "" {
 		return fmt.Errorf("Key name must not be blank")
 	}
@@ -291,6 +290,8 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 			" for intent host %v: %v", intentHost.Id, instanceName, err)
 	}
 
+	evergreen.Logger.Logf(slogger.DEBUG, "Inserting updated intent host %v "+
+		"with request id: %v and name %v", spotReqRes.SpotRequestId, instanceName)
 	//find the old intent host and remove it, since we now have the real
 	//host doc successfully stored.
 	oldIntenthost, err := host.FindOne(host.ById(instanceName))
@@ -304,6 +305,8 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 			"record inserted for intended host '%v'", instanceName)
 	}
 
+	evergreen.Logger.Logf(slogger.DEBUG, "Removing old intent host %v "+
+		"with id: %v and name %v", oldIntenthost.Id, instanceName)
 	err = oldIntenthost.Remove()
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Could not remove intent host "+
