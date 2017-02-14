@@ -11,7 +11,7 @@ import (
 
 type jsonLogger struct {
 	logger *log.Logger
-	*base
+	*Base
 }
 
 // NewJSONConsoleLogger builds a Sender instance that prints log
@@ -26,7 +26,7 @@ func NewJSONConsoleLogger(name string, l LevelInfo) (Sender, error) {
 // instance.
 func MakeJSONConsoleLogger() Sender {
 	s := &jsonLogger{
-		base: newBase(""),
+		Base: NewBase(""),
 	}
 
 	s.logger = log.New(os.Stdout, "", 0)
@@ -57,7 +57,7 @@ func MakeJSONFileLogger(file string) (Sender, error) {
 	}
 
 	s := &jsonLogger{
-		base: newBase(""),
+		Base: NewBase(""),
 	}
 
 	s.closer = func() error {

@@ -42,7 +42,7 @@ import (
 type callSiteLogger struct {
 	depth  int
 	logger *log.Logger
-	*base
+	*Base
 }
 
 // NewCallSiteConsoleLogger returns a fully configured Sender
@@ -60,7 +60,7 @@ func NewCallSiteConsoleLogger(name string, depth int, l LevelInfo) (Sender, erro
 func MakeCallSiteConsoleLogger(depth int) Sender {
 	s := &callSiteLogger{
 		depth: depth,
-		base:  newBase(""),
+		Base:  NewBase(""),
 	}
 
 	s.level = LevelInfo{level.Trace, level.Trace}
@@ -92,7 +92,7 @@ func NewCallSiteFileLogger(name, fileName string, depth int, l LevelInfo) (Sende
 func MakeCallSiteFileLogger(fileName string, depth int) (Sender, error) {
 	s := &callSiteLogger{
 		depth: depth,
-		base:  newBase(""),
+		Base:  NewBase(""),
 	}
 
 	s.level = LevelInfo{level.Trace, level.Trace}

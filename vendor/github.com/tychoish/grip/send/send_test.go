@@ -32,10 +32,10 @@ func (s *SenderSuite) SetupSuite() {
 func (s *SenderSuite) SetupTest() {
 	l := LevelInfo{level.Info, level.Notice}
 	s.senders = map[string]Sender{
-		"slack":  &slackJournal{base: newBase("slack")},
-		"xmpp":   &xmppLogger{base: newBase("xmpp")},
-		"json":   &jsonLogger{base: newBase("json")},
-		"stream": &streamLogger{base: newBase("stream")},
+		"slack":  &slackJournal{Base: NewBase("slack")},
+		"xmpp":   &xmppLogger{Base: NewBase("xmpp")},
+		"json":   &jsonLogger{Base: NewBase("json")},
+		"stream": &streamLogger{Base: NewBase("stream")},
 	}
 
 	internal := new(internalSender)
@@ -43,7 +43,7 @@ func (s *SenderSuite) SetupTest() {
 	internal.output = make(chan *internalMessage)
 	s.senders["internal"] = internal
 
-	callsite := &callSiteLogger{base: newBase("callsite"), depth: 1}
+	callsite := &callSiteLogger{Base: NewBase("callsite"), depth: 1}
 	callsite.logger = log.New(os.Stdout, "callsite", log.LstdFlags)
 	s.senders["callsite"] = callsite
 

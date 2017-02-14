@@ -18,7 +18,7 @@ import (
 
 type smtpLogger struct {
 	opts *SMTPOptions
-	*base
+	*Base
 }
 
 // NewSMTPLogger constructs a Sender implementation that delivers mail
@@ -50,7 +50,6 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 
 	s := &smtpLogger{
 		opts: opts,
-		base: newBase(opts.Name),
 	}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)

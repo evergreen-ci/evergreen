@@ -20,7 +20,7 @@ const (
 type slackJournal struct {
 	opts   *SlackOptions
 	client *slack.Slack
-	*base
+	*Base
 }
 
 // NewSlackLogger constructs a Sender that posts messages to a slack,
@@ -33,7 +33,7 @@ func NewSlackLogger(opts *SlackOptions, token string, l LevelInfo) (Sender, erro
 	s := &slackJournal{
 		opts:   opts,
 		client: slack.New(token),
-		base:   newBase(opts.Name),
+		Base:   NewBase(opts.Name),
 	}
 
 	if err := s.SetLevel(l); err != nil {
@@ -78,8 +78,8 @@ func (s *slackJournal) Send(m message.Composer) {
 
 	msg := m.String()
 
-	s.RLock()
-	defer s.RUnlock()
+	s.Base.mutex.RLock()
+	defer s.Base.mutex.RUnlock()
 
 	params := s.opts.getParams(m)
 	if err := s.client.ChatPostMessage(s.opts.Channel, msg, params); err != nil {

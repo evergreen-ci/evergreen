@@ -156,20 +156,24 @@ func (p *ProcessInfo) String() string {
 func (p *ProcessInfo) populate(proc *process.Process) {
 	var err error
 
-	p.Pid = proc.Pid
-
-	p.Parent, err = proc.Ppid()
+	if p.Pid == 0 {
+		p.Pid = proc.Pid
+	}
+	parentPid, err := proc.Ppid()
 	p.saveError(err)
+	if err == nil {
+		p.Parent = parentPid
+	}
 
 	memInfo, err := proc.MemoryInfo()
 	p.saveError(err)
-	if err != nil {
+	if err == nil {
 		p.Memory = *memInfo
 	}
 
 	memInfoEx, err := proc.MemoryInfoEx()
 	p.saveError(err)
-	if err != nil {
+	if err == nil {
 		p.MemoryPlatform = *memInfoEx
 	}
 
@@ -185,13 +189,13 @@ func (p *ProcessInfo) populate(proc *process.Process) {
 
 	cpuTimes, err := proc.Times()
 	p.saveError(err)
-	if err != nil {
+	if err == nil {
 		p.CPU = *cpuTimes
 	}
 
 	ioStat, err := proc.IOCounters()
 	p.saveError(err)
-	if err != nil {
+	if err == nil {
 		p.IoStat = *ioStat
 	}
 

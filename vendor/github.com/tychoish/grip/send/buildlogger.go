@@ -22,7 +22,7 @@ type buildlogger struct {
 	testID string
 	cache  chan []interface{}
 	client *http.Client
-	*base
+	*Base
 }
 
 // BuildloggerConfig describes the configuration needed for a Sender
@@ -181,7 +181,7 @@ func MakeBuildlogger(name string, conf *BuildloggerConfig) (Sender, error) {
 		conf:   conf,
 		cache:  make(chan []interface{}),
 		client: &http.Client{Timeout: 10 * time.Second},
-		base:   newBase(name),
+		Base:   NewBase(name),
 	}
 
 	if b.conf.Local == nil {
@@ -307,11 +307,11 @@ func (b *buildlogger) sendMessages(buffer [][]interface{}) {
 
 func (b *buildlogger) SetName(n string) {
 	b.conf.Local.SetName(n)
-	b.base.SetName(n)
+	b.Base.SetName(n)
 }
 
 func (b *buildlogger) SetLevel(l LevelInfo) error {
-	if err := b.base.SetLevel(l); err != nil {
+	if err := b.Base.SetLevel(l); err != nil {
 		return err
 	}
 

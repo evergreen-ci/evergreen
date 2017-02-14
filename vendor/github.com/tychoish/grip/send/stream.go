@@ -19,7 +19,7 @@ type WriteStringer interface {
 
 type streamLogger struct {
 	fobj WriteStringer
-	*base
+	*Base
 }
 
 // NewStreamLogger produces a fully configured Sender that writes
@@ -34,7 +34,7 @@ func NewStreamLogger(name string, ws WriteStringer, l LevelInfo) (Sender, error)
 func MakeStreamLogger(ws WriteStringer) Sender {
 	s := &streamLogger{
 		fobj: ws,
-		base: newBase(""),
+		Base: NewBase(""),
 	}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)

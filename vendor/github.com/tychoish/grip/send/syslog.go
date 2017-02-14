@@ -14,7 +14,7 @@ import (
 
 type syslogger struct {
 	logger *syslog.Writer
-	*base
+	*Base
 }
 
 // NewSyslogLogger creates a new Sender object that writes all
@@ -32,7 +32,7 @@ func NewSyslogLogger(name, network, raddr string, l LevelInfo) (Sender, error) {
 // posts to systemd's journal.
 // Pass to Journaler.SetSender or call SetName before using.
 func MakeSysLogger(network, raddr string) Sender {
-	s := &syslogger{base: newBase("")}
+	s := &syslogger{Base: NewBase("")}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)
 	s.SetErrorHandler(ErrorHandlerFromLogger(fallback))

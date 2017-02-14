@@ -11,7 +11,7 @@ import (
 
 type nativeLogger struct {
 	logger *log.Logger
-	*base
+	*Base
 }
 
 // NewFileLogger creates a Sender implementation that writes log
@@ -31,7 +31,7 @@ func NewFileLogger(name, filePath string, l LevelInfo) (Sender, error) {
 // the specified file. The Sender instance is not configured: Pass to
 // Journaler.SetSender or call SetName before using.
 func MakeFileLogger(filePath string) (Sender, error) {
-	s := &nativeLogger{base: newBase("")}
+	s := &nativeLogger{Base: NewBase("")}
 
 	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -62,7 +62,7 @@ func NewNativeLogger(name string, l LevelInfo) (Sender, error) {
 // SetSender will typically do this.)
 func MakeNative() Sender {
 	s := &nativeLogger{
-		base: newBase(""),
+		Base: NewBase(""),
 	}
 	s.level = LevelInfo{level.Trace, level.Trace}
 
@@ -82,7 +82,7 @@ func MakeNative() Sender {
 // writes all logging output to standard error.
 func MakeErrorLogger() Sender {
 	s := &nativeLogger{
-		base: newBase(""),
+		Base: NewBase(""),
 	}
 	s.level = LevelInfo{level.Trace, level.Trace}
 

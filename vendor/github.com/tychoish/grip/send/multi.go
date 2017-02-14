@@ -11,7 +11,7 @@ import (
 
 type multiSender struct {
 	senders []Sender
-	*base
+	*Base
 }
 
 // NewMultiSender configures a new sender implementation that takes a
@@ -36,7 +36,7 @@ func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) 
 		_ = sender.SetLevel(l)
 	}
 
-	return &multiSender{senders: senders, base: newBase(name)}, nil
+	return &multiSender{senders: senders, Base: NewBase(name)}, nil
 }
 
 // NewConfiguredMultiSender returns a multi sender implementation with
@@ -47,8 +47,8 @@ func NewMultiSender(name string, l LevelInfo, senders []Sender) (Sender, error) 
 // Use the AddToMulti helper to add additioanl senders to one of these
 // multi Sender implementations after construction.
 func NewConfiguredMultiSender(senders ...Sender) Sender {
-	s := &multiSender{senders: senders, base: newBase("")}
-	_ = s.base.SetLevel(LevelInfo{Default: level.Invalid, Threshold: level.Invalid})
+	s := &multiSender{senders: senders, Base: NewBase("")}
+	_ = s.Base.SetLevel(LevelInfo{Default: level.Invalid, Threshold: level.Invalid})
 
 	return s
 }
@@ -83,28 +83,28 @@ func (s *multiSender) Close() error {
 }
 
 func (s *multiSender) add(sender Sender) error {
-	sender.SetName(s.base.Name())
+	sender.SetName(s.Base.Name())
 
-	// ignore the error here; if the base value on the multiSender
+	// ignore the error here; if the Base value on the multiSender
 	// is not set, then senders should just have their own level values.
-	_ = sender.SetLevel(s.base.Level())
+	_ = sender.SetLevel(s.Base.Level())
 
 	s.senders = append(s.senders, sender)
 	return nil
 }
 
-func (s *multiSender) Name() string { return s.base.Name() }
+func (s *multiSender) Name() string { return s.Base.Name() }
 func (s *multiSender) SetName(n string) {
-	s.base.SetName(n)
+	s.Base.SetName(n)
 
 	for _, sender := range s.senders {
 		sender.SetName(n)
 	}
 }
 
-func (s *multiSender) Level() LevelInfo { return s.base.Level() }
+func (s *multiSender) Level() LevelInfo { return s.Base.Level() }
 func (s *multiSender) SetLevel(l LevelInfo) error {
-	if err := s.base.SetLevel(l); err != nil {
+	if err := s.Base.SetLevel(l); err != nil {
 		return err
 	}
 
@@ -118,7 +118,7 @@ func (s *multiSender) SetLevel(l LevelInfo) error {
 func (s *multiSender) Send(m message.Composer) {
 	// if the base level isn't valid, then we should let each
 	// sender decide for itself, rather than short circuiting here
-	bl := s.base.Level()
+	bl := s.Base.Level()
 	if bl.Valid() && !bl.ShouldLog(m) {
 		return
 	}

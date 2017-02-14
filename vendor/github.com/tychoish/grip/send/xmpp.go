@@ -13,7 +13,7 @@ import (
 type xmppLogger struct {
 	target string
 	client *xmpp.Client
-	*base
+	*Base
 }
 
 // XMPPConnectionInfo stores all information needed to connect to an
@@ -94,7 +94,7 @@ func NewXMPP(name, target string, l LevelInfo) (Sender, error) {
 
 func constructXMPPLogger(target string, info XMPPConnectionInfo) (Sender, error) {
 	s := &xmppLogger{
-		base:   newBase(""),
+		Base:   NewBase(""),
 		target: target,
 	}
 

@@ -52,7 +52,7 @@ func MakeFields(f Fields) Composer { return &fieldMessage{fields: f} }
 func (m *fieldMessage) Loggable() bool { return m.message != "" || len(m.fields) > 0 }
 func (m *fieldMessage) String() string {
 	if m.cachedOutput == "" {
-		const tmpl = "%s='%s'"
+		const tmpl = "%s='%v'"
 		out := []string{}
 		if m.message != "" {
 			out = append(out, fmt.Sprintf(tmpl, "msg", m.message))
