@@ -135,6 +135,65 @@ func TestGenericHostFinding(t *testing.T) {
 	})
 }
 
+func TestFindingHostsWithRunningTasks(t *testing.T) {
+	Convey("With a host with no running task that is not terminated", t, func() {
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+			" '%v' collection", Collection)
+		h := Host{
+			Id:     "sample_host",
+			Status: evergreen.HostRunning,
+		}
+		So(h.Insert(), ShouldBeNil)
+		found, err := Find(IsRunningTask)
+		So(err, ShouldBeNil)
+		So(len(found), ShouldEqual, 0)
+		Convey("with a host that is terminated with no running task", func() {
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+				" '%v' collection", Collection)
+			h1 := Host{
+				Id:     "another",
+				Status: evergreen.HostTerminated,
+			}
+			So(h1.Insert(), ShouldBeNil)
+			found, err = Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 0)
+		})
+	})
+
+}
+
+func TestMonitorHosts(t *testing.T) {
+	Convey("With a host with no reachability check", t, func() {
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+			" '%v' collection", Collection)
+		now := time.Now()
+		h := Host{
+			Id:        "sample_host",
+			Status:    evergreen.HostRunning,
+			StartedBy: evergreen.User,
+		}
+		So(h.Insert(), ShouldBeNil)
+		found, err := Find(ByNotMonitoredSince(now))
+		So(err, ShouldBeNil)
+		So(len(found), ShouldEqual, 1)
+		Convey("a host that has a running task and no reachability check should not return", func() {
+			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing"+
+				" '%v' collection", Collection)
+			anotherHost := Host{
+				Id:          "anotherHost",
+				Status:      evergreen.HostRunning,
+				StartedBy:   evergreen.User,
+				RunningTask: "id",
+			}
+			So(anotherHost.Insert(), ShouldBeNil)
+			found, err := Find(ByNotMonitoredSince(now))
+			So(err, ShouldBeNil)
+			So(len(found), ShouldEqual, 0)
+		})
+	})
+}
+
 func TestUpdatingHostStatus(t *testing.T) {
 
 	Convey("With a host", t, func() {

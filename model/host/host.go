@@ -29,7 +29,7 @@ type Host struct {
 	ProvisionOptions *ProvisionOptions `bson:"provision_options,omitempty" json:"provision_options,omitempty"`
 
 	// the task that is currently running on the host
-	RunningTask string `bson:"running_task" json:"running_task"`
+	RunningTask string `bson:"running_task,omitempty" json:"running_task,omitempty"`
 
 	// the pid of the task that is currently running on the host
 	Pid string `bson:"pid" json:"pid"`
@@ -374,8 +374,10 @@ func (h *Host) ClearRunningTask() error {
 			IdKey: h.Id,
 		},
 		bson.M{
+			"$unset": bson.M{
+				RunningTaskKey: "",
+			},
 			"$set": bson.M{
-				RunningTaskKey:      "",
 				TaskDispatchTimeKey: util.ZeroTime,
 				PidKey:              "",
 			},

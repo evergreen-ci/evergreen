@@ -150,17 +150,6 @@ func ByUnproductiveSince(threshold time.Time) db.Q {
 	})
 }
 
-// ByHungSince produces a query that returns all working hosts that
-// started their tasks before the given time.
-func ByHungSince(threshold time.Time) db.Q {
-	return db.Query(bson.M{
-		RunningTaskKey:      bson.M{"$ne": ""},
-		TaskDispatchTimeKey: bson.M{"$lte": threshold},
-		StatusKey:           bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:        evergreen.User,
-	})
-}
-
 // IsRunningAndSpawned is a query that returns all running hosts
 // spawned by an Evergreen user.
 var IsRunningAndSpawned = db.Query(
@@ -173,18 +162,16 @@ var IsRunningAndSpawned = db.Query(
 // IsRunningTask is a query that returns all running hosts with a running task
 var IsRunningTask = db.Query(
 	bson.M{
-		StatusKey: bson.M{"$ne": evergreen.HostTerminated},
-		"$and": []bson.M{
-			{RunningTaskKey: bson.M{"$exists": true}},
-			{RunningTaskKey: bson.M{"$ne": ""}},
-		},
+		RunningTaskKey: bson.M{"$exists": true},
 	},
 )
 
 // IsDecommissioned is a query that returns all hosts without a
 // running task that are marked for decommissioning.
 var IsDecommissioned = db.Query(
-	bson.M{RunningTaskKey: "", StatusKey: evergreen.HostDecommissioned},
+	bson.M{
+		"$or":     noRunningTask,
+		StatusKey: evergreen.HostDecommissioned},
 )
 
 // ByDistroId produces a query that returns all working hosts (not terminated and
@@ -267,14 +254,16 @@ var IsActive = db.Query(
 // filtering out user-spawned hosts and hosts currently running tasks.
 func ByNotMonitoredSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
-		RunningTaskKey: "",
-		StatusKey: bson.M{
-			"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
-		},
-		StartedByKey: evergreen.User,
-		"$or": []bson.M{
-			{LastReachabilityCheckKey: bson.M{"$lte": threshold}},
-			{LastReachabilityCheckKey: bson.M{"$exists": false}},
+		"$and": []bson.M{
+			{"$or": noRunningTask},
+			{StatusKey: bson.M{
+				"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
+			}},
+			{StartedByKey: evergreen.User},
+			{"$or": []bson.M{
+				{LastReachabilityCheckKey: bson.M{"$lte": threshold}},
+				{LastReachabilityCheckKey: bson.M{"$exists": false}},
+			}},
 		},
 	})
 }
