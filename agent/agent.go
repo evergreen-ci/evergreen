@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
-	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/slogger"
 )
 
@@ -110,11 +109,6 @@ type Agent struct {
 	// intervals, to the API server.
 	statsCollector *StatsCollector
 
-	// metrics collector collects and sends process and system
-	// stats/metrics to the API server. This data is collected
-	// using native-(gopsutil) via the logging package.
-	metricsCollector *metricsCollector
-
 	// logger handles all the logging (task, system, execution, local)
 	// by appending log messages for each type to the correct stream.
 	logger *comm.StreamLogger
@@ -157,6 +151,7 @@ type Agent struct {
 // finishAndAwaitCleanup sends the returned TaskEndResponse and error
 // for processing by the main agent loop.
 func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndResponse, error) {
+
 	// Signal all background actions to stop. If HandleSignals is still running,
 	// this will cause it to return.
 	close(agt.signalHandler.stopBackgroundChan)
@@ -202,7 +197,6 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 	agt.APILogger.FlushAndWait() // ensure that logs are sent before task ends.
-
 	ret, err := agt.End(detail)
 	if ret != nil && !ret.RunNext {
 		agt.logger.LogExecution(slogger.INFO, "No new tasks to run. Agent will shut down.")
@@ -449,15 +443,11 @@ func New(opts Options) (*Agent, error) {
 	)
 
 	agt := &Agent{
-		signalHandler:    sh,
-		logger:           streamLogger,
-		TaskCommunicator: httpCommunicator,
-		heartbeater:      hbTicker,
-		statsCollector:   statsCollector,
-		metricsCollector: &metricsCollector{
-			comm: httpCommunicator,
-			stop: sh.stopBackgroundChan,
-		},
+		signalHandler:      sh,
+		logger:             streamLogger,
+		TaskCommunicator:   httpCommunicator,
+		heartbeater:        hbTicker,
+		statsCollector:     statsCollector,
 		idleTimeoutWatcher: idleTimeoutWatcher,
 		APILogger:          apiLogger,
 		Registry:           plugin.NewSimpleRegistry(),
@@ -704,7 +694,6 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 	agt.heartbeater.StartHeartbeating()
 	agt.statsCollector.LogStats(agt.taskConfig.Expansions)
 	agt.idleTimeoutWatcher.NotifyTimeouts(agt.signalHandler.idleTimeoutChan)
-	grip.CatchError(agt.metricsCollector.start())
 	if agt.maxExecTimeoutWatcher != nil {
 		// default action is not to include a master timeout
 		agt.maxExecTimeoutWatcher.NotifyTimeouts(agt.signalHandler.execTimeoutChan)

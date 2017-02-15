@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/tychoish/grip/slogger"
 )
 
 // StatsCollector samples machine statistics and logs them
