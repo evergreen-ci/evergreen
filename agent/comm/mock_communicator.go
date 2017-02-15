@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/tychoish/grip"
 )
 
 type MockCommunicator struct {
@@ -17,7 +18,8 @@ type MockCommunicator struct {
 	shouldFailEnd       bool
 	shouldFailHeartbeat bool
 	abort               bool
-	logChan             chan []model.LogMessage
+	LogChan             chan []model.LogMessage
+	Posts               map[string][]interface{}
 	sync.RWMutex
 }
 
@@ -25,7 +27,16 @@ func (*MockCommunicator) TryGet(path string) (*http.Response, error) {
 	return nil, nil
 }
 
-func (*MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
+func (mc *MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
+	mc.Lock()
+	defer mc.Unlock()
+
+	if mc.Posts != nil {
+		mc.Posts[path] = append(mc.Posts[path], data)
+	} else {
+		grip.Warningf("post to %s is not persisted in the path")
+	}
+
 	return nil, nil
 }
 
@@ -86,7 +97,14 @@ func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
 	if mc.shouldFailEnd {
 		return fmt.Errorf("failed to end!")
 	}
-	mc.logChan <- logMessages
+
+	if mc.LogChan != nil {
+		mc.LogChan <- logMessages
+	} else {
+		grip.Warningf("passing over %d log messages because un-configured channel",
+			len(logMessages))
+	}
+
 	return nil
 }
 

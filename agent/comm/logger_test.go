@@ -16,7 +16,7 @@ func TestLogging(t *testing.T) {
 	var testLogger slogger.Logger
 	Convey("With a remote logging appender", t, func() {
 		taskCommunicator = &MockCommunicator{
-			logChan: make(chan []model.LogMessage, 100),
+			LogChan: make(chan []model.LogMessage, 100),
 		}
 		apiLogger = NewAPILogger(taskCommunicator)
 
