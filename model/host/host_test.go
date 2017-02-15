@@ -388,6 +388,10 @@ func TestHostSetRunningTask(t *testing.T) {
 				taskDispatchTime.Round(time.Second)), ShouldBeTrue)
 
 		})
+		Convey("setting the running task id to an empty string should set it to empty", func() {
+			So(host.SetRunningTask("", "c", time.Now()), ShouldBeNil)
+			So(host.RunningTask, ShouldEqual, "")
+		})
 
 	})
 }
@@ -572,6 +576,35 @@ func TestHostClearRunningTask(t *testing.T) {
 
 		})
 
+	})
+}
+
+func TestUpdateHostRunningTask(t *testing.T) {
+	Convey("With a host", t, func() {
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
+		oldTaskId := "oldId"
+		newTaskId := "newId"
+		h := Host{
+			Id:          "test",
+			RunningTask: oldTaskId,
+			Status:      evergreen.HostRunning,
+		}
+		So(h.Insert(), ShouldBeNil)
+		Convey("updating the running task id should set proper fields", func() {
+			So(h.UpdateRunningTask(oldTaskId, newTaskId, time.Now()), ShouldBeNil)
+			found, err := FindOne(ById(h.Id))
+			So(err, ShouldBeNil)
+			So(found.RunningTask, ShouldEqual, newTaskId)
+			So(found.LastTaskCompleted, ShouldEqual, oldTaskId)
+		})
+		Convey("updating the running task to an empty string should unset the running task field", func() {
+			So(h.UpdateRunningTask(newTaskId, "", time.Now()), ShouldBeNil)
+			found, err := FindOne(ById(h.Id))
+			So(err, ShouldBeNil)
+			So(found.RunningTask, ShouldEqual, "")
+			So(found.LastTaskCompleted, ShouldEqual, newTaskId)
+		})
 	})
 }
 

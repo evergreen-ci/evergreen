@@ -271,11 +271,24 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 	}
 	update := bson.M{
 		"$set": bson.M{
-			LTCKey:         prevTaskId,
 			RunningTaskKey: newTaskId,
+			LTCKey:         prevTaskId,
 			LTCTimeKey:     finishTime,
 			PidKey:         "",
 		},
+	}
+	// if the new task id is empty, unset the running task key
+	if newTaskId == "" {
+		update = bson.M{
+			"$set": bson.M{
+				LTCKey:     prevTaskId,
+				LTCTimeKey: finishTime,
+				PidKey:     "",
+			},
+			"$unset": bson.M{
+				RunningTaskKey: 1,
+			},
+		}
 	}
 
 	if err = UpdateOne(selector, update); err == nil {
@@ -295,17 +308,29 @@ func (h *Host) SetRunningTask(taskId, agentRevision string,
 	h.RunningTask = taskId
 	h.AgentRevision = agentRevision
 	h.TaskDispatchTime = taskDispatchTime
+
+	update := bson.M{
+		"$set": bson.M{
+			AgentRevisionKey:    agentRevision,
+			TaskDispatchTimeKey: taskDispatchTime,
+			RunningTaskKey:      taskId,
+		},
+	}
+	// if the task id is empty unset the running task field.
+	if taskId == "" {
+		update = bson.M{
+			"$set": bson.M{
+				AgentRevisionKey:    agentRevision,
+				TaskDispatchTimeKey: taskDispatchTime,
+			},
+			"$unset": bson.M{RunningTaskKey: 1},
+		}
+	}
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
 		},
-		bson.M{
-			"$set": bson.M{
-				RunningTaskKey:      taskId,
-				AgentRevisionKey:    agentRevision,
-				TaskDispatchTimeKey: taskDispatchTime,
-			},
-		},
+		update,
 	)
 }
 
