@@ -14,7 +14,7 @@ import (
 
 type systemdJournal struct {
 	options map[string]string
-	*base
+	*Base
 }
 
 // NewJournaldLogger creates a Sender object that writes log messages
@@ -30,7 +30,7 @@ func NewSystemdLogger(name string, l LevelInfo) (Sender, error) {
 func MakeSystemdLogger() Sender {
 	s := &systemdJournal{
 		options: make(map[string]string),
-		base:    newBase(""),
+		Base:    NewBase(""),
 	}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)
