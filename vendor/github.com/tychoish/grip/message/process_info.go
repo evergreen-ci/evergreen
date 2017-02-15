@@ -167,13 +167,13 @@ func (p *ProcessInfo) populate(proc *process.Process) {
 
 	memInfo, err := proc.MemoryInfo()
 	p.saveError(err)
-	if err == nil {
+	if err == nil && memInfo != nil {
 		p.Memory = *memInfo
 	}
 
 	memInfoEx, err := proc.MemoryInfoEx()
 	p.saveError(err)
-	if err == nil {
+	if err == nil && memInfoEx != nil {
 		p.MemoryPlatform = *memInfoEx
 	}
 
@@ -189,13 +189,13 @@ func (p *ProcessInfo) populate(proc *process.Process) {
 
 	cpuTimes, err := proc.Times()
 	p.saveError(err)
-	if err == nil {
+	if err == nil && cpuTimes != nil {
 		p.CPU = *cpuTimes
 	}
 
 	ioStat, err := proc.IOCounters()
 	p.saveError(err)
-	if err == nil {
+	if err == nil && ioStat != nil {
 		p.IoStat = *ioStat
 	}
 

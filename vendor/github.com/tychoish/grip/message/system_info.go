@@ -54,7 +54,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 
 	times, err := cpu.Times(false)
 	s.saveError(err)
-	if err == nil {
+	if err == nil && len(times) > 0 {
 		// since we're not storing per-core information,
 		// there's only one thing we care about in this struct
 		s.CPU = times[0]
@@ -62,13 +62,13 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 
 	vmstat, err := mem.VirtualMemory()
 	s.saveError(err)
-	if err != nil {
+	if err != nil && vmstat != nil {
 		s.VMStat = *vmstat
 	}
 
 	netstat, err := net.IOCounters(false)
 	s.saveError(err)
-	if err == nil {
+	if err == nil && len(netstat) > 0 {
 		s.NetStat = netstat[0]
 	}
 
