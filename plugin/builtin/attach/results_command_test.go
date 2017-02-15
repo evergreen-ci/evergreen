@@ -39,6 +39,7 @@ func TestAttachResults(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+		defer server.Close()
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		configFile := filepath.Join(cwd, "testdata", "plugin_attach_results.yml")
@@ -88,6 +89,7 @@ func TestAttachRawResults(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+		defer server.Close()
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		configFile := filepath.Join(cwd, "testdata", "plugin_attach_results_raw.yml")

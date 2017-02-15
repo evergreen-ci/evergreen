@@ -447,6 +447,7 @@ func New(opts Options) (*Agent, error) {
 		"df -h",
 		"${ps|ps}",
 	)
+	killChan := make(chan bool)
 
 	agt := &Agent{
 		signalHandler:    sh,
@@ -456,12 +457,12 @@ func New(opts Options) (*Agent, error) {
 		statsCollector:   statsCollector,
 		metricsCollector: &metricsCollector{
 			comm: httpCommunicator,
-			stop: sh.stopBackgroundChan,
+			stop: killChan,
 		},
 		idleTimeoutWatcher: idleTimeoutWatcher,
 		APILogger:          apiLogger,
 		Registry:           plugin.NewSimpleRegistry(),
-		KillChan:           make(chan bool),
+		KillChan:           killChan,
 		endChan:            make(chan *apimodels.TaskEndDetail, 1),
 		pidFilePath:        opts.PIDFilePath,
 	}
@@ -740,6 +741,19 @@ func (agt *Agent) createTaskDirectory(taskConfig *model.TaskConfig) error {
 
 	taskConfig.WorkDir = agt.currentTaskDir
 	return nil
+}
+
+// stop is only called in deferred statements in testing, but makes it
+// possible to kill the background process in an agent
+func (agt *Agent) stop() {
+	grip.Notice("intending to forcibly stop the agent")
+	select {
+	case agt.KillChan <- true:
+		grip.Info("sent agent stop signal")
+		close(agt.KillChan)
+	default:
+		grip.Info("couldn't stop agent because it was already stopped")
+	}
 }
 
 // removeTaskDirectory removes the folder the agent created for the

@@ -34,7 +34,11 @@ func TestPushTask(t *testing.T) {
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
 					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+					defer testServer.Close()
+
 					testAgent, err := createAgent(testServer, testTask)
+					defer testServer.Close()
+
 					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)
 
 					// actually run the task.

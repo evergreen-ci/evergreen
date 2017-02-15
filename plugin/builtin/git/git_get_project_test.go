@@ -31,6 +31,7 @@ func TestGitPlugin(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		defer server.Close()
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 

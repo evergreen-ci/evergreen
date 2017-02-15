@@ -110,8 +110,9 @@ func setupTlsConfigs(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "X509KeyPair failed during test initialization: %v", err)
 		}
 		tlsConfigs = map[string]*tls.Config{
-			"http":  nil,
-			"https": tlsConfig,
+			"http": nil,
+			// TODO: do tests over SSL, see EVG-1512
+			// "https": tlsConfig,
 		}
 	}
 }
@@ -141,8 +142,11 @@ func TestBasicEndpoints(t *testing.T) {
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
+
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+			defer testAgent.stop()
 
 			Convey("sending logs should store the log messages properly", func() {
 				msg1 := "task logger initialized!"
@@ -216,7 +220,6 @@ func TestBasicEndpoints(t *testing.T) {
 					})
 				})
 			})
-
 		})
 	}
 }
@@ -225,15 +228,17 @@ func TestHeartbeatSignals(t *testing.T) {
 	setupTlsConfigs(t)
 
 	for tlsString, tlsConfig := range tlsConfigs {
-
 		testTask, _, err := setupAPITestData(testConfig, evergreen.CompileStage, "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 		testutil.HandleTestingErr(err, t, "Couldn't make test data: %v", err)
 
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+			defer testAgent.stop()
+
 			testAgent.heartbeater.Interval = 100 * time.Millisecond
 			testAgent.StartBackgroundActions(&NoopSignalHandler{})
 
@@ -255,7 +260,11 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
+
 			testAgent, err := createAgent(testServer, testTask)
+			testutil.HandleTestingErr(err, t, "Failed to start agent")
+			defer testAgent.stop()
 
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
@@ -301,9 +310,9 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
-			So(err, ShouldBeNil)
-			So(testAgent, ShouldNotBeNil)
+			testutil.HandleTestingErr(err, t, "Failed to start test agent")
 
 			dir, err := os.Getwd()
 
@@ -360,8 +369,10 @@ func TestSecrets(t *testing.T) {
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+			defer testAgent.stop()
 
 			testAgent.heartbeater.Interval = 100 * time.Millisecond
 			testAgent.StartBackgroundActions(&NoopSignalHandler{})
@@ -390,8 +401,10 @@ func TestTaskSuccess(t *testing.T) {
 						testutil.HandleTestingErr(err, t, "Couldn't create test task: %v", err)
 						testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+						defer testServer.Close()
 						testAgent, err := createAgent(testServer, testTask)
 						testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+						defer testAgent.stop()
 
 						// actually run the task.
 						// this function won't return until the whole thing is done.
@@ -459,8 +472,10 @@ func TestTaskSuccess(t *testing.T) {
 						testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 						testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 						testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+						defer testServer.Close()
 						testAgent, err := createAgent(testServer, testTask)
 						testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+						defer testAgent.stop()
 
 						// actually run the task.
 						// this function won't return until the whole thing is done.
@@ -513,8 +528,10 @@ func TestTaskFailures(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't create test data: %v", err)
 					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+					defer testServer.Close()
 					testAgent, err := createAgent(testServer, testTask)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+					defer testAgent.stop()
 
 					// actually run the task.
 					// this function won't return until the whole thing is done.
@@ -560,8 +577,10 @@ func TestTaskAbortion(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Failed to find test task")
 					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+					defer testServer.Close()
 					testAgent, err := createAgent(testServer, testTask)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+					defer testAgent.stop()
 
 					Convey("when the abort signal is triggered on the task", func() {
 						go func() {
@@ -605,9 +624,9 @@ func TestTaskTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
-			So(err, ShouldBeNil)
-			So(testAgent, ShouldNotBeNil)
+			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
 			Convey("after the slow test runs beyond the timeout threshold", func() {
 				// actually run the task.
@@ -640,9 +659,10 @@ func TestFunctionVariantExclusion(t *testing.T) {
 				testutil.HandleTestingErr(err, t, "Failed to find test task")
 				testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 				testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+				defer testServer.Close()
 				testAgent, err := createAgent(testServer, testTask)
-				So(err, ShouldBeNil)
-				So(testAgent, ShouldNotBeNil)
+				testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+
 				Convey("running the task", func() {
 					testAgent.RunTask()
 					testAgent.APILogger.Flush()
@@ -670,9 +690,10 @@ func TestTaskCallbackTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
-			So(err, ShouldBeNil)
-			So(testAgent, ShouldNotBeNil)
+			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+
 			prependConfigToVersion(t, testTask.Version, "callback_timeout_secs: 1\n")
 
 			Convey("after the slow test runs beyond the timeout threshold", func() {
@@ -709,9 +730,9 @@ func TestTaskExecTimeout(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
-			So(err, ShouldBeNil)
-			So(testAgent, ShouldNotBeNil)
+			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
 			Convey("after the slow test runs beyond the timeout threshold", func() {
 				// actually run the task.
@@ -740,11 +761,13 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 		Convey("With agent running a slow test and live API server over "+tlsString, t, func() {
 			testTask, _, err := setupAPITestData(testConfig, "project_exec_timeout_task", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/project-timeout-test.yml"), NoPatch, t)
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
+
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
+
 			testAgent, err := createAgent(testServer, testTask)
-			So(err, ShouldBeNil)
-			So(testAgent, ShouldNotBeNil)
+			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
 			Convey("after the slow test runs beyond the project timeout threshold", func() {
 				// actually run the task.
@@ -776,8 +799,11 @@ func TestTaskEndEndpoint(t *testing.T) {
 		Convey("With a live api server, agent, and test task over "+tlsString, t, func() {
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
+
 			testAgent, err := createAgent(testServer, testTask)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+
 			testAgent.heartbeater.Interval = 10 * time.Second
 			testAgent.StartBackgroundActions(&NoopSignalHandler{})
 

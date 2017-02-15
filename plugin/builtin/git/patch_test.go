@@ -28,6 +28,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		err := registry.Register(gitPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		defer server.Close()
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		taskConfig, _ := plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
 		testCommand := GitGetProjectCommand{Directory: "dir"}
@@ -96,6 +97,7 @@ func TestPatchPlugin(t *testing.T) {
 		So(version.Insert(), ShouldBeNil)
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())

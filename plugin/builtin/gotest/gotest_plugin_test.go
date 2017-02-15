@@ -40,6 +40,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
@@ -106,8 +107,9 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 		server, err := service.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+		defer server.Close()
 
+		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {

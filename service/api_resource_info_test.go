@@ -20,8 +20,8 @@ import (
 func TestResourceInfoEndPoints(t *testing.T) {
 	testConfig := evergreen.TestConfig()
 	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
-	defer testApiServer.Close()
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
+	defer testApiServer.Close()
 
 	err = db.ClearCollections(event.TaskCollection, event.SystemCollection)
 	testutil.HandleTestingErr(err, t, "problem clearing event collection")

@@ -41,6 +41,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		So(version.Insert(), ShouldBeNil)
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 

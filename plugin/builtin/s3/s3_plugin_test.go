@@ -221,6 +221,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
 			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+			defer server.Close()
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
 
@@ -244,6 +245,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
 			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+			defer server.Close()
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
 
@@ -371,6 +373,7 @@ func TestAttachResults(t *testing.T) {
 		conf := evergreen.TestConfig()
 		testutil.ConfigureIntegrationTest(t, conf, "TestAttachResults")
 		server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+		defer server.Close()
 		So(err, ShouldBeNil)
 
 		httpCom := plugintest.TestAgentCommunicator(taskId, "taskSecret", server.URL)

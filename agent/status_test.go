@@ -33,14 +33,7 @@ func TestAgentStatusHandler(t *testing.T) {
 				So(len(resp.ProcessTree[0].Errors), ShouldEqual, 1)
 			} else {
 				for _, ps := range resp.ProcessTree {
-					if len(ps.Errors) > 0 {
-						for _, err := range ps.Errors {
-							So(err, ShouldEqual, "not implemented yet")
-						}
-					} else {
-						So(len(ps.Errors), ShouldEqual, 0)
-					}
-
+					So(ps, ShouldNotBeNil)
 				}
 			}
 		})

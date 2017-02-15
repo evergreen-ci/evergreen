@@ -32,9 +32,9 @@ func TestAgentDebugHandler(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to find test task")
 			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+			defer testServer.Close()
 			testAgent, err := createAgent(testServer, testTask)
-			So(err, ShouldBeNil)
-			So(testAgent, ShouldNotBeNil)
+			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
 			Convey("the agent should return the correct running task, command, and trace", func() {
 				// run the slow task and take a debug trace during.

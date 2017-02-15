@@ -31,7 +31,7 @@ func TestLogging(t *testing.T) {
 			}
 
 			select {
-			case _, ok := <-taskCommunicator.logChan:
+			case _, ok := <-taskCommunicator.LogChan:
 				So(ok, ShouldBeFalse)
 			default:
 				So(true, ShouldBeTrue)
@@ -39,7 +39,7 @@ func TestLogging(t *testing.T) {
 			Convey("Logging beyond the threshold should trigger a flush", func() {
 				testLogger.Logf(slogger.INFO, "test %v", 10)
 				time.Sleep(10 * time.Millisecond)
-				receivedMsgs, ok := <-taskCommunicator.logChan
+				receivedMsgs, ok := <-taskCommunicator.LogChan
 				So(ok, ShouldBeTrue)
 				So(len(receivedMsgs), ShouldEqual, apiLogger.SendAfterLines)
 				So(len(apiLogger.messages), ShouldEqual, 0)
@@ -51,7 +51,7 @@ func TestLogging(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 			apiLogger.Flush()
 
-			receivedMsgs, ok := <-taskCommunicator.logChan
+			receivedMsgs, ok := <-taskCommunicator.LogChan
 			So(ok, ShouldBeTrue)
 			So(len(receivedMsgs), ShouldEqual, 1)
 		})
@@ -60,7 +60,7 @@ func TestLogging(t *testing.T) {
 			apiLogger.Flush()
 			time.Sleep(10 * time.Millisecond)
 			select {
-			case _, ok := <-taskCommunicator.logChan:
+			case _, ok := <-taskCommunicator.LogChan:
 				So(ok, ShouldBeFalse)
 			default:
 				So(true, ShouldBeTrue)

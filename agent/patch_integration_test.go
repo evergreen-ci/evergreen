@@ -38,7 +38,11 @@ func TestPatchTask(t *testing.T) {
 							testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 							testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+							defer testServer.Close()
+
 							testAgent, err := createAgent(testServer, testTask)
+							testutil.HandleTestingErr(err, t, "failed to create agent: %v")
+							defer testAgent.stop()
 
 							// actually run the task.
 							// this function won't return until the whole thing is done.

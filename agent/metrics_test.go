@@ -19,10 +19,11 @@ func newTestCommunicator() *comm.MockCommunicator {
 }
 
 func TestMetricsCollectors(t *testing.T) {
+
 	Convey("The metrics collector,", t, func() {
 		Convey("should persist process stats", func() {
 			Convey("process collector runs for interval and sends messages", func() {
-				stopper := make(chan struct{})
+				stopper := make(chan bool)
 				comm := newTestCommunicator()
 				collector := metricsCollector{
 					comm: comm,
@@ -33,7 +34,7 @@ func TestMetricsCollectors(t *testing.T) {
 
 				go collector.processInfoCollector(500*time.Millisecond, time.Second, 2)
 				time.Sleep(time.Second)
-				stopper <- struct{}{}
+				stopper <- true
 				So(len(comm.Posts["process_info"]), ShouldEqual, 2)
 				// after stopping it shouldn't continue to collect stats
 				time.Sleep(time.Second)
@@ -48,7 +49,7 @@ func TestMetricsCollectors(t *testing.T) {
 			})
 
 			Convey("process collector should collect sub-processes", func() {
-				stopper := make(chan struct{})
+				stopper := make(chan bool)
 				comm := newTestCommunicator()
 				collector := metricsCollector{
 					comm: comm,
@@ -61,7 +62,7 @@ func TestMetricsCollectors(t *testing.T) {
 				So(cmd.Start(), ShouldBeNil)
 				go collector.processInfoCollector(500*time.Millisecond, time.Second, 2)
 				time.Sleep(time.Second)
-				stopper <- struct{}{}
+				stopper <- true
 				cmd.Process.Kill()
 
 				So(len(comm.Posts["process_info"]), ShouldEqual, 2)
@@ -73,7 +74,7 @@ func TestMetricsCollectors(t *testing.T) {
 			})
 		})
 		Convey("should persist system stats", func() {
-			stopper := make(chan struct{})
+			stopper := make(chan bool)
 			comm := newTestCommunicator()
 			collector := metricsCollector{
 				comm: comm,
@@ -83,8 +84,7 @@ func TestMetricsCollectors(t *testing.T) {
 			So(len(comm.Posts["system_info"]), ShouldEqual, 0)
 			go collector.sysInfoCollector(500 * time.Millisecond)
 			time.Sleep(time.Second)
-			stopper <- struct{}{}
-
+			stopper <- true
 			So(len(comm.Posts["system_info"]), ShouldEqual, 2)
 			time.Sleep(time.Second)
 			So(len(comm.Posts["system_info"]), ShouldEqual, 2)

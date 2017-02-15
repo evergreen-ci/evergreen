@@ -24,6 +24,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create test server %+v", err)
 	}
+	defer server.Close()
 
 	httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 	jsonCom := &comm.TaskJSONCommunicator{"shell", httpCom}

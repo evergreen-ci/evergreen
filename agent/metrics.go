@@ -25,7 +25,7 @@ const (
 // information (metrics) collecting go-routines. The structure holds a TaskCommunicator object
 type metricsCollector struct {
 	comm comm.TaskCommunicator
-	stop <-chan struct{}
+	stop <-chan bool
 }
 
 // start validates the struct and launches two go routines.

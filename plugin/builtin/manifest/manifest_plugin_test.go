@@ -79,6 +79,7 @@ func TestManifestLoad(t *testing.T) {
 
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 
 		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
 			"testdata", "mongodb-mongo-master.yml"), t)

@@ -52,6 +52,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 
 	testConfig := evergreen.TestConfig()
 	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	defer server.Close()
 	if err != nil {
 		t.Fatalf("failed to create test server %+v", err)
 	}

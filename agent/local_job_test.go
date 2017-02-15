@@ -5,14 +5,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/service"
+	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/tychoish/grip/level"
 	"github.com/tychoish/grip/send"
 )
 
 func TestLocalJob(t *testing.T) {
+	testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
+	tu.HandleTestingErr(err, t, "failed to start server")
+	defer testServer.Close()
+
 	Convey("With an agent command", t, func() {
 		Convey("command's stdout/stderr should be captured by logger", func() {
 			sender := send.MakeInternalLogger()

@@ -112,6 +112,7 @@ func TestCLIFetchSource(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchSource")
 	Convey("with a task containing patches and modules", t, func() {
 		testSetup := setupCLITestHarness()
+		defer testSetup.testServer.Close()
 		err := os.RemoveAll("source-patch-1_sample")
 		So(err, ShouldBeNil)
 

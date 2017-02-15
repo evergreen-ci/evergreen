@@ -196,6 +196,7 @@ func TestPluginFunctions(t *testing.T) {
 
 			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+			defer server.Close()
 
 			taskConfig, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
 				"testdata", "plugin_project_functions.yml"), t)
@@ -250,6 +251,7 @@ func TestPluginExecution(t *testing.T) {
 
 		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, apiPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 
 		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
 		So(err, ShouldBeNil)
@@ -294,6 +296,7 @@ func TestAttachLargeResults(t *testing.T) {
 	Convey("With a test task and server", t, func() {
 		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
