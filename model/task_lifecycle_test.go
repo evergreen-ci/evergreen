@@ -69,6 +69,16 @@ func TestSetActiveState(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, false)
 			})
+			Convey("if the task is activated by stepback user, the task should not deactivate", func() {
+				So(SetActiveState(testTask.Id, evergreen.StepbackTaskActivator, true), ShouldBeNil)
+				testTask, err := task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
+				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
+				testTask, err = task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.Activated, ShouldEqual, true)
+			})
 			Convey("if the task is not activated by evergreen, the task should not deactivate", func() {
 				So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
 				testTask, err := task.FindOne(task.ById(testTask.Id))
@@ -78,6 +88,40 @@ func TestSetActiveState(t *testing.T) {
 				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Activated, ShouldEqual, true)
+			})
+
+		})
+		Convey("when deactivating an active task a normal user", func() {
+			u := "test_user"
+			Convey("if the task is activated by evergreen, the task should deactivate", func() {
+				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, true), ShouldBeNil)
+				testTask, err := task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
+				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
+				testTask, err = task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.Activated, ShouldEqual, false)
+			})
+			Convey("if the task is activated by stepback user, the task should deactivate", func() {
+				So(SetActiveState(testTask.Id, evergreen.StepbackTaskActivator, true), ShouldBeNil)
+				testTask, err := task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
+				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
+				testTask, err = task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.Activated, ShouldEqual, false)
+			})
+			Convey("if the task is not activated by evergreen, the task should deactivate", func() {
+				So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
+				testTask, err := task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.ActivatedBy, ShouldEqual, userName)
+				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
+				testTask, err = task.FindOne(task.ById(testTask.Id))
+				So(err, ShouldBeNil)
+				So(testTask.Activated, ShouldEqual, false)
 			})
 
 		})

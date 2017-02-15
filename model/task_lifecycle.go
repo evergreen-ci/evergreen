@@ -40,8 +40,14 @@ func SetActiveState(taskId string, caller string, active bool) error {
 				return fmt.Errorf("error while activating task: %v", err.Error())
 			}
 		}
-		// if the caller is not evergreen or the the task is activated by evergreen, deactivate it
+		// If the task was not activated by step back, and either the caller is not evergreen
+		// or the task was originally activated by evergreen, deactivate the task
 	} else if !evergreen.IsSystemActivator(caller) || evergreen.IsSystemActivator(t.ActivatedBy) {
+		// We are trying to deactivate this task
+		// So we check if the person trying to deactivate is evergreen.
+		// If it is not, then we can deactivate it.
+		// Otherwise, if it was originally activated by evergreen, anything can
+		// decativate it.
 
 		err = t.DeactivateTask(caller)
 		if err != nil {
@@ -236,7 +242,7 @@ func getStepback(taskId string, project *Project) (bool, error) {
 }
 
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
-func doStepback(t *task.Task, caller string, detail *apimodels.TaskEndDetail, deactivatePrevious bool) error {
+func doStepback(t *task.Task, detail *apimodels.TaskEndDetail, deactivatePrevious bool) error {
 	//See if there is a prior success for this particular task.
 	//If there isn't, we should not activate the previous task because
 	//it could trigger stepping backwards ad infinitum.
@@ -249,7 +255,7 @@ func doStepback(t *task.Task, caller string, detail *apimodels.TaskEndDetail, de
 	}
 
 	// activate the previous task to pinpoint regression
-	return ActivatePreviousTask(t.Id, caller)
+	return ActivatePreviousTask(t.Id, evergreen.StepbackTaskActivator)
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
@@ -296,7 +302,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 			return err
 		}
 		if shouldStepBack {
-			err = doStepback(t, caller, detail, deactivatePrevious)
+			err = doStepback(t, detail, deactivatePrevious)
 			if err != nil {
 				return fmt.Errorf("Error during step back: %v", err.Error())
 			}

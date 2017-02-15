@@ -78,6 +78,7 @@ const (
 	EvergreenHome = "EVGHOME"
 
 	DefaultTaskActivator   = ""
+	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
 	AgentAPIVersion = 2
