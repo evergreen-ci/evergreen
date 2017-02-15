@@ -129,6 +129,8 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	if err != nil {
 		return err
 	}
+	evergreen.Logger.Logf(slogger.DEBUG, "Running initialization function for "+
+		"host “%v” with id: %v", host.Id, spotReq.InstanceId)
 	if spotReq.InstanceId == "" {
 		return evergreen.Logger.Errorf(slogger.ERROR, "Could not retrieve instanceID for filled SpotRequest '%v'",
 			host.Id)
@@ -141,7 +143,11 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 	if err != nil {
 		return false, err
 	}
-	return hostutil.CheckSSHResponse(host, sshOpts)
+	reachable, err := hostutil.CheckSSHResponse(host, sshOpts)
+	evergreen.Logger.Logf(slogger.DEBUG, "Checking host “%v” ssh reachability: ",
+		host.Id, reachable)
+
+	return reachable, err
 }
 
 //GetInstanceStatus returns an mci-universal status code for the status of
@@ -291,7 +297,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	}
 
 	evergreen.Logger.Logf(slogger.DEBUG, "Inserting updated intent host %v "+
-		"with request id: %v and name %v", spotReqRes.SpotRequestId, instanceName)
+		"with request id: %v and name %v", intentHost.Id, spotReqRes.SpotRequestId, instanceName)
 	//find the old intent host and remove it, since we now have the real
 	//host doc successfully stored.
 	oldIntenthost, err := host.FindOne(host.ById(instanceName))
@@ -306,7 +312,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	}
 
 	evergreen.Logger.Logf(slogger.DEBUG, "Removing old intent host %v "+
-		"with id: %v and name %v", oldIntenthost.Id, instanceName)
+		"with id: %v and name %v", oldIntenthost.Id, spotReqRes.SpotRequestId, instanceName)
 	err = oldIntenthost.Remove()
 	if err != nil {
 		evergreen.Logger.Logf(slogger.ERROR, "Could not remove intent host "+
