@@ -23,7 +23,10 @@ func TestJIRASummary(t *testing.T) {
 			AlertRequest: &alert.AlertRequest{
 				Trigger: alertrecord.TaskFailedId,
 			},
-			ProjectRef: &model.ProjectRef{DisplayName: ProjectName},
+			ProjectRef: &model.ProjectRef{
+				DisplayName: ProjectName,
+				Owner:       ProjectOwner,
+			},
 			Task: &task.Task{
 				DisplayName: TaskName,
 				Details:     apimodels.TaskEndDetail{},
@@ -31,6 +34,7 @@ func TestJIRASummary(t *testing.T) {
 			Build:   &build.Build{DisplayName: BuildName},
 			Version: &version.Version{Revision: VersionRevision},
 		}
+
 		Convey("a task that timed out should return a subject", func() {
 			ctx.Task.Details.TimedOut = true
 			subj := getSummary(ctx)
@@ -151,7 +155,11 @@ func TestJIRADescription(t *testing.T) {
 			AlertRequest: &alert.AlertRequest{
 				Trigger: alertrecord.TaskFailedId,
 			},
-			ProjectRef: &model.ProjectRef{DisplayName: ProjectName, Identifier: ProjectId},
+			ProjectRef: &model.ProjectRef{
+				DisplayName: ProjectName,
+				Identifier:  ProjectId,
+				Owner:       ProjectOwner,
+			},
 			Task: &task.Task{
 				Id:          TaskId,
 				DisplayName: TaskName,
@@ -163,9 +171,12 @@ func TestJIRADescription(t *testing.T) {
 					{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
 				},
 			},
-			Host:    &host.Host{Id: HostId, Host: HostDNS},
-			Build:   &build.Build{DisplayName: BuildName, Id: BuildId},
-			Version: &version.Version{Revision: VersionRevision},
+			Host:  &host.Host{Id: HostId, Host: HostDNS},
+			Build: &build.Build{DisplayName: BuildName, Id: BuildId},
+			Version: &version.Version{
+				Revision: VersionRevision,
+				Message:  VersionMessage,
+			},
 		}
 		Convey("the description should be successfully generated", func() {
 			d, err := getDescription(ctx, ui)
@@ -177,6 +188,10 @@ func TestJIRADescription(t *testing.T) {
 				So(d, ShouldContainSubstring, HostDNS)
 				So(d, ShouldContainSubstring, ProjectName)
 				So(d, ShouldContainSubstring, BuildName)
+				So(d, ShouldContainSubstring, ProjectOwner)
+				So(d, ShouldContainSubstring, VersionRevision)
+				So(d, ShouldContainSubstring, VersionMessage)
+				So(d, ShouldContainSubstring, "diff|https://github.com/")
 			})
 			Convey("with links to the task, host, project", func() {
 				So(d, ShouldContainSubstring, TaskId)

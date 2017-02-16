@@ -16,8 +16,10 @@ import (
 
 const (
 	ProjectName     = "Test Project"
+	ProjectOwner    = "testprojowner"
 	ProjectId       = "testproject"
 	VersionRevision = "aaaaaaaaaaaaaaaaaaa"
+	VersionMessage  = "bbbbbbbbbb"
 	BuildName       = "Linux 64"
 	BuildId         = "b1"
 	TaskName        = "mainTests"

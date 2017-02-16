@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/tychoish/grip"
 )
@@ -20,6 +21,7 @@ const DescriptionTemplateString = `
 h2. [{{.Task.DisplayName}} failed on {{.Build.DisplayName}}|{{.UIRoot}}/task/{{.Task.Id}}]
 Host: [{{.Host.Host}}|{{.UIRoot}}/host/{{.Host.Id}}]
 Project: [{{.Project.DisplayName}}|{{.UIRoot}}/waterfall/{{.Project.Identifier}}]
+Commit: [diff|https://github.com/{{.Project.Owner}}/commit/{{.Version.Revision}}]: {{.Version.Message}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
 `
@@ -137,14 +139,16 @@ func getDescription(ctx AlertContext, uiRoot string) (string, error) {
 			})
 		}
 	}
+
 	args := struct {
 		Task    *task.Task
 		Build   *build.Build
 		Host    *host.Host
 		Project *model.ProjectRef
+		Version *version.Version
 		Tests   []jiraTestFailure
 		UIRoot  string
-	}{ctx.Task, ctx.Build, ctx.Host, ctx.ProjectRef, tests, uiRoot}
+	}{ctx.Task, ctx.Build, ctx.Host, ctx.ProjectRef, ctx.Version, tests, uiRoot}
 	buf := &bytes.Buffer{}
 	if err := DescriptionTemplate.Execute(buf, args); err != nil {
 		return "", err
