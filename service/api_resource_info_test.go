@@ -23,7 +23,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()
 
-	err = db.ClearCollections(event.TaskCollection, event.SystemCollection)
+	err = db.ClearCollections(event.AllLogCollection, event.TaskLogCollection)
 	testutil.HandleTestingErr(err, t, "problem clearing event collection")
 	err = db.ClearCollections(task.Collection)
 	testutil.HandleTestingErr(err, t, "problem clearing task collection")
@@ -52,7 +52,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		})
 
 		Convey("the system data should persist in the database", func() {
-			events, err := event.FindTask(event.TaskSystemInfoEvents(taskId, 0))
+			events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, 0))
 			testutil.HandleTestingErr(err, t, "problem finding task event")
 			So(len(events), ShouldEqual, 1)
 			e := events[0]
@@ -76,7 +76,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		})
 
 		Convey("the process data should persist in the database", func() {
-			events, err := event.FindTask(event.TaskProcessInfoEvents(taskId, 0))
+			events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, 0))
 			testutil.HandleTestingErr(err, t, "problem finding task event")
 			So(len(events), ShouldEqual, 1)
 			e := events[0]

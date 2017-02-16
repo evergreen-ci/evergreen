@@ -136,8 +136,8 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		return false, fmt.Errorf("error checking instance status of host %v: %v", host.Id, err)
 	}
 
-	evergreen.Logger.Logf(slogger.DEBUG, "Checking readiness for %v with DNS %v. "+
-		"has cloud status %v and local status: %v", host.Id, host.Host, hostStatus, host.Status)
+	grip.Debugf("Checking readiness for %v with DNS %v. has cloud status %v and local status: %v",
+		host.Id, host.Host, hostStatus, host.Status)
 
 	// if the host has failed, terminate it and return that this host is not ready
 	if hostStatus == cloud.StatusFailed {
