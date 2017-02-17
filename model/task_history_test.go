@@ -283,9 +283,13 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					So(pipeline[0], ShouldContainKey, "$match")
 					taskMatchQuery := bson.M{
 						"$or": []bson.M{
-							bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
+							bson.M{
+								task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 								task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 									"$ne": true,
+								},
+								task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+									"$ne": "system",
 								}}},
 						task.ProjectKey:     "project",
 						task.DisplayNameKey: bson.M{"$in": []string{"task1", "task2"}},
@@ -357,9 +361,13 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 						So(pipeline[0], ShouldContainKey, "$match")
 						taskMatchQuery := bson.M{
 							"$or": []bson.M{
-								bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
+								bson.M{
+									task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 									task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 										"$ne": true,
+									},
+									task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+										"$ne": "system",
 									}}}, task.ProjectKey: "project",
 							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 						}
@@ -390,7 +398,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 								bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 									task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 										"$ne": true,
-									}}}, task.ProjectKey: "project",
+									},
+									task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+										"$ne": "system",
+									}}},
+							task.ProjectKey:                                        "project",
 							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 						}
@@ -422,7 +434,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 								bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 									task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 										"$ne": true,
-									}}}, task.ProjectKey: "project",
+									},
+									task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+										"$ne": "system",
+									}}},
+							task.ProjectKey:                                        "project",
 							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 							task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -453,7 +469,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
-										}}}, task.ProjectKey: "project",
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
+										}}},
+								task.ProjectKey:                                        "project",
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -487,7 +507,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
-										}}}, task.ProjectKey: "project",
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
+										}}},
+								task.ProjectKey:                                        "project",
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -522,7 +546,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
-										}}}, task.ProjectKey: "project",
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
+										}}},
+								task.ProjectKey:                                        "project",
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -557,7 +585,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
-										}}}, task.ProjectKey: "project",
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
+										}}},
+								task.ProjectKey:                                        "project",
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -592,7 +624,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
-										}}}, task.ProjectKey: "project",
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
+										}}},
+								task.ProjectKey:                                        "project",
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -628,7 +664,11 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
-										}}}, task.ProjectKey: "project",
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
+										}}},
+								task.ProjectKey:                                        "project",
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 								task.DisplayNameKey:                                    bson.M{"$in": []string{"task1", "task2"}},
 								task.BuildVariantKey:                                   bson.M{"$in": []string{"osx"}},
@@ -742,6 +782,9 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 									bson.M{task.StatusKey: bson.M{"$in": []string{evergreen.TaskFailed}},
 										task.DetailsKey + "." + task.TaskEndDetailTimedOut: bson.M{
 											"$ne": true,
+										},
+										task.DetailsKey + "." + task.TaskEndDetailType: bson.M{
+											"$ne": "system",
 										}},
 									bson.M{
 										task.StatusKey:                                     evergreen.TaskFailed,

@@ -597,6 +597,9 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
 			So(found.LastTaskCompleted, ShouldEqual, oldTaskId)
+			runningTaskHosts, err := Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should unset the running task field", func() {
 			So(h.UpdateRunningTask(newTaskId, "", time.Now()), ShouldBeNil)
@@ -604,6 +607,9 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, "")
 			So(found.LastTaskCompleted, ShouldEqual, newTaskId)
+			runningTaskHosts, err := Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(runningTaskHosts), ShouldEqual, 0)
 		})
 	})
 }
