@@ -78,6 +78,10 @@ functions:
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
+
+         cd gopath/src/github.com/evergreen-ci/evergreen
+
+         # configure path to the settings file
          export SETTINGS_OVERRIDE=`pwd`/creds.yml
 
          # on windows we need to turn the slashes the other way
@@ -85,8 +89,6 @@ functions:
             export GOPATH=$(cygpath -m $GOPATH)
             export SETTINGS_OVERRIDE=$(cygpath -m $SETTINGS_OVERRIDE)
          fi
-
-         cd gopath/src/github.com/evergreen-ci/evergreen
 
          # Run make, called with proper environment variables set,
          # running the target.
