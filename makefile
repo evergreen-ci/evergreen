@@ -144,6 +144,9 @@ phony += agents agent $(agentBuildDir)/version cli clis
 #   this block has no project specific configuration but defines
 #   variables that project specific information depends on
 gopath := $(shell go env GOPATH)
+ifeq ($(OS),Windows_NT)
+gopath := $(shell cygpath -m $(gopath))
+endif
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
 raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
@@ -265,6 +268,9 @@ testArgs := -test.v $(testTimeout)
 testRunEnv := EVGHOME=$(shell pwd)
 ifeq ($(OS),Windows_NT)
 testRunEnv := EVGHOME=$(shell cygpath -m `pwd`)
+endif
+ifneq (,$(SETTINGS_OVERRIDE))
+testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)

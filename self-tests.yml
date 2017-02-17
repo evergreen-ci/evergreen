@@ -78,10 +78,12 @@ functions:
 
          # Configure a local go path for this build.
          export GOPATH=`pwd`/gopath
+         export SETTINGS_OVERRIDE=`pwd`/creds.yml
 
          # on windows we need to turn the slashes the other way
          if [ "Windows_NT" == "$OS" ]; then
             export GOPATH=$(cygpath -m $GOPATH)
+            export SETTINGS_OVERRIDE=$(cygpath -m $SETTINGS_OVERRIDE)
          fi
 
          cd gopath/src/github.com/evergreen-ci/evergreen
@@ -478,7 +480,7 @@ buildvariants:
       - rhel62-test
       - rhel62-small
     expansions:
-      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
     tasks:
       - name: "dist"
@@ -488,7 +490,7 @@ buildvariants:
     run_on:
       - archlinux-test
     expansions:
-      build_env: "EVERGREEN_ALL=true SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "EVERGREEN_ALL=true"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
     tasks:
       - name: "dist-race"
@@ -499,7 +501,7 @@ buildvariants:
     run_on:
       - osx-1010
     expansions:
-      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
     tasks:
       - name: "dist"
@@ -511,7 +513,7 @@ buildvariants:
       - windows-64-vs2013-test
       - windows-64-vs2010-test
     expansions:
-      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.2.9.zip
       extension: ".exe"
       archiveExt: ".zip"
@@ -527,7 +529,7 @@ buildvariants:
       - rhel62-small
     expansions:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
     tasks:
       - name: ".test"
   - name: rhel71-power
@@ -535,7 +537,7 @@ buildvariants:
     run_on:
       - rhel71-power8-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
@@ -546,7 +548,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes SETTINGS_OVERRIDE=`pwd`/creds.yml"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"

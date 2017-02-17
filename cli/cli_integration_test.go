@@ -165,6 +165,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFetchArtifacts")
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
+		defer testSetup.testServer.Close()
 
 		err := os.RemoveAll("artifacts-abcdef-rest_task_variant_task_one")
 		So(err, ShouldBeNil)
@@ -229,6 +230,7 @@ func TestCLITestHistory(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLITestHistory")
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
+		defer testSetup.testServer.Close()
 
 		Convey("with a set of tasks being inserted into the database", func() {
 			now := time.Now()
@@ -305,6 +307,7 @@ func TestCLIFunctions(t *testing.T) {
 
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
+		defer testSetup.testServer.Close()
 
 		ac, _, _, err := getAPIClients(&Options{testSetup.settingsFilePath})
 		So(err, ShouldBeNil)

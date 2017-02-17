@@ -29,7 +29,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "problem clearing task collection")
 
 	const (
-		url    = "http://localhost:8182/api/2/task/"
+		url    = "http://localhost:8181/api/2/task/"
 		taskId = "the_task_id"
 	)
 
