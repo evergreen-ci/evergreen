@@ -1,19 +1,16 @@
 package testutil
 
-import (
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/send"
-)
+import "github.com/tychoish/grip/send"
 
 func SetupTestSender(fn string) send.Sender {
-	sender, err := send.MakeCallSiteFileLogger(fn, 2)
-	if err != nil || fn == "" {
-		return send.MakeCallSiteConsoleLogger(2)
+	console := send.MakeCallSiteConsoleLogger(2)
+	if fn == "" {
+		return console
 	}
 
-	if err := grip.SetSender(sender); err != nil {
-		sender.Close()
-		grip.CatchEmergencyFatal(err)
+	sender, err := send.MakeCallSiteFileLogger(fn, 2)
+	if err != nil {
+		return console
 	}
 
 	return sender
