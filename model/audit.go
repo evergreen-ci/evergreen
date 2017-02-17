@@ -73,6 +73,7 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("querying for running hosts: %v", err)
 	}
+
 	for _, h := range runningHosts {
 		hostTaskIds = append(hostTaskIds, h.RunningTask)
 	}
@@ -95,8 +96,13 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("querying for tasks' hosts: %v", err)
 	}
+
+	// we only want to have running hosts that are not empty.
 	for _, h := range append(runningHosts, tasksHosts...) {
-		hostToTask[h.Id] = h.RunningTask
+		// if the running task is empty don't add it to the map
+		if h.RunningTask != "" {
+			hostToTask[h.Id] = h.RunningTask
+		}
 	}
 
 	return hostToTask, taskToHost, nil

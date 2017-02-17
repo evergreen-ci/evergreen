@@ -99,6 +99,52 @@ func TestHostTaskAuditing(t *testing.T) {
 				So(t2h["t2"], ShouldEqual, "h2")
 			})
 		})
+		Convey("with a task that has a host but a host that does not have a task", func() {
+			testutil.HandleTestingErr(db.Clear(host.Collection), t,
+				"Error clearing '%v' collection", host.Collection)
+			testutil.HandleTestingErr(db.Clear(task.Collection), t,
+				"Error clearing '%v' collection", task.Collection)
+			h := host.Host{
+				Id:     "host1",
+				Status: evergreen.HostRunning,
+			}
+			So(h.Insert(), ShouldBeNil)
+			t := task.Task{
+				Id:     "task1",
+				HostId: "host1",
+				Status: evergreen.TaskStarted,
+			}
+			So(t.Insert(), ShouldBeNil)
+			h2t, t2h, err := loadHostTaskMapping()
+			So(err, ShouldBeNil)
+			So(len(h2t), ShouldEqual, 0)
+			So(len(t2h), ShouldEqual, 1)
+			So(t2h["task1"], ShouldEqual, "host1")
 
+		})
+		Convey("with a host that has a task but a task that does not have a host", func() {
+			testutil.HandleTestingErr(db.Clear(host.Collection), t,
+				"Error clearing '%v' collection", host.Collection)
+			testutil.HandleTestingErr(db.Clear(task.Collection), t,
+				"Error clearing '%v' collection", task.Collection)
+			h := host.Host{
+				Id:          "host1",
+				Status:      evergreen.HostRunning,
+				RunningTask: "task1",
+			}
+			So(h.Insert(), ShouldBeNil)
+			t := task.Task{
+				Id:     "task1",
+				Status: evergreen.TaskStarted,
+			}
+			So(t.Insert(), ShouldBeNil)
+			h2t, t2h, err := loadHostTaskMapping()
+			So(err, ShouldBeNil)
+			So(len(h2t), ShouldEqual, 1)
+			So(len(t2h), ShouldEqual, 1)
+			So(t2h["task1"], ShouldEqual, "")
+			So(h2t["host1"], ShouldEqual, "task1")
+
+		})
 	})
 }
