@@ -420,19 +420,21 @@ func mergeResults(currentTestHistory []TestHistoryResult, oldTestHistory []TestH
 		return oldTestHistory
 	}
 
-	allResults := make([]TestHistoryResult, len(currentTestHistory)+len(oldTestHistory))
+	allResults := []TestHistoryResult{}
 	oldIndex := 0
 
-	for i, testResult := range currentTestHistory {
+	for _, testResult := range currentTestHistory {
 		// first add the element of the latest execution
-		allResults[i+oldIndex] = testResult
+		allResults = append(allResults, testResult)
+
 		// check that there are more test results in oldTestHistory;
 		// check if the old task id, is the same as the original task id of the current test result
 		// and that the test file is the same.
 		for oldIndex < len(oldTestHistory) &&
 			oldTestHistory[oldIndex].OldTaskId == testResult.TaskId &&
 			oldTestHistory[oldIndex].TestFile == testResult.TestFile {
-			allResults[i+oldIndex+1] = oldTestHistory[oldIndex]
+			allResults = append(allResults, oldTestHistory[oldIndex])
+
 			oldIndex += 1
 		}
 	}

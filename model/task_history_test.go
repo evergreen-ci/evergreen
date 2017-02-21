@@ -130,6 +130,11 @@ func TestMergeResults(t *testing.T) {
 			{TestFile: "abc", TaskId: "test1_2", OldTaskId: "test1"},
 			{TestFile: "def", TaskId: "test1_1", OldTaskId: "test1"},
 		}
+
+		testHistoryWithEmpty := []TestHistoryResult{
+			TestHistoryResult{},
+			TestHistoryResult{},
+		}
 		Convey("current and old test history are merged properly", func() {
 			allResults := mergeResults(currentTestHistory, oldTestHistory)
 			So(len(allResults), ShouldEqual, 6)
@@ -151,6 +156,13 @@ func TestMergeResults(t *testing.T) {
 			So(allResults[5].TaskId, ShouldEqual, "test3")
 			So(allResults[5].TestFile, ShouldEqual, "ghi")
 
+		})
+		Convey("merging in empty results should only produce ones for the results that exist", func() {
+			allResults := mergeResults(currentTestHistory, testHistoryWithEmpty)
+			So(len(allResults), ShouldEqual, 3)
+			So(allResults[0].TaskId, ShouldEqual, "test1")
+			So(allResults[1].TaskId, ShouldEqual, "test1")
+			So(allResults[2].TaskId, ShouldEqual, "test3")
 		})
 
 	})
