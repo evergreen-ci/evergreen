@@ -11,14 +11,14 @@ import (
 )
 
 const (
-	sysInfoCollectorInterval = 15 * time.Second
+	sysInfoCollectorInterval = 30 * time.Second
 
 	// The proc info collector collects stats at one interval for
 	// a certain number of iterations and then falls back to a
 	// second interval: these values configure those intervals.
-	procInfoFirstInterval   = time.Second
-	procInfoFirstIterations = 60
-	procInfoSecondInterval  = 10 * time.Second
+	procInfoFirstInterval   = 5 * time.Second
+	procInfoFirstIterations = 12
+	procInfoSecondInterval  = 20 * time.Second
 )
 
 // metricsCollector holds the functionality for running two system
