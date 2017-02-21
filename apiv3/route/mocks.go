@@ -14,6 +14,14 @@ type mockRequestHandler struct {
 	executeErr  error
 }
 
+func (m *mockRequestHandler) Handler() RequestHandler {
+	return &mockRequestHandler{
+		storedModel: m.storedModel,
+		parseErr:    m.parseErr,
+		validateErr: m.validateErr,
+		executeErr:  m.executeErr,
+	}
+}
 func (m *mockRequestHandler) Parse(h *http.Request) error {
 	return m.parseErr
 }

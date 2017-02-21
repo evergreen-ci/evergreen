@@ -24,6 +24,9 @@ type MethodHandler struct {
 // RequestHandler is an interface that defines how to process an HTTP request
 // against an API resource.
 type RequestHandler interface {
+	// Handler defines how to fetch a new version of this handler.
+	Handler() RequestHandler
+
 	// Parse defines how to retrieve the needed parameters from the HTTP request.
 	// All needed data should be retrieved during the parse function since
 	// other functions do not have access to the HTTP request.
@@ -52,17 +55,19 @@ func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext) 
 			handleAPIError(err, w)
 			return
 		}
-		err = methodHandler.Parse(r)
+		reqHandler := methodHandler.RequestHandler.New()
+
+		err = reqHandler.Parse(r)
 		if err != nil {
 			handleAPIError(err, w)
 			return
 		}
-		err = methodHandler.Validate()
+		err = reqHandler.Validate()
 		if err != nil {
 			handleAPIError(err, w)
 			return
 		}
-		result, err := methodHandler.Execute(&sc)
+		result, err := reqHandler.Execute(&sc)
 		if err != nil {
 			handleAPIError(err, w)
 			return
