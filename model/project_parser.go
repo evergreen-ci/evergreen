@@ -38,7 +38,6 @@ import (
 type parserProject struct {
 	Enabled         bool                       `yaml:"enabled"`
 	Stepback        bool                       `yaml:"stepback"`
-	DisableCleanup  bool                       `yaml:"disable_cleanup"`
 	BatchTime       int                        `yaml:"batchtime"`
 	Owner           string                     `yaml:"owner"`
 	Repo            string                     `yaml:"repo"`
@@ -405,7 +404,6 @@ func translateProject(pp *parserProject) (*Project, []error) {
 	proj := &Project{
 		Enabled:         pp.Enabled,
 		Stepback:        pp.Stepback,
-		DisableCleanup:  pp.DisableCleanup,
 		BatchTime:       pp.BatchTime,
 		Owner:           pp.Owner,
 		Repo:            pp.Repo,
@@ -463,7 +461,6 @@ func evaluateTasks(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
 			Name:            pt.Name,
 			Priority:        pt.Priority,
 			ExecTimeoutSecs: pt.ExecTimeoutSecs,
-			DisableCleanup:  pt.DisableCleanup,
 			Commands:        pt.Commands,
 			Tags:            pt.Tags,
 			Patchable:       pt.Patchable,
