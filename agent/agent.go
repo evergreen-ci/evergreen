@@ -705,7 +705,11 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 	agt.heartbeater.StartHeartbeating()
 	agt.statsCollector.LogStats(agt.taskConfig.Expansions)
 	agt.idleTimeoutWatcher.NotifyTimeouts(agt.signalHandler.idleTimeoutChan)
-	grip.CatchError(agt.metricsCollector.start())
+
+	// DISABLED: pending studies into the capacity of the API
+	// server, tracked in EVG-1521
+	// grip.CatchError(agt.metricsCollector.start())
+
 	if agt.maxExecTimeoutWatcher != nil {
 		// default action is not to include a master timeout
 		agt.maxExecTimeoutWatcher.NotifyTimeouts(agt.signalHandler.execTimeoutChan)
