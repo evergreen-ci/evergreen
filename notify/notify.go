@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/mail"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -52,6 +53,8 @@ const (
 
 	// branch name to use if the project reference is not found
 	UnknownProjectBranch = ""
+
+	DefaultNotificationsConfig = "/etc/mci-notifications.yml"
 )
 
 var (
@@ -216,12 +219,23 @@ func Run(settings *evergreen.Settings) error {
 // This function is responsible for reading the notifications file
 func ParseNotifications(configName string) (*MCINotification, error) {
 	grip.Info("Parsing notifications...")
-	configRoot, err := evergreen.FindConfig(configName)
-	if err != nil {
-		return nil, err
+
+	evgHome := evergreen.FindEvergreenHome()
+	configs := []string{
+		filepath.Join(evgHome, configName, evergreen.NotificationsFile),
+		filepath.Join(evgHome, evergreen.NotificationsFile),
+		DefaultNotificationsConfig,
 	}
 
-	notificationsFile := filepath.Join(configRoot, evergreen.NotificationsFile)
+	var notificationsFile string
+	for _, fn := range configs {
+		if _, err := os.Stat(fn); os.IsNotExist(err) {
+			continue
+		}
+
+		notificationsFile = fn
+	}
+
 	data, err := ioutil.ReadFile(notificationsFile)
 	if err != nil {
 		return nil, err

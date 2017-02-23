@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/send"
@@ -147,36 +146,13 @@ func SetLegacyLogger() {
 // FindEvergreenHome finds the directory of the EVGHOME environment variable.
 func FindEvergreenHome() string {
 	// check if env var is set
-	root := os.Getenv("EVGHOME")
+	root := os.Getenv(EvergreenHome)
 	if len(root) > 0 {
 		return root
 	}
-	Logger.Logf(slogger.ERROR, "EVGHOME is unset")
+
+	Logger.Logf(slogger.ERROR, "%s is unset", EvergreenHome)
 	return ""
-}
-
-// FindConfig finds the config root in the home directory.
-// Returns an error if the root cannot be found or EVGHOME is unset.
-func FindConfig(configName string) (string, error) {
-	home := FindEvergreenHome()
-	if len(home) > 0 {
-		root, yes := isConfigRoot(home, configName)
-		if yes {
-			return root, nil
-		}
-		return "", fmt.Errorf("Can't find evergreen config root: '%v'", root)
-	}
-	return "", fmt.Errorf("%v environment variable must be set", EvergreenHome)
-}
-
-func isConfigRoot(home string, configName string) (fixed string, is bool) {
-	fixed = filepath.Join(home, configName)
-	fixed = strings.Replace(fixed, "\\", "/", -1)
-	stat, err := os.Stat(fixed)
-	if err == nil && stat.IsDir() {
-		is = true
-	}
-	return
 }
 
 // TestConfig creates test settings from a test config.

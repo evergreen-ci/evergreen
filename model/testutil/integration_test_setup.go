@@ -3,7 +3,9 @@ package testutil
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -13,9 +15,8 @@ import (
 // Creates a project ref local config that can be used for testing, with the string identifier given
 // and the local config from a path
 func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projectPath string) error {
-
 	if projectPath == "" {
-		config, err := evergreen.FindConfig(testSettings.ConfigDir)
+		config, err := findConfig(testSettings.ConfigDir)
 		if err != nil {
 			return err
 		}
@@ -44,4 +45,29 @@ func CreateTestLocalConfig(testSettings *evergreen.Settings, projectName, projec
 	projectRef.LocalConfig = string(data)
 
 	return projectRef.Upsert()
+}
+
+// findConfig finds the config root in the home directory.
+// Returns an error if the root cannot be found or EVGHOME is unset.
+func findConfig(configName string) (string, error) {
+	home := evergreen.FindEvergreenHome()
+	if len(home) > 0 {
+		root, yes := isConfigRoot(home, configName)
+		if yes {
+			return root, nil
+		}
+		return "", fmt.Errorf("Can't find evergreen config root: '%v'", root)
+	}
+
+	return "", fmt.Errorf("%v environment variable must be set", EvergreenHome)
+}
+
+func isConfigRoot(home string, configName string) (fixed string, is bool) {
+	fixed = filepath.Join(home, configName)
+	fixed = strings.Replace(fixed, "\\", "/", -1)
+	stat, err := os.Stat(fixed)
+	if err == nil && stat.IsDir() {
+		is = true
+	}
+	return
 }
