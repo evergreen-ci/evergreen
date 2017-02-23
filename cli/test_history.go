@@ -21,7 +21,7 @@ var (
 )
 
 const (
-	prettyStringFormat = "%-25s %-15s %-20s%-40s %-15s %-40s \n"
+	prettyStringFormat = "%-25s %-15s %-40s%-40s %-40s %-40s \n"
 )
 
 // TestHistoryCommand represents the test-history command in the CLI
