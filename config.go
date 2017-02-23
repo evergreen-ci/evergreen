@@ -14,7 +14,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "68c6cd4a6dee2a328d80e92da21e1ad17eec8c05" // in the future this should probably be a date, but this is the legacy value
+	ClientVersion = "4bc568e6cab746cfd9183453aa7b7875d2ebc191" // in the future this should probably be a date, but this is the legacy value
 )
 
 const (
