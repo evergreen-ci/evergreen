@@ -101,13 +101,13 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	afterDate := r.FormValue("afterDate")
-	if beforeDate != "" {
+	if afterDate != "" {
 		b, err := time.Parse(time.RFC3339, afterDate)
 		if err != nil {
 			restapi.WriteJSON(w, http.StatusBadRequest, "invalid format for field 'after date'")
 			return
 		}
-		params.BeforeDate = b
+		params.AfterDate = b
 	}
 
 	sort := r.FormValue("sort")

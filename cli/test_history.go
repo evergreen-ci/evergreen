@@ -22,25 +22,27 @@ var (
 
 const (
 	prettyStringFormat = "%-25s %-15s %-40s%-40s %-40s %-40s \n"
+	timeFormat         = "2006-01-02T15:04:05"
 )
 
 // TestHistoryCommand represents the test-history command in the CLI
 type TestHistoryCommand struct {
 	GlobalOpts *Options `no-flag:"true"`
 
-	Project        string    `long:"project" short:"p" description:"project identifier, defaults to user's default project"`
-	Tasks          []string  `long:"task" description:"task name"`
-	Tests          []string  `long:"test" description:"test name"`
-	Variants       []string  `long:"variant" short:"v" description:"variant name"`
-	TaskStatuses   []string  `long:"task-status" description:"task status, either fail, pass, sysfail, or timeout "`
-	TestStatuses   []string  `long:"test-status" description:"test status, either fail, pass, skip, or timeout "`
-	BeforeRevision string    `long:"before-revision" description:"find tests that finished before a full revision hash (40 characters) (inclusive)"`
-	AfterRevision  string    `long:"after-revision" description:"find tests that finished after a full revision hash (40 characters) (exclusive)"`
-	BeforeDate     time.Time `long:"before-date" description:"find tests that finished before a date in format YYYY-MM-DDTHH:MM:SS"`
-	AfterDate      time.Time `long:"after-date" description:"find tests that finish after a date in format YYYY-MM-DDTHH:MM:SS"`
-	Earliest       bool      `long:"earliest" description:"sort test history from the earliest revisions to latest"`
-	Filepath       string    `long:"filepath" description:"path to directory where file is to be saved, only used with json or csv format"`
-	Format         string    `long:"format" description:"format to export test history, options are 'json', 'csv', 'pretty', default pretty to stdout"`
+	Project        string   `long:"project" short:"p" description:"project identifier, defaults to user's default project"`
+	Tasks          []string `long:"task" description:"task name"`
+	Tests          []string `long:"test" description:"test name"`
+	Variants       []string `long:"variant" short:"v" description:"variant name"`
+	TaskStatuses   []string `long:"task-status" description:"task status, either fail, pass, sysfail, or timeout "`
+	TestStatuses   []string `long:"test-status" description:"test status, either fail, pass, skip, or timeout "`
+	BeforeRevision string   `long:"before-revision" description:"find tests that finished before a full revision hash (40 characters) (inclusive)"`
+	AfterRevision  string   `long:"after-revision" description:"find tests that finished after a full revision hash (40 characters) (exclusive)"`
+	// TODO EVG-1540 for user specific timezones.
+	BeforeDate string `long:"before-date" description:"find tests that finished before a date in format YYYY-MM-DDTHH:MM:SS in UTC"`
+	AfterDate  string `long:"after-date" description:"find tests that finish after a date in format YYYY-MM-DDTHH:MM:SS in UTC"`
+	Earliest   bool   `long:"earliest" description:"sort test history from the earliest revisions to latest"`
+	Filepath   string `long:"filepath" description:"path to directory where file is to be saved, only used with json or csv format"`
+	Format     string `long:"format" description:"format to export test history, options are 'json', 'csv', 'pretty', default pretty to stdout"`
 }
 
 // createUrlQuery returns a string url query parameter with relevant url parameters.
@@ -68,10 +70,10 @@ func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
 		queryString += fmt.Sprintf("&afterRevision=%v", testHistoryParameters.AfterRevision)
 	}
 	if !util.IsZeroTime(testHistoryParameters.BeforeDate) {
-		queryString += fmt.Sprintf("&beforeDate=%v", testHistoryParameters.BeforeDate)
+		queryString += fmt.Sprintf("&beforeDate=%v", testHistoryParameters.BeforeDate.Format(time.RFC3339))
 	}
 	if !util.IsZeroTime(testHistoryParameters.AfterDate) {
-		queryString += fmt.Sprintf("&afterDate=%v", testHistoryParameters.AfterDate)
+		queryString += fmt.Sprintf("&afterDate=%v", testHistoryParameters.AfterDate.Format(time.RFC3339))
 	}
 	return queryString
 }
@@ -129,7 +131,20 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 	if thc.Format == "" {
 		thc.Format = prettyFormat
 	}
-
+	beforeDate := time.Time{}
+	if thc.BeforeDate != "" {
+		beforeDate, err = time.Parse(timeFormat, thc.BeforeDate)
+		if err != nil {
+			return fmt.Errorf("before date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
+		}
+	}
+	afterDate := time.Time{}
+	if thc.AfterDate != "" {
+		afterDate, err = time.Parse(timeFormat, thc.AfterDate)
+		if err != nil {
+			return fmt.Errorf("after date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
+		}
+	}
 	// create a test history parameter struct and validate it
 	testHistoryParameters := model.TestHistoryParameters{
 		Project:        thc.Project,
@@ -140,8 +155,8 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 		TestStatuses:   testStatuses,
 		BeforeRevision: thc.BeforeRevision,
 		AfterRevision:  thc.AfterRevision,
-		BeforeDate:     thc.BeforeDate,
-		AfterDate:      thc.AfterDate,
+		BeforeDate:     beforeDate,
+		AfterDate:      afterDate,
 		Sort:           sort,
 	}
 
