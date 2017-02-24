@@ -849,7 +849,7 @@ func scanLogsForTask(taskId string, logTypes string, scanFor string) bool {
 			if logTypes != "" && !strings.Contains(logTypes, logmsg.Type) {
 				continue
 			}
-			if strings.Contains(logmsg.Message, scanFor) {
+			if strings.Contains(strings.ToLower(logmsg.Message), strings.ToLower(scanFor)) {
 				return true
 			}
 		}

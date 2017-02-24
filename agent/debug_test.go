@@ -2,6 +2,7 @@ package agent
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -59,8 +60,9 @@ func TestAgentDebugHandler(t *testing.T) {
 				<-done
 				So(task, ShouldEqual, testTask.Id)
 				So(command, ShouldEqual, "shell.exec")
-				gcTesting := "testing.RunTests" // we know this will be present in the trace
-				So(string(stack), ShouldContainSubstring, gcTesting)
+				gcTesting := strings.ToLower("testing.RunTests") // we know this will be present in the trace
+				So(strings.ToLower(string(stack)), ShouldContainSubstring, gcTesting)
+
 				Convey("which should also be present in the logs", func() {
 					So(scanLogsForTask(testTask.Id, "", gcTesting), ShouldBeTrue)
 				})
