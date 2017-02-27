@@ -542,7 +542,7 @@ func MarkTaskUndispatched(t *task.Task) error {
 		return err
 	}
 	// the task was successfully dispatched, log the event
-	event.LogTaskUndispatched(t.Id, t.Id)
+	event.LogTaskUndispatched(t.Id, t.HostId)
 
 	// update the cached version of the task in its related build document
 	if err := build.SetCachedTaskUndispatched(t.BuildId, t.Id); err != nil {
