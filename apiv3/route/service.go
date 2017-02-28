@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
 	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
 	"github.com/gorilla/mux"
 )
@@ -13,10 +12,14 @@ import (
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a ServiceContext then attaches each of the main functions for
 // the api to the router.
-func AttachHandler(root *mux.Router, settings *evergreen.Settings) http.Handler {
+func AttachHandler(root *mux.Router, SuperUsers []string,
+	URL, prefix string) http.Handler {
+
 	sc := &servicecontext.DBServiceContext{}
 
-	sc.SetSuperUsers(settings.SuperUsers)
+	sc.SetURL(URL)
+	sc.SetPrefix(prefix)
+	sc.SetSuperUsers(SuperUsers)
 	return getHandler(root, sc)
 }
 
@@ -56,8 +59,8 @@ func (p *PlaceHolderRequestHandler) Validate() error {
 	return nil
 }
 
-func (p *PlaceHolderRequestHandler) Execute(sc servicecontext.ServiceContext) (model.Model, error) {
-	return nil, apiv3.APIError{
+func (p *PlaceHolderRequestHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+	return ResponseData{}, apiv3.APIError{
 		StatusCode: 200,
 		Message:    "this is a placeholder for now",
 	}

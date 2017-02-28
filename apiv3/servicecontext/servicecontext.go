@@ -11,8 +11,18 @@ import (
 // between the service and the API layers, allowing for changes in the
 // service architecture without forcing changes to the API.
 type ServiceContext interface {
+	// Get and Set SuperUsers provide access to the list of API super users.
 	GetSuperUsers() []string
 	SetSuperUsers([]string)
+
+	// Get and Set URL provide access to the main url string of the API.
+	GetURL() string
+	SetURL(string)
+
+	// Get and Set Prefix provide access to the prefix that prepends all of the
+	// URL paths.
+	GetPrefix() string
+	SetPrefix(string)
 
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
@@ -35,6 +45,8 @@ type ServiceContext interface {
 // service architecture without forcing changes to the API.
 type DBServiceContext struct {
 	superUsers []string
+	URL        string
+	Prefix     string
 
 	DBUserConnector
 	DBTaskConnector
@@ -44,13 +56,26 @@ type DBServiceContext struct {
 func (ctx *DBServiceContext) GetSuperUsers() []string {
 	return ctx.superUsers
 }
-
 func (ctx *DBServiceContext) SetSuperUsers(su []string) {
 	ctx.superUsers = su
+}
+func (ctx *DBServiceContext) GetURL() string {
+	return ctx.URL
+}
+func (ctx *DBServiceContext) SetURL(url string) {
+	ctx.URL = url
+}
+func (ctx *DBServiceContext) GetPrefix() string {
+	return ctx.Prefix
+}
+func (ctx *DBServiceContext) SetPrefix(prefix string) {
+	ctx.Prefix = prefix
 }
 
 type MockServiceContext struct {
 	superUsers []string
+	URL        string
+	Prefix     string
 
 	MockUserConnector
 	MockTaskConnector
@@ -62,4 +87,16 @@ func (ctx *MockServiceContext) GetSuperUsers() []string {
 }
 func (ctx *MockServiceContext) SetSuperUsers(su []string) {
 	ctx.superUsers = su
+}
+func (ctx *MockServiceContext) GetURL() string {
+	return ctx.URL
+}
+func (ctx *MockServiceContext) SetURL(url string) {
+	ctx.URL = url
+}
+func (ctx *MockServiceContext) GetPrefix() string {
+	return ctx.Prefix
+}
+func (ctx *MockServiceContext) SetPrefix(prefix string) {
+	ctx.Prefix = prefix
 }

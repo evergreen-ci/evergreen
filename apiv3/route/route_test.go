@@ -20,8 +20,10 @@ func TestMakeRoute(t *testing.T) {
 	Convey("With mocked methods", t, func() {
 		getAuth := &mockAuthenticator{}
 		getHandler := &mockRequestHandler{
-			storedModel: &model.MockModel{
-				FieldId: "GET_method",
+			storedModels: []model.Model{
+				&model.MockModel{
+					FieldId: "GET_method",
+				},
 			},
 		}
 		mockGet := MethodHandler{
@@ -32,8 +34,10 @@ func TestMakeRoute(t *testing.T) {
 
 		postAuth := &mockAuthenticator{}
 		postHandler := &mockRequestHandler{
-			storedModel: &model.MockModel{
-				FieldId: "POST_method",
+			storedModels: []model.Model{
+				&model.MockModel{
+					FieldId: "POST_method",
+				},
 			},
 		}
 		mockPost := MethodHandler{
@@ -44,8 +48,10 @@ func TestMakeRoute(t *testing.T) {
 
 		deleteAuth := &mockAuthenticator{}
 		deleteHandler := &mockRequestHandler{
-			storedModel: &model.MockModel{
-				FieldId: "DELETE_method",
+			storedModels: []model.Model{
+				&model.MockModel{
+					FieldId: "DELETE_method",
+				},
 			},
 		}
 		mockDelete := MethodHandler{
@@ -55,6 +61,7 @@ func TestMakeRoute(t *testing.T) {
 		}
 		Convey("then adding and registering should result in a correct route", func() {
 			sc := &servicecontext.MockServiceContext{}
+			sc.SetPrefix("rest")
 			r := mux.NewRouter()
 			route := &RouteManager{
 				Version: 2,
@@ -72,11 +79,11 @@ func TestMakeRoute(t *testing.T) {
 				r.ServeHTTP(rr, req)
 				So(rr.Code, ShouldEqual, http.StatusOK)
 
-				m := model.MockModel{}
-				err = json.Unmarshal(rr.Body.Bytes(), &m)
+				res := model.MockModel{}
+				err = json.Unmarshal(rr.Body.Bytes(), &res)
 
 				So(err, ShouldBeNil)
-				So(m.FieldId, ShouldEqual, fmt.Sprintf("%s_method", method.MethodType))
+				So(res.FieldId, ShouldEqual, fmt.Sprintf("%s_method", method.MethodType))
 			}
 		})
 	})

@@ -8,18 +8,20 @@ import (
 )
 
 type mockRequestHandler struct {
-	storedModel model.Model
-	parseErr    error
-	validateErr error
-	executeErr  error
+	storedMetadata interface{}
+	storedModels   []model.Model
+	parseErr       error
+	validateErr    error
+	executeErr     error
 }
 
 func (m *mockRequestHandler) Handler() RequestHandler {
 	return &mockRequestHandler{
-		storedModel: m.storedModel,
-		parseErr:    m.parseErr,
-		validateErr: m.validateErr,
-		executeErr:  m.executeErr,
+		storedMetadata: m.storedMetadata,
+		storedModels:   m.storedModels,
+		parseErr:       m.parseErr,
+		validateErr:    m.validateErr,
+		executeErr:     m.executeErr,
 	}
 }
 func (m *mockRequestHandler) Parse(h *http.Request) error {
@@ -30,8 +32,11 @@ func (m *mockRequestHandler) Validate() error {
 	return m.validateErr
 }
 
-func (m *mockRequestHandler) Execute(sc servicecontext.ServiceContext) (model.Model, error) {
-	return m.storedModel, m.executeErr
+func (m *mockRequestHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+	return ResponseData{
+		Result:   m.storedModels,
+		Metadata: m.storedMetadata,
+	}, m.executeErr
 }
 
 // MockAuthenticator is an authenticator for testing uses of authenticators.
@@ -43,4 +48,28 @@ type mockAuthenticator struct {
 // Authenticate returns the error embeded in the mock authenticator.
 func (m *mockAuthenticator) Authenticate(sc servicecontext.ServiceContext, r *http.Request) error {
 	return m.err
+}
+
+// mockPaginatorFuncGenerator generates a PaginatorFunc which packages and
+// returns the passed in parameters.
+func mockPaginatorFuncGenerator(result []model.Model, nextKey, prevKey string,
+	nextLimit, prevLimit int, errResult error) PaginatorFunc {
+	return func(key string, limit int, sc servicecontext.ServiceContext) ([]model.Model,
+		*PageResult, error) {
+
+		nextPage := Page{
+			Limit:    nextLimit,
+			Key:      nextKey,
+			Relation: "next",
+		}
+
+		prevPage := Page{
+			Limit:    prevLimit,
+			Key:      prevKey,
+			Relation: "prev",
+		}
+
+		return result, &PageResult{&nextPage, &prevPage}, errResult
+
+	}
 }
