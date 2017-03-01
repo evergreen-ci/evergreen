@@ -25,7 +25,7 @@ func (i HostTaskInconsistency) Error() string {
 		return fmt.Sprintf("host %s says it is running task %s, which does not exist",
 			i.Host, i.HostTaskCache)
 	case i.Host == "" && i.HostTaskCache == "":
-		return fmt.Sprintf("task %s says it is running on host %s, which does not exist",
+		return fmt.Sprintf("task %s says it is running on host %s, which is not a running host",
 			i.Task, i.TaskHostCache)
 	case i.HostTaskCache == i.Task:
 		return fmt.Sprintf(
