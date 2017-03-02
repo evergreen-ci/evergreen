@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -35,6 +36,7 @@ func TestMonitorReachability(t *testing.T) {
 				LastReachabilityCheck: time.Now().Add(-time.Minute),
 				Status:                evergreen.HostUnreachable,
 				Provider:              mock.ProviderName,
+				StartedBy:             evergreen.User,
 			}
 			testutil.HandleTestingErr(h.Insert(), t, "error inserting host")
 
@@ -50,14 +52,29 @@ func TestMonitorReachability(t *testing.T) {
 		Convey("hosts eligible for a check should have their statuses"+
 			" updated appropriately", func() {
 
+			m1 := mock.MockInstance{
+				IsUp:           true,
+				IsSSHReachable: true,
+				Status:         cloud.StatusRunning,
+			}
+			mock.MockInstances["h1"] = m1
+
 			// this host should be picked up and updated to running
 			host1 := &host.Host{
 				Id: "h1",
 				LastReachabilityCheck: time.Now().Add(-15 * time.Minute),
 				Status:                evergreen.HostUnreachable,
 				Provider:              mock.ProviderName,
+				StartedBy:             evergreen.User,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
+
+			m2 := mock.MockInstance{
+				IsUp:           true,
+				IsSSHReachable: true,
+				Status:         cloud.StatusRunning,
+			}
+			mock.MockInstances["h2"] = m2
 
 			// this host should not be picked up, since it is quarantined
 			host2 := &host.Host{
@@ -65,6 +82,7 @@ func TestMonitorReachability(t *testing.T) {
 				LastReachabilityCheck: time.Now().Add(-15 * time.Minute),
 				Status:                evergreen.HostQuarantined,
 				Provider:              mock.ProviderName,
+				StartedBy:             evergreen.User,
 			}
 			testutil.HandleTestingErr(host2.Insert(), t, "error inserting host")
 
@@ -73,7 +91,7 @@ func TestMonitorReachability(t *testing.T) {
 			// refresh the first host - its status should have been updated
 			host1, err := host.FindOne(host.ById("h1"))
 			So(err, ShouldBeNil)
-			So(host1.Status, ShouldEqual, evergreen.HostUnreachable)
+			So(host1.Status, ShouldEqual, evergreen.HostRunning)
 
 			// refresh the second host - its status should not have been updated
 			host1, err = host.FindOne(host.ById("h2"))
