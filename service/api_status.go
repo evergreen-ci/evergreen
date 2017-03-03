@@ -17,11 +17,22 @@ const (
 	apiStatusError   = "ERROR"
 )
 
+// taskAssignmentResp holds the status, errors and four separate lists of task and host ids
+// this is so that when addressing inconsistencies we can differentiate between the states of
+// the tasks and hosts.
+// Status is either SUCCESS or ERROR.
+// Errors is a list of all the errors that exist.
+// TaskIds are a list of the tasks that have errors associated with them.
+// TaskHostIds are a list of the hosts that exist that are said to be running on tasks with errors.
+// HostIds are a list of hosts that have errors associated with them.
+// HostRunningTasks are list of the tasks that are said to be running on inconsistent hosts.
 type taskAssignmentResp struct {
-	Status  string   `json:"status"`
-	Errors  []string `json:"errors"`
-	TaskIds []string `json:"tasks"`
-	HostIds []string `json:"hosts"`
+	Status           string   `json:"status"`
+	Errors           []string `json:"errors"`
+	TaskIds          []string `json:"tasks"`
+	TaskHostIds      []string `json:"task_host_ids"`
+	HostIds          []string `json:"hosts"`
+	HostRunningTasks []string `json:"host_running_tasks"`
 }
 
 // consistentTaskAssignment returns any disparities between tasks' and hosts's views
@@ -42,18 +53,20 @@ func (as *APIServer) consistentTaskAssignment(w http.ResponseWriter, r *http.Req
 				resp.TaskIds = append(resp.TaskIds, d.Task)
 			}
 			if d.HostTaskCache != "" {
-				resp.TaskIds = append(resp.TaskIds, d.HostTaskCache)
+				resp.HostRunningTasks = append(resp.HostRunningTasks, d.HostTaskCache)
 			}
 			if d.Host != "" {
 				resp.HostIds = append(resp.HostIds, d.Host)
 			}
 			if d.TaskHostCache != "" {
-				resp.HostIds = append(resp.HostIds, d.TaskHostCache)
+				resp.TaskHostIds = append(resp.TaskHostIds, d.TaskHostCache)
 			}
 		}
 		// dedupe id slices before returning, for simplicity
 		resp.TaskIds = util.UniqueStrings(resp.TaskIds)
 		resp.HostIds = util.UniqueStrings(resp.HostIds)
+		resp.HostRunningTasks = util.UniqueStrings(resp.HostRunningTasks)
+		resp.TaskHostIds = util.UniqueStrings(resp.TaskHostIds)
 	}
 	as.WriteJSON(w, http.StatusOK, resp)
 }
