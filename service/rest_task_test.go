@@ -106,7 +106,7 @@ func TestGetTaskInfo(t *testing.T) {
 			EndTime:   float64(time.Now().Add(-1 * time.Minute).Unix()),
 		}
 		testTask, err := insertTaskForTesting(taskId, versionId, projectName, testResult)
-		So(testTask.Insert(), ShouldBeNil)
+		So(err, ShouldBeNil)
 
 		file := artifact.File{
 			Name: "Some Artifact",
