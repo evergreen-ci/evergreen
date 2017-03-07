@@ -427,11 +427,11 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if !getGlobalLock(r.RemoteAddr, p.Id.String()) {
+	if !getGlobalLock(r.RemoteAddr, p.Id.String(), PatchLockTitle) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(r.RemoteAddr, p.Id.String())
+	defer releaseGlobalLock(r.RemoteAddr, p.Id.String(), PatchLockTitle)
 
 	var action, desc string
 	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {

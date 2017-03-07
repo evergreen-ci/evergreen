@@ -63,6 +63,8 @@ type APIServer struct {
 const (
 	APIServerLockTitle = evergreen.APIServerTaskActivator
 	PatchLockTitle     = "patches"
+	TaskStartCaller    = "start task"
+	EndTaskCaller      = "end task"
 )
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
@@ -245,11 +247,11 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
-	if !getGlobalLock(r.RemoteAddr, t.Id) {
+	if !getGlobalLock(r.RemoteAddr, t.Id, TaskStartCaller) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(r.RemoteAddr, t.Id)
+	defer releaseGlobalLock(r.RemoteAddr, t.Id, TaskStartCaller)
 
 	grip.Infoln("Marking task started:", t.Id)
 
@@ -335,11 +337,11 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !getGlobalLock(r.RemoteAddr, t.Id) {
+	if !getGlobalLock(r.RemoteAddr, t.Id, EndTaskCaller) {
 		as.LoggedError(w, r, http.StatusInternalServerError, ErrLockTimeout)
 		return
 	}
-	defer releaseGlobalLock(r.RemoteAddr, t.Id)
+	defer releaseGlobalLock(r.RemoteAddr, t.Id, EndTaskCaller)
 
 	// mark task as finished
 	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
@@ -958,31 +960,33 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 	as.WriteJSON(w, http.StatusOK, []validator.ValidationError{})
 }
 
-// helper function for grabbing the global lock
-func getGlobalLock(client, taskId string) bool {
-	grip.Debugf("Attempting to acquire global lock for %s (remote addr: %s)", taskId, client)
+// getGlobalLock attempts to acquire the global lock and takes in
+// client - a remote address of what is trying to get the global lock
+// taskId, and caller, which is the function that is called.
+func getGlobalLock(client, taskId, caller string) bool {
+	grip.Debugf("Attempting to acquire global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
 
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(client, db.LockTimeout)
 	if err != nil {
-		grip.Errorf("Error acquiring global lock for %s (remote addr: %s): %+v", taskId, client, err)
+		grip.Errorf("Error acquiring global lock for %s (remote addr: %s) with caller %s: %+v", taskId, client, caller, err)
 		return false
 	}
 	if !lockAcquired {
-		grip.Errorf("Timed out attempting to acquire global lock for %s (remote addr: %s)", taskId, client)
+		grip.Errorf("Timed out attempting to acquire global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
 		return false
 	}
 
-	grip.Debugf("Acquired global lock for %s (remote addr: %s)", taskId, client)
+	grip.Debugf("Acquired global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
 	return true
 }
 
 // helper function for releasing the global lock
-func releaseGlobalLock(client, taskId string) {
-	grip.Debugf("Attempting to release global lock for %s (remote addr: %s)", taskId, client)
+func releaseGlobalLock(client, taskId, caller string) {
+	grip.Debugf("Attempting to release global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
 	if err := db.ReleaseGlobalLock(client); err != nil {
-		grip.Errorf("Error releasing global lock for %s (remote addr: %s) - this is really bad: %s", taskId, client, err)
+		grip.Errorf("Error releasing global lock for %s (remote addr: %s) with caller %s - this is really bad: %s", taskId, client, caller, err)
 	}
-	grip.Debugf("Released global lock for %s (remote addr: %s)", taskId, client)
+	grip.Debugf("Released global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted
