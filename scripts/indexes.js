@@ -26,6 +26,7 @@ db.hosts.ensureIndex({ "version" : 1 })
 db.hosts.ensureIndex({ "author" : 1 })
 db.hosts.ensureIndex({ "distro._id" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "status" : 1, "create_time": 1, "termination_time" : 1, "provider": 1 })
+db.hosts.ensureIndex({"running_task": 1},{sparse:true})
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
@@ -60,3 +61,6 @@ db.versions.ensureIndex({ "versions.build_variant_status.build_variant" : 1, "ve
 
 //======alerts=======//
 db.alerts.createIndex({queue_status:1})
+
+//======test_logs=====//
+db.test_logs.ensureIndex({ "execution" : 1, "name" : 1, "task" : 1 })
