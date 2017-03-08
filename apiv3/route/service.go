@@ -16,7 +16,7 @@ import (
 func AttachHandler(root *mux.Router) http.Handler {
 	sc := servicecontext.NewServiceContext()
 
-	return getHandler(rtr, sc)
+	return getHandler(root, sc)
 }
 
 // getHandler builds each of the functions that this api implements and then

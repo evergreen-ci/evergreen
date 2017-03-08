@@ -55,7 +55,7 @@ func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext) 
 			handleAPIError(err, w)
 			return
 		}
-		reqHandler := methodHandler.RequestHandler.New()
+		reqHandler := methodHandler.RequestHandler.Handler()
 
 		err = reqHandler.Parse(r)
 		if err != nil {
