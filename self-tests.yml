@@ -237,7 +237,7 @@ tasks:
     tags: ["nodb", "test"]
     name: test-apiv3-route
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "race"]
+    tags: ["nodb", "test", "agent"]
     name: test-command
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -294,10 +294,10 @@ tasks:
     tags: ["db", "test"]
     name: test-thirdparty
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-archive
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -324,34 +324,34 @@ tasks:
     tags: ["db", "test"]
     name: test-model-task
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-git
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-gotest
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-attach
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-attach-xunit
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-shell
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-s3copy
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-expansions
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "agent"]
     name: test-plugin-builtin-s3
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
@@ -363,7 +363,7 @@ tasks:
     tags: ["nodb", "race"]
     name: race-auth
   - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
+    tags: ["nodb", "race", "agent"]
     name: race-command
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
@@ -414,10 +414,10 @@ tasks:
     tags: ["db", "race"]
     name: race-thirdparty
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-util
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-archive
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -444,34 +444,34 @@ tasks:
     tags: ["db", "race"]
     name: race-model-task
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-git
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-gotest
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-attach
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-attach-xunit
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-shell
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-s3copy
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-expansions
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race"]
+    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-s3
 
 
@@ -539,7 +539,7 @@ buildvariants:
     run_on:
       - rhel71-power8-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
@@ -550,7 +550,7 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
     tasks:
       - name: ".nodb .test !.burn_in"
