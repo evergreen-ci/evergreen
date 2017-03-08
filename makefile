@@ -170,9 +170,9 @@ dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-race: $(buildDir)/dist-race.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball agents clis $(binaries) plugins
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins agents clis $(binaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
-$(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball makefile $(raceBinaries) $(agentBinaries) $(clientBinaries) plugins
+$(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(agentBinaries) $(clientBinaries)
 	./$< -name $@ --prefix $(name)-race $(foreach item,$(raceBinaries) $(distContents),--item $(item))
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(binaries) $(raceBinaries)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
