@@ -32,7 +32,7 @@ raceBinaries := $(foreach bin,$(binaries),$(bin).race)
 agentSource := agent/main/agent.go
 clientSource := cli/main/cli.go
 
-distArtifacts :=  ./public ./service/templates ./service/plugins
+distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates
 distContents := $(agentBuildDir) $(clientBuildDir) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg) $(buildDir)/race.$(pkg))
 
@@ -174,7 +174,7 @@ $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins agents clis $(binaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
 $(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(agentBinaries) $(clientBinaries)
 	./$< -name $@ --prefix $(name)-race $(foreach item,$(raceBinaries) $(distContents),--item $(item))
-$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball makefile $(binaries) $(raceBinaries)
+$(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(binaries) $(raceBinaries)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
 	./$< --name $@ --prefix $(name) $(subst $(name),,$(foreach pkg,$(packages),--item ./$(subst -,/,$(pkg)))) --item ./scripts --item makefile --exclude "$(name)" --exclude "^.git/" --exclude "$(buildDir)/"
