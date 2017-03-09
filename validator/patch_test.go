@@ -44,7 +44,6 @@ func init() {
 
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
-	newConfigFilePath = filepath.Join(current, newConfigFilePath)
 	newProjectPatchFile = filepath.Join(current, newProjectPatchFile)
 }
 
