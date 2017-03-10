@@ -13,7 +13,7 @@ import (
 
 func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -122,7 +122,7 @@ func TestWarnExpiringSpawnedHosts(t *testing.T) {
 
 func TestWarnSlowProvisioningHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 

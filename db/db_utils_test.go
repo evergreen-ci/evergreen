@@ -5,15 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	dbUtilsTestConf = evergreen.TestConfig()
-)
+var dbUtilsTestConf = testutil.TestConfig()
 
 func TestDBUtils(t *testing.T) {
 

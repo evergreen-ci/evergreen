@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func TestLoggingTaskEvents(t *testing.T) {

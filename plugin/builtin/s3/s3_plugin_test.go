@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
@@ -24,7 +23,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func reset(t *testing.T) {
@@ -77,7 +76,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 		db.ClearCollections(task.Collection, artifact.Collection), t,
 		"error clearing test collections")
 
-	conf := evergreen.TestConfig()
+	conf := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
 
 	Convey("When putting to and retrieving from an s3 bucket", t, func() {
@@ -270,7 +269,7 @@ func TestS3PutAndGetMultiFile(t *testing.T) {
 		db.ClearCollections(task.Collection, artifact.Collection), t,
 		"error clearing test collections")
 
-	conf := evergreen.TestConfig()
+	conf := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
 
 	Convey("When putting to and retrieving from an s3 bucket", t, func() {
@@ -370,7 +369,7 @@ func TestAttachResults(t *testing.T) {
 		}
 		testTask.Insert()
 
-		conf := evergreen.TestConfig()
+		conf := testutil.TestConfig()
 		testutil.ConfigureIntegrationTest(t, conf, "TestAttachResults")
 		server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
 		defer server.Close()

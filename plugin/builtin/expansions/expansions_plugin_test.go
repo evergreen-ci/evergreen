@@ -3,7 +3,6 @@ package expansions_test
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
@@ -12,6 +11,7 @@ import (
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -50,7 +50,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	stopper := make(chan bool)
 	defer close(stopper)
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 	defer server.Close()
 	if err != nil {

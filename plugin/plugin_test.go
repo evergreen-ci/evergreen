@@ -37,11 +37,10 @@ import (
 
 var Port = 8181
 
-type MockPlugin struct {
-}
+type MockPlugin struct{}
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func MockPluginEcho(w http.ResponseWriter, request *http.Request) {
@@ -184,7 +183,7 @@ func TestRegistry(t *testing.T) {
 }
 
 func TestPluginFunctions(t *testing.T) {
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")
 	Convey("With a SimpleRegistry", t, func() {
 		Convey("with a project file containing functions", func() {
@@ -249,7 +248,7 @@ func TestPluginExecution(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
 
-		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, apiPlugins, false)
+		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, apiPlugins, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
@@ -294,7 +293,7 @@ func strOfLen(size int) string {
 func TestAttachLargeResults(t *testing.T) {
 	db.ClearCollections(task.Collection)
 	Convey("With a test task and server", t, func() {
-		testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
+		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil, false)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)

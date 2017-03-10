@@ -4,16 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	taskLogTestConfig = evergreen.TestConfig()
-)
+var taskLogTestConfig = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskLogTestConfig))

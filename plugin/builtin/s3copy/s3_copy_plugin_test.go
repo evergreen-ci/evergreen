@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
@@ -21,8 +20,7 @@ import (
 )
 
 func TestS3CopyPluginExecution(t *testing.T) {
-
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestS3CopyPluginExecution")

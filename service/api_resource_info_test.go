@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -18,7 +17,7 @@ import (
 )
 
 func TestResourceInfoEndPoints(t *testing.T) {
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()

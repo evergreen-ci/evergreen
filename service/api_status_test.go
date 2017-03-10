@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -23,7 +24,7 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	as, err := NewAPIServer(evergreen.TestConfig(), nil)
+	as, err := NewAPIServer(testutil.TestConfig(), nil)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}

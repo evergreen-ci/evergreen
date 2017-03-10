@@ -11,9 +11,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	taskComparatorTestConf = evergreen.TestConfig()
-)
+var taskComparatorTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskComparatorTestConf))

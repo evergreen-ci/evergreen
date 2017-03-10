@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/model"
@@ -30,7 +29,7 @@ var (
 // It also takes as an argument a function which runs any additional tests desired.
 func runTest(t *testing.T, configPath string, customTests func()) {
 	resetTasks(t)
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	Convey("With attachResults plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		attachPlugin := &AttachPlugin{}

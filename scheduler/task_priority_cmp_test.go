@@ -12,9 +12,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	taskImportanceCmpTestConf = evergreen.TestConfig()
-)
+var taskImportanceCmpTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskImportanceCmpTestConf))

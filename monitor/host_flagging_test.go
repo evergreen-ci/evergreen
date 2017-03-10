@@ -16,7 +16,7 @@ import (
 
 func TestFlaggingDecommissionedHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -79,7 +79,7 @@ func TestFlaggingDecommissionedHosts(t *testing.T) {
 
 func TestFlaggingIdleHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -152,7 +152,7 @@ func TestFlaggingIdleHosts(t *testing.T) {
 
 func TestFlaggingExcessHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -399,7 +399,7 @@ func TestFlaggingExcessHosts(t *testing.T) {
 
 func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -479,7 +479,7 @@ func TestFlaggingUnprovisionedHosts(t *testing.T) {
 
 func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
@@ -522,7 +522,7 @@ func TestFlaggingProvisioningFailedHosts(t *testing.T) {
 
 func TestFlaggingExpiredHosts(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 

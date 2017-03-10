@@ -16,9 +16,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	hostAllocatorTestConf = evergreen.TestConfig()
-)
+var hostAllocatorTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostAllocatorTestConf))

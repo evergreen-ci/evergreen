@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
@@ -21,7 +20,7 @@ import (
 )
 
 func reset(t *testing.T) {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 	testutil.HandleTestingErr(
 		db.ClearCollections(task.Collection, model.TestLogCollection), t,
 		"error clearing test collections")
@@ -29,7 +28,7 @@ func reset(t *testing.T) {
 
 func TestGotestPluginOnFailingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 
@@ -98,14 +97,14 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
-		testConfig := evergreen.TestConfig()
+		testConfig := testutil.TestConfig()
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestGotestPluginOnPassingTests")
 		registry := plugin.NewSimpleRegistry()
 		testPlugin := &GotestPlugin{}
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := service.CreateTestServer(evergreen.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := service.CreateTestServer(testutil.TestConfig(), nil, plugin.APIPlugins, true)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

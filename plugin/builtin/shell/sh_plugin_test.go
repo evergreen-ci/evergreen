@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -19,7 +19,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	stopper := make(chan bool)
 	defer close(stopper)
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
 	if err != nil {
 		t.Fatalf("failed to create test server %+v", err)

@@ -3,17 +3,15 @@ package validator
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	conf = evergreen.TestConfig()
-)
+var conf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))

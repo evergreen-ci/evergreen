@@ -12,9 +12,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	projectValidatorConf = evergreen.TestConfig()
-)
+var projectValidatorConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectValidatorConf))

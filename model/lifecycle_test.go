@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func taskIdInSlice(tasks []task.Task, id string) bool {

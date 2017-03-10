@@ -15,9 +15,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var (
-	taskHistoryTestConfig = evergreen.TestConfig()
-)
+var taskHistoryTestConfig = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(

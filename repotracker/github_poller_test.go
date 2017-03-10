@@ -3,7 +3,6 @@ package repotracker
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	testConfig            = evergreen.TestConfig()
+	testConfig            = testutil.TestConfig()
 	firstRevision         = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
 	lastRevision          = "d0d878e81b303fd2abbf09331e54af41d6cd0c7d"
 	distantEvgRevision    = "46d69e662b54a8e03267d165f2a1bc8980865d67"

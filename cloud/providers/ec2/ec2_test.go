@@ -5,12 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var testConfig = evergreen.TestConfig()
+var testConfig = testutil.TestConfig()
 
 // mins returns a time X minutes after UNIX epoch
 func mins(x int64) time.Time {

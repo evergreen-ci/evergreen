@@ -18,7 +18,7 @@ import (
 
 func TestPatchTask(t *testing.T) {
 	setupTlsConfigs(t)
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	patchModes := []patchTestMode{InlinePatch, ExternalPatch}
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchTask")

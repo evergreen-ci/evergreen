@@ -25,7 +25,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var testConfig = evergreen.TestConfig()
+var testConfig = testutil.TestConfig()
 
 var testPatch = `diff --git a/README.md b/README.md
 index e69de29..e5dcf0f 100644

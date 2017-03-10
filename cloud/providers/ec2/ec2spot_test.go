@@ -13,11 +13,11 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func TestSpawnSpotInstance(t *testing.T) {
-	testConfig = evergreen.TestConfig()
+	testConfig = testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 
 	provider := &EC2SpotManager{}

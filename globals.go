@@ -3,7 +3,6 @@ package evergreen
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/send"
@@ -12,9 +11,6 @@ import (
 
 const (
 	User = "mci"
-
-	TestDir      = "config_test"
-	TestSettings = "evg_settings.yml"
 
 	HostRunning         = "running"
 	HostTerminated      = "terminated"
@@ -60,8 +56,6 @@ const (
 	HostTypeStatic = "static"
 
 	CompileStage = "compile"
-	TestStage    = "single_test"
-	SanityStage  = "smokeCppUnitTests"
 	PushStage    = "push"
 
 	// maximum task (zero based) execution number
@@ -153,17 +147,6 @@ func FindEvergreenHome() string {
 
 	Logger.Logf(slogger.ERROR, "%s is unset", EvergreenHome)
 	return ""
-}
-
-// TestConfig creates test settings from a test config.
-func TestConfig() *Settings {
-	evgHome := FindEvergreenHome()
-	file := filepath.Join(evgHome, TestDir, TestSettings)
-	settings, err := NewSettings(file)
-	if err != nil {
-		panic(err)
-	}
-	return settings
 }
 
 // IsSystemActivator returns true when the task activator is Evergreen.

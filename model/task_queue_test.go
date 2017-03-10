@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -13,7 +12,7 @@ import (
 
 var (
 	_                 fmt.Stringer = nil
-	taskQueueTestConf              = evergreen.TestConfig()
+	taskQueueTestConf              = testutil.TestConfig()
 )
 
 func init() {

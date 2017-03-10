@@ -17,9 +17,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	schedulerTestConf = evergreen.TestConfig()
-)
+var schedulerTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))

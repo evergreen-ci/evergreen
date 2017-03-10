@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
@@ -19,7 +18,7 @@ import (
 )
 
 func reset(t *testing.T) {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 	testutil.HandleTestingErr(
 		db.ClearCollections(manifest.Collection), t,
 		"error clearing test collections")
@@ -64,7 +63,7 @@ func TestManifest(t *testing.T) {
 
 func TestManifestLoad(t *testing.T) {
 	reset(t)
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestManifestFetch")

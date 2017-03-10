@@ -39,7 +39,7 @@ import (
 // If something is failing, try turning this on to see all the details
 var Verbose = testing.Verbose()
 
-var testConfig = evergreen.TestConfig()
+var testConfig = testutil.TestConfig()
 var testPidFile = "test_pid_file"
 
 var testSetups []testConfigPath

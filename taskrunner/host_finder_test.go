@@ -12,9 +12,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	hostFinderTestConf = evergreen.TestConfig()
-)
+var hostFinderTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostFinderTestConf))

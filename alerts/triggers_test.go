@@ -12,12 +12,13 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var (
-	schedulerTestConf = evergreen.TestConfig()
+	schedulerTestConf = testutil.TestConfig()
 )
 
 func init() {

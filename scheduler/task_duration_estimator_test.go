@@ -13,9 +13,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	taskDurationEstimatorTestConf = evergreen.TestConfig()
-)
+var taskDurationEstimatorTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskDurationEstimatorTestConf))

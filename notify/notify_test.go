@@ -84,10 +84,10 @@ var (
 	}
 )
 
-var TestConfig = evergreen.TestConfig()
+var TestConfig = testutil.TestConfig()
 
 func TestNotify(t *testing.T) {
-	grip.SetSender(testutil.SetupTestSender(evergreen.TestConfig().Notify.LogFile))
+	grip.SetSender(testutil.SetupTestSender(TestConfig.Notify.LogFile))
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(TestConfig))
 	emailSubjects = make([]string, 0)

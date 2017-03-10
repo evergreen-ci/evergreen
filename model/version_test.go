@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 	grip.SetSender(testutil.SetupTestSender("/tmp/version_test.log"))
 }
 

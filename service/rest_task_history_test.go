@@ -19,9 +19,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	testConfig = evergreen.TestConfig()
-)
+var testConfig = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))

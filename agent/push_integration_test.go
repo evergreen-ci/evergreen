@@ -20,7 +20,7 @@ import (
 )
 
 func TestPushTask(t *testing.T) {
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	setupTlsConfigs(t)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestPushTask")

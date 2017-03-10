@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	conf  = evergreen.TestConfig()
+	conf  = testutil.TestConfig()
 	oneMs = time.Millisecond
 )
 

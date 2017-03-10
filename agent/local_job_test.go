@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/service"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestLocalJob(t *testing.T) {
-	testServer, err := service.CreateTestServer(evergreen.TestConfig(), nil, nil, false)
+	testServer, err := service.CreateTestServer(tu.TestConfig(), nil, nil, false)
 	tu.HandleTestingErr(err, t, "failed to start server")
 	defer testServer.Close()
 

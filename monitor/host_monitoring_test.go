@@ -15,7 +15,7 @@ import (
 
 func TestMonitorReachability(t *testing.T) {
 
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 

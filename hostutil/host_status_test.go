@@ -3,14 +3,12 @@ package hostutil
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	testConfig = evergreen.TestConfig()
-)
+var testConfig = testutil.TestConfig()
 
 func TestHostSshParse(t *testing.T) {
 	Convey("Parsing a string with hostname and port should be parsed correctly", t, func() {

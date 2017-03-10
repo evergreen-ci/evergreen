@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
@@ -33,7 +34,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("clearing db: %v", err)
 		}
 		var ctx map[interface{}]interface{}
-		as, err := NewAPIServer(evergreen.TestConfig(), nil)
+		as, err := NewAPIServer(testutil.TestConfig(), nil)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -149,7 +150,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("clearing db: %v", err)
 		}
 		var ctx map[interface{}]interface{}
-		as, err := NewAPIServer(evergreen.TestConfig(), nil)
+		as, err := NewAPIServer(testutil.TestConfig(), nil)
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

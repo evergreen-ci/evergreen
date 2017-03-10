@@ -20,7 +20,7 @@ import (
 )
 
 func TestPatchPluginAPI(t *testing.T) {
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	cwd := testutil.GetDirectoryOfFile()
 	Convey("With a running api server and installed plugin", t, func() {
 		registry := plugin.NewSimpleRegistry()
@@ -82,7 +82,7 @@ func TestPatchPluginAPI(t *testing.T) {
 
 func TestPatchPlugin(t *testing.T) {
 	cwd := testutil.GetDirectoryOfFile()
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	Convey("With patch plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()

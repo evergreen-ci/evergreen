@@ -10,9 +10,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	projectTestConf = evergreen.TestConfig()
-)
+var projectTestConf = testutil.TestConfig()
 
 func TestFindProject(t *testing.T) {
 

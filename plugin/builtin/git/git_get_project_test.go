@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
@@ -19,11 +18,11 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
-
+-
 func TestGitPlugin(t *testing.T) {
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	Convey("With git plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		gitPlugin := &GitPlugin{}

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiv3"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -14,7 +13,7 @@ import (
 )
 
 var (
-	testConfig = evergreen.TestConfig()
+	testConfig = testutil.TestConfig()
 )
 
 func TestFindTaskById(t *testing.T) {

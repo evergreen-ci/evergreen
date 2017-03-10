@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -13,9 +12,7 @@ import (
 	"github.com/tychoish/grip"
 )
 
-var (
-	taskQueuePersisterTestConf = evergreen.TestConfig()
-)
+var taskQueuePersisterTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueuePersisterTestConf))

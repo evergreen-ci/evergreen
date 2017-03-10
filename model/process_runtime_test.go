@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -13,7 +13,7 @@ import (
 var (
 	runtimeId     = "runtimeId"
 	allRuntimeIds = []string{runtimeId + "1", runtimeId + "2", runtimeId + "3"}
-	testConfig    = evergreen.TestConfig()
+	testConfig    = testutil.TestConfig()
 )
 
 func init() {

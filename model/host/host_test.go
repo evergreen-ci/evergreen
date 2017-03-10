@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func hostIdInSlice(hosts []Host, id string) bool {
@@ -448,7 +448,7 @@ func TestHostSetExpirationTime(t *testing.T) {
 }
 
 func TestFindRunningSpawnedHosts(t *testing.T) {
-	testConfig := evergreen.TestConfig()
+	testConfig := testutil.TestConfig()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
 	testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+

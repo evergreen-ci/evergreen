@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -16,42 +17,42 @@ func TestGetCloudManager(t *testing.T) {
 	Convey("GetCloudManager() should return non-nil for all valid provider names", t, func() {
 
 		Convey("EC2 should be returned for ec2 provider name", func() {
-			cloudMgr, err := GetCloudManager("ec2", evergreen.TestConfig())
+			cloudMgr, err := GetCloudManager("ec2", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &ec2.EC2Manager{})
 		})
 
 		Convey("EC2Spot should be returned for ec2-spot provider name", func() {
-			cloudMgr, err := GetCloudManager("ec2-spot", evergreen.TestConfig())
+			cloudMgr, err := GetCloudManager("ec2-spot", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &ec2.EC2SpotManager{})
 		})
 
 		Convey("Static should be returned for static provider name", func() {
-			cloudMgr, err := GetCloudManager("static", evergreen.TestConfig())
+			cloudMgr, err := GetCloudManager("static", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &static.StaticManager{})
 		})
 
 		Convey("Mock should be returned for mock provider name", func() {
-			cloudMgr, err := GetCloudManager("mock", evergreen.TestConfig())
+			cloudMgr, err := GetCloudManager("mock", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &mock.MockCloudManager{})
 		})
 
 		Convey("DigitalOcean should be returned for digitalocean provider name", func() {
-			cloudMgr, err := GetCloudManager("digitalocean", evergreen.TestConfig())
+			cloudMgr, err := GetCloudManager("digitalocean", testutil.TestConfig())
 			So(cloudMgr, ShouldNotBeNil)
 			So(err, ShouldBeNil)
 			So(cloudMgr, ShouldHaveSameTypeAs, &digitalocean.DigitalOceanManager{})
 		})
 
 		Convey("Invalid provider names should return nil with err", func() {
-			cloudMgr, err := GetCloudManager("bogus", evergreen.TestConfig())
+			cloudMgr, err := GetCloudManager("bogus", testutil.TestConfig())
 			So(cloudMgr, ShouldBeNil)
 			So(err, ShouldNotBeNil)
 		})
@@ -69,7 +70,7 @@ func TestIsHostReachable(t *testing.T) {
 			Provisioned: true,
 			Provider:    evergreen.HostTypeStatic,
 		}
-		cloudManager, err := GetCloudManager(reachableHost.Provider, evergreen.TestConfig())
+		cloudManager, err := GetCloudManager(reachableHost.Provider, testutil.TestConfig())
 		So(err, ShouldBeNil)
 
 		reachable, err := cloudManager.IsSSHReachable(reachableHost, "")
@@ -83,7 +84,7 @@ func TestIsHostReachable(t *testing.T) {
 			Provisioned: true,
 			Provider:    evergreen.HostTypeStatic,
 		}
-		cloudManager, err := GetCloudManager(reachableHost.Provider, evergreen.TestConfig())
+		cloudManager, err := GetCloudManager(reachableHost.Provider, testutil.TestConfig())
 		So(err, ShouldBeNil)
 
 		reachable, err := cloudManager.IsSSHReachable(reachableHost, "")

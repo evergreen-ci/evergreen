@@ -16,14 +16,14 @@ import (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(evergreen.TestConfig()))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
 
 func TestSetupReadyHosts(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, evergreen.TestConfig(), "TestSetupReadyHosts")
+	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestSetupReadyHosts")
 
 	hostInit := &HostInit{
-		evergreen.TestConfig(),
+		testutil.TestConfig(),
 	}
 
 	Convey("When hosts are spawned but not running", t, func() {
@@ -102,10 +102,10 @@ func TestSetupReadyHosts(t *testing.T) {
 }
 
 func TestHostIsReady(t *testing.T) {
-	testutil.ConfigureIntegrationTest(t, evergreen.TestConfig(), "TestHostIsReady")
+	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestHostIsReady")
 
 	hostInit := &HostInit{
-		evergreen.TestConfig(),
+		testutil.TestConfig(),
 	}
 
 	Convey("When hosts are spawned", t, func() {
@@ -214,7 +214,7 @@ func spawnMockHost() (*host.Host, error) {
 		UserName: evergreen.User,
 		UserHost: false,
 	}
-	cloudManager, err := providers.GetCloudManager(mock.ProviderName, evergreen.TestConfig())
+	cloudManager, err := providers.GetCloudManager(mock.ProviderName, testutil.TestConfig())
 	if err != nil {
 		return nil, err
 	}
