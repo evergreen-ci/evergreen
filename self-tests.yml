@@ -556,3 +556,15 @@ buildvariants:
       - name: ".nodb .test !.burn_in"
       - name: ".agent .test"
       - name: ".cli .test"
+
+  - name: ubuntu1604-arm64
+    display_name: "Ubuntu 16.04 arm64"
+    run_on:
+      - ubuntu1604-arm64-small
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+      mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.3.12.tgz
+    tasks:
+      - name: ".nodb .test !.burn_in"
+      - name: ".agent .test"
+      - name: ".cli .test"
