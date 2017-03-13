@@ -56,6 +56,16 @@ func ClearCollections(collections ...string) error {
 	return nil
 }
 
+// EnsureIndex takes in a collection and ensures that the
+func EnsureIndex(collection string, index mgo.Index) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	return db.C(collection).EnsureIndex(index)
+}
+
 // Remove removes one item matching the query from the specified collection.
 func Remove(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()

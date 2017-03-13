@@ -265,8 +265,9 @@ func (h *Host) MarkAsProvisioned() error {
 // UpdateRunningTask takes two id strings - an old task and a new one - finds
 // the host running the task with Id, 'prevTaskId' and updates its running task
 // to 'newTaskId'; also setting the completion time of 'prevTaskId'
+// Returns true for success and error if it exists
 func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
-	finishTime time.Time) (err error) {
+	finishTime time.Time) (bool, error) {
 	selector := bson.M{
 		IdKey: host.Id,
 	}
@@ -292,10 +293,17 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 		}
 	}
 
-	if err = UpdateOne(selector, update); err == nil {
-		event.LogHostRunningTaskSet(host.Id, newTaskId)
+	err := UpdateOne(selector, update)
+	if err != nil {
+		// if its a duplicate key error, don't log the error.
+		if mgo.IsDup(err) {
+			return false, nil
+		}
+		return false, err
 	}
-	return err
+	event.LogHostRunningTaskSet(host.Id, newTaskId)
+
+	return true, nil
 }
 
 // Marks that the specified task was started on the host at the specified time.

@@ -167,6 +167,11 @@ func IsFinished(t Task) bool {
 		(t.Status == evergreen.TaskUndispatched && t.DispatchTime != util.ZeroTime)
 }
 
+// IsDispatchable return true if the task should be dispatched
+func (t *Task) IsDispatchable() bool {
+	return t.Status == evergreen.TaskUndispatched && t.Activated
+}
+
 // satisfiesDependency checks a task the receiver task depends on
 // to see if its status satisfies a dependency. If the "Status" field is
 // unset, default to checking that is succeeded.

@@ -592,7 +592,8 @@ func TestUpdateHostRunningTask(t *testing.T) {
 		}
 		So(h.Insert(), ShouldBeNil)
 		Convey("updating the running task id should set proper fields", func() {
-			So(h.UpdateRunningTask(oldTaskId, newTaskId, time.Now()), ShouldBeNil)
+			_, err := h.UpdateRunningTask(oldTaskId, newTaskId, time.Now())
+			So(err, ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, newTaskId)
@@ -602,7 +603,8 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
 		Convey("updating the running task to an empty string should unset the running task field", func() {
-			So(h.UpdateRunningTask(newTaskId, "", time.Now()), ShouldBeNil)
+			_, err := h.UpdateRunningTask(newTaskId, "", time.Now())
+			So(err, ShouldBeNil)
 			found, err := FindOne(ById(h.Id))
 			So(err, ShouldBeNil)
 			So(found.RunningTask, ShouldEqual, "")

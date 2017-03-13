@@ -37,3 +37,9 @@ type TaskEndResponse struct {
 
 // ExpansionVars is a map of expansion variables for a project.
 type ExpansionVars map[string]string
+
+// NextTaskResponse represents the response sent back when an agent asks for a next task
+type NextTaskResponse struct {
+	TaskId     string `json:"task_id,omitempty"`
+	ShouldExit bool   `json:"should_exit,omitempty"`
+}
