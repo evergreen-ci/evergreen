@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 
@@ -291,6 +292,10 @@ func strOfLen(size int) string {
 }
 
 func TestAttachLargeResults(t *testing.T) {
+	if runtime.Compiler == "gccgo" {
+		// TODO: Remove skip when compiler is upgraded to include fix for bug https://github.com/golang/go/issues/12781
+		t.Skip("skipping test to avoid httptest server bug")
+	}
 	db.ClearCollections(task.Collection)
 	Convey("With a test task and server", t, func() {
 		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil, false)
