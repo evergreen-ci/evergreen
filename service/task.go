@@ -42,6 +42,7 @@ type uiTaskData struct {
 	Activated        bool                    `json:"activated"`
 	Restarts         int                     `json:"restarts"`
 	Execution        int                     `json:"execution"`
+	TotalExecutions  int                     `json:"total_executions"`
 	StartTime        int64                   `json:"start_time"`
 	DispatchTime     int64                   `json:"dispatch_time"`
 	FinishTime       int64                   `json:"finish_time"`
@@ -157,9 +158,20 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 	// Build a struct containing the subset of task data needed for display in the UI
 	tId := projCtx.Task.Id
+	totalExecutions := projCtx.Task.Execution
+
 	if archived {
 		tId = projCtx.Task.OldTaskId
+
+		// Get total number of executions for executions drop down
+		mostRecentExecution, err := task.FindOne(task.ById(tId))
+		if err != nil {
+			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finding most recent execution by id %s: %v", tId, err))
+			return
+		}
+		totalExecutions = mostRecentExecution.Execution
 	}
+
 	task := uiTaskData{
 		Id:                  tId,
 		DisplayName:         projCtx.Task.DisplayName,
@@ -192,6 +204,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		RepoOwner:           projCtx.ProjectRef.Owner,
 		Repo:                projCtx.ProjectRef.Repo,
 		Archived:            archived,
+		TotalExecutions:     totalExecutions,
 	}
 
 	deps, taskWaiting, err := getTaskDependencies(projCtx.Task)

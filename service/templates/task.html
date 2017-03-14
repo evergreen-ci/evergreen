@@ -167,24 +167,24 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               <tr ng-show="task.execution > 0 || task.archived">
                 <td class="icon"><i class="fa fa-rotate-left"></i></td>
 
-                <td ng-show="!task.archived">
-                  Latest of [[task.execution+1]] executions
+                <td>
+                  <span ng-show="!task.archived">Latest of [[task.execution+1]] executions</span>
+                  <span ng-show="task.archived" class="highlight-bg">[[task.execution + 1 | ordinalNum]] execution</span>
                   <span class="dropdown">
                     <button class="btn btn-default btn-dropdown btn-xs" data-toggle="dropdown" href="#" id="dLabel">
-                      Previous executions: <span class="fa fa-caret-down"></span>
+                      Executions: <span class="fa fa-caret-down"></span>
                     </button>
                     <ul class="dropdown-menu">
-                      <li ng-repeat="i in pastExecutions">
+                      <li ng-repeat="i in otherExecutions">
                         <a href="/task/[[task.id]]/[[i]]">[[i+1|ordinalNum]] execution </a>
                       </li>
                     </ul>
                   </span>
+                  <span ng-show="task.archived">
+                    <a href="/task/[[task.id]]">Jump to latest</a>
+                  </span>
                 </td>
 
-                <td ng-show="task.archived">
-                  <span class="highlight-bg">[[task.execution + 1 | ordinalNum]] execution</span>
-                  (<a href="/task/[[task.id]]">Latest execution</a>)
-                </td>
               </tr>
               <tr ng-show="task.host_dns">
                 <td class="icon"><i class="fa fa-desktop"></i></td>

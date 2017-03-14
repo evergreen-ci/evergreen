@@ -325,11 +325,9 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
         $scope.sortBy = $scope.sortOrders[index];
       }
     }
-    if (task.execution > 0) {
-      $scope.pastExecutions = []
-      for (var i = 0; i < task.execution; i++) {
-        $scope.pastExecutions.push(i);
-      }
+
+    if (task.execution > 0 || task.archived) {
+      $scope.otherExecutions = _.range(task.total_executions + 1)
     }
 
     $scope.sortBy = $scope.sortOrders[0];
