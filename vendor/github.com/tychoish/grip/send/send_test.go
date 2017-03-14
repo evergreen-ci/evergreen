@@ -2,16 +2,14 @@ package send
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"github.com/tychoish/grip/level"
 	"github.com/tychoish/grip/message"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type SenderSuite struct {
@@ -29,12 +27,12 @@ func (s *SenderSuite) SetupSuite() {
 	s.rand = rand.New(rand.NewSource(time.Now().Unix()))
 	s.require = s.Require()
 }
+
 func (s *SenderSuite) SetupTest() {
 	l := LevelInfo{level.Info, level.Notice}
 	s.senders = map[string]Sender{
 		"slack":  &slackJournal{Base: NewBase("slack")},
 		"xmpp":   &xmppLogger{Base: NewBase("xmpp")},
-		"json":   &jsonLogger{Base: NewBase("json")},
 		"stream": &streamLogger{Base: NewBase("stream")},
 	}
 
@@ -42,10 +40,6 @@ func (s *SenderSuite) SetupTest() {
 	internal.name = "internal"
 	internal.output = make(chan *internalMessage)
 	s.senders["internal"] = internal
-
-	callsite := &callSiteLogger{Base: NewBase("callsite"), depth: 1}
-	callsite.logger = log.New(os.Stdout, "callsite", log.LstdFlags)
-	s.senders["callsite"] = callsite
 
 	native, err := NewNativeLogger("native", l)
 	s.require.NoError(err)

@@ -20,10 +20,6 @@ func (g *Grip) LogMany(l level.Priority, msgs ...message.Composer) {
 	g.multiSend(l, msgs)
 }
 
-func (g *Grip) DefaultMany(msgs ...message.Composer) {
-	g.multiSend(g.Level().Default, msgs)
-}
-
 func (g *Grip) EmergencyMany(msgs ...message.Composer) {
 	g.multiSend(level.Emergency, msgs)
 }

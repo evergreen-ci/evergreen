@@ -17,7 +17,7 @@ type CatcherSuite struct {
 }
 
 func (s *CatcherSuite) SetupTest() {
-	s.catcher = NewCatcher()
+	s.catcher = &MultiCatcher{}
 }
 
 func TestCatcherSuite(t *testing.T) {
@@ -28,6 +28,21 @@ func (s *CatcherSuite) TestInitialValuesOfCatcherInterface() {
 	s.False(s.catcher.HasErrors())
 	s.Equal(0, s.catcher.Len())
 	s.Equal("", s.catcher.String())
+}
+
+func (s *CatcherSuite) TestConstructorProducesCompatibleObject() {
+	// we bypass the constructor in the suite fixture because it
+	// triggers the race detector in one of the tests, removing
+	// the constructor fixes that. Long term we should rename the
+	// type "Catcher" and remove the constructor, but there's a
+	// reasonable amount of client code that uses it, so we'll
+	// defer for the moment.
+	//
+	// This test just makes sure that the rest of the tests are
+	// valid, given the diversity of object creation patterns.
+
+	s.Exactly(s.catcher, NewCatcher())
+	s.Equal(s.catcher, NewCatcher())
 }
 
 func (s *CatcherSuite) TestAddMethodImpactsState() {
@@ -104,12 +119,11 @@ func (s *CatcherSuite) TestConcurrentAddingOfErrors() {
 	s.Equal(s.catcher.Len(), 0)
 	for i := 0; i < 256; i++ {
 		wg.Add(1)
-		go func(num int) {
+		func(num int) {
 			s.catcher.Add(fmt.Errorf("adding err #%d", num))
 			wg.Done()
 		}(i)
 	}
 	wg.Wait()
 	s.Equal(s.catcher.Len(), 256)
-
 }

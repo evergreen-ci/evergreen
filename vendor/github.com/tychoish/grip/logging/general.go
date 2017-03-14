@@ -33,16 +33,6 @@ func (g *Grip) Logln(l level.Priority, a ...interface{}) {
 	g.Send(message.NewLineMessage(l, a...))
 }
 
-func (g *Grip) Default(msg interface{}) {
-	g.Send(message.ConvertToComposer(g.DefaultLevel(), msg))
-}
-func (g *Grip) Defaultf(msg string, a ...interface{}) {
-	g.Send(message.NewFormattedMessage(g.DefaultLevel(), msg, a...))
-}
-func (g *Grip) Defaultln(a ...interface{}) {
-	g.Send(message.NewLineMessage(g.DefaultLevel(), a...))
-}
-
 func (g *Grip) Emergency(msg interface{}) {
 	g.Send(message.ConvertToComposer(level.Emergency, msg))
 }

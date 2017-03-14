@@ -1,6 +1,6 @@
 // Created by cgo -godefs - DO NOT EDIT
 // cgo -godefs types_darwin.go
-// +build go1.6,amd64
+// +build go1.6,amd64,darwin
 
 package host
 

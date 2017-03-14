@@ -26,18 +26,6 @@ func LogWhenf(conditional bool, l level.Priority, msg string, args ...interface{
 	std.LogWhenf(conditional, l, msg, args...)
 }
 
-// Default-level Conditional Methods
-
-func DefaultWhen(conditional bool, m interface{}) {
-	std.DefaultWhen(conditional, m)
-}
-func DefaultWhenln(conditional bool, msg ...interface{}) {
-	std.DefaultWhenln(conditional, msg...)
-}
-func DefaultWhenf(conditional bool, msg string, args ...interface{}) {
-	std.DefaultWhenf(conditional, msg, args...)
-}
-
 // Emergency-level Conditional Methods
 
 func EmergencyWhen(conditional bool, m interface{}) {

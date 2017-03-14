@@ -16,10 +16,6 @@ func LogMany(l level.Priority, msgs ...message.Composer) {
 	std.LogMany(l, msgs...)
 }
 
-func DefaultMany(msgs ...message.Composer) {
-	std.DefaultMany(msgs...)
-}
-
 func EmergencyMany(msgs ...message.Composer) {
 	std.EmergencyMany(msgs...)
 }
@@ -54,10 +50,6 @@ func DebugMany(msgs ...message.Composer) {
 
 func LogManyWhen(conditional bool, l level.Priority, msgs ...message.Composer) {
 	std.LogManyWhen(conditional, l, msgs...)
-}
-
-func DefaultManyWhen(conditional bool, msgs ...message.Composer) {
-	std.DefaultManyWhen(conditional, msgs...)
 }
 
 func EmergencyManyWhen(conditional bool, msgs ...message.Composer) {

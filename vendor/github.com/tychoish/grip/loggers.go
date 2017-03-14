@@ -36,18 +36,6 @@ func Logln(l level.Priority, a ...interface{}) {
 	std.Logln(l, a...)
 }
 
-// default methods for sending messages at the default level.
-
-func Default(msg interface{}) {
-	std.Default(msg)
-}
-func Defaultf(msg string, a ...interface{}) {
-	std.Defaultf(msg, a...)
-}
-func Defaultln(a ...interface{}) {
-	std.Defaultln(a...)
-}
-
 // Leveled Logging Methods
 // Emergency-level logging methods
 

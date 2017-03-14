@@ -51,10 +51,12 @@ gopath := $(shell go env GOPATH)
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go")
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*")
-testOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/test.$(target).out))
-raceOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/race.$(target).out))
-coverageOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/coverage.$(target).out))
-coverageHtmlOutput := $(subst -,/,$(foreach target,$(packages),$(buildDir)/coverage.$(target).html))
+testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
+raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
+testBin := $(foreach target,$(packages),$(buildDir)/test.$(target))
+raceBin := $(foreach target,$(packages),$(buildDir)/race.$(target))
+coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
+coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	go get $(subst $(gopath)/src/,,$@)
@@ -77,6 +79,9 @@ coverage-html:$(coverageHtmlOutput)
 phony := lint build build-race race test coverage coverage-html
 phony += deps lint-deps
 .PRECIOUS: $(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS: $(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS: $(foreach target,$(packages),$(buildDir)/test.$(target))
+.PRECIOUS: $(foreach target,$(packages),$(buildDir)/race.$(target))
 # end front-ends
 
 
@@ -98,16 +103,14 @@ $(buildDir)/$(name).race:$(gopath)/src/$(projectPath) $(srcFiles) $(deps)
 # convenience targets for runing tests and coverage tasks on a
 # specific package.
 makeArgs := --no-print-directory
-race-%:
-	@$(MAKE) $(makeArgs) $(buildDir)/race.$(subst -,/,$*).out
-	@grep -e "^PASS" $(buildDir)/race.$(subst /,-,$*).out
-test-%:
-	@$(MAKE) $(makeArgs) $(buildDir)/test.$(subst -,/,$*).out
-	@grep -e "^PASS" $(buildDir)/test.$(subst /,-,$*).out
-coverage-%:
-	@$(MAKE) $(makeArgs) $(buildDir)/coverage.$(subst /,-,$*).out
-html-coverage-%:
-	@$(MAKE) $(makeArgs) $(buildDir)/coverage.$(subst /,-,$*).html
+race-%:$(buildDir)/output.%.race
+	@grep -s -q -e "^PASS" $< && ! grep -s -q "^WARNING: DATA RACE" $<
+test-%:$(buildDir)/output.%.test
+	@grep -s -q -e "^PASS" $<
+coverage-%:$(buildDir)/output.%.coverage
+	@grep -s -q -e "^PASS" $<
+html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
+	@grep -s -q -e "^PASS" $<
 # end convienence targets
 
 
@@ -115,26 +118,32 @@ html-coverage-%:
 #    tests have compile and runtime deps. This varable has everything
 #    that the tests actually need to run. (The "build" target is
 #    intentional and makes these targets rerun as expected.)
-testRunDeps := $(testSrcFiles) build
-testArgs := -v --timeout=20m -covermode=count 
+testArgs := -test.v --test.timeout=5m
+#    to avoid vendoring the coverage tool, install it as needed
+coverDeps := golang.org/x/tools/cmd/cover
+coverDeps := $(addprefix $(gopath)/src/,$(coverDeps))
 #    implementation for package coverage and test running,mongodb to produce
 #    and save test output.
-$(buildDir)/coverage.%.html:$(buildDir)/coverage.%.out
-	go tool cover -html=$(buildDir)/coverage.$(subst /,-,$*).out -o $(buildDir)/coverage.$(subst /,-,$*).html
-$(buildDir)/coverage.%.out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) -coverprofile=$(buildDir)/coverage.$(subst /,-,$*).out $(projectPath)/$(subst -,/,$*)
-	@-[ -f $(buildDir)/coverage.$(subst /,-,$*).out ] && go tool cover -func=$(buildDir)/coverage.$(subst /,-,$*).out | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/coverage.$(name).out:$(testRunDeps)
-	$(vendorGopath) go test -covermode=count -coverprofile=$@ $(projectPath)
+$(buildDir)/test.%:$(testSrcFiles) $(coverDeps)
+	$(vendorGopath) go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
+$(buildDir)/race.%:$(testSrcFiles)
+	$(vendorGopath) go test -race -c -o $@ ./$(subst -,/,$*)
+#  targets to run any tests in the top-level package
+$(buildDir)/test.$(name):$(testSrcFiles) $(coverDeps)
+	$(vendorGopath) go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
+$(buildDir)/race.$(name):$(testSrcFiles)
+	$(vendorGopath) go test -race -c -o $@ ./
+#  targets to run the tests and report the output
+$(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
+	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+$(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
+	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+#  targets to process and generate coverage reports
+$(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE $(coverDeps)
+	$(testRunEnv) ./$< $(testTimeout) -test.coverprofile=$@ || true
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
-$(buildDir)/test.%.out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) ./$(subst -,/,$*) | tee $(buildDir)/test.$(subst /,-,$*).out
-$(buildDir)/race.%.out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) -race ./$(subst -,/,$*) | tee $(buildDir)/race.$(subst /,-,$*).out
-$(buildDir)/test.$(name).out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) ./ | tee $@
-$(buildDir)/race.$(name).out:$(testRunDeps)
-	$(vendorGopath) go test $(testArgs) -race ./ | tee $@
+$(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
+	$(vendorGopath) go tool cover -html=$< -o $@
 # end test and coverage artifacts
 
 
@@ -192,4 +201,6 @@ phony += clean
 # end dependency targets
 
 # configure phony targets
-.PHONY:$(phony)
+# configure phony targets
+.FORCE:
+.PHONY:$(phony) .FORCE

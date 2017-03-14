@@ -6,6 +6,7 @@ import (
 	"runtime"
 
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
 	"github.com/tychoish/grip/level"
@@ -15,14 +16,18 @@ import (
 // collects system-wide resource utilization statistics about memory,
 // CPU, and network use, along with an optional message.
 type SystemInfo struct {
-	Message  string                `json:"message,omitempty" bson:"message,omitempty"`
-	CPU      cpu.TimesStat         `json:"cpu,omitempty" bson:"cpu,omitempty"`
-	NumCPU   int                   `json:"num_cpus,omitempty" bson:"num_cpus,omitempty"`
-	VMStat   mem.VirtualMemoryStat `json:"vmstat,omitempty" bson:"vmstat,omitempty"`
-	NetStat  net.IOCountersStat    `json:"netstat,omitempty" bson:"netstat,omitempty"`
-	Errors   []string              `json:"errors,omitempty" bson:"errors,omitempty"`
-	Base     `json:"metadata,omitempty" bson:"metadata,omitempty"`
-	loggable bool
+	Message   string                `json:"message,omitempty" bson:"message,omitempty"`
+	CPU       cpu.TimesStat         `json:"cpu,omitempty" bson:"cpu,omitempty"`
+	NumCPU    int                   `json:"num_cpus,omitempty" bson:"num_cpus,omitempty"`
+	VMStat    mem.VirtualMemoryStat `json:"vmstat,omitempty" bson:"vmstat,omitempty"`
+	NetStat   net.IOCountersStat    `json:"netstat,omitempty" bson:"netstat,omitempty"`
+	Paritions []disk.PartitionStat  `json:"partitions,omitempty" bson:"partitions,omitempty"`
+	Usage     []disk.UsageStat      `json:"usage,omitempty" bson:"usage,omitempty"`
+	IOStat    []disk.IOCountersStat `json:"iostat,omitempty" bson:"iostat,omitempty"`
+	Errors    []string              `json:"errors,omitempty" bson:"errors,omitempty"`
+	Base      `json:"metadata,omitempty" bson:"metadata,omitempty"`
+	loggable  bool
+	rendered  string
 }
 
 // CollectSystemInfo returns a populated SystemInfo object,
@@ -72,18 +77,47 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 		s.NetStat = netstat[0]
 	}
 
+	partitions, err := disk.Partitions(true)
+	s.saveError(err)
+	if err != nil {
+		for _, p := range partitions {
+			u, err := disk.Usage(p.Mountpoint)
+			s.saveError(err)
+			if err != nil {
+				continue
+			}
+
+			s.Usage = append(s.Usage, *u)
+		}
+
+		s.Paritions = partitions
+	}
+
+	iostatMap, err := disk.IOCounters()
+	s.saveError(err)
+	for _, stat := range iostatMap {
+		s.IOStat = append(s.IOStat, stat)
+	}
+
 	return s
 }
 
-func (s *SystemInfo) Loggable() bool   { return s.loggable }
+// Loggable returns true when the Processinfo structure has been
+// populated.
+func (s *SystemInfo) Loggable() bool { return s.loggable }
+
+// Raw always returns the SystemInfo object, however it will call the
+// Collect method of the base operation first.
 func (s *SystemInfo) Raw() interface{} { _ = s.Collect(); return s }
+
+// String returns a string representation of the message, lazily
+// rendering the message, and caching it privately.
 func (s *SystemInfo) String() string {
-	data, err := json.MarshalIndent(s, "  ", " ")
-	if err != nil {
-		return s.Message
+	if s.rendered == "" {
+		s.rendered = renderStatsString(s.Message, s)
 	}
 
-	return fmt.Sprintf("%s:\n%s", s.Message, string(data))
+	return s.rendered
 }
 
 func (s *SystemInfo) saveError(err error) {
@@ -95,4 +129,17 @@ func (s *SystemInfo) saveError(err error) {
 // helper function
 func shouldSaveError(err error) bool {
 	return err != nil && err.Error() != "not implemented yet"
+}
+
+func renderStatsString(msg string, data interface{}) string {
+	out, err := json.Marshal(data)
+	if err != nil {
+		return msg
+	}
+
+	if msg == "" {
+		return string(out)
+	}
+
+	return fmt.Sprintf("%s:\n%s", msg, string(out))
 }

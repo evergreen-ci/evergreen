@@ -119,6 +119,10 @@ func constructXMPPLogger(target string, info XMPPConnectionInfo) (Sender, error)
 		return nil, err
 	}
 
+	if err := s.SetFormatter(MakeXMPPFormatter(s.Name())); err != nil {
+		return nil, err
+	}
+
 	s.reset = func() {
 		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
 	}
@@ -128,10 +132,16 @@ func constructXMPPLogger(target string, info XMPPConnectionInfo) (Sender, error)
 
 func (s *xmppLogger) Send(m message.Composer) {
 	if s.level.ShouldLog(m) {
+		text, err := s.formatter(m)
+		if err != nil {
+			s.errHandler(err, m)
+			return
+		}
+
 		c := xmpp.Chat{
 			Remote: s.target,
 			Type:   "chat",
-			Text:   fmt.Sprintf("[%s] (p=%s)  %s", s.Name(), m.Priority(), m.String()),
+			Text:   text,
 		}
 
 		if _, err := s.client.Send(c); err != nil {

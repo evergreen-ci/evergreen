@@ -20,10 +20,6 @@ func CatchLog(l level.Priority, err error) {
 	std.CatchLog(l, err)
 }
 
-func CatchDefault(err error) {
-	std.CatchDefault(err)
-}
-
 // Level Emergency Catcher Logging Helpers
 
 func CatchEmergency(err error) {

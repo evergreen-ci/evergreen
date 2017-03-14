@@ -1,8 +1,6 @@
 package message
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/shirou/gopsutil/cpu"
@@ -129,19 +127,8 @@ func (p *ProcessInfo) Raw() interface{} { _ = p.Collect(); return p }
 // String returns a string representation of the message, lazily
 // rendering the message, and caching it privately.
 func (p *ProcessInfo) String() string {
-	if p.rendered != "" {
-		return p.rendered
-	}
-
-	data, err := json.MarshalIndent(p, "  ", " ")
-	if err != nil {
-		return p.Message
-	}
-
-	if p.Message == "" {
-		p.rendered = string(data)
-	} else {
-		p.rendered = fmt.Sprintf("%s:\n%s", p.Message, string(data))
+	if p.rendered == "" {
+		p.rendered = renderStatsString(p.Message, p)
 	}
 
 	return p.rendered

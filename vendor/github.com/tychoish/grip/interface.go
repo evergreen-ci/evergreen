@@ -35,22 +35,10 @@ type Journaler interface {
 	LogWhenln(bool, level.Priority, ...interface{})
 	LogManyWhen(bool, level.Priority, ...message.Composer)
 
-	// Send at the default logging level. This might be below the
-	// threshold.
-	Default(interface{})
-	Defaultf(string, ...interface{})
-	Defaultln(...interface{})
-	DefaultMany(...message.Composer)
-	DefaultWhen(bool, interface{})
-	DefaultWhenf(bool, string, ...interface{})
-	DefaultWhenln(bool, ...interface{})
-	DefaultManyWhen(bool, ...message.Composer)
-
 	// Log a message (the contents of the error,) only if the
 	// error is non-nil. These are redundant to the similar base
 	// methods. (e.g. Alert and CatchAlert have the same behavior.)
 	CatchLog(level.Priority, error)
-	CatchDefault(error)
 	CatchEmergency(error)
 	CatchAlert(error)
 	CatchCritical(error)

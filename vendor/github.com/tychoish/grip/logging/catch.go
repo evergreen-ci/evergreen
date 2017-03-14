@@ -14,10 +14,6 @@ func (g *Grip) CatchLog(l level.Priority, err error) {
 	g.Send(message.NewErrorMessage(l, err))
 }
 
-func (g *Grip) CatchDefault(err error) {
-	g.Send(message.NewErrorMessage(g.DefaultLevel(), err))
-}
-
 func (g *Grip) CatchEmergency(err error) {
 	g.Send(message.NewErrorMessage(level.Emergency, err))
 }

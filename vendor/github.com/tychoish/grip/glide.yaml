@@ -10,3 +10,7 @@ import:
 - package: github.com/shirou/w32
 - package: github.com/StackExchange/wmi
 - package: github.com/go-ole/go-ole
+- package: github.com/stretchr/testify
+- package: github.com/stretchr/objx
+- package: github.com/pmezard/go-difflib
+- package: github.com/davecgh/go-spew

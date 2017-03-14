@@ -1,0 +1,185 @@
+#######################################
+#         YAML Templates              #
+#######################################
+variables:
+  - &run-build
+    # runs a build operations. The task name in evergreen should
+    # correspond to a make target for the build operation.
+    name: test
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+  - &run-go-test-suite
+    # runs a make target and then uploads gotest output to
+    # evergreen. The test name should correspond to a make target for
+    # that suite
+    name: test
+    depends_on:
+      - name: build
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars: { target: "${task_name}" }
+
+
+#######################################
+#              Functions              #
+#######################################
+functions:
+  run-make:
+    command: shell.exec
+    params:
+       script: |
+         set -o errexit
+         set -o verbose
+
+         # Configure a local go path for this build.
+         export GOPATH=`pwd`/gopath
+
+         # on windows we need to turn the slashes the other way
+         if [ "Windows_NT" == "$OS" ]; then
+            export GOPATH=$(cygpath -m $GOPATH)
+         fi
+
+         cd gopath/src/github.com/mongodb/grip
+
+         # Run make, called with proper environment variables set,
+         # running the target.
+         ${build_env|} make vendor ${target}
+
+
+#######################################
+#                Tasks                #
+#######################################
+post:
+  - command: gotest.parse_files
+    params:
+      files:
+        - "gopath/src/github.com/mongodb/grip/build/test.*.out"
+        - "gopath/src/github.com/mongodb/grip/build/race.*.out"
+
+tasks:
+  # the build (with and without the race detector) and lint tasks use
+  # a template that does not include test result parsing.
+  - name: lint
+    tags: ["report"]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars: { target: "build" }
+
+  - name: coverage
+    tags: [ "report" ]
+    commands:
+      - command: git.get_project
+        params:
+          directory: gopath/src/github.com/mongodb/grip
+      - func: run-make
+        vars:
+          target: "coverage-html"
+          make_args: "-k"
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter: ["gopath/src/github.com/mongodb/grip/bin/coverage.*.html"]
+          remote_file: evergreen/${task_id}/
+          bucket: mciuploads
+          content_type: text/html
+          permissions: public-read
+          display_name: "(html) coverage:"
+      - command: s3.put
+        params:
+          aws_key: ${aws_key}
+          aws_secret: ${aws_secret}
+          local_files_include_filter: ["gopath/src/github.com/mongodb/grip/bin/coverage.*.out"]
+          remote_file: evergreen/${task_id}/
+          bucket: mciuploads
+          content_type: text/plain
+          permissions: public-read
+          display_name: "(txt) coverage:"
+
+  - <<: *run-build
+    tags: ["test"]
+    name: test
+
+  - <<: *run-build
+    tags: ["race"]
+    name: race
+
+#######################################
+#           Buildvariants             #
+#######################################
+buildvariants:
+  - name: race-detector
+    display_name: Race Detector (Arch Linux)
+    run_on:
+      - archlinux-test
+      - archlinux-build
+    tasks: [ ".race", ".report" ]
+
+  - name: rhel62-gccgo
+    display_name: RHEL 6.2 (gccgo)
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH"
+    run_on:
+      - rhel62-small
+    tasks: [ ".test" ]
+
+  - name: debian81
+    display_name: Debian 8.1
+    expansions:
+      build_env: "PATH=/opt/go/bin:$PATH GOROOT=/opt/go"
+    run_on:
+      - debian81-test
+    tasks: [ ".test" ]
+
+  - name: osx
+    display_name: OS X 10.10
+    expansions:
+      build_env: "PATH=/usr/local/go/bin:$PATH"
+    run_on:
+      - osx-1010
+    tasks: [ ".test" ]
+
+  - name: windows
+    display_name: Windows
+    run_on:
+      - windows-64-vs2015-small
+      - windows-64-vs2013-test
+      - windows-64-vs2010-test
+    expansions:
+      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes"
+    tasks: [ ".test" ]
+
+  - name: rhel71-s390x
+    display_name: "RHEL7.1 s390x"
+    run_on:
+      - rhel72-zseries-test
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+    tasks: [ ".test" ]
+
+  - name: rhel71-power
+    display_name: "RHEL7.1 POWER8"
+    run_on:
+      - rhel71-power8-test
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+    tasks: [ ".test" ]
+
+  - name: ubuntu1604-arm64
+    display_name: "Ubuntu 16.04 arm64"
+    run_on:
+      - ubuntu1604-arm64-small
+    expansions:
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
+    tasks: [ ".test" ]

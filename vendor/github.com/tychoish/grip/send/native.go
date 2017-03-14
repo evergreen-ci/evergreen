@@ -38,9 +38,12 @@ func MakeFileLogger(filePath string) (Sender, error) {
 		return nil, fmt.Errorf("error opening logging file, %s", err.Error())
 	}
 
+	s.level = LevelInfo{level.Trace, level.Trace}
+
+	_ = s.SetFormatter(MakeDefaultFormatter())
+
 	s.reset = func() {
-		prefix := fmt.Sprintf("[%s] ", s.Name())
-		s.logger = log.New(f, prefix, log.LstdFlags)
+		s.logger = log.New(f, fmt.Sprintf("[%s] ", s.Name()), log.LstdFlags)
 	}
 
 	s.closer = func() error {
@@ -64,11 +67,15 @@ func MakeNative() Sender {
 	s := &nativeLogger{
 		Base: NewBase(""),
 	}
+
+	_ = s.SetFormatter(MakeDefaultFormatter())
+
 	s.level = LevelInfo{level.Trace, level.Trace}
 
 	s.reset = func() {
 		prefix := fmt.Sprintf("[%s] ", s.Name())
 		s.logger = log.New(os.Stdout, prefix, log.LstdFlags)
+		_ = s.SetErrorHandler(ErrorHandlerFromLogger(s.logger))
 	}
 
 	// we don't call reset here because name isn't set yet, and
@@ -102,6 +109,13 @@ func NewErrorLogger(name string, l LevelInfo) (Sender, error) {
 
 func (s *nativeLogger) Send(m message.Composer) {
 	if s.level.ShouldLog(m) {
-		s.logger.Printf("[p=%s]: %s", m.Priority(), m.String())
+		out, err := s.formatter(m)
+
+		if err != nil {
+			s.errHandler(err, m)
+			return
+		}
+
+		s.logger.Printf(out)
 	}
 }

@@ -30,18 +30,6 @@ func (g *Grip) LogWhenf(conditional bool, l level.Priority, msg string, args ...
 
 /////////////
 
-func (g *Grip) DefaultWhen(conditional bool, m interface{}) {
-	g.conditionalSend(conditional, message.ConvertToComposer(g.Level().Default, m))
-}
-func (g *Grip) DefaultWhenln(conditional bool, msg ...interface{}) {
-	g.conditionalSend(conditional, message.NewLineMessage(g.Level().Default, msg...))
-}
-func (g *Grip) DefaultWhenf(conditional bool, msg string, args ...interface{}) {
-	g.conditionalSend(conditional, message.NewFormattedMessage(g.Level().Default, msg, args...))
-}
-
-/////////////
-
 func (g *Grip) EmergencyWhen(conditional bool, m interface{}) {
 	g.conditionalSend(conditional, message.ConvertToComposer(level.Emergency, m))
 }

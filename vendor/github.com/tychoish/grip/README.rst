@@ -91,23 +91,14 @@ main() function and should be used sparingly, if at all, elsewhere.
 ``Journaler`` instances have a notion of "default" log levels and
 thresholds, which provide the basis for verbosity control and sane
 default behavior. The default level defines the priority/level of any
-message with either an invalid priority specified *or* using the
-``Default`` helper. The threshold level, defines the minimum
-priority or level that ``grip`` sends to the logging system. Consider
-the following behaviors:
-
-- It's possible to suppress message higher than the current default,
-  such that default messages are never printed. This is not
-  recommended.
-
-- It's not possible to suppress the highest log level, ``Emergency``
-  messages will always log.
+message with an invalid priority specified. The threshold level,
+defines the minimum priority or level that ``grip`` sends to the
+logging system. It's not possible to suppress the highest log level,
+``Emergency`` messages will always log.
 
 ``Journaler`` objects have the following, additional methods (also
 available as functions in the ``grip`` package to manage the global
 standard logger instance.):
-
-- ``SendDefault(<message string>)`` to log using the default level.
 
 - ``SetName(<string>)`` to reset the name of the logger. ``grip``
   attempts to set this to the name of your program for the standard
