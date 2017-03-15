@@ -16,18 +16,18 @@ import (
 // collects system-wide resource utilization statistics about memory,
 // CPU, and network use, along with an optional message.
 type SystemInfo struct {
-	Message   string                `json:"message,omitempty" bson:"message,omitempty"`
-	CPU       cpu.TimesStat         `json:"cpu,omitempty" bson:"cpu,omitempty"`
-	NumCPU    int                   `json:"num_cpus,omitempty" bson:"num_cpus,omitempty"`
-	VMStat    mem.VirtualMemoryStat `json:"vmstat,omitempty" bson:"vmstat,omitempty"`
-	NetStat   net.IOCountersStat    `json:"netstat,omitempty" bson:"netstat,omitempty"`
-	Paritions []disk.PartitionStat  `json:"partitions,omitempty" bson:"partitions,omitempty"`
-	Usage     []disk.UsageStat      `json:"usage,omitempty" bson:"usage,omitempty"`
-	IOStat    []disk.IOCountersStat `json:"iostat,omitempty" bson:"iostat,omitempty"`
-	Errors    []string              `json:"errors,omitempty" bson:"errors,omitempty"`
-	Base      `json:"metadata,omitempty" bson:"metadata,omitempty"`
-	loggable  bool
-	rendered  string
+	Message    string                `json:"message,omitempty" bson:"message,omitempty"`
+	CPU        cpu.TimesStat         `json:"cpu,omitempty" bson:"cpu,omitempty"`
+	NumCPU     int                   `json:"num_cpus,omitempty" bson:"num_cpus,omitempty"`
+	VMStat     mem.VirtualMemoryStat `json:"vmstat,omitempty" bson:"vmstat,omitempty"`
+	NetStat    net.IOCountersStat    `json:"netstat,omitempty" bson:"netstat,omitempty"`
+	Partitions []disk.PartitionStat  `json:"partitions,omitempty" bson:"partitions,omitempty"`
+	Usage      []disk.UsageStat      `json:"usage,omitempty" bson:"usage,omitempty"`
+	IOStat     []disk.IOCountersStat `json:"iostat,omitempty" bson:"iostat,omitempty"`
+	Errors     []string              `json:"errors,omitempty" bson:"errors,omitempty"`
+	Base       `json:"metadata,omitempty" bson:"metadata,omitempty"`
+	loggable   bool
+	rendered   string
 }
 
 // CollectSystemInfo returns a populated SystemInfo object,
@@ -90,7 +90,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 			s.Usage = append(s.Usage, *u)
 		}
 
-		s.Paritions = partitions
+		s.Partitions = partitions
 	}
 
 	iostatMap, err := disk.IOCounters()
