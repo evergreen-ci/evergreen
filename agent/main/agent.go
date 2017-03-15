@@ -44,7 +44,7 @@ func main() {
 
 	logFile := *logPrefix + logSuffix()
 
-	sender, err := send.MakeCallSiteFileLogger(logFile, 2)
+	sender, err := send.MakeFileLogger(logFile)
 	grip.CatchEmergencyFatal(err)
 	defer sender.Close()
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
@@ -118,7 +118,7 @@ func main() {
 		}
 	}
 
-	agent.ExitAgent(nil, exitCode, *pidFile)
+	agent.ExitAgent(nil, agt.taskConfig.Task.Id, exitCode, *pidFile)
 }
 
 // logSuffix a unique log filename suffix that is namespaced

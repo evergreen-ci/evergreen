@@ -300,10 +300,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case comm.IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		ExitAgent(agt.logger, 1, agt.pidFilePath)
+		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1, agt.pidFilePath)
 	case comm.HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		ExitAgent(agt.logger, 1, agt.pidFilePath)
+		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1, agt.pidFilePath)
 	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
@@ -780,22 +780,33 @@ func (agt *Agent) removeTaskDirectory() error {
 	return nil
 }
 
-// ExitAgent removes the pid file and exits the process with the given exit code.
-func ExitAgent(logger *comm.StreamLogger, exitCode int, pidFile string) {
+// ExitAgent attempts to terminate all processes started by the task
+// and then removes the pid file and exits the agent process with the specified
+// exit code.
+func ExitAgent(logger *comm.StreamLogger, taskId string, exitCode int, pidFile string) {
+	if taskId != "" {
+		if err := shell.KillSpawnedProcs(taskId, logger); err != nil {
+			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
+			if logger != nil {
+				logger.LogExecution(slogger.ERROR, msg)
+			} else {
+				grip.Critical(msg)
+			}
+		}
+	}
+
 	err := os.Remove(pidFile)
 	if err != nil {
-		if logger != nil {
-			logger.LogLocal(slogger.ERROR, "Error removing .pid file: %v", err)
-			logger.Flush()
-		} else {
-			fmt.Printf("Error removing .pid file: %v", err)
-		}
+		grip.Criticalf("Error removing .pid file: %+v", err)
+
 		// exit with code 2 to indicate pid file removal error
 		os.Exit(2)
 	}
+
 	// if the pid file is removed also flush if necessary
 	if logger != nil {
 		logger.Flush()
 	}
+
 	os.Exit(exitCode)
 }
