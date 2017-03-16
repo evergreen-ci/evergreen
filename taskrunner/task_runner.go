@@ -14,6 +14,8 @@ import (
 	"github.com/tychoish/grip"
 )
 
+const distroSleep = 10 * time.Second
+
 type TaskRunner struct {
 	*evergreen.Settings
 	HostFinder
@@ -57,9 +59,21 @@ func (self *TaskRunner) Run() error {
 
 	// assign the free hosts for each distro to the tasks they need to run
 	for distroId := range hostsByDistro {
+		distroStartTime := time.Now()
 		if err := self.processDistro(distroId); err != nil {
 			return err
 		}
+
+		distroRunTime := time.Now().Sub(distroStartTime)
+		grip.Infof("It took %s to schedule tasks on %s", distroRunTime, distroId)
+		// most of the time, processDistro should take less than distroSleep seconds, but
+		// if it takes longer, sleep longer to give other locks a chance to preempt this one
+		if distroRunTime > distroSleep {
+			grip.Info("Sleeping to give other locks a chance")
+			time.Sleep(distroSleep)
+		}
+		// always sleep one second
+		time.Sleep(time.Second)
 	}
 	grip.Info("Finished kicking off all pending tasks")
 	return nil
@@ -69,8 +83,8 @@ func (self *TaskRunner) Run() error {
 // This function takes a global lock. Returns any errors that occur.
 func (self *TaskRunner) processDistro(distroId string) error {
 	lockKey := fmt.Sprintf("%v.%v", RunnerName, distroId)
-	// sleep for 1 second to give other spinning locks a chance to preempt this one
-	time.Sleep(time.Second)
+
+	lockStartTime := time.Now()
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(lockKey, db.LockTimeout)
 	if err != nil {
 		err = fmt.Errorf("error acquiring global lock for %v: %+v", lockKey, err)
@@ -87,6 +101,9 @@ func (self *TaskRunner) processDistro(distroId string) error {
 			grip.Errorf("error releasing global lock for %s: %v", lockKey, err)
 		}
 	}()
+
+	lockRunTime := time.Now().Sub(lockStartTime)
+	grip.Infof("Taskrunner took %s to acquire global lock", lockRunTime)
 
 	freeHostsForDistro, err := self.FindAvailableHostsForDistro(distroId)
 	if err != nil {
