@@ -26,7 +26,7 @@ db.hosts.ensureIndex({ "version" : 1 })
 db.hosts.ensureIndex({ "author" : 1 })
 db.hosts.ensureIndex({ "distro._id" : 1, "status" : 1 })
 db.hosts.ensureIndex({ "status" : 1, "create_time": 1, "termination_time" : 1, "provider": 1 })
-db.hosts.ensureIndex({"running_task": 1},{sparse:true})
+db.hosts.ensureIndex({ "running_task": 1}, {sparse: true, unique: true})
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
@@ -51,6 +51,8 @@ db.tasks.ensureIndex({ "status" : 1, "finish_time" : 1 })
 db.tasks.ensureIndex({ "version" : 1, "display_name" : 1 })
 db.tasks.ensureIndex({ "order" : 1, "display_name" : 1 })
 db.tasks.ensureIndex({ "status": 1, "start_time" : 1, "finish_time" : 1})
+db.tasks.ensureIndex({ "branch": 1, "status": 1, "test_results.test_file" : 1, "test_results.status": 1}, {partialFilterExpression: {"branch": "mongodb-mongo-master"}})
+
 
 //======versions======//
 db.versions.ensureIndex({ "order" : 1 })
