@@ -38,7 +38,6 @@ func main() {
 	apiServer := flag.String("api_server", "", "URL of API server")
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
 	logPrefix := flag.String("log_prefix", "", "prefix for the agent's log filename")
-	pidFile := flag.String("pid_file", "", "path to pid file")
 	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 
@@ -64,7 +63,6 @@ func main() {
 		HostId:      *hostId,
 		HostSecret:  *hostSecret,
 		Certificate: httpsCert,
-		PIDFilePath: *pidFile,
 	}
 
 	// Start a small HTTP server that has a single status endpoint
@@ -74,14 +72,12 @@ func main() {
 	if err != nil {
 		grip.EmergencyFatalf("could not create new agent: %+v", err)
 	}
-	if err := agt.CreatePidFile(*pidFile); err != nil {
-		grip.EmergencyFatalf("error creating pidFile: %+v", err)
-	}
 
 	// enable debug traces on SIGQUIT signaling
 	go agent.DumpStackOnSIGQUIT(&agt)
 
-	exitCode := 0
+	var exitCode int
+	var lastTaskId string
 
 	// run all tasks until an API server's response has RunNext set to false
 	for {
@@ -102,6 +98,8 @@ func main() {
 			break
 		}
 
+		lastTaskId = resp.TaskId
+
 		agt, err = agent.New(agent.Options{
 			APIURL:      *apiServer,
 			TaskId:      resp.TaskId,
@@ -109,8 +107,8 @@ func main() {
 			HostId:      *hostId,
 			HostSecret:  *hostSecret,
 			Certificate: httpsCert,
-			PIDFilePath: *pidFile,
 		})
+
 		if err != nil {
 			grip.Criticalf("could not create new agent for next task '%s': %+v", resp.TaskId, err)
 			exitCode = 1
@@ -118,7 +116,7 @@ func main() {
 		}
 	}
 
-	agent.ExitAgent(nil, agt.taskConfig.Task.Id, exitCode, *pidFile)
+	agent.ExitAgent(nil, lastTaskId, exitCode)
 }
 
 // logSuffix a unique log filename suffix that is namespaced

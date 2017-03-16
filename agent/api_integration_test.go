@@ -123,7 +123,6 @@ func createAgent(testServer *service.TestServer, testTask *task.Task) (*Agent, e
 		TaskId:      testTask.Id,
 		TaskSecret:  testTask.Secret,
 		Certificate: testConfig.Api.HttpsCert,
-		PIDFilePath: testPidFile,
 	})
 	if err != nil {
 		return nil, err
@@ -179,7 +178,7 @@ func TestBasicEndpoints(t *testing.T) {
 					})
 
 					Convey("calling start should flip the task's status to started", func() {
-						err := testAgent.Start("1")
+						err := testAgent.Start()
 						testutil.HandleTestingErr(err, t, "Couldn't start task: %v", err)
 						testTask, err := task.FindOne(task.ById(testTask.Id))
 						testutil.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)

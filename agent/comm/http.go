@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -84,8 +86,9 @@ type Heartbeat interface {
 }
 
 // Start marks the communicator's task as started.
-func (h *HTTPCommunicator) Start(pid string) error {
-	taskStartRequest := &apimodels.TaskStartRequest{Pid: pid}
+func (h *HTTPCommunicator) Start() error {
+	pidStr := strconv.Itoa(os.Getpid())
+	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
 	resp, retryFail, err := h.postJSON("start", taskStartRequest)
 	if resp != nil {
 		defer resp.Body.Close()

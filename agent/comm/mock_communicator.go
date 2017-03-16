@@ -40,7 +40,7 @@ func (mc *MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Re
 	return nil, nil
 }
 
-func (mc *MockCommunicator) Start(pid string) error {
+func (mc *MockCommunicator) Start() error {
 	mc.RLock()
 	defer mc.RUnlock()
 

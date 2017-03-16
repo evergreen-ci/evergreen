@@ -215,11 +215,9 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
-		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -host_id "%v" -host_secret "%v" -log_prefix "%v" -https_cert "%v" -pid_file "%v"`,
+		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -host_id "%v" -host_secret "%v" -log_prefix "%v" -https_cert "%v"`,
 		pathToExecutable, apiURL, task.Id, task.Secret, hostObj.Id, hostObj.Secret,
-		filepath.Join(hostObj.Distro.WorkDir, agentFile), "",
-		filepath.Join(hostObj.Distro.WorkDir, pidFile),
-	)
+		filepath.Join(hostObj.Distro.WorkDir, agentFile), "")
 	grip.Info(remoteCmd)
 
 	// compute any info necessary to ssh into the host

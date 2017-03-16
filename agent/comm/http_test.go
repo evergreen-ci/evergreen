@@ -40,7 +40,7 @@ func TestCommunicatorServerDown(t *testing.T) {
 			heartbeatClient: &http.Client{},
 		}
 		Convey("Calling start() should return err after max retries", func() {
-			So(agentCommunicator.Start("1"), ShouldNotBeNil)
+			So(agentCommunicator.Start(), ShouldNotBeNil)
 		})
 
 		Convey("Calling GetTask() should return err after max retries", func() {
@@ -81,7 +81,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 					util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusOK)
 				})
 
-			So(agentCommunicator.Start("1"), ShouldBeNil)
+			So(agentCommunicator.Start(), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}
 			_, err := agentCommunicator.End(details)
 			So(err, ShouldBeNil)
@@ -174,7 +174,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 						util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusInternalServerError)
 					}
 				})
-			So(agentCommunicator.Start("1"), ShouldBeNil)
+			So(agentCommunicator.Start(), ShouldBeNil)
 			details := &apimodels.TaskEndDetail{Status: evergreen.TaskFailed}
 			_, err := agentCommunicator.End(details)
 			So(err, ShouldBeNil)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -149,9 +148,6 @@ type Agent struct {
 	// currentTaskDir holds the absolute path of the directory that the agent has
 	// created for executing the current task.
 	currentTaskDir string
-
-	// location of the .pid lock file
-	pidFilePath string
 }
 
 // finishAndAwaitCleanup sends the returned TaskEndResponse and error
@@ -248,47 +244,6 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 	return sig
 }
 
-// CreatePidFile checks that the pid file does not already exist with a different pid
-// and creates one
-func (agt *Agent) CreatePidFile(pidFilePath string) error {
-	// create a file that will error out if there is another process writing to the file, add the read/write flag to
-	// indicate that reading and writing can happen.
-	pidFile, err := os.OpenFile(pidFilePath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-	if err != nil {
-		// try opening the file normally and error out with the contents of the pid file for error
-		pidFile, err = os.OpenFile(pidFilePath, os.O_RDONLY, 0600)
-		if err != nil {
-			agt.logger.LogExecution(slogger.ERROR, "error opening agent pid file: %v", err)
-			return err
-		}
-		if err == nil {
-			defer pidFile.Close()
-		}
-
-		pidBytes := make([]byte, 64)
-		_, err = pidFile.Read(pidBytes)
-		if err != nil {
-			agt.logger.LogExecution(slogger.ERROR, "error reading existing pid file: %v", err)
-			return err
-		}
-
-		agt.logger.LogExecution(slogger.ERROR, "pid file already exists with contents: %v", string(pidBytes))
-		return fmt.Errorf("host already has a process id file: %v", string(pidBytes))
-
-	}
-
-	defer pidFile.Close()
-	pid := os.Getpid()
-	// write to pid file
-	_, err = pidFile.Write([]byte(strconv.Itoa(pid)))
-	if err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "error writing pid file: %v", err.Error())
-		return fmt.Errorf("Error writing pid file: %v", err.Error())
-	}
-	agt.logger.LogExecution(slogger.INFO, "pid file written for process: %v", pid)
-	return nil
-}
-
 // HandleSignals listens on its signal channel and properly handles any signal received.
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	receivedSignal := sh.awaitSignal()
@@ -300,10 +255,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case comm.IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1, agt.pidFilePath)
+		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1)
 	case comm.HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1, agt.pidFilePath)
+		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1)
 	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
@@ -401,7 +356,6 @@ type Options struct {
 	TaskSecret  string
 	HostId      string
 	HostSecret  string
-	PIDFilePath string
 	Certificate string
 }
 
@@ -464,7 +418,6 @@ func New(opts Options) (*Agent, error) {
 		Registry:           plugin.NewSimpleRegistry(),
 		KillChan:           killChan,
 		endChan:            make(chan *apimodels.TaskEndDetail, 1),
-		pidFilePath:        opts.PIDFilePath,
 	}
 
 	return agt, nil
@@ -538,7 +491,7 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 
 	// notify API server that the task has been started.
 	agt.logger.LogExecution(slogger.INFO, "Reporting task started.")
-	if err = agt.Start(strconv.Itoa(os.Getpid())); err != nil {
+	if err = agt.Start(); err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "error marking task started: %v", err)
 		return agt.finishAndAwaitCleanup(evergreen.TaskFailed)
 	}
@@ -781,9 +734,8 @@ func (agt *Agent) removeTaskDirectory() error {
 }
 
 // ExitAgent attempts to terminate all processes started by the task
-// and then removes the pid file and exits the agent process with the specified
-// exit code.
-func ExitAgent(logger *comm.StreamLogger, taskId string, exitCode int, pidFile string) {
+// and exits the agent process with the specified exit code.
+func ExitAgent(logger *comm.StreamLogger, taskId string, exitCode int) {
 	if taskId != "" {
 		if err := shell.KillSpawnedProcs(taskId, logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
@@ -793,14 +745,6 @@ func ExitAgent(logger *comm.StreamLogger, taskId string, exitCode int, pidFile s
 				grip.Critical(msg)
 			}
 		}
-	}
-
-	err := os.Remove(pidFile)
-	if err != nil {
-		grip.Criticalf("Error removing .pid file: %+v", err)
-
-		// exit with code 2 to indicate pid file removal error
-		os.Exit(2)
 	}
 
 	// if the pid file is removed also flush if necessary

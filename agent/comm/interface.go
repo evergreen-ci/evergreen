@@ -13,7 +13,7 @@ import (
 // TaskCommunicator is an interface that handles the remote procedure calls
 // between an agent and the remote server.
 type TaskCommunicator interface {
-	Start(pid string) error
+	Start() error
 	End(detail *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error)
 	GetTask() (*task.Task, error)
 	GetProjectRef() (*model.ProjectRef, error)
