@@ -9,10 +9,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/testutil"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	tu "github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var projectValidatorConf = testutil.TestConfig()
+var projectValidatorConf = tu.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectValidatorConf))

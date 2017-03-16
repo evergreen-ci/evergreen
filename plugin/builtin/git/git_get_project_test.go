@@ -20,7 +20,7 @@ import (
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
 }
--
+
 func TestGitPlugin(t *testing.T) {
 	testConfig := testutil.TestConfig()
 	Convey("With git plugin installed into plugin registry", t, func() {
