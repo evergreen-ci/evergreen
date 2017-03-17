@@ -12,6 +12,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen/agent"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/tychoish/grip"
 	"github.com/tychoish/grip/level"
 	"github.com/tychoish/grip/send"
@@ -27,7 +28,10 @@ func init() {
 	}
 }
 
-const statsPort = 2285
+const (
+	filenameTimestamp = "2006-01-02_15_04_05"
+	statsPort         = 2285
+)
 
 func main() {
 	// Get the basic info needed to run the agent from command line flags.
@@ -45,6 +49,8 @@ func main() {
 
 	sender, err := send.MakeFileLogger(logFile)
 	grip.CatchEmergencyFatal(err)
+	defer util.RecoverAndLogStackTrace()
+
 	defer sender.Close()
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	grip.SetDefaultLevel(level.Info)
@@ -72,9 +78,6 @@ func main() {
 	if err != nil {
 		grip.EmergencyFatalf("could not create new agent: %+v", err)
 	}
-
-	// enable debug traces on SIGQUIT signaling
-	go agent.DumpStackOnSIGQUIT(&agt)
 
 	var exitCode int
 	var lastTaskId string
@@ -122,7 +125,7 @@ func main() {
 // logSuffix a unique log filename suffix that is namespaced
 // to the PID and Date of the agent's execution.
 func logSuffix() string {
-	return fmt.Sprintf("_%v_pid_%v.log", time.Now().Format(agent.FilenameTimestamp), os.Getpid())
+	return fmt.Sprintf("_%v_pid_%v.log", time.Now().Format(filenameTimestamp), os.Getpid())
 }
 
 // getHTTPSCertFile fetches the contents of the file at httpsCertFile and

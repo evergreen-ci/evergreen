@@ -77,7 +77,8 @@ func main() {
 		grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
 	}
 
-	go util.DumpStackOnSIGQUIT(os.Stdout)
+	defer util.RecoverAndLogStackTrace()
+
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	// just run one process if an argument was passed in

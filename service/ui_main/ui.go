@@ -42,7 +42,6 @@ func init() {
 func main() {
 	grip.SetName("ui-server")
 
-	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 
 	if settings.Ui.LogFile == "" {
@@ -58,6 +57,8 @@ func main() {
 	evergreen.SetLegacyLogger()
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
+
+	defer util.RecoverAndLogStackTrace()
 
 	home := evergreen.FindEvergreenHome()
 	if home == "" {

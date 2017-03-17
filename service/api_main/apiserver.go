@@ -36,7 +36,6 @@ func init() {
 }
 
 func main() {
-	go util.DumpStackOnSIGQUIT(os.Stdout)
 	settings := evergreen.GetSettingsOrExit()
 
 	// setup the logging
@@ -53,6 +52,8 @@ func main() {
 	evergreen.SetLegacyLogger()
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
+
+	defer util.RecoverAndLogStackTrace()
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
