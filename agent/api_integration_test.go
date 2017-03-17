@@ -579,7 +579,6 @@ func TestTaskAbortion(t *testing.T) {
 					defer testServer.Close()
 					testAgent, err := createAgent(testServer, testTask)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
-					defer testAgent.stop()
 
 					Convey("when the abort signal is triggered on the task", func() {
 						go func() {
@@ -1001,6 +1000,7 @@ func setupAPITestData(testConfig *evergreen.Settings, taskDisplayName string,
 			WorkDir:    workDir,
 			Expansions: []distro.Expansion{{"distro_exp", "DISTRO_EXP"}},
 		},
+		Provider:      evergreen.HostTypeStatic,
 		RunningTask:   taskOne.Id,
 		Secret:        "testHostSecret",
 		StartedBy:     evergreen.User,
