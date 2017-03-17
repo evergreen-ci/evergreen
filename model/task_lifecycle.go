@@ -373,9 +373,23 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 	finishedTasks := 0
 
 	// update the build's status based on tasks for this build
+processBuildTasksLoop:
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
-			finishedTasks += 1
+			finishedTasks++
+
+		setTaskFailedLoop:
+			for _, result := range t.TestResults {
+				if result.Status == evergreen.TestFailedStatus {
+					if err = t.MarkFailed(); err != nil {
+						grip.Errorf("encountered problem marking task '%s' as failed: %+v",
+							t.Id, err)
+						return err
+					}
+					break setTaskFailedLoop
+				}
+			}
+
 			// if it was a compile task, mark the build status accordingly
 			if t.DisplayName == evergreen.CompileStage {
 				if t.Status != evergreen.TaskSucceeded {
@@ -386,7 +400,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Errorln("Error marking build as finished:", err)
 						return err
 					}
-					break
+					break processBuildTasksLoop
 				}
 			} else if t.DisplayName == evergreen.PushStage {
 				pushCompleted = true
@@ -421,6 +435,7 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 			return err
 		}
 	}
+
 	// if a compile task didn't fail, then the
 	// build is only finished when both the compile
 	// and test tasks are completed or when those are

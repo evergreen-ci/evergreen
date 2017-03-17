@@ -384,6 +384,21 @@ func SetTasksScheduledTime(tasks []Task, scheduledTime time.Time) error {
 
 }
 
+// MarkFailed changes the state of the task to failed.
+func (t *Task) MarkFailed() error {
+	t.Status = evergreen.TaskFailed
+	return UpdateOne(
+		bson.M{
+			IdKey: t.Id,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: evergreen.TaskFailed,
+			},
+		},
+	)
+}
+
 // SetAborted sets the abort field of task to aborted
 func (t *Task) SetAborted() error {
 	t.Aborted = true

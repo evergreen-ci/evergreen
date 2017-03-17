@@ -347,6 +347,57 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 	})
 }
 
+func TestTaskStatusImpactedByFailedTest(t *testing.T) {
+	Convey("With a successful task one failed test should result in a task failure", t, func() {
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+			"Error clearing task and build collections")
+		displayName := "testName"
+		b := &build.Build{
+			Id:      "buildtest",
+			Status:  evergreen.BuildStarted,
+			Version: "abc",
+		}
+		v := &version.Version{
+			Id:     b.Version,
+			Status: evergreen.VersionStarted,
+		}
+		testTask := task.Task{
+			Id:          "testone",
+			DisplayName: displayName,
+			Activated:   false,
+			BuildId:     b.Id,
+			Project:     "sample",
+			Status:      evergreen.TaskSucceeded,
+		}
+		So(b.Insert(), ShouldBeNil)
+		So(testTask.Insert(), ShouldBeNil)
+		So(v.Insert(), ShouldBeNil)
+
+		Convey("task should not fail if there are no failed test", func() {
+			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+
+			taskData, err := task.FindOne(task.ById(testTask.Id))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+		})
+
+		Convey("task should fail if there is one failed test", func() {
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestFailedStatus,
+				},
+			})
+			So(err, ShouldBeNil)
+
+			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+
+			taskData, err := task.FindOne(task.ById(testTask.Id))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
+		})
+	})
+}
+
 func TestMarkEnd(t *testing.T) {
 	Convey("With a task and a build", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
