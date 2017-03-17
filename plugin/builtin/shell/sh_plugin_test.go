@@ -2,6 +2,7 @@ package shell
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
@@ -39,7 +40,13 @@ func TestShellExecuteCommand(t *testing.T) {
 			So(cmd.Shell, ShouldEqual, "")
 		})
 
-		for _, sh := range []string{"/bin/sh", "/bin/bash", "sh", "bash", "python", "/usr/bin/python"} {
+		shells := []string{"bash", "python", "sh"}
+
+		if runtime.GOOS != "windows" {
+			shells = append(shells, "/bin/sh", "/bin/bash", "/usr/bin/python")
+		}
+
+		for _, sh := range shells {
 			Convey(fmt.Sprintf("when set, %s is not overwritten during execution", sh), func() {
 				cmd := &ShellExecCommand{Shell: sh}
 				So(cmd.Execute(&plugintest.MockLogger{}, jsonCom, conf, stopper), ShouldBeNil)
