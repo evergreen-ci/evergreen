@@ -66,3 +66,9 @@ db.alerts.createIndex({queue_status:1})
 
 //======test_logs=====//
 db.test_logs.ensureIndex({ "execution" : 1, "name" : 1, "task" : 1 })
+
+//======json======//
+db.json.ensureIndex({ "task_id" : 1 })
+db.json.ensureIndex({ "project_id" : 1, "tag" : 1 })
+db.json.ensureIndex({ "name" : 1, "task_id" : 1 })
+
