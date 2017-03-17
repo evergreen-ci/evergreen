@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2"
 )
@@ -30,7 +31,7 @@ func getNextTaskEndpoint(t *testing.T, hostId string) *httptest.ResponseRecorder
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	as, err := NewAPIServer(evergreen.TestConfig(), nil)
+	as, err := NewAPIServer(testutil.TestConfig(), nil)
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
