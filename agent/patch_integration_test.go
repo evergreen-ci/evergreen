@@ -25,7 +25,7 @@ func TestPatchTask(t *testing.T) {
 	for tlsString, tlsConfig := range tlsConfigs {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
-				Convey("With agent running a patched 'compile'"+tlsString, func() {
+				Convey("With agent running a patched 'compile' "+tlsString, func() {
 					for _, mode := range patchModes {
 						Convey(fmt.Sprintf("Using patch mode %v", mode.String()), func() {
 							testTask, b, err := setupAPITestData(testConfig, "compile", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), mode, t)
@@ -59,8 +59,9 @@ func TestPatchTask(t *testing.T) {
 									scanLogsForTask(testTask.Id, "", "Initialized empty Git repository"), // git 1.7
 									ShouldBeTrue)
 
-								So(scanLogsForTask(testTask.Id, "", "i am patched!"), ShouldBeTrue)
-								So(scanLogsForTask(testTask.Id, "", "i am a patched module"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "Fetching patch"), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "Applying patch with git..."), ShouldBeTrue)
+								So(scanLogsForTask(testTask.Id, "", "Applying module patch with git..."), ShouldBeTrue)
 
 								So(scanLogsForTask(testTask.Id, "", "i am compiling!"), ShouldBeTrue)
 								So(scanLogsForTask(testTask.Id, "", "i am sanity testing!"), ShouldBeTrue)
