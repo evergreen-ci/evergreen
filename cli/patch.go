@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/mongodb/grip"
 )
 
 var noProjectError = fmt.Errorf("must specify a project with -p/--project or a path to a config file with -f/--file")
@@ -28,13 +29,13 @@ const largePatchThreshold = 1024 * 1024 * 16
 
 // This is the template used to render a patch's summary in a human-readable output format.
 var patchDisplayTemplate = template.Must(template.New("patch").Parse(`
-             ID : {{.Patch.Id.Hex}}
-        Created : {{.Now.Sub .Patch.CreateTime}} ago
+	     ID : {{.Patch.Id.Hex}}
+	Created : {{.Now.Sub .Patch.CreateTime}} ago
     Description : {{if .Patch.Description}}{{.Patch.Description}}{{else}}<none>{{end}}
-           Link : {{.Link}}
+	   Link : {{.Link}}
       Finalized : {{if .Patch.Activated}}Yes{{else}}No{{end}}
 {{if .ShowSummary}}
-        Summary :
+	Summary :
 {{range .Patch.Patches}}{{if not (eq .ModuleName "") }}Module:{{.ModuleName}}{{end}}
 	Base Commit : {{.Githash}}
 	{{range .PatchSet.Summary}}+{{.Additions}} -{{.Deletions}} {{.Name}}
@@ -282,7 +283,6 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-
 	if err := validatePatchSize(diffData, smc.Large); err != nil {
 		return err
 	}
@@ -300,7 +300,22 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 
 	err = ac.UpdatePatchModule(smc.PatchId, smc.Module, diffData.fullPatch, diffData.base)
 	if err != nil {
+		mods, err := ac.GetPatchModules(smc.PatchId)
+		var msg string
+		if err != nil {
+			msg = fmt.Sprintf("could not find module named %s or retrieve list of modules",
+				smc.Module)
+		} else if len(mods) == 0 {
+			msg = fmt.Sprintf("could not find modules for this project. %s is not a module. "+
+				"see the evergreen configuration file for module configuration.",
+				smc.Module)
+		} else {
+			msg = fmt.Sprintf("could not find module named '%s', select correct module from:\n\t%s",
+				smc.Module, strings.Join(mods, "\n\t"))
+		}
+		grip.Error(msg)
 		return err
+
 	}
 	fmt.Println("Module updated.")
 	return nil

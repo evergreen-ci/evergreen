@@ -774,6 +774,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	patchPath.HandleFunc("/mine", requireUser(as.listPatches, nil)).Methods("GET")
 	patchPath.HandleFunc("/{patchId:\\w+}", requireUser(as.summarizePatch, nil)).Methods("GET")
 	patchPath.HandleFunc("/{patchId:\\w+}", requireUser(as.existingPatchRequest, nil)).Methods("POST")
+	patchPath.HandleFunc("/{patchId:\\w+}/modules", as.listPatchModules).Methods("GET")
 	patchPath.HandleFunc("/{patchId:\\w+}/modules", requireUser(as.deletePatchModule, nil)).Methods("DELETE")
 	patchPath.HandleFunc("/{patchId:\\w+}/modules", requireUser(as.updatePatchModule, nil)).Methods("POST")
 

@@ -350,7 +350,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	module, err := project.GetModuleByName(moduleName)
 	if err != nil || module == nil {
-		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("No such module", moduleName))
+		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("No such module: %s", moduleName))
 		return
 	}
 
@@ -500,6 +500,39 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	as.WriteJSON(w, http.StatusOK, PatchAPIResponse{Patch: p})
+}
+
+func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
+	p, err := getPatchFromRequest(r)
+	if err != nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	projectRef, err := model.FindOneProjectRef(p.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting project ref with id %v: %v", p.Project, err))
+		return
+	}
+	project, err := model.FindProject("", projectRef)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting patch: %v", err))
+		return
+	}
+	if project == nil {
+		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("can't find project: %v", p.Project))
+		return
+	}
+
+	data := struct {
+		Project string         `json:"project"`
+		Modules []model.Module `json:"modules"`
+	}{
+		Project: p.Project,
+		Modules: project.Modules,
+	}
+
+	as.WriteJSON(w, http.StatusOK, &data)
 }
 
 func (as *APIServer) deletePatchModule(w http.ResponseWriter, r *http.Request) {

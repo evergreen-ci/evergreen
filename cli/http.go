@@ -507,3 +507,32 @@ func (ac *APIClient) GetTestHistory(project, queryParams string, isCSV bool) (io
 
 	return resp.Body, nil
 }
+
+// GetPatchModules retrieves a list of modules available for a given patch.
+func (ac *APIClient) GetPatchModules(patchId string) ([]string, error) {
+	var out []string
+
+	resp, err := ac.get(fmt.Sprintf("patches/%s/modules", patchId), nil)
+	if err != nil {
+		return out, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return out, NewAPIError(resp)
+	}
+
+	data := struct {
+		Project string         `json:"project"`
+		Modules []model.Module `json:"modules"`
+	}{}
+
+	err = util.ReadJSONInto(resp.Body, &data)
+	if err != nil {
+		return out, err
+	}
+
+	for _, mod := range data.Modules {
+		out = append(out, mod.Name)
+	}
+	return out, nil
+}
