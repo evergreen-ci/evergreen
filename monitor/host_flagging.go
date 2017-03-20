@@ -18,6 +18,16 @@ const (
 	// UnreachableCutoff is the threshold to wait for an unreachable host to become marked
 	// as reachable again before giving up and terminating it.
 	UnreachableCutoff = 10 * time.Minute
+
+	// IdleTimeCutoff is the amount of time we wait for an idle host to be marked as idle.
+	IdleTimeCutoff = 15 * time.Minute
+
+	// MaxTimeNextPayment is the amount of time we wait to have left before marking a host as idle
+	MaxTimeTilNextPayment = 5 * time.Minute
+
+	// CommunicationTimeCutoff is the limit to how much time has passed before the host is marked as idle
+	// due to the agent not being able to communicate with the API server.
+	CommunicationTimeCutoff = 10 * time.Minute
 )
 
 type hostFlagger struct {
@@ -65,36 +75,41 @@ func flagIdleHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host, error
 
 	// go through the hosts, and see if they have idled long enough to
 	// be terminated
-	for _, host := range freeHosts {
+	for _, freeHost := range freeHosts {
 
 		// ask the host how long it has been idle
-		idleTime := host.IdleTime()
+		idleTime := freeHost.IdleTime()
+
+		// if the communication time is > 10 mins then there may not be an agent on the host.
+		communicationTime := time.Now().Sub(freeHost.LastCommunicationTime)
 
 		// get a cloud manager for the host
-		cloudManager, err := providers.GetCloudManager(host.Provider, s)
+		cloudManager, err := providers.GetCloudManager(freeHost.Provider, s)
 		if err != nil {
-			return nil, fmt.Errorf("error getting cloud manager for host %v: %v", host.Id, err)
+			return nil, fmt.Errorf("error getting cloud manager for host %v: %v", freeHost.Id, err)
 		}
 
 		// if the host is not dynamically spun up (and can thus be terminated),
 		// skip it
-		canTerminate, err := hostCanBeTerminated(host, s)
+		canTerminate, err := hostCanBeTerminated(freeHost, s)
 		if err != nil {
-			return nil, fmt.Errorf("error checking if host %v can be terminated: %v", host.Id, err)
+			return nil, fmt.Errorf("error checking if host %v can be terminated: %v", freeHost.Id, err)
 		}
 		if !canTerminate {
 			continue
 		}
 
 		// ask how long until the next payment for the host
-		tilNextPayment := cloudManager.TimeTilNextPayment(&host)
+		tilNextPayment := cloudManager.TimeTilNextPayment(&freeHost)
 
 		// current determinants for idle:
-		//  idle for at least 15 minutes and
+		//  idle for at least 15 minutes or last communication time has been more than 10 mins and
 		//  less than 5 minutes til next payment
-		if idleTime >= 15*time.Minute && tilNextPayment <= 5*time.Minute {
-			idleHosts = append(idleHosts, host)
+		if (communicationTime >= CommunicationTimeCutoff || idleTime >= IdleTimeCutoff) &&
+			tilNextPayment <= MaxTimeTilNextPayment {
+			idleHosts = append(idleHosts, freeHost)
 		}
+
 	}
 
 	return idleHosts, nil

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -88,7 +89,8 @@ func TestFlaggingIdleHosts(t *testing.T) {
 		// reset the db
 		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
-
+		testutil.HandleTestingErr(modelUtil.AddTestIndexes(host.Collection,
+			true, true, host.RunningTaskKey), t, "error adding host index")
 		Convey("hosts currently running a task should never be"+
 			" flagged", func() {
 
@@ -109,6 +111,24 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 0)
 
+			Convey("even if they have a last communication time > 10 minutes", func() {
+				h2 := host.Host{
+					Id:                    "anotherhost",
+					Provider:              mock.ProviderName,
+					CreationTime:          time.Now().Add(-30 * time.Minute),
+					RunningTask:           "t3",
+					Status:                evergreen.HostRunning,
+					LastCommunicationTime: time.Now().Add(-30 * time.Minute),
+					StartedBy:             evergreen.User,
+				}
+				testutil.HandleTestingErr(h2.Insert(), t, "error inserting host")
+				// finding idle hosts should not return the host
+				idle, err := flagIdleHosts(nil, nil)
+				So(err, ShouldBeNil)
+				So(len(idle), ShouldEqual, 0)
+
+			})
+
 		})
 
 		Convey("hosts not currently running a task should be flagged if they"+
@@ -119,20 +139,22 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			// ago, one whose last task was less than 15 minutes ago
 
 			host1 := host.Host{
-				Id:                    "h1",
+				Id:                    "h2",
 				Provider:              mock.ProviderName,
 				LastTaskCompleted:     "t1",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 20),
+				LastCommunicationTime: time.Now(),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
 			}
 			testutil.HandleTestingErr(host1.Insert(), t, "error inserting host")
 
 			host2 := host.Host{
-				Id:                    "h2",
+				Id:                    "h3",
 				Provider:              mock.ProviderName,
 				LastTaskCompleted:     "t2",
 				LastTaskCompletedTime: time.Now().Add(-time.Minute * 5),
+				LastCommunicationTime: time.Now(),
 				Status:                evergreen.HostRunning,
 				StartedBy:             evergreen.User,
 			}
@@ -142,8 +164,24 @@ func TestFlaggingIdleHosts(t *testing.T) {
 			idle, err := flagIdleHosts(nil, nil)
 			So(err, ShouldBeNil)
 			So(len(idle), ShouldEqual, 1)
-			So(idle[0].Id, ShouldEqual, "h1")
+			So(idle[0].Id, ShouldEqual, "h2")
 
+		})
+		Convey("hosts not currently running a task with a last communication time greater"+
+			"than 10 mins should be marked as idle", func() {
+			anotherHost := host.Host{
+				Id:                    "h1",
+				Provider:              mock.ProviderName,
+				LastCommunicationTime: time.Now().Add(-time.Minute * 20),
+				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
+			}
+			So(anotherHost.Insert(), ShouldBeNil)
+			// finding idle hosts should only return the first host
+			idle, err := flagIdleHosts(nil, nil)
+			So(err, ShouldBeNil)
+			So(len(idle), ShouldEqual, 1)
+			So(idle[0].Id, ShouldEqual, "h1")
 		})
 
 	})

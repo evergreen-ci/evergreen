@@ -17,9 +17,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2"
 )
 
 var (
@@ -57,11 +57,9 @@ func TestAssignNextAvailableTask(t *testing.T) {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		err := db.EnsureIndex(host.Collection, mgo.Index{
-			Key:    []string{host.RunningTaskKey},
-			Unique: true,
-		})
-		So(err, ShouldBeNil)
+		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
+			t.Fatalf("adding test indexes %v", err)
+		}
 		distroId := "testDistro"
 
 		tq := &model.TaskQueue{
@@ -201,11 +199,9 @@ func TestNextTask(t *testing.T) {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		err := db.EnsureIndex(host.Collection, mgo.Index{
-			Key:    []string{host.RunningTaskKey},
-			Unique: true,
-		})
-		So(err, ShouldBeNil)
+		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
+			t.Fatalf("adding test indexes %v", err)
+		}
 		distroId := "testDistro"
 		buildId := "buildId"
 

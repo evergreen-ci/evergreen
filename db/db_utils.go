@@ -66,6 +66,16 @@ func EnsureIndex(collection string, index mgo.Index) error {
 	return db.C(collection).EnsureIndex(index)
 }
 
+// DropIndex takes in a collection and a slice of keys and drops those indexes
+func DropIndex(collection string, key ...string) error {
+	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	return db.C(collection).DropIndex(key...)
+}
+
 // Remove removes one item matching the query from the specified collection.
 func Remove(collection string, query interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
