@@ -42,6 +42,9 @@ const (
 	// DefaultStatsInterval is the interval after which agent sends system stats
 	// to API server
 	DefaultStatsInterval = time.Minute
+
+	// DefaultAgentSleepInterval is the interval after which the agent retries getting a next task
+	DefaultAgentSleepInterval = time.Minute
 )
 
 var (
@@ -245,6 +248,7 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	receivedSignal := sh.awaitSignal()
 	detail := agt.getTaskEndDetail()
+	defer agt.cleanup()
 	switch receivedSignal {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
@@ -252,10 +256,10 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case comm.IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1)
+		os.Exit(1)
 	case comm.HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		ExitAgent(agt.logger, agt.taskConfig.Task.Id, 1)
+		os.Exit(1)
 	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
@@ -349,7 +353,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 // Options represents an agent configuration.
 type Options struct {
 	APIURL      string
-	TaskId      string // TODO remove (EVG-1283)
+	TaskId      string
 	TaskSecret  string
 	HostId      string
 	HostSecret  string
@@ -363,7 +367,7 @@ func New(opts Options) (*Agent, error) {
 
 	// set up communicator with API server
 	httpCommunicator, err := comm.NewHTTPCommunicator(
-		opts.APIURL, opts.TaskId, opts.TaskSecret, opts.HostId, opts.HostSecret,
+		opts.APIURL, opts.HostId, opts.HostSecret,
 		opts.Certificate, sh.communicatorChan)
 	if err != nil {
 		return nil, err
@@ -418,6 +422,94 @@ func New(opts Options) (*Agent, error) {
 	}
 
 	return agt, nil
+}
+
+// GetCurrentTaskId retrieves the task id from the agent that is being run
+func (agt *Agent) GetCurrentTaskId() (string, error) {
+	// modify task communicator
+	httpTaskComm, ok := agt.TaskCommunicator.(*comm.HTTPCommunicator)
+	if !ok {
+		return "", fmt.Errorf("error getting http communicator for agent")
+	}
+	return httpTaskComm.TaskId, nil
+}
+
+// getNextTask attempts to retrieve a next task and adds it in the
+// agent's communicator if it exists. It returns true if there is a next task in the agent.
+func (agt *Agent) getNextTask() (bool, error) {
+	nextTaskResponse, err := agt.GetNextTask()
+	if err != nil {
+		grip.Criticalf("error getting next task: %+v", err)
+		return false, err
+	}
+	if nextTaskResponse.ShouldExit {
+		grip.Infof("next task response indicates that agent should exit: %v", nextTaskResponse.Message)
+		return false, fmt.Errorf("next task response indicates that agent should exit %v", nextTaskResponse.Message)
+	}
+	if nextTaskResponse.TaskId == "" {
+		grip.Infof("next task response does not have a task id")
+		return false, nil
+	}
+
+	// task id should have associated secret if it's not empty
+	if nextTaskResponse.TaskSecret == "" {
+		message := "error getting next task secret: task secret empty"
+		grip.Criticalf(message)
+		return false, fmt.Errorf(message)
+	}
+
+	grip.Infof("assigned to run task %s", nextTaskResponse.TaskId)
+
+	// modify task communicator
+	httpTaskComm, ok := agt.TaskCommunicator.(*comm.HTTPCommunicator)
+	if !ok {
+		message := "error getting http communicator for agent"
+		grip.Criticalf(message)
+		return false, fmt.Errorf(message)
+	}
+
+	httpTaskComm.TaskId = nextTaskResponse.TaskId
+	httpTaskComm.TaskSecret = nextTaskResponse.TaskSecret
+
+	agt.TaskCommunicator = httpTaskComm
+
+	return true, nil
+}
+
+// Run is the agent loop which gets the next task if it exists, and runs the task if it gets one.
+// It returns an exit code when the agent needs to exit
+func (agt *Agent) Run() error {
+	defer agt.cleanup()
+	// this loop continues until the agent exits
+	for {
+		var err error
+		// this loop continues until the agent gets a new task to run
+		// TODO: In finish task, there should be some indication of whether or not the agent should exit. (EVG-1592)
+	nextTaskLoop:
+		for {
+			hasTask, err := agt.getNextTask()
+			if err != nil {
+				grip.Criticalf("error getting next task: %+v", err)
+				return err
+			}
+			if hasTask {
+				break nextTaskLoop
+			}
+			time.Sleep(DefaultAgentSleepInterval)
+		}
+		resp, err := agt.RunTask()
+		if err != nil {
+			grip.Criticalf("error running task: %+v", err)
+			return err
+		}
+
+		if resp == nil {
+			message := "received nil response from API server"
+			grip.Criticalf(message)
+			return fmt.Errorf(message)
+		}
+		// TODO have response check for exiting here too (EVG-1592)
+	}
 }
 
 // RunTask manages the process of running a task. It returns a response
@@ -736,24 +828,23 @@ func (agt *Agent) removeTaskDirectory() error {
 	return nil
 }
 
-// ExitAgent attempts to terminate all processes started by the task
-// and exits the agent process with the specified exit code.
-func ExitAgent(logger plugin.Logger, taskId string, exitCode int) {
+// cleanup attempts to terminate all processes started by the task
+// and flushes the logs.
+func (agt *Agent) cleanup() {
+	taskId, err := agt.GetCurrentTaskId()
+	if err != nil {
+		grip.Critical(err.Error())
+	}
 	if taskId != "" {
-		if err := shell.KillSpawnedProcs(taskId, logger); err != nil {
+		if err := shell.KillSpawnedProcs(taskId, agt.logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
-			if logger != nil {
-				logger.LogExecution(slogger.ERROR, msg)
-			} else {
-				grip.Critical(msg)
-			}
+			grip.Critical(msg)
 		}
 	}
 
 	// if the pid file is removed also flush if necessary
-	if logger != nil {
-		logger.Flush()
+	if agt.logger != nil {
+		agt.logger.Flush()
 	}
 
-	os.Exit(exitCode)
 }

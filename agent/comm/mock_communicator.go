@@ -76,6 +76,10 @@ func (*MockCommunicator) GetVersion() (*version.Version, error) {
 	return &version.Version{}, nil
 }
 
+func (*MockCommunicator) GetNextTask() (*apimodels.NextTaskResponse, error) {
+	return &apimodels.NextTaskResponse{}, nil
+}
+
 func (mc *MockCommunicator) setAbort(b bool) {
 	mc.Lock()
 	defer mc.Unlock()

@@ -22,6 +22,7 @@ type TaskCommunicator interface {
 	Log([]model.LogMessage) error
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)
+	GetNextTask() (*apimodels.NextTaskResponse, error)
 	TryGet(path string) (*http.Response, error)
 	TryPostJSON(path string, data interface{}) (*http.Response, error)
 }

@@ -50,11 +50,9 @@ type HTTPCommunicator struct {
 
 // NewHTTPCommunicator returns an initialized HTTPCommunicator.
 // The cert parameter may be blank if default system certificates are being used.
-func NewHTTPCommunicator(serverURL, taskId, taskSecret, hostId, hostSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
+func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
 	agentCommunicator := &HTTPCommunicator{
 		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, evergreen.AgentAPIVersion),
-		TaskId:        taskId,
-		TaskSecret:    taskSecret,
 		HostId:        hostId,
 		HostSecret:    hostSecret,
 		MaxAttempts:   httpMaxAttempts,
@@ -156,7 +154,7 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 
 	retriableLog := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryPostJSON("log", outgoingData)
+			resp, err := h.TryPostJSON(h.getTaskPath("log"), outgoingData)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -181,7 +179,7 @@ func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
 	task := &task.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("")
+			resp, err := h.TryGet(h.getTaskPath(""))
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -218,7 +216,7 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("distro")
+			resp, err := h.TryGet(h.getTaskPath("distro"))
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -252,12 +250,43 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	return d, nil
 }
 
+// GetNextTask returns a next task response by getting the next task for a given host.
+func (h *HTTPCommunicator) GetNextTask() (*apimodels.NextTaskResponse, error) {
+	taskResponse := &apimodels.NextTaskResponse{}
+	retriableGet := util.RetriableFunc(
+		func() error {
+			resp, err := h.TryGet("agent/next_task")
+
+			if resp == nil {
+				return util.RetriableError{fmt.Errorf("empty response")}
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusConflict {
+				return fmt.Errorf("conflict - wrong secret!")
+			}
+			if err != nil {
+				return util.RetriableError{err}
+			}
+			err = util.ReadJSONInto(resp.Body, taskResponse)
+			if err != nil {
+				return util.RetriableError{err}
+			}
+			return nil
+		})
+	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
+	if retryFail {
+		return nil, fmt.Errorf("getting next task failed after %v tries: %v", h.MaxAttempts, err)
+	}
+	return taskResponse, nil
+
+}
+
 // GetProjectConfig loads the communicator's task's project from the API server.
 func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("project_ref")
+			resp, err := h.TryGet(h.getTaskPath("project_ref"))
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -293,7 +322,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 	v := &version.Version{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("version")
+			resp, err := h.TryGet(h.getTaskPath("version"))
 			if resp != nil {
 				defer resp.Body.Close()
 
@@ -370,6 +399,11 @@ func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	return heartbeatResponse.Abort, nil
 }
 
+// getTaskPath is a helper to create a path that can be used for task specific calls
+func (h *HTTPCommunicator) getTaskPath(path string) string {
+	return fmt.Sprintf("task/%v/%v", h.TaskId, path)
+}
+
 func (h *HTTPCommunicator) TryGet(path string) (*http.Response, error) {
 	resp, err := h.tryRequestWithClient(path, "GET", h.httpClient, nil)
 	return resp, errors.WithStack(err)
@@ -384,8 +418,7 @@ func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (*http.Res
 // requests to be done with multiple client configurations/timeouts.
 func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, client *http.Client,
 	data *interface{}) (*http.Response, error) {
-	endpointUrl := fmt.Sprintf("%s/task/%s/%s", h.ServerURLRoot, h.TaskId,
-		path)
+	endpointUrl := fmt.Sprintf("%s/%s", h.ServerURLRoot, path)
 	req, err := http.NewRequest(method, endpointUrl, nil)
 	err = errors.WithStack(err)
 	if err != nil {
@@ -413,7 +446,7 @@ func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 	resp *http.Response, retryFail bool, err error) {
 	retriablePost := util.RetriableFunc(
 		func() error {
-			resp, err = h.TryPostJSON(path, data)
+			resp, err = h.TryPostJSON(h.getTaskPath(path), data)
 			if err == nil && resp.StatusCode == http.StatusOK {
 				return nil
 			}
@@ -444,7 +477,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 	resultVars := &apimodels.ExpansionVars{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("fetch_vars")
+			resp, err := h.TryGet(h.getTaskPath("fetch_vars"))
 			if resp != nil {
 				defer resp.Body.Close()
 			}

@@ -1,6 +1,7 @@
 package comm
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -151,6 +152,25 @@ func TestCommunicatorServerUp(t *testing.T) {
 				So(d, ShouldNotBeNil)
 				So(d.Id, ShouldEqual, "mocktaskdistro")
 			})
+
+		Convey("Calling GetNextTask() should fetch the next task response successfully", func() {
+			nextTaskResponse := &apimodels.NextTaskResponse{
+				TaskId:     "mocktaskid",
+				TaskSecret: "secret",
+				ShouldExit: false}
+
+			serveMux.HandleFunc("/agent/next_task",
+				func(w http.ResponseWriter, req *http.Request) {
+					util.WriteJSON(&w, nextTaskResponse, http.StatusOK)
+				})
+			nextTask, err := agentCommunicator.GetNextTask()
+			So(err, ShouldBeNil)
+			So(nextTask, ShouldNotBeNil)
+			So(nextTask.TaskId, ShouldEqual, "mocktaskid")
+			So(nextTask.TaskSecret, ShouldEqual, "secret")
+			So(nextTask.ShouldExit, ShouldEqual, false)
+
+		})
 
 		Convey("Failed calls to start() or end() should retry till success", func() {
 			startCount := 0

@@ -215,6 +215,9 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// checkHost retrieves the host from the url path if it exists, otherwise retrieves it from the
+// request header. It then checks the host secret and errors if the host secret is wrong
+// or does not exist. It then adds the host into the context if all validation passes.
 func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		hostId := mux.Vars(r)["hostId"]
@@ -223,10 +226,8 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			hostId = r.Header.Get(evergreen.HostHeader)
 			if hostId == "" {
 				grip.Warningf("Request %s is missing host information", r.URL)
-				// skip all host logic and just go on to the route
-				next(w, r)
+				as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("missing host id"))
 				return
-				// TODO (EVG-1283) treat this as an error and fail the request
 			}
 		}
 		secret := r.Header.Get(evergreen.HostSecretHeader)
@@ -242,9 +243,8 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		// if there is a secret, ensure we are using the correct one -- fail if we arent
-		if secret != "" && secret != h.Secret {
-			// TODO (EVG-1283) error if secret is not attached as well
-			as.LoggedError(w, r, http.StatusConflict, errors.Errorf("Invalid host secret for host %v", h.Id))
+		if secret != h.Secret {
+			as.LoggedError(w, r, http.StatusConflict, fmt.Errorf("Invalid host secret for host %v", h.Id))
 			return
 		}
 
@@ -263,7 +263,7 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 		}
 
-		context.Set(r, apiHostKey, h) // TODO is this worth doing?
+		context.Set(r, apiHostKey, h)
 		next(w, r)
 	}
 }
@@ -850,7 +850,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	// Agent routes
 	agentRouter := r.PathPrefix("/agent").Subrouter()
-	agentRouter.HandleFunc("/next_task", as.checkHost(as.NextTask)).Methods("POST")
+	agentRouter.HandleFunc("/next_task", as.checkHost(as.NextTask)).Methods("GET")
 
 	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
