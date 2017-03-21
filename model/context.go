@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"

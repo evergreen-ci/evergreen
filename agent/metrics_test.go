@@ -7,8 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/message"
 )
 
 func newTestCommunicator() *comm.MockCommunicator {

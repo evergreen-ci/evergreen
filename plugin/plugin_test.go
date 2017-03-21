@@ -30,8 +30,8 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/slogger"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )

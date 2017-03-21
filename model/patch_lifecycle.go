@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )

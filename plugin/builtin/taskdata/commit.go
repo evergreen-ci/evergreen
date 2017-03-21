@@ -1,13 +1,14 @@
 package taskdata
 
 import (
+	"net/http"
+	"regexp"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
-	"regexp"
 )
 
 func uiGetCommit(w http.ResponseWriter, r *http.Request) {

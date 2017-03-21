@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type CrowdUser struct {

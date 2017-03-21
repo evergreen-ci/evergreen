@@ -3,8 +3,8 @@ package testutil
 import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/tychoish/grip/send"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/slogger"
 )
 
 // NewTestLogger creates a logger for testing. This Logger

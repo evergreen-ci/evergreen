@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

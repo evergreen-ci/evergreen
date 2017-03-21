@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // ui version of a task queue item

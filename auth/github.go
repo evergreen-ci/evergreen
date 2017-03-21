@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // GithubAuthManager implements the UserManager with GitHub authentication using Oauth authentication.

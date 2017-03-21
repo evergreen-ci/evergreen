@@ -10,10 +10,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
-	"github.com/tychoish/grip/send"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/slogger"
 )
 
 // StreamLogger holds a set of stream-delineated loggers. Each logger is used

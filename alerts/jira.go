@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // DescriptionTemplateString defines the content of the alert ticket.

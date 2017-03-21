@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip/slogger"
 )
 
 func init() {

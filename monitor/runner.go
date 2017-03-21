@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type Runner struct{}

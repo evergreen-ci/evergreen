@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type taskStatusContent struct {

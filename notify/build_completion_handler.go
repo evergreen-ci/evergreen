@@ -4,7 +4,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/web"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // Handler for build completion notifications, i.e. send notifications whenever

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/codegangsta/inject"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const JSONMarshalError = "Could not marshal data to JSON"

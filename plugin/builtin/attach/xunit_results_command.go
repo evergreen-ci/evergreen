@@ -5,12 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/attach/xunit"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/slogger"
 )
 
 // AttachXUnitResultsCommand reads in an xml file of xunit

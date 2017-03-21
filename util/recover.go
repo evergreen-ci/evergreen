@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // RecoverAndLogStackTrace captures a panic stack trace and writes it

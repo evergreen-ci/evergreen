@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/send"
-	"github.com/tychoish/grip/slogger"
 )
 
 func TestHeartbeat(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

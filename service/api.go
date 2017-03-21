@@ -29,8 +29,8 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 type key int

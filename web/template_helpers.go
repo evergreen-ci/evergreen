@@ -13,7 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type timePeriod struct {

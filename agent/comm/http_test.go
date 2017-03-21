@@ -14,9 +14,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/send"
-	"github.com/tychoish/grip/slogger"
 )
 
 func TestCommunicatorServerDown(t *testing.T) {

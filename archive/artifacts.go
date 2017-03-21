@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/slogger"
 )
 
 // TarContentsFile represents a tar file on disk.

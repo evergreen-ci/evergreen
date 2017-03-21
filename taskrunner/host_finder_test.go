@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip"
 )
 
 var hostFinderTestConf = testutil.TestConfig()

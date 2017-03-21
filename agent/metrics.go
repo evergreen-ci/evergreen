@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
-	"github.com/tychoish/grip/sometimes"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/mongodb/grip/sometimes"
 )
 
 const (

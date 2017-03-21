@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 	"gopkg.in/mgo.v2/bson"
 )
 

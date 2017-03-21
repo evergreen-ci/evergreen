@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/slogger"
 )
 
 // ParseFilesCommand is a struct implementing plugin.Command. It is used to parse a file or

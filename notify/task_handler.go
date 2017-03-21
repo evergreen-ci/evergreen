@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

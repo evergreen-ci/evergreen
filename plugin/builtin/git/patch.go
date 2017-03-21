@@ -16,8 +16,8 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/slogger"
 )
 
 // GitApplyPatchCommand is deprecated. Its functionality is now a part of GitGetProjectCommand.

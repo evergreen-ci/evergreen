@@ -7,11 +7,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/gorilla/context"
+	"github.com/mongodb/grip/slogger"
 )
 
 var (

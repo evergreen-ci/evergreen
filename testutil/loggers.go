@@ -1,6 +1,6 @@
 package testutil
 
-import "github.com/tychoish/grip/send"
+import "github.com/mongodb/grip/send"
 
 func SetupTestSender(fn string) send.Sender {
 	console := send.MakeCallSiteConsoleLogger(2)

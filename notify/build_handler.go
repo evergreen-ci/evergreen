@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // "Base class" for all build_*_handler.go structs. Contains code that's common

@@ -1,6 +1,6 @@
 package model
 
-import "github.com/tychoish/grip"
+import "github.com/mongodb/grip"
 
 type dependencyIncluder struct {
 	Project  *Project

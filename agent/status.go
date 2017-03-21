@@ -7,8 +7,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 // GetStatusRouter produces an HTTP router for the local status

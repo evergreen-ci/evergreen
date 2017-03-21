@@ -16,7 +16,7 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

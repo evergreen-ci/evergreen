@@ -13,7 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/render"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const EmailSubjectPrologue = "[Evergreen]"

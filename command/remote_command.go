@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type RemoteCommand struct {

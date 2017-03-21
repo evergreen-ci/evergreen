@@ -11,9 +11,9 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
 )
 
 func TestResourceInfoEndPoints(t *testing.T) {

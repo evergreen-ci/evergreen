@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/send"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
+	"github.com/mongodb/grip/slogger"
 )
 
 const (

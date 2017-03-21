@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type MockCommunicator struct {

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/db"
@@ -18,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/slogger"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )

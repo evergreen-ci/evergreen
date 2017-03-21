@@ -22,7 +22,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

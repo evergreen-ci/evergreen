@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

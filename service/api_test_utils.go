@@ -10,7 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const port = 8181

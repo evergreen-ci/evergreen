@@ -5,8 +5,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/message"
 )
 
 func TestTaskInfoEvent(t *testing.T) {

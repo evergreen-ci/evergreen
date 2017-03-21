@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/web"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // Handler for notifications generated specifically when a task fails and the

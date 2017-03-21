@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type Notifier struct {

@@ -15,7 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip/slogger"
 	"gopkg.in/mgo.v2/bson"
 )
 

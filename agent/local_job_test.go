@@ -9,9 +9,9 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/service"
 	tu "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/level"
-	"github.com/tychoish/grip/send"
 )
 
 func TestLocalJob(t *testing.T) {

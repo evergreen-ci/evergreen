@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/mongodb/grip/slogger"
 )
 
 // This is a regex used to extract environment variables from the output of pargs -e

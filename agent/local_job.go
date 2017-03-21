@@ -8,8 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/tychoish/grip/level"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/slogger"
 )
 
 // AgentCommand encapsulates a running local command and streams logs

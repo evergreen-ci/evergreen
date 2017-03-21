@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip/slogger"
 )
 
 func trackProcess(key string, pid int, log plugin.Logger) {

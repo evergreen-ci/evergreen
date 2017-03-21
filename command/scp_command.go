@@ -5,7 +5,7 @@ import (
 	"io"
 	"os/exec"
 
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type ScpCommand struct {

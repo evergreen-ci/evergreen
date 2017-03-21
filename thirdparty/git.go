@@ -12,7 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes

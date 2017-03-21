@@ -29,8 +29,8 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/slogger"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )

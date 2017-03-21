@@ -17,8 +17,8 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/slogger"
 )
 
 func init() {

@@ -3,7 +3,7 @@ package event
 import (
 	"time"
 
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

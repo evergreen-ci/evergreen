@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 	"gopkg.in/yaml.v2"
 )
 

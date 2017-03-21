@@ -1,6 +1,8 @@
 package taskdata
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -9,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
 )
 
 // uiGetTaskById sends back a JSONTask with the corresponding task id.

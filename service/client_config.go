@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // getClientConfig should be called once at startup and looks at the

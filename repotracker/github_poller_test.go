@@ -7,8 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip"
 )
 
 var (

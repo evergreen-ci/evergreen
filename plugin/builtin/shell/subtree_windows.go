@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/mongodb/grip/slogger"
 )
 
 // Map of TASK_ID to job object ID in windows

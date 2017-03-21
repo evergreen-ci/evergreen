@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // the warning thresholds for spawned hosts, in decreasing order of recency

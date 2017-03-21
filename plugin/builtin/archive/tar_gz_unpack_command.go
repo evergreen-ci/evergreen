@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/tychoish/grip/slogger"
 	"github.com/evergreen-ci/evergreen/archive"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip/slogger"
 )
 
 // Plugin command responsible for unpacking a tgz archive.

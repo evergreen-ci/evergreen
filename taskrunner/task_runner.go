@@ -11,7 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const distroSleep = 10 * time.Second

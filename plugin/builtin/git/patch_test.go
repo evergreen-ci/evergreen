@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/slogger"
 )
 
 func TestPatchPluginAPI(t *testing.T) {

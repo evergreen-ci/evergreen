@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/send"
 )
 
 func TestRecoverHandler(t *testing.T) {

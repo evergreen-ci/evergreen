@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/tychoish/grip/slogger"
 )
 
 func TestAllOutputFiles(t *testing.T) {

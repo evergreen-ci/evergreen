@@ -20,7 +20,7 @@ import (
 	"net/smtp"
 	"strings"
 
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type Mailer interface {

@@ -23,7 +23,6 @@ variables:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: setup-plugins
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
@@ -46,7 +45,6 @@ variables:
       - command: git.get_project
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
-      - func: setup-plugins
       - func: setup-credentials
       - func: run-make
         vars: { target: "${task_name}" }
@@ -59,7 +57,6 @@ variables:
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: setup-credentials
-      - func: setup-plugins
       - func: set-up-mongodb
       - func: run-make
         vars: { target: "${task_name}" }
@@ -93,16 +90,6 @@ functions:
          # Run make, called with proper environment variables set,
          # running the target.
          ${build_env} make ${make_args|} vendor ${target}
-  setup-plugins:
-    command: shell.exec
-    params:
-      script: |
-        set -o errexit
-
-        echo "building Plugins file!"
-        cat > gopath/src/github.com/evergreen-ci/evergreen/Plugins <<EOF
-        ${plugins_file}
-        EOF
   setup-credentials:
     - command: shell.exec
       params:
@@ -131,6 +118,7 @@ functions:
               username: ${crowduser}
               password: ${crowdpw}
               urlroot: ${crowdserver}
+
           plugins:
             manifest:
               github_token: "${github_token}"

@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // Interface around an email that may be sent as a notification. Provides

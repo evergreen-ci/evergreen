@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // TaskFinder finds all tasks that are ready to be run.

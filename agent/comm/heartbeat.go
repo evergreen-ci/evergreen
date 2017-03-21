@@ -3,7 +3,7 @@ package comm
 import (
 	"time"
 
-	"github.com/tychoish/grip/slogger"
+	"github.com/mongodb/grip/slogger"
 )
 
 // HeartbeatTicker manages heartbeat communication with the API server

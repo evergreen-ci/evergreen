@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

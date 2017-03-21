@@ -1,13 +1,14 @@
 package taskdata
 
 import (
+	"net/http"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
 )
 
 func GetTaskHistory(t *task.Task, name string) ([]TaskJSON, error) {

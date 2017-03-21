@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/message"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 )
 
 const (

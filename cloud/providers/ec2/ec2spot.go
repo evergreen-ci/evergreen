@@ -19,7 +19,7 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 const (

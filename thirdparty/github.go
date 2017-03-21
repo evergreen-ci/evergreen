@@ -12,8 +12,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/tychoish/grip"
-	"github.com/tychoish/grip/level"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 )
 
 const (

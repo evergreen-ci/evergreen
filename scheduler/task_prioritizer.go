@@ -6,7 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // TaskPrioritizer is responsible for taking in a slice of tasks, and ordering them

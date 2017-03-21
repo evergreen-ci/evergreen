@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type LocalCommand struct {

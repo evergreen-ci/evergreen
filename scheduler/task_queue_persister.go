@@ -3,7 +3,7 @@ package scheduler
 import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // TaskQueuePersister is responsible for taking a task queue for a particular distro

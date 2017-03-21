@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 type Runner struct{}

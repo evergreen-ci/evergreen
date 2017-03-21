@@ -19,7 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/tychoish/grip"
+	"github.com/mongodb/grip"
 )
 
 // Keys used for storing variables in request context with type safety.
