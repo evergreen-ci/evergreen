@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 	"gopkg.in/tylerb/graceful.v1"
 )
@@ -40,23 +41,22 @@ func init() {
 }
 
 func main() {
-	grip.SetName("ui-server")
-
 	settings := evergreen.GetSettingsOrExit()
-
-	if settings.Ui.LogFile == "" {
-		sender := send.MakeCallSiteConsoleLogger(2)
+	if settings.Ui.LogFile != "" {
+		sender, err := send.MakeFileLogger(settings.Ui.LogFile)
+		grip.CatchEmergencyFatal(err)
 		defer sender.Close()
 		grip.CatchEmergencyFatal(grip.SetSender(sender))
 	} else {
-		sender, err := send.MakeCallSiteFileLogger(settings.Ui.LogFile, 2)
-		grip.CatchEmergencyFatal(err)
+		sender := send.MakeNative()
 		defer sender.Close()
 		grip.CatchEmergencyFatal(grip.SetSender(sender))
 	}
 	evergreen.SetLegacyLogger()
+	grip.SetName("evg-ui-server")
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
+	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	defer util.RecoverAndLogStackTrace()
 

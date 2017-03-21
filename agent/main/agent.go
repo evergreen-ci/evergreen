@@ -10,11 +10,13 @@ import (
 	"time"
 
 	"github.com/codegangsta/negroni"
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
 )
 
@@ -56,6 +58,7 @@ func main() {
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
+	grip.Noticef(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
 	if err != nil {

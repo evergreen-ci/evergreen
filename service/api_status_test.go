@@ -12,7 +12,9 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -110,6 +112,51 @@ func TestConsistentTaskAssignment(t *testing.T) {
 					So(tar.HostRunningTasks, ShouldContain, "t1000")
 				})
 			})
+		})
+	})
+}
+
+func TestServiceStatusEndPoints(t *testing.T) {
+	testConfig := testutil.TestConfig()
+	testServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+	defer testServer.Close()
+
+	const url = "http://localhost:8181/api/2/status"
+
+	Convey("Service Status endpoints should report the status of the service", t, func() {
+		Convey("basic endpoint should have one key, that reports the build id", func() {
+			request, err := http.NewRequest("GET", url, nil)
+			So(err, ShouldBeNil)
+
+			resp, err := http.DefaultClient.Do(request)
+			So(err, ShouldBeNil)
+			So(resp.StatusCode, ShouldEqual, 200)
+			out := map[string]string{}
+
+			util.ReadJSONInto(resp.Body, &out)
+			So(len(out), ShouldEqual, 1)
+			_, ok := out["build_revision"]
+			So(ok, ShouldBeTrue)
+		})
+		Convey("auth endpoint should report extended information", func() {
+			request, err := http.NewRequest("GET", url, nil)
+			So(err, ShouldBeNil)
+			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
+
+			resp, err := http.DefaultClient.Do(request)
+			So(err, ShouldBeNil)
+			So(resp.StatusCode, ShouldEqual, 200)
+			out := map[string]interface{}{}
+
+			util.ReadJSONInto(resp.Body, &out)
+
+			So(len(out), ShouldEqual, 3)
+			for _, key := range []string{"build_revision", "sys_info", "pid"} {
+				_, ok := out[key]
+				So(ok, ShouldBeTrue)
+			}
+
 		})
 	})
 }

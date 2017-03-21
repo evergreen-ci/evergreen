@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/codegangsta/negroni"
@@ -460,6 +461,30 @@ func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the API server's home :)\n")
 }
 
+func (as *APIServer) serviceStatusWithAuth(w http.ResponseWriter, r *http.Request) {
+	out := struct {
+		BuildId    string              `json:"build_revision"`
+		SystemInfo *message.SystemInfo `json:"sys_info"`
+		Pid        int                 `json:"pid"`
+	}{
+		BuildId:    evergreen.BuildRevision,
+		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
+		Pid:        os.Getpid(),
+	}
+
+	as.WriteJSON(w, http.StatusOK, &out)
+}
+
+func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request) {
+	out := struct {
+		BuildId string `json:"build_revision"`
+	}{
+		BuildId: evergreen.BuildRevision,
+	}
+
+	as.WriteJSON(w, http.StatusOK, &out)
+}
+
 // GetTask loads the task attached to a request.
 func GetTask(r *http.Request) *task.Task {
 	if rv := context.Get(r, apiTaskKey); rv != nil {
@@ -791,6 +816,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	// Internal status
 	status := apiRootOld.PathPrefix("/status/").Subrouter()
 	status.HandleFunc("/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
+	status.HandleFunc("/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
 
 	// Hosts callback
 	host := r.PathPrefix("/host/{tag:[\\w_\\-\\@]+}/").Subrouter()
