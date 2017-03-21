@@ -1,0 +1,15 @@
+diff --git a/service/testdata/base_project.yaml b/service/testdata/base_project.yaml
+index 21d976cc..cbc21d3d 100644
+--- a/service/testdata/base_project.yaml
++++ b/service/testdata/base_project.yaml
+@@ -316,6 +316,10 @@ modules:
+   repo: git@github.com:evergreen-ci/render.git
+   prefix: recursive/clone
+   branch: master
++- name: evgHome
++  repo: git@github.com:evergreen-ci/evergreen.git
++  prefix: evergreen
++  branch: master
+ 
+ #######################################
+ # Buildvariants

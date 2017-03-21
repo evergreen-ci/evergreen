@@ -509,10 +509,10 @@ func (ac *APIClient) GetTestHistory(project, queryParams string, isCSV bool) (io
 }
 
 // GetPatchModules retrieves a list of modules available for a given patch.
-func (ac *APIClient) GetPatchModules(patchId string) ([]string, error) {
+func (ac *APIClient) GetPatchModules(patchId, projectId string) ([]string, error) {
 	var out []string
 
-	resp, err := ac.get(fmt.Sprintf("patches/%s/modules", patchId), nil)
+	resp, err := ac.get(fmt.Sprintf("patches/%s/%s/modules", patchId, projectId), nil)
 	if err != nil {
 		return out, err
 	}
@@ -522,17 +522,15 @@ func (ac *APIClient) GetPatchModules(patchId string) ([]string, error) {
 	}
 
 	data := struct {
-		Project string         `json:"project"`
-		Modules []model.Module `json:"modules"`
+		Project string   `json:"project"`
+		Modules []string `json:"modules"`
 	}{}
 
 	err = util.ReadJSONInto(resp.Body, &data)
 	if err != nil {
 		return out, err
 	}
+	out = data.Modules
 
-	for _, mod := range data.Modules {
-		out = append(out, mod.Name)
-	}
 	return out, nil
 }

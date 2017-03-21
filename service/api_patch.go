@@ -503,33 +503,52 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	projectId := vars["projectId"]
+
 	p, err := getPatchFromRequest(r)
 	if err != nil {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(p.Project)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting project ref with id %v: %v", p.Project, err))
+	projectRef, err := model.FindOneProjectRef(projectId)
+	if err != nil || projectRef == nil {
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			fmt.Errorf("Error getting project ref with id %v: %v", projectId, err))
 		return
 	}
 	project, err := model.FindProject("", projectRef)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting patch: %v", err))
+		as.LoggedError(w, r, http.StatusInternalServerError,
+			fmt.Errorf("Error getting patch: %v", err))
 		return
 	}
 	if project == nil {
-		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("can't find project: %v", p.Project))
+		as.LoggedError(w, r, http.StatusNotFound,
+			fmt.Errorf("can't find project: %v", p.Project))
 		return
 	}
 
 	data := struct {
-		Project string         `json:"project"`
-		Modules []model.Module `json:"modules"`
+		Project string   `json:"project"`
+		Modules []string `json:"modules"`
 	}{
-		Project: p.Project,
-		Modules: project.Modules,
+		Project: projectId,
+	}
+
+	mods := map[string]struct{}{}
+
+	for _, m := range project.Modules {
+		mods[m.Name] = struct{}{}
+	}
+
+	for _, m := range p.Patches {
+		mods[m.ModuleName] = struct{}{}
+	}
+
+	for m := range mods {
+		data.Modules = append(data.Modules, m)
 	}
 
 	as.WriteJSON(w, http.StatusOK, &data)

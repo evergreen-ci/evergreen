@@ -145,6 +145,7 @@ type SetModuleCommand struct {
 	GlobalOpts  *Options `no-flag:"true"`
 	Module      string   `short:"m" long:"module" description:"name of the module to set patch for"`
 	PatchId     string   `short:"i" description:"id of the patch to modify" required:"true" `
+	Project     string   `short:"p" long:"project" description:"project name"`
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
 	Large       bool     `long:"large" description:"enable submitting larger patches (>16MB)"`
 }
@@ -300,7 +301,7 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 
 	err = ac.UpdatePatchModule(smc.PatchId, smc.Module, diffData.fullPatch, diffData.base)
 	if err != nil {
-		mods, err := ac.GetPatchModules(smc.PatchId)
+		mods, err := ac.GetPatchModules(smc.PatchId, smc.ProjectId)
 		var msg string
 		if err != nil {
 			msg = fmt.Sprintf("could not find module named %s or retrieve list of modules",

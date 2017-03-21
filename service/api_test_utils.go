@@ -10,6 +10,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
 )
 
@@ -36,6 +37,7 @@ func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugi
 	}
 
 	apiServer, err := NewAPIServer(settings, plugins)
+	apiServer.UserManager = testutil.MockUserManager{}
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -26,7 +27,7 @@ func TestProjectRoutes(t *testing.T) {
 	uis := UIServer{
 		RootURL:     projectTestConfig.Ui.Url,
 		Settings:    *projectTestConfig,
-		UserManager: MockUserManager{},
+		UserManager: serviceutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
 	uis.Render = render.New(render.Options{

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
+	serviceutil "github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
@@ -244,7 +245,7 @@ func TestGetVersionInfo(t *testing.T) {
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
 		Settings:    *versionTestConfig,
-		UserManager: MockUserManager{},
+		UserManager: serviceutil.MockUserManager{},
 	}
 	home := evergreen.FindEvergreenHome()
 
@@ -441,7 +442,7 @@ func TestActivateVersion(t *testing.T) {
 	uis := UIServer{
 		RootURL:     versionTestConfig.Ui.Url,
 		Settings:    *versionTestConfig,
-		UserManager: MockUserManager{},
+		UserManager: serviceutil.MockUserManager{},
 	}
 
 	home := evergreen.FindEvergreenHome()
