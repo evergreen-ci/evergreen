@@ -230,6 +230,8 @@ func (mj *mockJIRAHandler) CreateTicket(fields map[string]interface{}) (
 	return &thirdparty.JiraCreateTicketResponse{Key: mj.proj + "-1"}, nil
 }
 
+func (mj *mockJIRAHandler) JiraHost() string { return "mock" }
+
 func TestJIRADelivery(t *testing.T) {
 	Convey("With a failed task context and alertConf", t, func() {
 		ui := "http://evergreen.ui"

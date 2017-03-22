@@ -95,6 +95,9 @@ type JiraHandler struct {
 	Password   string
 }
 
+// JiraHost returns the hostname of the jira service as configured.
+func (jiraHandler *JiraHandler) JiraHost() string { return jiraHandler.JiraServer }
+
 // CreateTicket takes a map of fields to initialize a JIRA ticket with. Returns a response containing the
 // new ticket's key, id, and API URL. See the JIRA API documentation for help.
 func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*JiraCreateTicketResponse, error) {

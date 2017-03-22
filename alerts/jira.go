@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
 
@@ -25,6 +26,14 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/commit/{{.Version.Revision}}
 {{range .Tests}}*{{.Name}}* - [Logs|{{.URL}}] | [History|{{.HistoryURL}}]
 {{end}}
 `
+const (
+	jiraFailingTasksField   = "customfield_12950"
+	jiraFailingVariantField = "customfield_14277"
+)
+
+// supportedJiraProjects are all of the projects, by name that we
+// expect to be compatible with the custom fields above.
+var supportedJiraProjects = []string{"BFG", "BF", "EVG", "MAKE"}
 
 // DescriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var DescriptionTemplate = template.Must(template.New("Desc").Parse(DescriptionTemplateString))
@@ -39,6 +48,7 @@ type jiraTestFailure struct {
 // jiraCreator is an interface for types that can create JIRA tickets.
 type jiraCreator interface {
 	CreateTicket(fields map[string]interface{}) (*thirdparty.JiraCreateTicketResponse, error)
+	JiraHost() string
 }
 
 // jiraDeliverer is an implementation of Deliverer that files JIRA tickets
@@ -49,6 +59,17 @@ type jiraDeliverer struct {
 	handler   jiraCreator
 }
 
+// isXgenProjBF is a gross function to figure out if the jira instance
+// and project are correctly configured for the specified kind of
+// requests/issue metadata.
+func isXgenProjBF(host, project string) bool {
+	if !strings.Contains(host, "mongodb") {
+		return false
+	}
+
+	return util.SliceContains(supportedJiraProjects, project)
+}
+
 // Deliver posts the alert defined by the AlertContext to JIRA.
 func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) error {
 	var err error
@@ -57,6 +78,12 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	request["issuetype"] = map[string]string{"name": jd.issueType}
 	request["summary"] = getSummary(ctx)
 	request["description"], err = getDescription(ctx, jd.uiRoot)
+
+	if isXgenProjBF(jd.handler.JiraHost(), jd.project) {
+		request[jiraFailingTasksField] = []string{ctx.Task.DisplayName}
+		request[jiraFailingVariantField] = []string{ctx.Task.BuildVariant}
+	}
+
 	if err != nil {
 		return fmt.Errorf("error creating description: %v", err)
 	}
