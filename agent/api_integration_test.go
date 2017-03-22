@@ -275,7 +275,6 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			testAgent.RunTask()
 			printLogsForTask(testTask.Id)
 			distro, err := testAgent.GetDistro()
-
 			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
 
 			h := md5.New()

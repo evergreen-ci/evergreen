@@ -161,7 +161,7 @@ func (self *TaskRunner) processDistro(distroId string) error {
 			grip.Infof("Task %v successfully kicked off on host %v", t.Id, nextHost.Id)
 
 			// now update the host's running task/agent revision fields
-			// accordingly
+			// accordingly.
 			err = nextHost.SetRunningTask(t.Id, agentRevision, time.Now())
 			grip.ErrorWhenf(err != nil, "error updating running task %s on host %s: %+v",
 				t.Id, nextHost.Id, err)

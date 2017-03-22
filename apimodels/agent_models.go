@@ -28,6 +28,7 @@ type TaskEndDetails struct {
 
 // TaskEndResponse contains data sent by the API server to the agent - in
 // response to a request with TaskEndDetail.
+// TODO: This should be taken out when we transition to the new api route
 type TaskEndResponse struct {
 	TaskId     string `json:"task_id,omitempty"`
 	TaskSecret string `json:"task_secret,omitempty"`
@@ -41,5 +42,12 @@ type ExpansionVars map[string]string
 // NextTaskResponse represents the response sent back when an agent asks for a next task
 type NextTaskResponse struct {
 	TaskId     string `json:"task_id,omitempty"`
+	TaskSecret string `json:"task_secret,omitempty"`
 	ShouldExit bool   `json:"should_exit,omitempty"`
+}
+
+// EndTaskResponse is what is returned when the task ends
+type EndTaskResponse struct {
+	ShouldExit bool   `json:"should_exit,omitempty"`
+	Message    string `json:"should_exit,omitempty"`
 }

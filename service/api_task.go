@@ -54,19 +54,12 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fall back to checking host field on task doc
-	if h == nil && len(t.HostId) > 0 {
-		grip.Debugln("Falling back to host field of task:", t.Id)
-		h, err = host.FindOne(host.ById(t.HostId))
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		h.SetRunningTask(t.Id, h.AgentRevision, h.TaskDispatchTime)
-	}
-
 	if h == nil {
 		message := fmt.Errorf("No host found running task %v", t.Id)
+		if t.HostId != "" {
+			message = fmt.Errorf("No host found running task %s but task is said to be running on %s",
+				t.Id, t.HostId)
+		}
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -168,6 +161,114 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	// construct and return the appropriate response for the agent
 	as.taskFinished(w, t, finishTime)
+}
+
+// validateTaskEndDetails returns true if the task is finished or undispatched
+func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
+	return details.Status == evergreen.TaskSucceeded ||
+		details.Status == evergreen.TaskFailed ||
+		details.Status == evergreen.TaskUndispatched
+}
+
+// TODO: are there any other reasons why agent would exit?
+// checkHostHealth creates a task response that is sent back to the agent after the task ends.
+func checkHostHealth(h *host.Host) apimodels.EndTaskResponse {
+	resp := apimodels.EndTaskResponse{
+		ShouldExit: false,
+	}
+	if h.Status == evergreen.HostDecommissioned || h.Status == evergreen.HostQuarantined {
+		resp.ShouldExit = true
+		resp.Message = fmt.Sprintf("host %s is in state %s and agent should exit", h.Id, h.Status)
+	}
+	return resp
+}
+
+// NewEndTask creates test results from the request and the project config.
+// It then acquires the lock, and with it, marks tasks as finished or inactive if aborted.
+// If the task is a patch, it will alert the users based on failures
+// It also updates the expected task duration of the task for scheduling.
+// NOTE this should eventually become the default code path.
+func (as *APIServer) newEndTask(w http.ResponseWriter, r *http.Request) {
+	finishTime := time.Now()
+
+	t := MustHaveTask(r)
+	currentHost := MustHaveHost(r)
+
+	details := &apimodels.TaskEndDetail{}
+	if err := util.ReadJSONInto(r.Body, details); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Check that finishing status is a valid constant
+	if !validateTaskEndDetails(details) {
+		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
+		as.LoggedError(w, r, http.StatusBadRequest, msg)
+		return
+	}
+
+	projectRef, err := model.FindOneProjectRef(t.Project)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
+	if projectRef == nil {
+		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("empty projectRef for task"))
+		return
+	}
+
+	project, err := model.FindProject("", projectRef)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
+	// clear the running task on the host now that the task has finished
+	if err := currentHost.ClearRunningTask(t.Id, time.Now()); err != nil {
+		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
+		grip.Errorf(message.Error())
+		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		return
+	}
+
+	// mark task as finished
+	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details,
+		project, projectRef.DeactivatePrevious)
+	if err != nil {
+		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
+		as.LoggedError(w, r, http.StatusInternalServerError, message)
+		return
+	}
+	// the task was aborted if it is still in undispatched.
+	// the active state should be inactive.
+	if details.Status == evergreen.TaskUndispatched {
+		if t.Activated {
+			grip.Warningf("task %v is active and undispatched after being marked as finished", t.Id)
+			return
+		}
+		grip.Infof("task %v has been aborted and will not run", t.Id)
+		return
+	}
+
+	// task cost calculations have no impact on task results, so do them in their own goroutine
+	go as.updateTaskCost(t, currentHost, finishTime)
+
+	if t.Requester != evergreen.PatchVersionRequester {
+		grip.Infoln("Processing alert triggers for task", t.Id)
+		err := alerts.RunTaskFailureTriggers(t.Id)
+		grip.ErrorWhenf(err != nil, "processing alert triggers for task %s: %+v", t.Id, err)
+	} else {
+		//TODO(EVG-223) process patch-specific triggers
+	}
+
+	// update the bookkeeping entry for the task
+	err = bookkeeping.UpdateExpectedDuration(t, t.TimeTaken)
+	if err != nil {
+		grip.Errorln("Error updating expected duration:", err)
+	}
+	resp := checkHostHealth(currentHost)
+	as.WriteJSON(w, http.StatusOK, resp)
+	// log the task as finished
+	grip.Infof("Successfully marked task %s as finished", t.Id)
 }
 
 // taskFinished constructs the appropriate response for each markEnd
@@ -363,6 +464,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 		if !ok {
 			continue
 		}
+		// TODO: figure out where task secret is in this.
 		return nextTask, nil
 	}
 	return nil, nil
@@ -399,23 +501,18 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		// if the task is activated return that task
 		if t.Activated {
 			response.TaskId = t.Id
+			response.TaskSecret = t.Secret
 			as.WriteJSON(w, http.StatusOK, response)
 			return
 		}
 		// the task is not activated so the host's running task should be unset
 		// so it can retrieve a new task.
-		ok, err := h.UpdateRunningTask(h.LastTaskCompleted, "", time.Now())
-		if err != nil {
+		if err := h.ClearRunningTask(h.LastTaskCompleted, time.Now()); err != nil {
 			grip.Error(err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
 		}
-		if !ok {
-			err = fmt.Errorf("error unsetting the running task for host %v", h.Id)
-			grip.Error(err)
-			as.WriteJSON(w, http.StatusInternalServerError, err)
-			return
-		}
+
 		// return an empty
 		grip.Infof("Unset running task field for inactive task %s on host %s", t.Id, h.Id)
 		as.WriteJSON(w, http.StatusOK, response)
@@ -460,6 +557,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.TaskId = nextTask.Id
+	response.TaskSecret = nextTask.Secret
 	grip.Infof("assigned task %s to host %s", nextTask.Id, h.Id)
 	as.WriteJSON(w, http.StatusOK, response)
 }
