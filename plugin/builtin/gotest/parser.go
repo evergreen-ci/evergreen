@@ -46,7 +46,7 @@ type Parser interface {
 
 	// Results returns an array of test results. Parse() must be called
 	// before this.
-	Results() []TestResult
+	Results() []*TestResult
 }
 
 // This test result implementation maps more idiomatically to Go's test output
@@ -79,11 +79,11 @@ type TestResult struct {
 // This should cover regular go tests as well as those written with the
 // popular testing packages goconvey and gocheck.
 type VanillaParser struct {
-	Suite   string
-	logs    []string
-	results []TestResult
+	Suite string
+	logs  []string
 	// map for storing tests during parsing
-	tests map[string]TestResult
+	tests map[string]*TestResult
+	order []string
 }
 
 // Logs returns an array of logs captured during test execution.
@@ -92,14 +92,20 @@ func (vp *VanillaParser) Logs() []string {
 }
 
 // Results returns an array of test results parsed during test execution.
-func (vp *VanillaParser) Results() []TestResult {
-	return vp.results
+func (vp *VanillaParser) Results() []*TestResult {
+	out := []*TestResult{}
+
+	for _, name := range vp.order {
+		out = append(out, vp.tests[name])
+	}
+
+	return out
 }
 
 // Parse reads in a test's output and stores the results and logs.
 func (vp *VanillaParser) Parse(testOutput io.Reader) error {
 	testScanner := bufio.NewScanner(testOutput)
-	vp.tests = map[string]TestResult{}
+	vp.tests = map[string]*TestResult{}
 	for testScanner.Scan() {
 		if err := testScanner.Err(); err != nil {
 			return fmt.Errorf("error reading test output: %v", err)
@@ -121,9 +127,9 @@ func (vp *VanillaParser) handleLine(line string) error {
 	// https://code.google.com/p/go/issues/detail?id=2981
 	switch {
 	case startRegex.MatchString(line):
-		return vp.handleStart(line, startRegex)
+		return vp.handleStart(line, startRegex, true)
 	case gocheckStartRegex.MatchString(line):
-		return vp.handleStart(line, gocheckStartRegex)
+		return vp.handleStart(line, gocheckStartRegex, false)
 	case endRegex.MatchString(line):
 		return vp.handleEnd(line, endRegex)
 	case gocheckEndRegex.MatchString(line):
@@ -139,31 +145,45 @@ func (vp *VanillaParser) handleEnd(line string, rgx *regexp.Regexp) error {
 		return fmt.Errorf("error parsing end line '%v': %v", line, err)
 	}
 	t := vp.tests[name]
-	if t.Name == "" {
+	if t == nil || t.Name == "" {
 		// if there's no existing test, just stub one out
 		t = vp.newTestResult(name)
+		vp.order = append(vp.order, name)
+		vp.tests[name] = t
 	}
 	t.Status = status
 	t.RunTime = duration
 	t.EndLine = len(vp.logs)
-	vp.results = append(vp.results, t)
+
 	return nil
 }
 
 // handleStart gets the data from a start line and stores it.
-func (vp *VanillaParser) handleStart(line string, rgx *regexp.Regexp) error {
+func (vp *VanillaParser) handleStart(line string, rgx *regexp.Regexp, defaultFail bool) error {
 	name, err := startInfoFromLogLine(line, rgx)
 	if err != nil {
 		return fmt.Errorf("error parsing start line '%v': %v", line, err)
 	}
-	vp.tests[name] = vp.newTestResult(name)
+	t := vp.newTestResult(name)
+
+	// tasks should start out failed unless they're marked
+	// passing/skipped, although gocheck can't support this
+	if defaultFail {
+		t.Status = FAIL
+	} else {
+		t.Status = PASS
+	}
+
+	vp.tests[name] = t
+	vp.order = append(vp.order, name)
+
 	return nil
 }
 
 // newTestResult populates a test result type with the given
 // test name, current suite, and current line number.
-func (vp *VanillaParser) newTestResult(name string) TestResult {
-	return TestResult{
+func (vp *VanillaParser) newTestResult(name string) *TestResult {
+	return &TestResult{
 		Name:      name,
 		SuiteName: vp.Suite,
 		StartLine: len(vp.logs),

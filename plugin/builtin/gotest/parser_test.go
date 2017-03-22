@@ -76,7 +76,7 @@ func TestParserFunctionality(t *testing.T) {
 				So(len(logs), ShouldEqual, 18)
 			})
 
-			Convey("and there should be one test result", func() {
+			Convey("and there should be two test results", func() {
 				results := parser.Results()
 				So(len(results), ShouldEqual, 2)
 
@@ -118,21 +118,33 @@ func TestParserFunctionality(t *testing.T) {
 				So(len(results), ShouldEqual, 3)
 
 				Convey("with the proper fields matching the original log file", func() {
-					So(results[0].Name, ShouldEqual, "MyTestName.SetUpTest")
-					So(results[0].Status, ShouldEqual, PASS)
+					So(results[1].Name, ShouldEqual, "MyTestName.SetUpTest")
+					So(results[1].Status, ShouldEqual, PASS)
 					rTime, _ := time.ParseDuration("0.576s")
-					So(results[0].RunTime, ShouldEqual, rTime)
-					So(results[0].StartLine, ShouldEqual, 2)
-					So(results[0].EndLine, ShouldEqual, 4)
-					So(results[0].SuiteName, ShouldEqual, "gocheck_test")
+					So(results[1].RunTime, ShouldEqual, rTime)
+					So(results[1].StartLine, ShouldEqual, 2)
+					So(results[1].EndLine, ShouldEqual, 4)
+					So(results[1].SuiteName, ShouldEqual, "gocheck_test")
 				})
 			})
 		})
 	})
+	Convey("un-terminated tests are failures", t, func() {
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "3_simple.log"))
+		testutil.HandleTestingErr(err, t, "couldn't open log file")
+		parser = &VanillaParser{Suite: "gocheck_test"}
+		err = parser.Parse(bytes.NewBuffer(logdata))
+		So(err, ShouldBeNil)
+
+		results := parser.Results()
+		So(len(results), ShouldEqual, 1)
+		So(results[0].Name, ShouldEqual, "TestFailures")
+		So(results[0].Status, ShouldEqual, FAIL)
+	})
 
 }
 
-func matchResultWithLog(tr TestResult, logs []string) {
+func matchResultWithLog(tr *TestResult, logs []string) {
 	startLine := logs[tr.StartLine-1]
 	endLine := logs[tr.EndLine-1]
 	So(startLine, ShouldContainSubstring, tr.Name)

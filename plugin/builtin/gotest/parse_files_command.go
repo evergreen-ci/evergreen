@@ -82,7 +82,7 @@ func (pfCmd *ParseFilesCommand) Execute(pluginLogger plugin.Logger,
 
 	// ship all of the test logs off to the server
 	pluginLogger.LogTask(slogger.INFO, "Sending test logs to server...")
-	allResults := []TestResult{}
+	allResults := []*TestResult{}
 	for idx, log := range logs {
 
 		logId := ""
@@ -148,9 +148,9 @@ func (pfCmd *ParseFilesCommand) AllOutputFiles() ([]string, error) {
 // test logs and test results found within.
 func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 	pluginLogger plugin.Logger, taskConfig *model.TaskConfig) ([]model.TestLog,
-	[][]TestResult, error) {
+	[][]*TestResult, error) {
 
-	var results [][]TestResult
+	var results [][]*TestResult
 	var logs []model.TestLog
 
 	// now, open all the files, and parse the test results
@@ -205,7 +205,7 @@ func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 
 // ToModelTestResults converts the implementation of TestResults native
 // to the gotest plugin to the implementation used by MCI tasks
-func ToModelTestResults(t *task.Task, results []TestResult) task.TestResults {
+func ToModelTestResults(t *task.Task, results []*TestResult) task.TestResults {
 	var modelResults []task.TestResult
 	for _, res := range results {
 		// start and end are times that we don't know,

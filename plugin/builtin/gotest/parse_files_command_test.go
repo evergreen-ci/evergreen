@@ -101,7 +101,7 @@ func TestParseOutputFiles(t *testing.T) {
 
 func TestResultConversion(t *testing.T) {
 	Convey("With a set of results", t, func() {
-		results := []TestResult{
+		results := []*TestResult{
 			{
 				Name:    "TestNothing",
 				RunTime: 244 * time.Millisecond,
