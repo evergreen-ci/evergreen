@@ -354,8 +354,10 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		displayName := "testName"
 		b := &build.Build{
 			Id:      "buildtest",
-			Status:  evergreen.BuildStarted,
 			Version: "abc",
+			Tasks: []build.TaskCache{
+				{Id: "testone"},
+			},
 		}
 		v := &version.Version{
 			Id:     b.Version,
@@ -367,18 +369,31 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			Activated:   false,
 			BuildId:     b.Id,
 			Project:     "sample",
-			Status:      evergreen.TaskSucceeded,
 		}
+		p := &Project{
+			Identifier: "sample",
+		}
+		detail := &apimodels.TaskEndDetail{
+			Status: evergreen.TaskSucceeded,
+		}
+
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
 
 		Convey("task should not fail if there are no failed test", func() {
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+			buildCache, err := build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(buildCache.Status, ShouldEqual, evergreen.TaskSucceeded)
+			for _, t := range buildCache.Tasks {
+				So(t.Status, ShouldEqual, evergreen.TaskSucceeded)
+			}
+
 		})
 
 		Convey("task should fail if there is one failed test", func() {
@@ -387,13 +402,20 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 					Status: evergreen.TestFailedStatus,
 				},
 			})
+
 			So(err, ShouldBeNil)
 
-			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
+			buildCache, err := build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
+			for _, t := range buildCache.Tasks {
+				So(t.Status == evergreen.TaskFailed || t.Status == "", ShouldBeTrue)
+			}
 		})
 	})
 }

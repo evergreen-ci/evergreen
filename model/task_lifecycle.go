@@ -260,7 +260,6 @@ func doStepback(t *task.Task, detail *apimodels.TaskEndDetail, deactivatePreviou
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
 func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail, p *Project, deactivatePrevious bool) error {
-
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return err
@@ -269,22 +268,30 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		return fmt.Errorf("Task not found for taskId: %v", taskId)
 	}
 
-	if t.Status == detail.Status {
-		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
-		return nil
-	}
-
-	t.Details = *detail
-
 	for _, result := range t.TestResults {
 		if result.Status == evergreen.TestFailedStatus {
+			t.Status = evergreen.TaskFailed
+			detail.Status = evergreen.TaskFailed
 			if err = t.MarkFailed(); err != nil {
 				grip.Errorf("encountered problem marking task '%s' as failed: %+v",
 					t.Id, err)
 				return err
 			}
+
+			err = UpdateBuildAndVersionStatusForTask(t.Id)
+			if err != nil {
+				return fmt.Errorf("Error updating build status (1): %v", err.Error())
+			}
+
 			break
 		}
+	}
+
+	t.Details = *detail
+
+	if t.Status == detail.Status {
+		grip.Warningf("Tried to mark task %s as finished twice", t.Id)
+		return nil
 	}
 
 	err = t.MarkEnd(caller, finishTime, detail)
@@ -388,6 +395,19 @@ processBuildTasksLoop:
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
 			finishedTasks++
+
+		processTaskTestResults:
+			for _, result := range t.TestResults {
+				if result.Status == evergreen.TestFailedStatus {
+					//					t.Status = evergreen.TaskFailed
+					if err = t.MarkFailed(); err != nil {
+						grip.Errorf("encountered problem marking task '%s' as failed: %+v",
+							t.Id, err)
+						return err
+					}
+					break processTaskTestResults
+				}
+			}
 
 			// if it was a compile task, mark the build status accordingly
 			if t.DisplayName == evergreen.CompileStage {
