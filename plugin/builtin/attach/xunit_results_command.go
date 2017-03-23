@@ -10,7 +10,9 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/attach/xunit"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 // AttachXUnitResultsCommand reads in an xml file of xunit
@@ -18,64 +20,73 @@ import (
 type AttachXUnitResultsCommand struct {
 	// File describes the relative path of the file to be sent. Supports globbing.
 	// Note that this can also be described via expansions.
-	File string `mapstructure:"file" plugin:"expand"`
+	File  string   `mapstructure:"file" plugin:"expand"`
+	Files []string `mapstructure:"files" plugin:"expand"`
 }
 
-func (self *AttachXUnitResultsCommand) Name() string {
+func (c *AttachXUnitResultsCommand) Name() string {
 	return AttachXunitResultsCmd
 }
 
-func (self *AttachXUnitResultsCommand) Plugin() string {
+func (c *AttachXUnitResultsCommand) Plugin() string {
 	return AttachPluginName
 }
 
 // ParseParams reads and validates the command parameters. This is required
 // to satisfy the 'Command' interface
-func (self *AttachXUnitResultsCommand) ParseParams(
+func (c *AttachXUnitResultsCommand) ParseParams(
 	params map[string]interface{}) error {
-	if err := mapstructure.Decode(params, self); err != nil {
-		return fmt.Errorf("error decoding '%v' params: %v", self.Name(), err)
+	if err := mapstructure.Decode(params, c); err != nil {
+		return fmt.Errorf("error decoding '%v' params: %v", c.Name(), err)
 	}
-	if err := self.validateParams(); err != nil {
-		return fmt.Errorf("error validating '%v' params: %v", self.Name(), err)
+
+	if err := c.validateParams(); err != nil {
+		return fmt.Errorf("error validating '%v' params: %v", c.Name(), err)
 	}
+
 	return nil
 }
 
 // validateParams is a helper function that ensures all
 // the fields necessary for attaching an xunit results are present
-func (self *AttachXUnitResultsCommand) validateParams() (err error) {
-	if self.File == "" {
-		return fmt.Errorf("file cannot be blank")
+func (c *AttachXUnitResultsCommand) validateParams() (err error) {
+	if c.File == "" && len(c.Files) == 0 {
+		return errors.New("must specify at least one file")
 	}
 	return nil
 }
 
 // Expand the parameter appropriately
-func (self *AttachXUnitResultsCommand) expandParams(
-	taskConfig *model.TaskConfig) (err error) {
-
-	self.File, err = taskConfig.Expansions.ExpandString(self.File)
-	if err != nil {
-		return fmt.Errorf("error expanding path '%v': %v", self.File, err)
+func (c *AttachXUnitResultsCommand) expandParams(conf *model.TaskConfig) error {
+	if c.File != "" {
+		c.Files = append(c.Files, c.File)
 	}
-	return nil
+
+	var err error
+	catcher := grip.NewCatcher()
+
+	for idx, f := range c.Files {
+		c.Files[idx], err = conf.Expansions.ExpandString(f)
+		catcher.Add(err)
+	}
+
+	return errors.Wrapf(catcher.Resolve(), "problem expanding paths")
 }
 
 // Execute carries out the AttachResultsCommand command - this is required
 // to satisfy the 'Command' interface
-func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
+func (c *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator,
 	taskConfig *model.TaskConfig,
 	stop chan bool) error {
 
-	if err := self.expandParams(taskConfig); err != nil {
+	if err := c.expandParams(taskConfig); err != nil {
 		return err
 	}
 
 	errChan := make(chan error)
 	go func() {
-		errChan <- self.parseAndUploadResults(taskConfig, pluginLogger, pluginCom)
+		errChan <- c.parseAndUploadResults(taskConfig, pluginLogger, pluginCom)
 	}()
 
 	select {
@@ -90,22 +101,27 @@ func (self *AttachXUnitResultsCommand) Execute(pluginLogger plugin.Logger,
 
 // getFilePaths is a helper function that returns a slice of all absolute paths
 // which match the given file path parameters.
-func getFilePaths(workDir string, file string) ([]string, error) {
-	paths, err := filepath.Glob(filepath.Join(workDir, file))
-	if err != nil {
-		return nil, fmt.Errorf("file specified an incorrect pattern: '%v'", err)
+func getFilePaths(workDir string, files []string) ([]string, error) {
+	catcher := grip.NewCatcher()
+	out := []string{}
+
+	for _, fileSpec := range files {
+		paths, err := filepath.Glob(filepath.Join(workDir, fileSpec))
+		catcher.Add(err)
+		out = append(out, paths...)
 	}
-	return paths, nil
+
+	return out, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
 }
 
-func (self *AttachXUnitResultsCommand) parseAndUploadResults(
+func (c *AttachXUnitResultsCommand) parseAndUploadResults(
 	taskConfig *model.TaskConfig, pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator) error {
 	tests := []task.TestResult{}
 	logs := []*model.TestLog{}
 	logIdxToTestIdx := []int{}
 
-	reportFilePaths, err := getFilePaths(taskConfig.WorkDir, self.File)
+	reportFilePaths, err := getFilePaths(taskConfig.WorkDir, c.Files)
 	if err != nil {
 		return err
 	}
