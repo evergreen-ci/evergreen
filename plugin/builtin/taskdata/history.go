@@ -1,6 +1,7 @@
 package taskdata
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -18,6 +19,9 @@ func GetTaskHistory(t *task.Task, name string) ([]TaskJSON, error) {
 		t2, err = t.FindTaskOnBaseCommit()
 		if err != nil {
 			return nil, err
+		}
+		if t2 == nil {
+			return nil, errors.New("could not find task on base commit")
 		}
 		t.RevisionOrderNumber = t2.RevisionOrderNumber
 	}
