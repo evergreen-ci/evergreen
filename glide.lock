@@ -77,3 +77,5 @@ imports:
     version: 87a2cff6c2601f69429f336067d1deb7f713d1c6
   - name: github.com/mongodb/grip
     version: 5225ff0b40e7a9500e76f101e7a1bdef741619a0
+  - name: github.com/pkg/errors
+    version: ff09b135c25aae272398c51a07235b90a75aa4f0
