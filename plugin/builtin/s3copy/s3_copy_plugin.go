@@ -19,6 +19,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -84,6 +85,9 @@ type s3CopyFile struct {
 
 	//DisplayName is the name of the file
 	DisplayName string `mapstructure:"display_name" plugin:"expand"`
+
+	// Optional, when true suppresses the error state for the file.
+	Optional bool `mapstructure:"optional"`
 }
 
 // s3Loc is a format for describing the location of a file in
@@ -255,15 +259,32 @@ func (scc *S3CopyCommand) S3Copy(taskConfig *model.TaskConfig,
 		if resp != nil {
 			defer resp.Body.Close()
 		}
+
 		if resp != nil && resp.StatusCode != http.StatusOK {
 			body, _ := ioutil.ReadAll(resp.Body)
-			return fmt.Errorf("S3 push copy failed (%v): %v",
+			err := fmt.Errorf("S3 push copy failed (%v): %v",
 				resp.StatusCode, string(body))
+			if s3CopyFile.Optional {
+				pluginLogger.LogExecution(slogger.ERROR,
+					"ignoring optional file, which encountered error: %+v",
+					err.Error())
+				continue
+			}
+
+			return err
 		}
 		if err != nil {
 			body, _ := ioutil.ReadAll(resp.Body)
-			return fmt.Errorf("S3 push copy failed (%v): %v",
+			err = errors.Wrapf(err, "S3 push copy failed (%v): %v",
 				resp.StatusCode, string(body))
+			if s3CopyFile.Optional {
+				pluginLogger.LogExecution(slogger.ERROR,
+					"ignoring optional file, which encountered error: %+v",
+					err.Error())
+				continue
+			}
+
+			return err
 		}
 		pluginLogger.LogExecution(slogger.INFO, "API push copy call succeeded")
 		err = scc.AttachTaskFiles(pluginLogger, pluginCom, s3CopyReq)
