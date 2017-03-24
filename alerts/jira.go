@@ -27,13 +27,14 @@ Commit: [diff|https://github.com/{{.Project.Owner}}/commit/{{.Version.Revision}}
 {{end}}
 `
 const (
-	jiraFailingTasksField   = "customfield_12950"
-	jiraFailingVariantField = "customfield_14277"
+	jiraFailingTasksField     = "customfield_12950"
+	jiraFailingVariantField   = "customfield_14277"
+	jiraEvergreenProjectField = "customfield_14278"
 )
 
 // supportedJiraProjects are all of the projects, by name that we
 // expect to be compatible with the custom fields above.
-var supportedJiraProjects = []string{"BFG", "BF", "EVG", "MAKE"}
+var supportedJiraProjects = []string{"BFG", "BF", "EVG", "MAKE", "BUILD"}
 
 // DescriptionTemplate is filled to create a JIRA alert ticket. Panics at start if invalid.
 var DescriptionTemplate = template.Must(template.New("Desc").Parse(DescriptionTemplateString))
@@ -82,13 +83,14 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	if isXgenProjBF(jd.handler.JiraHost(), jd.project) {
 		request[jiraFailingTasksField] = []string{ctx.Task.DisplayName}
 		request[jiraFailingVariantField] = []string{ctx.Task.BuildVariant}
+		request[jiraEvergreenProjectField] = []string{ctx.ProjectRef.Identifier}
 	}
 
 	if err != nil {
 		return fmt.Errorf("error creating description: %v", err)
 	}
-	grip.Infof("Creating '%v' JIRA ticket in %v for failure %v",
-		jd.issueType, jd.project, ctx.Task.Id)
+	grip.Infof("Creating '%v' JIRA ticket in %v for failure %v in project %s",
+		jd.issueType, jd.project, ctx.Task.Id, ctx.ProjectRef.Identifier)
 	result, err := jd.handler.CreateTicket(request)
 	if err != nil {
 		return fmt.Errorf("error creating JIRA ticket: %v", err)
