@@ -216,7 +216,7 @@ tasks:
     tags: ["nodb", "test"]
     name: test-hostutil
   - <<: *run-go-test-suite
-    tags: ["nodb", "test", "burn_in"]
+    tags: ["nodb", "test"]
     name: test-remote
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -249,7 +249,7 @@ tasks:
     tags: ["db", "test"]
     name: test-cloud-providers
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "burn_in"]
+    tags: ["db", "test"]
     name: test-cloud-providers-ec2
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -345,7 +345,7 @@ tasks:
     tags: ["nodb", "race"]
     name: race-hostutil
   - <<: *run-go-test-suite
-    tags: ["nodb", "race", "burn_in"]
+    tags: ["nodb", "race"]
     name: race-remote
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
@@ -369,7 +369,7 @@ tasks:
     tags: ["db", "race"]
     name: race-db
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "burn_in"]
+    tags: ["db", "race"]
     name: race-cloud-providers
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
@@ -464,14 +464,14 @@ tasks:
 
 
 buildvariants:
-  - name: rhel62
-    display_name: RHEL 6.2
+  - name: ubuntu1604
+    display_name: Ubuntu 16.04
     run_on:
-      - rhel62-test
-      - rhel62-small
+      - ubuntu1604-test
+      - ubuntu1604-build
     expansions:
       build_env: "GOROOT=/opt/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
-      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
+      mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1604-3.2.9.tgz
     tasks:
       - name: "dist"
       - name: ".test"
@@ -479,12 +479,13 @@ buildvariants:
     display_name: Race Detector
     run_on:
       - archlinux-test
+      - archlinux-build
     expansions:
       build_env: "EVERGREEN_ALL=true"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
     tasks:
       - name: "dist-race"
-      - name: ".race !.burn_in"
+      - name: ".race"
       - name: ".report"
   - name: osx
     display_name: OSX
@@ -495,21 +496,26 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
     tasks:
       - name: "dist"
-      - name: ".test !.burn_in"
+      - name: ".test"
   - name: windows
     display_name: Windows
     run_on:
-      - windows-64-vs2015-small
-      - windows-64-vs2013-test
+      - windows-64-vs2010-compile
       - windows-64-vs2010-test
+      - windows-64-vs2013-compile
+      - windows-64-vs2013-test
+      - windows-64-vs2015-compile
+      - windows-64-vs2015-large
+      - windows-64-vs2015-small
+      - windows-64-vs2015-test
     expansions:
-      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes EVERGREEN_ALL=true"
+      build_env: "GOROOT=c:/go DISABLE_COVERAGE=yes"
       mongodb_url: https://fastdl.mongodb.org/win32/mongodb-win32-x86_64-2008plus-3.2.9.zip
       extension: ".exe"
       archiveExt: ".zip"
     tasks:
       - name: "dist"
-      - name: ".nodb .test !.burn_in"
+      - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
   - name: rhel62-gccgo
@@ -527,10 +533,10 @@ buildvariants:
     run_on:
       - rhel71-power8-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-ppc64le-enterprise-rhel71-3.3.12.tgz
     tasks:
-      - name: ".nodb .test !.burn_in"
+      - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
   - name: rhel71-s390x
@@ -538,13 +544,12 @@ buildvariants:
     run_on:
       - rhel72-zseries-test
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-s390x-enterprise-rhel72-3.3.12.tgz
     tasks:
-      - name: ".nodb .test !.burn_in"
+      - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
-
   - name: ubuntu1604-arm64
     display_name: "Ubuntu 16.04 arm64"
     run_on:
@@ -553,6 +558,6 @@ buildvariants:
       build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
       mongodb_url: http://downloads.10gen.com/linux/mongodb-linux-arm64-enterprise-ubuntu1604-3.3.12.tgz
     tasks:
-      - name: ".nodb .test !.burn_in"
+      - name: ".nodb .test"
       - name: ".agent .test"
       - name: ".cli .test"
