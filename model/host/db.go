@@ -18,11 +18,6 @@ const (
 	Collection = "hosts"
 )
 
-var noRunningTask = []bson.D{
-	{{RunningTaskKey, ""}},
-	{{RunningTaskKey, bson.D{{"$exists", false}}}},
-}
-
 var (
 	IdKey                    = bsonutil.MustHaveTag(Host{}, "Id")
 	DNSKey                   = bsonutil.MustHaveTag(Host{}, "Host")
@@ -93,9 +88,9 @@ func ByUserWithUnterminatedStatus(user string) db.Q {
 // Evergreen hosts without an assigned task.
 var IsAvailableAndFree = db.Query(
 	bson.M{
-		"$or":        noRunningTask,
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		RunningTaskKey: bson.M{"$exists": false},
+		StatusKey:      evergreen.HostRunning,
+		StartedByKey:   evergreen.User,
 	},
 ).Sort([]string{"-" + LTCTimeKey})
 
@@ -104,10 +99,10 @@ var IsAvailableAndFree = db.Query(
 func ByAvailableForDistro(d string) db.Q {
 	distroIdKey := fmt.Sprintf("%v.%v", DistroKey, distro.IdKey)
 	return db.Query(bson.M{
-		distroIdKey:  d,
-		"$or":        noRunningTask,
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		distroIdKey:    d,
+		RunningTaskKey: bson.M{"$exists": false},
+		StatusKey:      evergreen.HostRunning,
+		StartedByKey:   evergreen.User,
 	}).Sort([]string{"-" + LTCTimeKey})
 }
 
@@ -115,9 +110,9 @@ func ByAvailableForDistro(d string) db.Q {
 // Evergreen hosts without an assigned task.
 var IsFree = db.Query(
 	bson.M{
-		"$or":        noRunningTask,
-		StartedByKey: evergreen.User,
-		StatusKey:    evergreen.HostRunning,
+		RunningTaskKey: bson.M{"$exists": false},
+		StartedByKey:   evergreen.User,
+		StatusKey:      evergreen.HostRunning,
 	},
 )
 
@@ -142,11 +137,11 @@ var IsUninitialized = db.Query(
 // are not doing work and were created before the given time.
 func ByUnproductiveSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
-		"$or":         noRunningTask,
-		LTCKey:        "",
-		CreateTimeKey: bson.M{"$lte": threshold},
-		StatusKey:     bson.M{"$ne": evergreen.HostTerminated},
-		StartedByKey:  evergreen.User,
+		RunningTaskKey: bson.M{"$exists": false},
+		LTCKey:         "",
+		CreateTimeKey:  bson.M{"$lte": threshold},
+		StatusKey:      bson.M{"$ne": evergreen.HostTerminated},
+		StartedByKey:   evergreen.User,
 	})
 }
 
@@ -170,8 +165,8 @@ var IsRunningTask = db.Query(
 // running task that are marked for decommissioning.
 var IsDecommissioned = db.Query(
 	bson.M{
-		"$or":     noRunningTask,
-		StatusKey: evergreen.HostDecommissioned},
+		RunningTaskKey: bson.M{"$exists": false},
+		StatusKey:      evergreen.HostDecommissioned},
 )
 
 // ByDistroId produces a query that returns all working hosts (not terminated and
@@ -230,9 +225,9 @@ var AllStatic = db.Query(
 // IsIdle is a query that returns all running Evergreen hosts with no task.
 var IsIdle = db.Query(
 	bson.M{
-		"$or":        noRunningTask,
-		StatusKey:    evergreen.HostRunning,
-		StartedByKey: evergreen.User,
+		RunningTaskKey: bson.M{"$exists": false},
+		StatusKey:      evergreen.HostRunning,
+		StartedByKey:   evergreen.User,
 	},
 )
 
@@ -255,7 +250,7 @@ var IsActive = db.Query(
 func ByNotMonitoredSince(threshold time.Time) db.Q {
 	return db.Query(bson.M{
 		"$and": []bson.M{
-			{"$or": noRunningTask},
+			{RunningTaskKey: bson.M{"$exists": false}},
 			{StatusKey: bson.M{
 				"$in": []string{evergreen.HostRunning, evergreen.HostUnreachable},
 			}},

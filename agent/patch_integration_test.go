@@ -28,7 +28,7 @@ func TestPatchTask(t *testing.T) {
 				Convey("With agent running a patched 'compile' "+tlsString, func() {
 					for _, mode := range patchModes {
 						Convey(fmt.Sprintf("Using patch mode %v", mode.String()), func() {
-							testTask, b, err := setupAPITestData(testConfig, "compile", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), mode, t)
+							testTask, b, h, err := setupAPITestData(testConfig, "compile", "linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), mode, t)
 
 							githash := "1e5232709595db427893826ce19289461cba3f75"
 							setupPatches(mode, b, t,
@@ -40,7 +40,7 @@ func TestPatchTask(t *testing.T) {
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 							defer testServer.Close()
 
-							testAgent, err := createAgent(testServer, testTask)
+							testAgent, err := createAgent(testServer, testTask, h)
 							testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 							defer testAgent.stop()
 

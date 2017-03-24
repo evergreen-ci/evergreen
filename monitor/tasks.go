@@ -139,7 +139,7 @@ func cleanUpTimedOutHeartbeat(t task.Task, project model.Project, host *host.Hos
 	}
 
 	// clear out the host's running task
-	if ok, err := host.UpdateRunningTask(t.Id, "", time.Now()); err != nil || !ok {
+	if err := host.ClearRunningTask(t.Id, time.Now()); err != nil {
 		return fmt.Errorf("error clearing running task %v from host %v: %v",
 			t.Id, host.Id, err)
 	}

@@ -375,38 +375,6 @@ func (as *APIServer) FetchTask(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, t)
 }
 
-// GetDistro loads the task's distro and sends it to the requester.
-func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
-	t := MustHaveTask(r)
-
-	// Get the distro for this task
-	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
-		return
-	}
-
-	// Fall back to checking host field on task doc
-	if h == nil && len(t.HostId) > 0 {
-		h, err = host.FindOne(host.ById(t.HostId))
-		if err != nil {
-			as.LoggedError(w, r, http.StatusInternalServerError, err)
-			return
-		}
-		h.SetRunningTask(t.Id, h.AgentRevision, h.TaskDispatchTime)
-	}
-
-	if h == nil {
-		message := fmt.Errorf("No host found running task %v", t.Id)
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
-		return
-	}
-
-	// agent can't properly unmarshal provider settings map
-	h.Distro.ProviderSettings = nil
-	as.WriteJSON(w, http.StatusOK, h.Distro)
-}
-
 // Heartbeat handles heartbeat pings from Evergreen agents. If the heartbeating
 // task is marked to be aborted, the abort response is sent.
 func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
@@ -835,6 +803,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
 	taskRouter.HandleFunc("/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
+	taskRouter.HandleFunc("/new_end", as.checkTask(true, as.checkHost(as.newEndTask))).Methods("POST")
 	taskRouter.HandleFunc("/log", as.checkTask(true, as.checkHost(as.AppendTaskLog))).Methods("POST")
 	taskRouter.HandleFunc("/heartbeat", as.checkTask(true, as.checkHost(as.Heartbeat))).Methods("POST")
 	taskRouter.HandleFunc("/results", as.checkTask(true, as.checkHost(as.AttachResults))).Methods("POST")

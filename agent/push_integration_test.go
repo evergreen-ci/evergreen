@@ -28,7 +28,7 @@ func TestPushTask(t *testing.T) {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a push task "+tlsString, func() {
-					testTask, _, err := setupAPITestData(testConfig, evergreen.PushStage,
+					testTask, _, h, err := setupAPITestData(testConfig, evergreen.PushStage,
 						"linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
@@ -36,7 +36,7 @@ func TestPushTask(t *testing.T) {
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					defer testServer.Close()
 
-					testAgent, err := createAgent(testServer, testTask)
+					testAgent, err := createAgent(testServer, testTask, h)
 					defer testServer.Close()
 
 					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)
