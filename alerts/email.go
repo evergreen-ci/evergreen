@@ -99,7 +99,7 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	header := make(map[string]string)
 	header["From"] = from.String()
 	header["To"] = rcpt
-	header["Subject"] = encodeRFC2047(subject)
+	header["Subject"] = subject
 	header["MIME-Version"] = "1.0"
 	header["Content-Type"] = "text/html; charset=\"utf-8\""
 	header["Content-Transfer-Encoding"] = "base64"

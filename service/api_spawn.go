@@ -91,7 +91,8 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	err = spawner.CreateHost(opts, user)
 	if err != nil {
 		grip.Error(err)
-		mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed", err.Error(),
+		mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed",
+			fmt.Sprintf("For distro '%s'.\n\nEncountered with error: %+v", hostRequest.Distro, err.Error()),
 			notify.ConstructMailer(as.Settings.Notify))
 		if mailErr != nil {
 			grip.Errorln("Failed to send notification:", mailErr)
