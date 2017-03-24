@@ -229,28 +229,6 @@ func (cloudManager *EC2Manager) GetDNSName(host *host.Host) (string, error) {
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2Manager) StopInstance(host *host.Host) error {
-	ec2Handle := getUSEast(*cloudManager.awsCredentials)
-	// stop the instance
-	resp, err := ec2Handle.StopInstances(host.Id)
-
-	if err != nil {
-		return err
-	}
-
-	for _, stateChange := range resp.StateChanges {
-		grip.Infoln("Stopped", stateChange.InstanceId)
-	}
-
-	err = host.ClearRunningTask()
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (cloudManager *EC2Manager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
