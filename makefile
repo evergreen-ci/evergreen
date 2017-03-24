@@ -185,7 +185,7 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 lint:$(lintDeps)
 	@-$(gopath)/bin/gometalinter --install >/dev/null
 	$(gopath)/bin/gometalinter $(lintArgs) ./...
-build:$(binaries)
+build:$(binaries) cli agent
 build-race:$(raceBinaries)
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))

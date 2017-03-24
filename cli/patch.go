@@ -301,7 +301,7 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 
 	err = ac.UpdatePatchModule(smc.PatchId, smc.Module, diffData.fullPatch, diffData.base)
 	if err != nil {
-		mods, err := ac.GetPatchModules(smc.PatchId, smc.ProjectId)
+		mods, err := ac.GetPatchModules(smc.PatchId, smc.Project)
 		var msg string
 		if err != nil {
 			msg = fmt.Sprintf("could not find module named %s or retrieve list of modules",

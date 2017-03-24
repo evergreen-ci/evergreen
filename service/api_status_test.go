@@ -122,7 +122,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 	defer testServer.Close()
 
-	const url = "http://localhost:8181/api/2/status"
+	const url = "http://localhost:8181/api/status/info"
 
 	Convey("Service Status endpoints should report the status of the service", t, func() {
 		Convey("basic endpoint should have one key, that reports the build id", func() {

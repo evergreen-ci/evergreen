@@ -58,7 +58,7 @@ func main() {
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
-	grip.Noticef(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
+	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	httpsCert, err := getHTTPSCertFile(*httpsCertFile)
 	if err != nil {
