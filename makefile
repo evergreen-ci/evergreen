@@ -263,7 +263,7 @@ phony += vendor vendor-deps vendor-clean vendor-sync change-go-version
 #    run. (The "build" target is intentional and makes these targetsb
 #    rerun as expected.)
 testRunDeps := $(name)
-testTimeout := --test.timeout=20m
+testTimeout := --test.timeout=10m
 testArgs := -test.v $(testTimeout)
 testRunEnv := EVGHOME=$(shell pwd)
 ifeq ($(OS),Windows_NT)

@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -108,6 +109,6 @@ func TestArchiveRoundTrip(t *testing.T) {
 		So(exists, ShouldBeTrue)
 		contents, err := ioutil.ReadFile(filepath.Join(testDir, "testdata", "artifacts_out", "dir1", "dir2", "my_symlink.txt"))
 		So(err, ShouldBeNil)
-		So(string(contents), ShouldEqual, "Hello, World\n")
+		So(strings.Trim(string(contents), "\r\n\t "), ShouldEqual, "Hello, World")
 	})
 }

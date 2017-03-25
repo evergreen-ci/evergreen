@@ -26,17 +26,14 @@ func TestWriteToTempFile(t *testing.T) {
 }
 
 func TestFileExists(t *testing.T) {
-
-	_, err := os.Create("testFile1")
+	tmpfile, err := ioutil.TempFile("", "testFileOne")
 	testutil.HandleTestingErr(err, t, "error creating test file")
-	defer func() {
-		testutil.HandleTestingErr(os.Remove("testFile1"), t, "error removing test file")
-	}()
+	defer os.Remove(tmpfile.Name())
 
 	Convey("When testing that a file exists", t, func() {
 
 		Convey("an existing file should be reported as existing", func() {
-			exists, err := FileExists("testFile1")
+			exists, err := FileExists(tmpfile.Name())
 			So(err, ShouldBeNil)
 			So(exists, ShouldBeTrue)
 		})
