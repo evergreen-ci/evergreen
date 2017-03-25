@@ -259,9 +259,7 @@ func doStepback(t *task.Task, detail *apimodels.TaskEndDetail, deactivatePreviou
 }
 
 // MarkEnd updates the task as being finished, performs a stepback if necessary, and updates the build status
-func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail,
-	p *Project, deactivatePrevious bool) error {
-
+func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.TaskEndDetail, p *Project, deactivatePrevious bool) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
 		return err

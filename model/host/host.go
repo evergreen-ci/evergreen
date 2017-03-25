@@ -262,41 +262,12 @@ func (h *Host) MarkAsProvisioned() error {
 	)
 }
 
-// ClearRunningTask unsets the running task key on the host and updates the last task
-// completed fields
-func (host *Host) ClearRunningTask(prevTaskId string, finishTime time.Time) error {
-	host.LastTaskCompleted = prevTaskId
-	host.LastTaskCompletedTime = finishTime
-	host.RunningTask = ""
-	event.LogHostRunningTaskCleared(host.Id, prevTaskId)
-	return UpdateOne(
-		bson.M{
-			IdKey: host.Id,
-		},
-		bson.M{
-			"$set": bson.M{
-				LTCKey:     prevTaskId,
-				LTCTimeKey: finishTime,
-			},
-			"$unset": bson.M{
-				RunningTaskKey: 1,
-			},
-		})
-
-}
-
 // UpdateRunningTask takes two id strings - an old task and a new one - finds
 // the host running the task with Id, 'prevTaskId' and updates its running task
 // to 'newTaskId'; also setting the completion time of 'prevTaskId'
 // Returns true for success and error if it exists
 func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 	finishTime time.Time) (bool, error) {
-
-	// we should never ben calling update running task with an empty new task id.
-	if newTaskId == "" {
-		return false, fmt.Errorf("cannot set a running task id to be an empty string")
-	}
-
 	selector := bson.M{
 		IdKey: host.Id,
 	}
@@ -307,6 +278,19 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 			LTCTimeKey:     finishTime,
 			PidKey:         "",
 		},
+	}
+	// if the new task id is empty, unset the running task key
+	if newTaskId == "" {
+		update = bson.M{
+			"$set": bson.M{
+				LTCKey:     prevTaskId,
+				LTCTimeKey: finishTime,
+				PidKey:     "",
+			},
+			"$unset": bson.M{
+				RunningTaskKey: 1,
+			},
+		}
 	}
 
 	err := UpdateOne(selector, update)
@@ -323,14 +307,8 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 }
 
 // Marks that the specified task was started on the host at the specified time.
-// TODO: This should be be removed once the task runner stops assigning tasks. (EVG-1586)
 func (h *Host) SetRunningTask(taskId, agentRevision string,
 	taskDispatchTime time.Time) error {
-
-	// if the task id is empty unset the running task field.
-	if taskId == "" {
-		return fmt.Errorf("cannot set running task id to be empty string")
-	}
 
 	// log the event
 	event.LogHostRunningTaskSet(h.Id, taskId)
@@ -347,7 +325,16 @@ func (h *Host) SetRunningTask(taskId, agentRevision string,
 			RunningTaskKey:      taskId,
 		},
 	}
-
+	// if the task id is empty unset the running task field.
+	if taskId == "" {
+		update = bson.M{
+			"$set": bson.M{
+				AgentRevisionKey:    agentRevision,
+				TaskDispatchTimeKey: taskDispatchTime,
+			},
+			"$unset": bson.M{RunningTaskKey: 1},
+		}
+	}
 	return UpdateOne(
 		bson.M{
 			IdKey: h.Id,
@@ -406,6 +393,27 @@ func (h *Host) SetExpirationNotification(thresholdKey string) error {
 		bson.M{
 			"$set": bson.M{
 				NotificationsKey: h.Notifications,
+			},
+		},
+	)
+}
+
+func (h *Host) ClearRunningTask() error {
+	event.LogHostRunningTaskCleared(h.Id, h.RunningTask)
+	h.RunningTask = ""
+	h.TaskDispatchTime = util.ZeroTime
+	h.Pid = ""
+	return UpdateOne(
+		bson.M{
+			IdKey: h.Id,
+		},
+		bson.M{
+			"$unset": bson.M{
+				RunningTaskKey: "",
+			},
+			"$set": bson.M{
+				TaskDispatchTimeKey: util.ZeroTime,
+				PidKey:              "",
 			},
 		},
 	)

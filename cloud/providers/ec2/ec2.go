@@ -242,11 +242,10 @@ func (cloudManager *EC2Manager) StopInstance(host *host.Host) error {
 		grip.Infoln("Stopped", stateChange.InstanceId)
 	}
 
-	if host.RunningTask != "" {
-		prevTaskId := host.RunningTask
-		if err := host.ClearRunningTask(prevTaskId, time.Now()); err != nil {
-			return err
-		}
+	err = host.ClearRunningTask()
+
+	if err != nil {
+		return err
 	}
 
 	return nil

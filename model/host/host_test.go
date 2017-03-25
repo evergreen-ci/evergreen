@@ -388,8 +388,9 @@ func TestHostSetRunningTask(t *testing.T) {
 				taskDispatchTime.Round(time.Second)), ShouldBeTrue)
 
 		})
-		Convey("setting the running task id to an empty string should error", func() {
-			So(host.SetRunningTask("", "c", time.Now()), ShouldNotBeNil)
+		Convey("setting the running task id to an empty string should set it to empty", func() {
+			So(host.SetRunningTask("", "c", time.Now()), ShouldBeNil)
+			So(host.RunningTask, ShouldEqual, "")
 		})
 
 	})
@@ -526,11 +527,12 @@ func TestHostClearRunningTask(t *testing.T) {
 			" clearing '%v' collection", Collection)
 
 		host := &Host{
-			Id:          "hostOne",
-			RunningTask: "taskId",
-			StartedBy:   evergreen.User,
-			Status:      evergreen.HostRunning,
-			Pid:         "12345",
+			Id:               "hostOne",
+			RunningTask:      "taskId",
+			StartedBy:        evergreen.User,
+			Status:           evergreen.HostRunning,
+			TaskDispatchTime: time.Now(),
+			Pid:              "12345",
 		}
 		So(host.Insert(), ShouldBeNil)
 
@@ -548,15 +550,17 @@ func TestHostClearRunningTask(t *testing.T) {
 			" and task dispatch time fields from both the in-memory and"+
 			" database copies of the host", func() {
 
-			So(host.ClearRunningTask("prevTask", time.Now()), ShouldBeNil)
+			So(host.ClearRunningTask(), ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "")
-			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
+			So(host.TaskDispatchTime.Equal(time.Unix(0, 0)), ShouldBeTrue)
+			So(host.Pid, ShouldEqual, "")
 
 			host, err := FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 
 			So(host.RunningTask, ShouldEqual, "")
-			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
+			So(host.TaskDispatchTime.Equal(time.Unix(0, 0)), ShouldBeTrue)
+			So(host.Pid, ShouldEqual, "")
 
 			Convey("the count of idle hosts should go up", func() {
 				count, err := Count(IsIdle)
@@ -598,9 +602,16 @@ func TestUpdateHostRunningTask(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(runningTaskHosts), ShouldEqual, 1)
 		})
-		Convey("updating the running task to an empty string should error out", func() {
+		Convey("updating the running task to an empty string should unset the running task field", func() {
 			_, err := h.UpdateRunningTask(newTaskId, "", time.Now())
-			So(err, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			found, err := FindOne(ById(h.Id))
+			So(err, ShouldBeNil)
+			So(found.RunningTask, ShouldEqual, "")
+			So(found.LastTaskCompleted, ShouldEqual, newTaskId)
+			runningTaskHosts, err := Find(IsRunningTask)
+			So(err, ShouldBeNil)
+			So(len(runningTaskHosts), ShouldEqual, 0)
 		})
 	})
 }
