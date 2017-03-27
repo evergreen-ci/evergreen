@@ -13,6 +13,7 @@ import (
 
 	"github.com/codegangsta/inject"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const JSONMarshalError = "Could not marshal data to JSON"
@@ -55,6 +56,7 @@ func (ae *App) RespondTemplate(templateNames []string, entryPointName string, da
 		tmpl := template.New(templateNames[0]).Funcs(ae.TemplateFuncs)
 		tmpl, err := tmpl.ParseFiles(templatePaths...)
 		if err != nil {
+			grip.Error(errors.Wrapf(err, "encountered error parsing template %v", templatePaths))
 			return StringResponse{"Error: " + err.Error(), 500}
 		}
 		ae.TemplateCache[cacheKey] = tmpl
