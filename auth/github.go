@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // GithubAuthManager implements the UserManager with GitHub authentication using Oauth authentication.
@@ -40,10 +41,10 @@ type GithubUserManager struct {
 // authentication
 func NewGithubUserManager(g *evergreen.GithubAuthConfig) (*GithubUserManager, error) {
 	if g.ClientId == "" {
-		return nil, fmt.Errorf("no client id for config")
+		return nil, errors.New("no client id for config")
 	}
 	if g.ClientSecret == "" {
-		return nil, fmt.Errorf("no client secret for config given")
+		return nil, errors.New("no client secret for config given")
 	}
 	return &GithubUserManager{g.ClientId, g.ClientSecret, g.Users, g.Organization, util.RandomString()}, nil
 }
@@ -74,12 +75,12 @@ func (gum *GithubUserManager) GetUserByToken(token string) (User, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("No authorized user or organization given")
+	return nil, errors.New("No authorized user or organization given")
 }
 
 // CreateUserToken is not implemented in GithubUserManager
 func (*GithubUserManager) CreateUserToken(string, string) (string, error) {
-	return "", fmt.Errorf("GithubUserManager does not create tokens via username/password")
+	return "", errors.New("GithubUserManager does not create tokens via username/password")
 }
 
 // GetLoginHandler returns the function that starts oauth by redirecting the user to authenticate with Github

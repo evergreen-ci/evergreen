@@ -13,7 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/kardianos/osext"
-	"github.com/mitchellh/go-homedir"
+	homedir "github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -100,7 +101,7 @@ func WriteSettings(s *model.CLISettings, opts *Options) error {
 		}
 	}
 	if confPath == "" {
-		return fmt.Errorf("can't determine output location for settings file")
+		return errors.New("can't determine output location for settings file")
 	}
 	yamlData, err := yaml.Marshal(s)
 	if err != nil {

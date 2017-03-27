@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -126,7 +127,7 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 
 	if len(patchId) > 0 {
 		if !patch.IsValidId(patchId) {
-			return nil, fmt.Errorf("patch id '%v' is not an object id", patchId)
+			return nil, errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
 		aCtx.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
 	} else if aCtx.Version != nil {
@@ -178,27 +179,27 @@ func (qp *QueueProcessor) newJIRAProvider(alertConf model.AlertConfig) (Delivere
 	// load and validate "project" JSON value
 	projectField, ok := alertConf.Settings["project"]
 	if !ok {
-		return nil, fmt.Errorf("missing JIRA project field")
+		return nil, errors.New("missing JIRA project field")
 	}
 	project, ok := projectField.(string)
 	if !ok {
-		return nil, fmt.Errorf("JIRA project name must be string")
+		return nil, errors.New("JIRA project name must be string")
 	}
 	issueField, ok := alertConf.Settings["issue"]
 	if !ok {
-		return nil, fmt.Errorf("missing JIRA issue field")
+		return nil, errors.New("missing JIRA issue field")
 	}
 	issue, ok := issueField.(string)
 	if !ok {
-		return nil, fmt.Errorf("JIRA issue type must be string")
+		return nil, errors.New("JIRA issue type must be string")
 	}
 	// validate Evergreen settings
 	if (qp.config.Jira.Host == "") || qp.config.Jira.Username == "" || qp.config.Jira.Password == "" {
-		return nil, fmt.Errorf(
+		return nil, errors.New(
 			"invalid JIRA settings (ensure a 'jira' field exists in Evergreen settings)")
 	}
 	if qp.config.Ui.Url == "" {
-		return nil, fmt.Errorf("'ui.url' must be set in Evergreen settings")
+		return nil, errors.New("'ui.url' must be set in Evergreen settings")
 	}
 	handler := thirdparty.NewJiraHandler(
 		qp.config.Jira.Host,
@@ -232,7 +233,7 @@ func (qp *QueueProcessor) getDeliverer(alertConf model.AlertConfig) (Deliverer, 
 			qp.render,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unknown provider: %v", alertConf.Provider)
+		return nil, errors.Errorf("unknown provider: %v", alertConf.Provider)
 	}
 }
 
@@ -251,11 +252,11 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 	for _, alertConfig := range alertConfigs {
 		deliverer, err := qp.getDeliverer(alertConfig)
 		if err != nil {
-			return fmt.Errorf("Failed to get email deliverer: %v", err)
+			return errors.Wrap(err, "Failed to get email deliverer")
 		}
 		err = deliverer.Deliver(*ctx, alertConfig)
 		if err != nil {
-			return fmt.Errorf("Failed to send alert: %v", err)
+			return errors.Wrap(err, "Failed to send alert")
 		}
 	}
 	return nil

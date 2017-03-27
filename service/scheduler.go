@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -9,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) getSchedulerPage(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +51,7 @@ func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if granularity == 0 {
-		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Invalid granularity"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid granularity"))
 		return
 	}
 
@@ -62,7 +62,7 @@ func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if daysBack == 0 {
-		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Invalid days back"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid days back"))
 		return
 	}
 
@@ -85,7 +85,7 @@ func (uis *UIServer) averageSchedulerStats(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if granularity == 0 {
-		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Invalid granularity"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid granularity"))
 		return
 	}
 
@@ -96,7 +96,7 @@ func (uis *UIServer) averageSchedulerStats(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if daysBack == 0 {
-		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Invalid days back"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.New("Invalid days back"))
 		return
 	}
 

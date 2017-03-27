@@ -2,7 +2,8 @@ package util
 
 import (
 	"bytes"
-	"errors"
+
+	"github.com/pkg/errors"
 )
 
 // CappedWriter implements a buffer that stores up to MaxBytes bytes.

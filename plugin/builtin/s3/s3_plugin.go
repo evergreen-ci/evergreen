@@ -1,13 +1,13 @@
 package s3
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/s3"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -43,7 +43,7 @@ func (self *S3Plugin) NewCommand(cmdName string) (plugin.Command, error) {
 	if cmdName == S3GetCmd {
 		return &S3GetCommand{}, nil
 	}
-	return nil, fmt.Errorf("No such command: %v", cmdName)
+	return nil, errors.Errorf("No such command: %v", cmdName)
 }
 
 func validateS3BucketName(bucket string) error {
@@ -54,22 +54,22 @@ func validateS3BucketName(bucket string) error {
 		return nil
 	}
 	if len(bucket) < 3 {
-		return fmt.Errorf("must be at least 3 characters")
+		return errors.New("must be at least 3 characters")
 	}
 	if len(bucket) > 63 {
-		return fmt.Errorf("must be no more than 63 characters")
+		return errors.New("must be no more than 63 characters")
 	}
 	if strings.HasPrefix(bucket, ".") || strings.HasPrefix(bucket, "-") {
-		return fmt.Errorf("must not begin with a period or hyphen")
+		return errors.New("must not begin with a period or hyphen")
 	}
 	if strings.HasSuffix(bucket, ".") || strings.HasSuffix(bucket, "-") {
-		return fmt.Errorf("must not end with a period or hyphen")
+		return errors.New("must not end with a period or hyphen")
 	}
 	if strings.Contains(bucket, "..") {
-		return fmt.Errorf("must not have two consecutive periods")
+		return errors.New("must not have two consecutive periods")
 	}
 	if !BucketNameRegex.MatchString(bucket) {
-		return fmt.Errorf("must contain only combinations of uppercase/lowercase " +
+		return errors.New("must contain only combinations of uppercase/lowercase " +
 			"letters, numbers, hyphens, underscores and periods")
 	}
 	return nil

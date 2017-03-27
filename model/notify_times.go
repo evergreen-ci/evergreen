@@ -1,11 +1,11 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -63,7 +63,7 @@ func LastNotificationsEventTime(projectName string) (time.Time,
 	}
 
 	if nAnswers > 1 {
-		return EarliestDateToConsider, fmt.Errorf("There are %v notification"+
+		return EarliestDateToConsider, errors.Errorf("There are %v notification"+
 			" times listed for having seen the NOTIFICATION_REPOSITORY “%v”;"+
 			" there should be at most one.", nAnswers, projectName)
 	}

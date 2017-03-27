@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -17,17 +18,17 @@ type EvaluateCommand struct {
 
 func (ec *EvaluateCommand) Execute(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("the evaluate command takes one project config path as an argument")
+		return errors.Errorf("the evaluate command takes one project config path as an argument")
 	}
 	configBytes, err := ioutil.ReadFile(args[0])
 	if err != nil {
-		return fmt.Errorf("error reading project config: %v", err)
+		return errors.Errorf("error reading project config: %v", err)
 	}
 
 	p := &model.Project{}
 	err = model.LoadProjectInto(configBytes, "", p)
 	if err != nil {
-		return fmt.Errorf("error loading project: %v", err)
+		return errors.Errorf("error loading project: %v", err)
 	}
 
 	var out interface{}
@@ -51,7 +52,7 @@ func (ec *EvaluateCommand) Execute(args []string) error {
 
 	outYAML, err := yaml.Marshal(out)
 	if err != nil {
-		return fmt.Errorf("error marshaling evaluated project YAML: %v", err)
+		return errors.Errorf("error marshaling evaluated project YAML: %v", err)
 	}
 	fmt.Println(string(outYAML))
 

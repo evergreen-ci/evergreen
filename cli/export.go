@@ -1,9 +1,10 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -24,8 +25,8 @@ type ExportCommand struct {
 	JSON        bool   `long:"json" description:"set the format to export to json"`
 	Granularity string `long:"granularity" description:"set the granularity, default hour, options are 'second', 'minute', 'hour'"`
 	Days        int    `long:"days" description:"set the number of days, default 1, max of 30 days back"`
-	StatsType   string `long:"stat" 
-						description:"include the type of stats - 'host' for host utilization,'avg' for average scheduled to start times, 'makespan' for makespan ratios" 
+	StatsType   string `long:"stat"
+						description:"include the type of stats - 'host' for host utilization,'avg' for average scheduled to start times, 'makespan' for makespan ratios"
 						required:"true"`
 	DistroId string `long:"distro" description:"distro id - required for average scheduled to start times"`
 	Number   int    `long:"number" description:"set the number of revisions (for getting build makespan), default 100"`
@@ -39,7 +40,7 @@ func (ec *ExportCommand) Execute(args []string) error {
 	}
 
 	if ec.StatsType == "" {
-		return fmt.Errorf("Must specify a stats type, host")
+		return errors.New("Must specify a stats type, host")
 	}
 
 	// default granularity to an hour
@@ -72,7 +73,7 @@ func (ec *ExportCommand) Execute(args []string) error {
 		}
 	case AverageScheduledToStart:
 		if ec.DistroId == "" {
-			return fmt.Errorf("cannot have empty distro id")
+			return errors.New("cannot have empty distro id")
 		}
 		granSeconds, err := convertGranularityToSeconds(ec.Granularity)
 		if err != nil {
@@ -89,7 +90,7 @@ func (ec *ExportCommand) Execute(args []string) error {
 		}
 
 	default:
-		return fmt.Errorf("%v is not a valid stats type. The current valid types include, host, avg, and makespan", ec.StatsType)
+		return errors.Errorf("%v is not a valid stats type. The current valid types include, host, avg, and makespan", ec.StatsType)
 
 	}
 
@@ -108,7 +109,7 @@ func convertGranularityToSeconds(granString string) (int, error) {
 	case GranularitySeconds:
 		return 1, nil
 	default:
-		return 0, fmt.Errorf("not a valid granularity, %v", granString)
+		return 0, errors.Errorf("not a valid granularity, %v", granString)
 	}
 }
 

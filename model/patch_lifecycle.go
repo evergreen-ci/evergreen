@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -57,7 +58,7 @@ func ValidateTVPairs(p *Project, in []TVPair) error {
 	for _, pair := range in {
 		v := p.FindTaskForVariant(pair.TaskName, pair.Variant)
 		if v == nil {
-			return fmt.Errorf("does not exist: task %v, variant %v", pair.TaskName, pair.Variant)
+			return errors.Errorf("does not exist: task %v, variant %v", pair.TaskName, pair.Variant)
 		}
 	}
 	return nil
@@ -183,13 +184,13 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		// write patch file
 		patchFilePath, err := util.WriteToTempFile(patchPart.PatchSet.Patch)
 		if err != nil {
-			return nil, fmt.Errorf("could not write patch file: %v", err)
+			return nil, errors.Wrap(err, "could not write patch file")
 		}
 		defer os.Remove(patchFilePath)
 		// write project configuration
 		configFilePath, err := util.WriteToTempFile(projectConfig)
 		if err != nil {
-			return nil, fmt.Errorf("could not write config file: %v", err)
+			return nil, errors.Wrap(err, "could not write config file")
 		}
 		defer os.Remove(configFilePath)
 
@@ -205,17 +206,17 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		)[0]
 		err = os.RemoveAll(filepath.Join(workingDirectory, parentDir))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if err = os.MkdirAll(filepath.Dir(localConfigPath), 0755); err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		// rename the temporary config file name to the remote config
 		// file path if we are patching an existing remote config
 		if len(projectConfig) > 0 {
 			if err = os.Rename(configFilePath, localConfigPath); err != nil {
-				return nil, fmt.Errorf("could not rename file '%v' to '%v': %v",
-					configFilePath, localConfigPath, err)
+				return nil, errors.Wrapf(err, "could not rename file '%v' to '%v'",
+					configFilePath, localConfigPath)
 			}
 			defer os.Remove(localConfigPath)
 		}
@@ -237,21 +238,20 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 		}
 
 		if err = patchCmd.Run(); err != nil {
-			return nil, fmt.Errorf("could not run patch command: %v", err)
+			return nil, errors.Errorf("could not run patch command: %v", err)
 		}
 		// read in the patched config file
 		data, err := ioutil.ReadFile(localConfigPath)
 		if err != nil {
-			return nil, fmt.Errorf("could not read patched config file: %v",
-				err)
+			return nil, errors.Wrap(err, "could not read patched config file")
 		}
 		project := &Project{}
 		if err = LoadProjectInto(data, p.Project, project); err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		return project, nil
 	}
-	return nil, fmt.Errorf("no patch on project")
+	return nil, errors.New("no patch on project")
 }
 
 // Finalizes a patch:
@@ -263,14 +263,14 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 	project := &Project{}
 	err := yaml.Unmarshal([]byte(p.PatchedConfig), project)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Error marshaling patched project config from repository revision “%v”: %v",
-			p.Githash, err)
+		return nil, errors.Wrapf(err,
+			"Error marshaling patched project config from repository revision “%v”",
+			p.Githash)
 	}
 
 	projectRef, err := FindOneProjectRef(p.Project)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	gitCommit, err := thirdparty.GetCommitEvent(
@@ -278,10 +278,10 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		projectRef.Owner, projectRef.Repo, p.Githash,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't fetch commit information: %v", err)
+		return nil, errors.Wrap(err, "Couldn't fetch commit information")
 	}
 	if gitCommit == nil {
-		return nil, fmt.Errorf("Couldn't fetch commit information: git commit doesn't exist?")
+		return nil, errors.New("Couldn't fetch commit information; git commit doesn't exist")
 	}
 
 	patchVersion := &version.Version{
@@ -323,7 +323,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		}
 		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, vt.Variant, true, vt.Tasks)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		patchVersion.BuildIds = append(patchVersion.BuildIds, buildId)
 		patchVersion.BuildVariants = append(patchVersion.BuildVariants,
@@ -336,10 +336,10 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 	}
 
 	if err = patchVersion.Insert(); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if err = p.SetActivated(patchVersion.Id); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return patchVersion, nil
 }
@@ -347,10 +347,10 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 func CancelPatch(p *patch.Patch, caller string) error {
 	if p.Version != "" {
 		if err := SetVersionActivation(p.Version, false, caller); err != nil {
-			return err
+			return errors.WithStack(err)
 		}
-		return AbortVersion(p.Version)
-	} else {
-		return patch.Remove(patch.ById(p.Id))
+		return errors.WithStack(AbortVersion(p.Version))
 	}
+
+	return errors.WithStack(patch.Remove(patch.ById(p.Id)))
 }

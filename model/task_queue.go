@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -177,11 +178,11 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 
 	// validate that the task is there
 	if !found {
-		return fmt.Errorf("task id %v was not present in queue for distro"+
-			" %v", taskId, self.Distro)
+		return errors.Errorf("task id %s was not present in queue for distro %s",
+			taskId, self.Distro)
 	}
 
-	return db.Update(
+	return errors.WithStack(db.Update(
 		TaskQueuesCollection,
 		bson.M{
 			TaskQueueDistroKey: self.Distro,
@@ -193,5 +194,5 @@ func (self *TaskQueue) DequeueTask(taskId string) error {
 				},
 			},
 		},
-	)
+	))
 }

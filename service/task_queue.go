@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // ui version of a task queue item
@@ -73,7 +74,7 @@ func (uis *UIServer) taskTimeStatisticsHandler(w http.ResponseWriter, r *http.Re
 	cutoffDaysAsString := mux.Vars(r)["cutoff_days"]
 	cutoffDays, err := strconv.Atoi(cutoffDaysAsString)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error converting cutoff_days to integer: %v", err))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "Error converting cutoff_days to integer"))
 		return
 	}
 
@@ -88,7 +89,7 @@ func (uis *UIServer) taskTimeStatisticsHandler(w http.ResponseWriter, r *http.Re
 
 	timeMap, err := task.AverageTaskTimeDifference(field1, field2, groupyBy, cutoff)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error computing time stats: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error computing time stats"))
 		return
 	}
 
@@ -105,7 +106,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	taskQueues, err := model.FindAllTaskQueues()
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
-			fmt.Errorf("Error finding task queues: %v", err))
+			errors.Wrap(err, "Error finding task queues"))
 		return
 	}
 

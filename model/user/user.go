@@ -1,10 +1,10 @@
 package user
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -58,7 +58,7 @@ func (u *DBUser) GetPublicKey(keyname string) (string, error) {
 			return publicKey.Key, nil
 		}
 	}
-	return "", fmt.Errorf("Unable to find public key '%v' for user '%v'", keyname, u.Username())
+	return "", errors.Errorf("Unable to find public key '%v' for user '%v'", keyname, u.Username())
 }
 
 func (u *DBUser) PublicKeys() []PubKey {

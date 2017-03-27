@@ -23,6 +23,7 @@ import (
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/ec2"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -88,7 +89,7 @@ func regionFullname(region string) (string, error) {
 	case "us-west-2":
 		return "US West (Oregon)", nil
 	}
-	return "", fmt.Errorf("region %v not supported for On Demand cost calculation", region)
+	return "", errors.Errorf("region %v not supported for On Demand cost calculation", region)
 }
 
 // azToRegion takes an availability zone and returns the region id.
@@ -113,11 +114,11 @@ func makeBlockDeviceMappings(mounts []MountPoint) ([]ec2.BlockDeviceMapping, err
 	mappings := []ec2.BlockDeviceMapping{}
 	for _, mount := range mounts {
 		if mount.DeviceName == "" {
-			return nil, fmt.Errorf("missing 'device_name': %#v", mount)
+			return nil, errors.Errorf("missing 'device_name': %#v", mount)
 		}
 		if mount.VirtualName == "" {
 			if mount.Size <= 0 {
-				return nil, fmt.Errorf("invalid 'size': %#v", mount)
+				return nil, errors.Errorf("invalid 'size': %#v", mount)
 			}
 			// EBS Storage - device name but no virtual name
 			mappings = append(mappings, ec2.BlockDeviceMapping{
@@ -157,7 +158,7 @@ func getUSEast(creds aws.Auth) *ec2.EC2 {
 
 func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
-		return []string{}, fmt.Errorf("No key specified for EC2 host")
+		return []string{}, errors.New("No key specified for EC2 host")
 	}
 	opts := []string{"-i", keyPath}
 	for _, opt := range h.Distro.SSHOptions {
@@ -176,14 +177,14 @@ func getInstanceInfo(ec2Handle *ec2.EC2, instanceId string) (*ec2.Instance, erro
 
 	reservation := resp.Reservations
 	if len(reservation) < 1 {
-		err = fmt.Errorf("No reservation found for instance id: %s", instanceId)
+		err = errors.Errorf("No reservation found for instance id: %s", instanceId)
 		grip.Error(err)
 		return nil, err
 	}
 
 	instances := reservation[0].Instances
 	if len(instances) < 1 {
-		err = fmt.Errorf("'%v' was not found in reservation '%v'",
+		err = errors.Errorf("'%v' was not found in reservation '%v'",
 			instanceId, resp.Reservations[0].ReservationId)
 		grip.Error(err)
 		return nil, err
@@ -327,7 +328,7 @@ func (cpf *cachedEBSPriceFetcher) FetchEBSPrices() (map[string]float64, error) {
 	} else {
 		ps, err := fetchEBSPricing()
 		if err != nil {
-			return nil, fmt.Errorf("fetching EBS prices: %v", err)
+			return nil, errors.Wrap(err, "fetching EBS prices")
 		}
 		cpf.prices = ps
 		return ps, nil
@@ -344,15 +345,15 @@ func fetchEBSPricing() (map[string]float64, error) {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return nil, fmt.Errorf("fetching %v: %v", endpoint, err)
+		return nil, errors.Wrapf(err, "fetching %s", endpoint)
 	}
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading response body: %v", err)
+		return nil, errors.Wrap(err, "reading response body")
 	}
 	matches := ebsRegex.FindSubmatch(data)
 	if len(matches) < 2 {
-		return nil, fmt.Errorf("could not find price JSON in response from %v", endpoint)
+		return nil, errors.Errorf("could not find price JSON in response from %v", endpoint)
 	}
 	// define a one-off type for storing results from the price JSON
 	prices := struct {
@@ -372,7 +373,7 @@ func fetchEBSPricing() (map[string]float64, error) {
 	}{}
 	err = json.Unmarshal(matches[1], &prices)
 	if err != nil {
-		return nil, fmt.Errorf("parsing price JSON: %v", err)
+		return nil, errors.Wrap(err, "parsing price JSON")
 	}
 
 	pricePerRegion := map[string]float64{}
@@ -394,7 +395,7 @@ func fetchEBSPricing() (map[string]float64, error) {
 	// one final sanity check that we actually pulled information, which will alert
 	// us if, say, Amazon changes the structure of their JSON
 	if len(pricePerRegion) == 0 {
-		return nil, fmt.Errorf("unable to parse prices from %v", endpoint)
+		return nil, errors.Errorf("unable to parse prices from %v", endpoint)
 	}
 	return pricePerRegion, nil
 }
@@ -417,11 +418,11 @@ func blockDeviceCosts(handle *ec2.EC2, devices []ec2.BlockDevice, dur time.Durat
 			region := azToRegion(v.AvailZone)
 			size, err := strconv.Atoi(v.Size)
 			if err != nil {
-				return 0, fmt.Errorf("reading volume size: %v", err)
+				return 0, errors.Wrap(err, "reading volume size")
 			}
 			p, err := ebsCost(&pkgEBSFetcher, region, size, dur)
 			if err != nil {
-				return 0, fmt.Errorf("EBS volume %v: %v", v.VolumeId, err)
+				return 0, errors.Wrapf(err, "EBS volume %v", v.VolumeId)
 			}
 			cost += p
 		}
@@ -438,7 +439,7 @@ func ebsCost(pf ebsPriceFetcher, region string, size int, duration time.Duration
 	}
 	price, ok := prices[region]
 	if !ok {
-		return 0.0, fmt.Errorf("no EBS price for region '%v'", region)
+		return 0.0, errors.Errorf("no EBS price for region '%v'", region)
 	}
 	// price = GB * % of month *
 	month := (time.Hour * 24 * 30)
@@ -502,7 +503,7 @@ func (cpf *cachedOnDemandPriceFetcher) FetchPrice(os osType, instance, region st
 	defer cpf.m.Unlock()
 	if cpf.prices == nil {
 		if err := cpf.cachePrices(); err != nil {
-			return 0, fmt.Errorf("loading On Demand price data: %v", err)
+			return 0, errors.Wrap(err, "loading On Demand price data")
 		}
 	}
 	region, err := regionFullname(region)
@@ -525,7 +526,7 @@ func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		return fmt.Errorf("fetching %v: %v", endpoint, err)
+		return errors.Wrapf(err, "fetching %v", endpoint)
 	}
 	grip.Debug("Parsing On Demand pricing")
 	details := struct {
@@ -544,7 +545,7 @@ func (cpf *cachedOnDemandPriceFetcher) cachePrices() error {
 		}
 	}{}
 	if err = json.NewDecoder(resp.Body).Decode(&details); err != nil {
-		return fmt.Errorf("parsing response body: %v", err)
+		return errors.Wrap(err, "parsing response body")
 	}
 
 	for _, p := range details.Products {
@@ -572,7 +573,7 @@ func onDemandCost(pf onDemandPriceFetcher, os osType, instance, region string, d
 		return 0, err
 	}
 	if price == 0 {
-		return 0, fmt.Errorf("price not found in EC2 price listings")
+		return 0, errors.New("price not found in EC2 price listings")
 	}
 	return price * float64(dur) / float64(time.Hour), nil
 }

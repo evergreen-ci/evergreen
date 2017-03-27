@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -41,7 +42,7 @@ func FindOneTestLogById(id string) (*TestLog, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	return tl, err
+	return tl, errors.WithStack(err)
 }
 
 // FindOneTestLog returns a TestLog, given the test's name, task id,
@@ -62,16 +63,16 @@ func FindOneTestLog(name, task string, execution int) (*TestLog, error) {
 	if err == mgo.ErrNotFound {
 		return nil, nil
 	}
-	return tl, err
+	return tl, errors.WithStack(err)
 }
 
 // Insert inserts the TestLog into the database
 func (self *TestLog) Insert() error {
 	self.Id = bson.NewObjectId().Hex()
 	if err := self.Validate(); err != nil {
-		return fmt.Errorf("cannot insert invalid test log: %v", err)
+		return errors.Wrap(err, "cannot insert invalid test log")
 	}
-	return db.Insert(TestLogCollection, self)
+	return errors.WithStack(db.Insert(TestLogCollection, self))
 }
 
 // Validate makes sure the log will accessible in the database
@@ -80,9 +81,9 @@ func (self *TestLog) Insert() error {
 func (self *TestLog) Validate() error {
 	switch {
 	case self.Name == "":
-		return fmt.Errorf("test log requires a 'Name' field")
+		return errors.New("test log requires a 'Name' field")
 	case self.Task == "":
-		return fmt.Errorf("test log requires a 'Task' field")
+		return errors.New("test log requires a 'Task' field")
 	default:
 		return nil
 	}

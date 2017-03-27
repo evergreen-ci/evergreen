@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 const ProviderName = "mock"
@@ -55,8 +56,7 @@ func FetchMockProvider() *MockCloudManager {
 func (mockMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	intentHost := cloud.NewIntent(*distro, fmt.Sprintf("mock_%v", util.RandomString()), ProviderName, hostOpts)
 	if err := intentHost.Insert(); err != nil {
-		return nil, fmt.Errorf("Could not insert intent "+
-			"host “%v”: %v", intentHost.Id, err)
+		return nil, errors.Wrapf(err, "Could not insert intent host '%v'", intentHost.Id)
 	}
 	l := mockMgr.mutex
 	l.Lock()
@@ -79,7 +79,7 @@ func (mockMgr *MockCloudManager) GetInstanceStatus(host *host.Host) (cloud.Cloud
 	instance, ok := mockMgr.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
-		return cloud.StatusUnknown, fmt.Errorf("unable to fetch host: %v", host.Id)
+		return cloud.StatusUnknown, errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 
 	return instance.Status, nil
@@ -92,7 +92,7 @@ func (mockMgr *MockCloudManager) GetDNSName(host *host.Host) (string, error) {
 	instance, ok := mockMgr.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
-		return "", fmt.Errorf("unable to fetch host: %v", host.Id)
+		return "", errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 	return instance.DNSName, nil
 }
@@ -116,17 +116,16 @@ func (mockMgr *MockCloudManager) TerminateInstance(host *host.Host) error {
 	defer l.Unlock()
 	instance, ok := mockMgr.Instances[host.Id]
 	if !ok {
-		return fmt.Errorf("unable to fetch host: %v", host.Id)
+		return errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 	if host.Status == evergreen.HostTerminated {
-		return fmt.Errorf("Cannot terminate %v - already marked as "+
-			"terminated!", host.Id)
+		return errors.Errorf("Cannot terminate %s; already marked as terminated!", host.Id)
 	}
 
 	instance.Status = cloud.StatusTerminated
 	mockMgr.Instances[host.Id] = instance
 
-	return host.Terminate()
+	return errors.WithStack(host.Terminate())
 }
 
 func (mockMgr *MockCloudManager) Configure(settings *evergreen.Settings) error {
@@ -140,7 +139,7 @@ func (mockMgr *MockCloudManager) IsSSHReachable(host *host.Host, keyPath string)
 	instance, ok := mockMgr.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
-		return false, fmt.Errorf("unable to fetch host: %v", host.Id)
+		return false, errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 	return instance.IsSSHReachable, nil
 }
@@ -151,7 +150,7 @@ func (mockMgr *MockCloudManager) IsUp(host *host.Host) (bool, error) {
 	instance, ok := mockMgr.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
-		return false, fmt.Errorf("unable to fetch host: %v", host.Id)
+		return false, errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 	return instance.IsUp, nil
 }
@@ -162,7 +161,7 @@ func (mockMgr *MockCloudManager) OnUp(host *host.Host) error {
 	defer l.Unlock()
 	instance, ok := mockMgr.Instances[host.Id]
 	if !ok {
-		return fmt.Errorf("unable to fetch host: %v", host.Id)
+		return errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 	instance.OnUpRan = true
 	mockMgr.Instances[host.Id] = instance
@@ -176,7 +175,7 @@ func (mockMgr *MockCloudManager) GetSSHOptions(host *host.Host, keyPath string) 
 	instance, ok := mockMgr.Instances[host.Id]
 	l.RUnlock()
 	if !ok {
-		return []string{}, fmt.Errorf("unable to fetch host: %v", host.Id)
+		return []string{}, errors.Errorf("unable to fetch host: %s", host.Id)
 	}
 	return instance.SSHOptions, nil
 }

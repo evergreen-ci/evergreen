@@ -20,6 +20,7 @@ import (
 
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
+	"github.com/pkg/errors"
 )
 
 var s3ParamsToSign = map[string]bool{
@@ -85,7 +86,7 @@ func GetS3Location(s3URL string) (string, string, error) {
 	}
 
 	if urlParsed.Scheme != "s3" {
-		return "", "", fmt.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
+		return "", "", errors.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
 	}
 
 	return urlParsed.Host, urlParsed.Path, nil
@@ -94,19 +95,19 @@ func GetS3Location(s3URL string) (string, string, error) {
 func CopyS3File(awsAuth *aws.Auth, fromS3URL string, toS3URL string, permissionACL string) error {
 	fromParsed, err := url.Parse(fromS3URL)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	toParsed, err := url.Parse(toS3URL)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	client := &http.Client{}
 	destinationPath := fmt.Sprintf("http://%v.s3.amazonaws.com%v", toParsed.Host, toParsed.Path)
 	req, err := http.NewRequest("PUT", destinationPath, nil)
 	if err != nil {
-		return fmt.Errorf("PUT request on %v failed: %v", destinationPath, err)
+		return errors.Wrapf(err, "PUT request on %v failed", destinationPath)
 	}
 	req.Header.Add("x-amz-copy-source", fmt.Sprintf("/%v%v", fromParsed.Host, fromParsed.Path))
 	req.Header.Add("x-amz-date", time.Now().Format(time.RFC850))
@@ -117,14 +118,14 @@ func CopyS3File(awsAuth *aws.Auth, fromS3URL string, toS3URL string, permissionA
 
 	resp, err := client.Do(req)
 	if resp == nil {
-		return fmt.Errorf("Nil response received: %v", err)
+		return errors.Wrap(err, "Nil response received")
 	}
 	defer resp.Body.Close()
 
 	// attempt to read the response body to check for success/error message
 	respBody, respBodyErr := ioutil.ReadAll(resp.Body)
 	if respBodyErr != nil {
-		return fmt.Errorf("Error reading s3 copy response body: %v", respBodyErr)
+		return errors.Wrap(respBodyErr, "Error reading s3 copy response body")
 	}
 
 	// Attempt to unmarshall the response body. If there's no errors, it means
@@ -148,14 +149,14 @@ func CopyS3File(awsAuth *aws.Auth, fromS3URL string, toS3URL string, permissionA
 			// copyObjectResult unmarshall error on a response from S3 should
 			// contain a CopyObjectError. An error here indicates possible
 			// backwards incompatible changes in the AWS API
-			return fmt.Errorf("Unrecognized S3 response: %v: %v", errMsg, xmlErr)
+			return errors.Wrapf(xmlErr, "Unrecognized S3 response: %v", errMsg)
 		}
 		copyObjectError.ErrMsg = errMsg
 		// if we were able to parse out an error response, then we can reliably
 		// inform the user of the error
 		return copyObjectError
 	}
-	return err
+	return errors.WithStack(err)
 }
 
 func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
@@ -165,7 +166,7 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
 		toS3Bucket, toS3Path)
 	req, err := http.NewRequest("PUT", destinationPath, nil)
 	if err != nil {
-		return fmt.Errorf("PUT request on %v failed: %v", destinationPath, err)
+		return errors.Wrapf(err, "PUT request on %v failed", destinationPath)
 	}
 	req.Header.Add("x-amz-copy-source", fmt.Sprintf("/%v/%v", fromS3Bucket,
 		fromS3Path))
@@ -178,14 +179,14 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
 
 	resp, err := client.Do(req)
 	if resp == nil {
-		return fmt.Errorf("Nil response received: %v", err)
+		return errors.Wrap(err, "Nil response received")
 	}
 	defer resp.Body.Close()
 
 	// attempt to read the response body to check for success/error message
 	respBody, respBodyErr := ioutil.ReadAll(resp.Body)
 	if respBodyErr != nil {
-		return fmt.Errorf("Error reading s3 copy response body: %v", respBodyErr)
+		return errors.Errorf("Error reading s3 copy response body: %v", respBodyErr)
 	}
 
 	// Attempt to unmarshall the response body. If there's no errors, it means
@@ -209,7 +210,7 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
 			// copyObjectResult unmarshall error on a response from S3 should
 			// contain a CopyObjectError. An error here indicates possible
 			// backwards incompatible changes in the AWS API
-			return fmt.Errorf("Unrecognized S3 response: %v: %v", errMsg, xmlErr)
+			return errors.Errorf("Unrecognized S3 response: %v: %v", errMsg, xmlErr)
 		}
 		copyObjectError.ErrMsg = errMsg
 		// if we were able to parse out an error response, then we can reliably
@@ -228,7 +229,7 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 	}
 
 	if urlParsed.Scheme != "s3" {
-		return fmt.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
+		return errors.Errorf("Don't know how to use URL with scheme %v", urlParsed.Scheme)
 	}
 
 	localFileReader, err := os.Open(localFilePath)

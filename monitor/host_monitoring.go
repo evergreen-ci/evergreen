@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -27,15 +27,15 @@ func monitorReachability(settings *evergreen.Settings) []error {
 	grip.Info("Running reachability checks...")
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	// fetch all hosts that have not been checked recently
 	// (> 10 minutes ago)
 	threshold := time.Now().Add(-ReachabilityCheckInterval)
 	hosts, err := host.Find(host.ByNotMonitoredSince(threshold))
 	if err != nil {
-		errors = append(errors, fmt.Errorf("error finding hosts not monitored recently: %v", err))
-		return errors
+		errs = append(errs, errors.Wrap(err, "error finding hosts not monitored recently"))
+		return errs
 	}
 
 	workers := NumReachabilityWorkers
@@ -55,7 +55,7 @@ func monitorReachability(settings *evergreen.Settings) []error {
 			defer wg.Done()
 			for host := range hostsChan {
 				if err := checkHostReachability(host, settings); err != nil {
-					errChan <- err
+					errChan <- errors.WithStack(err)
 				}
 			}
 		}()
@@ -65,7 +65,7 @@ func monitorReachability(settings *evergreen.Settings) []error {
 	go func() {
 		defer close(errDone)
 		for err := range errChan {
-			errors = append(errors, fmt.Errorf("error checking reachability: %v", err))
+			errs = append(errs, errors.Wrap(err, "error checking reachability"))
 		}
 	}()
 
@@ -79,7 +79,7 @@ func monitorReachability(settings *evergreen.Settings) []error {
 	close(errChan)
 
 	<-errDone
-	return errors
+	return errs
 }
 
 // check reachability for a single host, and take any necessary action
@@ -89,13 +89,13 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 	// get a cloud version of the host
 	cloudHost, err := providers.GetCloudHost(&host, settings)
 	if err != nil {
-		return fmt.Errorf("error getting cloud host for host %v: %v", host.Id, err)
+		return errors.Wrapf(err, "error getting cloud host for host %v: %v", host.Id)
 	}
 
 	// get the cloud status for the host
 	cloudStatus, err := cloudHost.GetInstanceStatus()
 	if err != nil {
-		return fmt.Errorf("error getting cloud status for host %v: %v", host.Id, err)
+		return errors.Wrapf(err, "error getting cloud status for host %s", host.Id)
 	}
 
 	// take different action, depending on how the cloud provider reports the host's status
@@ -104,7 +104,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 		// check if the host is reachable via SSH
 		reachable, err := cloudHost.IsSSHReachable()
 		if err != nil {
-			return fmt.Errorf("error checking ssh reachability for host %v: %v", host.Id, err)
+			return errors.Wrapf(err, "error checking ssh reachability for host %s", host.Id)
 		}
 
 		// log the status update if the reachability of the host is changing
@@ -116,14 +116,14 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 
 		// mark the host appropriately
 		if err := host.UpdateReachability(reachable); err != nil {
-			return fmt.Errorf("error updating reachability for host %v: %v", host.Id, err)
+			return errors.Wrapf(err, "error updating reachability for host %s", host.Id)
 		}
 	case cloud.StatusTerminated:
 		grip.Infof("Host %s terminated externally; updating db status to terminated", host.Id)
 
 		// the instance was terminated from outside our control
 		if err := host.SetTerminated(); err != nil {
-			return fmt.Errorf("error setting host %v terminated: %v", host.Id, err)
+			return errors.Wrapf(err, "error setting host %s terminated", host.Id)
 		}
 	}
 

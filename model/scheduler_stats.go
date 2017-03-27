@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -105,19 +105,19 @@ func bucketResource(resource ResourceInfo, frameStart, frameEnd time.Time, bucke
 	end := resource.End
 	// double check so that there are no panics
 	if start.After(frameEnd) || start.Equal(frameEnd) {
-		return currentBuckets, fmt.Errorf("invalid resource start time %v that is after the time frame %v", start, frameEnd)
+		return currentBuckets, errors.Errorf("invalid resource start time %v that is after the time frame %v", start, frameEnd)
 	}
 
 	if util.IsZeroTime(start) {
-		return currentBuckets, fmt.Errorf("start time is zero")
+		return currentBuckets, errors.New("start time is zero")
 	}
 
 	if !util.IsZeroTime(end) && (end.Before(frameStart) || end.Equal(frameStart)) {
-		return currentBuckets, fmt.Errorf("invalid resource end time, %v that is before the time frame, %v", end, frameStart)
+		return currentBuckets, errors.Errorf("invalid resource end time, %v that is before the time frame, %v", end, frameStart)
 	}
 
 	if !util.IsZeroTime(end) && end.Before(start) {
-		return currentBuckets, fmt.Errorf("termination time, %v is before start time, %v and exists", end, start)
+		return currentBuckets, errors.Errorf("termination time, %v is before start time, %v and exists", end, start)
 	}
 
 	// if the times are equal then just return since nothing should be bucketed
@@ -167,7 +167,7 @@ func bucketResource(resource ResourceInfo, frameStart, frameEnd time.Time, bucke
 func CreateHostBuckets(hosts []host.Host, bounds FrameBounds) ([]Bucket, []error) {
 	hostBuckets := make([]Bucket, bounds.NumberBuckets)
 	var err error
-	errors := []error{}
+	errs := []error{}
 	for _, h := range hosts {
 		hostResource := ResourceInfo{
 			Id:    h.Id,
@@ -184,10 +184,10 @@ func CreateHostBuckets(hosts []host.Host, bounds FrameBounds) ([]Bucket, []error
 		}
 		hostBuckets, err = bucketResource(hostResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, hostBuckets)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error bucketing host %v : %v", h.Id, err))
+			errs = append(errs, errors.Wrapf(err, "error bucketing host %s", h.Id))
 		}
 	}
-	return hostBuckets, errors
+	return hostBuckets, errs
 }
 
 // CreateTaskBuckets takes in a list of tasks with their start and finish times
@@ -195,7 +195,7 @@ func CreateHostBuckets(hosts []host.Host, bounds FrameBounds) ([]Bucket, []error
 func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, bounds FrameBounds) ([]Bucket, []error) {
 	taskBuckets := make([]Bucket, bounds.NumberBuckets)
 	var err error
-	errors := []error{}
+	errs := []error{}
 	for _, t := range tasks {
 		taskResource := ResourceInfo{
 			Id:    t.Id,
@@ -205,7 +205,7 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, bounds FrameBoun
 		}
 		taskBuckets, err = bucketResource(taskResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, taskBuckets)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error bucketing task %v : %v", t.Id, err))
+			errs = append(errs, errors.Wrapf(err, "error bucketing task %v", t.Id))
 		}
 	}
 
@@ -218,10 +218,10 @@ func CreateTaskBuckets(tasks []task.Task, oldTasks []task.Task, bounds FrameBoun
 		}
 		taskBuckets, err = bucketResource(taskResource, bounds.StartTime, bounds.EndTime, bounds.BucketSize, taskBuckets)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error bucketing task %v : %v", t.Id, err))
+			errs = append(errs, errors.Wrapf(err, "error bucketing task %v", t.Id))
 		}
 	}
-	return taskBuckets, errors
+	return taskBuckets, errs
 }
 
 // CreateAllHostUtilizationBuckets aggregates each bucket by creating a time frame given the number of days back

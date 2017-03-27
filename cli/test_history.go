@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -121,11 +122,11 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 	}
 
 	if thc.AfterRevision != "" && len(thc.AfterRevision) != 40 {
-		return fmt.Errorf("after revision must be a 40 character revision")
+		return errors.Errorf("after revision must be a 40 character revision")
 	}
 
 	if thc.BeforeRevision != "" && len(thc.BeforeRevision) != 40 {
-		return fmt.Errorf("before revision must be a 40 character revision")
+		return errors.Errorf("before revision must be a 40 character revision")
 	}
 
 	if thc.Format == "" {
@@ -135,14 +136,14 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 	if thc.BeforeDate != "" {
 		beforeDate, err = time.Parse(timeFormat, thc.BeforeDate)
 		if err != nil {
-			return fmt.Errorf("before date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
+			return errors.Errorf("before date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
 		}
 	}
 	afterDate := time.Time{}
 	if thc.AfterDate != "" {
 		afterDate, err = time.Parse(timeFormat, thc.AfterDate)
 		if err != nil {
-			return fmt.Errorf("after date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
+			return errors.Errorf("after date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
 		}
 	}
 	// create a test history parameter struct and validate it

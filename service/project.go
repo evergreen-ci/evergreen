@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -271,7 +272,7 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	}
 	revision := string(data)
 	if revision == "" {
-		uis.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("revision sent was empty"))
+		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("revision sent was empty"))
 		return
 	}
 

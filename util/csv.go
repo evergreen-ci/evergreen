@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+
+	"github.com/pkg/errors"
 )
 
 // getCSVFields takes in a struct and retrieves the struct tag values for csv.
@@ -53,7 +55,7 @@ func convertDataToCSVRecord(data interface{}) ([][]string, error) {
 	case reflect.Slice, reflect.Array:
 		s := reflect.ValueOf(data)
 		if s.Len() == 0 {
-			return nil, fmt.Errorf("no data to write to CSV")
+			return nil, errors.New("no data to write to CSV")
 		}
 		// create the fields by passing in the type of a host utilization bucket
 		records := [][]string{getCSVFields(reflect.TypeOf(s.Index(0).Interface()))}
@@ -62,7 +64,7 @@ func convertDataToCSVRecord(data interface{}) ([][]string, error) {
 		}
 		return records, nil
 	default:
-		return nil, fmt.Errorf("data is not an array")
+		return nil, errors.New("data is not an array")
 	}
 }
 

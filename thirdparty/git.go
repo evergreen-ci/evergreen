@@ -2,7 +2,6 @@ package thirdparty
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // GitApplyNumstat attempts to apply a given patch; it returns the patch's bytes
@@ -20,7 +20,7 @@ import (
 func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 	handle, err := ioutil.TempFile("", util.RandomString())
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create local patch file")
+		return nil, errors.New("Unable to create local patch file")
 	}
 	// convert the patch to bytes
 	buf := []byte(patch)
@@ -29,14 +29,14 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 		// read a chunk
 		n, err := buffer.Read(buf)
 		if err != nil && err != io.EOF {
-			return nil, fmt.Errorf("Unable to read supplied patch file")
+			return nil, errors.New("Unable to read supplied patch file")
 		}
 		if n == 0 {
 			break
 		}
 		// write a chunk
 		if _, err := handle.Write(buf[:n]); err != nil {
-			return nil, fmt.Errorf("Unable to read supplied patch file")
+			return nil, errors.New("Unable to read supplied patch file")
 		}
 	}
 
@@ -49,14 +49,14 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 	// this should never happen if patch is initially validated
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("Error validating patch: 424 - %v (%v)",
-			summaryBuffer.String(), err)
+		return nil, errors.Wrapf(err, "Error validating patch: 424 - %v",
+			summaryBuffer.String())
 	}
 
 	// this should never happen if patch is initially validated
 	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("Error waiting on patch: 562 - %v (%v)",
-			summaryBuffer.String(), err)
+		return nil, errors.Wrapf(err, "Error waiting on patch: 562 - %v",
+			summaryBuffer.String())
 	}
 	return &summaryBuffer, nil
 }
@@ -86,7 +86,7 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []patch.Summary, err er
 					"binary data diff, using 0", details[2], details[0])
 				additions = 0
 			} else {
-				return nil, fmt.Errorf("Error getting patch additions summary: %v", err)
+				return nil, errors.Wrap(err, "Error getting patch additions summary")
 			}
 		}
 
@@ -97,7 +97,7 @@ func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []patch.Summary, err er
 					"binary data diff, using 0", details[2], details[1])
 				deletions = 0
 			} else {
-				return nil, fmt.Errorf("Error getting patch deletions summary: %v", err)
+				return nil, errors.Wrap(err, "Error getting patch deletions summary")
 			}
 		}
 

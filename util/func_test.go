@@ -1,10 +1,10 @@
 package util
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -28,7 +28,7 @@ func TestRunFunctionWithTimeout(t *testing.T) {
 
 		Convey("if the inner function returns an error, the error should not"+
 			" be swallowed", func() {
-			funcErr := fmt.Errorf("I'm an error")
+			funcErr := errors.New("I'm an error")
 			f := func() error {
 				return funcErr
 			}

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -81,8 +82,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 
 	repository, err := model.FindRepository(projectIdentifier)
 	if err != nil {
-		return fmt.Errorf("error finding repository '%v': %v",
-			projectIdentifier, err)
+		return errors.Wrapf(err, "error finding repository '%v'", projectIdentifier)
 	}
 
 	var revisions []model.Revision
@@ -223,13 +223,13 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 func sanityCheckOrderNum(revOrderNum int, projectId string) error {
 	latest, err := version.FindOne(version.ByMostRecentForRequester(projectId, evergreen.RepotrackerVersionRequester))
 	if err != nil {
-		return fmt.Errorf("Error getting latest version: %v", err.Error())
+		return errors.Wrap(err, "Error getting latest version")
 	}
 
 	// When there are no versions in the db yet, sanity check is moot
 	if latest != nil {
 		if revOrderNum <= latest.RevisionOrderNumber {
-			return fmt.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
+			return errors.Errorf("Commit order number isn't greater than last stored version's: %v <= %v",
 				revOrderNum, latest.RevisionOrderNumber)
 		}
 	}
@@ -306,7 +306,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		// We have a config, so turn it into a usable yaml string to store with the version doc
 		projectYamlBytes, err := yaml.Marshal(project)
 		if err != nil {
-			return nil, fmt.Errorf("Error marshaling config: %v", err)
+			return nil, errors.Wrap(err, "Error marshaling config")
 		}
 		v.Config = string(projectYamlBytes)
 
@@ -314,7 +314,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		if len(project.Ignore) > 0 {
 			filenames, err := repoTracker.GetChangedFiles(revision)
 			if err != nil {
-				return nil, fmt.Errorf("error checking GitHub for ignored files: %v", err)
+				return nil, errors.Wrap(err, "error checking GitHub for ignored files")
 			}
 			if project.IgnoresAllFiles(filenames) {
 				v.Ignored = true
@@ -322,10 +322,11 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 		}
 
 		// We rebind newestVersion each iteration, so the last binding will be the newest version
-		err = createVersionItems(v, ref, project)
+		err = errors.Wrapf(createVersionItems(v, ref, project),
+			"Error creating version items for %s in project %s",
+			v.Id, ref.Identifier)
 		if err != nil {
-			grip.Errorf("Error creating version items for %s in project %s: %+v",
-				v.Id, ref.Identifier, err)
+			grip.Error(err)
 			return nil, err
 		}
 		newestVersion = v
@@ -341,7 +342,8 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 	projectRef := repoTracker.ProjectRef
 	if projectRef.LocalConfig != "" {
 		// return the Local config from the project Ref.
-		return model.FindProject("", projectRef)
+		p, err := model.FindProject("", projectRef)
+		return p, errors.WithStack(err)
 	}
 	project, err := repoTracker.GetRemoteConfig(revision)
 	if err != nil {
@@ -379,13 +381,13 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 			lastRevision = repository.LastRevision
 		}
 		repoTracker.sendFailureNotification(lastRevision, err)
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// check if project config is valid
 	verrs, err := validator.CheckProjectSyntax(project)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if len(verrs) != 0 {
 		// We have syntax errors in the project.
@@ -455,13 +457,13 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 		}
 		buildId, err := model.CreateBuildFromVersion(project, v, taskIdTable, buildvariant.Name, false, nil)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 
 		lastActivated, err := version.FindOne(version.ByLastVariantActivation(ref.Identifier, buildvariant.Name))
 		if err != nil {
 			grip.Errorln("Error getting activation time for variant", buildvariant.Name)
-			return err
+			return errors.WithStack(err)
 		}
 
 		var lastActivation *time.Time
@@ -500,7 +502,7 @@ func createVersionItems(v *version.Version, ref *model.ProjectRef, project *mode
 				grip.Errorf("deleting build %s: %+v", buildStatus.BuildId, buildErr)
 			}
 		}
-		return err
+		return errors.WithStack(err)
 	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"fmt"
 	"io/ioutil"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -28,25 +28,25 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		manifest.Collection, model.ProjectRefCollection}
 
 	if err := db.ClearCollections(testCollections...); err != nil {
-		return nil, nil, fmt.Errorf("%s: %+v", clearDataMsg, err)
+		return nil, nil, errors.Wrap(err, clearDataMsg)
 	}
 
 	// Read in the project configuration
 	projectConfig, err := ioutil.ReadFile(projectFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read project config: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to read project config")
 	}
 
 	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
 	if err := model.LoadProjectInto(projectConfig, "test", project); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal project config: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
 	// Marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal project config: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
 	// Create the ref for the project
@@ -61,7 +61,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		LocalConfig: string(projectConfig),
 	}
 	if err := projectRef.Insert(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert projectRef: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert projectRef")
 	}
 
 	// Save the project variables
@@ -74,7 +74,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		},
 	}
 	if _, err := projectVars.Upsert(); err != nil {
-		return nil, nil, fmt.Errorf("problem inserting project variables: %+v", err)
+		return nil, nil, errors.Wrap(err, "problem inserting project variables")
 	}
 
 	// Create and insert two tasks
@@ -95,7 +95,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		taskOne.Requester = evergreen.PatchVersionRequester
 	}
 	if err := taskOne.Insert(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert taskOne: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert taskOne")
 	}
 
 	taskTwo := &task.Task{
@@ -113,7 +113,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Activated:    true,
 	}
 	if err := taskTwo.Insert(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert taskTwo: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert taskTwo")
 	}
 
 	// Set up a task queue for task end tests
@@ -127,7 +127,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		},
 	}
 	if err := taskQueue.Save(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert taskqueue: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert task queue")
 	}
 
 	// Insert the version document
@@ -137,7 +137,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Config:   string(projectYamlBytes),
 	}
 	if err := v.Insert(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert version: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert version: ")
 	}
 
 	// Insert the build that contains the tasks
@@ -150,12 +150,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Version: v.Id,
 	}
 	if err := build.Insert(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert build: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert build")
 	}
 
 	workDir, err := ioutil.TempDir("", "agent_test_")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create working directory: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to create working directory")
 	}
 
 	// Insert the host info for running the tests
@@ -174,12 +174,12 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		AgentRevision: agentRevision,
 	}
 	if err := host.Insert(); err != nil {
-		return nil, nil, fmt.Errorf("failed to insert host: %+v", err)
+		return nil, nil, errors.Wrap(err, "failed to insert host")
 	}
 
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't get db session! (%+v)", err)
+		return nil, nil, errors.Wrap(err, "couldn't get db session!")
 
 	}
 
@@ -187,8 +187,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).
 		RemoveAll(bson.M{"t_id": bson.M{"$in": []string{taskOne.Id, taskTwo.Id}}})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to remove logs: %+v", err)
-
+		return nil, nil, errors.Wrap(err, "failed to remove logs")
 	}
 
 	return taskOne, build, nil

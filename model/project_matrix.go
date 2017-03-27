@@ -7,6 +7,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 // This file contains the code for matrix generation.
@@ -57,7 +58,7 @@ func (ma matrixAxis) find(id string) (axisValue, error) {
 			return v, nil
 		}
 	}
-	return axisValue{}, fmt.Errorf("axis '%v' does not contain value '%v'", ma.Id, id)
+	return axisValue{}, errors.Errorf("axis '%v' does not contain value '%v'", ma.Id, id)
 }
 
 // axisValues make up the "points" along a matrix axis. Values are
@@ -273,8 +274,8 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 			if !evaluatedExcludes.contain(cell) {
 				v, err := buildMatrixVariant(axes, cell, &matrices[i], ase)
 				if err != nil {
-					errs = append(errs,
-						fmt.Errorf("%v: error building matrix cell %v: %v", m.Id, cell, err))
+					errs = append(errs, errors.Wrapf(err, "%v: error building matrix cell %v",
+						m.Id, cell))
 					continue
 				}
 				pruned = append(pruned, *v)
@@ -282,7 +283,7 @@ func buildMatrixVariants(axes []matrixAxis, ase *axisSelectorEvaluator, matrices
 		}
 		// safety check to make sure the exclude field is actually working
 		if len(m.Exclude) > 0 && len(unpruned) == len(pruned) {
-			errs = append(errs, fmt.Errorf("%v: exclude field did not exclude anything", m.Id))
+			errs = append(errs, errors.Errorf("%v: exclude field did not exclude anything", m.Id))
 		}
 		matrixVariants = append(matrixVariants, pruned...)
 	}
@@ -326,7 +327,7 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 			return nil, err
 		}
 		if err := v.mergeAxisValue(axisVal); err != nil {
-			return nil, fmt.Errorf("processing axis value %v,%v: %v", a.Id, axisVal.Id, err)
+			return nil, errors.Wrapf(err, "processing axis value %v, %v", a.Id, axisVal.Id)
 		}
 		// for display names, fall back to the axis values id so we have *something*
 		if axisVal.DisplayName != "" {
@@ -345,23 +346,23 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 	}
 	if usedAxes != len(mv) {
 		// we could make this error more helpful at the expense of extra complexity
-		return nil, fmt.Errorf("cell %v uses undefined axes", mv)
+		return nil, errors.Errorf("cell %v uses undefined axes", mv)
 	}
 	v.Name = idBuf.String()
 	disp, err := displayNameExp.ExpandString(m.DisplayName)
 	if err != nil {
-		return nil, fmt.Errorf("processing display name: %v", err)
+		return nil, errors.Wrap(err, "processing display name")
 	}
 	v.DisplayName = disp
 
 	// add final matrix-level tags and tasks
 	if err := v.mergeAxisValue(axisValue{Tags: m.Tags}); err != nil {
-		return nil, fmt.Errorf("processing matrix tags: %v", err)
+		return nil, errors.Wrap(err, "processing matrix tags")
 	}
 	for _, t := range m.Tasks {
 		expTask, err := expandParserBVTask(t, v.Expansions)
 		if err != nil {
-			return nil, fmt.Errorf("processing task %v: %v", t.Name, err)
+			return nil, errors.Wrapf(err, "processing task %s", t.Name)
 		}
 		v.Tasks = append(v.Tasks, expTask)
 	}
@@ -370,16 +371,16 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 	for i, rule := range m.Rules {
 		r, err := expandRule(rule, v.Expansions)
 		if err != nil {
-			return nil, fmt.Errorf("processing rule[%v]: %v", i, err)
+			return nil, errors.Wrapf(err, "processing rule[%d]", i)
 		}
 		matchers, errs := r.If.evaluatedCopies(ase) // we could cache this
 		if len(errs) > 0 {
-			return nil, fmt.Errorf("evaluating rules for matrix %v: %v", m.Id, errs)
+			return nil, errors.Errorf("evaluating rules for matrix %v: %v", m.Id, errs)
 		}
 		if matchers.contain(mv) {
 			if r.Then.Set != nil {
 				if err := v.mergeAxisValue(*r.Then.Set); err != nil {
-					return nil, fmt.Errorf("evaluating %v rule %v: %v", m.Id, i, err)
+					return nil, errors.Wrapf(err, "evaluating %s rule %d", m.Id, i)
 				}
 			}
 			// we append add/remove task rules internally and execute them
@@ -414,7 +415,7 @@ func (pbv *parserBV) mergeAxisValue(av axisValue) error {
 	if len(av.Variables) > 0 {
 		expanded, err := expandExpansions(av.Variables, pbv.Expansions)
 		if err != nil {
-			return fmt.Errorf("expanding variables: %v", err)
+			return errors.Wrap(err, "expanding variables")
 		}
 		pbv.Expansions.Update(expanded)
 	}
@@ -422,7 +423,7 @@ func (pbv *parserBV) mergeAxisValue(av axisValue) error {
 	if len(av.Tags) > 0 {
 		expanded, err := expandStrings(av.Tags, pbv.Expansions)
 		if err != nil {
-			return fmt.Errorf("expanding tags: %v", err)
+			return errors.Wrap(err, "expanding tags")
 		}
 		pbv.Tags = util.UniqueStrings(append(pbv.Tags, expanded...))
 	}
@@ -431,14 +432,14 @@ func (pbv *parserBV) mergeAxisValue(av axisValue) error {
 	if len(av.RunOn) > 0 {
 		pbv.RunOn, err = expandStrings(av.RunOn, pbv.Expansions)
 		if err != nil {
-			return fmt.Errorf("expanding run_on: %v", err)
+			return errors.Wrap(err, "expanding run_on")
 		}
 	}
 	// overwrite modules
 	if len(av.Modules) > 0 {
 		pbv.Modules, err = expandStrings(av.Modules, pbv.Expansions)
 		if err != nil {
-			return fmt.Errorf("expanding modules: %v", err)
+			return errors.Wrap(err, "expanding modules")
 		}
 	}
 	if av.Stepback != nil {
@@ -456,7 +457,7 @@ func expandStrings(strings []string, exp command.Expansions) ([]string, error) {
 	for _, s := range strings {
 		newS, err := exp.ExpandString(s)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		expanded = append(expanded, newS)
 	}
@@ -469,11 +470,11 @@ func expandExpansions(in, exp command.Expansions) (command.Expansions, error) {
 	for k, v := range in {
 		newK, err := exp.ExpandString(k)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		newV, err := exp.ExpandString(v)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		newExp[newK] = newV
 	}
@@ -486,26 +487,26 @@ func expandParserBVTask(pbvt parserBVTask, exp command.Expansions) (parserBVTask
 	newTask := pbvt
 	newTask.Name, err = exp.ExpandString(pbvt.Name)
 	if err != nil {
-		return parserBVTask{}, fmt.Errorf("expanding name: %v", err)
+		return parserBVTask{}, errors.Wrap(err, "expanding name")
 	}
 	newTask.RunOn, err = expandStrings(pbvt.RunOn, exp)
 	if err != nil {
-		return parserBVTask{}, fmt.Errorf("expanding run_on: %v", err)
+		return parserBVTask{}, errors.Wrap(err, "expanding run_on")
 	}
 	newTask.Distros, err = expandStrings(pbvt.Distros, exp)
 	if err != nil {
-		return parserBVTask{}, fmt.Errorf("expanding distros: %v", err)
+		return parserBVTask{}, errors.Wrap(err, "expanding distros")
 	}
 	var newDeps parserDependencies
 	for i, d := range pbvt.DependsOn {
 		newDep := d
 		newDep.Status, err = exp.ExpandString(d.Status)
 		if err != nil {
-			return parserBVTask{}, fmt.Errorf("expanding depends_on[%v].status: %v", i, err)
+			return parserBVTask{}, errors.Wrapf(err, "expanding depends_on[%d/%d].status", i, len(pbvt.DependsOn))
 		}
 		newDep.taskSelector, err = expandTaskSelector(d.taskSelector, exp)
 		if err != nil {
-			return parserBVTask{}, fmt.Errorf("expanding depends_on[%v]: %v", i, err)
+			return parserBVTask{}, errors.Wrapf(err, "expanding depends_on[%d/%d]", i, len(pbvt.DependsOn))
 		}
 		newDeps = append(newDeps, newDep)
 	}
@@ -514,7 +515,7 @@ func expandParserBVTask(pbvt parserBVTask, exp command.Expansions) (parserBVTask
 	for i, r := range pbvt.Requires {
 		newReq, err := expandTaskSelector(r, exp)
 		if err != nil {
-			return parserBVTask{}, fmt.Errorf("expanding requires[%v]: %v", i, err)
+			return parserBVTask{}, errors.Wrapf(err, "expanding requires[%d/%d]", i, len(pbvt.Requires))
 		}
 		newReqs = append(newReqs, newReq)
 	}
@@ -527,14 +528,14 @@ func expandTaskSelector(ts taskSelector, exp command.Expansions) (taskSelector, 
 	newTS := taskSelector{}
 	newName, err := exp.ExpandString(ts.Name)
 	if err != nil {
-		return newTS, fmt.Errorf("expanding name: %v", err)
+		return newTS, errors.Wrap(err, "expanding name")
 	}
 	newTS.Name = newName
 	if v := ts.Variant; v != nil {
 		if len(v.matrixSelector) > 0 {
 			newMS, err := expandMatrixDefinition(v.matrixSelector, exp)
 			if err != nil {
-				return newTS, fmt.Errorf("expanding variant: %v", err)
+				return newTS, errors.Wrap(err, "expanding variant")
 			}
 			newTS.Variant = &variantSelector{
 				matrixSelector: newMS,
@@ -542,7 +543,7 @@ func expandTaskSelector(ts taskSelector, exp command.Expansions) (taskSelector, 
 		} else {
 			selector, err := exp.ExpandString(v.stringSelector)
 			if err != nil {
-				return newTS, fmt.Errorf("expanding variant: %v", err)
+				return newTS, errors.Wrap(err, "expanding variant")
 			}
 			newTS.Variant = &variantSelector{
 				stringSelector: selector,
@@ -559,7 +560,7 @@ func expandMatrixDefinition(md matrixDefinition, exp command.Expansions) (matrix
 	for axis, vals := range md {
 		newMS[axis], err = expandStrings(vals, exp)
 		if err != nil {
-			return nil, fmt.Errorf("matrix selector: %v", err)
+			return nil, errors.Wrap(err, "matrix selector")
 		}
 	}
 	return newMS, nil
@@ -571,14 +572,14 @@ func expandRule(r matrixRule, exp command.Expansions) (matrixRule, error) {
 	for _, md := range r.If {
 		newIf, err := expandMatrixDefinition(md, exp)
 		if err != nil {
-			return newR, fmt.Errorf("if: %v", err)
+			return newR, errors.Wrap(err, "if")
 		}
 		newR.If = append(newR.If, newIf)
 	}
 	for _, t := range r.Then.AddTasks {
 		newTask, err := expandParserBVTask(t, exp)
 		if err != nil {
-			return newR, fmt.Errorf("add_tasks: %v", err)
+			return newR, errors.Wrap(err, "add_tasks")
 		}
 		newR.Then.AddTasks = append(newR.Then.AddTasks, newTask)
 	}
@@ -586,7 +587,7 @@ func expandRule(r matrixRule, exp command.Expansions) (matrixRule, error) {
 		var err error
 		newR.Then.RemoveTasks, err = expandStrings(r.Then.RemoveTasks, exp)
 		if err != nil {
-			return newR, fmt.Errorf("remove_tasks: %v", err)
+			return newR, errors.Wrap(err, "remove_tasks")
 		}
 	}
 	// r.Then.Set will be taken care of when mergeAxisValue is called

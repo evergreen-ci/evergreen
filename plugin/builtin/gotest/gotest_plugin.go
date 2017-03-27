@@ -1,10 +1,10 @@
 package gotest
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -31,6 +31,6 @@ func (self *GotestPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	case ParseFilesCommandName:
 		return &ParseFilesCommand{}, nil
 	default:
-		return nil, fmt.Errorf("No such %v command: %v", GotestPluginName, cmdName)
+		return nil, errors.Errorf("No such %v command: %v", GotestPluginName, cmdName)
 	}
 }

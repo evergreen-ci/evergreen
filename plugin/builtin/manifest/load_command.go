@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 // ManifestLoadCommand
@@ -56,7 +57,7 @@ func (mfc *ManifestLoadCommand) Load(log plugin.Logger, pluginCom plugin.PluginC
 			}
 			if resp != nil && resp.StatusCode != http.StatusOK {
 				log.LogExecution(slogger.WARN, "Unexpected status code %v, retrying", resp.StatusCode)
-				return util.RetriableError{fmt.Errorf("Unexpected status code %v", resp.StatusCode)}
+				return util.RetriableError{errors.Errorf("Unexpected status code %v", resp.StatusCode)}
 			}
 			err = util.ReadJSONInto(resp.Body, &loadedManifest)
 			if err != nil {
@@ -70,7 +71,7 @@ func (mfc *ManifestLoadCommand) Load(log plugin.Logger, pluginCom plugin.PluginC
 		return err
 	}
 	if loadedManifest == nil {
-		return fmt.Errorf("Manifest is empty")
+		return errors.New("Manifest is empty")
 	}
 	mfc.updateExpansions(loadedManifest, conf)
 	return nil

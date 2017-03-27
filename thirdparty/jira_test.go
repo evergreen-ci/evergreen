@@ -2,12 +2,12 @@ package thirdparty
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -30,7 +30,7 @@ func (self stubHttp) doPut(url string, username string, password string, content
 
 func TestJiraNetworkFail(t *testing.T) {
 	Convey("With a JIRA rest interface with broken network", t, func() {
-		stub := stubHttp{nil, fmt.Errorf("Generic network error")}
+		stub := stubHttp{nil, errors.New("Generic network error")}
 
 		jira := JiraHandler{stub, testConfig.Jira.Host, testConfig.Jira.Username, testConfig.Jira.Password}
 

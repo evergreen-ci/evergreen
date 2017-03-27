@@ -1,11 +1,10 @@
 package monitor
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Notifier struct {
@@ -19,7 +18,7 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 	grip.Info("Building and sending necessary notifications...")
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	for _, f := range self.notificationBuilders {
 
@@ -29,8 +28,8 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 		// continue on error so that one wonky function doesn't stop the others
 		// from running
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error building"+
-				" notifications to be sent: %v", err))
+			errs = append(errs, errors.Wrap(err,
+				"error building notifications to be sent"))
 			continue
 		}
 
@@ -38,8 +37,8 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 		// notifications to be sent
 		if errs := sendNotifications(notifications, settings); errs != nil {
 			for _, err := range errs {
-				errors = append(errors, fmt.Errorf("error sending"+
-					" notifications: %v", err))
+				errs = append(errs, errors.Wrap(err,
+					"error sending notifications"))
 			}
 			continue
 		}
@@ -48,19 +47,18 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 
 	grip.Info("Done building and sending notifications")
 
-	return errors
+	return errs
 }
 
 // send all of the specified notifications, and execute the callbacks for any
 // that are successfully sent. returns an aggregate list of any errors
 // that occur
-func sendNotifications(notifications []notification,
-	settings *evergreen.Settings) []error {
+func sendNotifications(notifications []notification, settings *evergreen.Settings) []error {
 
 	grip.Infof("Sending %d notifications...", len(notifications))
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	// ask for the mailer we'll use
 	mailer := notify.ConstructMailer(settings.Notify)
@@ -77,20 +75,20 @@ func sendNotifications(notifications []notification,
 
 		// continue on error to allow further notifications to be sent
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error sending notification"+
-				" to %v: %v", n.recipient, err))
+			errs = append(errs, errors.Wrapf(err,
+				"error sending notification to %s", n.recipient))
 			continue
 		}
 
 		// run the notification's callback, since it has been successfully sent
 		if n.callback != nil {
 			if err := n.callback(n.host, n.threshold); err != nil {
-				errors = append(errors, fmt.Errorf("error running notification"+
-					" callback: %v", err))
+				errs = append(errs, errors.Wrap(err,
+					"error running notification callback"))
 			}
 		}
 
 	}
 
-	return errors
+	return errs
 }

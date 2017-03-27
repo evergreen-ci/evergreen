@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"math"
 	"sort"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -108,11 +108,11 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 	for distroId := range hostAllocatorData.taskQueueItems {
 		distro, ok := hostAllocatorData.distros[distroId]
 		if !ok {
-			return nil, fmt.Errorf("No distro info available for distro %v",
+			return nil, errors.Errorf("No distro info available for distro %v",
 				distroId)
 		}
 		if distro.Id != distroId {
-			return nil, fmt.Errorf("Bad mapping between task queue distro "+
+			return nil, errors.Errorf("Bad mapping between task queue distro "+
 				"name and host allocator distro data: %v != %v", distro.Id,
 				distroId)
 		}
@@ -222,7 +222,7 @@ func computeRunningTasksDuration(existingDistroHosts []host.Host,
 	for _, runningTaskId := range runningTaskIds {
 		runningTask, ok := runningTasksMap[runningTaskId]
 		if !ok {
-			return runningTasksDuration, fmt.Errorf("Unable to find running "+
+			return runningTasksDuration, errors.Errorf("Unable to find running "+
 				"task with _id %v", runningTaskId)
 		}
 		expectedDuration := model.GetTaskExpectedDuration(runningTask,
@@ -478,16 +478,17 @@ func (self *DurationBasedHostAllocator) numNewHostsForDistro(
 
 	cloudManager, err := providers.GetCloudManager(distro.Provider, settings)
 	if err != nil {
-		err = fmt.Errorf("Couldn't get cloud manager for %s (%s): %+v",
-			distro.Provider, distro.Id, err)
+		err = errors.Wrapf(err, "Couldn't get cloud manager for %s (%s)",
+			distro.Provider, distro.Id)
 		grip.Error(err)
 		return 0, err
 	}
 
 	can, err := cloudManager.CanSpawn()
 	if err != nil {
-		grip.Errorf("Problem checking if '%v' provider can spawn hosts: %+v",
-			distro.Provider, err)
+		err = errors.Wrapf(err, "Problem checking if '%v' provider can spawn hosts",
+			distro.Provider)
+		grip.Error(err)
 		return 0, nil
 	}
 	if !can {

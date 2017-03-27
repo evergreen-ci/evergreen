@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/taskrunner"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // StartTask is the handler function that retrieves the task from the request
@@ -42,30 +43,31 @@ func (as *APIServer) StartTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := model.MarkStart(t.Id); err != nil {
-		message := fmt.Errorf("Error marking task '%v' started: %v", t.Id, err)
+		message := errors.Wrapf(err, "Error marking task '%s' started", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	h, err := host.FindOne(host.ByRunningTaskId(t.Id))
 	if err != nil {
-		message := fmt.Errorf("Error finding host running task %v: %v", t.Id, err)
+		message := errors.Wrapf(err, "Error finding host running task %s", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	if h == nil {
-		message := fmt.Errorf("No host found running task %v", t.Id)
+		message := errors.Errorf("No host found running task %v", t.Id)
 		if t.HostId != "" {
-			message = fmt.Errorf("No host found running task %s but task is said to be running on %s",
+			message = errors.Errorf("No host found running task %s but task is said to be running on %s",
 				t.Id, t.HostId)
 		}
+
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	if err := h.SetTaskPid(taskStartInfo.Pid); err != nil {
-		message := fmt.Errorf("Error calling set pid on task %v : %v", t.Id, err)
+		message := errors.Wrapf(err, "Error calling set pid on task %s", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
@@ -92,7 +94,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if details.Status != evergreen.TaskSucceeded &&
 		details.Status != evergreen.TaskFailed &&
 		details.Status != evergreen.TaskUndispatched {
-		msg := fmt.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
+		msg := errors.Errorf("Invalid end status '%v' for task %v", details.Status, t.Id)
 		as.LoggedError(w, r, http.StatusBadRequest, msg)
 		return
 	}
@@ -104,13 +106,13 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projectRef == nil {
-		as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("empty projectRef for task"))
+		as.LoggedError(w, r, http.StatusNotFound, errors.New("empty projectRef for task"))
 		return
 	}
 
 	project, err := model.FindProject("", projectRef)
 	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		as.LoggedError(w, r, http.StatusInternalServerError, errors.WithStack(err))
 		return
 	}
 
@@ -123,14 +125,14 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// mark task as finished
 	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details, project, projectRef.DeactivatePrevious)
 	if err != nil {
-		message := fmt.Errorf("Error calling mark finish on task %v : %v", t.Id, err)
+		message := errors.Wrapf(err, "Error calling mark finish on task %v", t.Id)
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
 	if t.Requester != evergreen.PatchVersionRequester {
 		grip.Infoln("Processing alert triggers for task", t.Id)
-		err := alerts.RunTaskFailureTriggers(t.Id)
+		err := errors.WithStack(alerts.RunTaskFailureTriggers(t.Id))
 		grip.ErrorWhenf(err != nil, "processing alert triggers for task %s: %+v", t.Id, err)
 	} else {
 		//TODO(EVG-223) process patch-specific triggers
@@ -153,7 +155,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	// update the bookkeeping entry for the task
 	err = bookkeeping.UpdateExpectedDuration(t, t.TimeTaken)
 	if err != nil {
-		grip.Errorln("Error updating expected duration:", err)
+		grip.Errorln("Error updating expected duration:", err.Error())
 	}
 
 	// log the task as finished
@@ -366,20 +368,19 @@ func getNextDistroTask(currentTask *task.Task, host *host.Host) (
 	nextTask *task.Task, err error) {
 	taskQueue, err := model.FindTaskQueueForDistro(currentTask.DistroId)
 	if err != nil {
-		return nil, fmt.Errorf("Error locating distro queue (%v) for task "+
-			"'%v': %v", currentTask.DistroId, currentTask.Id, err)
+		return nil, errors.Wrapf(err, "Error locating distro queue (%v) for task '%v'",
+			currentTask.DistroId, currentTask.Id)
 	}
 
 	if taskQueue == nil {
-		return nil, fmt.Errorf("Nil task queue found for task '%v's distro "+
+		return nil, errors.Errorf("Nil task queue found for task '%v's distro "+
 			"queue - '%v'", currentTask.Id, currentTask.DistroId)
 	}
 
 	// dispatch the next task for this host
 	nextTask, err = taskrunner.DispatchTaskForHost(taskQueue, host)
 	if err != nil {
-		return nil, fmt.Errorf("Error dequeuing task for host %v: %v",
-			host.Id, err)
+		return nil, errors.Wrapf(err, "Error dequeuing task for host %v", host.Id)
 	}
 	if nextTask == nil {
 		return nil, nil
@@ -432,7 +433,7 @@ func markHostRunningTaskFinished(h *host.Host, t *task.Task, newTaskId string) {
 // of currentHost.
 func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host) (*task.Task, error) {
 	if currentHost.RunningTask != "" {
-		return nil, fmt.Errorf("Error host %v must have an unset running task field but has running task %v",
+		return nil, errors.Errorf("Error host %v must have an unset running task field but has running task %v",
 			currentHost.Id, currentHost.RunningTask)
 	}
 	// only proceed if there are pending tasks left
@@ -444,14 +445,14 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 			return nil, err
 		}
 		if nextTask == nil {
-			return nil, fmt.Errorf("nil task on the queue")
+			return nil, errors.New("nil task on the queue")
 		}
 
 		// dequeue the task from the queue
 		if err = taskQueue.DequeueTask(nextTask.Id); err != nil {
-			return nil, fmt.Errorf("error pulling task with id %v from "+
-				"queue for distro %v: %v", nextTask.Id,
-				nextTask.DistroId, err)
+			return nil, errors.Wrapf(err,
+				"error pulling task with id %v from queue for distro %v",
+				nextTask.Id, nextTask.DistroId)
 		}
 
 		// validate that the task can be run, if not fetch the next one in
@@ -468,7 +469,7 @@ func assignNextAvailableTask(taskQueue *model.TaskQueue, currentHost *host.Host)
 		ok, err := currentHost.UpdateRunningTask(currentHost.LastTaskCompleted, nextTaskId, time.Now())
 
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if !ok {
 			continue
@@ -491,19 +492,20 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	if h.RunningTask != "" {
 		t, err := task.FindOne(task.ById(h.RunningTask))
 		if err != nil {
+			err = errors.WithStack(err)
 			grip.Error(err)
 			as.WriteJSON(w, http.StatusInternalServerError,
-				fmt.Errorf("error getting running task %s: %v", h.RunningTask, err))
+				errors.Wrapf(err, "error getting running task %s", h.RunningTask))
 			return
 		}
 
 		// if the task can be dispatched and activated dispatch it
 		if t.IsDispatchable() {
-			err := model.MarkTaskDispatched(t, h.Id, h.Distro.Id)
+			err := errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
 			if err != nil {
 				grip.Error(err)
 				as.WriteJSON(w, http.StatusInternalServerError,
-					fmt.Errorf("error while marking task %s as dispatched for host %s: %v", t.Id, h.Id, err))
+					errors.Wrapf(err, "error while marking task %s as dispatched for host %s", t.Id, h.Id))
 				return
 			}
 		}
@@ -517,6 +519,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		// the task is not activated so the host's running task should be unset
 		// so it can retrieve a new task.
 		if err := h.ClearRunningTask(h.LastTaskCompleted, time.Now()); err != nil {
+			err = errors.WithStack(err)
 			grip.Error(err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return
@@ -532,15 +535,14 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	// If there is already a host that has the task, it will error
 	taskQueue, err := model.FindTaskQueueForDistro(h.Distro.Id)
 	if err != nil {
-		err = fmt.Errorf("Error locating distro queue (%v) for host "+
-			"'%v': %v", h.Distro.Id, h.Id, err)
+		err = errors.Wrapf(err, "Error locating distro queue (%v) for host '%v'", h.Distro.Id, h.Id)
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusBadRequest, err)
 		return
 	}
 	if taskQueue == nil {
-		err = fmt.Errorf("Nil task queue found for task '%v's distro "+
-			"queue - '%v'", h.Id, h.Distro.Id)
+		err = errors.Errorf("Nil task queue found for task '%v's distro queue - '%v'",
+			h.Id, h.Distro.Id)
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusBadRequest, err)
 		return
@@ -548,6 +550,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	// assign the task to a host and retrieve the task
 	nextTask, err := assignNextAvailableTask(taskQueue, h)
 	if err != nil {
+		err = errors.WithStack(err)
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusBadRequest, err)
 		return
@@ -561,6 +564,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// mark the task as dispatched
 	if err := model.MarkTaskDispatched(nextTask, h.Id, h.Distro.Id); err != nil {
+		err = errors.WithStack(err)
 		grip.Error(err)
 		as.WriteJSON(w, http.StatusInternalServerError, err)
 		return

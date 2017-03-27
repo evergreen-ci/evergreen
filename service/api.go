@@ -2,7 +2,6 @@ package service
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -32,6 +31,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 )
 
 type key int
@@ -131,7 +131,7 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		taskId := mux.Vars(r)["taskId"]
 		if taskId == "" {
-			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("missing task id"))
+			as.LoggedError(w, r, http.StatusBadRequest, errors.New("missing task id"))
 			return
 		}
 		t, err := task.FindOne(task.ById(taskId))
@@ -140,7 +140,7 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 			return
 		}
 		if t == nil {
-			as.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("task not found"))
+			as.LoggedError(w, r, http.StatusNotFound, errors.New("task not found"))
 			return
 		}
 
@@ -181,18 +181,18 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 
 		h, err := host.FindOne(host.ById(hostId))
 		if h == nil {
-			as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Host %v not found", hostId))
+			as.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("Host %v not found", hostId))
 			return
 		}
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error loading context for host %v: %v", hostId, err))
+				errors.Wrapf(err, "Error loading context for host %v", hostId))
 			return
 		}
 		// if there is a secret, ensure we are using the correct one -- fail if we arent
 		if secret != "" && secret != h.Secret {
 			// TODO (EVG-1283) error if secret is not attached as well
-			as.LoggedError(w, r, http.StatusConflict, fmt.Errorf("Invalid host secret for host %v", h.Id))
+			as.LoggedError(w, r, http.StatusConflict, errors.Errorf("Invalid host secret for host %v", h.Id))
 			return
 		}
 
@@ -201,7 +201,7 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			if t, ok := ctxTask.(*task.Task); ok {
 				if h.RunningTask != t.Id {
 					as.LoggedError(w, r, http.StatusConflict,
-						fmt.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
+						errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
 					return
 				}
 			}
@@ -265,7 +265,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	if lr.N == 0 {
 		// error if we used every available byte in the limit reader
 		as.LoggedError(w, r, http.StatusBadRequest,
-			fmt.Errorf("test log size exceeds %v bytes", maxTestLogSize))
+			errors.Errorf("test log size exceeds %v bytes", maxTestLogSize))
 		return
 	}
 	if err != nil {
@@ -476,7 +476,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	}{}
 
 	if err := util.ReadJSONInto(r.Body, &userCredentials); err != nil {
-		as.LoggedError(w, r, http.StatusBadRequest, fmt.Errorf("Error reading user credentials: %v", err))
+		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "Error reading user credentials"))
 		return
 	}
 	userToken, err := as.UserManager.CreateUserToken(userCredentials.Username, userCredentials.Password)
@@ -503,12 +503,12 @@ func getHostFromRequest(r *http.Request) (*host.Host, error) {
 	vars := mux.Vars(r)
 	tag := vars["tag"]
 	if len(tag) == 0 {
-		return nil, fmt.Errorf("no host tag supplied")
+		return nil, errors.New("no host tag supplied")
 	}
 	// find the host
 	host, err := host.FindOne(host.ById(tag))
 	if host == nil {
-		return nil, fmt.Errorf("no host with tag: %v", tag)
+		return nil, errors.Errorf("no host with tag: %v", tag)
 	}
 	if err != nil {
 		return nil, err
@@ -825,7 +825,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 		pluginSettings := as.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to configure plugin %s: %v", pl.Name(), err)
+			return nil, errors.Wrapf(err, "Failed to configure plugin %s", pl.Name())
 		}
 		handler := pl.GetAPIHandler()
 		if handler == nil {

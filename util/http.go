@@ -3,12 +3,12 @@ package util
 import (
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 // WriteJSON writes a json response with the supplied code on the given writer.
@@ -77,7 +77,7 @@ func GetIntValue(r *http.Request, valueKey string, defaultValue int) (int, error
 	}
 	intVal, err := strconv.Atoi(val)
 	if err != nil {
-		return 0, fmt.Errorf("%v: cannot convert %v to integer: %v", valueKey, val, err.Error())
+		return 0, errors.Errorf("%v: cannot convert %v to integer: %v", valueKey, val, err.Error())
 	}
 	return intVal, nil
 }
@@ -90,7 +90,7 @@ func GetBoolValue(r *http.Request, valueKey string, defaultValue bool) (bool, er
 	}
 	boolVal, err := strconv.ParseBool(val)
 	if err != nil {
-		return defaultValue, fmt.Errorf("%v: cannot convert %v to boolean: %v", valueKey, val, err.Error())
+		return defaultValue, errors.Errorf("%v: cannot convert %v to boolean: %v", valueKey, val, err.Error())
 	}
 	return boolVal, nil
 }

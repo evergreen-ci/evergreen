@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 const httpMaxAttempts = 10
@@ -95,14 +95,12 @@ func (h *HTTPCommunicator) Start() error {
 	}
 	if err != nil {
 		if retryFail {
-			msg := fmt.Errorf("task start failed after %v tries: %v",
-				h.MaxAttempts, err)
-			h.Logger.Logf(slogger.ERROR, msg.Error())
-			return msg
+			err = errors.Wrapf(err, "task start failed after %v tries", h.MaxAttempts)
 		} else {
-			h.Logger.Logf(slogger.ERROR, "Failed to start task: %v", err)
-			return err
+			err = errors.Wrap(err, "failed to start task")
 		}
+		h.Logger.Logf(slogger.ERROR, err.Error())
+		return err
 	}
 	return nil
 }
@@ -120,14 +118,12 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.Task
 			if resp != nil {
 				bodyMsg, _ = ioutil.ReadAll(resp.Body)
 			}
-			errMsg := fmt.Errorf("task end failed after %v tries (%v): %v",
-				h.MaxAttempts, err, bodyMsg)
-			h.Logger.Logf(slogger.ERROR, errMsg.Error())
-			return nil, errMsg
+			err = errors.Wrapf(err, "task end failed after %v tries: %v", h.MaxAttempts, bodyMsg)
 		} else {
-			h.Logger.Logf(slogger.ERROR, "Failed to end task: %v", err)
-			return nil, err
+			err = errors.Wrap(err, "failed to end task")
 		}
+		h.Logger.Logf(slogger.ERROR, err.Error())
+		return nil, err
 	}
 
 	if resp != nil {
@@ -135,16 +131,16 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.Task
 			message := fmt.Sprintf("Error unmarshalling task end response: %v",
 				err)
 			h.Logger.Logf(slogger.ERROR, message)
-			return nil, fmt.Errorf(message)
+			return nil, errors.New(message)
 		}
 		if resp.StatusCode != http.StatusOK {
 			message := fmt.Sprintf("unexpected status code in task end "+
 				"request (%v): %v", resp.StatusCode, taskEndResp.Message)
-			return nil, fmt.Errorf(message)
+			return nil, errors.New(message)
 		}
 		err = nil
 	} else {
-		err = fmt.Errorf("received nil response from API server")
+		err = errors.New("received nil response from API server")
 	}
 	return taskEndResp, err
 }
@@ -165,18 +161,17 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 				defer resp.Body.Close()
 			}
 			if err != nil {
-				return util.RetriableError{err}
+				return util.RetriableError{errors.WithStack(err)}
 			}
 			if resp.StatusCode == http.StatusInternalServerError {
-				return util.RetriableError{fmt.Errorf("http status %v response body %v", resp.StatusCode, resp.Body)}
+				return util.RetriableError{errors.Errorf("http status %v response body %v", resp.StatusCode, resp.Body)}
 			}
 			return nil
 		},
 	)
 	retryFail, err := util.Retry(retriableLog, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return fmt.Errorf("logging failed after %vtries: %v",
-			h.MaxAttempts, err)
+		return errors.Wrapf(err, "logging failed after %vtries: %v", h.MaxAttempts)
 	}
 	return err
 }
@@ -192,14 +187,14 @@ func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
 				// Something very wrong, fail now with no retry.
-				return fmt.Errorf("conflict - wrong secret!")
+				return errors.New("conflict; wrong secret")
 			}
 			if err != nil {
 				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
-				return util.RetriableError{fmt.Errorf("empty response")}
+				return util.RetriableError{errors.New("empty response")}
 			} else {
 				err = util.ReadJSONInto(resp.Body, task)
 				if err != nil {
@@ -213,8 +208,7 @@ func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
 
 	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return nil, fmt.Errorf("getting task failed after %v tries: %v",
-			h.MaxAttempts, err)
+		return nil, errors.Wrapf(err, "getting task failed after %v tries", h.MaxAttempts)
 	}
 	return task, nil
 }
@@ -230,29 +224,30 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
 				// Something very wrong, fail now with no retry.
-				return fmt.Errorf("conflict - wrong secret!")
+				return errors.New("conflict; wrong secret")
 			}
+
 			if err != nil {
 				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
-				return util.RetriableError{fmt.Errorf("empty response")}
-			} else {
-				err = util.ReadJSONInto(resp.Body, d)
-				if err != nil {
-					h.Logger.Errorf(slogger.ERROR,
-						"unable to read distro response: %v\n", err)
-					return util.RetriableError{err}
-				}
-				return nil
+				return util.RetriableError{errors.New("empty response")}
 			}
+
+			err = util.ReadJSONInto(resp.Body, d)
+			if err != nil {
+				err = errors.Wrap(err, "unable to read distro response")
+				h.Logger.Errorf(slogger.ERROR, err.Error())
+				return util.RetriableError{err}
+			}
+			return nil
 		},
 	)
 
 	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return nil, fmt.Errorf("getting distro failed after %v tries: %v", h.MaxAttempts, err)
+		return nil, errors.Wrapf(err, "getting distro failed after %d tries", h.MaxAttempts)
 	}
 	return d, nil
 }
@@ -268,27 +263,27 @@ func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
 				// Something very wrong, fail now with no retry.
-				return fmt.Errorf("conflict - wrong secret!")
+				return errors.New("conflict; wrong secret")
 			}
 			if err != nil {
 				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
 			if resp == nil {
-				return util.RetriableError{fmt.Errorf("empty response")}
-			} else {
-				err = util.ReadJSONInto(resp.Body, projectRef)
-				if err != nil {
-					return util.RetriableError{err}
-				}
-				return nil
+				return util.RetriableError{errors.New("empty response")}
 			}
+
+			err = util.ReadJSONInto(resp.Body, projectRef)
+			if err != nil {
+				return util.RetriableError{err}
+			}
+			return nil
 		},
 	)
 
 	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return nil, fmt.Errorf("getting project ref failed after %v tries: %v", h.MaxAttempts, err)
+		return nil, errors.Wrapf(err, "getting project ref failed after %d tries", h.MaxAttempts)
 	}
 	return projectRef, nil
 }
@@ -301,41 +296,43 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 			resp, err := h.TryGet("version")
 			if resp != nil {
 				defer resp.Body.Close()
-			}
-			if resp != nil {
+
 				if resp.StatusCode == http.StatusConflict {
 					// Something very wrong, fail now with no retry.
-					return fmt.Errorf("conflict - wrong secret!")
+					return errors.New("conflict; wrong secret")
 				}
 				if resp.StatusCode != http.StatusOK {
 					msg, _ := ioutil.ReadAll(resp.Body) // ignore ReadAll error
 					return util.RetriableError{
-						fmt.Errorf("bad status code %v: %v", resp.StatusCode, string(msg)),
+						errors.Errorf("bad status code %v: %s",
+							resp.StatusCode, string(msg)),
 					}
 				}
 			}
+
 			if err != nil {
 				// Some generic error trying to connect - try again
-				return util.RetriableError{err}
+				return util.RetriableError{errors.WithStack(err)}
 			}
+
 			if resp == nil {
-				return util.RetriableError{fmt.Errorf("empty response")}
-			} else {
-				err = util.ReadJSONInto(resp.Body, v)
-				if err != nil {
-					h.Logger.Errorf(slogger.ERROR,
-						"unable to read project version response: %v\n", err)
-					return fmt.Errorf("unable to read project version response: %v\n", err)
-				}
-				return nil
+				return util.RetriableError{errors.New("empty response")}
 			}
+
+			err = util.ReadJSONInto(resp.Body, v)
+			if err != nil {
+				err := errors.Wrap(err, "unable to read project version response")
+				h.Logger.Errorf(slogger.ERROR, err.Error())
+				return err
+			}
+			return nil
 		},
 	)
 
 	retryFail, err := util.Retry(retriableGet, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return nil, fmt.Errorf("getting project configuration failed after %v "+
-			"tries: %v", h.MaxAttempts, err)
+		return nil, errors.Wrapf(err, "getting project configuration failed after %d tries",
+			h.MaxAttempts)
 	}
 	return v, nil
 }
@@ -350,35 +347,37 @@ func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		h.Logger.Logf(slogger.ERROR, "Error sending heartbeat: %v", err)
+		err = errors.Wrap(err, "error sending heartbeat")
+		h.Logger.Logf(slogger.ERROR, err.Error())
 		return false, err
 	}
 	if resp.StatusCode == http.StatusConflict {
 		h.Logger.Logf(slogger.ERROR, "wrong secret (409) sending heartbeat")
 		h.SignalChan <- IncorrectSecret
-		return false, fmt.Errorf("unauthorized - wrong secret")
+		return false, errors.Errorf("unauthorized - wrong secret")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("unexpected status code doing heartbeat: %v",
+		return false, errors.Errorf("unexpected status code doing heartbeat: %v",
 			resp.StatusCode)
 	}
 
 	heartbeatResponse := &apimodels.HeartbeatResponse{}
 	if err = util.ReadJSONInto(resp.Body, heartbeatResponse); err != nil {
-		h.Logger.Logf(slogger.ERROR, "Error unmarshaling heartbeat "+
-			"response: %v", err)
+		err = errors.Wrap(err, "Error unmarshaling heartbeat response")
+		h.Logger.Logf(slogger.ERROR, err.Error())
 		return false, err
 	}
 	return heartbeatResponse.Abort, nil
 }
 
 func (h *HTTPCommunicator) TryGet(path string) (*http.Response, error) {
-	return h.tryRequestWithClient(path, "GET", h.httpClient, nil)
+	resp, err := h.tryRequestWithClient(path, "GET", h.httpClient, nil)
+	return resp, errors.WithStack(err)
 }
 
-func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (
-	*http.Response, error) {
-	return h.tryRequestWithClient(path, "POST", h.httpClient, &data)
+func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
+	resp, err := h.tryRequestWithClient(path, "POST", h.httpClient, &data)
+	return resp, errors.WithStack(err)
 }
 
 // tryRequestWithClient does the given task HTTP request using the provided client, allowing
@@ -388,6 +387,7 @@ func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, clie
 	endpointUrl := fmt.Sprintf("%s/task/%s/%s", h.ServerURLRoot, h.TaskId,
 		path)
 	req, err := http.NewRequest(method, endpointUrl, nil)
+	err = errors.WithStack(err)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +403,9 @@ func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, clie
 	req.Header.Add(evergreen.HostHeader, h.HostId)
 	req.Header.Add(evergreen.HostSecretHeader, h.HostSecret)
 	req.Header.Add("Content-Type", "application/json")
-	return client.Do(req)
+
+	resp, err := client.Do(req)
+	return resp, errors.WithStack(err)
 }
 
 func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
@@ -425,12 +427,14 @@ func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 			} else {
 				h.Logger.Logf(slogger.ERROR, "bad response '%v' posting to "+
 					"'%v'", resp.StatusCode, path)
-				return util.RetriableError{fmt.Errorf("unexpected status "+
+				return util.RetriableError{errors.Errorf("unexpected status "+
 					"code: %v", resp.StatusCode)}
 			}
 		},
 	)
+
 	retryFail, err = util.Retry(retriablePost, h.MaxAttempts, h.RetrySleep)
+
 	return resp, retryFail, err
 }
 
@@ -449,17 +453,17 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 				return util.RetriableError{err}
 			}
 			if resp.StatusCode == http.StatusUnauthorized {
-				err = fmt.Errorf("fetching expansions failed: got 'unauthorized' response.")
+				err = errors.Errorf("fetching expansions failed: got 'unauthorized' response.")
 				h.Logger.Logf(slogger.ERROR, err.Error())
 				return err
 			}
 			if resp.StatusCode != http.StatusOK {
-				err = fmt.Errorf("failed trying fetch GET, got bad response code: %v", resp.StatusCode)
+				err = errors.Errorf("failed trying fetch GET, got bad response code: %v", resp.StatusCode)
 				h.Logger.Logf(slogger.ERROR, err.Error())
 				return util.RetriableError{err}
 			}
 			if resp == nil {
-				err = fmt.Errorf("empty response fetching expansions")
+				err = errors.New("empty response fetching expansions")
 				h.Logger.Logf(slogger.ERROR, err.Error())
 				return util.RetriableError{err}
 			}
@@ -467,7 +471,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 			// got here safely, so all is good - read the results
 			err = util.ReadJSONInto(resp.Body, resultVars)
 			if err != nil {
-				err = fmt.Errorf("failed to read vars from response: %v", err)
+				err = errors.Wrap(err, "failed to read vars from response")
 				h.Logger.Logf(slogger.ERROR, err.Error())
 				return err
 			}
@@ -476,6 +480,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 	)
 
 	retryFail, err := util.Retry(retriableGet, httpMaxAttempts, 1*time.Second)
+	err = errors.WithStack(err)
 	if err != nil {
 		// stop trying to make fetch happen, it's not going to happen
 		if retryFail {

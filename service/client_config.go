@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // getClientConfig should be called once at startup and looks at the
@@ -50,7 +51,7 @@ func getClientConfig(settings *evergreen.Settings) (*evergreen.ClientConfig, err
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("problem finding client binaries: %v", err)
+		return nil, errors.Wrap(err, "problem finding client binaries")
 	}
 
 	return c, nil

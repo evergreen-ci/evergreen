@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // "Base class" for all build_*_handler.go structs. Contains code that's common
@@ -116,9 +117,9 @@ func (self *BuildNotificationHandler) constructChangeInfo(allBuilds []build.Buil
 		}
 
 		if v == nil {
-			err = fmt.Errorf("No version found for build %v with version id %v",
+			return changeInfoSlice, errors.Errorf(
+				"No version found for build %s with version id %s",
 				build.Id, build.Version)
-			return changeInfoSlice, err
 		}
 		changeInfo := constructChangeInfo(v, key)
 		changeInfo.Pushtime = build.PushTime.Format(time.RFC850)

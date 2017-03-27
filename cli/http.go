@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/pkg/errors"
 )
 
 // APIClient manages requests to the API server endpoints, and unmarshaling the results into
@@ -61,7 +62,7 @@ func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, erro
 	// create client for the REST api
 	apiUrl, err := url.Parse(settings.APIServerHost)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Settings file contains an invalid url: %v", err)
+		return nil, nil, nil, errors.Errorf("Settings file contains an invalid url: %v", err)
 	}
 
 	rc := &APIClient{
@@ -88,7 +89,7 @@ func (ac *APIClient) doReq(method, path string, body io.Reader) (*http.Response,
 		return nil, err
 	}
 	if resp == nil {
-		return nil, fmt.Errorf("empty response from server")
+		return nil, errors.New("empty response from server")
 	}
 	return resp, nil
 }
@@ -440,7 +441,7 @@ func (ac *APIClient) GetHostUtilizationStats(granularity, daysBack int, csv bool
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -459,7 +460,7 @@ func (ac *APIClient) GetAverageSchedulerStats(granularity, daysBack int, distroI
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -477,7 +478,7 @@ func (ac *APIClient) GetOptimalMakespans(numberBuilds int, csv bool) (io.ReadClo
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -498,7 +499,7 @@ func (ac *APIClient) GetTestHistory(project, queryParams string, isCSV bool) (io
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("not found")
+		return nil, errors.New("not found")
 	}
 
 	if resp.StatusCode != http.StatusOK {

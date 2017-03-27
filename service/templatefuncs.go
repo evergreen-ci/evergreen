@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 const defaultHelpURL = "https://github.com/evergreen-ci/evergreen/wiki/How-To-Read-Evergreen"
@@ -128,7 +129,7 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interfac
 
 			route := fo.Router.Get(name)
 			if route == nil {
-				return nil, fmt.Errorf("UrlFor: can't find a route named %v", name)
+				return nil, errors.Errorf("UrlFor: can't find a route named %v", name)
 			}
 
 			return route.URL(strPairs...)

@@ -20,6 +20,7 @@ import (
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -55,22 +56,22 @@ type EC2SpotSettings struct {
 
 func (self *EC2SpotSettings) Validate() error {
 	if self.BidPrice <= 0 {
-		return fmt.Errorf("Bid price must be greater than zero")
+		return errors.New("Bid price must be greater than zero")
 	}
 
 	if self.AMI == "" {
-		return fmt.Errorf("AMI must not be blank")
+		return errors.New("AMI must not be blank")
 	}
 
 	if self.InstanceType == "" {
-		return fmt.Errorf("Instance size must not be blank")
+		return errors.New("Instance size must not be blank")
 	}
 
 	if self.SecurityGroup == "" {
-		return fmt.Errorf("Security group must not be blank")
+		return errors.New("Security group must not be blank")
 	}
 	if self.KeyName == "" {
-		return fmt.Errorf("Key name must not be blank")
+		return errors.New("Key name must not be blank")
 	}
 
 	_, err := makeBlockDeviceMappings(self.MountPoints)
@@ -85,7 +86,7 @@ func (self *EC2SpotSettings) Validate() error {
 //object.
 func (cloudManager *EC2SpotManager) Configure(settings *evergreen.Settings) error {
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
-		return fmt.Errorf("AWS ID/Secret must not be blank")
+		return errors.New("AWS ID/Secret must not be blank")
 	}
 	cloudManager.awsCredentials = &aws.Auth{
 		AccessKey: settings.Providers.AWS.Id,
@@ -110,10 +111,9 @@ func (cloudManager *EC2SpotManager) GetSSHOptions(h *host.Host, keyPath string) 
 func (cloudManager *EC2SpotManager) IsUp(host *host.Host) (bool, error) {
 	instanceStatus, err := cloudManager.GetInstanceStatus(host)
 	if err != nil {
-		err = fmt.Errorf("Failed to check if host %v is up: %+v", host.Id, err)
+		err = errors.Wrapf(err, "Failed to check if host %v is up", host.Id)
 		grip.Error(err)
 		return false, err
-
 	}
 
 	if instanceStatus == cloud.StatusRunning {
@@ -128,13 +128,12 @@ func (cloudManager *EC2SpotManager) OnUp(host *host.Host) error {
 	tags["spot"] = "true" // mark this as a spot instance
 	spotReq, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	grip.Debugf("Running initialization function for host '%v' with id: %v",
 		host.Id, spotReq.InstanceId)
 	if spotReq.InstanceId == "" {
-		err = fmt.Errorf("Could not retrieve instanceID for filled SpotRequest '%+v'",
-			host.Id)
+		err = errors.Errorf("Could not retrieve instanceID for filled SpotRequest '%s'", host.Id)
 		grip.Error(err)
 		return err
 	}
@@ -165,7 +164,7 @@ func (cloudManager *EC2SpotManager) IsSSHReachable(host *host.Host, keyPath stri
 func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		err = fmt.Errorf("failed to get spot request info for %v: %v", host.Id, err)
+		err = errors.Wrapf(err, "failed to get spot request info for %v", host.Id)
 		grip.Error(err)
 		return cloud.StatusUnknown, err
 	}
@@ -175,7 +174,8 @@ func (cloudManager *EC2SpotManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 		ec2Handle := getUSEast(*cloudManager.awsCredentials)
 		instanceInfo, err := getInstanceInfo(ec2Handle, spotDetails.InstanceId)
 		if err != nil {
-			grip.Errorf("Got an error checking spot details %+v", err)
+			err = errors.Wrap(err, "Got an error checking spot details")
+			grip.Error(err)
 			return cloud.StatusUnknown, err
 		}
 		return ec2StatusToEvergreenStatus(instanceInfo.State.Name), nil
@@ -207,7 +207,7 @@ func (cloudManager *EC2SpotManager) CanSpawn() (bool, error) {
 func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) {
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
 	if err != nil {
-		err = fmt.Errorf("failed to get spot request info for %v: %+v", host.Id, err)
+		err = errors.Errorf("failed to get spot request info for %v: %+v", host.Id, err)
 		grip.Error(err)
 		return "", err
 	}
@@ -228,18 +228,18 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 
 func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != SpotProviderName {
-		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, d.Id, d.Provider)
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, d.Id, d.Provider)
 	}
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2SpotSettings{}
 	if err := mapstructure.Decode(d.ProviderSettings, ec2Settings); err != nil {
-		return nil, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", d.Id)
 	}
 
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid EC2 spot settings in distro %v: %v", d.Id, err)
+		return nil, errors.Wrapf(err, "Invalid EC2 spot settings in distro %s", d.Id)
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
@@ -253,7 +253,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 
 	// record this 'intent host'
 	if err := intentHost.Insert(); err != nil {
-		err = fmt.Errorf("Could not insert intent host '%v': %+v", intentHost.Id, err)
+		err = errors.Wrapf(err, "Could not insert intent host '%v'", intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -284,15 +284,15 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 		if err := intentHost.Remove(); err != nil {
 			grip.Errorf("Failed to remove intent host %s: %+v", intentHost.Id, err)
 		}
-		err = fmt.Errorf("Failed starting spot instance for distro '%s' on intent host %s: %+v",
-			d.Id, intentHost.Id, err)
+		err = errors.Wrapf(err, "Failed starting spot instance for distro '%s' on intent host %s",
+			d.Id, intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
 
 	spotReqRes := spotResp.SpotRequestResults[0]
 	if spotReqRes.State != SpotStatusOpen && spotReqRes.State != SpotStatusActive {
-		err = fmt.Errorf("Spot request %v was found in  state %v on intent host %v",
+		err = errors.Errorf("Spot request %v was found in  state %v on intent host %v",
 			spotReqRes.SpotRequestId, spotReqRes.State, intentHost.Id)
 		grip.Error(err)
 		return nil, err
@@ -301,8 +301,8 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	intentHost.Id = spotReqRes.SpotRequestId
 	err = intentHost.Insert()
 	if err != nil {
-		err = fmt.Errorf("Could not insert updated host info with id %v  for intent host "+
-			"%v: %+v", intentHost.Id, instanceName, err)
+		err = errors.Wrapf(err, "Could not insert updated host info with id %v for intent host %v",
+			intentHost.Id, instanceName)
 		grip.Error(err)
 		return nil, err
 	}
@@ -313,13 +313,13 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	//host doc successfully stored.
 	oldIntenthost, err := host.FindOne(host.ById(instanceName))
 	if err != nil {
-		err = fmt.Errorf("Can't locate record inserted for intended host '%s' "+
-			"due to error: %+v", instanceName, err)
+		err = errors.Wrapf(err, "Can't locate record inserted for intended host '%s' "+
+			"due to error", instanceName)
 		grip.Error(err)
 		return nil, err
 	}
 	if oldIntenthost == nil {
-		err = fmt.Errorf("Can't locate record inserted for intended host '%s'",
+		err = errors.Errorf("Can't locate record inserted for intended host '%s'",
 			instanceName)
 		grip.Error(err)
 		return nil, err
@@ -329,7 +329,8 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 		oldIntenthost.Id, spotReqRes.SpotRequestId, instanceName)
 	err = oldIntenthost.Remove()
 	if err != nil {
-		grip.Errorf("Could not remove intent host '%s': %+v", oldIntenthost.Id, err)
+		err = errors.Wrapf(err, "Could not remove intent host '%s'", oldIntenthost.Id, err)
+		grip.Error(err)
 		return nil, err
 	}
 
@@ -337,23 +338,22 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	tags := makeTags(intentHost)
 
 	// attach the tags to this instance
-	err = attachTags(ec2Handle, tags, intentHost.Id)
+	err = errors.Wrapf(attachTags(ec2Handle, tags, intentHost.Id),
+		"unable to attach tags for $s", intentHost.Id)
 
-	if err != nil {
-		grip.Errorf("Unable to attach tags for %s: %+v", intentHost.Id, err)
-	} else {
-		grip.Debugf("Attached tag name '%s' for '%s'", instanceName, intentHost.Id)
-	}
+	grip.Error(err)
+	grip.DebugWhenf(err == nil, "attached tag name '%s' for '%s'",
+		instanceName, intentHost.Id)
+
 	return intentHost, nil
 }
 
 func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
-		errMsg := fmt.Errorf("Can not terminate %v - already marked as "+
-			"terminated!", host.Id)
-		grip.Error(errMsg.Error())
-		return errMsg
+		err := errors.Errorf("Can not terminate %s; already marked as terminated", host.Id)
+		grip.Error(err)
+		return err
 	}
 
 	spotDetails, err := cloudManager.describeSpotRequest(host.Id)
@@ -364,10 +364,10 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			// terminated our spot instance
 			grip.Warningf("EC2 could not find spot instance '%s', marking as terminated: [%+v]",
 				host.Id, ec2err)
-			return host.Terminate()
+			return errors.WithStack(host.Terminate())
 		}
-		err = fmt.Errorf("Couldn't terminate, failed to get spot request info for %v: %+v",
-			host.Id, err)
+		err = errors.Wrapf(err, "Couldn't terminate, failed to get spot request info for %s",
+			host.Id)
 		grip.Error(err)
 		return err
 	}
@@ -379,7 +379,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	resp, err := ec2Handle.CancelSpotRequests([]string{host.Id})
 	grip.Debugf("host=%s, cancelResp=%+v", host.Id, resp)
 	if err != nil {
-		err = fmt.Errorf("Failed to cancel spot request for host %v: %+v", host.Id, err)
+		err = errors.Wrapf(err, "Failed to cancel spot request for host %s", host.Id)
 		grip.Error(err)
 		return err
 	}
@@ -391,7 +391,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 			spotDetails.InstanceId, host.Id)
 		resp, err := ec2Handle.TerminateInstances([]string{spotDetails.InstanceId})
 		if err != nil {
-			err = fmt.Errorf("Failed to terminate host %v: %v", host.Id, err)
+			err = errors.Wrapf(err, "Failed to terminate host %s", host.Id)
 			grip.Error(err)
 			return err
 		}
@@ -405,7 +405,7 @@ func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {
 	}
 
 	// set the host status as terminated and update its termination time
-	return host.Terminate()
+	return errors.WithStack(host.Terminate())
 }
 
 // describeSpotRequest gets infomration about a spot request
@@ -415,16 +415,16 @@ func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	resp, err := ec2Handle.DescribeSpotRequests([]string{spotReqId}, nil)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if resp == nil {
-		err = fmt.Errorf("Received a nil response from EC2 looking up spot request %v",
+		err = errors.Errorf("Received a nil response from EC2 looking up spot request %v",
 			spotReqId)
 		grip.Error(err)
 		return nil, err
 	}
 	if len(resp.SpotRequestResults) != 1 {
-		err = fmt.Errorf("Expected one spot request info, but got %d",
+		err = errors.Errorf("Expected one spot request info, but got %d",
 			len(resp.SpotRequestResults))
 		grip.Error(err)
 		return nil, err
@@ -450,7 +450,7 @@ func (cloudManager *EC2SpotManager) describeSpotRequest(spotReqId string) (*ec2.
 func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// sanity check
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
-		return 0, fmt.Errorf("task timing data is malformed")
+		return 0, errors.New("task timing data is malformed")
 	}
 
 	// grab instance details from EC2
@@ -469,7 +469,7 @@ func (cloudManager *EC2SpotManager) CostForDuration(h *host.Host, start, end tim
 	}
 	ebsCost, err := blockDeviceCosts(ec2Handle, instance.BlockDevices, end.Sub(start))
 	if err != nil {
-		return 0, fmt.Errorf("calculating block device costs: %v", err)
+		return 0, errors.Wrap(err, "calculating block device costs")
 	}
 	spotCost, err := cloudManager.calculateSpotCost(instance, os, start, end)
 	if err != nil {
@@ -484,7 +484,7 @@ func (cloudManager *EC2SpotManager) calculateSpotCost(
 	i *ec2.Instance, os osType, start, end time.Time) (float64, error) {
 	launchTime, err := time.Parse(time.RFC3339, i.LaunchTime)
 	if err != nil {
-		return 0, fmt.Errorf("reading instance launch time: %v", err)
+		return 0, errors.Wrap(err, "reading instance launch time")
 	}
 	rates, err := cloudManager.describeHourlySpotPriceHistory(
 		i.InstanceType, i.AvailabilityZone, os, launchTime, end)
@@ -585,7 +585,7 @@ func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
 			start.After(*history[i].Timestamp) && start.Before(*history[i-1].Timestamp) {
 			price, err := strconv.ParseFloat(*history[i].SpotPrice, 64)
 			if err != nil {
-				return nil, fmt.Errorf("parsing spot price: %v", err)
+				return nil, errors.Wrap(err, "parsing spot price")
 			}
 			prices = append(prices, spotRate{Time: start, Price: price})
 			// we increment the hour but stay on the same price history index

@@ -31,6 +31,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -111,10 +112,10 @@ func (mc *MockCommand) ParseParams(params map[string]interface{}) error {
 		return err
 	}
 	if mc.Param1 == "" {
-		return fmt.Errorf("Param1 must be a non-blank string.")
+		return errors.New("Param1 must be a non-blank string.")
 	}
 	if mc.Param2 == 0 {
-		return fmt.Errorf("Param2 must be a non-zero integer.")
+		return errors.New("Param2 must be a non-zero integer.")
 	}
 	return nil
 }
@@ -127,7 +128,7 @@ func (mc *MockCommand) Execute(logger plugin.Logger,
 	}
 
 	if resp == nil {
-		return fmt.Errorf("Received nil HTTP response from api server")
+		return errors.New("Received nil HTTP response from api server")
 	}
 
 	jsonReply := map[string]string{}
@@ -137,12 +138,12 @@ func (mc *MockCommand) Execute(logger plugin.Logger,
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Got bad status code from API response: %v, body: %v", resp.StatusCode, jsonReply)
+		return errors.Errorf("Got bad status code from API response: %v, body: %v", resp.StatusCode, jsonReply)
 	}
 
 	expectedEchoReply := fmt.Sprintf("%v/%v/%v", mc.Param1, mc.Param2, conf.Task.Id)
 	if jsonReply["echo"] != expectedEchoReply {
-		return fmt.Errorf("Wrong echo reply! Wanted %v, got %v", expectedEchoReply, jsonReply["echo"])
+		return errors.Errorf("Wrong echo reply! Wanted %v, got %v", expectedEchoReply, jsonReply["echo"])
 	}
 	return nil
 }

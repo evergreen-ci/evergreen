@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -49,19 +50,19 @@ var (
 //Validate checks that the settings from the config file are sane.
 func (self *Settings) Validate() error {
 	if self.ImageId == 0 {
-		return fmt.Errorf("ImageId must not be blank")
+		return errors.New("ImageId must not be blank")
 	}
 
 	if self.SizeId == 0 {
-		return fmt.Errorf("Size ID must not be blank")
+		return errors.New("Size ID must not be blank")
 	}
 
 	if self.RegionId == 0 {
-		return fmt.Errorf("Region must not be blank")
+		return errors.New("Region must not be blank")
 	}
 
 	if self.SSHKeyId == 0 {
-		return fmt.Errorf("SSH Key ID must not be blank")
+		return errors.New("SSH Key ID must not be blank")
 	}
 
 	return nil
@@ -74,16 +75,17 @@ func (_ *DigitalOceanManager) GetSettings() cloud.ProviderSettings {
 //SpawnInstance creates a new droplet for the given distro.
 func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != ProviderName {
-		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, d.Id, d.Provider)
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
+			ProviderName, d.Id, d.Provider)
 	}
 
 	digoSettings := &Settings{}
 	if err := mapstructure.Decode(d.ProviderSettings, digoSettings); err != nil {
-		return nil, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
+		return nil, errors.Wrapf(err, "Error decoding params for distro %v", d.Id)
 	}
 
 	if err := digoSettings.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid DigitalOcean settings in distro %v: %v", d.Id, err)
+		return nil, errors.Wrapf(err, "Invalid DigitalOcean settings in distro %v", d.Id)
 	}
 
 	instanceName := "droplet-" +
@@ -101,7 +103,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 
 	if err := intentHost.Insert(); err != nil {
 		// TODO use github/pkg/errors for things like this
-		err = fmt.Errorf("Could not insert intent host '%v': %v", intentHost.Id, err)
+		err = errors.Wrapf(err, "Could not insert intent host '%v': %v", intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -117,7 +119,7 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 		// remove the intent host document
 		rmErr := intentHost.Remove()
 		if rmErr != nil {
-			err = fmt.Errorf("Could not remove intent host '%v': %+v",
+			err = errors.Errorf("Could not remove intent host '%v': %+v",
 				intentHost.Id, rmErr)
 			grip.Error(err)
 			return nil, err
@@ -128,13 +130,13 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	// find old intent host
 	host, err := host.FindOne(host.ById(intentHost.Id))
 	if host == nil {
-		err = fmt.Errorf("Can't locate record inserted for intended host '%v'",
+		err = errors.Errorf("Can't locate record inserted for intended host '%v'",
 			intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
 	if err != nil {
-		err = fmt.Errorf("Failed to look up intent host %v: %+v", intentHost.Id, err)
+		err = errors.Wrapf(err, "Failed to look up intent host %v", intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -143,16 +145,16 @@ func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	host.Host = newDroplet.IpAddress
 
 	if err = host.Insert(); err != nil {
-		err = fmt.Errorf("Failed to insert new host %v for intent host %v: %+v",
-			host.Id, intentHost.Id, err)
+		err = errors.Wrapf(err, "Failed to insert new host %v for intent host %v",
+			host.Id, intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
 
 	// remove the intent host document
 	if err = intentHost.Remove(); err != nil {
-		err = fmt.Errorf("Could not remove insert host '%v' (replaced by '%v'): %+v",
-			intentHost.Id, host.Id, err)
+		err = errors.Wrapf(err, "Could not remove insert host '%v' (replaced by '%v')",
+			intentHost.Id, host.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -166,7 +168,7 @@ func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet
 	droplet := digo.Droplet{Id: dropletId}
 	droplet.Account = digoMgr.account
 	if err := droplet.Reload(); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return &droplet, nil
 }
@@ -176,7 +178,7 @@ func (digoMgr *DigitalOceanManager) getDropletInfo(dropletId int) (*digo.Droplet
 func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		err = fmt.Errorf("Can't get status of '%v': DigitalOcean host id's "+
+		err = errors.Wrapf(err, "Can't get status of '%v': DigitalOcean host id's "+
 			"must be integers", host.Id)
 		grip.Error(err)
 		return cloud.StatusUnknown, err
@@ -184,7 +186,7 @@ func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 	}
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
 	if err != nil {
-		return cloud.StatusUnknown, fmt.Errorf("Failed to get droplet info: %v", err)
+		return cloud.StatusUnknown, errors.Wrap(err, "Failed to get droplet info")
 	}
 
 	switch droplet.Status {
@@ -206,7 +208,7 @@ func (digoMgr *DigitalOceanManager) GetInstanceStatus(host *host.Host) (cloud.Cl
 func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		err = fmt.Errorf("Can't get DNS name of '%v': DigitalOcean host id's must be integers",
+		err = errors.Wrapf(err, "Can't get DNS name of '%v': DigitalOcean host id's must be integers",
 			host.Id)
 		grip.Error(err)
 		return "", err
@@ -214,7 +216,7 @@ func (digoMgr *DigitalOceanManager) GetDNSName(host *host.Host) (string, error) 
 
 	droplet, err := digoMgr.getDropletInfo(hostIdAsInt)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	return droplet.IpAddress, nil
 
@@ -230,25 +232,25 @@ func (digoMgr *DigitalOceanManager) CanSpawn() (bool, error) {
 func (digoMgr *DigitalOceanManager) TerminateInstance(host *host.Host) error {
 	hostIdAsInt, err := strconv.Atoi(host.Id)
 	if err != nil {
-		err = fmt.Errorf("Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
+		err = errors.Wrapf(err, "Can't terminate '%v': DigitalOcean host id's must be integers", host.Id)
 		grip.Error(err)
 		return err
 	}
 	response, err := digoMgr.account.DestroyDroplet(hostIdAsInt)
 	if err != nil {
-		err = fmt.Errorf("Failed to destroy droplet '%v': %+v", host.Id, err)
+		err = errors.Wrapf(err, "Failed to destroy droplet '%v'", host.Id)
 		grip.Error(err)
 		return err
 	}
 
 	if response.Status != "OK" {
-		err = fmt.Errorf("Failed to destroy droplet: '%+v'. message: %v", err,
+		err = errors.Wrapf(err, "Failed to destroy droplet: '%+v'. message: %v",
 			response.ErrorMessage)
 		grip.Error(err)
 		return err
 	}
 
-	return host.Terminate()
+	return errors.WithStack(host.Terminate())
 }
 
 //Configure populates a DigitalOceanManager by reading relevant settings from the
@@ -264,9 +266,11 @@ func (digoMgr *DigitalOceanManager) Configure(settings *evergreen.Settings) erro
 func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) {
 	sshOpts, err := digoMgr.GetSSHOptions(host, keyPath)
 	if err != nil {
-		return false, err
+		return false, errors.WithStack(err)
 	}
-	return hostutil.CheckSSHResponse(host, sshOpts)
+
+	ok, err := hostutil.CheckSSHResponse(host, sshOpts)
+	return ok, errors.WithStack(err)
 }
 
 //IsUp checks the droplet's state by querying the DigitalOcean API and
@@ -274,7 +278,7 @@ func (digoMgr *DigitalOceanManager) IsSSHReachable(host *host.Host, keyPath stri
 func (digoMgr *DigitalOceanManager) IsUp(host *host.Host) (bool, error) {
 	cloudStatus, err := digoMgr.GetInstanceStatus(host)
 	if err != nil {
-		return false, err
+		return false, errors.WithStack(err)
 	}
 	if cloudStatus == cloud.StatusRunning {
 		return true, nil
@@ -291,7 +295,7 @@ func (digoMgr *DigitalOceanManager) OnUp(host *host.Host) error {
 //droplet.
 func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
-		return []string{}, fmt.Errorf("No key specified for DigitalOcean host")
+		return []string{}, errors.New("No key specified for DigitalOcean host")
 	}
 	opts := []string{"-i", keyPath}
 	for _, opt := range host.Distro.SSHOptions {
@@ -303,7 +307,6 @@ func (digoMgr *DigitalOceanManager) GetSSHOptions(host *host.Host, keyPath strin
 // TimeTilNextPayment returns the amount of time until the next payment is due
 // for the host
 func (digoMgr *DigitalOceanManager) TimeTilNextPayment(host *host.Host) time.Duration {
-
 	now := time.Now()
 
 	// the time since the host was created

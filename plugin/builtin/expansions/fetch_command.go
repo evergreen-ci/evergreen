@@ -9,6 +9,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 const FetchVarsRoute = "fetch_vars"
@@ -48,11 +49,11 @@ func (self *FetchVarsCommand) ParseParams(params map[string]interface{}) error {
 
 	for _, item := range self.Keys {
 		if item.RemoteKey == "" {
-			return fmt.Errorf("error parsing '%v' params: value for remote "+
+			return errors.Errorf("error parsing '%v' params: value for remote "+
 				"key must not be a blank string", self.Name())
 		}
 		if item.LocalKey == "" {
-			return fmt.Errorf("error parsing '%v' params: value for local "+
+			return errors.Errorf("error parsing '%v' params: value for local "+
 				"key must not be a blank string", self.Name())
 		}
 	}

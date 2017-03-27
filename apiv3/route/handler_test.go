@@ -1,7 +1,6 @@
 package route
 
 import (
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apiv3/model"
 	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

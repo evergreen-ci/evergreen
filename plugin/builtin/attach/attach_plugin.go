@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -88,7 +89,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					}
 					artifactEntry, err := artifact.FindOne(artifact.ByTaskId(context.Task.Id))
 					if err != nil {
-						return nil, fmt.Errorf("error finding artifact files for task: %v", err)
+						return nil, errors.Wrap(err, "error finding artifact files for task")
 					}
 					if artifactEntry == nil {
 						return nil, nil
@@ -107,7 +108,7 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 					}
 					taskArtifactFiles, err := artifact.FindAll(artifact.ByBuildId(context.Build.Id))
 					if err != nil {
-						return nil, fmt.Errorf("error finding artifact files for build: %v", err)
+						return nil, errors.Wrap(err, "error finding artifact files for build")
 					}
 					for i := range taskArtifactFiles {
 						// remove hidden files if the user isn't logged in
@@ -130,8 +131,7 @@ func (self *AttachPlugin) NewCommand(cmdName string) (plugin.Command,
 	case AttachXunitResultsCmd:
 		return &AttachXUnitResultsCommand{}, nil
 	default:
-		return nil, fmt.Errorf("No such %v command: %v",
-			AttachPluginName, cmdName)
+		return nil, errors.Errorf("No such %v command: %v", AttachPluginName, cmdName)
 	}
 }
 

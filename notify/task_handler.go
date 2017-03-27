@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -148,7 +149,7 @@ func (self *TaskNotificationHandler) constructChangeInfo(allTasks []task.Task,
 			return changeInfoSlice, err
 		}
 		if v == nil {
-			return changeInfoSlice, fmt.Errorf("No version found for task %v with version id %v",
+			return changeInfoSlice, errors.Errorf("No version found for task %v with version id %v",
 				task.Id, task.Version)
 		}
 		changeInfo := constructChangeInfo(v, key)

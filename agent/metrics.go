@@ -1,13 +1,13 @@
 package agent
 
 import (
-	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
+	"github.com/pkg/errors"
 )
 
 const (

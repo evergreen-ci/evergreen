@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/context"
+	"github.com/pkg/errors"
 )
 
 // PanelConfig stores all UI-related plugin hooks
@@ -202,7 +203,7 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 	for _, p := range plugins {
 		// don't register plugins twice
 		if registered[p.Name()] {
-			return fmt.Errorf("plugin '%v' already registered", p.Name())
+			return errors.Errorf("plugin '%v' already registered", p.Name())
 		}
 		// check if a plugin is an app level plugin first
 		if appPlugin, ok := p.(AppUIPlugin); ok {
@@ -222,7 +223,7 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 
 				// register all panels to their proper scope and position
 				if panel.Page == "" {
-					return fmt.Errorf("plugin '%v': cannot register ui panel without a Page")
+					return errors.New("plugin '%v': cannot register ui panel without a Page")
 				}
 				if panel.Position == "" {
 					panel.Position = PageCenter // Default to center
@@ -240,14 +241,14 @@ func (self *SimplePanelManager) RegisterPlugins(plugins []UIPlugin) error {
 					}
 				} else {
 					if panel.DataFunc != nil {
-						return fmt.Errorf(
+						return errors.Errorf(
 							"a data function is already registered for plugin %v on %v page",
 							p.Name(), panel.Page)
 					}
 				}
 			}
 		} else if err != nil {
-			return fmt.Errorf("GetPanelConfig for plugin '%v' returned an error: %v", p.Name(), err)
+			return errors.Wrapf(err, "GetPanelConfig for plugin '%v' returned an error", p.Name())
 		}
 
 		registered[p.Name()] = true
@@ -309,7 +310,7 @@ func (self *SimplePanelManager) UIData(context UIContext, page PageScope) (map[s
 		plData, err := func() (data interface{}, err error) {
 			defer func() {
 				if r := recover(); r != nil {
-					err = fmt.Errorf("plugin function panicked: %v", r)
+					err = errors.Errorf("plugin function panicked: %v", r)
 				}
 			}()
 			data, err = dataFunc(context)
@@ -334,7 +335,7 @@ type UIDataFunctionError []error
 
 // AppendError adds an error onto the array of data function errors.
 func (errs *UIDataFunctionError) AppendError(name string, err error) {
-	*errs = append(*errs, fmt.Errorf("{'%v': %v}", name, err))
+	*errs = append(*errs, errors.Errorf("{'%v': %v}", name, err))
 }
 
 // HasErrors returns a boolean representing if the UIDataFunctionError

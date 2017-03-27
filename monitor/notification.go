@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // the warning thresholds for spawned hosts, in decreasing order of recency
@@ -66,8 +67,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 	thresholdTime := now.Add(firstWarningThreshold)
 	hosts, err := host.Find(host.ByExpiringBetween(now, thresholdTime))
 	if err != nil {
-		return nil, fmt.Errorf("error finding spawned hosts that will be"+
-			" expiring soon: %v", err)
+		return nil, errors.Wrap(err, "error finding spawned hosts that will be expiring soon")
 	}
 
 	// the eventual list of warning notifications to be sent
@@ -93,8 +93,7 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 		// fetch information about the user we are notifying
 		userToNotify, err := user.FindOne(user.ById(h.StartedBy))
 		if err != nil {
-			return nil, fmt.Errorf("error finding user to notify by Id %v: %v", h.StartedBy, err)
-
+			return nil, errors.Wrapf(err, "error finding user to notify by Id %v", h.StartedBy)
 		}
 
 		// if we didn't find a user (in the case of testing) set the timezone to ""
@@ -133,7 +132,6 @@ func spawnHostExpirationWarnings(settings *evergreen.Settings) ([]notification,
 
 		// add it to the list
 		warnings = append(warnings, hostNotification)
-
 	}
 
 	grip.Infof("Built %d warnings about imminently expiring hosts", len(warnings))
@@ -159,7 +157,6 @@ func lastWarningThresholdCrossed(host *host.Host) time.Duration {
 
 	// should never be reached
 	return time.Duration(0)
-
 }
 
 // slowProvisioningWarnings is a notificationBuilder to build any necessary
@@ -170,14 +167,14 @@ func slowProvisioningWarnings(settings *evergreen.Settings) ([]notification,
 	grip.Info("Building warnings for hosts taking a long time to provision...")
 
 	if settings.Notify.SMTP == nil {
-		return []notification{}, fmt.Errorf("no notification emails configured")
+		return []notification{}, errors.New("no notification emails configured")
 	}
 
 	// fetch all hosts that are taking too long to provision
 	threshold := time.Now().Add(-slowProvisioningThreshold)
 	hosts, err := host.Find(host.ByUnprovisionedSince(threshold))
 	if err != nil {
-		return nil, fmt.Errorf("error finding unprovisioned hosts: %v", err)
+		return nil, errors.Wrap(err, "error finding unprovisioned hosts")
 	}
 
 	// the list of warning notifications that will be returned

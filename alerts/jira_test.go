@@ -1,7 +1,6 @@
 package alerts
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -266,7 +266,7 @@ func TestJIRADelivery(t *testing.T) {
 			})
 		})
 		Convey("and a JIRA Deliverer with an erroring jiraCreator", func() {
-			mjc := &mockJIRAHandler{err: fmt.Errorf("bad internet uh-oh")}
+			mjc := &mockJIRAHandler{err: errors.New("bad internet uh-oh")}
 			jd := &jiraDeliverer{
 				project: "COOL",
 				handler: mjc,

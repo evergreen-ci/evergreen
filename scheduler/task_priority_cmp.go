@@ -1,10 +1,9 @@
 package scheduler
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // Comparator (-1 if second is more important, 1 if first is, 0 if equal)
@@ -92,12 +91,12 @@ func byRecentlyFailing(t1, t2 task.Task,
 	comparator *CmpBasedTaskComparator) (int, error) {
 	firstPrev, present := comparator.previousTasksCache[t1.Id]
 	if !present {
-		return 0, fmt.Errorf("No cached previous task available for task with"+
+		return 0, errors.Errorf("No cached previous task available for task with"+
 			" id %v", t1.Id)
 	}
 	secondPrev, present := comparator.previousTasksCache[t2.Id]
 	if !present {
-		return 0, fmt.Errorf("No cached previous task available for task with"+
+		return 0, errors.Errorf("No cached previous task available for task with"+
 			" id %v", t2.Id)
 	}
 
@@ -126,13 +125,13 @@ func bySimilarFailing(t1, t2 task.Task,
 
 	numSimilarFailingOne, ok := comparator.similarFailingCount[t1.Id]
 	if !ok {
-		return 0, fmt.Errorf("No similar failing count entry for task with "+
+		return 0, errors.Errorf("No similar failing count entry for task with "+
 			"id %v", t1.Id)
 	}
 
 	numSimilarFailingTwo, ok := comparator.similarFailingCount[t2.Id]
 	if !ok {
-		return 0, fmt.Errorf("No similar failing count entry for task with "+
+		return 0, errors.Errorf("No similar failing count entry for task with "+
 			"id %v", t2.Id)
 	}
 

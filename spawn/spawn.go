@@ -3,7 +3,6 @@ package spawn
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -71,7 +71,7 @@ func (sm Spawn) Validate(so Options) error {
 	// if the user already has too many active spawned hosts, deny the request
 	activeSpawnedHosts, err := host.Find(host.ByUserWithRunningStatus(so.UserName))
 	if err != nil {
-		return fmt.Errorf("Error occurred finding user's current hosts: %v", err)
+		return errors.Wrap(err, "Error occurred finding user's current hosts")
 	}
 
 	if len(activeSpawnedHosts) >= MaxPerUser {
@@ -153,7 +153,7 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 	exp := command.NewExpansions(sm.settings.Expansions)
 	d.Setup, err = exp.ExpandString(d.Setup)
 	if err != nil {
-		return fmt.Errorf("expansions error: %v", err)
+		return errors.Wrap(err, "expansions error")
 	}
 
 	// fake out replacing spot instances with on-demand equivalents

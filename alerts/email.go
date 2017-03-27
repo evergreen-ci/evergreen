@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const EmailSubjectPrologue = "[Evergreen]"
@@ -36,13 +37,13 @@ type EmailDeliverer struct {
 func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertConfig) error {
 	rcptRaw, ok := alertConf.Settings["recipient"]
 	if !ok {
-		return fmt.Errorf("missing email address")
+		return errors.New("missing email address")
 	}
 	grip.Infof("Sending email to %v", rcptRaw)
 
 	var rcpt string
 	if rcpt, ok = rcptRaw.(string); !ok {
-		return fmt.Errorf("email address must be a string")
+		return errors.New("email address must be a string")
 	}
 
 	var err error
@@ -79,19 +80,19 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	err = c.Mail(es.From)
 	if err != nil {
 		grip.Errorf("Error establishing mail sender (%s): %+v", es.From, err)
-		return err
+		return errors.WithStack(err)
 	}
 
 	err = c.Rcpt(rcpt)
 	if err != nil {
 		grip.Errorf("Error establishing mail recipient (%s): %+v", rcpt, err)
-		return err
+		return errors.WithStack(err)
 	}
 
 	// Send the email body.
 	wc, err := c.Data()
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	defer wc.Close()
 
@@ -114,8 +115,9 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	// write the body
 	buf := bytes.NewBufferString(message)
 	if _, err = buf.WriteTo(wc); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
+
 	return nil
 }
 
@@ -137,7 +139,7 @@ func (es *EmailDeliverer) getBody(alertCtx AlertContext) (string, error) {
 	template := getTemplate(alertCtx)
 	err := es.render.HTML(out, alertCtx, "content", template)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	return out.String(), nil
 }

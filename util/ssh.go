@@ -1,7 +1,10 @@
 package util
 
-import "regexp"
-import "fmt"
+import (
+	"regexp"
+
+	"github.com/pkg/errors"
+)
 
 const (
 	DefaultSSHPort = "22"
@@ -24,7 +27,7 @@ var userHostPortRegex = regexp.MustCompile("(?:([\\w\\-_]+)@)?@?([\\w\\-_\\.]+)(
 func ParseSSHInfo(fullHostname string) (*StaticHostInfo, error) {
 	matches := userHostPortRegex.FindStringSubmatch(fullHostname)
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("Invalid hostname format: %v", fullHostname)
+		return nil, errors.Errorf("Invalid hostname format: %v", fullHostname)
 	} else {
 		returnVal := &StaticHostInfo{
 			User:     matches[1],

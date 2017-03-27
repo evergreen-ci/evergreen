@@ -1,10 +1,10 @@
 package util
 
 import (
-	"errors"
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 

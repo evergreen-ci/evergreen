@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // responsible for cleaning up any tasks that need to be stopped
@@ -25,7 +25,7 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 	grip.Info("Cleaning up tasks...")
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	for _, f := range tm.flaggingFuncs {
 		// find the next batch of tasks to be cleaned up
@@ -34,7 +34,7 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 		// continue on error so that one wonky flagging function doesn't
 		// stop others from working
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error finding tasks to be cleaned up: %v", err))
+			errs = append(errs, errors.Wrap(err, "error finding tasks to be cleaned up"))
 			continue
 		}
 
@@ -42,16 +42,14 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 		// to progress
 		if errs := cleanUpTasks(tasksToCleanUp, projects); errs != nil {
 			for _, err := range errs {
-				errors = append(errors, fmt.Errorf("error cleaning up tasks: %v", err))
+				errs = append(errs, errors.Wrap(err, "error cleaning up tasks"))
 			}
 		}
-
 	}
 
 	grip.Info("Done cleaning up tasks")
 
-	return errors
-
+	return errs
 }
 
 // clean up the passed-in slice of tasks
@@ -59,23 +57,21 @@ func cleanUpTasks(taskWrappers []doomedTaskWrapper, projects map[string]model.Pr
 	grip.Infof("Cleaning up %d tasks...", len(taskWrappers))
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	for _, wrapper := range taskWrappers {
-
 		grip.Infof("Cleaning up task %s, for reason '%s'", wrapper.task.Id, wrapper.reason)
 
 		// clean up the task. continue on error to let others be cleaned up
-		err := cleanUpTask(wrapper, projects)
-		if err != nil {
-			errors = append(errors, fmt.Errorf("error cleaning up task %v: %v", wrapper.task.Id, err))
-		} else {
-			grip.Infoln("Successfully cleaned up task", wrapper.task.Id)
+		if err := cleanUpTask(wrapper, projects); err != nil {
+			errs = append(errs, errors.Wrapf(err,
+				"error cleaning up task %v", wrapper.task.Id))
+			continue
 		}
-
+		grip.Infoln("Successfully cleaned up task", wrapper.task.Id)
 	}
 
-	return errors
+	return errs
 }
 
 // function to clean up a single task
@@ -84,26 +80,26 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 	// find the appropriate project for the task
 	project, ok := projects[wrapper.task.Project]
 	if !ok {
-		return fmt.Errorf("could not find project %v for task %v",
+		return errors.Errorf("could not find project %v for task %v",
 			wrapper.task.Project, wrapper.task.Id)
 	}
 
 	// get the host for the task
 	host, err := host.FindOne(host.ById(wrapper.task.HostId))
 	if err != nil {
-		return fmt.Errorf("error finding host %v for task %v: %v",
-			wrapper.task.HostId, wrapper.task.Id, err)
+		return errors.Wrapf(err, "error finding host %s for task %s",
+			wrapper.task.HostId, wrapper.task.Id)
 	}
 
 	// if there's no relevant host, something went wrong
 	if host == nil {
 		grip.Errorln("no entry found for host:", wrapper.task.HostId)
-		return wrapper.task.MarkUnscheduled()
+		return errors.WithStack(wrapper.task.MarkUnscheduled())
 	}
 
 	// sanity check that the host is actually running the task
 	if host.RunningTask != wrapper.task.Id {
-		return fmt.Errorf("task %v says it is running on host %v, but the"+
+		return errors.Errorf("task %v says it is running on host %v, but the"+
 			" host thinks it is running task %v", wrapper.task.Id, host.Id,
 			host.RunningTask)
 	}
@@ -113,11 +109,11 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 	case HeartbeatTimeout:
 		err = cleanUpTimedOutHeartbeat(wrapper.task, project, host)
 	default:
-		return fmt.Errorf("unknown reason for cleaning up task: %v", wrapper.reason)
+		return errors.Errorf("unknown reason for cleaning up task: %v", wrapper.reason)
 	}
 
 	if err != nil {
-		return fmt.Errorf("error cleaning up task %v: %v", wrapper.task.Id, err)
+		return errors.Wrapf(err, "error cleaning up task %s", wrapper.task.Id)
 	}
 
 	return nil
@@ -135,13 +131,13 @@ func cleanUpTimedOutHeartbeat(t task.Task, project model.Project, host *host.Hos
 
 	// try to reset the task
 	if err := model.TryResetTask(t.Id, "", RunnerName, &project, detail); err != nil {
-		return fmt.Errorf("error trying to reset task %v: %v", t.Id, err)
+		return errors.Wrapf(err, "error trying to reset task %s", t.Id)
 	}
 
 	// clear out the host's running task
 	if err := host.ClearRunningTask(t.Id, time.Now()); err != nil {
-		return fmt.Errorf("error clearing running task %v from host %v: %v",
-			t.Id, host.Id, err)
+		return errors.Wrapf(err, "error clearing running task %v from host %v: %v",
+			t.Id, host.Id)
 	}
 
 	// success

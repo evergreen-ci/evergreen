@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"errors"
 	"io/ioutil"
 	"strings"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/pkg/errors"
 )
 
 // the revision we'll assume is the current one for the agent. this is the

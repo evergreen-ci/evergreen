@@ -64,3 +64,4 @@ vendor/github.com/10gen/evg-perf-dashboard/
 vendor/github.com/10gen/evg-perf/
 vendor/github.com/evergreen-ci/build-baron-plugin/
 vendor/github.com/evergreen-ci/keyval/
+fabfile.py

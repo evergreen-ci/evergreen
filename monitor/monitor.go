@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -51,13 +51,13 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	// load in all of the distros
 	distros, err := distro.Find(db.Q{})
 	if err != nil {
-		return fmt.Errorf("error finding distros: %v", err)
+		return errors.Wrap(err, "error finding distros")
 	}
 
 	// fetch the project refs, which we will use to get all of the projects
 	projectRefs, err := model.FindAllProjectRefs()
 	if err != nil {
-		return fmt.Errorf("error loading in project refs: %v", err)
+		return errors.Wrap(err, "error loading in project refs")
 	}
 
 	// turn the project refs into a map of the project id -> project
@@ -72,7 +72,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 		// continue on error to stop the whole monitoring process from
 		// being held up
 		if err != nil {
-			grip.Errorf("error finding project %s: %v", ref.Identifier, err)
+			grip.Errorf("error finding project %s: %+v", ref.Identifier, err)
 			continue
 		}
 
@@ -107,7 +107,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 		func() []error { return hostMonitor.CleanupHosts(distros, settings) })
 
 	for _, err := range errs {
-		grip.Errorf("Error cleaning up hosts:", err)
+		grip.Errorln("Error cleaning up hosts:", err.Error())
 	}
 
 	// run monitoring checks
@@ -135,7 +135,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	thresholdTime := now.Add(12 * time.Hour)
 	expiringSoonHosts, err := host.Find(host.ByExpiringBetween(now, thresholdTime))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	for _, h := range expiringSoonHosts {
@@ -155,17 +155,18 @@ func withGlobalLock(name string, f func() []error) (errs []error) {
 	acquired, err := db.WaitTillAcquireGlobalLock(name, db.LockTimeout)
 	if err != nil {
 		grip.Errorf("problem acquiring global lock for monitor %s: %+v", name, err)
-		return []error{fmt.Errorf("error acquiring global lock for %s: %v", name, err)}
+		return []error{errors.Errorf("error acquiring global lock for %s: %v", name, err)}
 	}
+
 	if !acquired {
 		grip.Errorln("Timed out attempting to acquire global lock for monitor:", name)
-		return []error{fmt.Errorf("timed out acquiring global lock for monitor %s", name)}
+		return []error{errors.Errorf("timed out acquiring global lock for monitor %s", name)}
 	}
 	defer func() {
 		grip.Debugln("Releasing global lock for monitor", name)
 		if err := db.ReleaseGlobalLock(name); err != nil {
 			grip.Errorf("Error releasing global lock for monitor %s: %+v", name, err)
-			errs = append(errs, fmt.Errorf("error releasing global lock for monitor %v: %v", name, err))
+			errs = append(errs, errors.Errorf("error releasing global lock for monitor %v: %v", name, err))
 		} else {
 			grip.Debugln("Released global lock for monitor:", name)
 		}

@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // DescriptionTemplateString defines the content of the alert ticket.
@@ -87,13 +88,13 @@ func (jd *jiraDeliverer) Deliver(ctx AlertContext, alertConf model.AlertConfig) 
 	}
 
 	if err != nil {
-		return fmt.Errorf("error creating description: %v", err)
+		return errors.Wrap(err, "error creating description")
 	}
 	grip.Infof("Creating '%v' JIRA ticket in %v for failure %v in project %s",
 		jd.issueType, jd.project, ctx.Task.Id, ctx.ProjectRef.Identifier)
 	result, err := jd.handler.CreateTicket(request)
 	if err != nil {
-		return fmt.Errorf("error creating JIRA ticket: %v", err)
+		return errors.Wrap(err, "error creating JIRA ticket")
 	}
 	grip.Infof("Created JIRA ticket %v successfully", result.Key)
 	return nil

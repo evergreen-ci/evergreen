@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -238,7 +239,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to configure plugin %v: %v", pl.Name(), err)
+			return nil, errors.Wrapf(err, "Failed to configure plugin %v", pl.Name())
 		}
 
 		// check if a plugin is an app level plugin first

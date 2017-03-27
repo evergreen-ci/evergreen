@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -201,10 +202,10 @@ func (p *ProjectRef) GetBatchTime(variant *BuildVariant) int {
 // Location generates and returns the ssh hostname and path to the repo.
 func (projectRef *ProjectRef) Location() (string, error) {
 	if projectRef.Owner == "" {
-		return "", fmt.Errorf("No owner in project ref: %v", projectRef.Identifier)
+		return "", errors.Errorf("No owner in project ref: %v", projectRef.Identifier)
 	}
 	if projectRef.Repo == "" {
-		return "", fmt.Errorf("No repo in project ref: %v", projectRef.Identifier)
+		return "", errors.Errorf("No repo in project ref: %v", projectRef.Identifier)
 	}
 	return fmt.Sprintf("git@github.com:%v/%v.git", projectRef.Owner, projectRef.Repo), nil
 }

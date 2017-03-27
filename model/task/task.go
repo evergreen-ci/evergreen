@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -562,7 +563,7 @@ func (t *Task) SetPriority(priority int64) error {
 
 	ids, err := t.getRecursiveDependencies()
 	if err != nil {
-		return fmt.Errorf("error getting task dependencies: %v", err)
+		return errors.Wrap(err, "error getting task dependencies")
 	}
 
 	_, err = UpdateAll(
@@ -573,7 +574,7 @@ func (t *Task) SetPriority(priority int64) error {
 		}},
 		bson.M{"$set": modifier},
 	)
-	return err
+	return errors.WithStack(err)
 }
 
 // getRecursiveDependencies creates a slice containing t.Id and the Ids of all recursive dependencies.
@@ -586,14 +587,14 @@ func (t *Task) getRecursiveDependencies() ([]string, error) {
 
 	recurTasks, err := Find(ByIds(recurIds))
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	ids := make([]string, 0)
 	for _, recurTask := range recurTasks {
 		appendIds, err := recurTask.getRecursiveDependencies()
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		ids = append(ids, appendIds...)
 	}
@@ -691,7 +692,7 @@ func AbortBuild(buildId string) error {
 		},
 		bson.M{"$set": bson.M{AbortedKey: true}},
 	)
-	return err
+	return errors.WithStack(err)
 }
 
 //String represents the stringified version of a task
@@ -735,7 +736,7 @@ func (t *Task) Archive() error {
 		bson.M{IdKey: t.Id},
 		update)
 	if err != nil {
-		return fmt.Errorf("task.Archive() failed: %v", err)
+		return errors.Wrap(err, "task.Archive() failed")
 	}
 	archiveTask := *t
 	archiveTask.Id = fmt.Sprintf("%v_%v", t.Id, t.Execution)
@@ -743,7 +744,7 @@ func (t *Task) Archive() error {
 	archiveTask.Archived = true
 	err = db.Insert(OldCollection, &archiveTask)
 	if err != nil {
-		return fmt.Errorf("task.Archive() failed: %v", err)
+		return errors.Wrap(err, "task.Archive() failed")
 	}
 	return nil
 }
@@ -800,7 +801,7 @@ func AverageTaskTimeDifference(field1 string, field2 string,
 
 	err := db.Aggregate(Collection, pipeline, &results)
 	if err != nil {
-		return nil, fmt.Errorf("Error aggregating task times by [%v, %v]: %v", field1, field2, err)
+		return nil, errors.Wrapf(err, "Error aggregating task times by [%v, %v]", field1, field2)
 	}
 
 	avgTimes := make(map[string]time.Duration)
@@ -861,7 +862,7 @@ func ExpectedTaskDuration(project, buildvariant string, window time.Duration) (m
 
 	err := db.Aggregate(Collection, pipeline, &results)
 	if err != nil {
-		return nil, fmt.Errorf("error aggregating task average duration: %v", err)
+		return nil, errors.Wrap(err, "error aggregating task average duration")
 	}
 
 	expDurations := make(map[string]time.Duration)

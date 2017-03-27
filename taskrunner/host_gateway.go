@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -54,18 +55,18 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 	// get the host's SSH options
 	cloudHost, err := providers.GetCloudHost(&hostObj, settings)
 	if err != nil {
-		return "", fmt.Errorf("Failed to get cloud host for %v: %v", hostObj.Id, err)
+		return "", errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return "", fmt.Errorf("Error getting ssh options for host %v: %v", hostObj.Id, err)
+		return "", errors.Wrapf(err, "Error getting ssh options for host %s", hostObj.Id)
 	}
 
 	// prep the remote host
 	grip.Infof("Prepping remote host %v...", hostObj.Id)
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions)
 	if err != nil {
-		return "", fmt.Errorf("error prepping remote host %v: %v", hostObj.Id, err)
+		return "", errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 	grip.Infof("Prepping host %v finished successfully", hostObj.Id)
 
@@ -75,13 +76,13 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
 		if err := hostObj.CreateSecret(); err != nil {
-			return "", fmt.Errorf("creating secret for %v: %v", hostObj.Id, err)
+			return "", errors.Wrapf(err, "creating secret for %s", hostObj.Id)
 		}
 	}
 
 	err = startAgentOnRemote(settings.ApiUrl, &taskToRun, &hostObj, sshOptions)
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 	grip.Infof("Agent successfully started for task %v", taskToRun.Id)
 
@@ -94,7 +95,7 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 	versionFile := filepath.Join(agbh.ExecutablesDir, "version")
 	hashBytes, err := ioutil.ReadFile(versionFile)
 	if err != nil {
-		return "", fmt.Errorf("error reading agent version file: %v", err)
+		return "", errors.Wrap(err, "error reading agent version file")
 	}
 
 	return strings.TrimSpace(string(hashBytes)), nil
@@ -106,7 +107,7 @@ func executableSubPath(id string) (string, error) {
 	// get the full distro info, so we can figure out the architecture
 	d, err := distro.FindOne(distro.ById(id))
 	if err != nil {
-		return "", fmt.Errorf("error finding distro %v: %v", id, err)
+		return "", errors.Wrapf(err, "error finding distro %v", id)
 	}
 
 	mainName := "main"
@@ -134,7 +135,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
-		return "", fmt.Errorf("error parsing ssh info %v: %v", hostObj.Host, err)
+		return "", errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
 
 	// first, create the necessary sandbox of directories on the remote machine
@@ -158,16 +159,17 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
 			makeShellCmd.Stop()
-			return "", fmt.Errorf("creating remote directories timed out: %v", mkdirOutput.String())
+			return "", errors.Errorf("creating remote directories timed out: %v",
+				mkdirOutput.String())
 		}
-		return "", fmt.Errorf(
-			"error creating directories on remote machine (%v): %v", err, mkdirOutput.String())
+		return "", errors.Wrapf(err, "error creating directories on remote machine (%s)",
+			mkdirOutput.String())
 	}
 
 	// third, copy over the correct agent binary to the remote machine
 	execSubPath, err := executableSubPath(hostObj.Distro.Id)
 	if err != nil {
-		return "", fmt.Errorf("error computing subpath to executable: %v", err)
+		return "", errors.Wrap(err, "error computing subpath to executable")
 	}
 
 	scpAgentOutput := newCappedOutputLog()
@@ -184,23 +186,22 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// get the agent's revision before scp'ing over the executable
 	preSCPAgentRevision, err := agbh.GetAgentRevision()
-	grip.ErrorWhenln(err != nil, "Error getting pre scp agent revision:", err)
+	grip.Error(errors.Wrap(err, "Error getting pre scp agent revision"))
 
 	// run the command to scp the agent with a timeout
 	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
 	if err != nil {
 		if err == util.ErrTimedOut {
 			scpAgentCmd.Stop()
-			return "", fmt.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
+			return "", errors.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
 		}
-		return "", fmt.Errorf(
+		return "", errors.Errorf(
 			"error copying agent binary to remote machine (%v): %v", err, scpAgentOutput.String())
 	}
 
 	// get the agent's revision after scp'ing over the executable
 	postSCPAgentRevision, err := agbh.GetAgentRevision()
-	grip.ErrorWhenln(err != nil, "Error getting post scp agent revision:", err)
-
+	grip.Error(errors.Wrap(err, "Error getting post scp agent revision"))
 	grip.WarningWhenf(preSCPAgentRevision != postSCPAgentRevision,
 		"Agent revision was %v before scp but is now %v. Using previous revision %v for host %v",
 		preSCPAgentRevision, postSCPAgentRevision, preSCPAgentRevision, hostObj.Id)
@@ -223,7 +224,7 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
-		return fmt.Errorf("error parsing ssh info %v: %v", hostObj.Host, err)
+		return errors.Wrapf(err, "error parsing ssh info %v", hostObj.Host)
 	}
 
 	// run the command to kick off the agent remotely
@@ -247,9 +248,9 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 	if err != nil {
 		if err == util.ErrTimedOut {
 			startAgentCmd.Stop()
-			return fmt.Errorf("starting agent timed out")
+			return errors.New("starting agent timed out")
 		}
-		return fmt.Errorf("error starting agent (%v): %v", hostObj.Id, err, startAgentLog.String())
+		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())
 	}
 
 	return nil

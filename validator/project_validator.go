@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 type projectValidator func(*model.Project) []ValidationError
@@ -178,11 +179,11 @@ func dependencyCycleExists(node model.TVPair, visited map[model.TVPair]bool,
 	v, ok := visited[node]
 	// if the node does not exist, the deps are broken
 	if !ok {
-		return fmt.Errorf("dependency %v is not present in the project config", node)
+		return errors.Errorf("dependency %v is not present in the project config", node)
 	}
 	// if the task has already been visited, then a cycle certainly exists
 	if v {
-		return fmt.Errorf("dependency %v is part of a dependency cycle", node)
+		return errors.Errorf("dependency %v is part of a dependency cycle", node)
 	}
 
 	visited[node] = true

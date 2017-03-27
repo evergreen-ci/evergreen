@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	ignore "github.com/sabhiram/go-git-ignore"
 )
 
@@ -444,17 +445,17 @@ var (
 func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Task, r *ProjectRef) (*TaskConfig, error) {
 	// do a check on if the project is empty
 	if p == nil {
-		return nil, fmt.Errorf("project for task with branch %v is empty", t.Project)
+		return nil, errors.Errorf("project for task with branch %v is empty", t.Project)
 	}
 
 	// check on if the project ref is empty
 	if r == nil {
-		return nil, fmt.Errorf("Project ref with identifier: %v was empty", p.Identifier)
+		return nil, errors.Errorf("Project ref with identifier: %v was empty", p.Identifier)
 	}
 
 	bv := p.FindBuildVariant(t.BuildVariant)
 	if bv == nil {
-		return nil, fmt.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
+		return nil, errors.Errorf("couldn't find buildvariant: '%v'", t.BuildVariant)
 	}
 
 	e := populateExpansions(d, v, bv, t)
@@ -556,10 +557,10 @@ func (m *Module) GetRepoOwnerAndName() (string, string) {
 
 func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if projectRef == nil {
-		return nil, fmt.Errorf("projectRef given is nil")
+		return nil, errors.New("projectRef given is nil")
 	}
 	if projectRef.Identifier == "" {
-		return nil, fmt.Errorf("Invalid project with blank identifier")
+		return nil, errors.New("Invalid project with blank identifier")
 	}
 
 	project := &Project{}
@@ -570,7 +571,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 	if revision == "" {
 		lastGoodVersion, err := version.FindOne(version.ByLastKnownGoodConfig(projectRef.Identifier))
 		if err != nil {
-			return nil, fmt.Errorf("Error finding recent valid version for %v: %v", projectRef.Identifier, err)
+			return nil, errors.Wrapf(err, "Error finding recent valid version for %v: %v", projectRef.Identifier)
 		}
 		if lastGoodVersion != nil {
 			// for new repositories, we don't want to error out when we don't have
@@ -578,15 +579,15 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 			// information we already have from the project file on disk
 			err = LoadProjectInto([]byte(lastGoodVersion.Config), projectRef.Identifier, project)
 			if err != nil {
-				return nil, fmt.Errorf("Error loading project from "+
-					"last good version for project, %v: %v", lastGoodVersion.Identifier, err)
+				return nil, errors.Wrapf(err, "Error loading project from "+
+					"last good version for project, %v", lastGoodVersion.Identifier)
 			}
 		} else {
 			// Check to see if there is a local configuration in the project ref
 			if projectRef.LocalConfig != "" {
 				err = LoadProjectInto([]byte(projectRef.LocalConfig), projectRef.Identifier, project)
 				if err != nil {
-					return nil, fmt.Errorf("Error loading local config for project ref, %v : %v", projectRef.Identifier, err)
+					return nil, errors.Wrapf(err, "Error loading local config for project ref, %v", projectRef.Identifier)
 				}
 			}
 		}
@@ -597,7 +598,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 		// for the given project at the given revision
 		version, err := version.FindOne(version.ByProjectIdAndRevision(projectRef.Identifier, revision))
 		if err != nil {
-			return nil, fmt.Errorf("error fetching version for project %v revision %v: %v", projectRef.Identifier, revision, err)
+			return nil, errors.Wrapf(err, "error fetching version for project %v revision %v", projectRef.Identifier, revision)
 		}
 		if version == nil {
 			// fall back to the skeletal project
@@ -606,7 +607,7 @@ func FindProject(revision string, projectRef *ProjectRef) (*Project, error) {
 
 		project = &Project{}
 		if err = LoadProjectInto([]byte(version.Config), projectRef.Identifier, project); err != nil {
-			return nil, fmt.Errorf("Error loading project from version: %v", err)
+			return nil, errors.Wrap(err, "Error loading project from version")
 		}
 	}
 	return project, nil
@@ -650,7 +651,7 @@ func (p *Project) GetModuleByName(name string) (*Module, error) {
 			return &v, nil
 		}
 	}
-	return nil, fmt.Errorf("No such module on this project.")
+	return nil, errors.New("No such module on this project.")
 }
 
 func (p *Project) FindTasksForVariant(build string) []string {

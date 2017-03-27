@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -45,7 +46,7 @@ func (m *ManifestPlugin) Configure(conf map[string]interface{}) error {
 		return err
 	}
 	if mp.GithubToken == "" {
-		fmt.Errorf("GitHub token is empty")
+		errors.New("GitHub token is empty")
 	}
 	m.OAuthCredentials = mp.GithubToken
 	return nil
@@ -103,7 +104,7 @@ func (m *ManifestPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	case ManifestLoadCmd:
 		return &ManifestLoadCommand{}, nil
 	default:
-		return nil, fmt.Errorf("No such %v command: %v", m.Name(), cmdName)
+		return nil, errors.Errorf("No such %v command: %v", m.Name(), cmdName)
 	}
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -48,7 +49,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	// Unmarshal the patch's project config so that it is always up to date with the configuration file in the project
 	project := &model.Project{}
 	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error unmarshaling project config"))
 	}
 	projCtx.Project = project
 
@@ -99,7 +100,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	// Unmarshal the project config and set it in the project context
 	project := &model.Project{}
 	if err := yaml.Unmarshal([]byte(projCtx.Patch.PatchedConfig), project); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error unmarshaling project config: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("Error unmarshaling project config: %v", err))
 	}
 	projCtx.Project = project
 
@@ -134,14 +135,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 	// update the description for both reconfigured and new patches
 	if err = projCtx.Patch.SetDescription(patchUpdateReq.Description); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
-			fmt.Errorf("Error setting description: %v", err))
+			errors.Wrap(err, "Error setting description"))
 		return
 	}
 
 	// update the description for both reconfigured and new patches
 	if err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs)); err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
-			fmt.Errorf("Error setting description: %v", err))
+			errors.Wrap(err, "Error setting description"))
 		return
 	}
 
@@ -150,7 +151,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		// This patch has already been finalized, just add the new builds and tasks
 		if projCtx.Version == nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
+				errors.Errorf("Couldn't find patch for id %v", projCtx.Patch.Version))
 			return
 		}
 
@@ -158,14 +159,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		err = model.AddNewTasksForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, pairs)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error creating new tasks: `%v` for version `%v`", err, projCtx.Version.Id))
+				errors.Wrapf(err, "Error creating new tasks for version `%v`", projCtx.Version.Id))
 			return
 		}
 
 		err := model.AddNewBuildsForPatch(projCtx.Patch, projCtx.Version, projCtx.Project, pairs)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error creating new builds: `%v` for version `%v`", err, projCtx.Version.Id))
+				errors.Wrapf(err, "Error creating new builds for version `%v`", err, projCtx.Version.Id))
 			return
 		}
 
@@ -178,13 +179,14 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 		err = projCtx.Patch.SetVariantsTasks(model.TVPairsToVariantTasks(pairs))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error setting patch variants and tasks: %v", err))
+				errors.Wrap(err, "Error setting patch variants and tasks"))
 			return
 		}
 
 		ver, err := model.FinalizePatch(projCtx.Patch, &uis.Settings)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finalizing patch: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrap(err, "Error finalizing patch"))
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Patch builds are scheduled."))

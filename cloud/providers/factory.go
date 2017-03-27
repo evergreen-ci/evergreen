@@ -1,8 +1,6 @@
 package providers
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers/digitalocean"
@@ -11,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/pkg/errors"
 )
 
 // GetCloudManager returns an implementation of CloudManager for the given provider name.
@@ -32,11 +31,11 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.C
 	case docker.ProviderName:
 		provider = &docker.DockerManager{}
 	default:
-		return nil, fmt.Errorf("No known provider for '%v'", providerName)
+		return nil, errors.Errorf("No known provider for '%v'", providerName)
 	}
 
 	if err := provider.Configure(settings); err != nil {
-		return nil, fmt.Errorf("Failed to configure cloud provider: %v", err)
+		return nil, errors.Wrap(err, "Failed to configure cloud provider")
 	}
 
 	return provider, nil

@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -95,7 +96,7 @@ func (self *UpdateCommand) ParseParams(params map[string]interface{}) error {
 
 	for _, item := range self.Updates {
 		if item.Key == "" {
-			return fmt.Errorf("error parsing '%v' params: key must not be "+
+			return errors.Errorf("error parsing '%v' params: key must not be "+
 				"a blank string", self.Name())
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/gorilla/context"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 	// of itself to these slices on init, i.e. by adding the following to its
 	// source file:
 	//  func init(){
-	//  	plugin.Publish(&MyCoolPlugin{})
+	//	plugin.Publish(&MyCoolPlugin{})
 	//  }
 	// This list is then used by Agent, API, and UI Server code to register
 	// the published plugins.
@@ -263,7 +264,7 @@ func NewSimpleRegistry() *SimpleRegistry {
 // This function returns an error if a plugin of the same name is already registered.
 func (sr *SimpleRegistry) Register(p CommandPlugin) error {
 	if _, hasKey := sr.pluginsMapping[p.Name()]; hasKey {
-		return fmt.Errorf("Plugin with name '%v' has already been registered", p.Name())
+		return errors.Errorf("Plugin with name '%v' has already been registered", p.Name())
 	}
 	sr.pluginsMapping[p.Name()] = p
 	return nil
@@ -274,7 +275,7 @@ func (sr *SimpleRegistry) ParseCommandConf(cmd model.PluginCommandConf, funcs ma
 	if funcName := cmd.Function; funcName != "" {
 		cmds, ok := funcs[funcName]
 		if !ok {
-			return nil, fmt.Errorf("function '%v' not found in project functions", funcName)
+			return nil, errors.Errorf("function '%v' not found in project functions", funcName)
 		}
 
 		cmdList := cmds.List()
@@ -283,7 +284,7 @@ func (sr *SimpleRegistry) ParseCommandConf(cmd model.PluginCommandConf, funcs ma
 
 		for _, c := range cmdList {
 			if c.Function != "" {
-				return nil, fmt.Errorf("can not reference a function within "+
+				return nil, errors.Errorf("can not reference a function within "+
 					"a function: '%v' referenced within '%v'", c.Function, funcName)
 			}
 
@@ -321,7 +322,7 @@ func (sr *SimpleRegistry) GetCommands(cmd model.PluginCommandConf, funcs map[str
 	for _, c := range cmds {
 		pluginNameParts := strings.Split(c.Command, ".")
 		if len(pluginNameParts) != 2 {
-			return nil, fmt.Errorf("Value of 'command' should be formatted: 'plugin_name.command_name'")
+			return nil, errors.New("Value of 'command' should be formatted: 'plugin_name.command_name'")
 		}
 		plugin, hasKey := sr.pluginsMapping[pluginNameParts[0]]
 		if !hasKey {
@@ -330,11 +331,11 @@ func (sr *SimpleRegistry) GetCommands(cmd model.PluginCommandConf, funcs map[str
 
 		command, err := plugin.NewCommand(pluginNameParts[1])
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 
 		if err = command.ParseParams(c.Params); err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		cmdsParsed = append(cmdsParsed, command)
 	}

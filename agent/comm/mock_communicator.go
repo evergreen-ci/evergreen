@@ -1,7 +1,6 @@
 package comm
 
 import (
-	"fmt"
 	"net/http"
 	"sync"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type MockCommunicator struct {
@@ -45,7 +45,7 @@ func (mc *MockCommunicator) Start() error {
 	defer mc.RUnlock()
 
 	if mc.shouldFailStart {
-		return fmt.Errorf("failed to start!")
+		return errors.New("failed to start")
 	}
 	return nil
 }
@@ -55,7 +55,7 @@ func (mc *MockCommunicator) End(details *apimodels.TaskEndDetail) (*apimodels.Ta
 	defer mc.RUnlock()
 
 	if mc.shouldFailEnd {
-		return nil, fmt.Errorf("failed to end!")
+		return nil, errors.New("failed to end")
 	}
 	return nil, nil
 }
@@ -95,7 +95,7 @@ func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
 	defer mc.RUnlock()
 
 	if mc.shouldFailEnd {
-		return fmt.Errorf("failed to end!")
+		return errors.New("failed to end")
 	}
 
 	if mc.LogChan != nil {
@@ -113,7 +113,7 @@ func (mc *MockCommunicator) Heartbeat() (bool, error) {
 	defer mc.RUnlock()
 
 	if mc.shouldFailHeartbeat {
-		return false, fmt.Errorf("failed to heartbeat!")
+		return false, errors.New("failed to heartbeat")
 	}
 	return mc.abort, nil
 }

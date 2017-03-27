@@ -1,12 +1,12 @@
 package hostinit
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // Runner executes the hostinit process.
@@ -32,7 +32,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	init := &HostInit{config}
 
 	if err := init.setupReadyHosts(); err != nil {
-		err = fmt.Errorf("Error running hostinit: %+v", err)
+		err = errors.Wrap(err, "Error running hostinit")
 		grip.Error(err)
 		return err
 	}

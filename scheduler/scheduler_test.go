@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -47,14 +47,14 @@ tasks:
 type MockTaskFinder struct{}
 
 func (self *MockTaskFinder) FindRunnableTasks() ([]task.Task, error) {
-	return nil, fmt.Errorf("FindRunnableTasks not implemented")
+	return nil, errors.New("FindRunnableTasks not implemented")
 }
 
 type MockTaskPrioritizer struct{}
 
 func (self *MockTaskPrioritizer) PrioritizeTasks(settings *evergreen.Settings,
 	tasks []task.Task) ([]task.Task, error) {
-	return nil, fmt.Errorf("PrioritizeTasks not implemented")
+	return nil, errors.New("PrioritizeTasks not implemented")
 }
 
 type MockTaskQueuePersister struct{}
@@ -62,14 +62,14 @@ type MockTaskQueuePersister struct{}
 func (self *MockTaskQueuePersister) PersistTaskQueue(distro string,
 	tasks []task.Task,
 	projectTaskDuration model.ProjectTaskDurations) ([]model.TaskQueueItem, error) {
-	return nil, fmt.Errorf("PersistTaskQueue not implemented")
+	return nil, errors.New("PersistTaskQueue not implemented")
 }
 
 type MockTaskDurationEstimator struct{}
 
 func (self *MockTaskDurationEstimator) GetExpectedDurations(
 	runnableTasks []task.Task) (model.ProjectTaskDurations, error) {
-	return model.ProjectTaskDurations{}, fmt.Errorf("GetExpectedDurations not " +
+	return model.ProjectTaskDurations{}, errors.New("GetExpectedDurations not " +
 		"implemented")
 }
 
@@ -77,7 +77,7 @@ type MockHostAllocator struct{}
 
 func (self *MockHostAllocator) NewHostsNeeded(d HostAllocatorData, s *evergreen.Settings) (
 	map[string]int, error) {
-	return nil, fmt.Errorf("NewHostsNeeded not implemented")
+	return nil, errors.New("NewHostsNeeded not implemented")
 }
 
 func TestUpdateVersionBuildVarMap(t *testing.T) {

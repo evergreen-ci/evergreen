@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -135,17 +136,17 @@ func (tjsc *TaskJSONSendCommand) Plugin() string {
 
 func (tjsc *TaskJSONSendCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, tjsc); err != nil {
-		return fmt.Errorf("error decoding '%v' params: %v", tjsc.Name(), err)
+		return errors.Wrapf(err, "error decoding '%v' params", tjsc.Name())
 	}
 	return nil
 }
 
 func (tjsc *TaskJSONSendCommand) Execute(log plugin.Logger, com plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 	if tjsc.File == "" {
-		return fmt.Errorf("'file' param must not be blank")
+		return errors.New("'file' param must not be blank")
 	}
 	if tjsc.DataName == "" {
-		return fmt.Errorf("'name' param must not be blank")
+		return errors.New("'name' param must not be blank")
 	}
 
 	errChan := make(chan error)
@@ -154,14 +155,14 @@ func (tjsc *TaskJSONSendCommand) Execute(log plugin.Logger, com plugin.PluginCom
 		fileLoc := filepath.Join(conf.WorkDir, tjsc.File)
 		jsonFile, err := os.Open(fileLoc)
 		if err != nil {
-			errChan <- fmt.Errorf("Couldn't open json file: '%v'", err)
+			errChan <- errors.Wrap(err, "Couldn't open json file")
 			return
 		}
 
 		jsonData := map[string]interface{}{}
 		err = util.ReadJSONInto(jsonFile, &jsonData)
 		if err != nil {
-			errChan <- fmt.Errorf("File contained invalid json: %v", err)
+			errChan <- errors.Wrap(err, "File contained invalid json")
 			return
 		}
 
@@ -172,18 +173,19 @@ func (tjsc *TaskJSONSendCommand) Execute(log plugin.Logger, com plugin.PluginCom
 				if resp != nil {
 					defer resp.Body.Close()
 				}
+				err = errors.WithStack(err)
 				if err != nil {
 					return util.RetriableError{err}
 				}
 				if resp.StatusCode != http.StatusOK {
-					return util.RetriableError{fmt.Errorf("unexpected status code %v", resp.StatusCode)}
+					return util.RetriableError{errors.Errorf("unexpected status code %v", resp.StatusCode)}
 				}
 				return nil
 			},
 		)
 
 		_, err = util.Retry(retriablePost, 10, 3*time.Second)
-		errChan <- err
+		errChan <- errors.WithStack(err)
 	}()
 
 	select {
@@ -191,7 +193,7 @@ func (tjsc *TaskJSONSendCommand) Execute(log plugin.Logger, com plugin.PluginCom
 		if err != nil {
 			log.LogTask(slogger.ERROR, "Sending json data failed: %v", err)
 		}
-		return err
+		return errors.WithStack(err)
 	case <-stop:
 		log.LogExecution(slogger.INFO, "Received abort signal, stopping.")
 		return nil
@@ -230,39 +232,38 @@ func (jgc *TaskJSONHistoryCommand) Plugin() string {
 
 func (jgc *TaskJSONGetCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, jgc); err != nil {
-		return fmt.Errorf("error decoding '%v' params: %v", jgc.Name(), err)
+		return errors.Wrapf(err, "error decoding '%v' params", jgc.Name())
 	}
 	if jgc.File == "" {
-		return fmt.Errorf("JSON 'get' command must not have blank 'file' parameter")
+		return errors.New("JSON 'get' command must not have blank 'file' parameter")
 	}
 	return nil
 }
 
 func (jgc *TaskJSONHistoryCommand) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, jgc); err != nil {
-		return fmt.Errorf("error decoding '%v' params: %v", jgc.Name(), err)
+		return errors.Wrapf(err, "error decoding '%v' params", jgc.Name())
 	}
 	if jgc.File == "" {
-		return fmt.Errorf("JSON 'history' command must not have blank 'file' parameter")
+		return errors.New("JSON 'history' command must not have blank 'file' parameter")
 	}
 	return nil
 }
 
 func (jgc *TaskJSONGetCommand) Execute(log plugin.Logger, com plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
-
-	err := plugin.ExpandValues(jgc, conf.Expansions)
+	err := errors.WithStack(plugin.ExpandValues(jgc, conf.Expansions))
 	if err != nil {
 		return err
 	}
 
 	if jgc.File == "" {
-		return fmt.Errorf("'file' param must not be blank")
+		return errors.New("'file' param must not be blank")
 	}
 	if jgc.DataName == "" {
-		return fmt.Errorf("'name' param must not be blank")
+		return errors.New("'name' param must not be blank")
 	}
 	if jgc.TaskName == "" {
-		return fmt.Errorf("'task' param must not be blank")
+		return errors.New("'task' param must not be blank")
 	}
 
 	if jgc.File != "" && !filepath.IsAbs(jgc.File) {
@@ -294,31 +295,31 @@ func (jgc *TaskJSONGetCommand) Execute(log plugin.Logger, com plugin.PluginCommu
 			}
 			if resp.StatusCode != http.StatusOK {
 				if resp.StatusCode == http.StatusNotFound {
-					return fmt.Errorf("No JSON data found")
+					return errors.New("No JSON data found")
 				}
-				return util.RetriableError{fmt.Errorf("unexpected status code %v", resp.StatusCode)}
+				return util.RetriableError{errors.Errorf("unexpected status code %v", resp.StatusCode)}
 			}
 			return nil
 		},
 	)
 	_, err = util.Retry(retriableGet, 10, 3*time.Second)
-	return err
+	return errors.WithStack(err)
 }
 
 func (jgc *TaskJSONHistoryCommand) Execute(log plugin.Logger, com plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
-	err := plugin.ExpandValues(jgc, conf.Expansions)
+	err := errors.WithStack(plugin.ExpandValues(jgc, conf.Expansions))
 	if err != nil {
 		return err
 	}
 
 	if jgc.File == "" {
-		return fmt.Errorf("'file' param must not be blank")
+		return errors.New("'file' param must not be blank")
 	}
 	if jgc.DataName == "" {
-		return fmt.Errorf("'name' param must not be blank")
+		return errors.New("'name' param must not be blank")
 	}
 	if jgc.TaskName == "" {
-		return fmt.Errorf("'task' param must not be blank")
+		return errors.New("'task' param must not be blank")
 	}
 
 	if jgc.File != "" && !filepath.IsAbs(jgc.File) {
@@ -351,13 +352,13 @@ func (jgc *TaskJSONHistoryCommand) Execute(log plugin.Logger, com plugin.PluginC
 			}
 			if resp.StatusCode != http.StatusOK {
 				if resp.StatusCode == http.StatusNotFound {
-					return fmt.Errorf("No JSON data found")
+					return errors.New("No JSON data found")
 				}
-				return util.RetriableError{fmt.Errorf("unexpected status code %v", resp.StatusCode)}
+				return util.RetriableError{errors.Errorf("unexpected status code %v", resp.StatusCode)}
 			}
 			return nil
 		},
 	)
 	_, err = util.Retry(retriableGet, 10, 3*time.Second)
-	return err
+	return errors.WithStack(err)
 }

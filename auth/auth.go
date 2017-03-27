@@ -1,11 +1,11 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 //LoadUserManager is used to check the configuration for authentication and create a UserManager depending on what type of authentication (Crowd or Naive) is used.
@@ -20,7 +20,7 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (UserManager, error) {
 	}
 	if authConfig.Naive != nil {
 		if manager != nil {
-			return nil, fmt.Errorf("Cannot have multiple forms of authentication in configuration")
+			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
 		}
 		manager, err = NewNaiveUserManager(authConfig.Naive)
 		if err != nil {
@@ -29,7 +29,7 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (UserManager, error) {
 	}
 	if authConfig.Github != nil {
 		if manager != nil {
-			return nil, fmt.Errorf("Cannot have multiple forms of authentication in configuration")
+			return nil, errors.New("Cannot have multiple forms of authentication in configuration")
 		}
 		manager, err = NewGithubUserManager(authConfig.Github)
 
@@ -38,7 +38,7 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (UserManager, error) {
 		return manager, nil
 	}
 
-	return nil, fmt.Errorf("Must have at least one form of authentication, currently there are none")
+	return nil, errors.New("Must have at least one form of authentication, currently there are none")
 
 }
 

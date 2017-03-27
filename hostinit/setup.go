@@ -3,7 +3,6 @@ package hostinit
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -27,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 )
 
@@ -63,7 +63,7 @@ func (init *HostInit) setupReadyHosts() error {
 	// find all hosts in the uninitialized state
 	uninitializedHosts, err := host.Find(host.IsUninitialized)
 	if err != nil {
-		return fmt.Errorf("error fetching uninitialized hosts: %v", err)
+		return errors.Wrap(err, "error fetching uninitialized hosts")
 	}
 
 	grip.Debugf("There are %d uninitialized hosts", len(uninitializedHosts))
@@ -126,26 +126,26 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := providers.GetCloudManager(host.Distro.Provider, init.Settings)
 	if err != nil {
-		return false,
-			fmt.Errorf("failed to get cloud manager for provider %v: %v", host.Distro.Provider, err)
+		return false, errors.Wrapf(err, "failed to get cloud manager for provider %s",
+			host.Distro.Provider)
 	}
 
 	// ask for the instance's status
 	hostStatus, err := cloudMgr.GetInstanceStatus(host)
 	if err != nil {
-		return false, fmt.Errorf("error checking instance status of host %v: %v", host.Id, err)
+		return false, errors.Wrapf(err, "error checking instance status of host %s", host.Id)
 	}
 
-	grip.Debugf("Checking readiness for %v with DNS %v. has cloud status %v and local status: %v",
+	grip.Debugf("Checking readiness for %s with DNS %s. has cloud status %s and local status: %s",
 		host.Id, host.Host, hostStatus, host.Status)
 
 	// if the host has failed, terminate it and return that this host is not ready
 	if hostStatus == cloud.StatusFailed {
-		err = cloudMgr.TerminateInstance(host)
+		err = errors.WithStack(cloudMgr.TerminateInstance(host))
 		if err != nil {
 			return false, err
 		}
-		return false, fmt.Errorf("host %v terminated due to failure before setup", host.Id)
+		return false, errors.Errorf("host %s terminated due to failure before setup", host.Id)
 	}
 
 	// if the host isn't up yet, we can't do anything
@@ -159,30 +159,29 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		// get the DNS name for the host
 		hostDNS, err := cloudMgr.GetDNSName(host)
 		if err != nil {
-			return false, fmt.Errorf("error checking DNS name for host %v: %v", host.Id, err)
+			return false, errors.Wrapf(err, "error checking DNS name for host %s", host.Id)
 		}
 
 		// sanity check for the host DNS name
 		if hostDNS == "" {
-			return false, fmt.Errorf("instance %v is running but not returning a DNS name",
+			return false, errors.Errorf("instance %s is running but not returning a DNS name",
 				host.Id)
 		}
 
 		// update the host's DNS name
 		if err := host.SetDNSName(hostDNS); err != nil {
-			return false, fmt.Errorf("error setting DNS name for host %v: %v", host.Id, err)
+			return false, errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
 		}
-
 	}
 
 	// check if the host is reachable via SSH
 	cloudHost, err := providers.GetCloudHost(host, init.Settings)
 	if err != nil {
-		return false, fmt.Errorf("failed to get cloud host for %v: %v", host.Id, err)
+		return false, errors.Wrapf(err, "failed to get cloud host for %s", host.Id)
 	}
 	reachable, err := cloudHost.IsSSHReachable()
 	if err != nil {
-		return false, fmt.Errorf("error checking if host %v is reachable: %v", host.Id, err)
+		return false, errors.Wrapf(err, "error checking if host %s is reachable", host.Id)
 	}
 
 	// at this point, we can run the setup if the host is reachable
@@ -193,13 +192,12 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 // the output from running the script remotely, as well as any error that
 // occurs. If the script exits with a non-zero exit code, the error will be non-nil.
 func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
-
 	// fetch the appropriate cloud provider for the host
 	cloudMgr, err := providers.GetCloudManager(targetHost.Provider, init.Settings)
 	if err != nil {
-		return "",
-			fmt.Errorf("failed to get cloud manager for host %v with provider %v: %v",
-				targetHost.Id, targetHost.Provider, err)
+		return "", errors.Wrapf(err,
+			"failed to get cloud manager for host %s with provider %s",
+			targetHost.Id, targetHost.Provider)
 	}
 
 	// mark the host as initializing
@@ -207,7 +205,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 		if err == mgo.ErrNotFound {
 			return "", ErrHostAlreadyInitializing
 		} else {
-			return "", fmt.Errorf("database error: %v", err)
+			return "", errors.Wrapf(err, "database error")
 		}
 	}
 
@@ -223,30 +221,30 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 	}
 	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
 	if err != nil {
-		return "", fmt.Errorf("failed to get cloud host for %v: %v", targetHost.Id, err)
+		return "", errors.Wrapf(err, "failed to get cloud host for %s", targetHost.Id)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return "", fmt.Errorf("error getting ssh options for host %v: %v", targetHost.Id, err)
+		return "", errors.Wrapf(err, "error getting ssh options for host %s", targetHost.Id)
 	}
 
 	if targetHost.Distro.Teardown != "" {
 		err = init.copyScript(targetHost, teardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {
-			return "", fmt.Errorf("error copying script %v to host %v: %v",
-				teardownScriptName, targetHost.Id, err)
+			return "", errors.Wrapf(err, "error copying script %v to host %v",
+				teardownScriptName, targetHost.Id)
 		}
 	}
 
 	if targetHost.Distro.Setup != "" {
 		err = init.copyScript(targetHost, setupScriptName, targetHost.Distro.Setup)
 		if err != nil {
-			return "", fmt.Errorf("error copying script %v to host %v: %v",
+			return "", errors.Errorf("error copying script %v to host %v: %v",
 				setupScriptName, targetHost.Id, err)
 		}
 		logs, err := hostutil.RunRemoteScript(targetHost, setupScriptName, sshOptions)
 		if err != nil {
-			return logs, fmt.Errorf("error running setup script over ssh: %v", err)
+			return logs, errors.Errorf("error running setup script over ssh: %v", err)
 		}
 		return logs, nil
 	}
@@ -270,7 +268,7 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 	// create a temp file for the script
 	file, err := ioutil.TempFile("", name)
 	if err != nil {
-		return fmt.Errorf("error creating temporary script file: %v", err)
+		return errors.Wrap(err, "error creating temporary script file")
 	}
 	defer func() {
 		file.Close()
@@ -279,19 +277,19 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 
 	expanded, err := init.expandScript(script)
 	if err != nil {
-		return fmt.Errorf("error expanding script for host %v: %v", target.Id, err)
+		return errors.Wrapf(err, "error expanding script for host %s", target.Id)
 	}
 	if _, err := io.WriteString(file, expanded); err != nil {
-		return fmt.Errorf("error writing local script: %v", err)
+		return errors.Wrap(err, "error writing local script")
 	}
 
 	cloudHost, err := providers.GetCloudHost(target, init.Settings)
 	if err != nil {
-		return fmt.Errorf("failed to get cloud host for %v: %v", target.Id, err)
+		return errors.Wrapf(err, "failed to get cloud host for %s", target.Id)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return fmt.Errorf("error getting ssh options for host %v: %v", target.Id, err)
+		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
 	}
 
 	var scpCmdStderr bytes.Buffer
@@ -308,10 +306,10 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 	if err != nil {
 		if err == util.ErrTimedOut {
 			scpCmd.Stop()
-			return fmt.Errorf("scp-ing script timed out")
+			return errors.Wrap(err, "scp-ing script timed out")
 		}
-		return fmt.Errorf("error (%v) copying script to remote machine: %v",
-			err, scpCmdStderr.String())
+		return errors.Wrapf(err, "error (%v) copying script to remote machine",
+			scpCmdStderr.String())
 	}
 	return nil
 }
@@ -322,7 +320,7 @@ func (init *HostInit) expandScript(s string) (string, error) {
 	exp := command.NewExpansions(init.Settings.Expansions)
 	script, err := exp.ExpandString(s)
 	if err != nil {
-		return "", fmt.Errorf("expansions error: %v", err)
+		return "", errors.Wrap(err, "expansions error")
 	}
 	return script, err
 }
@@ -352,8 +350,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 			grip.Errorf("unprovisioning host %s failed: %+v", h.Id, err)
 		}
 
-		return fmt.Errorf("error initializing host %s: %+v", h.Id, err)
-
+		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
 
 	grip.Infoln("Setup complete for host %s", h.Id)
@@ -374,7 +371,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 
 	// the setup was successful. update the host accordingly in the database
 	if err := h.MarkAsProvisioned(); err != nil {
-		return fmt.Errorf("error marking host %s as provisioned: %+v", h.Id, err)
+		return errors.Wrapf(err, "error marking host %s as provisioned", h.Id)
 	}
 
 	grip.Infof("Host %s successfully provisioned", h.Id)
@@ -402,9 +399,11 @@ func LocateCLIBinary(settings *evergreen.Settings, architecture string) (string,
 
 	_, err := os.Stat(path)
 	if err != nil {
-		return path, err
+		return path, errors.WithStack(err)
 	}
-	return filepath.Abs(path)
+
+	path, err = filepath.Abs(path)
+	return path, errors.WithStack(err)
 }
 
 // LoadClientResult indicates the locations on a target host where the CLI binary and it's config
@@ -423,19 +422,19 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	// architecture, fail early
 	cliBinaryPath, err := LocateCLIBinary(init.Settings, target.Distro.Arch)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't locate CLI binary for upload: %v", err)
+		return nil, errors.Wrapf(err, "couldn't locate CLI binary for upload")
 	}
 	if target.ProvisionOptions == nil {
-		return nil, fmt.Errorf("ProvisionOptions is nil")
+		return nil, errors.New("ProvisionOptions is nil")
 	}
 	if target.ProvisionOptions.OwnerId == "" {
-		return nil, fmt.Errorf("OwnerId not set")
+		return nil, errors.New("OwnerId not set")
 	}
 
 	// get the information about the owner of the host
 	owner, err := user.FindOne(user.ById(target.ProvisionOptions.OwnerId))
 	if err != nil {
-		return nil, fmt.Errorf("couldn't fetch owner %v for host: %v", target.ProvisionOptions.OwnerId, err)
+		return nil, errors.Wrapf(err, "couldn't fetch owner %v for host", target.ProvisionOptions.OwnerId)
 	}
 
 	// 1. mkdir the destination directory on the host,
@@ -443,16 +442,16 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	targetDir := "cli_bin"
 	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing ssh info %v: %v", target.Host, err)
+		return nil, errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
 	cloudHost, err := providers.GetCloudHost(target, init.Settings)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get cloud host for %v: %v", target.Id, err)
+		return nil, errors.Wrapf(err, "Failed to get cloud host for %s", target.Id)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting ssh options for host %v: %v", target.Id, err)
+		return nil, errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
@@ -475,7 +474,8 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	// run the make shell command with a timeout
 	err = util.RunFunctionWithTimeout(makeShellCmd.Run, 30*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("error running setup command for cli, %v: '%v'", mkdirOutput.Buffer.String(), err)
+		return nil, errors.Wrapf(err, "error running setup command for cli, %v",
+			mkdirOutput.Buffer.String())
 	}
 	// place the binary into the directory
 	scpSetupCmd := &command.ScpCommand{
@@ -491,7 +491,7 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	// run the command to scp the setup script with a timeout
 	err = util.RunFunctionWithTimeout(scpSetupCmd.Run, 3*time.Minute)
 	if err != nil {
-		return nil, fmt.Errorf("error running SCP command for cli, %v: '%v'", scpOut.Buffer.String(), err)
+		return nil, errors.Wrapf(err, "error running SCP command for cli, %v: '%v'", scpOut.Buffer.String())
 	}
 
 	// 4. Write a settings file for the user that owns the host, and scp it to the directory
@@ -503,12 +503,12 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	}
 	outputJSON, err := json.Marshal(outputStruct)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	tempFileName, err := util.WriteTempFile("", outputJSON)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	defer os.Remove(tempFileName)
 
@@ -523,7 +523,7 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	}
 	err = util.RunFunctionWithTimeout(scpYmlCommand.Run, 30*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("error running SCP command for evergreen.yml, %v: '%v'", scpOut.Buffer.String(), err)
+		return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.Buffer.String())
 	}
 
 	return &LoadClientResult{
@@ -535,16 +535,16 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, target *host.Host) error {
 	hostSSHInfo, err := util.ParseSSHInfo(target.Host)
 	if err != nil {
-		return fmt.Errorf("error parsing ssh info %v: %v", target.Host, err)
+		return errors.Wrapf(err, "error parsing ssh info %s", target.Host)
 	}
 
 	cloudHost, err := providers.GetCloudHost(target, init.Settings)
 	if err != nil {
-		return fmt.Errorf("Failed to get cloud host for %v: %v", target.Id, err)
+		return errors.Wrapf(err, "Failed to get cloud host for %v", target.Id)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return fmt.Errorf("Error getting ssh options for host %v: %v", target.Id, err)
+		return errors.Wrapf(err, "Error getting ssh options for host %v", target.Id)
 	}
 	sshOptions = append(sshOptions, "-o", "UserKnownHostsFile=/dev/null")
 
@@ -567,8 +567,7 @@ func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, targ
 	}
 
 	// run the make shell command with a timeout
-	err = util.RunFunctionWithTimeout(makeShellCmd.Run, 15*time.Minute)
-	return err
+	return errors.WithStack(util.RunFunctionWithTimeout(makeShellCmd.Run, 15*time.Minute))
 }
 
 // this helper is for local testing--it allows developers to get around

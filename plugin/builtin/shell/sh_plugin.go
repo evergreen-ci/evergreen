@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -44,7 +45,7 @@ func (sp *ShellPlugin) NewCommand(cmdName string) (plugin.Command, error) {
 	} else if cmdName == ShellExecCmd {
 		return &ShellExecCommand{}, nil
 	}
-	return nil, fmt.Errorf("no such command: %v", cmdName)
+	return nil, errors.Errorf("no such command: %v", cmdName)
 }
 
 type TrackCommand struct{}
@@ -137,7 +138,7 @@ func (_ *ShellExecCommand) Plugin() string {
 func (sec *ShellExecCommand) ParseParams(params map[string]interface{}) error {
 	err := mapstructure.Decode(params, sec)
 	if err != nil {
-		return fmt.Errorf("error decoding %v params: %v", sec.Name(), err)
+		return errors.Wrapf(err, "error decoding %v params", sec.Name())
 	}
 	return nil
 }
@@ -175,7 +176,7 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 
 	err := localCmd.PrepToRun(conf.Expansions)
 	if err != nil {
-		return fmt.Errorf("Failed to apply expansions: %v", err)
+		return errors.Wrap(err, "Failed to apply expansions")
 	}
 	if sec.Silent {
 		pluginLogger.LogExecution(slogger.INFO, "Executing script with %s (source hidden)...",
@@ -237,7 +238,7 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 			}
 		}
 
-		return fmt.Errorf("Shell command interrupted.")
+		return errors.New("Shell command interrupted.")
 	}
 
 	return nil

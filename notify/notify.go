@@ -1,7 +1,6 @@
 package notify
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/mail"
@@ -21,6 +20,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/web"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -246,7 +246,7 @@ func ParseNotifications(configName string) (*MCINotification, error) {
 
 	err = yaml.Unmarshal(data, mciNotification)
 	if err != nil {
-		return nil, fmt.Errorf("Parse error unmarshalling notifications %v: %v", notificationsFile, err)
+		return nil, errors.Wrapf(err, "Parse error unmarshalling notifications %v", notificationsFile)
 	}
 	return mciNotification, nil
 }
@@ -258,25 +258,25 @@ func ValidateNotifications(configName string, mciNotification *MCINotification) 
 
 	projectNameToBuildVariants, err := findProjectBuildVariants(configName)
 	if err != nil {
-		return fmt.Errorf("Error loading project build variants: %v", err)
+		return errors.Wrap(err, "Error loading project build variants")
 	}
 
 	// Validate default notification recipients
 	for _, notification := range mciNotification.Notifications {
 		if notification.Project == "" {
-			return fmt.Errorf("Must specify a project for each notification - see %v", notification.Name)
+			return errors.Errorf("Must specify a project for each notification - see %v", notification.Name)
 		}
 
 		buildVariants, ok := projectNameToBuildVariants[notification.Project]
 		if !ok {
-			return fmt.Errorf("Notifications validation failed: "+
+			return errors.Errorf("Notifications validation failed: "+
 				"project `%v` not found", notification.Project)
 		}
 
 		// ensure all supplied build variants are valid
 		for _, buildVariant := range notification.SkipVariants {
 			if !util.SliceContains(buildVariants, buildVariant) {
-				return fmt.Errorf("Nonexistent buildvariant - ”%v” - specified for ”%v” notification", buildVariant, notification.Name)
+				return errors.Errorf("Nonexistent buildvariant - ”%v” - specified for ”%v” notification", buildVariant, notification.Name)
 			}
 		}
 
@@ -286,23 +286,23 @@ func ValidateNotifications(configName string, mciNotification *MCINotification) 
 	// Validate team name and addresses
 	for _, team := range mciNotification.Teams {
 		if team.Name == "" {
-			return fmt.Errorf("Each notification team must have a name")
+			return errors.Errorf("Each notification team must have a name")
 		}
 
 		for _, subscription := range team.Subscriptions {
 			for _, notification := range subscription.NotifyOn {
 				if !util.SliceContains(allNotifications, notification) {
-					return fmt.Errorf("Team ”%v” contains a non-existent subscription - %v", team.Name, notification)
+					return errors.Errorf("Team ”%v” contains a non-existent subscription - %v", team.Name, notification)
 				}
 			}
 			for _, buildVariant := range subscription.SkipVariants {
 				buildVariants, ok := projectNameToBuildVariants[subscription.Project]
 				if !ok {
-					return fmt.Errorf("Teams validation failed: project `%v` not found", subscription.Project)
+					return errors.Errorf("Teams validation failed: project `%v` not found", subscription.Project)
 				}
 
 				if !util.SliceContains(buildVariants, buildVariant) {
-					return fmt.Errorf("Nonexistent buildvariant - ”%v” - specified for team ”%v” ", buildVariant, team.Name)
+					return errors.Errorf("Nonexistent buildvariant - ”%v” - specified for team ”%v” ", buildVariant, team.Name)
 				}
 			}
 		}
@@ -312,7 +312,7 @@ func ValidateNotifications(configName string, mciNotification *MCINotification) 
 	for _, subscription := range mciNotification.PatchNotifications {
 		for _, notification := range subscription.NotifyOn {
 			if !util.SliceContains(allNotifications, notification) {
-				return fmt.Errorf("Nonexistent patch notification - ”%v” - specified", notification)
+				return errors.Errorf("Nonexistent patch notification - ”%v” - specified", notification)
 			}
 		}
 	}
@@ -321,13 +321,13 @@ func ValidateNotifications(configName string, mciNotification *MCINotification) 
 	for _, subscription := range mciNotification.PatchNotifications {
 		buildVariants, ok := projectNameToBuildVariants[subscription.Project]
 		if !ok {
-			return fmt.Errorf("Patch notification build variants validation failed: "+
+			return errors.Errorf("Patch notification build variants validation failed: "+
 				"project `%v` not found", subscription.Project)
 		}
 
 		for _, buildVariant := range subscription.SkipVariants {
 			if !util.SliceContains(buildVariants, buildVariant) {
-				return fmt.Errorf("Nonexistent buildvariant - ”%v” - specified for patch notifications", buildVariant)
+				return errors.Errorf("Nonexistent buildvariant - ”%v” - specified for patch notifications", buildVariant)
 			}
 		}
 	}
@@ -435,37 +435,37 @@ func SendNotifications(settings *evergreen.Settings, mciNotification *MCINotific
 
 	// send patch notifications
 	/* XXX temporarily disable patch notifications
-		for _, subscription := range mciNotification.PatchNotifications {
-			for _, notification := range subscription.NotifyOn {
-				key := NotificationKey{
-					Project:               subscription.Project,
-					NotificationName:      notification,
-					NotificationType:      getType(notification),
-					NotificationRequester: evergreen.PatchVersionRequester,
+	for _, subscription := range mciNotification.PatchNotifications {
+		for _, notification := range subscription.NotifyOn {
+			key := NotificationKey{
+				Project:               subscription.Project,
+				NotificationName:      notification,
+				NotificationType:      getType(notification),
+				NotificationRequester: evergreen.PatchVersionRequester,
+			}
+
+			for _, email := range emails[key] {
+				// determine if this notification should be skipped -
+				// based on the buildvariant
+				if email.ShouldSkip(subscription.SkipVariants) {
+					continue
 				}
 
-				for _, email := range emails[key] {
-					// determine if this notification should be skipped -
-					// based on the buildvariant
-					if email.ShouldSkip(subscription.SkipVariants) {
+				// send to the appropriate patch requester
+				for _, changeInfo := range email.GetChangeInfo() {
+					// send notification to each member of the blamelist
+					patchRequester := fmt.Sprintf("%v <%v>", changeInfo.Author,
+						changeInfo.Email)
+					err = TrySendNotification([]string{patchRequester},
+						email.GetSubject(), email.GetBody(), mailer)
+					if err != nil {
+						grip.Errorf("Unable to send notification %#v: %+v", key, err)
 						continue
-					}
-
-					// send to the appropriate patch requester
-					for _, changeInfo := range email.GetChangeInfo() {
-						// send notification to each member of the blamelist
-						patchRequester := fmt.Sprintf("%v <%v>", changeInfo.Author,
-							changeInfo.Email)
-						err = TrySendNotification([]string{patchRequester},
-							email.GetSubject(), email.GetBody(), mailer)
-						if err != nil {
-	                                                grip.Errorf("Unable to send notification %#v: %+v", key, err)
-							continue
-						}
 					}
 				}
 			}
-		}*/
+		}
+	}*/
 
 	return nil
 }
@@ -507,12 +507,12 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 		if projectRef.LocalConfig != "" {
 			proj, err = model.FindProject("", &projectRef)
 			if err != nil {
-				return nil, fmt.Errorf("unable to find project file: %v", err)
+				return nil, errors.Wrap(err, "unable to find project file")
 			}
 		} else {
 			lastGood, err := version.FindOne(version.ByLastKnownGoodConfig(projectRef.Identifier))
 			if err != nil {
-				return nil, fmt.Errorf("unable to find last valid config: %v", err)
+				return nil, errors.Wrap(err, "unable to find last valid config")
 			}
 			if lastGood == nil { // brand new project + no valid config yet, just return an empty map
 				return projectNameToBuildVariants, nil
@@ -521,7 +521,8 @@ func findProjectBuildVariants(configName string) (map[string][]string, error) {
 			proj = &model.Project{}
 			err = model.LoadProjectInto([]byte(lastGood.Config), projectRef.Identifier, proj)
 			if err != nil {
-				return nil, fmt.Errorf("error loading project '%v' from version: %v", projectRef.Identifier, err)
+				return nil, errors.Wrapf(err, "error loading project '%v' from version",
+					projectRef.Identifier)
 			}
 		}
 
@@ -647,7 +648,7 @@ func getLastProjectNotificationTime(keys []NotificationKey) error {
 	for _, key := range keys {
 		lastNotificationTime, err := model.LastNotificationsEventTime(key.Project)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		if lastNotificationTime.Before(time.Now().Add(-LNRWindow)) {
 			lastNotificationTime = time.Now()
@@ -663,10 +664,10 @@ func getRecentlyFinishedBuilds(notificationKey *NotificationKey) (builds []build
 	if cachedProjectRecords[notificationKey.String()] == nil {
 		builds, err = build.Find(build.ByFinishedAfter(lastProjectNotificationTime[notificationKey.Project], notificationKey.Project, notificationKey.NotificationRequester))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		cachedProjectRecords[notificationKey.String()] = builds
-		return builds, err
+		return builds, errors.WithStack(err)
 	}
 	return cachedProjectRecords[notificationKey.String()].([]build.Build), nil
 }
@@ -678,10 +679,10 @@ func getRecentlyFinishedTasks(notificationKey *NotificationKey) (tasks []task.Ta
 		tasks, err = task.Find(task.ByRecentlyFinished(lastProjectNotificationTime[notificationKey.Project],
 			notificationKey.Project, notificationKey.NotificationRequester))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		cachedProjectRecords[notificationKey.String()] = tasks
-		return tasks, err
+		return tasks, errors.WithStack(err)
 	}
 	return cachedProjectRecords[notificationKey.String()].([]task.Task), nil
 }
@@ -782,18 +783,18 @@ func TrySendNotification(recipients []string, subject, body string, mailer Maile
 		}
 		return nil
 	}, NumSmtpRetries, SmtpSleepTime)
-	return err
+	return errors.WithStack(err)
 }
 
 // Helper function to send notification to a given user
-func TrySendNotificationToUser(userId string, subject, body string, mailer Mailer) (err error) {
+func TrySendNotificationToUser(userId string, subject, body string, mailer Mailer) error {
 	dbUser, err := user.FindOne(user.ById(userId))
 	if err != nil {
-		return fmt.Errorf("Error finding user %v: %v", userId, err)
+		return errors.Wrapf(err, "Error finding user %v", userId)
 	} else if dbUser == nil {
-		return fmt.Errorf("User %v not found", userId)
+		return errors.Errorf("User %v not found", userId)
 	} else {
-		return TrySendNotification([]string{dbUser.Email()}, subject, body, mailer)
+		return errors.WithStack(TrySendNotification([]string{dbUser.Email()}, subject, body, mailer))
 	}
 }
 

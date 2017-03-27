@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/pkg/errors"
 )
 
 // NaiveUserManager implements the UserManager interface and has a list of AuthUsers{UserName, DisplayName, Password, Email string}
@@ -36,7 +37,7 @@ func (b *NaiveUserManager) GetUserByToken(token string) (User, error) {
 			}, nil
 		}
 	}
-	return nil, fmt.Errorf("No valid user found")
+	return nil, errors.New("No valid user found")
 }
 
 // CreateUserToken finds the user with the same username and password in its list of users and creates a token
@@ -49,7 +50,7 @@ func (b *NaiveUserManager) CreateUserToken(username, password string) (string, e
 			return fmt.Sprintf("%v:%v:%v", i, user.Email, md5.Sum([]byte(user.Username+user.Password))), nil
 		}
 	}
-	return "", fmt.Errorf("No valid user for the given username and password")
+	return "", errors.New("No valid user for the given username and password")
 }
 
 func (*NaiveUserManager) GetLoginHandler(string) func(http.ResponseWriter, *http.Request) {

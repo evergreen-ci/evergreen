@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
+	"github.com/pkg/errors"
 )
 
 // GithubRepositoryPoller is a struct that implements Github specific behavior
@@ -106,7 +107,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetChangedFiles(commitRevision string
 		commitRevision,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error loading commit '%v': %v", commitRevision, err)
+		return nil, errors.Wrapf(err, "error loading commit '%v'", commitRevision)
 	}
 	files := []string{}
 	for _, f := range commit.Files {
@@ -169,7 +170,7 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 			firstCommit,
 		)
 		if len(revision) < 10 {
-			return nil, fmt.Errorf("invalid revision: %v", revision)
+			return nil, errors.Errorf("invalid revision: %v", revision)
 		}
 		if err != nil {
 			// unable to get merge base commit so set projectRef revision details with a blank base revision
@@ -178,8 +179,9 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 				InvalidRevision:   revision[:10],
 				MergeBaseRevision: "",
 			}
-			revisionError = fmt.Errorf("unable to find a suggested merge base commit for revision %v, must fix on projects settings page: %v",
-				revision, err)
+			revisionError = errors.Wrapf(err,
+				"unable to find a suggested merge base commit for revision %v, must fix on projects settings page",
+				revision)
 		} else {
 			// update project ref to have an inconsistent status
 			revisionDetails = &model.RepositoryErrorDetails{
@@ -187,13 +189,13 @@ func (gRepoPoller *GithubRepositoryPoller) GetRevisionsSince(
 				InvalidRevision:   revision[:10],
 				MergeBaseRevision: baseRevision,
 			}
-			revisionError = fmt.Errorf("base revision, %v not found, suggested base revision, %v found, must confirm on project settings page",
+			revisionError = errors.Errorf("base revision, %v not found, suggested base revision, %v found, must confirm on project settings page",
 				revision, baseRevision)
 		}
 
 		gRepoPoller.ProjectRef.RepotrackerError = revisionDetails
 		if err = gRepoPoller.ProjectRef.Upsert(); err != nil {
-			return []model.Revision{}, fmt.Errorf("unable to update projectRef revision details: %v", err)
+			return []model.Revision{}, errors.Wrap(err, "unable to update projectRef revision details")
 		}
 
 		return []model.Revision{}, revisionError

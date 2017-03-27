@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 // GitApplyPatchCommand is deprecated. Its functionality is now a part of GitGetProjectCommand.
@@ -58,7 +59,7 @@ func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
 				}
 				msg := fmt.Sprintf("no patch found for task: %v", string(body))
 				pluginLogger.LogExecution(slogger.WARN, msg)
-				return fmt.Errorf(msg)
+				return errors.New(msg)
 			}
 			if resp != nil && resp.StatusCode == http.StatusInternalServerError {
 				//something went wrong in api server
@@ -69,7 +70,7 @@ func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
 				msg := fmt.Sprintf("error fetching patch from server: %v", string(body))
 				pluginLogger.LogExecution(slogger.WARN, msg)
 				return util.RetriableError{
-					fmt.Errorf(msg),
+					errors.New(msg),
 				}
 			}
 			if resp != nil && resp.StatusCode == http.StatusConflict {
@@ -80,11 +81,11 @@ func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
 				}
 				msg := fmt.Sprintf("secret conflict: %v", string(body))
 				pluginLogger.LogExecution(slogger.ERROR, msg)
-				return fmt.Errorf(msg)
+				return errors.New(msg)
 			}
 			if resp == nil {
 				pluginLogger.LogExecution(slogger.WARN, "Empty response from API server")
-				return util.RetriableError{fmt.Errorf("empty response")}
+				return util.RetriableError{errors.New("empty response")}
 			} else {
 				err = util.ReadJSONInto(resp.Body, patch)
 				if err != nil {
@@ -99,10 +100,10 @@ func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
 
 	retryFail, err := util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
 	if retryFail {
-		return nil, fmt.Errorf("getting patch failed after %v tries: %v", 10, err)
+		return nil, errors.Wrapf(err, "getting patch failed after %v tries", 10)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("getting patch failed: %v", err)
+		return nil, errors.Wrap(err, "getting patch failed: %v")
 	}
 	return patch, nil
 }
@@ -132,7 +133,7 @@ func (ggpc GitGetProjectCommand) getPatchContents(conf *model.TaskConfig, com pl
 				if resp != nil && resp.StatusCode != http.StatusOK {
 					log.LogExecution(slogger.WARN, "Unexpected status code %v, retrying", resp.StatusCode)
 					resp.Body.Close()
-					return util.RetriableError{fmt.Errorf("Unexpected status code %v", resp.StatusCode)}
+					return util.RetriableError{errors.Errorf("Unexpected status code %v", resp.StatusCode)}
 				}
 				result, err = ioutil.ReadAll(resp.Body)
 				if err != nil {
@@ -185,10 +186,10 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 			// if patch is part of a module, apply patch in module root
 			module, err := conf.Project.GetModuleByName(patchPart.ModuleName)
 			if err != nil {
-				return fmt.Errorf("Error getting module: %v", err)
+				return errors.Wrap(err, "Error getting module")
 			}
 			if module == nil {
-				return fmt.Errorf("Module not found: %v", patchPart.ModuleName)
+				return errors.Errorf("Module '%s' not found", patchPart.ModuleName)
 			}
 
 			// skip the module if this build variant does not use it
@@ -207,12 +208,12 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 		// for later use in shell script
 		tempFile, err := ioutil.TempFile("", "mcipatch_")
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		defer tempFile.Close()
 		_, err = io.WriteString(tempFile, patchPart.PatchSet.Patch)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 		tempAbsPath := tempFile.Name()
 
@@ -227,9 +228,8 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 			ScriptMode:       true,
 		}
 
-		err = patchCmd.Run()
-		if err != nil {
-			return err
+		if err = patchCmd.Run(); err != nil {
+			return errors.WithStack(err)
 		}
 		pluginLogger.Flush()
 	}

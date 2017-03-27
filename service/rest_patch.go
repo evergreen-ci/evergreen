@@ -1,11 +1,11 @@
 package service
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/pkg/errors"
 )
 
 type RestPatch struct {
@@ -31,8 +31,8 @@ func (restapi restAPI) getPatch(w http.ResponseWriter, r *http.Request) {
 
 	err := projCtx.Patch.FetchPatchFiles()
 	if err != nil {
-		restapi.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error occurred fetching patch data: %v", err))
-
+		restapi.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrap(err, "error occurred fetching patch data"))
 		return
 	}
 

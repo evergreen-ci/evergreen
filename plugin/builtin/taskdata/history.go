@@ -1,7 +1,6 @@
 package taskdata
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -9,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 

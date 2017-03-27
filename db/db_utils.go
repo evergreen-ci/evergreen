@@ -1,10 +1,10 @@
 package db
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -50,7 +50,7 @@ func ClearCollections(collections ...string) error {
 	for _, collection := range collections {
 		_, err = db.C(collection).RemoveAll(bson.M{})
 		if err != nil {
-			return fmt.Errorf("Couldn't clear collection '%v': %v", collection, err)
+			return errors.Wrapf(err, "Couldn't clear collection '%v'", collection)
 		}
 	}
 	return nil
@@ -60,7 +60,7 @@ func ClearCollections(collections ...string) error {
 func EnsureIndex(collection string, index mgo.Index) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	defer session.Close()
 	return db.C(collection).EnsureIndex(index)

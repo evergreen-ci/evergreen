@@ -1,11 +1,11 @@
 package monitor
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -41,8 +41,8 @@ func flagTimedOutHeartbeats() ([]doomedTaskWrapper, error) {
 
 	tasks, err := task.Find(task.ByRunningLastHeartbeat(threshold))
 	if err != nil {
-		return nil, fmt.Errorf("error finding tasks with timed-out"+
-			" heartbeats: %v", err)
+		return nil, errors.Wrap(err,
+			"error finding tasks with timed-out heartbeats")
 	}
 
 	// convert to be returned

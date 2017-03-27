@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // HostTaskInconsistency represents a mismatch between task and host documents.
@@ -71,7 +72,7 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	// say they are running.
 	runningHosts, err := host.Find(host.IsRunningTask)
 	if err != nil {
-		return nil, nil, fmt.Errorf("querying for running hosts: %v", err)
+		return nil, nil, errors.Wrapf(err, "querying for running hosts:")
 	}
 
 	for _, h := range runningHosts {
@@ -79,14 +80,14 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	}
 	hostsTasks, err := task.Find(task.ByIds(hostTaskIds))
 	if err != nil {
-		return nil, nil, fmt.Errorf("querying for hosts' tasks: %v", err)
+		return nil, nil, errors.Wrapf(err, "querying for hosts' tasks:")
 	}
 
 	// fetch all tasks with an assigned host and the hosts they say
 	// they are assigned to
 	runningTasks, err := task.Find(task.IsDispatchedOrStarted)
 	if err != nil {
-		return nil, nil, fmt.Errorf("querying for running tasks: %v", err)
+		return nil, nil, errors.Wrapf(err, "querying for running tasks:")
 	}
 	for _, t := range append(hostsTasks, runningTasks...) {
 		taskToHost[t.Id] = t.HostId
@@ -94,7 +95,7 @@ func loadHostTaskMapping() (map[string]string, map[string]string, error) {
 	}
 	tasksHosts, err := host.Find(host.ByIds(taskHostIds))
 	if err != nil {
-		return nil, nil, fmt.Errorf("querying for tasks' hosts: %v", err)
+		return nil, nil, errors.Wrapf(err, "querying for tasks' hosts:")
 	}
 
 	// we only want to have running hosts that are not empty.

@@ -1,7 +1,6 @@
 package ec2
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // EC2Manager implements the CloudManager interface for Amazon EC2
@@ -49,19 +49,19 @@ type EC2ProviderSettings struct {
 
 func (self *EC2ProviderSettings) Validate() error {
 	if self.AMI == "" {
-		return fmt.Errorf("AMI must not be blank")
+		return errors.New("AMI must not be blank")
 	}
 
 	if self.InstanceType == "" {
-		return fmt.Errorf("Instance size must not be blank")
+		return errors.New("Instance size must not be blank")
 	}
 
 	if self.SecurityGroup == "" {
-		return fmt.Errorf("Security group must not be blank")
+		return errors.New("Security group must not be blank")
 	}
 
 	if self.KeyName == "" {
-		return fmt.Errorf("Key name must not be blank")
+		return errors.New("Key name must not be blank")
 	}
 
 	_, err := makeBlockDeviceMappings(self.MountPoints)
@@ -76,7 +76,7 @@ func (self *EC2ProviderSettings) Validate() error {
 //object.
 func (cloudManager *EC2Manager) Configure(settings *evergreen.Settings) error {
 	if settings.Providers.AWS.Id == "" || settings.Providers.AWS.Secret == "" {
-		return fmt.Errorf("AWS ID/Secret must not be blank")
+		return errors.New("AWS ID/Secret must not be blank")
 	}
 
 	cloudManager.awsCredentials = &aws.Auth{
@@ -117,23 +117,23 @@ func (*EC2Manager) GetSettings() cloud.ProviderSettings {
 
 func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != OnDemandProviderName {
-		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, d.Id, d.Provider)
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, d.Id, d.Provider)
 	}
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2ProviderSettings{}
 	if err := mapstructure.Decode(d.ProviderSettings, ec2Settings); err != nil {
-		return nil, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
+		return nil, errors.Wrapf(err, "Error decoding params for distro %v: %v", d.Id)
 	}
 
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, fmt.Errorf("Invalid EC2 settings in distro %#v: %v and %#v", d, err, ec2Settings)
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %#v: and %#v", d, ec2Settings)
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	instanceName := generateName(d.Id)
@@ -147,7 +147,7 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 
 	// record this 'intent host'
 	if err := intentHost.Insert(); err != nil {
-		err = fmt.Errorf("Could not insert intent host '%s': %+v", intentHost.Id, err)
+		err = errors.Wrapf(err, "could not insert intent host '%s'", intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -180,8 +180,8 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		instanceName, intentHost.Id, resp, newHost)
 
 	if err != nil {
-		err = fmt.Errorf("Could not start new instance for distro '%v.'"+
-			"Accompanying host record is '%v': %+v", d.Id, intentHost.Id, err)
+		err = errors.Wrapf(err, "could not start new instance for distro '%v.'"+
+			"Accompanying host record is '%v'", d.Id, intentHost.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -193,13 +193,13 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	tags := makeTags(intentHost)
 
 	// attach the tags to this instance
-	err = attachTags(ec2Handle, tags, instance.InstanceId)
+	err = errors.Wrapf(attachTags(ec2Handle, tags, instance.InstanceId),
+		"unable to attach tags for $s", instance.InstanceId)
 
-	if err != nil {
-		grip.Errorf("Unable to attach tags for %s: %+v", instance.InstanceId, err)
-	} else {
-		grip.Debugf("Attached tag name “%s” for “%s”", instanceName, instance.InstanceId)
-	}
+	grip.Error(err)
+	grip.DebugWhenf(err == nil, "attached tag name '%s' for '%s'",
+		instanceName, instance.InstanceId)
+
 	return newHost, nil
 }
 
@@ -207,7 +207,7 @@ func (cloudManager *EC2Manager) IsUp(host *host.Host) (bool, error) {
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	instanceInfo, err := getInstanceInfo(ec2Handle, host.Id)
 	if err != nil {
-		return false, err
+		return false, errors.WithStack(err)
 	}
 	if instanceInfo.State.Name == EC2StatusRunning {
 		return true, nil
@@ -232,7 +232,7 @@ func (cloudManager *EC2Manager) GetDNSName(host *host.Host) (string, error) {
 func (cloudManager *EC2Manager) TerminateInstance(host *host.Host) error {
 	// terminate the instance
 	if host.Status == evergreen.HostTerminated {
-		err := fmt.Errorf("Can not terminate %v - already marked as "+
+		err := errors.Errorf("Can not terminate %v - already marked as "+
 			"terminated!", host.Id)
 		grip.Error(err)
 		return err
@@ -269,7 +269,8 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 		if rmErr != nil {
 			grip.Errorf("Could not remove intent host '%s': %+v", intentHost.Id, rmErr)
 		}
-		err = fmt.Errorf("EC2 RunInstances API call returned error: %v", err)
+
+		err = errors.Wrap(err, "EC2 RunInstances API call returned error")
 		grip.Error(err)
 		return nil, nil, err
 
@@ -285,14 +286,15 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 	// find old intent host
 	host, err := host.FindOne(host.ById(intentHost.Id))
 	if host == nil {
-		err = fmt.Errorf("Can't locate record inserted for intended host '%s'",
+		err = errors.Errorf("can't locate record inserted for intended host '%s'",
 			intentHost.Id)
 		grip.Error(err)
 		return nil, nil, err
 	}
 	if err != nil {
-		err = fmt.Errorf("Can't locate record inserted for intended host '%v' "+
-			"due to error: %+v", intentHost.Id, err)
+		err = errors.Wrapf(err, "Can't locate record inserted for intended host '%v' "+
+			"due to error", intentHost.Id)
+
 		grip.Error(err)
 		return nil, nil, err
 	}
@@ -301,8 +303,8 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 	host.Id = instance.InstanceId
 	err = host.Insert()
 	if err != nil {
-		err = fmt.Errorf("Could not insert updated host information for '%v' with '%v': %+v",
-			intentHost.Id, host.Id, err)
+		err = errors.Wrapf(err, "Could not insert updated host information for '%v' with '%v'",
+			intentHost.Id, host.Id)
 		grip.Error(err)
 		return nil, nil, err
 	}
@@ -310,8 +312,8 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 	// remove the intent host document
 	err = intentHost.Remove()
 	if err != nil {
-		err = fmt.Errorf("Could not remove insert host '%v' (replaced by '%v'): %+v",
-			intentHost.Id, host.Id, err)
+		err = errors.Wrapf(err, "Could not remove insert host '%v' (replaced by '%v')",
+			intentHost.Id, host.Id)
 		grip.Error(err)
 		return nil, nil, err
 	}
@@ -326,7 +328,7 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 			if instanceInfoRetryCount == instanceInfoMaxRetries {
 				grip.Errorln("There was an error querying for the instance's ",
 					"information and retries are exhausted. The instance may be up.")
-				return nil, resp, err
+				return nil, resp, errors.WithStack(err)
 			}
 			grip.Debugf("There was an error querying for the instance's information. "+
 				"Retrying in 30 seconds. Error: %v", err)
@@ -338,13 +340,13 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 
 	reservations := infoResp.Reservations
 	if len(reservations) < 1 {
-		return nil, resp, fmt.Errorf("Reservation was returned as nil, you " +
+		return nil, resp, errors.New("Reservation was returned as nil, you " +
 			"may have to check manually")
 	}
 
 	instancesInfo := reservations[0].Instances
 	if len(instancesInfo) < 1 {
-		return nil, resp, fmt.Errorf("Reservation appears to have no " +
+		return nil, resp, errors.New("Reservation appears to have no " +
 			"associated instances")
 	}
 	return host, resp, nil
@@ -354,13 +356,13 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 func (cloudManager *EC2Manager) CostForDuration(h *host.Host, start, end time.Time) (float64, error) {
 	// sanity check
 	if end.Before(start) || util.IsZeroTime(start) || util.IsZeroTime(end) {
-		return 0, fmt.Errorf("task timing data is malformed")
+		return 0, errors.New("task timing data is malformed")
 	}
 	// grab instance details from EC2
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 	instance, err := getInstanceInfo(ec2Handle, h.Id)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 	os := osLinux
 	if strings.Contains(h.Distro.Arch, "windows") {
@@ -372,11 +374,11 @@ func (cloudManager *EC2Manager) CostForDuration(h *host.Host, start, end time.Ti
 
 	ebsCost, err := blockDeviceCosts(ec2Handle, instance.BlockDevices, dur)
 	if err != nil {
-		return 0, fmt.Errorf("calculating block device costs: %v", err)
+		return 0, errors.Wrap(err, "calculating block device costs")
 	}
 	hostCost, err := onDemandCost(&pkgOnDemandPriceFetcher, os, iType, region, dur)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 	return hostCost + ebsCost, nil
 }

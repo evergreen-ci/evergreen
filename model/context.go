@@ -1,12 +1,11 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/pkg/errors"
 )
 
 // Context is the set of all the related entities in a
@@ -115,7 +114,7 @@ func (ctx *Context) populatePatch(patchId string) error {
 	if len(patchId) > 0 {
 		// The patch is explicitly identified in the URL, so fetch it
 		if !patch.IsValidId(patchId) {
-			return fmt.Errorf("patch id '%v' is not an object id", patchId)
+			return errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
 		ctx.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
 	} else if ctx.Version != nil {
@@ -131,7 +130,7 @@ func (ctx *Context) populatePatch(patchId string) error {
 	if ctx.Version == nil && ctx.Patch != nil && ctx.Patch.Version != "" {
 		ctx.Version, err = version.FindOne(version.ById(ctx.Patch.Version))
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 	return nil

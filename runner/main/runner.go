@@ -22,6 +22,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -169,5 +170,5 @@ func runProcessByName(name string, settings *evergreen.Settings) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("process '%v' does not exist", name)
+	return errors.Errorf("process '%s' does not exist", name)
 }

@@ -1,13 +1,13 @@
 package alerts
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alertrecord"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 /* Task trigger Implementations */
@@ -173,25 +173,25 @@ func reachedFailureLimit(taskId string) (bool, error) {
 		return false, err
 	}
 	if t == nil {
-		return false, fmt.Errorf("task %v not found", taskId)
+		return false, errors.Errorf("task %s not found", taskId)
 	}
 	pr, err := model.FindOneProjectRef(t.Project)
 	if err != nil {
 		return false, err
 	}
 	if pr == nil {
-		return false, fmt.Errorf("project ref %v not found", t.Project)
+		return false, errors.Errorf("project ref %s not found", t.Project)
 	}
 	p, err := model.FindProject(t.Revision, pr)
 	if err != nil {
 		return false, err
 	}
 	if p == nil {
-		return false, fmt.Errorf("project %v not found for revision %v", t.Project, t.Revision)
+		return false, errors.Errorf("project %v not found for revision %v", t.Project, t.Revision)
 	}
 	v := p.FindBuildVariant(t.BuildVariant)
 	if v == nil {
-		return false, fmt.Errorf("build variant %v does not exist in project", t.BuildVariant)
+		return false, errors.Errorf("build variant %v does not exist in project", t.BuildVariant)
 	}
 	batchTime := pr.GetBatchTime(v)
 	reached := time.Since(t.FinishTime) > (time.Duration(batchTime) * time.Minute * failureLimitMultiplier)

@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -108,18 +109,18 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if projCtx.Build == nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("build not found"))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("build not found"))
 		return
 	}
 
 	if projCtx.Version == nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("version not found"))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("version not found"))
 		return
 	}
 
 	if projCtx.ProjectRef == nil {
 		grip.Error("Project ref is nil")
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("version not found"))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("version not found"))
 		return
 	}
 
@@ -147,7 +148,7 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 
 		if taskFromDb == nil {
 			if execution != projCtx.Task.Execution {
-				uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finding old task: %v", err))
+				uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error finding old task"))
 				return
 			}
 			archived = false
@@ -166,7 +167,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		// Get total number of executions for executions drop down
 		mostRecentExecution, err := task.FindOne(task.ById(tId))
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error finding most recent execution by id %s: %v", tId, err))
+			uis.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrapf(err, "Error finding most recent execution by id %s", tId))
 			return
 		}
 		totalExecutions = mostRecentExecution.Execution
@@ -527,7 +529,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 
 	channel, err := model.GetRawTaskLogChannel(projCtx.Task.Id, execution, []string{}, logTypeFilter)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error getting log data: %s", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error getting log data"))
 		return
 	}
 
@@ -537,12 +539,11 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if (r.FormValue("text") == "true") || (r.Header.Get("Content-Type") == "text/plain") {
-		err = uis.StreamText(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html")
+		err = errors.WithStack(uis.StreamText(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log_raw.html"))
 		grip.Error(err)
 		return
 	}
-	err = uis.StreamHTML(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")
-	grip.CatchError(err)
+	grip.CatchError(errors.WithStack(uis.StreamHTML(w, http.StatusOK, logTemplateData{channel, GetUser(r)}, "base", "task_log.html")))
 }
 
 // avoids type-checking json params for the below function

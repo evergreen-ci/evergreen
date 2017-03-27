@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // responsible for running regular monitoring of hosts
@@ -57,7 +58,7 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 	grip.Info("Running host cleanup...")
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	for idx, flagger := range hm.flaggingFuncs {
 		grip.Infoln("Searching for flagged hosts under criteria:", flagger.Reason)
@@ -68,7 +69,7 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 		// continuing on error so that one wonky flagging function doesn't
 		// stop others from running
 		if err != nil {
-			errors = append(errors, fmt.Errorf("error flagging hosts to be terminated: %v", err))
+			errs = append(errs, errors.Wrap(err, "error flagging hosts to be terminated"))
 			continue
 		}
 
@@ -78,15 +79,13 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 		// termination to work
 		if errs := terminateHosts(hostsToTerminate, settings, flagger.Reason); errs != nil {
 			for _, err := range errs {
-				errors = append(errors, fmt.Errorf("error terminating host: %v", err))
+				errs = append(errs, errors.Wrap(err, "error terminating host"))
 			}
 			continue
 		}
-
 	}
 
-	return errors
-
+	return errs
 }
 
 // terminate the passed-in slice of hosts. returns any errors that occur
@@ -105,9 +104,9 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason stri
 				}, 12*time.Minute)
 				if err != nil {
 					if err == util.ErrTimedOut {
-						return fmt.Errorf("timeout terminating host %v", hostToTerminate.Id)
+						return errors.Errorf("timeout terminating host %s", hostToTerminate.Id)
 					}
-					return fmt.Errorf("error terminating host %v: %v", hostToTerminate.Id, err)
+					return errors.Wrapf(err, "error terminating host %s", hostToTerminate.Id)
 				}
 				grip.Infoln("Successfully terminated host", hostToTerminate.Id)
 				return nil
@@ -129,7 +128,7 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 	// convert the host to a cloud host
 	cloudHost, err := providers.GetCloudHost(host, settings)
 	if err != nil {
-		return fmt.Errorf("error getting cloud host for %v: %v", host.Id, err)
+		return errors.Errorf("error getting cloud host for %v: %v", host.Id, err)
 	}
 
 	// run teardown script if we have one, sending notifications if things go awry
@@ -147,7 +146,7 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 
 	// terminate the instance
 	if err := cloudHost.TerminateInstance(); err != nil {
-		return fmt.Errorf("error terminating host %v: %v", host.Id, err)
+		return errors.Wrapf(err, "error terminating host %s", host.Id)
 	}
 
 	return nil
@@ -156,13 +155,13 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 func runHostTeardown(h *host.Host, cloudHost *cloud.CloudHost) error {
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return fmt.Errorf("error getting ssh options for host %v: %v", h.Id, err)
+		return errors.Wrapf(err, "error getting ssh options for host %s", h.Id)
 	}
 	startTime := time.Now()
 	logs, err := hostutil.RunRemoteScript(h, "teardown.sh", sshOptions)
 	event.LogHostTeardown(h.Id, logs, err == nil, time.Since(startTime))
 	if err != nil {
-		return fmt.Errorf("error (%v) running teardown.sh over ssh: %v", err, logs)
+		return errors.Wrapf(err, "error running teardown.sh over ssh: %v", logs)
 	}
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 const defaultCloneDepth = 500
@@ -52,11 +53,11 @@ func (fc *FetchCommand) Execute(args []string) error {
 	}
 
 	if len(fc.TaskId) == 0 {
-		return fmt.Errorf("must specify a task ID with -t.")
+		return errors.Errorf("must specify a task ID with -t.")
 	}
 
 	if !fc.Source && !fc.Artifacts {
-		return fmt.Errorf("must specify at least one of either --artifacts or --source.")
+		return errors.New("must specify at least one of either --artifacts or --source.")
 	}
 	if fc.Source {
 		err = fetchSource(ac, rc, wd, fc.TaskId, fc.NoPatch)
@@ -96,7 +97,7 @@ func fetchSource(ac, rc *APIClient, rootPath, taskId string, noPatch bool) error
 		return err
 	}
 	if task == nil {
-		return fmt.Errorf("task not found.")
+		return errors.New("task not found.")
 	}
 
 	config, err := rc.GetConfig(task.Version)
@@ -221,12 +222,12 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 	// Then fetch each of the modules
 	variant := config.FindBuildVariant(task.BuildVariant)
 	if variant == nil {
-		return fmt.Errorf("couldn't find build variant '%v' in config", task.BuildVariant)
+		return errors.Errorf("couldn't find build variant '%v' in config", task.BuildVariant)
 	}
 	for _, moduleName := range variant.Modules {
 		module, err := config.GetModuleByName(moduleName)
 		if err != nil || module == nil {
-			return fmt.Errorf("variant refers to a module '%v' that doesn't exist.", moduleName)
+			return errors.Errorf("variant refers to a module '%v' that doesn't exist.", moduleName)
 		}
 		moduleBase := filepath.Join(cloneDir, module.Prefix, module.Name)
 		fmt.Printf("Fetching module %v at %v\n", moduleName, module.Branch)
@@ -254,7 +255,7 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 			// if patch is part of a module, apply patch in module root
 			module, err := conf.GetModuleByName(patchPart.ModuleName)
 			if err != nil || module == nil {
-				return fmt.Errorf("can't find module %v: %v", patchPart.ModuleName, err)
+				return errors.Errorf("can't find module %v: %v", patchPart.ModuleName, err)
 			}
 
 			// skip the module if this build variant does not use it
@@ -283,7 +284,7 @@ func fetchArtifacts(ac, rc *APIClient, taskId string, rootDir string, shallow bo
 		return err
 	}
 	if task == nil {
-		return fmt.Errorf("task not found.")
+		return errors.New("task not found.")
 	}
 
 	urls, err := getUrlsChannel(rc, task, shallow)
@@ -437,7 +438,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 							break
 						}
 						// something else went wrong.
-						errs <- fmt.Errorf("failed to check if file exists: %v", err)
+						errs <- errors.Errorf("failed to check if file exists: %v", err)
 						return
 					}
 				}
@@ -446,18 +447,18 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 
 				err = os.MkdirAll(folder, 0777)
 				if err != nil {
-					errs <- fmt.Errorf("Couldn't create output directory %v: %v", folder, err)
+					errs <- errors.Errorf("Couldn't create output directory %v: %v", folder, err)
 					continue
 				}
 
 				out, err := os.Create(fileName)
 				if err != nil {
-					errs <- fmt.Errorf("Couldn't download %v: %v", u.url, err)
+					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
 				resp, err := http.Get(u.url)
 				if err != nil {
-					errs <- fmt.Errorf("Couldn't download %v: %v", u.url, err)
+					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
 
@@ -475,7 +476,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				//sizeTracker := util.SizeTrackingReader{0, resp.Body}
 				_, err = io.Copy(out, resp.Body)
 				if err != nil {
-					errs <- fmt.Errorf("Couldn't download %v: %v", u.url, err)
+					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
 				resp.Body.Close()
@@ -490,7 +491,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 	go func() {
 		defer close(done)
 		for e := range errs {
-			hasErrors = fmt.Errorf("some files could not be downloaded successfully.")
+			hasErrors = errors.New("some files could not be downloaded successfully")
 			fmt.Println("error: ", e)
 		}
 	}()

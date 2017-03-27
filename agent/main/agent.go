@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -141,13 +142,13 @@ func getHTTPSCertFile(httpsCertFile string) (string, error) {
 	if httpsCertFile != "" {
 		httpsCert, err = ioutil.ReadFile(httpsCertFile)
 		if err != nil {
-			return "", fmt.Errorf("error reading certficate file %v: %v", httpsCertFile, err)
+			return "", errors.Wrapf(err, "error reading certficate file %v", httpsCertFile)
 		}
 		// If we don't test the cert here, we won't know if
 		// the cert is invalid unil much later
 		decoded_cert, _ := pem.Decode([]byte(httpsCert))
 		if decoded_cert == nil {
-			return "", fmt.Errorf("could not decode certficate file (%v)", httpsCertFile)
+			return "", errors.Errorf("could not decode certficate file (%v)", httpsCertFile)
 		}
 	}
 	return string(httpsCert), nil

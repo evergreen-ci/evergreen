@@ -2,10 +2,10 @@ package event
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -58,7 +58,7 @@ func (dw DataWrapper) MarshalJSON() ([]byte, error) {
 	case *TaskProcessResourceData:
 		return json.Marshal(event)
 	default:
-		return nil, fmt.Errorf("cannot marshal data of type %T", dw.Data)
+		return nil, errors.Errorf("cannot marshal data of type %T", dw.Data)
 	}
 }
 
@@ -85,5 +85,5 @@ func (dw *DataWrapper) SetBSON(raw bson.Raw) error {
 	if err != nil {
 		return err
 	}
-	return fmt.Errorf("No suitable type for %#v", m)
+	return errors.Errorf("No suitable type for %#v", m)
 }

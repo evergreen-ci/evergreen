@@ -2,11 +2,11 @@ package model
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -161,7 +161,7 @@ func (vs *variantSelector) UnmarshalYAML(unmarshal func(interface{}) error) erro
 		return err
 	}
 	if len(md) == 0 {
-		return fmt.Errorf("variant selector must not be empty")
+		return errors.New("variant selector must not be empty")
 	}
 	vs.matrixSelector = md
 	return nil
@@ -204,7 +204,7 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	if tsc.Name == "" {
-		return fmt.Errorf("task selector must have a name")
+		return errors.New("task selector must have a name")
 	}
 	*ts = taskSelector(tsc)
 	return nil
@@ -250,15 +250,15 @@ func (pbv *parserBV) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	type copyType parserBV
 	var bv copyType
 	if err := unmarshal(&bv); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if bv.Name == "" {
 		// if we're here, it's very likely that the user was building a matrix but broke
 		// the syntax, so we try and surface the matrix error if they used "matrix_name".
 		if m.Id != "" {
-			return fmt.Errorf("parsing matrix: %v", merr)
+			return errors.Wrap(merr, "parsing matrix")
 		}
-		return fmt.Errorf("buildvariant missing name")
+		return errors.New("buildvariant missing name")
 	}
 	*pbv = parserBV(bv)
 	return nil
@@ -296,12 +296,12 @@ func (pbvt *parserBVTask) UnmarshalYAML(unmarshal func(interface{}) error) error
 		return err
 	}
 	if copy.Name == "" {
-		return fmt.Errorf("task selector must have a name")
+		return errors.New("task selector must have a name")
 	}
 	// logic for aliasing the "run_on" field to "distros"
 	if len(copy.RunOn) > 0 {
 		if len(copy.Distros) > 0 {
-			return fmt.Errorf("cannot use both 'run_on' and 'distros' fields")
+			return errors.New("cannot use both 'run_on' and 'distros' fields")
 		}
 		copy.Distros, copy.RunOn = copy.RunOn, nil
 	}
@@ -363,9 +363,9 @@ func LoadProjectInto(data []byte, identifier string, project *Project) error {
 			buf.WriteString(e.Error())
 		}
 		if len(errs) > 1 {
-			return fmt.Errorf("project errors: %v", buf.String())
+			return errors.Errorf("project errors: %v", buf.String())
 		}
-		return fmt.Errorf("project error: %v", buf.String())
+		return errors.Errorf("project error: %v", buf.String())
 	}
 	*project = *p
 	project.Identifier = identifier
@@ -504,7 +504,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 				for _, t := range r.RemoveTasks {
 					removed, err := tse.evalSelector(ParseSelector(t))
 					if err != nil {
-						evalErrs = append(evalErrs, fmt.Errorf("remove rule: %v", err))
+						evalErrs = append(evalErrs, errors.Wrap(err, "remove rule"))
 						continue
 					}
 					toRemove = append(toRemove, removed...)
@@ -530,7 +530,7 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 				for _, t := range added {
 					if old, ok := existing[t.Name]; ok {
 						if !reflect.DeepEqual(t, *old) {
-							evalErrs = append(evalErrs, fmt.Errorf(
+							evalErrs = append(evalErrs, errors.Errorf(
 								"conflicting definitions of added tasks '%v': %v != %v", t.Name, t, old))
 						}
 					} else {
@@ -584,7 +584,7 @@ func evaluateBVTasks(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator,
 			} else {
 				// it's already in the new list, so we check to make sure the status definitions match.
 				if !reflect.DeepEqual(t, old) {
-					evalErrs = append(evalErrs, fmt.Errorf(
+					evalErrs = append(evalErrs, errors.Errorf(
 						"conflicting definitions of build variant tasks '%v': %v != %v", name, t, old))
 					continue
 				}
@@ -641,7 +641,7 @@ func evaluateDependsOn(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator
 				} else {
 					// it's already in the new list, so we check to make sure the status definitions match.
 					if !reflect.DeepEqual(newDep, oldDep) {
-						evalErrs = append(evalErrs, fmt.Errorf(
+						evalErrs = append(evalErrs, errors.Errorf(
 							"conflicting definitions of dependency '%v': %v != %v", name, newDep, oldDep))
 						continue
 					}

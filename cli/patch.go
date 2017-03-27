@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,9 +19,10 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
-var noProjectError = fmt.Errorf("must specify a project with -p/--project or a path to a config file with -f/--file")
+var noProjectError = errors.New("must specify a project with -p/--project or a path to a config file with -f/--file")
 
 // Above this size, the user must explicitly use --large to submit the patch (or confirm)
 const largePatchThreshold = 1024 * 1024 * 16
@@ -242,7 +242,7 @@ func (vc *ValidateCommand) Execute(args []string) error {
 			fmt.Printf("%v) %v: %v\n\n", i+1, e.Level, e.Message)
 		}
 		if numErrors > 0 {
-			return fmt.Errorf("Invalid project file!")
+			return errors.New("Invalid project file!")
 		}
 		if numWarnings > 0 {
 			fmt.Printf("Project file has %v warnings, 0 errors.\n", numWarnings)
@@ -260,7 +260,7 @@ func getModuleBranch(moduleName string, proj *model.Project) (string, error) {
 			return module.Branch, nil
 		}
 	}
-	return "", fmt.Errorf("module branch not found")
+	return "", errors.New("module branch not found")
 }
 
 func (smc *SetModuleCommand) Execute(args []string) error {
@@ -344,7 +344,7 @@ func (pfc *PatchFileCommand) Execute(args []string) error {
 
 	fullPatch, err := ioutil.ReadFile(pfc.DiffFile)
 	if err != nil {
-		return fmt.Errorf("Error reading diff file: %v", err)
+		return errors.Errorf("Error reading diff file: %v", err)
 	}
 	diffData := &localDiff{string(fullPatch), "", "", pfc.Base}
 
@@ -400,7 +400,7 @@ func (lgc *LastGreenCommand) Execute(args []string) error {
 func (lc *ListCommand) Execute(args []string) error {
 	// stop the user from using > 1 type flag
 	if (lc.Projects && (lc.Variants || lc.Tasks)) || (lc.Tasks && lc.Variants) {
-		return fmt.Errorf("list command takes only one of --projects, --variants, or --tasks")
+		return errors.Errorf("list command takes only one of --projects, --variants, or --tasks")
 	}
 	if lc.Projects {
 		return lc.listProjects()
@@ -411,7 +411,7 @@ func (lc *ListCommand) Execute(args []string) error {
 	if lc.Variants {
 		return lc.listVariants()
 	}
-	return fmt.Errorf("must specify one of --projects, --variants, or --tasks")
+	return errors.Errorf("must specify one of --projects, --variants, or --tasks")
 }
 
 func (lc *ListCommand) listProjects() error {
@@ -561,14 +561,14 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	}
 
 	if params.Project == "" {
-		err = fmt.Errorf("Need to specify a project.")
+		err = errors.Errorf("Need to specify a project.")
 		return
 	}
 
 	ref, err = ac.GetProjectRef(params.Project)
 	if err != nil {
 		if apiErr, ok := err.(APIError); ok && apiErr.code == http.StatusNotFound {
-			err = fmt.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
+			err = errors.Errorf("%v \nRun `evergreen list --projects` to see all valid projects", err)
 		}
 		return
 	}
@@ -577,7 +577,7 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	if len(params.Variants) == 0 {
 		params.Variants = settings.FindDefaultVariants(params.Project)
 		if len(params.Variants) == 0 && params.Finalize {
-			err = fmt.Errorf("Need to specify at least one buildvariant with -v when finalizing." +
+			err = errors.Errorf("Need to specify at least one buildvariant with -v when finalizing." +
 				" Run with `-v all` to finalize against all variants.")
 			return
 		}
@@ -597,7 +597,7 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 	if len(params.Tasks) == 0 {
 		params.Tasks = settings.FindDefaultTasks(params.Project)
 		if len(params.Tasks) == 0 && params.Finalize {
-			err = fmt.Errorf("Need to specify at least one task with -t when finalizing." +
+			err = errors.Errorf("Need to specify at least one task with -t when finalizing." +
 				" Run with `-t all` to finalize against all tasks.")
 			return
 		}
@@ -665,9 +665,9 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISe
 func validatePatchSize(diff *localDiff, allowLarge bool) error {
 	patchLen := len(diff.fullPatch)
 	if patchLen > patch.SizeLimit {
-		return fmt.Errorf("Patch is greater than the system limit (%v > %v bytes).", patchLen, patch.SizeLimit)
+		return errors.Errorf("Patch is greater than the system limit (%v > %v bytes).", patchLen, patch.SizeLimit)
 	} else if patchLen > largePatchThreshold && !allowLarge {
-		return fmt.Errorf("Patch is larger than the default threshold (%v > %v bytes).\n"+
+		return errors.Errorf("Patch is larger than the default threshold (%v > %v bytes).\n"+
 			"To allow submitting this patch, use the --large flag.", patchLen, largePatchThreshold)
 	}
 
@@ -685,7 +685,7 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 	// For details see: https://git-scm.com/docs/gitrevisions
 	mergeBase, err := gitMergeBase(branch+"@{upstream}", "HEAD")
 	if err != nil {
-		return nil, fmt.Errorf("Error getting merge base: %v", err)
+		return nil, errors.Errorf("Error getting merge base: %v", err)
 	}
 	statArgs := []string{"--stat"}
 	if len(extraArgs) > 0 {
@@ -693,16 +693,16 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 	}
 	stat, err := gitDiff(mergeBase, statArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting diff summary: %v", err)
+		return nil, errors.Errorf("Error getting diff summary: %v", err)
 	}
 	log, err := gitLog(mergeBase)
 	if err != nil {
-		return nil, fmt.Errorf("git log: %v", err)
+		return nil, errors.Errorf("git log: %v", err)
 	}
 
 	patch, err := gitDiff(mergeBase, extraArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting patch: %v", err)
+		return nil, errors.Errorf("Error getting patch: %v", err)
 	}
 	return &localDiff{patch, stat, log, mergeBase}, nil
 }
@@ -713,7 +713,7 @@ func gitMergeBase(branch1, branch2 string) (string, error) {
 	cmd := exec.Command("git", "merge-base", branch1, branch2)
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("'git merge-base %v %v' failed: %v", branch1, branch2, err)
+		return "", errors.Errorf("'git merge-base %v %v' failed: %v", branch1, branch2, err)
 	}
 	return strings.TrimSpace(string(out)), err
 }
@@ -743,7 +743,7 @@ func gitCmd(cmdName, base string, gitArgs ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("'git %v %v' failed with err %v", base, strings.Join(args, " "), err)
+		return "", errors.Errorf("'git %v %v' failed with err %v", base, strings.Join(args, " "), err)
 	}
 	return string(out), err
 }

@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"errors"
 	"os"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 // AgentCommand encapsulates a running local command and streams logs

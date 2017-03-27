@@ -1,7 +1,6 @@
 package route
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/apiv3"
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 type (
@@ -108,7 +108,7 @@ func GetProjectContext(r *http.Request) (*model.Context, error) {
 	if rv := context.Get(r, RequestContext); rv != nil {
 		return rv.(*model.Context), nil
 	}
-	return &model.Context{}, fmt.Errorf("No context loaded")
+	return &model.Context{}, errors.New("No context loaded")
 }
 
 // MustHaveProjectContext returns the project context set on the

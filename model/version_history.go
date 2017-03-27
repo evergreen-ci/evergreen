@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -20,7 +21,7 @@ const (
 // on which all the given build variants succeeded. Gives up after 100 versions.
 func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames []string) (*version.Version, error) {
 	if len(buildVariantNames) == 0 {
-		return nil, fmt.Errorf("No build variants specified!")
+		return nil, errors.New("No build variants specified!")
 	}
 
 	// Get latest commit order number for this project
@@ -28,7 +29,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 		version.ByMostRecentForRequester(project.Identifier, evergreen.RepotrackerVersionRequester).
 			WithFields(version.RevisionOrderNumberKey)))
 	if err != nil {
-		return nil, fmt.Errorf("Error getting latest version: %v", err)
+		return nil, errors.Wrap(err, "Error getting latest version")
 	}
 	if latestVersion == nil {
 		return nil, nil
@@ -78,10 +79,10 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 	}
 
 	var result []bson.M
-	err = db.Aggregate(build.Collection, pipeline, &result)
 
+	err = db.Aggregate(build.Collection, pipeline, &result)
 	if err != nil {
-		return nil, fmt.Errorf("Aggregation failed: %v", err)
+		return nil, errors.Wrap(err, "Aggregation failed")
 	}
 
 	if len(result) == 0 {
@@ -99,7 +100,7 @@ func FindLastPassingVersionForBuildVariants(project *Project, buildVariantNames 
 		return nil, err
 	}
 	if v == nil {
-		return nil, fmt.Errorf("Couldn't find version with id `%v` after "+
+		return nil, errors.Errorf("Couldn't find version with id `%v` after "+
 			"successful aggregation.", result[0]["_id"])
 	}
 	return v, nil

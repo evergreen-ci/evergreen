@@ -117,7 +117,7 @@ func makeTarball(fileName, prefix string, paths []string, exclude []string) erro
 	for unit := range getContents(paths, exclude) {
 		err := addFile(tw, prefix, unit)
 		if err != nil {
-			return fmt.Errorf("error adding path: %s [%+v]: %v",
+			return fmt.Errorf("error adding path: %s [%+v]: %+v",
 				unit.path, unit, err)
 		}
 	}

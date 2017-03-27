@@ -1,13 +1,13 @@
 package s3copy
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/s3"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -22,23 +22,23 @@ func validateS3BucketName(bucket string) error {
 		return nil
 	}
 	if len(bucket) < 3 {
-		return fmt.Errorf("must be at least 3 characters")
+		return errors.New("must be at least 3 characters")
 	}
 	if len(bucket) > 63 {
-		return fmt.Errorf("must be no more than 63 characters")
+		return errors.New("must be no more than 63 characters")
 	}
 	if strings.HasPrefix(bucket, ".") || strings.HasPrefix(bucket, "-") {
-		return fmt.Errorf("must not begin with a period or hyphen")
+		return errors.New("must not begin with a period or hyphen")
 	}
 	if strings.HasSuffix(bucket, ".") || strings.HasSuffix(bucket, "-") {
-		return fmt.Errorf("must not end with a period or hyphen")
+		return errors.New("must not end with a period or hyphen")
 	}
 	if strings.Contains(bucket, "..") {
-		return fmt.Errorf("must not have two consecutive periods")
+		return errors.New("must not have two consecutive periods")
 	}
 	/*
 		if !BucketNameRegex.MatchString(bucket) {
-			return fmt.Errorf("must contain only lowercase letters, numbers," +
+			return errors.New("must contain only lowercase letters, numbers," +
 				" hyphens, and periods")
 		}
 	*/

@@ -1,12 +1,12 @@
 package monitor
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Runner struct{}
@@ -29,7 +29,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	grip.Infoln("Starting monitor at time", startTime)
 
 	if err := RunAllMonitoring(config); err != nil {
-		err = fmt.Errorf("error running monitor: %v", err)
+		err = errors.Wrap(err, "error running monitor")
 		grip.Error(err)
 		return err
 	}

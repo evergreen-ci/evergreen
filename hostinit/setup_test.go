@@ -1,7 +1,6 @@
 package hostinit
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -216,12 +216,12 @@ func spawnMockHost() (*host.Host, error) {
 	}
 	cloudManager, err := providers.GetCloudManager(mock.ProviderName, testutil.TestConfig())
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	newHost, err := cloudManager.SpawnInstance(&mockDistro, hostOptions)
 	if err != nil {
-		return nil, fmt.Errorf("Error spawning instance: %v,", err)
+		return nil, errors.Wrap(err, "Error spawning instance,")
 	}
 
 	return newHost, nil

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // Tag returns the value of the "bson" tag for the given struct field name of
@@ -20,12 +22,12 @@ func Tag(data interface{}, fieldName string) (string, error) {
 	}
 
 	if dataType.Kind() != reflect.Struct {
-		return "", fmt.Errorf("must pass in a struct data type [%T]", data)
+		return "", errors.Errorf("must pass in a struct data type [%T]", data)
 	}
 
 	field, found := dataType.FieldByName(fieldName)
 	if !found {
-		return "", fmt.Errorf("struct of type '%T' does not have a field %v",
+		return "", errors.Errorf("struct of type '%T' does not have a field %v",
 			data, fieldName)
 	}
 	tag := field.Tag.Get("bson")

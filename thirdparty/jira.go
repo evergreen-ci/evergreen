@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"math"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
 
 // JiraTickets marshal to and unmarshal from the json issue
@@ -110,16 +112,16 @@ func (jiraHandler *JiraHandler) CreateTicket(fields map[string]interface{}) (*Ji
 		defer res.Body.Close()
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
 		msg, _ := ioutil.ReadAll(res.Body)
-		return nil, fmt.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
+		return nil, errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
 
 	ticketInfo := &JiraCreateTicketResponse{}
 	if err := json.NewDecoder(res.Body).Decode(ticketInfo); err != nil {
-		return nil, fmt.Errorf("Unable to decode http body: %v", err.Error())
+		return nil, errors.Wrap(err, "Unable to decode http body")
 	}
 	return ticketInfo, nil
 }
@@ -135,11 +137,11 @@ func (jiraHandler *JiraHandler) UpdateTicket(key string, fields map[string]inter
 		defer res.Body.Close()
 	}
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
 		msg, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
+		return errors.Errorf("HTTP request returned unexpected status `%v`: %v", res.Status, string(msg))
 	}
 
 	return nil
@@ -154,26 +156,26 @@ func (jiraHandler *JiraHandler) GetJIRATicket(key string) (*JiraTicket, error) {
 		defer res.Body.Close()
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	if res == nil {
-		return nil, fmt.Errorf("HTTP results are nil even though err was nil")
+		return nil, errors.Errorf("HTTP results are nil even though err was nil")
 	}
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
-		return nil, fmt.Errorf("HTTP request returned unexpected status `%v`", res.Status)
+		return nil, errors.Errorf("HTTP request returned unexpected status `%v`", res.Status)
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to read http body: %v", err.Error())
+		return nil, errors.Wrap(err, "Unable to read http body")
 	}
 
 	ticket := &JiraTicket{}
 	err = json.Unmarshal(body, ticket)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return ticket, nil
@@ -186,27 +188,27 @@ func (jiraHandler *JiraHandler) JQLSearch(query string, startAt, maxResults int)
 
 	res, err := jiraHandler.MyHttp.doGet(apiEndpoint, jiraHandler.UserName, jiraHandler.Password)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if res == nil {
-		return nil, fmt.Errorf("HTTP results are nil even though err was not nil")
+		return nil, errors.Errorf("HTTP results are nil even though err was not nil")
 	}
 
 	if res.StatusCode >= 300 || res.StatusCode < 200 {
-		return nil, fmt.Errorf("HTTP request returned unexpected status `%v`", res.Status)
+		return nil, errors.Errorf("HTTP request returned unexpected status `%v`", res.Status)
 	}
 
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to read http body: %v", err.Error())
+		return nil, errors.Wrap(err, "Unable to read http body")
 	}
 
 	results := &JiraSearchResults{}
 	err = json.Unmarshal(body, results)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return results, nil
@@ -222,7 +224,7 @@ func (jiraHandler *JiraHandler) JQLSearchAll(query string) ([]JiraTicket, error)
 	for ticketsLeft > 0 {
 		nextResult, err := jiraHandler.JQLSearch(query, index, -1)
 		if err != nil {
-			return []JiraTicket{}, err
+			return []JiraTicket{}, errors.WithStack(err)
 		}
 
 		numReturned := nextResult.MaxResults

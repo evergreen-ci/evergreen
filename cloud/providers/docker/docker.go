@@ -2,7 +2,6 @@ package docker
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/rand"
 	"time"
@@ -16,6 +15,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -83,11 +83,11 @@ func generateClient(d *distro.Distro) (*docker.Client, *Settings, error) {
 	// Populate and validate settings
 	settings := &Settings{} // Instantiate global settings
 	if err := mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-		return nil, settings, fmt.Errorf("Error decoding params for distro %v: %v", d.Id, err)
+		return nil, settings, errors.Wrapf(err, "Error decoding params for distro %v", d.Id)
 	}
 
 	if err := settings.Validate(); err != nil {
-		return nil, settings, fmt.Errorf("Invalid Docker settings in distro %v: %v", d.Id, err)
+		return nil, settings, errors.Wrapf(err, "Invalid Docker settings in distro %v: %v", d.Id)
 	}
 
 	// Convert authentication strings to byte arrays
@@ -98,9 +98,10 @@ func generateClient(d *distro.Distro) (*docker.Client, *Settings, error) {
 	// Create client
 	endpoint := fmt.Sprintf("tcp://%s:%v", settings.HostIp, settings.ClientPort)
 	client, err := docker.NewTLSClientFromBytes(endpoint, cert, key, ca)
-	if err != nil {
-		grip.Errorf("Docker initialize client API call failed for host '%s': %v", endpoint, err)
-	}
+
+	err = errors.Wrapf(err, "Docker initialize client API call failed for host '%s'", endpoint)
+	grip.Error(err)
+
 	return client, settings, err
 }
 
@@ -108,17 +109,19 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 	// Retrieve client for API call and settings
 	client, settings, err := generateClient(d)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	minPort := settings.PortRange.MinPort
 	maxPort := settings.PortRange.MaxPort
 
 	// Get all the things!
 	containers, err := client.ListContainers(docker.ListContainersOptions{})
+	err = errors.Wrap(err, "Docker list containers API call failed.")
 	if err != nil {
-		grip.Errorf("Docker list containers API call failed. %v", err)
+		grip.Error(err)
 		return err
 	}
+
 	reservedPorts := make(map[int64]bool)
 	for _, c := range containers {
 		for _, p := range c.Ports {
@@ -148,10 +151,11 @@ func populateHostConfig(hostConfig *docker.HostConfig, d *distro.Distro) error {
 
 	// If map is empty, no ports were available.
 	if len(hostConfig.PortBindings) == 0 {
-		err := errors.New("No available ports in specified range.")
+		err := errors.New("No available ports in specified range")
 		grip.Error(err)
 		return err
 	}
+
 	return nil
 }
 
@@ -164,7 +168,7 @@ func retrieveOpenPortBinding(containerPtr *docker.Container) (string, error) {
 			return portBindings[0].HostPort, nil
 		}
 	}
-	return "", fmt.Errorf("No available ports")
+	return "", errors.New("No available ports")
 }
 
 //*********************************************************************************
@@ -174,15 +178,15 @@ func retrieveOpenPortBinding(containerPtr *docker.Container) (string, error) {
 //Validate checks that the settings from the config file are sane.
 func (settings *Settings) Validate() error {
 	if settings.HostIp == "" {
-		return fmt.Errorf("HostIp must not be blank")
+		return errors.New("HostIp must not be blank")
 	}
 
 	if settings.ImageId == "" {
-		return fmt.Errorf("ImageName must not be blank")
+		return errors.New("ImageName must not be blank")
 	}
 
 	if settings.ClientPort == 0 {
-		return fmt.Errorf("Port must not be blank")
+		return errors.New("Port must not be blank")
 	}
 
 	if settings.PortRange != nil {
@@ -190,18 +194,18 @@ func (settings *Settings) Validate() error {
 		max := settings.PortRange.MaxPort
 
 		if max < min {
-			return fmt.Errorf("Container port range must be valid")
+			return errors.New("Container port range must be valid")
 		}
 	}
 
 	if settings.Auth == nil {
-		return fmt.Errorf("Authentication materials must not be blank")
+		return errors.New("Authentication materials must not be blank")
 	} else if settings.Auth.Cert == "" {
-		return fmt.Errorf("Certificate must not be blank")
+		return errors.New("Certificate must not be blank")
 	} else if settings.Auth.Key == "" {
-		return fmt.Errorf("Key must not be blank")
+		return errors.New("Key must not be blank")
 	} else if settings.Auth.Ca == "" {
-		return fmt.Errorf("Certificate authority must not be blank")
+		return errors.New("Certificate authority must not be blank")
 	}
 
 	return nil
@@ -216,20 +220,21 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	var err error
 
 	if d.Provider != ProviderName {
-		return nil, fmt.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, d.Id, d.Provider)
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, d.Id, d.Provider)
 	}
 
 	// Initialize client
 	dockerClient, settings, err := generateClient(d)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	// Create HostConfig structure
 	hostConfig := &docker.HostConfig{}
 	err = populateHostConfig(hostConfig, d)
 	if err != nil {
-		grip.Errorf("Unable to populate docker host config for host '%s': %v", settings.HostIp, err)
+		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", settings.HostIp)
+		grip.Error(err)
 		return nil, err
 	}
 
@@ -249,13 +254,15 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		},
 	)
 	if err != nil {
-		grip.Errorf("Docker create container API call failed for host '%s': %v", settings.HostIp, err)
+		err = errors.Wrapf(err, "Docker create container API call failed for host '%s'", settings.HostIp)
+		grip.Error(err)
 		return nil, err
 	}
 
 	// Start container
 	err = dockerClient.StartContainer(newContainer.ID, nil)
 	if err != nil {
+		err = errors.Wrapf(err, "Docker start container API call failed for host '%s'", settings.HostIp)
 		// Clean up
 		err2 := dockerClient.RemoveContainer(
 			docker.RemoveContainerOptions{
@@ -264,16 +271,17 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 			},
 		)
 		if err2 != nil {
-			err = fmt.Errorf("%v. And was unable to clean up container %v: %v", err, newContainer.ID, err2)
+			err = errors.Errorf("start container error: %+v;\nunable to cleanup: %+v", err, err2)
 		}
-		grip.Errorf("Docker start container API call failed for host '%s': %v", settings.HostIp, err)
+		grip.Error(err)
 		return nil, err
 	}
 
 	// Retrieve container details
 	newContainer, err = dockerClient.InspectContainer(newContainer.ID)
 	if err != nil {
-		grip.Errorf("Docker inspect container API call failed for host '%s': %v", settings.HostIp, err)
+		err = errors.Wrapf(err, "Docker inspect container API call failed for host '%s'", settings.HostIp)
+		grip.Error(err)
 		return nil, err
 	}
 
@@ -291,15 +299,13 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	intentHost := cloud.NewIntent(*d, instanceName, ProviderName, hostOpts)
 	intentHost.Host = hostStr
 
-	err = intentHost.Insert()
+	err = errors.Wrapf(intentHost.Insert(), "failed to insert new host '%s'", intentHost.Id)
 	if err != nil {
-		err = fmt.Errorf("Failed to insert new host '%s': %+v", intentHost.Id, err)
 		grip.Error(err)
 		return nil, err
 	}
 
 	grip.Debugf("Successfully inserted new host '%s' for distro '%s'", intentHost.Id, d.Id)
-
 	return intentHost, nil
 }
 
@@ -329,7 +335,7 @@ func (dockerMgr *DockerManager) GetInstanceStatus(host *host.Host) (cloud.CloudS
 
 	container, err := dockerClient.InspectContainer(host.Id)
 	if err != nil {
-		return cloud.StatusUnknown, fmt.Errorf("Failed to get container information for host '%v': %v", host.Id, err)
+		return cloud.StatusUnknown, errors.Wrapf(err, "Failed to get container information for host '%v'", host.Id)
 	}
 
 	switch getStatus(&container.State) {
@@ -365,9 +371,9 @@ func (dockerMgr *DockerManager) TerminateInstance(host *host.Host) error {
 		return err
 	}
 
-	err = dockerClient.StopContainer(host.Id, TimeoutSeconds)
 	if err != nil {
-		err = fmt.Errorf("Failed to stop container '%v': %+v", host.Id, err)
+		err = errors.Wrapf(dockerClient.StopContainer(host.Id, TimeoutSeconds),
+			"failed to stop container '%s'", host.Id)
 		grip.Error(err)
 		return err
 	}
@@ -375,10 +381,10 @@ func (dockerMgr *DockerManager) TerminateInstance(host *host.Host) error {
 	err = dockerClient.RemoveContainer(
 		docker.RemoveContainerOptions{
 			ID: host.Id,
-		},
-	)
+		})
+
 	if err != nil {
-		err = fmt.Errorf("Failed to remove container '%v': %+v", host.Id, err)
+		err = errors.Wrapf(err, "Failed to remove container '%s'", host.Id)
 		grip.Error(err)
 		return err
 	}
@@ -423,7 +429,7 @@ func (dockerMgr *DockerManager) OnUp(host *host.Host) error {
 //container.
 func (dockerMgr *DockerManager) GetSSHOptions(host *host.Host, keyPath string) ([]string, error) {
 	if keyPath == "" {
-		return []string{}, fmt.Errorf("No key specified for Docker host")
+		return []string{}, errors.New("No key specified for Docker host")
 	}
 
 	opts := []string{"-i", keyPath}

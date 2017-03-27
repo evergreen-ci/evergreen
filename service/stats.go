@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 // UIBuildVariant contains the name of the build variant and the tasks associated with that build variant.
@@ -109,13 +109,13 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 	request := mux.Vars(r)["request"]
 
 	if projCtx.Project == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("not found"))
+		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
 	}
 
 	bv := projCtx.Project.FindBuildVariant(buildVariant)
 	if bv == nil {
-		uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("build variant %v not found", buildVariant))
+		uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("build variant %v not found", buildVariant))
 		return
 	}
 	var versionIds []string
@@ -166,7 +166,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !foundTask {
-			uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("no task named '%v'", taskName))
+			uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("no task named '%v'", taskName))
 			return
 		}
 		var tasks []task.Task
@@ -183,7 +183,7 @@ func (uis *UIServer) taskTimingJSON(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if t == nil {
-				uis.LoggedError(w, r, http.StatusNotFound, fmt.Errorf("Task %v not found", beforeTaskId))
+				uis.LoggedError(w, r, http.StatusNotFound, errors.Errorf("Task %v not found", beforeTaskId))
 				return
 			}
 

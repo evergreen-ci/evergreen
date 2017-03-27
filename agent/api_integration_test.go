@@ -30,6 +30,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
@@ -1066,7 +1067,7 @@ func prependConfigToVersion(t *testing.T, versionId, configData string) {
 	v, err := version.FindOne(version.ById(versionId))
 	testutil.HandleTestingErr(err, t, "failed to load version")
 	if v == nil {
-		err = fmt.Errorf("could not find version to update")
+		err = errors.New("could not find version to update")
 		testutil.HandleTestingErr(err, t, "failed to find version")
 	}
 	v.Config = configData + v.Config

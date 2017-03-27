@@ -1,12 +1,12 @@
 package taskrunner
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Runner struct{}
@@ -29,7 +29,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	grip.Infoln("Starting taskrunner at time", startTime)
 
 	if err := NewTaskRunner(config).Run(); err != nil {
-		err = fmt.Errorf("error running taskrunner: %+v", err)
+		err = errors.Wrap(err, "error running taskrunner")
 		grip.Error(err)
 		return err
 	}

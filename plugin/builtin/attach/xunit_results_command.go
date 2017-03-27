@@ -1,7 +1,6 @@
 package attach
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -37,11 +36,11 @@ func (c *AttachXUnitResultsCommand) Plugin() string {
 func (c *AttachXUnitResultsCommand) ParseParams(
 	params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
-		return fmt.Errorf("error decoding '%v' params: %v", c.Name(), err)
+		return errors.Wrapf(err, "error decoding '%s' params", c.Name())
 	}
 
 	if err := c.validateParams(); err != nil {
-		return fmt.Errorf("error validating '%v' params: %v", c.Name(), err)
+		return errors.Wrapf(err, "error validating '%s' params", c.Name())
 	}
 
 	return nil
@@ -129,17 +128,16 @@ func (c *AttachXUnitResultsCommand) parseAndUploadResults(
 	for _, reportFileLoc := range reportFilePaths {
 		file, err := os.Open(reportFileLoc)
 		if err != nil {
-			return fmt.Errorf("couldn't open xunit file: '%v'", err)
+			return errors.Wrap(err, "couldn't open xunit file")
 		}
 
 		testSuites, err := xunit.ParseXMLResults(file)
 		if err != nil {
-			return fmt.Errorf("error parsing xunit file: '%v'", err)
+			return errors.Wrap(err, "error parsing xunit file")
 		}
 
-		err = file.Close()
-		if err != nil {
-			return fmt.Errorf("error closing xunit file: '%v'", err)
+		if err = file.Close(); err != nil {
+			return errors.Wrap(err, "error closing xunit file")
 		}
 
 		// go through all the tests

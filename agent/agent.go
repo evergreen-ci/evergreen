@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -327,7 +328,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 	confProject := &model.Project{}
 	err = model.LoadProjectInto([]byte(confVersion.Config), confVersion.Identifier, confProject)
 	if err != nil {
-		return nil, fmt.Errorf("reading project config: %v", err)
+		return nil, errors.Wrapf(err, "reading project config")
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Fetching task configuration.")
@@ -342,7 +343,7 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 		return nil, err
 	}
 	if confRef == nil {
-		return nil, fmt.Errorf("agent retrieved an empty project ref")
+		return nil, errors.New("agent retrieved an empty project ref")
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Constructing TaskConfig.")
@@ -598,7 +599,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 				for key, val := range commandInfo.Vars {
 					newVal, err := agt.taskConfig.Expansions.ExpandString(val)
 					if err != nil {
-						return fmt.Errorf("Can't expand '%v': %v", val, err)
+						return errors.Wrapf(err, "Can't expand '%v'", val)
 					}
 					agt.taskConfig.Expansions.Put(key, newVal)
 				}
@@ -629,7 +630,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 func registerPlugins(registry plugin.Registry, plugins []plugin.CommandPlugin, logger *comm.StreamLogger) error {
 	for _, pl := range plugins {
 		if err := registry.Register(pl); err != nil {
-			return fmt.Errorf("Failed to register plugin %v: %v", pl.Name(), err)
+			return errors.Wrapf(err, "Failed to register plugin %s", pl.Name())
 		}
 		logger.LogExecution(slogger.INFO, "Registered plugin %v", pl.Name())
 	}

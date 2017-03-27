@@ -1,9 +1,10 @@
 package util
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
+
+	"github.com/pkg/errors"
 
 	"gopkg.in/yaml.v2"
 )
@@ -26,10 +27,10 @@ func ReadYAMLInto(r io.ReadCloser, data interface{}) error {
 func UnmarshalYAMLFile(file string, data interface{}) error {
 	fileBytes, err := ioutil.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("error reading file %v: %v", file, err)
+		return errors.Wrapf(err, "error reading file %v", file)
 	}
 	if err = yaml.Unmarshal(fileBytes, data); err != nil {
-		return fmt.Errorf("error unmarshalling yaml from %v: %v", file, err)
+		return errors.Wrapf(err, "error unmarshalling yaml from %v", file)
 	}
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) timelineJson(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +104,8 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 			Skip(skip).Limit(DefaultLimit))
 	}
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching patches for %v: %v", projCtx.Project.Identifier, err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err,
+			"Error fetching patches for %v", projCtx.Project.Identifier))
 		return
 	}
 
@@ -127,7 +129,7 @@ func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {
 	}
 	versions, err := version.Find(version.ByIds(versionIds).WithoutFields(version.ConfigKey))
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching versions for patches: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching versions for patches"))
 		return
 	}
 

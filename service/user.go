@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) loginPage(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +74,7 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
 	newKey := util.RandomString()
 	if err := model.SetUserAPIKey(currentUser.Id, newKey); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("failed saving key: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "failed saving key"))
 		return
 	}
 	uis.WriteJSON(w, http.StatusOK, struct {
@@ -118,7 +119,8 @@ func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := model.SaveUserSettings(currentUser.Username(), userSettings); err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error saving user settings: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError,
+			errors.Wrap(err, "Error saving user settings"))
 		return
 	}
 

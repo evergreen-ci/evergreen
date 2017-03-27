@@ -20,6 +20,7 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // Keys used for storing variables in request context with type safety.
@@ -78,7 +79,7 @@ func GetProjectContext(r *http.Request) (projectContext, error) {
 	if rv := context.Get(r, RequestProjectContext); rv != nil {
 		return rv.(projectContext), nil
 	}
-	return projectContext{}, fmt.Errorf("No context loaded")
+	return projectContext{}, errors.New("No context loaded")
 }
 
 // MustHaveProjectContext gets the projectContext from the request,
@@ -241,7 +242,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 		projCtx, err := uis.LoadProjectContext(w, r)
 		if err != nil {
 			// Some database lookup failed when fetching the data - log it
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error loading project context: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading project context"))
 			return
 		}
 		if projCtx.ProjectRef != nil && projCtx.ProjectRef.Private && GetUser(r) == nil {
@@ -428,7 +429,7 @@ func (pc *projectContext) populatePatch(patchId string) error {
 	if len(patchId) > 0 {
 		// The patch is explicitly identified in the URL, so fetch it
 		if !patch.IsValidId(patchId) {
-			return fmt.Errorf("patch id '%v' is not an object id", patchId)
+			return errors.Errorf("patch id '%v' is not an object id", patchId)
 		}
 		pc.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
 	} else if pc.Version != nil {

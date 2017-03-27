@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -213,14 +214,13 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	// archive all the tasks
 	for _, t := range allTasks {
 		if err := t.Archive(); err != nil {
-			return fmt.Errorf("failed to archive task: %v", err)
+			return errors.Wrap(err, "failed to archive task")
 		}
 	}
 
 	// Set all the task fields to indicate restarted
-	err = task.ResetTasks(taskIds)
-	if err != nil {
-		return err
+	if err = task.ResetTasks(taskIds); err != nil {
+		return errors.WithStack(err)
 	}
 
 	// TODO figure out a way to coalesce updates for task cache for the same build, so we
@@ -230,9 +230,8 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 	buildIdSet := map[string]bool{}
 	for _, t := range allTasks {
 		buildIdSet[t.BuildId] = true
-		err = build.ResetCachedTask(t.BuildId, t.Id)
-		if err != nil {
-			return err
+		if err = build.ResetCachedTask(t.BuildId, t.Id); err != nil {
+			return errors.WithStack(err)
 		}
 	}
 
@@ -258,16 +257,16 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 			},
 			bson.M{"$set": bson.M{task.AbortedKey: true}},
 		)
+
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 
 	// update activation for all the builds
 	for _, b := range buildIdList {
-		err := build.UpdateActivation(b, true, caller)
-		if err != nil {
-			return err
+		if err := build.UpdateActivation(b, true, caller); err != nil {
+			return errors.WithStack(err)
 		}
 	}
 	return nil
@@ -280,15 +279,16 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	// restart all the 'not in-progress' tasks for the build
 	allTasks, err := task.Find(task.ByIdsBuildAndStatus(taskIds, buildId, task.CompletedStatuses))
 	if err != nil && err != mgo.ErrNotFound {
-		return err
+		return errors.WithStack(err)
 	}
 
 	for _, t := range allTasks {
 		if t.DispatchTime != util.ZeroTime {
 			err = resetTask(t.Id)
 			if err != nil {
-				return fmt.Errorf("Restarting build %v failed, could not task.reset on task: %v",
-					buildId, t.Id, err)
+				return errors.Wrapf(err,
+					"Restarting build %v failed, could not task.reset on task",
+					buildId, t.Id)
 			}
 		}
 	}
@@ -309,11 +309,11 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 			},
 		)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 	}
 
-	return build.UpdateActivation(buildId, true, caller)
+	return errors.WithStack(build.UpdateActivation(buildId, true, caller))
 }
 
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
@@ -331,10 +331,10 @@ func RefreshTasksCache(buildId string) error {
 	tasks, err := task.Find(task.ByBuildId(buildId).WithFields(task.IdKey, task.DisplayNameKey, task.StatusKey,
 		task.DetailsKey, task.StartTimeKey, task.TimeTakenKey, task.ActivatedKey, task.DependsOnKey))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	cache := CreateTasksCache(tasks)
-	return build.SetTasksCache(buildId, cache)
+	return errors.WithStack(build.SetTasksCache(buildId, cache))
 }
 
 //AddTasksToBuild creates the tasks for the given build of a project
@@ -344,7 +344,7 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(b.BuildVariant)
 	if buildVariant == nil {
-		return nil, fmt.Errorf("Could not find build %v in %v project file",
+		return nil, errors.Errorf("Could not find build %v in %v project file",
 			b.BuildVariant, project.Identifier)
 	}
 
@@ -352,15 +352,14 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	tasks, err := createTasksForBuild(
 		project, buildVariant, b, v, NewTaskIdTable(project, v), taskNames)
 	if err != nil {
-		return nil, fmt.Errorf("error creating tasks for build %v: %v",
-			b.Id, err)
+		return nil, errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
 	// insert the tasks into the db
 	for _, task := range tasks {
 		grip.Infoln("Creating task:", task.DisplayName)
 		if err := task.Insert(); err != nil {
-			return nil, fmt.Errorf("error inserting task %v: %v", task.Id, err)
+			return nil, errors.Wrapf(err, "error inserting task %s", task.Id)
 		}
 	}
 
@@ -380,7 +379,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 	// find the build variant for this project/build
 	buildVariant := project.FindBuildVariant(buildName)
 	if buildVariant == nil {
-		return "", fmt.Errorf("could not find build %v in %v project file", buildName, project.Identifier)
+		return "", errors.Errorf("could not find build %v in %v project file", buildName, project.Identifier)
 	}
 
 	// create a new build id
@@ -410,7 +409,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 	// get a new build number for the build
 	buildNumber, err := db.GetNewBuildVariantBuildNumber(buildName)
 	if err != nil {
-		return "", fmt.Errorf("could not get build number for build variant"+
+		return "", errors.Wrapf(err, "could not get build number for build variant"+
 			" %v in %v project file", buildName, project.Identifier)
 	}
 	b.BuildNumber = strconv.FormatUint(buildNumber, 10)
@@ -418,13 +417,13 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 	// create all of the necessary tasks for the build
 	tasksForBuild, err := createTasksForBuild(project, buildVariant, b, v, tt, taskNames)
 	if err != nil {
-		return "", fmt.Errorf("error creating tasks for build %v: %v", b.Id, err)
+		return "", errors.Wrapf(err, "error creating tasks for build %s", b.Id)
 	}
 
 	// insert all of the build's tasks into the db
 	for _, task := range tasksForBuild {
 		if err := task.Insert(); err != nil {
-			return "", fmt.Errorf("error inserting task %v: %v", task.Id, err)
+			return "", errors.Wrapf(err, "error inserting task %s", task.Id)
 		}
 	}
 
@@ -437,7 +436,7 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 
 	// insert the build
 	if err := b.Insert(); err != nil {
-		return "", fmt.Errorf("error inserting build %v: %v", b.Id, err)
+		return "", errors.Wrapf(err, "error inserting build %v", b.Id)
 	}
 
 	// success!
@@ -461,7 +460,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 
 		// sanity check that the config isn't malformed
 		if taskSpec.Name == "" {
-			return nil, fmt.Errorf("config is malformed: variant '%v' runs "+
+			return nil, errors.Errorf("config is malformed: variant '%v' runs "+
 				"task called '%v' but no such task exists for repo %v for "+
 				"version %v", buildVariant.Name, task.Name, project.Identifier, v.Id)
 		}
@@ -605,10 +604,10 @@ func setNumDepsRec(task *task.Task, idToTasks map[string]*task.Task, seen map[st
 func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 	v, err := version.FindOne(version.ById(b.Version))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if v == nil {
-		return fmt.Errorf("Cannot find version for build %v with version %v", b.Id, b.Version)
+		return errors.Errorf("Cannot find version for build %v with version %v", b.Id, b.Version)
 	}
 
 	// ensure all builds for this patch are finished as well
@@ -633,7 +632,7 @@ func TryMarkPatchBuildFinished(b *build.Build, finishTime time.Time) error {
 		return nil
 	}
 
-	return patch.TryMarkFinished(v.Id, finishTime, status)
+	return errors.WithStack(patch.TryMarkFinished(v.Id, finishTime, status))
 }
 
 // createOneTask is a helper to create a single task.
@@ -668,9 +667,9 @@ func createOneTask(id string, buildVarTask BuildVariantTask, project *Project,
 func DeleteBuild(id string) error {
 	err := task.RemoveAllWithBuild(id)
 	if err != nil && err != mgo.ErrNotFound {
-		return err
+		return errors.WithStack(err)
 	}
-	return build.Remove(id)
+	return errors.WithStack(build.Remove(id))
 }
 
 // sortTasks topologically sorts the tasks by dependency, grouping tasks with common dependencies,

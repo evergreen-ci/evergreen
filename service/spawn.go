@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -38,7 +39,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		spawnDistro, err = distro.FindOne(distro.ById(r.FormValue("distro_id")))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error finding distro %v: %v", r.FormValue("distro_id"), err))
+				errors.Wrapf(err, "Error finding distro %v", r.FormValue("distro_id")))
 			return
 		}
 	}
@@ -46,7 +47,7 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 		spawnTask, err = task.FindOne(task.ById(r.FormValue("task_id")))
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError,
-				fmt.Errorf("Error finding task %v: %v", r.FormValue("task_id"), err))
+				errors.Wrapf(err, "Error finding task %v", r.FormValue("task_id")))
 			return
 		}
 	}
@@ -67,7 +68,7 @@ func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {
 	hosts, err := host.Find(host.ByUserWithRunningStatus(user.Username()))
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError,
-			fmt.Errorf("Error finding running hosts for user %v: %v", user.Username(), err))
+			errors.Wrapf(err, "Error finding running hosts for user %v", user.Username()))
 		return
 	}
 
@@ -83,7 +84,7 @@ func (uis *UIServer) listSpawnableDistros(w http.ResponseWriter, r *http.Request
 	// load in the distros
 	distros, err := distro.Find(distro.All)
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error loading distros: %v", err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error loading distros"))
 		return
 	}
 
@@ -140,12 +141,12 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 	if putParams.SaveKey {
 		dbuser, err := user.FindOne(user.ById(authedUser.Username()))
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error fetching user: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error fetching user"))
 			return
 		}
 		err = model.AddUserPublicKey(dbuser.Id, putParams.KeyName, putParams.PublicKey)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error saving public key: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error saving public key"))
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
@@ -183,11 +184,11 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	hostId := updateParams.HostId
 	host, err := host.FindOne(host.ById(hostId))
 	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("error finding host with id %v: %v", hostId, err))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrapf(err, "error finding host with id %v", hostId))
 		return
 	}
 	if host == nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("No host with id %v found", hostId))
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Errorf("No host with id %v found", hostId))
 		return
 	}
 	// determine what action needs to be taken
@@ -211,12 +212,12 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 	case HostPasswordUpdate:
 		pwdUpdateCmd, err := constructPwdUpdateCommand(&uis.Settings, host, updateParams.RDPPwd)
 		if err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error constructing host RDP password: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error constructing host RDP password"))
 			return
 		}
 		// update RDP and sshd password
 		if err = pwdUpdateCmd.Run(); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error updating host RDP password: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host RDP password"))
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host RDP password successfully updated."))
@@ -239,7 +240,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 
 		}
 		if err = host.SetExpirationTime(futureExpiration); err != nil {
-			uis.LoggedError(w, r, http.StatusInternalServerError, fmt.Errorf("Error extending host expiration time: %v", err))
+			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error extending host expiration time"))
 			return
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash(fmt.Sprintf("Host expiration "+

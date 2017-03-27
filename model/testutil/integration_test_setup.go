@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -56,10 +57,10 @@ func findConfig(configName string) (string, error) {
 		if yes {
 			return root, nil
 		}
-		return "", fmt.Errorf("Can't find evergreen config root: '%v'", root)
+		return "", errors.Errorf("Can't find evergreen config root: '%v'", root)
 	}
 
-	return "", fmt.Errorf("%v environment variable must be set", evergreen.EvergreenHome)
+	return "", errors.Errorf("%v environment variable must be set", evergreen.EvergreenHome)
 }
 
 func isConfigRoot(home string, configName string) (fixed string, is bool) {

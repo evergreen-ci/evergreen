@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pkg/errors"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -291,42 +293,42 @@ type ConfigValidator func(settings *Settings) error
 var ConfigValidationRules = []ConfigValidator{
 	func(settings *Settings) error {
 		if settings.Database.Url == "" || settings.Database.DB == "" {
-			return fmt.Errorf("DBUrl and DB must not be empty")
+			return errors.New("DBUrl and DB must not be empty")
 		}
 		return nil
 	},
 
 	func(settings *Settings) error {
 		if settings.ApiUrl == "" {
-			return fmt.Errorf("API hostname must not be empty")
+			return errors.New("API hostname must not be empty")
 		}
 		return nil
 	},
 
 	func(settings *Settings) error {
 		if settings.Ui.Secret == "" {
-			return fmt.Errorf("UI Secret must not be empty")
+			return errors.New("UI Secret must not be empty")
 		}
 		return nil
 	},
 
 	func(settings *Settings) error {
 		if settings.ConfigDir == "" {
-			return fmt.Errorf("Config directory must not be empty")
+			return errors.New("Config directory must not be empty")
 		}
 		return nil
 	},
 
 	func(settings *Settings) error {
 		if settings.Ui.DefaultProject == "" {
-			return fmt.Errorf("You must specify a default project in UI")
+			return errors.New("You must specify a default project in UI")
 		}
 		return nil
 	},
 
 	func(settings *Settings) error {
 		if settings.Ui.Url == "" {
-			return fmt.Errorf("You must specify a default UI url")
+			return errors.New("You must specify a default UI url")
 		}
 		return nil
 	},
@@ -339,15 +341,15 @@ var ConfigValidationRules = []ConfigValidator{
 		}
 
 		if notifyConfig.Server == "" || notifyConfig.Port == 0 {
-			return fmt.Errorf("You must specify a SMTP server and port")
+			return errors.New("You must specify a SMTP server and port")
 		}
 
 		if len(notifyConfig.AdminEmail) == 0 {
-			return fmt.Errorf("You must specify at least one admin_email")
+			return errors.New("You must specify at least one admin_email")
 		}
 
 		if notifyConfig.From == "" {
-			return fmt.Errorf("You must specify a from address")
+			return errors.New("You must specify a from address")
 		}
 
 		return nil
@@ -355,20 +357,20 @@ var ConfigValidationRules = []ConfigValidator{
 
 	func(settings *Settings) error {
 		if settings.AuthConfig.Crowd == nil && settings.AuthConfig.Naive == nil && settings.AuthConfig.Github == nil {
-			return fmt.Errorf("You must specify one form of authentication")
+			return errors.New("You must specify one form of authentication")
 		}
 		if settings.AuthConfig.Naive != nil {
 			used := map[string]bool{}
 			for _, x := range settings.AuthConfig.Naive.Users {
 				if used[x.Username] {
-					return fmt.Errorf("Duplicate user in list")
+					return errors.New("Duplicate user in list")
 				}
 				used[x.Username] = true
 			}
 		}
 		if settings.AuthConfig.Github != nil {
 			if settings.AuthConfig.Github.Users == nil && settings.AuthConfig.Github.Organization == "" {
-				return fmt.Errorf("Must specify either a set of users or an organization for Github Authentication")
+				return errors.New("Must specify either a set of users or an organization for Github Authentication")
 			}
 		}
 		return nil

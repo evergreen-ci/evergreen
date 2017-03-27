@@ -1,8 +1,6 @@
 package repotracker
 
 import (
-	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -11,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Runner struct{}
@@ -31,18 +30,18 @@ func (r *Runner) Description() string {
 func (r *Runner) Run(config *evergreen.Settings) error {
 	status, err := thirdparty.GetGithubAPIStatus()
 	if err != nil {
-		errM := fmt.Errorf("contacting github: %v", err)
+		errM := errors.Wrap(err, "contacting github")
 		grip.Error(errM)
 		return errM
 	}
 	if status != thirdparty.GithubAPIStatusGood {
-		errM := fmt.Errorf("bad github api status: %v", status)
+		errM := errors.Errorf("bad github api status: %v", status)
 		grip.Error(errM)
 		return errM
 	}
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
-		err = fmt.Errorf("Error acquiring global lock: %+v", err)
+		err = errors.Wrap(err, "Error acquiring global lock")
 		grip.Error(err)
 		return err
 	}
@@ -64,7 +63,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	allProjects, err := model.FindAllTrackedProjectRefs()
 	if err != nil {
-		err = fmt.Errorf("Error finding tracked projects %+v", err)
+		err = errors.Wrap(err, "Error finding tracked projects")
 		grip.Error(err)
 		return err
 	}
@@ -96,7 +95,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	runtime := time.Now().Sub(startTime)
 	if err = model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		err = fmt.Errorf("Error updating process status: %+v", err)
+		err = errors.Wrap(err, "Error updating process status")
 		grip.Error(err)
 		return err
 	}

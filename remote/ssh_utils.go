@@ -1,8 +1,9 @@
 package remote
 
 import (
-	"fmt"
 	"io/ioutil"
+
+	"github.com/pkg/errors"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -14,13 +15,13 @@ func authFromPrivKeyFile(file string) ([]ssh.AuthMethod, error) {
 	// read in the file
 	fileBytes, err := ioutil.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("error reading private key file `%v`: %v", file, err)
+		return nil, errors.Wrapf(err, "error reading private key file `%v`", file)
 	}
 
 	// convert it to an ssh.Signer
 	signer, err := ssh.ParsePrivateKey(fileBytes)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing private key from file `%v`: %v", file, err)
+		return nil, errors.Wrapf(err, "error parsing private key from file `%v`", file)
 	}
 
 	return []ssh.AuthMethod{ssh.PublicKeys(signer)}, nil
@@ -40,7 +41,7 @@ func createClientConfig(user string, keyfile string) (*ssh.ClientConfig, error) 
 	if keyfile != "" {
 		authMethods, err := authFromPrivKeyFile(keyfile)
 		if err != nil {
-			return nil, fmt.Errorf("error using private key from file `%v`: %v", keyfile, err)
+			return nil, errors.Wrapf(err, "error using private key from file `%v`", keyfile)
 		}
 		config.Auth = authMethods
 	}

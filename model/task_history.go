@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -403,7 +404,8 @@ func (thp *TestHistoryParameters) SetDefaultsAndValidate() error {
 	}
 	validationErrors := thp.validate()
 	if len(validationErrors) > 0 {
-		return fmt.Errorf("validation error on test history parameters: %v", strings.Join(validationErrors, ","))
+		return errors.Errorf("validation error on test history parameters: %s",
+			strings.Join(validationErrors, ", "))
 	}
 	return nil
 }
@@ -533,7 +535,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 				return nil, err
 			}
 			if v == nil {
-				return nil, fmt.Errorf("invalid revision : %v", testHistoryParameters.BeforeRevision)
+				return nil, errors.Errorf("invalid revision : %v", testHistoryParameters.BeforeRevision)
 			}
 			revisionOrderNumberClause["$lte"] = v.RevisionOrderNumber
 		}
@@ -545,7 +547,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 				return nil, err
 			}
 			if v == nil {
-				return nil, fmt.Errorf("invalid revision : %v", testHistoryParameters.AfterRevision)
+				return nil, errors.Errorf("invalid revision : %v", testHistoryParameters.AfterRevision)
 			}
 			revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
 		}

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 )
 
 // TODO(MCI-2245):
@@ -47,7 +47,7 @@ func UpdateStaticHosts(e *evergreen.Settings) error {
 	for _, d := range distros {
 		err = mapstructure.Decode(d.ProviderSettings, settings)
 		if err != nil {
-			return fmt.Errorf("invalid static settings for '%v'", d.Id)
+			return errors.Errorf("invalid static settings for '%v'", d.Id)
 		}
 		for _, h := range settings.Hosts {
 			hostInfo, err := util.ParseSSHInfo(h.Name)

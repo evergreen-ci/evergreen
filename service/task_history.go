@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -361,7 +362,7 @@ func validateDrawerParams(r *http.Request) (drawerParams, error) {
 
 	// do some validation on the window of tasks requested
 	if window != "surround" && window != "before" && window != "after" {
-		return drawerParams{}, fmt.Errorf("invalid value %v for window", window)
+		return drawerParams{}, errors.Errorf("invalid value %v for window", window)
 	}
 
 	// the 'radius' of the history we want (how many tasks on each side of the anchor task)
@@ -371,7 +372,7 @@ func validateDrawerParams(r *http.Request) (drawerParams, error) {
 	}
 	historyRadius, err := strconv.Atoi(radius)
 	if err != nil {
-		return drawerParams{}, fmt.Errorf("invalid value %v for radius", radius)
+		return drawerParams{}, errors.Errorf("invalid value %v for radius", radius)
 	}
 	return drawerParams{anchorId, window, historyRadius}, nil
 }
@@ -524,7 +525,7 @@ func getTaskDrawerItems(displayName string, variant string, reverseOrder bool, v
 	tasks, err := task.Find(task.ByOrderNumbersForNameAndVariant(orderNumbers, displayName, variant).Sort([]string{revisionSort}))
 
 	if err != nil {
-		return nil, fmt.Errorf("error getting sibling tasks: %v", err)
+		return nil, errors.Wrap(err, "error getting sibling tasks")
 	}
 	return createSiblingTaskGroups(tasks, versions), nil
 }

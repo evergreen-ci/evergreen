@@ -1,7 +1,6 @@
 package static
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 const ProviderName = "static"
@@ -37,14 +37,14 @@ var (
 func (s *Settings) Validate() error {
 	for _, h := range s.Hosts {
 		if h.Name == "" {
-			return fmt.Errorf("host 'name' field can not be blank")
+			return errors.New("host 'name' field can not be blank")
 		}
 	}
 	return nil
 }
 
 func (staticMgr *StaticManager) SpawnInstance(distro *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	return nil, fmt.Errorf("cannot start new instances with static provider")
+	return nil, errors.New("cannot start new instances with static provider")
 }
 
 // get the status of an instance

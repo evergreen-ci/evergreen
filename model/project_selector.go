@@ -2,10 +2,10 @@ package model
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 // Selectors are used in a project file to select groups of tasks/axes based on user-defined tags.
@@ -74,17 +74,17 @@ func (sc selectCriterion) String() string {
 // or an error describing why it is invalid.
 func (sc selectCriterion) Validate() error {
 	if sc.name == "" {
-		return fmt.Errorf("name is empty")
+		return errors.New("name is empty")
 	}
 	if i := strings.IndexAny(sc.name, InvalidCriterionRunes); i == 0 {
-		return fmt.Errorf("name starts with invalid character '%v'", sc.name[i])
+		return errors.Errorf("name starts with invalid character '%v'", sc.name[i])
 	}
 	if sc.name == SelectAll {
 		if sc.tagged {
-			return fmt.Errorf("cannot use '.' with special name '%v'", SelectAll)
+			return errors.Errorf("cannot use '.' with special name '%v'", SelectAll)
 		}
 		if sc.negated {
-			return fmt.Errorf("cannot use '!' with special name '%v'", SelectAll)
+			return errors.Errorf("cannot use '!' with special name '%v'", SelectAll)
 		}
 	}
 	return nil
@@ -158,12 +158,12 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 	// keep a slice of results per criterion
 	results := []string{}
 	if len(s) == 0 {
-		return nil, fmt.Errorf("cannot evaluate selector with no criteria")
+		return nil, errors.New("cannot evaluate selector with no criteria")
 	}
 	for i, sc := range s {
 		names, err := tse.evalCriterion(sc)
 		if err != nil {
-			return nil, fmt.Errorf("%v: %v", s, err)
+			return nil, errors.Wrapf(err, "%v", s)
 		}
 		if i == 0 {
 			results = names
@@ -173,7 +173,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 		}
 	}
 	if len(results) == 0 {
-		return nil, fmt.Errorf("nothing satisfies selector '%v'", s)
+		return nil, errors.Errorf("nothing satisfies selector '%v'", s)
 	}
 	return results, nil
 }
@@ -182,7 +182,7 @@ func (tse *tagSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, error) {
 	switch {
 	case sc.Validate() != nil:
-		return nil, fmt.Errorf("criterion '%v' is invalid: %v", sc, sc.Validate())
+		return nil, errors.Errorf("criterion '%v' is invalid: %v", sc, sc.Validate())
 
 	case sc.name == SelectAll: // special * case
 		names := []string{}
@@ -194,14 +194,14 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 	case !sc.tagged && !sc.negated: // just a regular name
 		item := tse.byName[sc.name]
 		if item == nil {
-			return nil, fmt.Errorf("nothing named '%v'", sc.name)
+			return nil, errors.Errorf("nothing named '%v'", sc.name)
 		}
 		return []string{item.name()}, nil
 
 	case sc.tagged && !sc.negated: // expand a tag
 		taggedItems := tse.byTag[sc.name]
 		if len(taggedItems) == 0 {
-			return nil, fmt.Errorf("nothing has the tag '%v'", sc.name)
+			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
 		}
 		names := []string{}
 		for _, item := range taggedItems {
@@ -212,7 +212,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 	case !sc.tagged && sc.negated: // everything *but* a specific item
 		if tse.byName[sc.name] == nil {
 			// we want to treat this as an error for better usability
-			return nil, fmt.Errorf("nothing named '%v'", sc.name)
+			return nil, errors.Errorf("nothing named '%v'", sc.name)
 		}
 		names := []string{}
 		for _, item := range tse.items {
@@ -226,7 +226,7 @@ func (tse *tagSelectorEvaluator) evalCriterion(sc selectCriterion) ([]string, er
 		items := tse.byTag[sc.name]
 		if len(items) == 0 {
 			// we want to treat this as an error for better usability
-			return nil, fmt.Errorf("nothing has the tag '%v'", sc.name)
+			return nil, errors.Errorf("nothing has the tag '%v'", sc.name)
 		}
 		illegalItems := map[string]bool{}
 		for _, item := range items {
@@ -270,7 +270,7 @@ func NewParserTaskSelectorEvaluator(tasks []parserTask) *taskSelectorEvaluator {
 func (t *taskSelectorEvaluator) evalSelector(s Selector) ([]string, error) {
 	results, err := t.tagEval.evalSelector(s)
 	if err != nil {
-		return nil, fmt.Errorf("evaluating task selector: %v", err)
+		return nil, errors.Wrap(err, "evaluating task selector")
 	}
 	return results, nil
 }
@@ -301,11 +301,11 @@ func NewAxisSelectorEvaluator(axes []matrixAxis) *axisSelectorEvaluator {
 func (ase *axisSelectorEvaluator) evalSelector(axis string, s Selector) ([]string, error) {
 	tagEval, ok := ase.axisEvals[axis]
 	if !ok {
-		return nil, fmt.Errorf("axis '%v' does not exist", axis)
+		return nil, errors.Errorf("axis '%v' does not exist", axis)
 	}
 	results, err := tagEval.evalSelector(s)
 	if err != nil {
-		return nil, fmt.Errorf("evaluating axis '%v' selector: %v", axis, err)
+		return nil, errors.Wrapf(err, "evaluating axis '%v' selector", axis)
 	}
 	return results, nil
 }
@@ -336,12 +336,12 @@ func NewVariantSelectorEvaluator(variants []parserBV, ase *axisSelectorEvaluator
 // evalSelector returns all variants selected by the selector.
 func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, error) {
 	if vs == nil {
-		return nil, fmt.Errorf("empty selector")
+		return nil, errors.New("empty selector")
 	}
 	if vs.matrixSelector != nil {
 		evaluatedSelector, errs := vs.matrixSelector.evaluatedCopy(v.axisEval)
 		if len(errs) > 0 {
-			return nil, fmt.Errorf(
+			return nil, errors.Errorf(
 				"errors evaluating variant selector %v: %v", vs.matrixSelector, errs)
 		}
 		results := []string{}
@@ -352,13 +352,13 @@ func (v *variantSelectorEvaluator) evalSelector(vs *variantSelector) ([]string, 
 			}
 		}
 		if len(results) == 0 {
-			return nil, fmt.Errorf("variant selector %v returns no variants", vs.matrixSelector)
+			return nil, errors.Errorf("variant selector %v returns no variants", vs.matrixSelector)
 		}
 		return results, nil
 	}
 	results, err := v.tagEval.evalSelector(ParseSelector(vs.stringSelector))
 	if err != nil {
-		return nil, fmt.Errorf("variant tag selector: %v", err)
+		return nil, errors.Wrap(err, "variant tag selector")
 	}
 	return results, nil
 }

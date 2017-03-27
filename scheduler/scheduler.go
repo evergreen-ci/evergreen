@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"fmt"
 	"runtime"
 	"sync"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
@@ -46,7 +46,7 @@ func (s *Scheduler) Schedule() error {
 
 	err := model.UpdateStaticHosts(s.Settings)
 	if err != nil {
-		return fmt.Errorf("error updating static hosts: %v", err)
+		return errors.Wrap(err, "error updating static hosts")
 	}
 
 	// find all tasks ready to be run
@@ -54,7 +54,7 @@ func (s *Scheduler) Schedule() error {
 
 	runnableTasks, err := s.FindRunnableTasks()
 	if err != nil {
-		return fmt.Errorf("Error finding runnable tasks: %v", err)
+		return errors.Wrap(err, "Error finding runnable tasks")
 	}
 
 	grip.Infoln("There are %v tasks ready to be run", len(runnableTasks))
@@ -62,20 +62,20 @@ func (s *Scheduler) Schedule() error {
 	// split the tasks by distro
 	tasksByDistro, taskRunDistros, err := s.splitTasksByDistro(runnableTasks)
 	if err != nil {
-		return fmt.Errorf("Error splitting tasks by distro to run on: %v", err)
+		return errors.Wrap(err, "Error splitting tasks by distro to run on")
 	}
 
 	// load in all of the distros
 	distros, err := distro.Find(distro.All)
 	if err != nil {
-		return fmt.Errorf("Error finding distros: %v", err)
+		return errors.Wrap(err, "Error finding distros")
 	}
 
 	// get the expected run duration of all runnable tasks
 	taskExpectedDuration, err := s.GetExpectedDurations(runnableTasks)
 
 	if err != nil {
-		return fmt.Errorf("Error getting expected task durations: %v", err)
+		return errors.Wrap(err, "Error getting expected task durations")
 	}
 
 	distroInputChan := make(chan distroSchedulerInput, len(distros))
@@ -135,7 +135,7 @@ func (s *Scheduler) Schedule() error {
 		defer close(resDoneChan)
 		for res := range distroSchedulerResultChan {
 			if res.err != nil {
-				errResult = fmt.Errorf("error scheduling tasks on distro %v: %v", res.distroId, err)
+				errResult = errors.Wrapf(err, "error scheduling tasks on distro %v", res.distroId)
 				return
 			}
 			schedulerEvents[res.distroId] = res.schedulerEvent
@@ -165,7 +165,7 @@ func (s *Scheduler) Schedule() error {
 	// fetch all hosts, split by distro
 	allHosts, err := host.Find(host.IsLive)
 	if err != nil {
-		return fmt.Errorf("Error finding live hosts: %v", err)
+		return errors.Wrap(err, "Error finding live hosts")
 	}
 
 	// figure out all hosts we have up - per distro
@@ -194,14 +194,13 @@ func (s *Scheduler) Schedule() error {
 	// figure out how many new hosts we need
 	newHostsNeeded, err := s.NewHostsNeeded(hostAllocatorData, s.Settings)
 	if err != nil {
-		return fmt.Errorf("Error determining how many new hosts are needed: %v",
-			err)
+		return errors.Wrap(err, "Error determining how many new hosts are needed")
 	}
 
 	// spawn up the hosts
 	hostsSpawned, err := s.spawnHosts(newHostsNeeded)
 	if err != nil {
-		return fmt.Errorf("Error spawning new hosts: %v", err)
+		return errors.Wrap(err, "Error spawning new hosts")
 	}
 
 	if len(hostsSpawned) != 0 {
@@ -255,7 +254,7 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	prioritizedTasks, err := s.PrioritizeTasks(s.Settings,
 		runnableTasksForDistro)
 	if err != nil {
-		res.err = fmt.Errorf("Error prioritizing tasks: %v", err)
+		res.err = errors.Wrap(err, "Error prioritizing tasks")
 		return &res
 	}
 
@@ -264,15 +263,16 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 	queuedTasks, err := s.PersistTaskQueue(distroId, prioritizedTasks,
 		taskExpectedDuration)
 	if err != nil {
-		res.err = fmt.Errorf("Error processing distro %v saving task queue: %v", distroId, err)
+		res.err = errors.Wrapf(err, "Error processing distro %s saving task queue", distroId)
 		return &res
 	}
 
 	// track scheduled time for prioritized tasks
 	err = task.SetTasksScheduledTime(prioritizedTasks, time.Now())
 	if err != nil {
-		res.err = fmt.Errorf("Error processing distro %v setting scheduled time for prioritized "+
-			"tasks: %v", distroId, err)
+		res.err = errors.Wrapf(err,
+			"Error processing distro %s setting scheduled time for prioritized tasks",
+			distroId)
 		return &res
 	}
 	res.taskQueueItem = queuedTasks
@@ -301,14 +301,13 @@ func (s *Scheduler) updateVersionBuildVarMap(versionStr string,
 		return
 	}
 	if version == nil {
-		return fmt.Errorf("nil version returned for version id '%v'", versionStr)
+		return errors.Errorf("nil version returned for version id '%v'", versionStr)
 	}
 	project := &model.Project{}
 
 	err = model.LoadProjectInto([]byte(version.Config), version.Identifier, project)
 	if err != nil {
-		return fmt.Errorf("unable to load project config for version %v: "+
-			"%v", versionStr, err)
+		return errors.Wrapf(err, "unable to load project config for version %v", versionStr)
 	}
 
 	// create buildvariant map (for accessing purposes)
@@ -409,25 +408,29 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 		for i := 0; i < numHostsToSpawn; i++ {
 			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
-				grip.Errorf("Failed to find distro '%s': %+v", distroId, err)
+				err = errors.Wrapf(err, "Failed to find distro '%s'", distroId)
+				grip.Error(err)
 				continue
 			}
 
 			allDistroHosts, err := host.Find(host.ByDistroId(distroId))
 			if err != nil {
-				grip.Errorf("Error getting hosts for distro %s: %+v", distroId, err)
+				err = errors.Wrapf(err, "Error getting hosts for distro %s", distroId)
+				grip.Error(err)
 				continue
 			}
 
 			if len(allDistroHosts) >= d.PoolSize {
-				grip.Errorf("Already at max (%d) hosts for distro '%s'",
+				err = errors.Wrapf(err, "Already at max (%d) hosts for distro '%s'",
 					d.PoolSize, distroId)
+				grip.Error(err)
 				continue
 			}
 
 			cloudManager, err := providers.GetCloudManager(d.Provider, s.Settings)
 			if err != nil {
-				grip.Errorln("Error getting cloud manager for distro:", err)
+				err = errors.Wrapf(err, "Error getting cloud manager for distro %s", distroId)
+				grip.Error(err)
 				continue
 			}
 
@@ -437,7 +440,8 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 			}
 			newHost, err := cloudManager.SpawnInstance(d, hostOptions)
 			if err != nil {
-				grip.Errorln("Error spawning instance:", err)
+				err = errors.Wrapf(err, "error spawning instance $s", distroId)
+				grip.Error(err)
 				continue
 			}
 			hostsSpawnedPerDistro[distroId] =

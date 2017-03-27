@@ -3,10 +3,11 @@ package thirdparty
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/pkg/errors"
 )
 
 var (
@@ -61,7 +62,7 @@ func doFollowingRedirectsWithHeaders(client *http.Client, ireq *http.Request) (r
 			}
 
 			if redirect+1 >= MaxRedirects {
-				return nil, fmt.Errorf("Too many redirects")
+				return nil, errors.New("Too many redirects")
 			}
 
 			base = req.URL
@@ -81,7 +82,7 @@ func (self liveHttp) doGet(url string, username string, password string) (*http.
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("GET: %v", err)
+		return nil, errors.Wrap(err, "GET")
 	}
 
 	req.Header.Add("Accept", "*/*")
@@ -92,7 +93,7 @@ func (self liveHttp) doGet(url string, username string, password string) (*http.
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)
 	if err != nil {
-		return resp, err
+		return resp, errors.WithStack(err)
 	}
 	return resp, nil
 }
@@ -105,12 +106,12 @@ func (self liveHttp) postOrPut(method string, url string, username string, passw
 
 	body := &bytes.Buffer{}
 	if err := json.NewEncoder(body).Encode(content); err != nil {
-		return nil, fmt.Errorf("error encoding request: %v", err)
+		return nil, errors.Wrap(err, "error encoding request")
 	}
 
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %v", method, err)
+		return nil, errors.Wrapf(err, "%s", method)
 	}
 
 	req.Header.Add("Accept", "*/*")
@@ -121,15 +122,17 @@ func (self liveHttp) postOrPut(method string, url string, username string, passw
 	var resp *http.Response
 	resp, err = doFollowingRedirectsWithHeaders(client, req)
 	if err != nil {
-		return resp, err
+		return resp, errors.WithStack(err)
 	}
 	return resp, nil
 }
 
 func (self liveHttp) doPost(url string, username string, password string, content interface{}) (*http.Response, error) {
-	return self.postOrPut("POST", url, username, password, content)
+	resp, err := self.postOrPut("POST", url, username, password, content)
+	return resp, errors.WithStack(err)
 }
 
 func (self liveHttp) doPut(url string, username string, password string, content interface{}) (*http.Response, error) {
-	return self.postOrPut("PUT", url, username, password, content)
+	resp, err := self.postOrPut("PUT", url, username, password, content)
+	return resp, errors.WithStack(err)
 }

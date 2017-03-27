@@ -1,11 +1,11 @@
 package ec2
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -165,7 +165,7 @@ func TestEBSCostCalculation(t *testing.T) {
 
 	Convey("With erroring price fetchers", t, func() {
 		Convey("a network error should bubble up", func() {
-			pf := mockEBSPriceFetcher{err: fmt.Errorf("NETWORK OH NO")}
+			pf := mockEBSPriceFetcher{err: errors.New("NETWORK OH NO")}
 			_, err := ebsCost(pf, "", 100, time.Minute*20)
 			So(err, ShouldNotBeNil)
 		})
@@ -271,7 +271,7 @@ func TestOnDemandPriceCalculation(t *testing.T) {
 		})
 	})
 	Convey("With an erroring PriceFetcher", t, func() {
-		pf := &mockODPriceFetcher{1, fmt.Errorf("bad thing")}
+		pf := &mockODPriceFetcher{1, errors.New("bad thing")}
 		Convey("errors should be bubbled up", func() {
 			cost, err := onDemandCost(pf, osLinux, "m3.4xlarge", "us-east-1", time.Hour*2)
 			So(err, ShouldNotBeNil)

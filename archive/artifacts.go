@@ -11,6 +11,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 )
 
 // TarContentsFile represents a tar file on disk.
@@ -142,29 +143,28 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 			numFilesArchived++
 			err := tarWriter.WriteHeader(hdr)
 			if err != nil {
-				errChan <- fmt.Errorf("Error writing header for %v: %v", intarball, err)
+				errChan <- errors.Wrapf(err, "Error writing header for %v", intarball)
 				return
 			}
 
 			in, err := os.Open(file.path)
 			if err != nil {
-				errChan <- fmt.Errorf("Error opening %v: %v", file.path, err)
+				errChan <- errors.Wrapf(err, "Error opening %v", file.path)
 				return
 			}
 
 			amountWrote, err := io.Copy(tarWriter, in)
 			if err != nil {
 				in.Close()
-				errChan <- fmt.Errorf("Error writing into tar for %v: %v", file.path, err)
+				errChan <- errors.Wrapf(err, "Error writing into tar for %v", file.path)
 				return
 			}
 
 			if amountWrote != hdr.Size {
 				in.Close()
-				errChan <- fmt.Errorf(`Error writing to archive for %v:
+				errChan <- errors.Errorf(`Error writing to archive for %v:
 					header size %v but wrote %v`,
-					intarball,
-					hdr.Size, amountWrote)
+					intarball, hdr.Size, amountWrote)
 				return
 			}
 			in.Close()
@@ -234,7 +234,7 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 			}
 			f.Close()
 		} else {
-			return fmt.Errorf("Unknown file type in archive.")
+			return errors.New("Unknown file type in archive.")
 		}
 	}
 }

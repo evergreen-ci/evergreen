@@ -15,6 +15,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/kardianos/osext"
+	"github.com/pkg/errors"
 )
 
 // GetUpdateCommand attempts to fetch the latest version of the client binary and install it over
@@ -58,7 +59,7 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	}
 
 	if response == nil {
-		return "", fmt.Errorf("empty response from URL: %v", url)
+		return "", errors.Errorf("empty response from URL: %v", url)
 	}
 
 	defer response.Body.Close()
@@ -89,14 +90,14 @@ func prepareUpdate(url, newVersion string) (string, error) {
 	cmd := exec.Command(tempPath, "version")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("Update failed - checking version of new binary returned error: %v", err)
+		return "", errors.Errorf("Update failed - checking version of new binary returned error: %v", err)
 	}
 
 	updatedVersion := string(out)
 	updatedVersion = strings.TrimSpace(updatedVersion)
 
 	if updatedVersion != newVersion {
-		return "", fmt.Errorf("Update failed - expected new binary to have version %v, but got %v instead", newVersion, updatedVersion)
+		return "", errors.Errorf("Update failed - expected new binary to have version %v, but got %v instead", newVersion, updatedVersion)
 	}
 
 	return tempPath, nil
@@ -181,7 +182,7 @@ func (uc *GetUpdateCommand) Execute(args []string) error {
 
 		binaryDest, err := osext.Executable()
 		if err != nil {
-			return fmt.Errorf("Failed to get installation path: %v", err)
+			return errors.Errorf("Failed to get installation path: %v", err)
 		}
 
 		fmt.Println("Unlinking existing binary at", binaryDest)

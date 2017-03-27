@@ -1,10 +1,11 @@
 package command
 
 import (
-	"fmt"
 	"io/ioutil"
 	"regexp"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"gopkg.in/yaml.v2"
 )
@@ -101,7 +102,7 @@ func (self *Expansions) ExpandString(toExpand string) (string, error) {
 		}))
 
 	if malformedFound || strings.Contains(expanded, "${") {
-		return expanded, fmt.Errorf("\"%v\" contains an unclosed expansion", expanded)
+		return expanded, errors.Errorf("'%s' contains an unclosed expansion", expanded)
 	}
 
 	return expanded, nil
