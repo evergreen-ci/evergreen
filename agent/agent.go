@@ -152,7 +152,7 @@ type Agent struct {
 
 // finishAndAwaitCleanup sends the returned TaskEndResponse and error
 // for processing by the main agent loop.
-func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndResponse, error) {
+func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskResponse, error) {
 	// Signal all background actions to stop. If HandleSignals is still running,
 	// this will cause it to return.
 	close(agt.signalHandler.stopBackgroundChan)
@@ -199,11 +199,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.TaskEndRespon
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 	agt.APILogger.FlushAndWait() // ensure that logs are sent before task ends.
 
-	ret, err := agt.End(detail)
-	if ret != nil && !ret.RunNext {
-		agt.logger.LogExecution(slogger.INFO, "No new tasks to run. Agent will shut down.")
-	}
-	return ret, err
+	return agt.End(detail)
 }
 
 // getTaskEndDetail returns a default TaskEndDetail struct based on the current
@@ -506,15 +502,19 @@ func (agt *Agent) Run() error {
 		if resp == nil {
 			message := "received nil response from API server"
 			grip.Criticalf(message)
-			return fmt.Errorf(message)
+			return errors.New(message)
 		}
-		// TODO have response check for exiting here too (EVG-1592)
+		// this isn't an error, so it should just exit
+		if resp.ShouldExit {
+			grip.Infof("task response indicates that agent should exit: %v", resp.Message)
+			return nil
+		}
 	}
 }
 
 // RunTask manages the process of running a task. It returns a response
 // indicating the end result of the task.
-func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
+func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 	agt.CheckIn(InitialSetupCommand, InitialSetupTimeout)
 
 	agt.logger.LogLocal(slogger.INFO, "Local logger initialized.")
@@ -594,17 +594,20 @@ func (agt *Agent) RunTask() (*apimodels.TaskEndResponse, error) {
 		agt.logger.LogExecution(slogger.INFO, "Finished running pre-task commands.")
 	}
 
-	return agt.RunTaskCommands()
+	taskStatus := agt.RunTaskCommands()
+
+	return agt.finishAndAwaitCleanup(taskStatus)
 }
 
-// RunTaskCommands runs all commands for the task currently assigend to the agent.
-func (agt *Agent) RunTaskCommands() (*apimodels.TaskEndResponse, error) {
+// RunTaskCommands runs all commands for the task currently assigned to the agent and
+// returns the task status
+func (agt *Agent) RunTaskCommands() string {
 	conf := agt.taskConfig
 	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
 
 	if task == nil {
 		agt.logger.LogExecution(slogger.ERROR, "Can't find task: %v", conf.Task.DisplayName)
-		return agt.finishAndAwaitCleanup(evergreen.TaskFailed)
+		return evergreen.TaskFailed
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Running task commands.")
@@ -613,9 +616,9 @@ func (agt *Agent) RunTaskCommands() (*apimodels.TaskEndResponse, error) {
 	agt.logger.LogExecution(slogger.INFO, "Finished running task commands in %v.", time.Since(start).String())
 	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Task failed: %v", err)
-		return agt.finishAndAwaitCleanup(evergreen.TaskFailed)
+		return evergreen.TaskFailed
 	}
-	return agt.finishAndAwaitCleanup(evergreen.TaskSucceeded)
+	return evergreen.TaskSucceeded
 }
 
 // RunCommands takes a slice of commands and executes then sequentially.

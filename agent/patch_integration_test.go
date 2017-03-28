@@ -40,9 +40,11 @@ func TestPatchTask(t *testing.T) {
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 							defer testServer.Close()
 
-							testAgent, err := createAgent(testServer, testTask, h)
+							testAgent, err := createAgent(testServer, h)
 							testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 							defer testAgent.stop()
+
+							So(assignAgentTask(testAgent, testTask), ShouldBeNil)
 
 							// actually run the task.
 							// this function won't return until the whole thing is done.

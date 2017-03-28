@@ -14,7 +14,7 @@ import (
 // between an agent and the remote server.
 type TaskCommunicator interface {
 	Start() error
-	End(detail *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error)
+	End(detail *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error)
 	GetTask() (*task.Task, error)
 	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
@@ -23,6 +23,6 @@ type TaskCommunicator interface {
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)
 	GetNextTask() (*apimodels.NextTaskResponse, error)
-	TryGet(path string) (*http.Response, error)
-	TryPostJSON(path string, data interface{}) (*http.Response, error)
+	TryGet(path string, withTask bool) (*http.Response, error)
+	TryPostJSON(path string, withTask bool, data interface{}) (*http.Response, error)
 }

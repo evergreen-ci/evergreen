@@ -69,7 +69,7 @@ func (c *metricsCollector) processInfoCollector(firstInterval, secondInterval ti
 			return
 		case <-timer.C:
 			msgs := message.CollectProcessInfoSelfWithChildren()
-			_, err := c.comm.TryPostJSON("process_info", msgs)
+			_, err := c.comm.TryPostJSON("process_info", true, msgs)
 			grip.CatchNotice(err)
 			grip.DebugManyWhen(sometimes.Fifth(), msgs...)
 
@@ -99,7 +99,7 @@ func (c *metricsCollector) sysInfoCollector(interval time.Duration) {
 			return
 		case <-timer.C:
 			msg := message.CollectSystemInfo()
-			_, err := c.comm.TryPostJSON("system_info", msg)
+			_, err := c.comm.TryPostJSON("system_info", true, msg)
 			grip.CatchNotice(err)
 			grip.DebugWhen(sometimes.Fifth(), msg)
 

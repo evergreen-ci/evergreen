@@ -23,11 +23,11 @@ type MockCommunicator struct {
 	sync.RWMutex
 }
 
-func (*MockCommunicator) TryGet(path string) (*http.Response, error) {
+func (*MockCommunicator) TryGet(path string, withTask bool) (*http.Response, error) {
 	return nil, nil
 }
 
-func (mc *MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
+func (mc *MockCommunicator) TryPostJSON(path string, withTask bool, data interface{}) (*http.Response, error) {
 	mc.Lock()
 	defer mc.Unlock()
 
@@ -50,7 +50,7 @@ func (mc *MockCommunicator) Start() error {
 	return nil
 }
 
-func (mc *MockCommunicator) End(details *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error) {
+func (mc *MockCommunicator) End(details *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error) {
 	mc.RLock()
 	defer mc.RUnlock()
 

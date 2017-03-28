@@ -197,7 +197,7 @@ func TestPluginFunctions(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 			defer testServer.Close()
 
-			taskConfig, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
+			taskConfig, _, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
 				"testdata", "plugin_project_functions.yml"), t)
 			testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
@@ -212,7 +212,7 @@ func TestPluginFunctions(t *testing.T) {
 				}
 			})
 
-			httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
+			httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "", "", "", nil)
 			So(err, ShouldBeNil)
 			So(httpCom, ShouldNotBeNil)
 
@@ -252,14 +252,15 @@ func TestPluginExecution(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
-		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
+		pluginConfigPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml")
+		taskConfig, testTask, err := createTestConfig(pluginConfigPath, t)
+		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
+
+		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "", "", "", nil)
 		So(err, ShouldBeNil)
 		So(httpCom, ShouldNotBeNil)
 
-		pluginConfigPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml")
-		taskConfig, err := createTestConfig(pluginConfigPath, t)
-		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
-
+		httpCom.TaskId = testTask.Id
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
@@ -300,13 +301,18 @@ func TestAttachLargeResults(t *testing.T) {
 		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
-		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
-		So(err, ShouldBeNil)
-		So(httpCom, ShouldNotBeNil)
-		pluginCom := &comm.TaskJSONCommunicator{"test", httpCom}
-		_, err = createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml"), t)
+
+		_, testTask, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml"), t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
 
+		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "", "", "", nil)
+		So(err, ShouldBeNil)
+		So(httpCom, ShouldNotBeNil)
+
+		httpCom.TaskId = testTask.Id
+		httpCom.TaskSecret = testTask.Secret
+
+		pluginCom := &comm.TaskJSONCommunicator{"test", httpCom}
 		Convey("a test log < 16 MB should be accepted", func() {
 			id, err := pluginCom.TaskPostTestLog(&model.TestLog{
 				Name:  "woah",
@@ -325,67 +331,6 @@ func TestAttachLargeResults(t *testing.T) {
 			So(err.Error(), ShouldContainSubstring, "size exceeds")
 		})
 	})
-}
-
-func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) {
-	clearDataMsg := "Failed to clear test data collection"
-	testutil.HandleTestingErr(
-		db.ClearCollections(
-			task.Collection, model.ProjectVarsCollection),
-		t, clearDataMsg)
-
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	testProject := &model.Project{}
-	err = yaml.Unmarshal(data, testProject)
-	if err != nil {
-		return nil, err
-	}
-
-	testProjectRef := &model.ProjectRef{
-		Identifier: "mongodb-mongo-master",
-		Owner:      "mongodb",
-		Repo:       "mongo",
-		RepoKind:   "github",
-		Branch:     "master",
-		Enabled:    true,
-		BatchTime:  180,
-	}
-
-	workDir, err := ioutil.TempDir("", "plugintest_")
-	if err != nil {
-		return nil, err
-	}
-
-	testTask := &task.Task{
-		Id:           "mocktaskid",
-		BuildId:      "testBuildId",
-		BuildVariant: "linux-64",
-		Project:      "mongodb-mongo-master",
-		DisplayName:  "test",
-		HostId:       "testHost",
-		Version:      "versionId",
-		Secret:       "mocktasksecret",
-		Status:       evergreen.TaskDispatched,
-		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
-		Requester:    evergreen.RepotrackerVersionRequester,
-	}
-	testutil.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
-
-	projectVars := &model.ProjectVars{
-		Id: "mongodb-mongo-master",
-		Vars: map[string]string{
-			"abc": "xyz",
-			"123": "456",
-		},
-	}
-	_, err = projectVars.Upsert()
-	testutil.HandleTestingErr(err, t, "failed to upsert project vars")
-	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	testVersion := &version.Version{}
-	return model.NewTaskConfig(testDistro, testVersion, testProject, testTask, testProjectRef)
 }
 
 func TestPluginSelfRegistration(t *testing.T) {
@@ -417,4 +362,187 @@ func TestPluginSelfRegistration(t *testing.T) {
 			So(nameMap["shell"], ShouldEqual, 1)
 		})
 	})
+}
+
+func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, *task.Task, error) {
+	clearDataMsg := "Failed to clear test data collection"
+	testutil.HandleTestingErr(
+		db.ClearCollections(
+			task.Collection, model.ProjectVarsCollection),
+		t, clearDataMsg)
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, nil, err
+	}
+	testProject := &model.Project{}
+	err = yaml.Unmarshal(data, testProject)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	testProjectRef := &model.ProjectRef{
+		Identifier: "mongodb-mongo-master",
+		Owner:      "mongodb",
+		Repo:       "mongo",
+		RepoKind:   "github",
+		Branch:     "master",
+		Enabled:    true,
+		BatchTime:  180,
+	}
+
+	workDir, err := ioutil.TempDir("", "plugintest_")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	testTask := &task.Task{
+		Id:           "mocktaskid",
+		BuildId:      "testBuildId",
+		BuildVariant: "linux-64",
+		Project:      "mongodb-mongo-master",
+		DisplayName:  "test",
+		HostId:       "testHost",
+		Version:      "versionId",
+		Secret:       "mocktasksecret",
+		Status:       evergreen.TaskDispatched,
+		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
+		Requester:    evergreen.RepotrackerVersionRequester,
+	}
+	testutil.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
+
+	projectVars := &model.ProjectVars{
+		Id: "mongodb-mongo-master",
+		Vars: map[string]string{
+			"abc": "xyz",
+			"123": "456",
+		},
+	}
+	_, err = projectVars.Upsert()
+	testutil.HandleTestingErr(err, t, "failed to upsert project vars")
+	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
+	testVersion := &version.Version{}
+	config, err := model.NewTaskConfig(testDistro, testVersion, testProject, testTask, testProjectRef)
+	return config, testTask, err
+}
+
+func TestPluginSelfRegistration(t *testing.T) {
+	Convey("Assuming the plugin collection has run its init functions", t, func() {
+		So(len(plugin.CommandPlugins), ShouldBeGreaterThan, 0)
+		nameMap := map[string]uint{}
+		// count all occurrences of a plugin name
+		for _, plugin := range plugin.CommandPlugins {
+			nameMap[plugin.Name()] = nameMap[plugin.Name()] + 1
+		}
+
+		Convey("no plugin should be present in Published more than once", func() {
+			for _, count := range nameMap {
+				So(count, ShouldEqual, 1)
+			}
+		})
+
+		Convey("some known default plugins should be present in the list", func() {
+			// These use strings instead of consts from the plugin
+			// packages, so we can avoid importing those packages
+			// and make sure the registration from plugin/config
+			// is actually happening
+			So(nameMap["attach"], ShouldEqual, 1)
+			So(nameMap["s3"], ShouldEqual, 1)
+			So(nameMap["s3Copy"], ShouldEqual, 1)
+			So(nameMap["archive"], ShouldEqual, 1)
+			So(nameMap["expansions"], ShouldEqual, 1)
+			So(nameMap["git"], ShouldEqual, 1)
+			So(nameMap["shell"], ShouldEqual, 1)
+		})
+	})
+func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, *host.Host, error) {
+	//ignore errs here because the ns might just not exist.
+	clearDataMsg := "Failed to clear test data collection"
+
+	currentDirectory := testutil.GetDirectoryOfFile()
+	testutil.HandleTestingErr(
+		db.ClearCollections(
+			task.Collection, build.Collection, host.Collection,
+			version.Collection, patch.Collection),
+		t, clearDataMsg)
+
+	testHost := &host.Host{
+		Id:          "testHost",
+		Host:        "testHost",
+		RunningTask: "testTaskId",
+		StartedBy:   evergreen.User,
+	}
+	testutil.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
+
+	newTask := &task.Task{
+		Id:           "testTaskId",
+		BuildId:      "testBuildId",
+		DistroId:     "rhel55",
+		BuildVariant: "linux-64",
+		Project:      "mongodb-mongo-master",
+		DisplayName:  taskDisplayName,
+		HostId:       "testHost",
+		Secret:       "testTaskSecret",
+		Status:       evergreen.TaskDispatched,
+		Version:      "versionId",
+		Requester:    evergreen.RepotrackerVersionRequester,
+	}
+
+	if isPatch {
+		newTask.Requester = evergreen.PatchVersionRequester
+	}
+
+	testutil.HandleTestingErr(newTask.Insert(), t, "failed to insert task")
+
+	v := &version.Version{
+		Id:       "testVersionId",
+		BuildIds: []string{newTask.BuildId},
+	}
+	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
+	if isPatch {
+		mainPatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
+			"testdata", "test.patch"))
+		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
+		modulePatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
+			"testdata", "testmodule.patch"))
+		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
+
+		p := &patch.Patch{
+			Status:  evergreen.PatchCreated,
+			Version: v.Id,
+			Patches: []patch.ModulePatch{
+				{
+					ModuleName: "",
+					Githash:    "cb91350bf017337a734dcd0321bf4e6c34990b6a",
+					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
+				},
+				{
+					ModuleName: "enterprise",
+					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",
+					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
+				},
+			},
+		}
+
+		testutil.HandleTestingErr(p.Insert(), t, "failed to insert version %v")
+
+	}
+
+	session, _, err := db.GetGlobalSessionFactory().GetSession()
+	testutil.HandleTestingErr(err, t, "couldn't get db session!")
+
+	//Remove any logs for our test task from previous runs.
+	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": newTask.Id})
+	testutil.HandleTestingErr(err, t, "failed to remove logs")
+
+	build := &build.Build{
+		Id: "testBuildId",
+		Tasks: []build.TaskCache{
+			build.NewTaskCache(newTask.Id, newTask.DisplayName, true),
+		},
+		Version: "testVersionId",
+	}
+
+	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
+	return newTask, build, nil
 }

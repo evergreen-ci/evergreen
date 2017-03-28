@@ -21,19 +21,19 @@ type TaskJSONCommunicator struct {
 
 // TaskPostJSON does an HTTP POST for the communicator's plugin + task.
 func (t *TaskJSONCommunicator) TaskPostJSON(endpoint string, data interface{}) (*http.Response, error) {
-	return t.TryPostJSON(fmt.Sprintf("%s/%s", t.PluginName, endpoint), data)
+	return t.TryPostJSON(fmt.Sprintf("%s/%s", t.PluginName, endpoint), true, data)
 }
 
 // TaskGetJSON does an HTTP GET for the communicator's plugin + task.
 func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response, error) {
-	return t.TryGet(fmt.Sprintf("%s/%s", t.PluginName, endpoint))
+	return t.TryGet(fmt.Sprintf("%s/%s", t.PluginName, endpoint), true)
 }
 
 // TaskPostResults posts a set of test results for the communicator's task.
 func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error {
 	retriableSendFile := util.RetriableFunc(
 		func() error {
-			resp, err := t.TryPostJSON("results", results)
+			resp, err := t.TryPostJSON("results", true, results)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -65,7 +65,7 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error 
 func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error {
 	retriableSendFile := util.RetriableFunc(
 		func() error {
-			resp, err := t.TryPostJSON("files", task_files)
+			resp, err := t.TryPostJSON("files", true, task_files)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -100,7 +100,7 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 	var logId string
 	retriableSendFile := util.RetriableFunc(
 		func() error {
-			resp, err := t.TryPostJSON("test_logs", log)
+			resp, err := t.TryPostJSON("test_logs", true, log)
 			if resp != nil {
 				defer resp.Body.Close()
 			}

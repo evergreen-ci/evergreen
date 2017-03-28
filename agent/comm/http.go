@@ -104,9 +104,9 @@ func (h *HTTPCommunicator) Start() error {
 }
 
 // End marks the communicator's task as finished with the given status.
-func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.TaskEndResponse, error) {
-	taskEndResp := &apimodels.TaskEndResponse{}
-	resp, retryFail, err := h.postJSON("end", detail)
+func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error) {
+	taskEndResp := &apimodels.EndTaskResponse{}
+	resp, retryFail, err := h.postJSON("new_end", detail)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -125,6 +125,7 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.Task
 	}
 
 	if resp != nil {
+		fmt.Println(resp.Body)
 		if err = util.ReadJSONInto(resp.Body, taskEndResp); err != nil {
 			message := fmt.Sprintf("Error unmarshalling task end response: %v",
 				err)
@@ -154,7 +155,7 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 
 	retriableLog := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryPostJSON(h.getTaskPath("log"), outgoingData)
+			resp, err := h.TryPostJSON("log", true, outgoingData)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -179,7 +180,7 @@ func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
 	task := &task.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet(h.getTaskPath(""))
+			resp, err := h.TryGet("", true)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -216,7 +217,7 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet(h.getTaskPath("distro"))
+			resp, err := h.TryGet("distro", true)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -255,7 +256,7 @@ func (h *HTTPCommunicator) GetNextTask() (*apimodels.NextTaskResponse, error) {
 	taskResponse := &apimodels.NextTaskResponse{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("agent/next_task")
+			resp, err := h.TryGet("agent/next_task", false)
 
 			if resp == nil {
 				return util.RetriableError{fmt.Errorf("empty response")}
@@ -286,7 +287,7 @@ func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet(h.getTaskPath("project_ref"))
+			resp, err := h.TryGet("project_ref", true)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -322,7 +323,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 	v := &version.Version{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet(h.getTaskPath("version"))
+			resp, err := h.TryGet("version", true)
 			if resp != nil {
 				defer resp.Body.Close()
 
@@ -371,7 +372,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	h.Logger.Logf(slogger.INFO, "Sending heartbeat.")
 	data := interface{}("heartbeat")
-	resp, err := h.tryRequestWithClient("heartbeat", "POST", h.heartbeatClient, &data)
+	resp, err := h.tryRequestWithClient(h.getTaskPath("heartbeat"), "POST", h.heartbeatClient, &data)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -404,12 +405,19 @@ func (h *HTTPCommunicator) getTaskPath(path string) string {
 	return fmt.Sprintf("task/%v/%v", h.TaskId, path)
 }
 
-func (h *HTTPCommunicator) TryGet(path string) (*http.Response, error) {
+func (h *HTTPCommunicator) TryGet(path string, withTask bool) (*http.Response, error) {
+	if withTask {
+		path = h.getTaskPath(path)
+	}
 	resp, err := h.tryRequestWithClient(path, "GET", h.httpClient, nil)
 	return resp, errors.WithStack(err)
 }
 
-func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
+func (h *HTTPCommunicator) TryPostJSON(path string, withTask bool,
+	data interface{}) (*http.Response, error) {
+	if withTask {
+		path = h.getTaskPath(path)
+	}
 	resp, err := h.tryRequestWithClient(path, "POST", h.httpClient, &data)
 	return resp, errors.WithStack(err)
 }
@@ -419,6 +427,7 @@ func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (*http.Res
 func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, client *http.Client,
 	data *interface{}) (*http.Response, error) {
 	endpointUrl := fmt.Sprintf("%s/%s", h.ServerURLRoot, path)
+	fmt.Println(h.ServerURLRoot)
 	req, err := http.NewRequest(method, endpointUrl, nil)
 	err = errors.WithStack(err)
 	if err != nil {
@@ -446,7 +455,7 @@ func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 	resp *http.Response, retryFail bool, err error) {
 	retriablePost := util.RetriableFunc(
 		func() error {
-			resp, err = h.TryPostJSON(h.getTaskPath(path), data)
+			resp, err = h.TryPostJSON(path, true, data)
 			if err == nil && resp.StatusCode == http.StatusOK {
 				return nil
 			}
@@ -477,7 +486,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 	resultVars := &apimodels.ExpansionVars{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet(h.getTaskPath("fetch_vars"))
+			resp, err := h.TryGet("fetch_vars", true)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
