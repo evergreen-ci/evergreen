@@ -411,8 +411,17 @@ func (as *APIServer) updateTaskCost(t *task.Task, h *host.Host, finishTime time.
 	}
 }
 
-// markHostRunningTaskFinished updates the running task field in the host document
+// markHostRunningTaskFinished updates the running task field in the host document.
+// TODO: this should be taken out when the task runner no longer assigns tasks to the agent. (EVG-1591)
 func markHostRunningTaskFinished(h *host.Host, t *task.Task, newTaskId string) {
+	// clear the running task instead
+	if newTaskId == "" {
+		err := h.ClearRunningTask(t.Id, time.Now())
+		if err != nil {
+			grip.Errorf("error clearing task %s on host %s : %+v", t.Id, h.Id, err)
+			return
+		}
+	}
 	// update the given host's running_task field accordingly
 	if ok, err := h.UpdateRunningTask(t.Id, newTaskId, time.Now()); err != nil || !ok {
 		grip.Errorf("%s on host %s to '': %+v", t.Id, h.Id, err)

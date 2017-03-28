@@ -399,3 +399,38 @@ func TestCheckHostHealth(t *testing.T) {
 
 	})
 }
+
+func TestMarkHostRunningTaskFinished(t *testing.T) {
+	Convey("with a host", t, func() {
+		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
+			t.Fatalf("clearing db: %v", err)
+		}
+		h := &host.Host{
+			Id:          "hostId",
+			RunningTask: "runningTask",
+		}
+		So(h.Insert(), ShouldBeNil)
+		t := &task.Task{
+			Id: "runningTask",
+		}
+		So(t.Insert(), ShouldBeNil)
+
+		Convey("when marking host with a running task that has a new task id,"+
+			"new task id should be updated", func() {
+			markHostRunningTaskFinished(h, t, "newTask")
+			newHost, err := host.FindOne(host.ById(h.Id))
+			So(err, ShouldBeNil)
+			So(newHost.RunningTask, ShouldEqual, "newTask")
+			So(newHost.LastTaskCompleted, ShouldEqual, t.Id)
+		})
+		Convey("when marking a host with a running task that is empty", func() {
+			markHostRunningTaskFinished(h, t, "")
+			newHost, err := host.FindOne(host.ById(h.Id))
+			So(err, ShouldBeNil)
+			So(newHost.RunningTask, ShouldEqual, "")
+			So(newHost.LastTaskCompleted, ShouldEqual, t.Id)
+
+		})
+
+	})
+}
