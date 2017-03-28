@@ -424,11 +424,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
-
-			// at the same time, if we haven't updated the
-			// build cached, we wouldn't expect the build
-			// cache to reflect this
-			So(buildCache.Status, ShouldNotEqual, evergreen.TaskFailed)
+			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
 		})
 
 		Convey("test failures should update the task cache", func() {

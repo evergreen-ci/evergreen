@@ -273,12 +273,6 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	for _, result := range t.TestResults {
 		if result.Status == evergreen.TestFailedStatus {
 			detail.Status = evergreen.TaskFailed
-			if err = t.MarkFailed(); err != nil {
-				grip.Errorf("encountered problem marking task '%s' as failed: %+v",
-					t.Id, err)
-				return err
-			}
-
 			break
 		}
 	}
@@ -391,22 +385,6 @@ processBuildTasksLoop:
 	for _, t := range buildTasks {
 		if task.IsFinished(t) {
 			finishedTasks++
-
-		processTaskTestResults:
-			for _, result := range t.TestResults {
-				if result.Status == evergreen.TestFailedStatus {
-					failedTask = true
-					t.Details.Status = evergreen.TaskFailed
-
-					if err = t.MarkFailed(); err != nil {
-						grip.Errorf("encountered problem marking task '%s' as failed: %+v",
-							t.Id, err)
-						return err
-					}
-
-					break processTaskTestResults
-				}
-			}
 
 			// if it was a compile task, mark the build status accordingly
 			if t.DisplayName == evergreen.CompileStage {
