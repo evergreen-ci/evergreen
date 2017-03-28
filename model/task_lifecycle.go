@@ -272,17 +272,11 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 
 	for _, result := range t.TestResults {
 		if result.Status == evergreen.TestFailedStatus {
-			t.Status = evergreen.TaskFailed
 			detail.Status = evergreen.TaskFailed
 			if err = t.MarkFailed(); err != nil {
 				grip.Errorf("encountered problem marking task '%s' as failed: %+v",
 					t.Id, err)
 				return err
-			}
-
-			err = UpdateBuildAndVersionStatusForTask(t.Id)
-			if err != nil {
-				return fmt.Errorf("Error updating build status (1): %v", err.Error())
 			}
 
 			break
@@ -401,12 +395,15 @@ processBuildTasksLoop:
 		processTaskTestResults:
 			for _, result := range t.TestResults {
 				if result.Status == evergreen.TestFailedStatus {
-					//					t.Status = evergreen.TaskFailed
+					failedTask = true
+					t.Details.Status = evergreen.TaskFailed
+
 					if err = t.MarkFailed(); err != nil {
 						grip.Errorf("encountered problem marking task '%s' as failed: %+v",
 							t.Id, err)
 						return err
 					}
+
 					break processTaskTestResults
 				}
 			}
@@ -444,6 +441,13 @@ processBuildTasksLoop:
 					}
 					failedTask = true
 				}
+
+				// update the cached version of the task, in its build document
+				err = build.SetCachedTaskFinished(t.BuildId, t.Id, &t.Details, t.TimeTaken)
+				if err != nil {
+					return fmt.Errorf("error updating build: %v", err.Error())
+				}
+
 			}
 		}
 	}
@@ -463,6 +467,7 @@ processBuildTasksLoop:
 	// both completed in addition to a push (a push
 	// does not occur if there's a failed task)
 	if finishedTasks >= len(buildTasks)-1 {
+
 		if !failedTask {
 			if pushTaskExists { // this build has a push task associated with it.
 				if pushCompleted && pushSuccess { // the push succeeded, so mark the build as succeeded.

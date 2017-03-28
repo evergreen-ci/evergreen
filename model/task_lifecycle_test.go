@@ -343,45 +343,56 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
 
 		})
-
 	})
 }
 
 func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 	Convey("With a successful task one failed test should result in a task failure", t, func() {
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
-			"Error clearing task and build collections")
 		displayName := "testName"
-		b := &build.Build{
-			Id:      "buildtest",
-			Version: "abc",
-			Tasks: []build.TaskCache{
-				{Id: "testone"},
-			},
-		}
-		v := &version.Version{
-			Id:     b.Version,
-			Status: evergreen.VersionStarted,
-		}
-		testTask := task.Task{
-			Id:          "testone",
-			DisplayName: displayName,
-			Activated:   false,
-			BuildId:     b.Id,
-			Project:     "sample",
-		}
-		p := &Project{
-			Identifier: "sample",
-		}
-		detail := &apimodels.TaskEndDetail{
-			Status: evergreen.TaskSucceeded,
-		}
 
-		So(b.Insert(), ShouldBeNil)
-		So(testTask.Insert(), ShouldBeNil)
-		So(v.Insert(), ShouldBeNil)
+		var (
+			b        *build.Build
+			v        *version.Version
+			testTask *task.Task
+			p        *Project
+			detail   *apimodels.TaskEndDetail
+		)
+
+		reset := func() {
+			b = &build.Build{
+				Id:      "buildtest",
+				Version: "abc",
+				Tasks: []build.TaskCache{
+					{Id: "testone"},
+				},
+			}
+			v = &version.Version{
+				Id:     b.Version,
+				Status: evergreen.VersionStarted,
+			}
+			testTask = &task.Task{
+				Id:          "testone",
+				DisplayName: displayName,
+				Activated:   false,
+				BuildId:     b.Id,
+				Project:     "sample",
+			}
+			p = &Project{
+				Identifier: "sample",
+			}
+			detail = &apimodels.TaskEndDetail{
+				Status: evergreen.TaskSucceeded,
+			}
+
+			testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection, version.Collection), t,
+				"Error clearing task and build collections")
+			So(b.Insert(), ShouldBeNil)
+			So(testTask.Insert(), ShouldBeNil)
+			So(v.Insert(), ShouldBeNil)
+		}
 
 		Convey("task should not fail if there are no failed test", func() {
+			reset()
 			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -397,6 +408,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 		})
 
 		Convey("task should fail if there is one failed test", func() {
+			reset()
 			err := testTask.SetResults([]task.TestResult{
 				{
 					Status: evergreen.TestFailedStatus,
@@ -404,7 +416,7 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			})
 
 			So(err, ShouldBeNil)
-
+			detail.Status = evergreen.TaskFailed
 			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
 
 			taskData, err := task.FindOne(task.ById(testTask.Id))
@@ -412,10 +424,36 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 			So(taskData.Status, ShouldEqual, evergreen.TaskFailed)
 			buildCache, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
+
+			// at the same time, if we haven't updated the
+			// build cached, we wouldn't expect the build
+			// cache to reflect this
+			So(buildCache.Status, ShouldNotEqual, evergreen.TaskFailed)
+		})
+
+		Convey("test failures should update the task cache", func() {
+			reset()
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestFailedStatus,
+				},
+			})
+			So(err, ShouldBeNil)
+			detail.Status = evergreen.TaskFailed
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
+
+			So(UpdateBuildAndVersionStatusForTask(testTask.Id), ShouldBeNil)
+			buildCache, err := build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
 			So(buildCache.Status, ShouldEqual, evergreen.TaskFailed)
+
+			var hasFailedTask bool
 			for _, t := range buildCache.Tasks {
-				So(t.Status == evergreen.TaskFailed || t.Status == "", ShouldBeTrue)
+				if t.Status == evergreen.TaskFailed {
+					hasFailedTask = true
+				}
 			}
+			So(hasFailedTask, ShouldBeTrue)
 		})
 	})
 }
