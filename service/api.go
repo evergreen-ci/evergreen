@@ -34,15 +34,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-type key int
+type (
+	key           int
+	taskKey       int
+	hostKey       int
+	projectKey    int
+	projectRefKey int
+)
 
-type taskKey int
-type hostKey int
+const (
+	apiTaskKey       taskKey       = 0
+	apiHostKey       hostKey       = 0
+	apiProjectKey    projectKey    = 0
+	apiProjectRefKey projectRefKey = 0
 
-const apiTaskKey taskKey = 0
-const apiHostKey hostKey = 0
+	maxTestLogSize = 16 * 1024 * 1024 // 16 MB
 
-const maxTestLogSize = 16 * 1024 * 1024 // 16 MB
+	APIServerLockTitle = evergreen.APIServerTaskActivator
+	PatchLockTitle     = "patches"
+	TaskStartCaller    = "start task"
+	EndTaskCaller      = "end task"
+)
 
 // ErrLockTimeout is returned when the database lock takes too long to be acquired.
 var ErrLockTimeout = errors.New("Timed out acquiring global lock")
@@ -56,23 +68,16 @@ type APIServer struct {
 	clientConfig *evergreen.ClientConfig
 }
 
-const (
-	APIServerLockTitle = evergreen.APIServerTaskActivator
-	PatchLockTitle     = "patches"
-	TaskStartCaller    = "start task"
-	EndTaskCaller      = "end task"
-)
-
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
 func NewAPIServer(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	clientConfig, err := getClientConfig(settings)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	as := &APIServer{
@@ -106,6 +111,16 @@ func MustHaveHost(r *http.Request) *host.Host {
 	return h
 }
 
+// MustHaveProject gets the project from the HTTP request and panics
+// if there is no project specified
+func MustHaveProject(r *http.Request) (*model.ProjectRef, *model.Project) {
+	pref, p := GetProject(r)
+	if pref == nil || p == nil {
+		panic("no project attached to request")
+	}
+	return pref, p
+}
+
 // GetListener creates a network listener on the given address.
 func GetListener(addr string) (net.Listener, error) {
 	return net.Listen("tcp", addr)
@@ -115,7 +130,7 @@ func GetListener(addr string) (net.Listener, error) {
 func GetTLSListener(addr string, conf *tls.Config) (net.Listener, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return tls.NewListener(l, conf), nil
 }
@@ -159,6 +174,43 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 		context.Set(r, apiTaskKey, t)
 		// also set the task in the context visible to plugins
 		plugin.SetTask(r, t)
+		next(w, r)
+	}
+}
+
+// checkProject finds the projectId in the request and adds the
+// project and project ref to the request context.
+func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		projectId := mux.Vars(r)["projectId"]
+		if projectId == "" {
+			as.LoggedError(w, r, http.StatusBadRequest, errors.New("missing project Id"))
+			return
+		}
+
+		projectRef, err := model.FindOneProjectRef(projectId)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+		}
+		if projectRef == nil {
+			as.LoggedError(w, r, http.StatusNotFound, errors.New("project not found"))
+			return
+		}
+
+		p, err := model.FindProject("", projectRef)
+		if err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError,
+				errors.Wrap(err, "Error getting patch"))
+			return
+		}
+		if p == nil {
+			as.LoggedError(w, r, http.StatusNotFound,
+				errors.Errorf("can't find project: %s", p.Identifier))
+			return
+		}
+
+		context.Set(r, apiProjectRefKey, projectRef)
+		context.Set(r, apiProjectKey, p)
 		next(w, r)
 	}
 }
@@ -469,6 +521,22 @@ func GetHost(r *http.Request) *host.Host {
 	return nil
 }
 
+// GetProject loads the project attached to a request into request
+// context.
+func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
+	pref := context.Get(r, apiProjectRefKey)
+	if pref == nil {
+		return nil, nil
+	}
+
+	p := context.Get(r, apiProjectKey)
+	if p == nil {
+		return nil, nil
+	}
+
+	return pref.(*model.ProjectRef), p.(*model.Project)
+}
+
 func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	userCredentials := struct {
 		Username string `json:"username"`
@@ -611,18 +679,7 @@ func (as *APIServer) listProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["projectId"]
-	projectRef, err := model.FindOneProjectRef(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	_, project := MustHaveProject(r)
 
 	// zero out the depends on and commands fields because they are
 	// unnecessary and may not get marshaled properly
@@ -634,18 +691,8 @@ func (as *APIServer) listTasks(w http.ResponseWriter, r *http.Request) {
 	as.WriteJSON(w, http.StatusOK, project.Tasks)
 }
 func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["projectId"]
-	projectRef, err := model.FindOneProjectRef(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	_, project := MustHaveProject(r)
+
 	as.WriteJSON(w, http.StatusOK, project.BuildVariants)
 }
 
@@ -748,8 +795,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	apiRootOld.HandleFunc("/ref/{identifier:[\\w_\\-\\@.]+}", as.fetchProjectRef)
 	apiRootOld.HandleFunc("/validate", as.validateProjectConfig).Methods("POST")
 	apiRootOld.HandleFunc("/projects", requireUser(as.listProjects, nil)).Methods("GET")
-	apiRootOld.HandleFunc("/tasks/{projectId}", requireUser(as.listTasks, nil)).Methods("GET")
-	apiRootOld.HandleFunc("/variants/{projectId}", requireUser(as.listVariants, nil)).Methods("GET")
+	apiRootOld.HandleFunc("/tasks/{projectId}", requireUser(as.checkProject(as.listTasks), nil)).Methods("GET")
+	apiRootOld.HandleFunc("/variants/{projectId}", requireUser(as.checkProject(as.listVariants), nil)).Methods("GET")
 
 	// Task Queue routes
 	apiRootOld.HandleFunc("/task_queue", as.getTaskQueueSizes).Methods("GET")
@@ -767,7 +814,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	patchPath.HandleFunc("/mine", requireUser(as.listPatches, nil)).Methods("GET")
 	patchPath.HandleFunc("/{patchId:\\w+}", requireUser(as.summarizePatch, nil)).Methods("GET")
 	patchPath.HandleFunc("/{patchId:\\w+}", requireUser(as.existingPatchRequest, nil)).Methods("POST")
-	patchPath.HandleFunc("/{patchId:\\w+}/{projectId}/modules", requireUser(as.listPatchModules, nil)).Methods("GET")
+	patchPath.HandleFunc("/{patchId:\\w+}/{projectId}/modules", requireUser(as.checkProject(as.listPatchModules), nil)).Methods("GET")
 	patchPath.HandleFunc("/{patchId:\\w+}/modules", requireUser(as.deletePatchModule, nil)).Methods("DELETE")
 	patchPath.HandleFunc("/{patchId:\\w+}/modules", requireUser(as.updatePatchModule, nil)).Methods("POST")
 

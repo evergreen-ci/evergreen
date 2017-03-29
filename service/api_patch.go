@@ -504,8 +504,7 @@ func (as *APIServer) summarizePatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	projectId := vars["projectId"]
+	_, project := MustHaveProject(r)
 
 	p, err := getPatchFromRequest(r)
 	if err != nil {
@@ -513,29 +512,11 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectRef, err := model.FindOneProjectRef(projectId)
-	if err != nil || projectRef == nil {
-		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrapf(err, "Error getting project ref with id %s", projectId))
-		return
-	}
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		as.LoggedError(w, r, http.StatusInternalServerError,
-			errors.Wrap(err, "Error getting patch"))
-		return
-	}
-	if project == nil {
-		as.LoggedError(w, r, http.StatusNotFound,
-			errors.Errorf("can't find project: %v", p.Project))
-		return
-	}
-
 	data := struct {
 		Project string   `json:"project"`
 		Modules []string `json:"modules"`
 	}{
-		Project: projectId,
+		Project: project.Identifier,
 	}
 
 	mods := map[string]struct{}{}
