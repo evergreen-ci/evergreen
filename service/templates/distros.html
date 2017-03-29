@@ -304,8 +304,8 @@ Evergreen - Distros
                   <tbody ng-repeat="expansion in activeDistro.expansions">
                     <tr>
                       <td><input ng-readonly="readOnly" type="text" required name="expKey" ng-model="expansion.key" class="form-control"></td>
-                      <td><input ng-readonly="readOnly" type="text" ng-model="expansion.value" class="form-control"><a ng-click="form.$setDirty();removeExpansion(expansion)"></td>
-                      <td ng-hide="readOnly"><i class="fa fa-trash distro-trash-icon"></i></a></td>
+                      <td><input ng-readonly="readOnly" type="text" ng-model="expansion.value" class="form-control"></td>
+                      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeExpansion(expansion)"><i class="fa fa-trash distro-trash-icon"></i></a></td>
                     </tr>
                   </tbody>
                 </table>
