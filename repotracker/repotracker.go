@@ -343,7 +343,7 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 	if projectRef.LocalConfig != "" {
 		// return the Local config from the project Ref.
 		p, err := model.FindProject("", projectRef)
-		return p, errors.WithStack(err)
+		return p, err
 	}
 	project, err := repoTracker.GetRemoteConfig(revision)
 	if err != nil {
@@ -381,13 +381,13 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 			lastRevision = repository.LastRevision
 		}
 		repoTracker.sendFailureNotification(lastRevision, err)
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 
 	// check if project config is valid
 	verrs, err := validator.CheckProjectSyntax(project)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	if len(verrs) != 0 {
 		// We have syntax errors in the project.

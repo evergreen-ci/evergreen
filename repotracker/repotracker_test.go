@@ -201,7 +201,7 @@ func TestStoreRepositoryRevisions(t *testing.T) {
 				poller.setNextError(unexpectedError)
 				v, err := repoTracker.StoreRevisions(revisions)
 				So(v, ShouldBeNil)
-				So(err, ShouldEqual, unexpectedError)
+				So(err.Error(), ShouldEqual, unexpectedError.Error())
 			},
 		)
 

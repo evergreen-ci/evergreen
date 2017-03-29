@@ -290,8 +290,8 @@ func (s3pc *S3PutCommand) Put() ([]string, error) {
 		if err != nil {
 			if !s3pc.isMulti() {
 				if s3pc.Optional && os.IsNotExist(err) {
-					return nil, errors.Wrapf(err, "problem uploading optional single file %s (%s)",
-						fpath, errSkippedFile.Error())
+					// important to *not* wrap this error.
+					return nil, errSkippedFile
 				}
 			}
 			return nil, errors.WithStack(err)
