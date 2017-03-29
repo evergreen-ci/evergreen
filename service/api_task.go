@@ -174,15 +174,11 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 
 // TODO: are there any other reasons why agent would exit?
 // checkHostHealth creates a task response that is sent back to the agent after the task ends.
-func checkHostHealth(h *host.Host) apimodels.EndTaskResponse {
-	resp := apimodels.EndTaskResponse{
-		ShouldExit: false,
-	}
+func checkHostHealth(h *host.Host, resp *apimodels.EndTaskResponse) {
 	if h.Status == evergreen.HostDecommissioned || h.Status == evergreen.HostQuarantined {
 		resp.ShouldExit = true
 		resp.Message = fmt.Sprintf("host %s is in state %s and agent should exit", h.Id, h.Status)
 	}
-	return resp
 }
 
 // NewEndTask creates test results from the request and the project config.
@@ -197,6 +193,7 @@ func (as *APIServer) newEndTask(w http.ResponseWriter, r *http.Request) {
 	currentHost := MustHaveHost(r)
 
 	details := &apimodels.TaskEndDetail{}
+	endTaskResp := &apimodels.EndTaskResponse{}
 	if err := util.ReadJSONInto(r.Body, details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -247,7 +244,13 @@ func (as *APIServer) newEndTask(w http.ResponseWriter, r *http.Request) {
 			grip.Warningf("task %v is active and undispatched after being marked as finished", t.Id)
 			return
 		}
-		grip.Infof("task %v has been aborted and will not run", t.Id)
+		message := fmt.Sprintf("task %v has been aborted and will not run", t.Id)
+		grip.Infof(message)
+		endTaskResp = &apimodels.EndTaskResponse{
+			ShouldExit: true,
+			Message:    message,
+		}
+		as.WriteJSON(w, http.StatusOK, endTaskResp)
 		return
 	}
 
@@ -267,10 +270,11 @@ func (as *APIServer) newEndTask(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		grip.Errorln("Error updating expected duration:", err)
 	}
-	resp := checkHostHealth(currentHost)
-	as.WriteJSON(w, http.StatusOK, resp)
-	// log the task as finished
+
+	checkHostHealth(currentHost, endTaskResp)
 	grip.Infof("Successfully marked task %s as finished", t.Id)
+	as.WriteJSON(w, http.StatusOK, endTaskResp)
+
 }
 
 // taskFinished constructs the appropriate response for each markEnd

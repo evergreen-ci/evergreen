@@ -1,8 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
-
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,12 +20,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 var (
 	hostSecret = "secret"
+	taskSecret = "tasksecret"
 )
 
 func getNextTaskEndpoint(t *testing.T, hostId string) *httptest.ResponseRecorder {
@@ -52,6 +56,39 @@ func getNextTaskEndpoint(t *testing.T, hostId string) *httptest.ResponseRecorder
 	handler.ServeHTTP(w, request)
 	return w
 }
+
+func getEndTaskEndpoint(t *testing.T, hostId, taskId string, details *apimodels.TaskEndDetail) *httptest.ResponseRecorder {
+	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+		t.Fatal("could not create client directory required to start the API server:", err.Error())
+	}
+
+	as, err := NewAPIServer(testutil.TestConfig(), nil)
+	if err != nil {
+		t.Fatalf("creating test API server: %v", err)
+	}
+	handler, err := as.Handler()
+	if err != nil {
+		t.Fatalf("creating test API handler: %v", err)
+	}
+	url := fmt.Sprintf("/api/2/task/%v/new_end", taskId)
+
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		t.Fatalf("building request: %v", err)
+	}
+	request.Header.Add(evergreen.HostHeader, hostId)
+	request.Header.Add(evergreen.HostSecretHeader, hostSecret)
+	request.Header.Add(evergreen.TaskSecretHeader, taskSecret)
+
+	jsonBytes, err := json.Marshal(*details)
+	testutil.HandleTestingErr(err, t, "error marshalling json")
+	request.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, request)
+	return w
+}
+
 func TestAssignNextAvailableTask(t *testing.T) {
 	Convey("with a task queue and a host", t, func() {
 		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection); err != nil {
@@ -296,7 +333,7 @@ func TestNextTask(t *testing.T) {
 						Activated: true,
 						BuildId:   "anotherBuild",
 					}
-					So(t1.Insert(), ShouldBeNil)
+					So(t1.Insert(), ShouldBexNil)
 					anotherHost := host.Host{
 						Id:          "sampleHost",
 						Secret:      hostSecret,
@@ -388,13 +425,14 @@ func TestCheckHostHealth(t *testing.T) {
 		h := &host.Host{
 			Status: evergreen.HostRunning,
 		}
-		resp := checkHostHealth(h)
+		resp := &apimodels.EndTaskResponse{}
+		checkHostHealth(h, resp)
 		So(resp.ShouldExit, ShouldBeFalse)
 		h.Status = evergreen.HostDecommissioned
-		resp = checkHostHealth(h)
+		checkHostHealth(h, resp)
 		So(resp.ShouldExit, ShouldBeTrue)
 		h.Status = evergreen.HostQuarantined
-		resp = checkHostHealth(h)
+		checkHostHealth(h, resp)
 		So(resp.ShouldExit, ShouldBeTrue)
 
 	})
@@ -430,6 +468,159 @@ func TestMarkHostRunningTaskFinished(t *testing.T) {
 			So(newHost.RunningTask, ShouldEqual, "")
 			So(newHost.LastTaskCompleted, ShouldEqual, t.Id)
 
+		})
+
+	})
+}
+
+func TestEndTaskEndpoint(t *testing.T) {
+	Convey("with tasks, a host, a build, and a task queue", t, func() {
+		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection,
+			build.Collection, model.ProjectRefCollection, version.Collection); err != nil {
+			t.Fatalf("clearing db: %v", err)
+		}
+		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
+			t.Fatalf("adding test indexes %v", err)
+		}
+
+		hostId := "h1"
+		projectId := "proj"
+		buildId := "b1"
+		versionId := "v1"
+
+		proj := model.ProjectRef{
+			Identifier: projectId,
+		}
+		So(proj.Insert(), ShouldBeNil)
+
+		task1 := task.Task{
+			Id:        "task1",
+			Status:    evergreen.TaskStarted,
+			Activated: true,
+			HostId:    hostId,
+			Secret:    taskSecret,
+			Project:   projectId,
+			BuildId:   buildId,
+			Version:   versionId,
+		}
+		So(task1.Insert(), ShouldBeNil)
+
+		sampleHost := host.Host{
+			Id:          hostId,
+			Secret:      hostSecret,
+			RunningTask: task1.Id,
+		}
+		So(sampleHost.Insert(), ShouldBeNil)
+
+		testBuild := build.Build{
+			Id: buildId,
+			Tasks: []build.TaskCache{
+				{Id: "task1"},
+				{Id: "task2"},
+			},
+			Project: projectId,
+			Version: versionId,
+		}
+		So(testBuild.Insert(), ShouldBeNil)
+
+		testVersion := version.Version{
+			Id:     versionId,
+			Branch: projectId,
+		}
+		So(testVersion.Insert(), ShouldBeNil)
+		Convey("with a set of task end details indicating that task has succeeded", func() {
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskSucceeded,
+			}
+			resp := getEndTaskEndpoint(t, hostId, task1.Id, details)
+			So(resp, ShouldNotBeNil)
+			Convey("should return http status ok", func() {
+				So(resp.Code, ShouldEqual, http.StatusOK)
+				Convey("task should exist with the existing task id and be dispatched", func() {
+					taskResp := apimodels.EndTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
+					So(taskResp.ShouldExit, ShouldBeFalse)
+				})
+			})
+			Convey("the host should no longer have the task set as its running task", func() {
+				h, err := host.FindOne(host.ById(hostId))
+				So(err, ShouldBeNil)
+				So(h.RunningTask, ShouldEqual, "")
+				Convey("the task should be marked as succeeded and the task end details"+
+					"should be added to the task document", func() {
+					t, err := task.FindOne(task.ById(task1.Id))
+					So(err, ShouldBeNil)
+					So(t.Status, ShouldEqual, evergreen.TaskSucceeded)
+					So(t.Details.Status, ShouldEqual, evergreen.TaskSucceeded)
+				})
+			})
+		})
+		Convey("with a set of task end details indicating that task has failed", func() {
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			}
+			testTask, err := task.FindOne(task.ById(task1.Id))
+			So(err, ShouldBeNil)
+			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
+			resp := getEndTaskEndpoint(t, hostId, task1.Id, details)
+			So(resp, ShouldNotBeNil)
+			Convey("should return http status ok", func() {
+				So(resp.Code, ShouldEqual, http.StatusOK)
+				Convey("task should exist with the existing task id and be dispatched", func() {
+					taskResp := apimodels.EndTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
+					So(taskResp.ShouldExit, ShouldBeFalse)
+				})
+			})
+			Convey("the host should no longer have the task set as its running task", func() {
+				h, err := host.FindOne(host.ById(hostId))
+				So(err, ShouldBeNil)
+				So(h.RunningTask, ShouldEqual, "")
+				Convey("the task should be marked as succeeded and the task end details"+
+					"should be added to the task document", func() {
+					t, err := task.FindOne(task.ById(task1.Id))
+					So(err, ShouldBeNil)
+					So(t.Status, ShouldEqual, evergreen.TaskFailed)
+					So(t.Details.Status, ShouldEqual, evergreen.TaskFailed)
+				})
+			})
+		})
+		Convey("with a set of task end details but a task that is inactive", func() {
+			task2 := task.Task{
+				Id:        "task2",
+				Status:    evergreen.TaskUndispatched,
+				Activated: false,
+				HostId:    "h2",
+				Secret:    taskSecret,
+				Project:   projectId,
+				BuildId:   buildId,
+				Version:   versionId,
+			}
+			So(task2.Insert(), ShouldBeNil)
+
+			sampleHost := host.Host{
+				Id:          "h2",
+				Secret:      hostSecret,
+				RunningTask: task2.Id,
+			}
+			So(sampleHost.Insert(), ShouldBeNil)
+
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskUndispatched,
+			}
+			testTask, err := task.FindOne(task.ById(task1.Id))
+			So(err, ShouldBeNil)
+			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
+			resp := getEndTaskEndpoint(t, sampleHost.Id, task2.Id, details)
+			So(resp, ShouldNotBeNil)
+			Convey("should return http status ok", func() {
+				So(resp.Code, ShouldEqual, http.StatusOK)
+				Convey("task should exist with the existing task id and be dispatched", func() {
+					taskResp := apimodels.EndTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
+					So(taskResp.ShouldExit, ShouldBeTrue)
+				})
+			})
 		})
 
 	})
