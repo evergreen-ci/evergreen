@@ -248,14 +248,14 @@ func makeTags(intentHost *host.Host) map[string]string {
 	}
 
 	tags := map[string]string{
-		"Name":       intentHost.Id,
-		"distro":     intentHost.Distro.Id,
-		"hostname":   hostname,
-		"username":   username,
-		"owner":      intentHost.StartedBy,
-		"mode":       "production",
-		"start-time": intentHost.CreationTime.Format(NameTimeFormat),
-		"expire-on":  expireOn,
+		"name":              intentHost.Id,
+		"distro":            intentHost.Distro.Id,
+		"evergreen-service": hostname,
+		"username":          username,
+		"owner":             intentHost.StartedBy,
+		"mode":              "production",
+		"start-time":        intentHost.CreationTime.Format(NameTimeFormat),
+		"expire-on":         expireOn,
 	}
 
 	if intentHost.UserHost {
