@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -122,7 +123,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 	defer testServer.Close()
 
-	const url = "http://localhost:8181/api/status/info"
+	url := fmt.Sprintf("%s/api/status/info", testServer.URL)
 
 	Convey("Service Status endpoints should report the status of the service", t, func() {
 		Convey("basic endpoint should have one key, that reports the build id", func() {

@@ -14,8 +14,6 @@ import (
 	"github.com/mongodb/grip"
 )
 
-const port = 8181
-
 type TestServer struct {
 	URL string
 	net.Listener
@@ -32,6 +30,7 @@ func (s *TestServer) Close() {
 }
 
 func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugins []plugin.APIPlugin, verbose bool) (*TestServer, error) {
+	port := testutil.NextPort()
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		return nil, err
 	}

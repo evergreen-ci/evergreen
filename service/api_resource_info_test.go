@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -27,10 +28,8 @@ func TestResourceInfoEndPoints(t *testing.T) {
 	err = db.ClearCollections(task.Collection)
 	testutil.HandleTestingErr(err, t, "problem clearing task collection")
 
-	const (
-		url    = "http://localhost:8181/api/2/task/"
-		taskId = "the_task_id"
-	)
+	url := fmt.Sprintf("%s/api/2/task/", testApiServer.URL)
+	const taskId = "the_task_id"
 
 	_, err = insertTaskForTesting(taskId, "version", "project", task.TestResult{})
 	testutil.HandleTestingErr(err, t, "problem creating task")
