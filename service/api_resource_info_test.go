@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -29,10 +30,17 @@ func TestResourceInfoEndPoints(t *testing.T) {
 	testutil.HandleTestingErr(err, t, "problem clearing task collection")
 
 	url := fmt.Sprintf("%s/api/2/task/", testApiServer.URL)
-	const taskId = "the_task_id"
+
+	const (
+		taskId = "the_task_id"
+		hostId = "host_id"
+	)
 
 	_, err = insertTaskForTesting(taskId, "version", "project", task.TestResult{})
 	testutil.HandleTestingErr(err, t, "problem creating task")
+
+	_, err = insertHostWithRunningTask(hostId, taskId)
+	testutil.HandleTestingErr(err, t, "problem creating host")
 
 	Convey("For the system info endpoint", t, func() {
 		data := message.CollectSystemInfo().(*message.SystemInfo)
@@ -44,6 +52,8 @@ func TestResourceInfoEndPoints(t *testing.T) {
 
 			request, err := http.NewRequest("POST", url+taskId+"/system_info", bytes.NewBuffer(payload))
 			So(err, ShouldBeNil)
+			request.Header.Add(evergreen.HostHeader, hostId)
+
 			resp, err := http.DefaultClient.Do(request)
 			testutil.HandleTestingErr(err, t, "problem making request")
 			So(resp.StatusCode, ShouldEqual, 200)
@@ -68,6 +78,8 @@ func TestResourceInfoEndPoints(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			request, err := http.NewRequest("POST", url+taskId+"/process_info", bytes.NewBuffer(payload))
+			So(err, ShouldBeNil)
+			request.Header.Add(evergreen.HostHeader, hostId)
 			resp, err := http.DefaultClient.Do(request)
 			testutil.HandleTestingErr(err, t, "problem making request")
 			So(resp.StatusCode, ShouldEqual, 200)

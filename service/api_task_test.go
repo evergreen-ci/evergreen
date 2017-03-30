@@ -30,6 +30,14 @@ var (
 	taskSecret = "tasksecret"
 )
 
+func insertHostWithRunningTask(hostId, taskId string) (host.Host, error) {
+	h := host.Host{
+		Id:          hostId,
+		RunningTask: taskId,
+	}
+	return h, h.Insert()
+}
+
 func getNextTaskEndpoint(t *testing.T, hostId string) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
@@ -333,7 +341,7 @@ func TestNextTask(t *testing.T) {
 						Activated: true,
 						BuildId:   "anotherBuild",
 					}
-					So(t1.Insert(), ShouldBexNil)
+					So(t1.Insert(), ShouldBeNil)
 					anotherHost := host.Host{
 						Id:          "sampleHost",
 						Secret:      hostSecret,
