@@ -18,17 +18,17 @@ type EvaluateCommand struct {
 
 func (ec *EvaluateCommand) Execute(args []string) error {
 	if len(args) != 1 {
-		return errors.Errorf("the evaluate command takes one project config path as an argument")
+		return errors.New("the evaluate command takes one project config path as an argument")
 	}
 	configBytes, err := ioutil.ReadFile(args[0])
 	if err != nil {
-		return errors.Errorf("error reading project config: %v", err)
+		return errors.Wrap(err, "error reading project config")
 	}
 
 	p := &model.Project{}
 	err = model.LoadProjectInto(configBytes, "", p)
 	if err != nil {
-		return errors.Errorf("error loading project: %v", err)
+		return errors.Wrap(err, "error loading project")
 	}
 
 	var out interface{}
@@ -52,7 +52,7 @@ func (ec *EvaluateCommand) Execute(args []string) error {
 
 	outYAML, err := yaml.Marshal(out)
 	if err != nil {
-		return errors.Errorf("error marshaling evaluated project YAML: %v", err)
+		return errors.Wrap(err, "error marshaling evaluated project YAML")
 	}
 	fmt.Println(string(outYAML))
 

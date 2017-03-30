@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -452,15 +451,17 @@ func (lc *ListCommand) listProjects() error {
 
 // LoadLocalConfig loads the local project config into a project
 func loadLocalConfig(filepath string) (*model.Project, error) {
-	f, err := os.Open(filepath)
+	configBytes, err := ioutil.ReadFile(filepath)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error reading project config")
 	}
+
 	project := &model.Project{}
-	err = util.ReadYAMLInto(f, project)
+	err = model.LoadProjectInto(configBytes, "", project)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error loading project")
 	}
+
 	return project, nil
 }
 
