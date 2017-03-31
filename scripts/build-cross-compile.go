@@ -19,16 +19,30 @@ func main() {
 		buildName string
 		output    string
 		goBin     string
+		race      bool
+
+		defaultArch   string
+		defaultSystem string
 	)
 
-	flag.StringVar(&arch, "goarch", runtime.GOARCH, "target architecture (GOARCH)")
-	flag.StringVar(&system, "goos", runtime.GOOS, "target system (GOOS)")
+	defaultArch = os.Getenv("GOARCH")
+	if defaultArch == "" {
+		defaultArch = runtime.GOARCH
+	}
+	defaultSystem = os.Getenv("GOOS")
+	if defaultSystem == "" {
+		defaultSystem = runtime.GOOS
+	}
+
+	flag.StringVar(&arch, "goarch", defaultArch, "target architecture (GOARCH)")
+	flag.StringVar(&system, "goos", defaultSystem, "target system (GOOS)")
 	flag.StringVar(&directory, "directory", "", "output directory")
 	flag.StringVar(&source, "source", "", "path to source file")
 	flag.StringVar(&ldFlags, "ldflags", "", "specify any ldflags to pass to go build")
 	flag.StringVar(&buildName, "buildName", "", "use GOOS_ARCH to specify target platform")
 	flag.StringVar(&goBin, "goBinary", "go", "specify path to go binary")
 	flag.StringVar(&output, "output", "", "specify the name of executable")
+	flag.BoolVar(&race, "race", false, "specify to enable the race detector")
 	flag.Parse()
 
 	if buildName != "" {
@@ -44,6 +58,10 @@ func main() {
 	}
 
 	cmd := exec.Command(goBin, "build")
+
+	if race {
+		cmd.Args = append(cmd.Args, "-race")
+	}
 
 	cmd.Args = append(cmd.Args, "-o", output)
 	if ldFlags != "" {

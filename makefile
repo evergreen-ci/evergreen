@@ -40,15 +40,7 @@ srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -n
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*")
 
 projectCleanFiles := $(agentBuildDir) $(clientBuildDir)
-# static rules for rule lines for building artifacts
-define buildBinary
-	$(vendorGopath) go build -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" -o $@ "./$<"
-endef
-
-define buildRaceBinary
-	$(vendorGopath) go build -race -ldflags "-X github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" -o $@ "./$<"
-endef
-
+# static rules for rule for building artifacts
 define crossCompile
 	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags="-X=github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" -goBinary="`which go`" -output=$@
 endef
@@ -91,19 +83,19 @@ plugins:$(buildDir)/.plugins
 $(buildDir)/.plugins:Plugins install_plugins.sh
 	./install_plugins.sh
 	@touch $@
-$(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(srcFiles)
-	$(buildBinary)
+$(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
+	$(crossCompile) -directory=$(buildDir) -source=$<
 $(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(srcFiles)
-	$(buildBinary)
+	$(crossCompile) -directory=$(buildDir) -source=$<
 $(buildDir)/evergreen_runner:runner/main/runner.go $(srcFiles)
-	$(buildBinary)
+	$(crossCompile) -directory=$(buildDir) -source=$<
 #   build the server binaries with the race detector:
 $(buildDir)/evergreen_api_server.race:service/api_main/apiserver.go $(srcFiles)
-	$(buildRaceBinary)
+	$(crossCompile) -race -directory=$(buildDir) -source=$<
 $(buildDir)/evergreen_runner.race:runner/main/runner.go $(srcFiles)
-	$(buildRaceBinary)
+	$(crossCompile) -race -directory=$(buildDir) -source=$<
 $(buildDir)/evergreen_ui_server.race:service/ui_main/ui.go $(srcFiles)
-	$(buildRaceBinary)
+	$(crossCompile) -race -directory=$(buildDir) -source=$<
 phony += $(binaries) $(raceBinaries)
 # end rules for building server binaries
 
@@ -161,9 +153,10 @@ $(gopath)/src/%:
 
 
 # distribution targets and implementation
-$(buildDir)/build-cross-compile:scripts/build-cross-compile.go
+$(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
 	@mkdir -p $(buildDir)
-	go build -o $@ $<
+	@GOOS="" GOOARCH="" go build -o $@ $<
+	@echo go build -o $@ $<
 $(buildDir)/make-tarball:scripts/make-tarball.go $(buildDir)/render-gopath
 	$(vendorGopath) go build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
