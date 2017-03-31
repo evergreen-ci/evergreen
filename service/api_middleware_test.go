@@ -66,13 +66,12 @@ func TestCheckHostWrapper(t *testing.T) {
 				})
 			})
 			Convey("a request with proper task fields but no host fields should pass", func() {
-				// FIXME this should fail after EVG-1283 is done!
 				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
 				root.ServeHTTP(w, r)
-				So(w.Code, ShouldEqual, http.StatusOK)
+				So(w.Code, ShouldEqual, http.StatusBadRequest)
 
-				Convey("and attach the task to the context, but no host", func() {
-					So(ctx[apiTaskKey], ShouldNotBeNil)
+				Convey("and attach nothing to the context", func() {
+					So(ctx[apiTaskKey], ShouldBeNil)
 					So(ctx[apiHostKey], ShouldBeNil)
 				})
 			})

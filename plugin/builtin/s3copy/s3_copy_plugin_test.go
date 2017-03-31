@@ -8,6 +8,7 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/s3"
@@ -41,13 +42,12 @@ func TestS3CopyPluginExecution(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 
-		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
-
-		//server.InstallPlugin(s3CopyPlugin)
-
 		pwd := testutil.GetDirectoryOfFile()
-		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(pwd, "testdata", "plugin_s3_copy.yml"), t)
-		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
+		configFile := filepath.Join(pwd, "testdata", "plugin_s3_copy.yml")
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "test", configFile, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
+		taskConfig := modelData.TaskConfig
 		taskConfig.WorkDir = "."
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
@@ -59,7 +59,6 @@ func TestS3CopyPluginExecution(t *testing.T) {
 
 		Convey("the s3 copy command should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {
-				So(len(task.Commands), ShouldNotEqual, 0)
 				for _, command := range task.Commands {
 					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")

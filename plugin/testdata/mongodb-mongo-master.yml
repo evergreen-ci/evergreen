@@ -1,3 +1,11 @@
+display_name: mongodb-mongo-master
+owner: mongodb
+repo: mongo
+repokind: github
+branch: master
+enabled: true
+batch_time: 180
+
 tasks:
     - name: testtask1
       commands:

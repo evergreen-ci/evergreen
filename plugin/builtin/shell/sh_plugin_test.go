@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
@@ -27,7 +28,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	}
 	defer server.Close()
 
-	httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+	httpCom := plugintest.TestAgentCommunicator(&modelutil.TestModelData{}, server.URL)
 	jsonCom := &comm.TaskJSONCommunicator{"shell", httpCom}
 
 	conf := &model.TaskConfig{Expansions: &command.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}

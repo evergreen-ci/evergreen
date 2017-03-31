@@ -1,6 +1,7 @@
 package attach_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -31,6 +33,7 @@ func TestAttachResults(t *testing.T) {
 	resetTasks(t)
 	testConfig := testutil.TestConfig()
 	cwd := testutil.GetDirectoryOfFile()
+	fmt.Println(cwd)
 	Convey("With attachResults plugin installed into plugin registry", t, func() {
 		registry := plugin.NewSimpleRegistry()
 		attachPlugin := &AttachPlugin{}
@@ -40,15 +43,25 @@ func TestAttachResults(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
-		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+
 		configFile := filepath.Join(cwd, "testdata", "plugin_attach_results.yml")
 		resultsLoc := filepath.Join(cwd, "testdata", "plugin_attach_results.json")
-		taskConfig, err := plugintest.CreateTestConfig(configFile, t)
-		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
-		taskConfig.WorkDir = "."
+
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		So(err, ShouldBeNil)
+		modelData.TaskConfig.WorkDir = "."
+
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
+		So(httpCom.TaskId, ShouldEqual, modelData.Task.Id)
+		So(httpCom.TaskSecret, ShouldEqual, modelData.Task.Secret)
+		So(httpCom.HostId, ShouldEqual, modelData.Host.Id)
+		So(httpCom.HostSecret, ShouldEqual, modelData.Host.Secret)
+
 		Convey("all commands in test project should execute successfully", func() {
+			taskConfig := modelData.TaskConfig
 			for _, projTask := range taskConfig.Project.Tasks {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
@@ -90,12 +103,17 @@ func TestAttachRawResults(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
-		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
+
 		configFile := filepath.Join(cwd, "testdata", "plugin_attach_results_raw.yml")
 		resultsLoc := filepath.Join(cwd, "testdata", "plugin_attach_results_raw.json")
-		taskConfig, err := plugintest.CreateTestConfig(configFile, t)
-		testutil.HandleTestingErr(err, t, "failed to create test config: %v")
-		taskConfig.WorkDir = "."
+
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configFile, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
+
+		modelData.TaskConfig.WorkDir = "."
+		taskConfig := modelData.TaskConfig
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("when attaching a raw log ", func() {

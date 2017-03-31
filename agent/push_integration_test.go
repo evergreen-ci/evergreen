@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
@@ -28,18 +29,18 @@ func TestPushTask(t *testing.T) {
 		for _, testSetup := range testSetups {
 			Convey(testSetup.testSpec, t, func() {
 				Convey("With agent running a push task "+tlsString, func() {
-					testTask, _, h, err := setupAPITestData(testConfig, evergreen.PushStage,
-						"linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
+					modelData, err := modelutil.SetupAPITestData(testConfig, evergreen.PushStage,
+						"linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), modelutil.NoPatch)
 					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
 					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					defer testServer.Close()
 
-					testAgent, err := createAgent(testServer, h)
+					testAgent, err := createAgent(testServer, modelData.Host)
 					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)
 
-					So(assignAgentTask(testAgent, testTask), ShouldBeNil)
+					So(assignAgentTask(testAgent, modelData.Task), ShouldBeNil)
 
 					// actually run the task.
 					// this function won't return until the whole thing is done.
@@ -47,18 +48,18 @@ func TestPushTask(t *testing.T) {
 					So(err, ShouldBeNil)
 					time.Sleep(100 * time.Millisecond)
 					testAgent.APILogger.FlushAndWait()
-					printLogsForTask(testTask.Id)
+					printLogsForTask(modelData.Task.Id)
 					newDate := testAgent.taskConfig.Expansions.Get("new_date")
 
 					Convey("all scripts in task should have been run successfully", func() {
-						So(scanLogsForTask(testTask.Id, "", "executing the pre-run script"), ShouldBeTrue)
-						So(scanLogsForTask(testTask.Id, "", "executing the post-run script!"), ShouldBeTrue)
+						So(scanLogsForTask(modelData.Task.Id, "", "executing the pre-run script"), ShouldBeTrue)
+						So(scanLogsForTask(modelData.Task.Id, "", "executing the post-run script!"), ShouldBeTrue)
 
-						So(scanLogsForTask(testTask.Id, "", "push task pre-run!"), ShouldBeTrue)
-						So(scanLogsForTask(testTask.Id, "", "push task post-run!"), ShouldBeTrue)
+						So(scanLogsForTask(modelData.Task.Id, "", "push task pre-run!"), ShouldBeTrue)
+						So(scanLogsForTask(modelData.Task.Id, "", "push task post-run!"), ShouldBeTrue)
 
 						Convey("s3.put attaches task file properly", func() {
-							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
+							entry, err := artifact.FindOne(artifact.ByTaskId(modelData.Task.Id))
 							So(err, ShouldBeNil)
 							So(len(entry.Files), ShouldEqual, 2)
 							for _, element := range entry.Files {
@@ -69,7 +70,7 @@ func TestPushTask(t *testing.T) {
 							So(entry.Files[0].Link, ShouldEqual, link)
 						})
 						Convey("s3.copy attached task file properly", func() {
-							entry, err := artifact.FindOne(artifact.ByTaskId(testTask.Id))
+							entry, err := artifact.FindOne(artifact.ByTaskId(modelData.Task.Id))
 							So(err, ShouldBeNil)
 							So(len(entry.Files), ShouldNotEqual, 0)
 							So(entry.Files[0].Name, ShouldEqual, "push_file")
@@ -79,7 +80,7 @@ func TestPushTask(t *testing.T) {
 								"https://s3.amazonaws.com/build-push-testing/pushtest/unittest-DISTRO_EXP-BUILDVAR_EXP-FILE_EXP-latest.txt")
 						})
 
-						testTask, err = task.FindOne(task.ById(testTask.Id))
+						testTask, err := task.FindOne(task.ById(modelData.Task.Id))
 						testutil.HandleTestingErr(err, t, "Error finding test task: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 

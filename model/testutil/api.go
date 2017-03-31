@@ -18,7 +18,14 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, variant string, projectFile string, patchMode PatchTestMode) (*task.Task, *build.Build, error) {
+type TestModelData struct {
+	Task       *task.Task
+	Build      *build.Build
+	Host       *host.Host
+	TaskConfig *model.TaskConfig
+}
+
+func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, variant string, projectFile string, patchMode PatchTestMode) (*TestModelData, error) {
 	// Ignore errs here because the ns might just not exist.
 	clearDataMsg := "Failed to clear test data collection"
 	testCollections := []string{
@@ -28,25 +35,36 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		manifest.Collection, model.ProjectRefCollection}
 
 	if err := db.ClearCollections(testCollections...); err != nil {
-		return nil, nil, errors.Wrap(err, clearDataMsg)
+		return nil, errors.Wrap(err, clearDataMsg)
 	}
 
 	// Read in the project configuration
 	projectConfig, err := ioutil.ReadFile(projectFile)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to read project config")
+		return nil, errors.Wrap(err, "failed to read project config")
 	}
+
+	modelData := &TestModelData{}
 
 	// Unmarshall the project configuration into a struct
 	project := &model.Project{}
 	if err := model.LoadProjectInto(projectConfig, "test", project); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to unmarshal project config")
+		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
+	// create a build variant for this project
+	bv := model.BuildVariant{
+		Name: variant,
+		Tasks: []model.BuildVariantTask{{
+			Name: taskDisplayName,
+		}},
+	}
+
+	project.BuildVariants = append(project.BuildVariants, bv)
 	// Marshall the project YAML for storage
 	projectYamlBytes, err := yaml.Marshal(project)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to unmarshal project config")
+		return nil, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
 	// Create the ref for the project
@@ -61,7 +79,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		LocalConfig: string(projectConfig),
 	}
 	if err := projectRef.Insert(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert projectRef")
+		return nil, errors.Wrap(err, "failed to insert projectRef")
 	}
 
 	// Save the project variables
@@ -74,7 +92,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		},
 	}
 	if _, err := projectVars.Upsert(); err != nil {
-		return nil, nil, errors.Wrap(err, "problem inserting project variables")
+		return nil, errors.Wrap(err, "problem inserting project variables")
 	}
 
 	// Create and insert two tasks
@@ -83,7 +101,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		BuildId:      "testBuildId",
 		DistroId:     "test-distro-one",
 		BuildVariant: variant,
-		Project:      project.DisplayName,
+		Project:      projectRef.Identifier,
 		DisplayName:  taskDisplayName,
 		HostId:       "testHost",
 		Secret:       "testTaskSecret",
@@ -95,8 +113,9 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		taskOne.Requester = evergreen.PatchVersionRequester
 	}
 	if err := taskOne.Insert(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert taskOne")
+		return nil, errors.Wrap(err, "failed to insert taskOne")
 	}
+	modelData.Task = taskOne
 
 	taskTwo := &task.Task{
 		Id:           "testTaskIdTwo",
@@ -113,7 +132,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Activated:    true,
 	}
 	if err := taskTwo.Insert(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert taskTwo")
+		return nil, errors.Wrap(err, "failed to insert taskTwo")
 	}
 
 	// Set up a task queue for task end tests
@@ -127,17 +146,17 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		},
 	}
 	if err := taskQueue.Save(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert task queue")
+		return nil, errors.Wrap(err, "failed to insert task queue")
 	}
 
 	// Insert the version document
 	v := &version.Version{
-		Id:       "testVersionId",
+		Id:       taskOne.Version,
 		BuildIds: []string{taskOne.BuildId},
 		Config:   string(projectYamlBytes),
 	}
 	if err := v.Insert(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert version: ")
+		return nil, errors.Wrap(err, "failed to insert version: ")
 	}
 
 	// Insert the build that contains the tasks
@@ -150,16 +169,17 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Version: v.Id,
 	}
 	if err := build.Insert(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert build")
+		return nil, errors.Wrap(err, "failed to insert build")
 	}
+	modelData.Build = build
 
 	workDir, err := ioutil.TempDir("", "agent_test_")
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to create working directory")
+		return nil, errors.Wrap(err, "failed to create working directory")
 	}
 
 	// Insert the host info for running the tests
-	host := &host.Host{
+	testHost := &host.Host{
 		Id:   "testHost",
 		Host: "testHost",
 		Distro: distro.Distro{
@@ -173,22 +193,30 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		StartedBy:     evergreen.User,
 		AgentRevision: agentRevision,
 	}
-	if err := host.Insert(); err != nil {
-		return nil, nil, errors.Wrap(err, "failed to insert host")
+	if err := testHost.Insert(); err != nil {
+		return nil, errors.Wrap(err, "failed to insert host")
 	}
+	modelData.Host = testHost
 
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "couldn't get db session!")
+		return nil, errors.Wrap(err, "couldn't get db session!")
 
 	}
+
+	config, err := model.NewTaskConfig(&testHost.Distro, v, project,
+		taskOne, projectRef)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create task config")
+	}
+	modelData.TaskConfig = config
 
 	// Remove any logs for our test task from previous runs.
 	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).
 		RemoveAll(bson.M{"t_id": bson.M{"$in": []string{taskOne.Id, taskTwo.Id}}})
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to remove logs")
+		return nil, errors.Wrap(err, "failed to remove logs")
 	}
 
-	return taskOne, build, nil
+	return modelData, nil
 }

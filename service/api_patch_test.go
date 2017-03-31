@@ -38,15 +38,15 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 		})
 
 		Convey("with a patch", func() {
-			_, b, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
+			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
 			testutil.HandleTestingErr(err, t, "problem setting up test server")
 
-			_, err = modelUtil.SetupPatches(modelUtil.ExternalPatch, b,
+			_, err = modelUtil.SetupPatches(modelUtil.ExternalPatch, testData.Build,
 				modelUtil.PatchRequest{"recursive", filepath.Join(testDirectory, "testdata/testmodule.patch"), githash})
 			testutil.HandleTestingErr(err, t, "problem setting up patch")
 
-			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, b.Id), nil)
+			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
@@ -59,18 +59,18 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			err = util.ReadJSONInto(resp.Body, &data)
 			So(err, ShouldBeNil)
 			So(len(data.Modules), ShouldEqual, 1)
-			So(data.Project, ShouldEqual, b.Id)
+			So(data.Project, ShouldEqual, testData.Build.Id)
 		})
 
 		Convey("with a patch that adds a module", func() {
-			_, b, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
+			testData, err := modelUtil.SetupAPITestData(testConfig, "compile", "linux-64",
 				filepath.Join(testDirectory, "testdata/base_project.yaml"), modelUtil.ExternalPatch)
 			testutil.HandleTestingErr(err, t, "problem setting up test server")
-			_, err = modelUtil.SetupPatches(modelUtil.InlinePatch, b,
+			_, err = modelUtil.SetupPatches(modelUtil.InlinePatch, testData.Build,
 				modelUtil.PatchRequest{"evgHome", filepath.Join(testDirectory, "testdata/testaddsmodule.patch"), githash})
 			testutil.HandleTestingErr(err, t, "problem setting up patch")
 
-			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, b.Id), nil)
+			request, err := http.NewRequest("GET", fmt.Sprintf(url, modelUtil.PatchId, testData.Build.Id), nil)
 			request.AddCookie(&http.Cookie{Name: evergreen.AuthTokenCookie, Value: "token"})
 			So(err, ShouldBeNil)
 			resp, err := http.DefaultClient.Do(request)
@@ -83,7 +83,7 @@ func TestPatchListModulesEndPoints(t *testing.T) {
 			err = util.ReadJSONInto(resp.Body, &data)
 			So(err, ShouldBeNil)
 			So(len(data.Modules), ShouldEqual, 2)
-			So(data.Project, ShouldEqual, b.Id)
+			So(data.Project, ShouldEqual, testData.Build.Id)
 		})
 	})
 }

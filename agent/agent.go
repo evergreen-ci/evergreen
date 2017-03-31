@@ -506,7 +506,7 @@ func (agt *Agent) Run() error {
 		}
 		// this isn't an error, so it should just exit
 		if resp.ShouldExit {
-			grip.Infof("task response indicates that agent should exit: %v", resp.Message)
+			grip.Infof("task response indicates that agent should exit: %s", resp.Message)
 			return nil
 		}
 	}

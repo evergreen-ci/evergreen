@@ -10,25 +10,27 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+<<<<<<< aaaf22a11922f233b921cf990d1fcf679d51cbdb
 	"github.com/evergreen-ci/evergreen/model/distro"
+=======
+>>>>>>> EVG-1557 test fixes
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/version"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
+	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
-	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/yaml.v2"
 )
@@ -106,10 +108,10 @@ func (mc *MockCommand) ParseParams(params map[string]interface{}) error {
 		return err
 	}
 	if mc.Param1 == "" {
-		return errors.New("Param1 must be a non-blank string.")
+		return fmt.Errorf("Param1 must be a non-blank string.")
 	}
 	if mc.Param2 == 0 {
-		return errors.New("Param2 must be a non-zero integer.")
+		return fmt.Errorf("Param2 must be a non-zero integer.")
 	}
 	return nil
 }
@@ -126,7 +128,7 @@ func (mc *MockCommand) Execute(logger plugin.Logger,
 	}
 
 	if resp == nil {
-		return errors.New("Received nil HTTP response from api server")
+		return fmt.Errorf("Received nil HTTP response from api server")
 	}
 
 	jsonReply := map[string]string{}
@@ -136,12 +138,12 @@ func (mc *MockCommand) Execute(logger plugin.Logger,
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("Got bad status code from API response: %v, body: %v", resp.StatusCode, jsonReply)
+		return fmt.Errorf("Got bad status code from API response: %v, body: %v", resp.StatusCode, jsonReply)
 	}
 
 	expectedEchoReply := fmt.Sprintf("%v/%v/%v", mc.Param1, mc.Param2, conf.Task.Id)
 	if jsonReply["echo"] != expectedEchoReply {
-		return errors.Errorf("Wrong echo reply! Wanted %v, got %v", expectedEchoReply, jsonReply["echo"])
+		return fmt.Errorf("Wrong echo reply! Wanted %v, got %v", expectedEchoReply, jsonReply["echo"])
 	}
 	return nil
 }
@@ -164,7 +166,7 @@ func TestRegistry(t *testing.T) {
 			So(registry.Register(&expansions.ExpansionsPlugin{}), ShouldBeNil)
 
 			data, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
-				"testdata", "plugin_project.yml"))
+				"testdata", "mongodb-mongo-master.yml"))
 			testutil.HandleTestingErr(err, t, "failed to load test yaml file")
 			project := &model.Project{}
 			So(yaml.Unmarshal(data, project), ShouldBeNil)
@@ -196,10 +198,12 @@ func TestPluginFunctions(t *testing.T) {
 			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 			defer testServer.Close()
-
-			taskConfig, _, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
-				"testdata", "plugin_project_functions.yml"), t)
-			testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
+			pluginfile := filepath.Join(testutil.GetDirectoryOfFile(),
+				"testdata", "plugin_project_functions.yml")
+			modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", pluginfile, modelutil.NoPatch)
+			testutil.HandleTestingErr(err, t, "failed to setup test data")
+			httpCom := plugintest.TestAgentCommunicator(modelData, testServer.URL)
+			taskConfig := modelData.TaskConfig
 
 			Convey("all commands in project file should parse successfully", func() {
 				for _, newTask := range taskConfig.Project.Tasks {
@@ -211,10 +215,6 @@ func TestPluginFunctions(t *testing.T) {
 					}
 				}
 			})
-
-			httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "", "", "", nil)
-			So(err, ShouldBeNil)
-			So(httpCom, ShouldNotBeNil)
 
 			Convey("all commands in test project should execute successfully", func() {
 				logger := agentutil.NewTestLogger(slogger.StdOutAppender())
@@ -247,20 +247,26 @@ func TestPluginExecution(t *testing.T) {
 			err := registry.Register(p)
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
+<<<<<<< aaaf22a11922f233b921cf990d1fcf679d51cbdb
 
 		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, apiPlugins)
+=======
+		testConfig := testutil.TestConfig()
+		testServer, err := service.CreateTestServer(testConfig, nil, apiPlugins, false)
+>>>>>>> EVG-1557 test fixes
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
-		pluginConfigPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml")
-		taskConfig, testTask, err := createTestConfig(pluginConfigPath, t)
-		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
+		pluginFilePath := filepath.Join(testutil.GetDirectoryOfFile(),
+			"testdata", "plugin_project_functions.yml")
 
-		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "", "", "", nil)
-		So(err, ShouldBeNil)
-		So(httpCom, ShouldNotBeNil)
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", pluginFilePath, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
 
-		httpCom.TaskId = testTask.Id
+		taskConfig := modelData.TaskConfig
+
+		httpCom := plugintest.TestAgentCommunicator(modelData, testServer.URL)
+
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
@@ -298,19 +304,20 @@ func TestAttachLargeResults(t *testing.T) {
 	}
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "problem clearning collections")
 	Convey("With a test task and server", t, func() {
+<<<<<<< aaaf22a11922f233b921cf990d1fcf679d51cbdb
 		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil)
+=======
+		testConfig := testutil.TestConfig()
+		testServer, err := service.CreateTestServer(testConfig, nil, nil, false)
+>>>>>>> EVG-1557 test fixes
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
-		_, testTask, err := createTestConfig(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_project.yml"), t)
-		testutil.HandleTestingErr(err, t, "failed to create test config: %v", err)
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", filepath.Join(testutil.GetDirectoryOfFile(),
+			"testdata", "plugin_project_functions.yml"), modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
 
-		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "", "", "", nil)
-		So(err, ShouldBeNil)
-		So(httpCom, ShouldNotBeNil)
-
-		httpCom.TaskId = testTask.Id
-		httpCom.TaskSecret = testTask.Secret
+		httpCom := plugintest.TestAgentCommunicator(modelData, testServer.URL)
 
 		pluginCom := &comm.TaskJSONCommunicator{"test", httpCom}
 		Convey("a test log < 16 MB should be accepted", func() {
@@ -362,68 +369,6 @@ func TestPluginSelfRegistration(t *testing.T) {
 			So(nameMap["shell"], ShouldEqual, 1)
 		})
 	})
-}
-
-func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, *task.Task, error) {
-	clearDataMsg := "Failed to clear test data collection"
-	testutil.HandleTestingErr(
-		db.ClearCollections(
-			task.Collection, model.ProjectVarsCollection),
-		t, clearDataMsg)
-
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, nil, err
-	}
-	testProject := &model.Project{}
-	err = yaml.Unmarshal(data, testProject)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	testProjectRef := &model.ProjectRef{
-		Identifier: "mongodb-mongo-master",
-		Owner:      "mongodb",
-		Repo:       "mongo",
-		RepoKind:   "github",
-		Branch:     "master",
-		Enabled:    true,
-		BatchTime:  180,
-	}
-
-	workDir, err := ioutil.TempDir("", "plugintest_")
-	if err != nil {
-		return nil, nil, err
-	}
-
-	testTask := &task.Task{
-		Id:           "mocktaskid",
-		BuildId:      "testBuildId",
-		BuildVariant: "linux-64",
-		Project:      "mongodb-mongo-master",
-		DisplayName:  "test",
-		HostId:       "testHost",
-		Version:      "versionId",
-		Secret:       "mocktasksecret",
-		Status:       evergreen.TaskDispatched,
-		Revision:     "cb91350bf017337a734dcd0321bf4e6c34990b6a",
-		Requester:    evergreen.RepotrackerVersionRequester,
-	}
-	testutil.HandleTestingErr(testTask.Insert(), t, "failed to insert task")
-
-	projectVars := &model.ProjectVars{
-		Id: "mongodb-mongo-master",
-		Vars: map[string]string{
-			"abc": "xyz",
-			"123": "456",
-		},
-	}
-	_, err = projectVars.Upsert()
-	testutil.HandleTestingErr(err, t, "failed to upsert project vars")
-	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
-	testVersion := &version.Version{}
-	config, err := model.NewTaskConfig(testDistro, testVersion, testProject, testTask, testProjectRef)
-	return config, testTask, err
 }
 
 func TestPluginSelfRegistration(t *testing.T) {

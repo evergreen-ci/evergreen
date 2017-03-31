@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -40,21 +41,17 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
-		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
-
+		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
+		taskConfig := modelData.TaskConfig
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(currentDirectory, "testdata", "bad.yml"), t)
-			// manually override working dirctory to the main repo, since this
-			// is much easier than copying over the required testing dependencies
-			// to a temporary directory
-			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			pluginTask, _, err := plugintest.SetupAPITestData("testTask", "", t)
-			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, testTask := range taskConfig.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
@@ -71,7 +68,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 			}
 
 			Convey("and the tests in the task should be updated", func() {
-				updatedTask, err := task.FindOne(task.ById(pluginTask.Id))
+				updatedTask, err := task.FindOne(task.ById(modelData.Task.Id))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
 				So(len(updatedTask.TestResults), ShouldEqual, 5)
@@ -108,20 +105,18 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 
-		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
+
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
+		taskConfig := modelData.TaskConfig
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(currentDirectory, "testdata", "good.yml"), t)
-			// manually override working directory to the main repo, since this
-			// is much easier than copying over the required testing dependencies
-			// to a temporary directory
-			testutil.HandleTestingErr(err, t, "Couldn't set up test config %v")
 			taskConfig.WorkDir = curWD
-			pluginTask, _, err := plugintest.SetupAPITestData("testTask", "", t)
-			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, testTask := range taskConfig.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
@@ -138,7 +133,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 			}
 
 			Convey("and the tests in the task should be updated", func() {
-				updatedTask, err := task.FindOne(task.ById(pluginTask.Id))
+				updatedTask, err := task.FindOne(task.ById(modelData.Task.Id))
 				So(err, ShouldBeNil)
 				So(updatedTask, ShouldNotBeNil)
 				So(len(updatedTask.TestResults), ShouldEqual, 2)

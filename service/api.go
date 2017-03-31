@@ -850,7 +850,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	// Agent routes
 	agentRouter := r.PathPrefix("/agent").Subrouter()
-	agentRouter.HandleFunc("/next_task", as.checkHost(as.NextTask)).Methods("GET")
+	agentRouter.HandleFunc("/next_task", as.checkHost(as.NextTask)).Methods("POST")
 
 	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
 	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")

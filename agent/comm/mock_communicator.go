@@ -23,11 +23,28 @@ type MockCommunicator struct {
 	sync.RWMutex
 }
 
-func (*MockCommunicator) TryGet(path string, withTask bool) (*http.Response, error) {
+func (*MockCommunicator) TryGet(path string) (*http.Response, error) {
 	return nil, nil
 }
 
-func (mc *MockCommunicator) TryPostJSON(path string, withTask bool, data interface{}) (*http.Response, error) {
+func (*MockCommunicator) TryTaskGet(path string) (*http.Response, error) {
+	return nil, nil
+}
+
+func (mc *MockCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
+	mc.Lock()
+	defer mc.Unlock()
+
+	if mc.Posts != nil {
+		mc.Posts[path] = append(mc.Posts[path], data)
+	} else {
+		grip.Warningf("post to %s is not persisted in the path")
+	}
+
+	return nil, nil
+}
+
+func (mc *MockCommunicator) TryTaskPost(path string, data interface{}) (*http.Response, error) {
 	mc.Lock()
 	defer mc.Unlock()
 

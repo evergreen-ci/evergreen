@@ -1,13 +1,17 @@
 package agent
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -130,4 +134,44 @@ func TestAgentGetNextTask(t *testing.T) {
 		})
 
 	})
+}
+
+func TestAgentEndTask(t *testing.T) {
+	Convey("with a HTTP communicator and an agent that uses it", t, func() {
+		serveMux := http.NewServeMux()
+		ts := httptest.NewServer(serveMux)
+
+		hostId := "host"
+		hostSecret := "secret"
+
+		agentCommunicator, err := comm.NewHTTPCommunicator(
+			ts.URL, hostId, hostSecret, "", make(chan comm.Signal))
+		So(err, ShouldBeNil)
+		agentCommunicator.Logger = &slogger.Logger{}
+
+		testAgent := &Agent{
+			TaskCommunicator: agentCommunicator,
+		}
+		testTask := &task.Task{
+			Id:     "testId",
+			Secret: "secret",
+		}
+		So(assignAgentTask(testAgent, testTask), ShouldBeNil)
+		Convey("with a response that the agent should exit", func() {
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			}
+			resp := &apimodels.EndTaskResponse{
+				ShouldExit: true,
+			}
+			serveMux.HandleFunc(fmt.Sprintf("/api/2/task/%v/new_end", testTask.Id),
+				func(w http.ResponseWriter, req *http.Request) {
+					util.WriteJSON(&w, resp, http.StatusOK)
+				})
+			endTaskResp, err := testAgent.End(details)
+			So(err, ShouldBeNil)
+			So(endTaskResp.ShouldExit, ShouldBeTrue)
+		})
+	})
+
 }

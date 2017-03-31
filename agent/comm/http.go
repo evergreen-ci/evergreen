@@ -107,9 +107,10 @@ func (h *HTTPCommunicator) Start() error {
 func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error) {
 	taskEndResp := &apimodels.EndTaskResponse{}
 	resp, retryFail, err := h.postJSON("new_end", detail)
-	if resp != nil {
-		defer resp.Body.Close()
+	if resp == nil {
+		return nil, errors.New("empty response when trying to end task")
 	}
+	defer resp.Body.Close()
 	if err != nil {
 		if retryFail {
 			var bodyMsg []byte
@@ -125,7 +126,6 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndT
 	}
 
 	if resp != nil {
-		fmt.Println(resp.Body)
 		if err = util.ReadJSONInto(resp.Body, taskEndResp); err != nil {
 			message := fmt.Sprintf("Error unmarshalling task end response: %v",
 				err)
@@ -155,7 +155,7 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 
 	retriableLog := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryPostJSON("log", true, outgoingData)
+			resp, err := h.TryTaskPost("log", outgoingData)
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -180,7 +180,7 @@ func (h *HTTPCommunicator) GetTask() (*task.Task, error) {
 	task := &task.Task{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("", true)
+			resp, err := h.TryTaskGet("")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -217,7 +217,7 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	d := &distro.Distro{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("distro", true)
+			resp, err := h.TryTaskGet("distro")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -256,7 +256,7 @@ func (h *HTTPCommunicator) GetNextTask() (*apimodels.NextTaskResponse, error) {
 	taskResponse := &apimodels.NextTaskResponse{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("agent/next_task", false)
+			resp, err := h.TryGet("agent/next_task")
 
 			if resp == nil {
 				return util.RetriableError{fmt.Errorf("empty response")}
@@ -287,7 +287,7 @@ func (h *HTTPCommunicator) GetProjectRef() (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("project_ref", true)
+			resp, err := h.TryTaskGet("project_ref")
 			if resp != nil {
 				defer resp.Body.Close()
 			}
@@ -323,7 +323,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 	v := &version.Version{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("version", true)
+			resp, err := h.TryTaskGet("version")
 			if resp != nil {
 				defer resp.Body.Close()
 
@@ -405,19 +405,22 @@ func (h *HTTPCommunicator) getTaskPath(path string) string {
 	return fmt.Sprintf("task/%v/%v", h.TaskId, path)
 }
 
-func (h *HTTPCommunicator) TryGet(path string, withTask bool) (*http.Response, error) {
-	if withTask {
-		path = h.getTaskPath(path)
-	}
+func (h *HTTPCommunicator) TryGet(path string) (*http.Response, error) {
 	resp, err := h.tryRequestWithClient(path, "GET", h.httpClient, nil)
 	return resp, errors.WithStack(err)
 }
 
-func (h *HTTPCommunicator) TryPostJSON(path string, withTask bool,
-	data interface{}) (*http.Response, error) {
-	if withTask {
-		path = h.getTaskPath(path)
-	}
+func (h *HTTPCommunicator) TryTaskGet(path string) (*http.Response, error) {
+	resp, err := h.tryRequestWithClient(h.getTaskPath(path), "GET", h.httpClient, nil)
+	return resp, errors.WithStack(err)
+}
+
+func (h *HTTPCommunicator) TryTaskPost(path string, data interface{}) (*http.Response, error) {
+	resp, err := h.tryRequestWithClient(h.getTaskPath(path), "POST", h.httpClient, &data)
+	return resp, errors.WithStack(err)
+}
+
+func (h *HTTPCommunicator) TryPostJSON(path string, data interface{}) (*http.Response, error) {
 	resp, err := h.tryRequestWithClient(path, "POST", h.httpClient, &data)
 	return resp, errors.WithStack(err)
 }
@@ -427,7 +430,6 @@ func (h *HTTPCommunicator) TryPostJSON(path string, withTask bool,
 func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, client *http.Client,
 	data *interface{}) (*http.Response, error) {
 	endpointUrl := fmt.Sprintf("%s/%s", h.ServerURLRoot, path)
-	fmt.Println(h.ServerURLRoot)
 	req, err := http.NewRequest(method, endpointUrl, nil)
 	err = errors.WithStack(err)
 	if err != nil {
@@ -455,27 +457,29 @@ func (h *HTTPCommunicator) postJSON(path string, data interface{}) (
 	resp *http.Response, retryFail bool, err error) {
 	retriablePost := util.RetriableFunc(
 		func() error {
-			resp, err = h.TryPostJSON(path, true, data)
-			if err == nil && resp.StatusCode == http.StatusOK {
-				return nil
-			}
-			if resp != nil && resp.StatusCode == http.StatusConflict {
-				h.Logger.Logf(slogger.ERROR, "received 409 conflict error")
-				return HTTPConflictError
+			resp, err = h.TryTaskPost(path, data)
+			if resp == nil {
+				h.Logger.Logf(slogger.ERROR, "nil response")
+				return errors.New("response is nil")
 			}
 			if err != nil {
 				h.Logger.Logf(slogger.ERROR, "HTTP Post failed on '%v': %v",
 					path, err)
 				return util.RetriableError{err}
-			} else {
-				h.Logger.Logf(slogger.ERROR, "bad response '%v' posting to "+
-					"'%v'", resp.StatusCode, path)
-				return util.RetriableError{errors.Errorf("unexpected status "+
-					"code: %v", resp.StatusCode)}
 			}
+			if resp.StatusCode == http.StatusOK {
+				return nil
+			}
+			if resp.StatusCode == http.StatusConflict {
+				h.Logger.Logf(slogger.ERROR, "received 409 conflict error")
+				return HTTPConflictError
+			}
+			h.Logger.Logf(slogger.ERROR, "bad response '%v' posting to "+
+				"'%v'", resp.StatusCode, path)
+			err = errors.Errorf("unexpected status code: %v", resp.StatusCode)
+			return util.RetriableError{err}
 		},
 	)
-
 	retryFail, err = util.Retry(retriablePost, h.MaxAttempts, h.RetrySleep)
 
 	return resp, retryFail, err
@@ -486,7 +490,7 @@ func (h *HTTPCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error
 	resultVars := &apimodels.ExpansionVars{}
 	retriableGet := util.RetriableFunc(
 		func() error {
-			resp, err := h.TryGet("fetch_vars", true)
+			resp, err := h.TryTaskGet("fetch_vars")
 			if resp != nil {
 				defer resp.Body.Close()
 			}

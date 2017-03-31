@@ -8,6 +8,7 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/manifest"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/git"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -79,14 +80,13 @@ func TestManifestLoad(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
-
-		taskConfig, err := plugintest.CreateTestConfig(filepath.Join(testutil.GetDirectoryOfFile(),
-			"testdata", "mongodb-mongo-master.yml"), t)
-		testutil.HandleTestingErr(err, t, "Couldnt get task config from config file")
+		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "mongodb-mongo-master.yml")
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
+		taskConfig := modelData.TaskConfig
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
-
-		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
 		Convey("the manifest load command should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {

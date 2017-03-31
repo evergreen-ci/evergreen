@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/git"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -32,12 +33,17 @@ func TestGitPlugin(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
-		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 
-		taskConfig, err := plugintest.CreateTestConfig(
-			filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_clone.yml"),
-			t)
-		testutil.HandleTestingErr(err, t, "failed to create test config")
+		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_clone.yml")
+		patchPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "test.patch")
+
+		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
+		testutil.HandleTestingErr(err, t, "failed to setup test data")
+		err = plugintest.SetupPatchData(modelData, patchPath, t)
+		testutil.HandleTestingErr(err, t, "failed to setup patch data")
+		taskConfig := modelData.TaskConfig
+
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 		Convey("all commands in test project should execute successfully", func() {

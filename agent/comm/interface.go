@@ -23,6 +23,8 @@ type TaskCommunicator interface {
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)
 	GetNextTask() (*apimodels.NextTaskResponse, error)
-	TryGet(path string, withTask bool) (*http.Response, error)
-	TryPostJSON(path string, withTask bool, data interface{}) (*http.Response, error)
+	TryTaskGet(path string) (*http.Response, error)
+	TryTaskPost(path string, data interface{}) (*http.Response, error)
+	TryGet(path string) (*http.Response, error)
+	TryPostJSON(path string, data interface{}) (*http.Response, error)
 }

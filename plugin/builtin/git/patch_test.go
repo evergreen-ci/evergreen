@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
+	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
@@ -29,19 +30,20 @@ func TestPatchPluginAPI(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		defer server.Close()
-		_, err = plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
-		testutil.HandleTestingErr(err, t, "Couldn't set up test config")
+		configPath := filepath.Join(cwd, "testdata", "plugin_patch.yml")
+		patchFile := filepath.Join(cwd, "testdata", "test.patch")
+
 		testCommand := GitGetProjectCommand{Directory: "dir"}
-		_, _, err = plugintest.SetupAPITestData("testTask", filepath.Join(cwd, "testdata", "testmodule.patch"), t)
+		modelData, err := modelutil.SetupAPITestData(testConfig, "testTask", "testvar", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
-		testTask, err := task.FindOne(task.ById("testTaskId"))
-		testutil.HandleTestingErr(err, t, "Couldn't set up test patch task")
+		err = plugintest.SetupPatchData(modelData, patchFile, t)
+		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
+		taskConfig := modelData.TaskConfig
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("calls to existing tasks with patches should succeed", func() {
-			httpCom := plugintest.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
+			httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(pluginCom, logger)
 			So(err, ShouldBeNil)
@@ -52,7 +54,10 @@ func TestPatchPluginAPI(t *testing.T) {
 		Convey("calls to non-existing tasks should fail", func() {
 			v := version.Version{Id: ""}
 			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
-			httpCom := plugintest.TestAgentCommunicator("BAD_TASK_ID", "", server.URL)
+			modelData.Task = &task.Task{
+				Id: "BAD_TASK_ID",
+			}
+			httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(pluginCom, logger)
 			So(err.Error(), ShouldContainSubstring, "not found")
@@ -68,7 +73,8 @@ func TestPatchPluginAPI(t *testing.T) {
 			testutil.HandleTestingErr(noPatchVersion.Insert(), t, "Couldn't insert patch version")
 			v := version.Version{Id: ""}
 			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
-			httpCom := plugintest.TestAgentCommunicator(noPatchTask.Id, "", server.URL)
+			modelData.Task = &noPatchTask
+			httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
 			patch, err := testCommand.GetPatch(pluginCom, logger)
 			So(err, ShouldNotBeNil)
@@ -99,17 +105,22 @@ func TestPatchPlugin(t *testing.T) {
 		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
-		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
+
+		patchFile := filepath.Join(cwd, "testdata", "testmodule.patch")
+		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_patch.yml")
+		modelData, err := modelutil.SetupAPITestData(testConfig, "testTask", "testvar", configPath, modelutil.InlinePatch)
+		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
+
+		err = plugintest.SetupPatchData(modelData, patchFile, t)
+		testutil.HandleTestingErr(err, t, "Couldn't set up patch documents")
+
+		taskConfig := modelData.TaskConfig
+		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 
 		Convey("all commands in test project should execute successfully", func() {
-			taskConfig, err := plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
-			testutil.HandleTestingErr(err, t, "could not create test config")
-
 			taskConfig.Task.Requester = evergreen.PatchVersionRequester
-			_, _, err = plugintest.SetupAPITestData("testTask", filepath.Join(cwd, "testdata", "testmodule.patch"), t)
-			testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 
 			for _, task := range taskConfig.Project.Tasks {
 				So(len(task.Commands), ShouldNotEqual, 0)
