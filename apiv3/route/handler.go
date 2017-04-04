@@ -7,10 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apiv3/model"
 	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
 	"github.com/evergreen-ci/evergreen/util"
-)
-
-const (
-	JsonMimeType = "application/json; charset=utf-8"
+	"github.com/mongodb/grip"
 )
 
 // MethodHandler contains all of the methods necessary for completely processing
@@ -45,14 +42,10 @@ type RequestHandler interface {
 	// Handler defines how to fetch a new version of this handler.
 	Handler() RequestHandler
 
-	// Parse defines how to retrieve the needed parameters from the HTTP request.
-	// All needed data should be retrieved during the parse function since
+	// ParseAndValidate defines how to retrieve the needed parameters from the HTTP
+	// request. All needed data should be retrieved during the parse function since
 	// other functions do not have access to the HTTP request.
-	Parse(*http.Request) error
-
-	// Validate defines how to ensure all needed data is present and in the format
-	// expected by the route
-	Validate() error
+	ParseAndValidate(*http.Request) error
 
 	// Execute performs the necessary work on the evergreen backend and returns
 	// an API model to be surfaced to the user.
@@ -68,26 +61,20 @@ type RequestHandler interface {
 func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext,
 	route string, version int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", JsonMimeType)
 
 		if err := methodHandler.Authenticate(sc, r); err != nil {
-			handleAPIError(err, w)
+			handleAPIError(err, w, r)
 			return
 		}
-
 		reqHandler := methodHandler.RequestHandler.Handler()
 
-		if err := reqHandler.Parse(r); err != nil {
-			handleAPIError(err, w)
-			return
-		}
-		if err := reqHandler.Validate(); err != nil {
-			handleAPIError(err, w)
+		if err := reqHandler.ParseAndValidate(r); err != nil {
+			handleAPIError(err, w, r)
 			return
 		}
 		result, err := reqHandler.Execute(sc)
 		if err != nil {
-			handleAPIError(err, w)
+			handleAPIError(err, w, r)
 			return
 		}
 
@@ -99,7 +86,7 @@ func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext,
 		case *PaginationMetadata:
 			err := m.MakeHeader(w, sc.GetPrefix(), sc.GetURL(), route, version)
 			if err != nil {
-				handleAPIError(err, w)
+				handleAPIError(err, w, r)
 				return
 			}
 			util.WriteJSON(&w, result.Result, http.StatusOK)
@@ -118,7 +105,8 @@ func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext,
 // written back to the requester. If the error is unknown, it must have come
 // from a service layer package, in which case it is an internal server error
 // and is returned as such.
-func handleAPIError(e error, w http.ResponseWriter) {
+func handleAPIError(e error, w http.ResponseWriter, r *http.Request) {
+
 	apiErr := apiv3.APIError{}
 
 	apiErr.StatusCode = http.StatusInternalServerError
@@ -126,6 +114,9 @@ func handleAPIError(e error, w http.ResponseWriter) {
 
 	if castError, ok := e.(apiv3.APIError); ok {
 		apiErr = castError
+		grip.Warningln("User error", r.Method, r.URL, e)
+	} else {
+		grip.Errorf("Service error %s %s %+v", r.Method, r.URL, e)
 	}
 
 	util.WriteJSON(&w, apiErr, apiErr.StatusCode)

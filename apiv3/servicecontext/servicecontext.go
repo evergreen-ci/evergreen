@@ -3,6 +3,7 @@ package servicecontext
 import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 )
 
@@ -27,6 +28,8 @@ type ServiceContext interface {
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
 
+	FindTasksByIds([]string) ([]task.Task, error)
+
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
 	// BuildId. It takes the buildId being queried for as its parameter and
 	// returns a list of tasks which match.
@@ -34,6 +37,10 @@ type ServiceContext interface {
 
 	// FindUserById is a method to find a specific user given its ID.
 	FindUserById(string) (auth.APIUser, error)
+
+	// FindHostsById is a method to find a sorted list of hosts given an ID to
+	// start from.
+	FindHostsById(string, int, int) ([]host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
@@ -51,6 +58,7 @@ type DBServiceContext struct {
 	DBUserConnector
 	DBTaskConnector
 	DBContextConnector
+	DBHostConnector
 }
 
 func (ctx *DBServiceContext) GetSuperUsers() []string {
@@ -80,6 +88,7 @@ type MockServiceContext struct {
 	MockUserConnector
 	MockTaskConnector
 	MockContextConnector
+	MockHostConnector
 }
 
 func (ctx *MockServiceContext) GetSuperUsers() []string {

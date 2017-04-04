@@ -57,6 +57,20 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit
 	return ts, nil
 }
 
+func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
+	ts, err := task.Find(task.ByIds(ids))
+	if err != nil {
+		return nil, err
+	}
+	if len(ts) == 0 {
+		return []task.Task{}, &apiv3.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    "no tasks found",
+		}
+	}
+	return ts, nil
+}
+
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the ServiceContext interface's Task related functions.
 type MockTaskConnector struct {
@@ -68,6 +82,10 @@ type MockTaskConnector struct {
 // based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	return &mdf.CachedTasks[0], nil
+}
+
+func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
+	return mdf.CachedTasks, nil
 }
 
 // FindTaskByBuildId provides a mock implementation of the function for the

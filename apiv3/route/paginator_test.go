@@ -217,12 +217,6 @@ type testPaginationRequestHandler struct {
 	*PaginationExecutor
 }
 
-func (prh *testPaginationRequestHandler) Parse(r *http.Request) error {
-	return prh.fetchPaginationParams(r)
-}
-func (prh *testPaginationRequestHandler) Validate() error {
-	return nil
-}
 func (prh *testPaginationRequestHandler) Handler() RequestHandler {
 	return prh
 }

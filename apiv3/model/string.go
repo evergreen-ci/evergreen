@@ -10,7 +10,8 @@ func (as *APIString) MarshalJSON() ([]byte, error) {
 	if *as == "" {
 		return []byte("null"), nil
 	}
-	return json.Marshal(as)
+	str := string(*as)
+	return json.Marshal(&str)
 }
 
 func (as *APIString) UnmarshalJSON(data []byte) error {

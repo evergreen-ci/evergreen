@@ -35,23 +35,14 @@ func TestMakeHandler(t *testing.T) {
 			}
 			checkResultMatchesBasic(mockMethod, auth.err, nil, http.StatusBadRequest, t)
 		})
-		Convey("And parse errors should cause response to "+
+		Convey("And parseValidate errors should cause response to "+
 			"contain error information", func() {
-			requestHandler.parseErr = apiv3.APIError{
+			requestHandler.parseValidateErr = apiv3.APIError{
 				StatusCode: http.StatusRequestEntityTooLarge,
 				Message:    "Request too large to parse",
 			}
-			checkResultMatchesBasic(mockMethod, requestHandler.parseErr,
+			checkResultMatchesBasic(mockMethod, requestHandler.parseValidateErr,
 				nil, http.StatusRequestEntityTooLarge, t)
-		})
-		Convey("And validate errors should cause response to "+
-			"contain error information", func() {
-			requestHandler.validateErr = apiv3.APIError{
-				StatusCode: http.StatusBadRequest,
-				Message:    "Request did not contain all fields",
-			}
-			checkResultMatchesBasic(mockMethod, requestHandler.validateErr,
-				nil, http.StatusBadRequest, t)
 		})
 		Convey("And execute errors should cause response to "+
 			"contain error information", func() {
@@ -62,17 +53,17 @@ func TestMakeHandler(t *testing.T) {
 			checkResultMatchesBasic(mockMethod, requestHandler.executeErr,
 				nil, http.StatusNotFound, t)
 		})
-		Convey("And validate and execute errors should cause response to "+
-			"contain validate error information", func() {
+		Convey("And parseValidate and execute errors should cause response to "+
+			"contain parseValidate error information", func() {
 			requestHandler.executeErr = apiv3.APIError{
 				StatusCode: http.StatusNotFound,
 				Message:    "Not found in DB",
 			}
-			requestHandler.validateErr = apiv3.APIError{
+			requestHandler.parseValidateErr = apiv3.APIError{
 				StatusCode: http.StatusBadRequest,
 				Message:    "Request did not contain all fields",
 			}
-			checkResultMatchesBasic(mockMethod, requestHandler.validateErr,
+			checkResultMatchesBasic(mockMethod, requestHandler.parseValidateErr,
 				nil, http.StatusBadRequest, t)
 		})
 		Convey("And authenticate and execute errors should cause response to "+

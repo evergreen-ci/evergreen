@@ -301,6 +301,20 @@ func ByExpiredSince(time time.Time) db.Q {
 // failed to provision.
 var IsProvisioningFailure = db.Query(bson.D{{StatusKey, evergreen.HostProvisionFailed}})
 
+// ByAfterId provides a way to get an ordered list of hosts from after the
+// given hostId.
+func ByAfterId(hostId string, dir int) db.Q {
+	findOp := "$gte"
+	if dir < 0 {
+		findOp = "$lte"
+	}
+	return db.Query(bson.M{
+		IdKey: bson.M{
+			findOp: hostId,
+		},
+	}).Sort([]string{"+" + IdKey})
+}
+
 // === DB Logic ===
 
 // FindOne gets one Host for the given query.

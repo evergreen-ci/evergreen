@@ -8,28 +8,22 @@ import (
 )
 
 type mockRequestHandler struct {
-	storedMetadata interface{}
-	storedModels   []model.Model
-	parseErr       error
-	validateErr    error
-	executeErr     error
+	storedMetadata   interface{}
+	storedModels     []model.Model
+	parseValidateErr error
+	executeErr       error
 }
 
 func (m *mockRequestHandler) Handler() RequestHandler {
 	return &mockRequestHandler{
-		storedMetadata: m.storedMetadata,
-		storedModels:   m.storedModels,
-		parseErr:       m.parseErr,
-		validateErr:    m.validateErr,
-		executeErr:     m.executeErr,
+		storedMetadata:   m.storedMetadata,
+		storedModels:     m.storedModels,
+		parseValidateErr: m.parseValidateErr,
+		executeErr:       m.executeErr,
 	}
 }
-func (m *mockRequestHandler) Parse(h *http.Request) error {
-	return m.parseErr
-}
-
-func (m *mockRequestHandler) Validate() error {
-	return m.validateErr
+func (m *mockRequestHandler) ParseAndValidate(h *http.Request) error {
+	return m.parseValidateErr
 }
 
 func (m *mockRequestHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {

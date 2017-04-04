@@ -16,6 +16,10 @@ import (
 	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
 )
 
+const (
+	defaultLimit = 100
+)
+
 var linkMatcher = regexp.MustCompile(`^\<(\S+)\>; rel=\"(\S+)\"`)
 
 // PaginationExecutor is a struct that handles gathering necessary
@@ -86,14 +90,15 @@ func (pe *PaginationExecutor) Execute(sc servicecontext.ServiceContext) (Respons
 	return rd, nil
 }
 
-// fetchPaginationParams gets the key and limit from the request
+// ParseAndValidate gets the key and limit from the request
 // and sets them on the PaginationExecutor.
-func (pe *PaginationExecutor) fetchPaginationParams(r *http.Request) error {
+func (pe *PaginationExecutor) ParseAndValidate(r *http.Request) error {
 	vals := r.URL.Query()
 	if k, ok := vals[pe.KeyQueryParam]; ok && len(k) > 0 {
 		pe.key = k[0]
 	}
 
+	pe.limit = defaultLimit
 	limit := ""
 	if l, ok := vals[pe.LimitQueryParam]; ok && len(l) > 0 {
 		limit = l[0]

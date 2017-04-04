@@ -17,6 +17,6 @@ func (m *MockModel) ToService() (interface{}, error) {
 	return nil, nil
 }
 
-func (m *MockModel) FromService(in interface{}) error {
+func (m *MockModel) BuildFromService(in interface{}) error {
 	return nil
 }

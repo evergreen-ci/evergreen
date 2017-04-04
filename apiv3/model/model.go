@@ -4,6 +4,6 @@ package model
 // turned into service layer models and taken from service layer models and
 // turned into api models to be returned.
 type Model interface {
-	FromService(interface{}) error
+	BuildFromService(interface{}) error
 	ToService() (interface{}, error)
 }

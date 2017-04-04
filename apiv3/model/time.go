@@ -46,7 +46,11 @@ func (at *APITime) UnmarshalJSON(b []byte) error {
 // MarshalJSON implements the custom marshalling of this type so that it can
 // be correctly written out in an API response.
 func (at APITime) MarshalJSON() ([]byte, error) {
-	return []byte(time.Time(at).Format(APITimeFormat)), nil
+	t := time.Time(at)
+	if t.IsZero() {
+		return []byte("null"), nil
+	}
+	return []byte(t.Format(APITimeFormat)), nil
 }
 
 func (at APITime) String() string {
