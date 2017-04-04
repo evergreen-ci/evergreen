@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -31,7 +30,7 @@ const (
 type HostGateway interface {
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	RunTaskOnHost(*evergreen.Settings, task.Task, host.Host) (string, error)
+	StartAgentOnHost(*evergreen.Settings, host.Host) (string, error)
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -47,7 +46,7 @@ type AgentHostGateway struct {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine.
 // Returns an error if any step along the way fails.
-func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskToRun task.Task, hostObj host.Host) (string, error) {
+func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hostObj host.Host) (string, error) {
 
 	// get the host's SSH options
 	cloudHost, err := providers.GetCloudHost(&hostObj, settings)
@@ -68,7 +67,7 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 	grip.Infof("Prepping host %v finished successfully", hostObj.Id)
 
 	// start the agent on the remote machine
-	grip.Infof("Starting agent on host %v for task %v...", hostObj.Id, taskToRun.Id)
+	grip.Infof("Starting agent on host %v", hostObj.Id)
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
@@ -77,11 +76,11 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 		}
 	}
 
-	err = startAgentOnRemote(settings.ApiUrl, &taskToRun, &hostObj, sshOptions)
+	err = startAgentOnRemote(settings.ApiUrl, &hostObj, sshOptions)
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	grip.Infof("Agent successfully started for task %v", taskToRun.Id)
+	grip.Infof("Agent successfully started for host %v", hostObj.Id)
 
 	return agentRevision, nil
 }
@@ -207,14 +206,14 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 }
 
 // Start the agent process on the specified remote host, and have it run the specified task.
-func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshOptions []string) error {
+func startAgentOnRemote(apiURL string, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "main")
 
 	// build the command to run on the remote machine
 	remoteCmd := fmt.Sprintf(
-		`%v -api_server "%v" -task_id "%v" -task_secret "%v" -host_id "%v" -host_secret "%v" -log_prefix "%v" -https_cert "%v"`,
-		pathToExecutable, apiURL, task.Id, task.Secret, hostObj.Id, hostObj.Secret,
+		`%v -api_server "%v" -host_id "%v" -host_secret "%v" -log_prefix "%v" -https_cert "%v"`,
+		pathToExecutable, apiURL, hostObj.Id, hostObj.Secret,
 		filepath.Join(hostObj.Distro.WorkDir, agentFile), "")
 	grip.Info(remoteCmd)
 
@@ -249,6 +248,5 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 		}
 		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())
 	}
-
 	return nil
 }

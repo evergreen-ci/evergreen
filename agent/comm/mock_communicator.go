@@ -18,9 +18,25 @@ type MockCommunicator struct {
 	shouldFailEnd       bool
 	shouldFailHeartbeat bool
 	abort               bool
+	TaskId              string
+	TaskSecret          string
 	LogChan             chan []model.LogMessage
 	Posts               map[string][]interface{}
 	sync.RWMutex
+}
+
+func (mc *MockCommunicator) SetTask(taskId, taskSecret string) {
+
+	mc.TaskId = taskId
+	mc.TaskSecret = taskSecret
+}
+
+func (mc *MockCommunicator) GetCurrentTaskId() string {
+	return mc.TaskId
+}
+
+func (mc *MockCommunicator) Reset(commSignal chan Signal, timeoutWatcher *TimeoutWatcher) (*APILogger, *StreamLogger, error) {
+	return nil, nil, nil
 }
 
 func (*MockCommunicator) TryGet(path string) (*http.Response, error) {

@@ -365,48 +365,6 @@ func TestHostCreateSecret(t *testing.T) {
 	})
 }
 
-func TestHostSetRunningTask(t *testing.T) {
-
-	Convey("With a host", t, func() {
-
-		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
-			" clearing '%v' collection", Collection)
-
-		host := &Host{
-			Id: "hostOne",
-		}
-
-		So(host.Insert(), ShouldBeNil)
-
-		var err error
-
-		Convey("setting the running task for the host should set the running"+
-			" task and task dispatch time for both the in-memory and database"+
-			" copies of the host", func() {
-
-			taskDispatchTime := time.Now()
-
-			So(host.SetRunningTask("taskId", "c", taskDispatchTime), ShouldBeNil)
-			So(host.RunningTask, ShouldEqual, "taskId")
-			So(host.AgentRevision, ShouldEqual, "c")
-			So(host.TaskDispatchTime.Round(time.Second).Equal(
-				taskDispatchTime.Round(time.Second)), ShouldBeTrue)
-
-			host, err = FindOne(ById(host.Id))
-			So(err, ShouldBeNil)
-			So(host.RunningTask, ShouldEqual, "taskId")
-			So(host.AgentRevision, ShouldEqual, "c")
-			So(host.TaskDispatchTime.Round(time.Second).Equal(
-				taskDispatchTime.Round(time.Second)), ShouldBeTrue)
-
-		})
-		Convey("setting the running task id to an empty string should error", func() {
-			So(host.SetRunningTask("", "c", time.Now()), ShouldNotBeNil)
-		})
-
-	})
-}
-
 func TestHostSetExpirationTime(t *testing.T) {
 
 	Convey("With a host", t, func() {
@@ -744,6 +702,69 @@ func TestDecommissionHostsWithDistroId(t *testing.T) {
 				}
 			})
 
+		})
+
+	})
+}
+
+func TestFindByLCT(t *testing.T) {
+	Convey("with the a given time for checking and an empty hosts collection", t, func() {
+		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
+			" clearing '%v' collection", Collection)
+		now := time.Now()
+		Convey("with a host that has no last communication time", func() {
+			h := Host{
+				Id:     "id",
+				Status: evergreen.HostRunning,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(ByRunningWithTimedOutLCT(time.Now()))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, "id")
+		})
+
+		Convey("with a host with a last communication time > 10 mins", func() {
+			anotherHost := Host{
+				Id: "anotherID",
+				LastCommunicationTime: now.Add(-time.Duration(20) * time.Minute),
+				Status:                evergreen.HostRunning,
+			}
+			So(anotherHost.Insert(), ShouldBeNil)
+			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 1)
+			So(hosts[0].Id, ShouldEqual, anotherHost.Id)
+		})
+
+		Convey("with a host with a normal LCT", func() {
+			anotherHost := Host{
+				Id: "testhost",
+				LastCommunicationTime: now.Add(time.Duration(5) * time.Minute),
+				Status:                evergreen.HostRunning,
+			}
+			So(anotherHost.Insert(), ShouldBeNil)
+			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
+			Convey("after resetting the LCT", func() {
+				So(anotherHost.ResetLastCommunicated(), ShouldBeNil)
+				So(anotherHost.LastCommunicationTime, ShouldResemble, time.Unix(0, 0))
+				h, err := Find(ByRunningWithTimedOutLCT(now))
+				So(err, ShouldBeNil)
+				So(len(h), ShouldEqual, 1)
+				So(h[0].Id, ShouldEqual, "testhost")
+			})
+		})
+		Convey("with a terminated host that has no LCT", func() {
+			h := Host{
+				Id:     "h",
+				Status: evergreen.HostTerminated,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
 		})
 
 	})

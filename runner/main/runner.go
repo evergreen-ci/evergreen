@@ -94,7 +94,7 @@ func main() {
 	}
 
 	if settings.Runner.IntervalSeconds <= 0 {
-		grip.Warningf("Interval set to %s (<= 0s) using %s instead",
+		grip.Warningf("Interval set to %v (<= 0s) using %v instead",
 			settings.Runner.IntervalSeconds, runInterval)
 	} else {
 		runInterval = settings.Runner.IntervalSeconds

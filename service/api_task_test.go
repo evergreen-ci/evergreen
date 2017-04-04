@@ -53,7 +53,7 @@ func getNextTaskEndpoint(t *testing.T, hostId string) *httptest.ResponseRecorder
 	}
 	url := "/api/2/agent/next_task"
 
-	request, err := http.NewRequest("POST", url, nil)
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Fatalf("building request: %v", err)
 	}
@@ -429,20 +429,24 @@ func TestValidateTaskEndDetails(t *testing.T) {
 }
 
 func TestCheckHostHealth(t *testing.T) {
+	currentRevision := "abc"
 	Convey("With a host that has different statuses", t, func() {
 		h := &host.Host{
-			Status: evergreen.HostRunning,
+			Status:        evergreen.HostRunning,
+			AgentRevision: currentRevision,
 		}
-		resp := &apimodels.EndTaskResponse{}
-		checkHostHealth(h, resp)
-		So(resp.ShouldExit, ShouldBeFalse)
+		shouldExit, _ := checkHostHealth(h, currentRevision, resp)
+		So(shouldExit, ShouldBeFalse)
 		h.Status = evergreen.HostDecommissioned
-		checkHostHealth(h, resp)
-		So(resp.ShouldExit, ShouldBeTrue)
+		shouldExit, _ = checkHostHealth(h, currentRevision, resp)
+		So(shouldExit, ShouldBeTrue)
 		h.Status = evergreen.HostQuarantined
-		checkHostHealth(h, resp)
-		So(resp.ShouldExit, ShouldBeTrue)
-
+		shouldExit, _ = checkHostHealth(h, currentRevision, resp)
+		So(shouldExit, ShouldBeTrue)
+		Convey("With a host that is running but has a different revision", func() {
+			shouldExit, _ := checkHostHealth(h, "bcd", resp)
+			So(shouldExit, ShouldBeTrue)
+		})
 	})
 }
 

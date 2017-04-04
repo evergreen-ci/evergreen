@@ -44,7 +44,7 @@ const (
 	DefaultStatsInterval = time.Minute
 
 	// DefaultAgentSleepInterval is the interval after which the agent retries getting a next task
-	DefaultAgentSleepInterval = time.Minute
+	DefaultAgentSleepInterval = 30 * time.Second
 )
 
 var (
@@ -156,6 +156,8 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 	// Signal all background actions to stop. If HandleSignals is still running,
 	// this will cause it to return.
 	close(agt.signalHandler.stopBackgroundChan)
+	defer agt.cleanup()
+	defer agt.APILogger.FlushAndWait()
 	var detail *apimodels.TaskEndDetail
 	select {
 	case detail = <-agt.endChan:
@@ -170,11 +172,8 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 		agt.logger.LogTask(slogger.INFO, "Task completed - FAILURE.")
 	}
 
-	// run cleanup before and after the post operations.
-	if err := shell.KillSpawnedProcs(agt.taskConfig.Task.Id, agt.logger); err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes (before-post): %v", err)
-	}
-
+	// Run cleanup before and after post commands
+	agt.cleanup()
 	// run post commands
 	if agt.taskConfig.Project.Post != nil {
 		agt.logger.LogTask(slogger.INFO, "Running post-task commands.")
@@ -185,11 +184,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 		}
 		agt.logger.LogTask(slogger.INFO, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
-
-	// run cleanup before and after the post operations.
-	if err := shell.KillSpawnedProcs(agt.taskConfig.Task.Id, agt.logger); err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "Error cleaning up spawned processes (after-post): %v", err)
-	}
+	agt.cleanup()
 
 	err := agt.removeTaskDirectory()
 	if err != nil {
@@ -197,9 +192,9 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
-	agt.APILogger.FlushAndWait() // ensure that logs are sent before task ends.
 
 	return agt.End(detail)
+
 }
 
 // getTaskEndDetail returns a default TaskEndDetail struct based on the current
@@ -244,7 +239,6 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	receivedSignal := sh.awaitSignal()
 	detail := agt.getTaskEndDetail()
-	defer agt.cleanup()
 	switch receivedSignal {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
@@ -252,9 +246,11 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case comm.IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
+		agt.cleanup()
 		os.Exit(1)
 	case comm.HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
+		agt.cleanup()
 		os.Exit(1)
 	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
@@ -349,8 +345,6 @@ func (agt *Agent) GetTaskConfig() (*model.TaskConfig, error) {
 // Options represents an agent configuration.
 type Options struct {
 	APIURL      string
-	TaskId      string
-	TaskSecret  string
 	HostId      string
 	HostSecret  string
 	Certificate string
@@ -420,16 +414,6 @@ func New(opts Options) (*Agent, error) {
 	return agt, nil
 }
 
-// GetCurrentTaskId retrieves the task id from the agent that is being run
-func (agt *Agent) GetCurrentTaskId() (string, error) {
-	// modify task communicator
-	httpTaskComm, ok := agt.TaskCommunicator.(*comm.HTTPCommunicator)
-	if !ok {
-		return "", fmt.Errorf("error getting http communicator for agent")
-	}
-	return httpTaskComm.TaskId, nil
-}
-
 // getNextTask attempts to retrieve a next task and adds it in the
 // agent's communicator if it exists. It returns true if there is a next task in the agent.
 func (agt *Agent) getNextTask() (bool, error) {
@@ -443,7 +427,6 @@ func (agt *Agent) getNextTask() (bool, error) {
 		return false, fmt.Errorf("next task response indicates that agent should exit %v", nextTaskResponse.Message)
 	}
 	if nextTaskResponse.TaskId == "" {
-		grip.Infof("next task response does not have a task id")
 		return false, nil
 	}
 
@@ -456,31 +439,48 @@ func (agt *Agent) getNextTask() (bool, error) {
 
 	grip.Infof("assigned to run task %s", nextTaskResponse.TaskId)
 
-	// modify task communicator
-	httpTaskComm, ok := agt.TaskCommunicator.(*comm.HTTPCommunicator)
-	if !ok {
-		message := "error getting http communicator for agent"
-		grip.Criticalf(message)
-		return false, fmt.Errorf(message)
-	}
-
-	httpTaskComm.TaskId = nextTaskResponse.TaskId
-	httpTaskComm.TaskSecret = nextTaskResponse.TaskSecret
-
-	agt.TaskCommunicator = httpTaskComm
-
+	agt.SetTask(nextTaskResponse.TaskId, nextTaskResponse.TaskSecret)
 	return true, nil
+}
+
+// Reset is run in between each agent run.
+// It cleans up tasks and unsets the task id and task secret, and resets the logging
+// This is a bandaid because of our over complicated logging and should be taken out once
+// EVG-1616 has been completed.
+func (agt *Agent) Reset() error {
+	sh := &SignalHandler{}
+	sh.makeChannels()
+
+	idleTimeoutWatcher := comm.NewTimeoutWatcher(sh.stopBackgroundChan)
+	idleTimeoutWatcher.SetDuration(DefaultIdleTimeout)
+
+	apiLogger, streamLogger, err := agt.TaskCommunicator.Reset(sh.communicatorChan, idleTimeoutWatcher)
+	if err != nil {
+		return err
+	}
+	agt.APILogger = apiLogger
+	agt.signalHandler = sh
+	agt.idleTimeoutWatcher = idleTimeoutWatcher
+	agt.endChan = make(chan *apimodels.TaskEndDetail, 1)
+	agt.logger = streamLogger
+
+	return nil
 }
 
 // Run is the agent loop which gets the next task if it exists, and runs the task if it gets one.
 // It returns an exit code when the agent needs to exit
 func (agt *Agent) Run() error {
+
+	// register plugins needed for execution
+	if err := registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
+		grip.Criticalf("error registering plugins: %+v", err)
+		return err
+	}
 	defer agt.cleanup()
 	// this loop continues until the agent exits
 	for {
 		var err error
 		// this loop continues until the agent gets a new task to run
-		// TODO: In finish task, there should be some indication of whether or not the agent should exit. (EVG-1592)
 	nextTaskLoop:
 		for {
 			hasTask, err := agt.getNextTask()
@@ -491,6 +491,7 @@ func (agt *Agent) Run() error {
 			if hasTask {
 				break nextTaskLoop
 			}
+			grip.Infof("Agent sleeping %v", DefaultAgentSleepInterval)
 			time.Sleep(DefaultAgentSleepInterval)
 		}
 		resp, err := agt.RunTask()
@@ -508,6 +509,13 @@ func (agt *Agent) Run() error {
 		if resp.ShouldExit {
 			grip.Infof("task response indicates that agent should exit: %s", resp.Message)
 			return nil
+		}
+
+		// TODO: EVG-1616 once we simplify logging, we can re-evaluate whether or not we need to
+		// reset the agent in between task runs.
+		if err := agt.Reset(); err != nil {
+			grip.Criticalf("error resetting agent: %+v", err)
+			return err
 		}
 	}
 }
@@ -571,12 +579,6 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 		return nil, err
 	}
 	taskConfig.Expansions.Put("workdir", taskConfig.WorkDir)
-
-	// register plugins needed for execution
-	if err = registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
-		agt.logger.LogExecution(slogger.ERROR, "error initializing agent plugins: %v", err)
-		return agt.finishAndAwaitCleanup(evergreen.TaskFailed)
-	}
 
 	// notify API server that the task has been started.
 	agt.logger.LogExecution(slogger.INFO, "Reporting task started.")
@@ -834,20 +836,13 @@ func (agt *Agent) removeTaskDirectory() error {
 // cleanup attempts to terminate all processes started by the task
 // and flushes the logs.
 func (agt *Agent) cleanup() {
-	taskId, err := agt.GetCurrentTaskId()
-	if err != nil {
-		grip.Critical(err.Error())
-	}
+	taskId := agt.GetCurrentTaskId()
+	grip.Infof("cleaning up processes for task: %s", taskId)
 	if taskId != "" {
 		if err := shell.KillSpawnedProcs(taskId, agt.logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)
 			grip.Critical(msg)
 		}
 	}
-
-	// if the pid file is removed also flush if necessary
-	if agt.logger != nil {
-		agt.logger.Flush()
-	}
-
+	grip.Infof("processes cleaned up for task %s", taskId)
 }

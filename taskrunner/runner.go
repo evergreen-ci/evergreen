@@ -13,7 +13,7 @@ type Runner struct{}
 
 const (
 	RunnerName  = "taskrunner"
-	Description = "run queued tasks on available hosts"
+	Description = "dispatch agents to free hosts"
 )
 
 func (r *Runner) Name() string {

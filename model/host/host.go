@@ -79,6 +79,10 @@ type ProvisionOptions struct {
 	OwnerId string `bson:"owner_id" json:"owner_id"`
 }
 
+const (
+	MaxLCTInterval = time.Minute * 10
+)
+
 // IdleTime returns how long has this host been idle
 func (h *Host) IdleTime() time.Duration {
 
@@ -204,6 +208,18 @@ func (h *Host) UpdateLastCommunicated() error {
 	return nil
 }
 
+// ResetLastCommunicated sets the LastCommunicationTime to be zero.
+func (h *Host) ResetLastCommunicated() error {
+	err := UpdateOne(
+		bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{LastCommunicationTimeKey: time.Unix(0, 0)}})
+	if err != nil {
+		return err
+	}
+	h.LastCommunicationTime = time.Unix(0, 0)
+	return nil
+}
+
 func (h *Host) Terminate() error {
 	err := h.SetTerminated()
 	if err != nil {
@@ -323,38 +339,15 @@ func (host *Host) UpdateRunningTask(prevTaskId, newTaskId string,
 	return true, nil
 }
 
-// Marks that the specified task was started on the host at the specified time.
-// TODO: This should be be removed once the task runner stops assigning tasks. (EVG-1586)
-func (h *Host) SetRunningTask(taskId, agentRevision string,
-	taskDispatchTime time.Time) error {
-
-	// if the task id is empty unset the running task field.
-	if taskId == "" {
-		return fmt.Errorf("cannot set running task id to be empty string")
+// SetAgentRevision sets the updated agent revision for the host
+func (h *Host) SetAgentRevision(agentRevision string) error {
+	err := UpdateOne(bson.M{IdKey: h.Id},
+		bson.M{"$set": bson.M{AgentRevisionKey: agentRevision}})
+	if err != nil {
+		return err
 	}
-
-	// log the event
-	event.LogHostRunningTaskSet(h.Id, taskId)
-
-	// update the in-memory host, then the database
-	h.RunningTask = taskId
 	h.AgentRevision = agentRevision
-	h.TaskDispatchTime = taskDispatchTime
-
-	update := bson.M{
-		"$set": bson.M{
-			AgentRevisionKey:    agentRevision,
-			TaskDispatchTimeKey: taskDispatchTime,
-			RunningTaskKey:      taskId,
-		},
-	}
-
-	return UpdateOne(
-		bson.M{
-			IdKey: h.Id,
-		},
-		update,
-	)
+	return nil
 }
 
 // SetExpirationTime updates the expiration time of a spawn host

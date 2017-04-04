@@ -27,4 +27,7 @@ type TaskCommunicator interface {
 	TryTaskPost(path string, data interface{}) (*http.Response, error)
 	TryGet(path string) (*http.Response, error)
 	TryPostJSON(path string, data interface{}) (*http.Response, error)
+	SetTask(taskId, taskSecret string)
+	GetCurrentTaskId() string
+	Reset(chan Signal, *TimeoutWatcher) (*APILogger, *StreamLogger, error)
 }

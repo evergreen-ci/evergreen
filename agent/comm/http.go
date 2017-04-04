@@ -87,7 +87,7 @@ type Heartbeat interface {
 func (h *HTTPCommunicator) Start() error {
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
-	resp, retryFail, err := h.postJSON("start", taskStartRequest)
+	resp, retryFail, err := h.postJSON("new_start", taskStartRequest)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -141,11 +141,13 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndT
 	} else {
 		err = errors.New("received nil response from API server")
 	}
+	h.Logger.Logf(slogger.INFO, "task's end response received: %s", taskEndResp.Message)
 	return taskEndResp, err
 }
 
 // Log sends a batch of log messages for the task's logs to the API server.
 func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
+
 	outgoingData := model.TaskLog{
 		TaskId:       h.TaskId,
 		Timestamp:    time.Now(),
@@ -170,6 +172,7 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 	)
 	retryFail, err := util.Retry(retriableLog, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
+		h.Logger.Errorf(slogger.ERROR, "error posting api logs: %v", err)
 		return errors.Wrapf(err, "logging failed after %vtries: %v", h.MaxAttempts)
 	}
 	return err
@@ -257,7 +260,6 @@ func (h *HTTPCommunicator) GetNextTask() (*apimodels.NextTaskResponse, error) {
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.TryGet("agent/next_task")
-
 			if resp == nil {
 				return util.RetriableError{fmt.Errorf("empty response")}
 			}
@@ -398,6 +400,35 @@ func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 		return false, err
 	}
 	return heartbeatResponse.Abort, nil
+}
+
+func (h *HTTPCommunicator) SetTask(taskId, taskSecret string) {
+	h.TaskId = taskId
+	h.TaskSecret = taskSecret
+}
+
+func (h *HTTPCommunicator) GetCurrentTaskId() string {
+	return h.TaskId
+}
+
+// Reset unsets the task id and task secret and re-initializes a new
+func (h *HTTPCommunicator) Reset(commSignal chan Signal, timeoutWatcher *TimeoutWatcher) (*APILogger, *StreamLogger, error) {
+
+	h.TaskId = ""
+	h.TaskSecret = ""
+
+	h.SignalChan = commSignal
+	// set up logger to API server
+	apiLogger := NewAPILogger(h)
+
+	// set up timeout logger, local and API logger streams
+	streamLogger, err := NewStreamLogger(timeoutWatcher, apiLogger)
+	if err != nil {
+		return nil, nil, err
+	}
+	h.Logger = streamLogger.Execution
+	return apiLogger, streamLogger, nil
+
 }
 
 // getTaskPath is a helper to create a path that can be used for task specific calls
