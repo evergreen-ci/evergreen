@@ -85,16 +85,16 @@ $(buildDir)/.plugins:Plugins install_plugins.sh
 	@touch $@
 $(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(buildDir) -source=$<
-$(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(srcFiles)
+$(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(buildDir) -source=$<
-$(buildDir)/evergreen_runner:runner/main/runner.go $(srcFiles)
+$(buildDir)/evergreen_runner:runner/main/runner.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(buildDir) -source=$<
 #   build the server binaries with the race detector:
-$(buildDir)/evergreen_api_server.race:service/api_main/apiserver.go $(srcFiles)
+$(buildDir)/evergreen_api_server.race:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -race -directory=$(buildDir) -source=$<
-$(buildDir)/evergreen_runner.race:runner/main/runner.go $(srcFiles)
+$(buildDir)/evergreen_runner.race:runner/main/runner.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -race -directory=$(buildDir) -source=$<
-$(buildDir)/evergreen_ui_server.race:service/ui_main/ui.go $(srcFiles)
+$(buildDir)/evergreen_ui_server.race:service/ui_main/ui.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -race -directory=$(buildDir) -source=$<
 phony += $(binaries) $(raceBinaries)
 # end rules for building server binaries
