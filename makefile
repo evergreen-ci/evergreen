@@ -202,9 +202,9 @@ race-%:$(buildDir)/output.%.race
 test-%:$(buildDir)/output.%.test
 	@grep -s -q -e "^PASS" $<
 coverage-%:$(buildDir)/output.%.coverage
-	@grep -s -q -e "^PASS" $<
+	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
-	@grep -s -q -e "^PASS" $<
+	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 # end convienence targets
 
 
@@ -282,7 +282,7 @@ $(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testTimeout) -test.coverprofile=$@ || true
+	$(testRunEnv) ./$< $(testTimeout) -test.v -test.coverprofile=$@ | tee $(subst coverage,test,$@ )
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(vendorGopath) go tool cover -html=$< -o $@

@@ -1,4 +1,4 @@
-command_type: system
+command_type: test
 stepback: true
 ignore:
     - "*.md" # don't schedule tests if a commit only changes markdown files
@@ -6,9 +6,32 @@ ignore:
 
 post:
   - command: gotest.parse_files
+    type: system
     params:
       files:
         - "gopath/src/github.com/evergreen-ci/evergreen/bin/output.*"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage.html"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/html
+      permissions: public-read
+      display_name: "(html) coverage:"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: "(txt) coverage:"
 
 
 #######################################
@@ -21,11 +44,13 @@ variables:
     name: test
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
         vars: { target: "${task_name}" }
       - command: s3.put
+        type: system
         params:
           optional: true
           aws_key: ${aws_key}
@@ -43,6 +68,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: setup-credentials
@@ -54,6 +80,7 @@ variables:
     name: test
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: setup-credentials
@@ -67,7 +94,6 @@ variables:
 functions:
   run-make:
     command: shell.exec
-    type: test
     params:
        script: |
          set -o errexit
@@ -92,6 +118,7 @@ functions:
          ${build_env} make ${make_args|} vendor ${target}
   setup-credentials:
     - command: shell.exec
+      type: system
       params:
         silent: true
         script: |
@@ -99,7 +126,7 @@ functions:
 
           echo "building creds file!"
           cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
-          credentials:  {
+          credentials: {
             github: "${github_token}",
           }
 
@@ -125,6 +152,7 @@ functions:
           EOF
   set-up-mongodb:
     - command: shell.exec
+      type: system
       params:
         script: |
           set -o errexit
@@ -143,6 +171,7 @@ functions:
           mkdir db_files
           mkdir db_logs
     - command: shell.exec
+      type: system
       params:
         background: true
         script: |
@@ -154,6 +183,7 @@ functions:
           ./mongod${extension|} --dbpath ./db_files &
           echo "waiting for mongod to start up"
     - command: shell.exec
+      type: system
       params:
         script: |
           set -o errexit
@@ -172,6 +202,7 @@ tasks:
     tags: [ "report" ]
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: setup-credentials
@@ -180,30 +211,11 @@ tasks:
         vars:
           target: "coverage-html"
           make_args: "-k"
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage.html"]
-          remote_file: evergreen/${task_id}/
-          bucket: mciuploads
-          content_type: text/html
-          permissions: public-read
-          display_name: "(html) coverage:"
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_files_include_filter: ["gopath/src/github.com/evergreen-ci/evergreen/bin/output.*.coverage"]
-          remote_file: evergreen/${task_id}/
-          bucket: mciuploads
-          content_type: text/plain
-          permissions: public-read
-          display_name: "(txt) coverage:"
   - name: lint
     tags: [ "report" ]
     commands:
       - command: git.get_project
+        type: system
         params:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
