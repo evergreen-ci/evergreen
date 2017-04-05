@@ -128,19 +128,20 @@ func terminateHost(host *host.Host, settings *evergreen.Settings) error {
 	// convert the host to a cloud host
 	cloudHost, err := providers.GetCloudHost(host, settings)
 	if err != nil {
-		return errors.Errorf("error getting cloud host for %v: %v", host.Id, err)
+		return errors.Wrapf(err, "error getting cloud host for %v", host.Id)
 	}
 
 	// run teardown script if we have one, sending notifications if things go awry
 	if host.Distro.Teardown != "" && host.Provisioned {
 		grip.Errorln("Running teardown script for host:", host.Id)
 		if err := runHostTeardown(host, cloudHost); err != nil {
-			grip.Errorf("Error running teardown script for %s: %+v", host.Id, err)
+			grip.Error(errors.Wrapf(err, "Error running teardown script for %s", host.Id))
+
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
 				notify.TeardownFailurePreface, host.Id)
-			if err := notify.NotifyAdmins(subj, err.Error(), settings); err != nil {
-				grip.Errorln("Error sending email:", err)
-			}
+
+			grip.Error(errors.Wrap(notify.NotifyAdmins(subj, err.Error(), settings),
+				"Error sending email"))
 		}
 	}
 

@@ -63,7 +63,7 @@ func GetGithubCommits(oauthToken, commitsURL string) (
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -136,7 +136,7 @@ func GetGithubFile(oauthToken, fileURL string) (githubFile *GithubFile, err erro
 		return nil, ResponseReadError{err.Error()}
 	}
 
-	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -217,7 +217,7 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -261,7 +261,7 @@ func GetBranchEvent(oauthToken, repoOwner, repo, branch string) (*BranchEvent,
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
@@ -309,7 +309,7 @@ func githubRequest(method string, url string, oauthToken string, data interface{
 }
 
 func tryGithubGet(oauthToken, url string) (resp *http.Response, err error) {
-	grip.Infof("Attempting GitHub API call at '%s'", url)
+	grip.Debugf("Attempting GitHub API call at '%s'", url)
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err = githubRequest("GET", url, oauthToken, nil)
@@ -511,7 +511,7 @@ func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizatio
 		return nil, nil, ResponseReadError{err.Error()}
 	}
 
-	grip.Infof("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
 
 	if err = json.Unmarshal(respBody, &githubUser); err != nil {
 		return nil, nil, APIUnmarshalError{string(respBody), err.Error()}

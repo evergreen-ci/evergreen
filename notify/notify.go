@@ -593,7 +593,7 @@ func encodeRFC2047(String string) string {
 func getDisplayName(buildVariant string) (displayName string) {
 	build, err := build.FindOne(build.ByVariant(buildVariant))
 	if err != nil || build == nil {
-		grip.Errorln("Error fetching buildvariant name: %+v", err)
+		grip.Error(errors.Wrap(err, "Error fetching buildvariant name"))
 		displayName = buildVariant
 	} else {
 		displayName = build.DisplayName

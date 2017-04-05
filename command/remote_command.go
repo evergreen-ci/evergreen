@@ -65,7 +65,7 @@ func (rc *RemoteCommand) Start() error {
 	}
 	cmdArray = append(cmdArray, cmdString)
 
-	grip.WarningWhenf(!rc.LoggingDisabled, "Remote command executing: '%#v'",
+	grip.InfoWhenf(!rc.LoggingDisabled, "Remote command executing: '%#v'",
 		strings.Join(cmdArray, " "))
 
 	// set up execution

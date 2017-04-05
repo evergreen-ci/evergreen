@@ -26,7 +26,7 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
-	grip.Infoln("Starting notifications at time", startTime)
+	grip.Infof("Starting notifications at %s time", startTime)
 
 	if err := Run(config); err != nil {
 		err = errors.Wrap(err, "error running notify")
@@ -38,6 +38,6 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
 		grip.Errorln("error updating process status:", err.Error())
 	}
-	grip.Infoln("Notify took %v to run", runtime)
+	grip.Infof("Notify took %s to run", runtime)
 	return nil
 }

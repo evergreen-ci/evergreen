@@ -57,7 +57,7 @@ func (s *Scheduler) Schedule() error {
 		return errors.Wrap(err, "Error finding runnable tasks")
 	}
 
-	grip.Infoln("There are %v tasks ready to be run", len(runnableTasks))
+	grip.Infof("There are %d tasks ready to be run", len(runnableTasks))
 
 	// split the tasks by distro
 	tasksByDistro, taskRunDistros, err := s.splitTasksByDistro(runnableTasks)

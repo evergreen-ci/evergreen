@@ -93,7 +93,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	errs := withGlobalLock("task cleanup",
 		func() []error { return taskMonitor.CleanupTasks(projects) })
 	for _, err := range errs {
-		grip.Errorln("Error cleaning up tasks:", err)
+		grip.Error(errors.Wrap(err, "Error cleaning up tasks"))
 	}
 
 	// initialize the host monitor
@@ -107,14 +107,14 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 		func() []error { return hostMonitor.CleanupHosts(distros, settings) })
 
 	for _, err := range errs {
-		grip.Errorln("Error cleaning up hosts:", err.Error())
+		grip.Error(errors.Wrap(err, "Error cleaning up hosts"))
 	}
 
 	// run monitoring checks
 	errs = withGlobalLock("host monitoring",
 		func() []error { return hostMonitor.RunMonitoringChecks(settings) })
 	for _, err := range errs {
-		grip.Errorln("Error running host monitoring checks:", err)
+		grip.Error(errors.Wrap(err, "Error running host monitoring checks"))
 	}
 
 	// initialize the notifier
@@ -125,7 +125,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	// send notifications
 	errs = notifier.Notify(settings)
 	for _, err := range errs {
-		grip.Errorln("Error sending notifications:", err)
+		grip.Error(errors.Wrap(err, "Error sending notifications"))
 	}
 
 	// Do alerts for spawnhosts - collect all hosts expiring in the next 12 hours.
@@ -141,7 +141,7 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 	for _, h := range expiringSoonHosts {
 		err := alerts.RunSpawnWarningTriggers(&h)
 
-		grip.ErrorWhenln(err != nil, "Error queueing alert:", err)
+		grip.Error(errors.Wrap(err, "Error queuing alert"))
 	}
 
 	return nil
