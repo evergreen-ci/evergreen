@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
@@ -78,7 +79,7 @@ func MustHaveRESTContext(r *http.Request) *model.Context {
 // AttachRESTHandler attaches a router at the given root that hooks up REST endpoint URIs to be
 // handled by the given restAPIService.
 func AttachRESTHandler(root *mux.Router, service restAPIService) http.Handler {
-	rtr := root.PathPrefix("/rest/v1/").Subrouter().StrictSlash(true)
+	rtr := root.PathPrefix(fmt.Sprintf("/%s/v1/", evergreen.RestRoutePrefix)).Subrouter().StrictSlash(true)
 
 	// REST routes
 	rest := restAPI{service}

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apiv3/route"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -225,8 +226,11 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.addProject))).Methods("PUT")
 	r.HandleFunc("/project/{project_id}/repo_revision", uis.loadCtx(uis.requireAdmin(uis.setRevision))).Methods("PUT")
 
-	// REST API
+	// REST API V1
 	AttachRESTHandler(r, uis)
+
+	// attaches /rest/v2 routes
+	route.AttachHandler(root, uis.Settings.SuperUsers, uis.Settings.Ui.Url, evergreen.RestRoutePrefix)
 
 	// Static Path handlers
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))

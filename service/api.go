@@ -13,6 +13,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/apiv3/route"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/db"
@@ -784,7 +785,11 @@ func (as *APIServer) GetSettings() evergreen.Settings {
 // Handler returns the root handler for all APIServer endpoints.
 func (as *APIServer) Handler() (http.Handler, error) {
 	root := mux.NewRouter()
+
+	// attaches the /rest/v1 routes
 	AttachRESTHandler(root, as)
+	// attaches /rest/v2 routes
+	route.AttachHandler(root, as.Settings.SuperUsers, as.Settings.ApiUrl, evergreen.RestRoutePrefix)
 
 	r := root.PathPrefix("/api/2/").Subrouter()
 	r.HandleFunc("/", home)

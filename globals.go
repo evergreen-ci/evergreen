@@ -74,6 +74,8 @@ const (
 	StepbackTaskActivator  = "stepback"
 	APIServerTaskActivator = "apiserver"
 
+	RestRoutePrefix = "rest"
+
 	AgentAPIVersion = 2
 )
 

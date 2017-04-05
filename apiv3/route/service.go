@@ -12,14 +12,13 @@ import (
 // AttachHandler attaches the api's request handlers to the given mux router.
 // It builds a ServiceContext then attaches each of the main functions for
 // the api to the router.
-func AttachHandler(root *mux.Router, SuperUsers []string,
-	URL, prefix string) http.Handler {
+func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) http.Handler {
 
 	sc := &servicecontext.DBServiceContext{}
 
 	sc.SetURL(URL)
 	sc.SetPrefix(prefix)
-	sc.SetSuperUsers(SuperUsers)
+	sc.SetSuperUsers(superUsers)
 	return getHandler(root, sc)
 }
 
