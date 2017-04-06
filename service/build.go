@@ -56,9 +56,12 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
 		Elapsed:     time.Now().Sub(projCtx.Build.StartTime),
-		RepoOwner:   projCtx.ProjectRef.Owner,
-		Repo:        projCtx.ProjectRef.Repo,
 		Version:     *projCtx.Version,
+	}
+
+	if projCtx.ProjectRef != nil {
+		buildAsUI.RepoOwner = projCtx.ProjectRef.Owner
+		buildAsUI.Repo = projCtx.ProjectRef.Repo
 	}
 
 	uiTasks, err := getUiTaskCache(projCtx.Build)
