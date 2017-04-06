@@ -237,6 +237,9 @@ tasks:
     tags: ["nodb", "test"]
     name: test-apiv3-route
   - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-apiv3
+  - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-command
   - <<: *run-go-test-suite
