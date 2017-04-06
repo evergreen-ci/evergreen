@@ -230,7 +230,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	AttachRESTHandler(r, uis)
 
 	// attaches /rest/v2 routes
-	route.AttachHandler(root, uis.Settings.SuperUsers, uis.Settings.Ui.Url, evergreen.RestRoutePrefix)
+	route.AttachHandler(r, uis.Settings.SuperUsers, uis.Settings.Ui.Url, evergreen.RestRoutePrefix)
 
 	// Static Path handlers
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
