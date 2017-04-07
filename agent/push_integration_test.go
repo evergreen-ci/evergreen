@@ -39,8 +39,7 @@ func TestPushTask(t *testing.T) {
 
 					testAgent, err := createAgent(testServer, modelData.Host)
 					testutil.HandleTestingErr(err, t, "Error making test agent: %v", err)
-
-					So(assignAgentTask(testAgent, modelData.Task), ShouldBeNil)
+					assignAgentTask(testAgent, modelData.Task)
 
 					// actually run the task.
 					// this function won't return until the whole thing is done.

@@ -120,31 +120,40 @@ func terminateHosts(hosts []host.Host, settings *evergreen.Settings, reason stri
 }
 
 // helper to terminate a single host
-func terminateHost(host *host.Host, settings *evergreen.Settings) error {
-
+func terminateHost(h *host.Host, settings *evergreen.Settings) error {
+	// clear the running task of the host in case one has been assigned.
+	if h.RunningTask != "" {
+		grip.Warningf("Host has running task: %s. Clearing running task field for host"+
+			"before terminating.", h.RunningTask)
+		err := h.ClearRunningTask(h.RunningTask, time.Now())
+		if err != nil {
+			grip.Errorf("Error clearing running task for host: %s", h.Id)
+		}
+	}
 	// convert the host to a cloud host
-	cloudHost, err := providers.GetCloudHost(host, settings)
+	cloudHost, err := providers.GetCloudHost(h, settings)
 	if err != nil {
-		return errors.Wrapf(err, "error getting cloud host for %v", host.Id)
+		return errors.Wrapf(err, "error getting cloud host for %v", h.Id)
 	}
 
 	// run teardown script if we have one, sending notifications if things go awry
-	if host.Distro.Teardown != "" && host.Provisioned {
-		grip.Errorln("Running teardown script for host:", host.Id)
-		if err := runHostTeardown(host, cloudHost); err != nil {
-			grip.Error(errors.Wrapf(err, "Error running teardown script for %s", host.Id))
+	if h.Distro.Teardown != "" && h.Provisioned {
+		grip.Errorln("Running teardown script for host:", h.Id)
+		if err := runHostTeardown(h, cloudHost); err != nil {
+			grip.Error(errors.Wrapf(err, "Error running teardown script for %s", h.Id))
 
 			subj := fmt.Sprintf("%v Error running teardown for host %v",
-				notify.TeardownFailurePreface, host.Id)
+				notify.TeardownFailurePreface, h.Id)
 
 			grip.Error(errors.Wrap(notify.NotifyAdmins(subj, err.Error(), settings),
 				"Error sending email"))
+
 		}
 	}
 
 	// terminate the instance
 	if err := cloudHost.TerminateInstance(); err != nil {
-		return errors.Wrapf(err, "error terminating host %s", host.Id)
+		return errors.Wrapf(err, "error terminating host %s", h.Id)
 	}
 
 	return nil

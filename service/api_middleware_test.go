@@ -65,7 +65,7 @@ func TestCheckHostWrapper(t *testing.T) {
 					So(ctx[apiHostKey], ShouldBeNil)
 				})
 			})
-			Convey("a request with proper task fields but no host fields should pass", func() {
+			Convey("a request with proper task fields but no host fields should not pass", func() {
 				r.Header.Add(evergreen.TaskSecretHeader, t1.Secret)
 				root.ServeHTTP(w, r)
 				So(w.Code, ShouldEqual, http.StatusBadRequest)

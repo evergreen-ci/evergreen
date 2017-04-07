@@ -222,11 +222,11 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			// fall back to the host header if host ids are not part of the path
 			hostId = r.Header.Get(evergreen.HostHeader)
 			if hostId == "" {
-				grip.Warningf("Request %s is missing host information", r.URL)
+				message := fmt.Sprintf("Request %s is missing host information", r.URL)
+				grip.Errorf(message)
 				// skip all host logic and just go on to the route
-				next(w, r)
+				as.LoggedError(w, r, http.StatusBadRequest, errors.New(message))
 				return
-				// TODO (EVG-1283) treat this as an error and fail the request
 			}
 		}
 		secret := r.Header.Get(evergreen.HostSecretHeader)

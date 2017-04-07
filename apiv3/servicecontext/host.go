@@ -8,7 +8,7 @@ import (
 )
 
 // DBHostConnector is a struct that implements the Host related methods
-// from the ServiceContext through interactions witht he backing database.
+// from the ServiceContext through interactions with he backing database.
 type DBHostConnector struct{}
 
 // FindHosts uses the service layer's host type to query the backing database for
@@ -28,7 +28,7 @@ func (hc *DBHostConnector) FindHostsById(id string, limit int, sort int) ([]host
 }
 
 // MockHostConnector is a struct that implements the Host related methods
-// from the ServiceContext through interactions witht he backing database.
+// from the ServiceContext through interactions with he backing database.
 type MockHostConnector struct {
 	CachedHosts []host.Host
 }

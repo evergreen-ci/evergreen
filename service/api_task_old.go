@@ -206,12 +206,11 @@ func (as *APIServer) oldEndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO(EVG-223) process patch-specific triggers
 	if t.Requester != evergreen.PatchVersionRequester {
 		grip.Infoln("Processing alert triggers for task", t.Id)
-		err := errors.WithStack(alerts.RunTaskFailureTriggers(t.Id))
+		err = errors.WithStack(alerts.RunTaskFailureTriggers(t.Id))
 		grip.ErrorWhenf(err != nil, "processing alert triggers for task %s: %+v", t.Id, err)
-	} else {
-		//TODO(EVG-223) process patch-specific triggers
 	}
 
 	// if task was aborted, reset to inactive

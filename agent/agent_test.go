@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
@@ -28,6 +29,8 @@ func TestAgentRun(t *testing.T) {
 
 		testAgent := Agent{
 			TaskCommunicator: agentCommunicator,
+			Registry:         plugin.NewSimpleRegistry(),
+			logger:           &comm.StreamLogger{},
 		}
 
 		Convey("with a response that indicates that the agent should exit", func() {
@@ -41,6 +44,7 @@ func TestAgentRun(t *testing.T) {
 					util.WriteJSON(&w, resp, http.StatusOK)
 				})
 			So(testAgent.Run(), ShouldNotBeNil)
+
 		})
 		Convey("with a task without a secret", func() {
 			resp := &apimodels.NextTaskResponse{
@@ -156,7 +160,7 @@ func TestAgentEndTask(t *testing.T) {
 			Id:     "testId",
 			Secret: "secret",
 		}
-		So(assignAgentTask(testAgent, testTask), ShouldBeNil)
+		assignAgentTask(testAgent, testTask)
 		Convey("with a response that the agent should exit", func() {
 			details := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,

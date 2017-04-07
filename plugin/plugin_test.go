@@ -14,10 +14,6 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-<<<<<<< aaaf22a11922f233b921cf990d1fcf679d51cbdb
-	"github.com/evergreen-ci/evergreen/model/distro"
-=======
->>>>>>> EVG-1557 test fixes
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -247,13 +243,9 @@ func TestPluginExecution(t *testing.T) {
 			err := registry.Register(p)
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
-<<<<<<< aaaf22a11922f233b921cf990d1fcf679d51cbdb
-
-		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, apiPlugins)
-=======
 		testConfig := testutil.TestConfig()
-		testServer, err := service.CreateTestServer(testConfig, nil, apiPlugins, false)
->>>>>>> EVG-1557 test fixes
+		testServer, err := service.CreateTestServer(testConfig, nil, apiPlugins)
+
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
@@ -304,12 +296,9 @@ func TestAttachLargeResults(t *testing.T) {
 	}
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "problem clearning collections")
 	Convey("With a test task and server", t, func() {
-<<<<<<< aaaf22a11922f233b921cf990d1fcf679d51cbdb
-		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil)
-=======
 		testConfig := testutil.TestConfig()
-		testServer, err := service.CreateTestServer(testConfig, nil, nil, false)
->>>>>>> EVG-1557 test fixes
+		testServer, err := service.CreateTestServer(testConfig, nil, nil)
+
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
@@ -369,125 +358,4 @@ func TestPluginSelfRegistration(t *testing.T) {
 			So(nameMap["shell"], ShouldEqual, 1)
 		})
 	})
-}
-
-func TestPluginSelfRegistration(t *testing.T) {
-	Convey("Assuming the plugin collection has run its init functions", t, func() {
-		So(len(plugin.CommandPlugins), ShouldBeGreaterThan, 0)
-		nameMap := map[string]uint{}
-		// count all occurrences of a plugin name
-		for _, plugin := range plugin.CommandPlugins {
-			nameMap[plugin.Name()] = nameMap[plugin.Name()] + 1
-		}
-
-		Convey("no plugin should be present in Published more than once", func() {
-			for _, count := range nameMap {
-				So(count, ShouldEqual, 1)
-			}
-		})
-
-		Convey("some known default plugins should be present in the list", func() {
-			// These use strings instead of consts from the plugin
-			// packages, so we can avoid importing those packages
-			// and make sure the registration from plugin/config
-			// is actually happening
-			So(nameMap["attach"], ShouldEqual, 1)
-			So(nameMap["s3"], ShouldEqual, 1)
-			So(nameMap["s3Copy"], ShouldEqual, 1)
-			So(nameMap["archive"], ShouldEqual, 1)
-			So(nameMap["expansions"], ShouldEqual, 1)
-			So(nameMap["git"], ShouldEqual, 1)
-			So(nameMap["shell"], ShouldEqual, 1)
-		})
-	})
-func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, *host.Host, error) {
-	//ignore errs here because the ns might just not exist.
-	clearDataMsg := "Failed to clear test data collection"
-
-	currentDirectory := testutil.GetDirectoryOfFile()
-	testutil.HandleTestingErr(
-		db.ClearCollections(
-			task.Collection, build.Collection, host.Collection,
-			version.Collection, patch.Collection),
-		t, clearDataMsg)
-
-	testHost := &host.Host{
-		Id:          "testHost",
-		Host:        "testHost",
-		RunningTask: "testTaskId",
-		StartedBy:   evergreen.User,
-	}
-	testutil.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
-
-	newTask := &task.Task{
-		Id:           "testTaskId",
-		BuildId:      "testBuildId",
-		DistroId:     "rhel55",
-		BuildVariant: "linux-64",
-		Project:      "mongodb-mongo-master",
-		DisplayName:  taskDisplayName,
-		HostId:       "testHost",
-		Secret:       "testTaskSecret",
-		Status:       evergreen.TaskDispatched,
-		Version:      "versionId",
-		Requester:    evergreen.RepotrackerVersionRequester,
-	}
-
-	if isPatch {
-		newTask.Requester = evergreen.PatchVersionRequester
-	}
-
-	testutil.HandleTestingErr(newTask.Insert(), t, "failed to insert task")
-
-	v := &version.Version{
-		Id:       "testVersionId",
-		BuildIds: []string{newTask.BuildId},
-	}
-	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
-	if isPatch {
-		mainPatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
-			"testdata", "test.patch"))
-		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
-		modulePatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
-			"testdata", "testmodule.patch"))
-		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
-
-		p := &patch.Patch{
-			Status:  evergreen.PatchCreated,
-			Version: v.Id,
-			Patches: []patch.ModulePatch{
-				{
-					ModuleName: "",
-					Githash:    "cb91350bf017337a734dcd0321bf4e6c34990b6a",
-					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
-				},
-				{
-					ModuleName: "enterprise",
-					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",
-					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
-				},
-			},
-		}
-
-		testutil.HandleTestingErr(p.Insert(), t, "failed to insert version %v")
-
-	}
-
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	testutil.HandleTestingErr(err, t, "couldn't get db session!")
-
-	//Remove any logs for our test task from previous runs.
-	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": newTask.Id})
-	testutil.HandleTestingErr(err, t, "failed to remove logs")
-
-	build := &build.Build{
-		Id: "testBuildId",
-		Tasks: []build.TaskCache{
-			build.NewTaskCache(newTask.Id, newTask.DisplayName, true),
-		},
-		Version: "testVersionId",
-	}
-
-	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
-	return newTask, build, nil
 }

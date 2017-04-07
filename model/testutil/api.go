@@ -192,6 +192,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		Secret:        "testHostSecret",
 		StartedBy:     evergreen.User,
 		AgentRevision: agentRevision,
+		Status:        evergreen.HostRunning,
 	}
 	if err := testHost.Insert(); err != nil {
 		return nil, errors.Wrap(err, "failed to insert host")

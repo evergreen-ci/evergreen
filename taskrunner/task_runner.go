@@ -10,8 +10,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-const distroSleep = 10 * time.Second
-
 // TODO: take out task queue finder and host finder once transition is complete
 type TaskRunner struct {
 	*evergreen.Settings
@@ -41,13 +39,20 @@ func (tr *TaskRunner) Run() error {
 	// These are the hosts that need to have agents dispatched
 	freeHosts, err := host.Find(host.ByRunningWithTimedOutLCT(time.Now()))
 	if err != nil {
-		return errors.Wrap(err, "error finding free hosts")
+		return err
 	}
 
-	// update host's agent revision
-	if err := h.SetAgentRevision(revision); err != nil {
-		return errors.Wrapf(err, "error setting new agent revision %s on host %s", revision, h.Id)
+	grip.Infof("Found %d hosts that need agents dispatched", len(freeHosts))
+	// Dispatch an agent to all the free hosts
+	for _, h := range freeHosts {
+		revision, err := tr.StartAgentOnHost(tr.Settings, h)
+		if err != nil {
+			return errors.Wrapf(err, "error starting agent on host %s", h.Id)
+		}
+		// update host's agent revision
+		if err := h.SetAgentRevision(revision); err != nil {
+			return errors.Wrapf(err, "error setting new agent revision %s on host %s", revision, h.Id)
+		}
 	}
-
 	return nil
 }

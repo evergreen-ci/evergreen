@@ -64,13 +64,3 @@ func DispatchTaskForHost(taskQueue *model.TaskQueue, assignedHost *host.Host) (
 func shouldSkipTask(task *task.Task) bool {
 	return task.Status != evergreen.TaskUndispatched || !task.Activated
 }
-
-// Takes in a list of hosts, and returns the hosts sorted by distro, in the
-// form of a map distro name -> list of hosts
-func (self *TaskRunner) splitHostsByDistro(hostsToSplit []host.Host) map[string][]host.Host {
-	hostsByDistro := make(map[string][]host.Host)
-	for _, host := range hostsToSplit {
-		hostsByDistro[host.Distro.Id] = append(hostsByDistro[host.Distro.Id], host)
-	}
-	return hostsByDistro
-}

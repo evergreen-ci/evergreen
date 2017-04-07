@@ -38,7 +38,6 @@ func TestPatchPluginAPI(t *testing.T) {
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
 		err = plugintest.SetupPatchData(modelData, patchFile, t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
-		taskConfig := modelData.TaskConfig
 
 		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
 

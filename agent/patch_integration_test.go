@@ -44,7 +44,7 @@ func TestPatchTask(t *testing.T) {
 							testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 							defer testAgent.stop()
 
-							So(assignAgentTask(testAgent, modelData.Task), ShouldBeNil)
+							assignAgentTask(testAgent, modelData.Task)
 
 							// actually run the task.
 							// this function won't return until the whole thing is done.

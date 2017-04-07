@@ -353,12 +353,12 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 		return errors.Wrapf(err, "error initializing host %s", h.Id)
 	}
 
-	grip.Infoln("Setup complete for host %s", h.Id)
+	grip.Infof("Setup complete for host %s", h.Id)
 
 	if h.ProvisionOptions != nil &&
 		h.ProvisionOptions.LoadCLI &&
 		h.ProvisionOptions.OwnerId != "" {
-		grip.Infoln("Uploading client binary to host %s", h.Id)
+		grip.Infof("Uploading client binary to host %s", h.Id)
 		lcr, err := init.LoadClient(h)
 		if err != nil {
 			grip.Errorf("Failed to load client binary onto host %s: %+v", h.Id, err)

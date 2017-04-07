@@ -70,9 +70,9 @@ func validateTaskEndDetails(details *apimodels.TaskEndDetail) bool {
 		details.Status == evergreen.TaskUndispatched
 }
 
-// checkHostHealth creates a task response that is sent back to the agent after the task ends.
+// checkHostHealth checks that host is running and creates a task response that is sent back to the agent after the task ends.
 func checkHostHealth(h *host.Host, agentRevision string) (bool, string) {
-	if h.Status == evergreen.HostDecommissioned || h.Status == evergreen.HostQuarantined {
+	if h.Status != evergreen.HostRunning {
 		return true, fmt.Sprintf("host %s is in state %s and agent should exit",
 			h.Id, h.Status)
 	}
@@ -292,7 +292,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	shouldExit, message := checkHostHealth(h, agentRevision)
 	if shouldExit {
 		// set the host's last communication time to be zero
-		if err := h.ResetLastCommunicated(); err != nil {
+		if err = h.ResetLastCommunicated(); err != nil {
 			grip.Errorf("error resetting last communication time for host %s: %+v", h.Id, err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)
 			return

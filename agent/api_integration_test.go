@@ -44,10 +44,6 @@ var buildVariantsToTest = []string{"linux-64", "windows8"}
 
 var tlsConfigs map[string]*tls.Config
 
-// the revision we'll assume is the current one for the agent. this is the
-// same as appears in testdata/executables/version
-var agentRevision = "xxx"
-
 var testDirectory string
 
 // NoopSignal is a signal handler that ignores all signals, so that we can
@@ -124,7 +120,8 @@ func TestBasicEndpoints(t *testing.T) {
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 			defer testAgent.stop()
-			assignAgentTask(testAgent, modelData.Task
+
+			assignAgentTask(testAgent, modelData.Task)
 
 			Convey("sending logs should store the log messages properly", func() {
 				msg1 := "task logger initialized!"
@@ -158,10 +155,11 @@ func TestBasicEndpoints(t *testing.T) {
 
 					Convey("calling start should flip the task's status to started", func() {
 						var testHost *host.Host
+						var testTask *task.Task
 						err = testAgent.Start()
 						testutil.HandleTestingErr(err, t, "Couldn't start task: %v", err)
 
-						testTask, err := task.FindOne(task.ById(modelData.Task.Id))
+						testTask, err = task.FindOne(task.ById(modelData.Task.Id))
 						testutil.HandleTestingErr(err, t, "Couldn't refresh task from db: %v", err)
 						So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 						testHost, err = host.FindOne(host.ByRunningTaskId(testTask.Id))
@@ -241,7 +239,7 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			modelData, err := modelutil.SetupAPITestData(testConfig, "print_dir_task", "linux-64", filepath.Join(testDirectory,
 				"testdata/config_test_plugin/project/evergreen-ci-render.yml"), modelutil.NoPatch)
 			testutil.HandleTestingErr(err, t, "Failed to find test data")
-			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+			testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins)
 			testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 			defer testServer.Close()
 
@@ -249,7 +247,7 @@ func TestAgentDirectorySuccess(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "Failed to start agent")
 			defer testAgent.stop()
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 
 			So(err, ShouldBeNil)
 			So(testAgent, ShouldNotBeNil)
@@ -258,20 +256,16 @@ func TestAgentDirectorySuccess(t *testing.T) {
 
 			testutil.HandleTestingErr(err, t, "Failed to read current directory")
 
-<<<<<<< 967a77beb4a49e2d0213923d7500e9db32712c52
-			testAgent.RunTask()
-			printLogsForTask(modelData.Task.Id)
-
-=======
->>>>>>> EVG-1591 task runner only dispatches agents to hosts
 			distro, err := testAgent.GetDistro()
 			testutil.HandleTestingErr(err, t, "Failed to get agent distro")
-			testAgent.RunTask()
+			_, err = testAgent.RunTask()
+			So(err, ShouldBeNil)
+
 			printLogsForTask(modelData.Task.Id)
 
 			h := md5.New()
-			h.Write([]byte(
-				fmt.Sprintf("%s_%d_%d", modelData.Task.Id, 0, os.Getpid())))
+			_, err = h.Write([]byte(fmt.Sprintf("%s_%d_%d", modelData.Task.Id, 0, os.Getpid())))
+			So(err, ShouldBeNil)
 
 			dirName := hex.EncodeToString(h.Sum(nil))
 			newDir := filepath.Join(distro.WorkDir, dirName)
@@ -306,7 +300,7 @@ func TestAgentDirectoryFailure(t *testing.T) {
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "Failed to start test agent")
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 			dir, err := os.Getwd()
 
 			testutil.HandleTestingErr(err, t, "Failed to read current directory")
@@ -316,8 +310,9 @@ func TestAgentDirectoryFailure(t *testing.T) {
 
 			h := md5.New()
 
-			h.Write([]byte(
-				fmt.Sprintf("%s_%d_%d", modelData.Task.Id, 0, os.Getpid())))
+			_, err = h.Write([]byte(fmt.Sprintf("%s_%d_%d", modelData.Task.Id, 0,
+				os.Getpid())))
+			So(err, ShouldBeNil)
 			dirName := hex.EncodeToString(h.Sum(nil))
 			newDir := filepath.Join(distro.WorkDir, dirName)
 
@@ -368,7 +363,7 @@ func TestSecrets(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 			defer testAgent.stop()
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 
 			testAgent.heartbeater.Interval = 100 * time.Millisecond
 			testAgent.StartBackgroundActions(&NoopSignalHandler{})
@@ -401,7 +396,7 @@ func TestTaskSuccess(t *testing.T) {
 						testAgent, err := createAgent(testServer, modelData.Host)
 						testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 						defer testAgent.stop()
-						assignAgentTask(testAgent, modelData.Task))
+						assignAgentTask(testAgent, modelData.Task)
 
 						// actually run the task.
 						// this function won't return until the whole thing is done.
@@ -475,7 +470,7 @@ func TestTaskSuccess(t *testing.T) {
 						testAgent, err := createAgent(testServer, modelData.Host)
 						testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 						defer testAgent.stop()
-						assignAgentTask(testAgent, modelData.Task))
+						assignAgentTask(testAgent, modelData.Task)
 
 						// actually run the task.
 						// this function won't return until the whole thing is done.
@@ -492,7 +487,8 @@ func TestTaskSuccess(t *testing.T) {
 							So(scanLogsForTask(modelData.Task.Id, "", "done with normal_task!"), ShouldBeTrue)
 							So(scanLogsForTask(modelData.Task.Id, model.SystemLogPrefix, "this output should go to the system logs."), ShouldBeTrue)
 
-							testTask, err := task.FindOne(task.ById(modelData.Task.Id))
+							var testTask *task.Task
+							testTask, err = task.FindOne(task.ById(modelData.Task.Id))
 							testutil.HandleTestingErr(err, t, "Couldn't find test task: %v", err)
 							So(testTask.Status, ShouldEqual, evergreen.TaskSucceeded)
 
@@ -533,7 +529,7 @@ func TestTaskFailures(t *testing.T) {
 					testAgent, err := createAgent(testServer, modelData.Host)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 					defer testAgent.stop()
-					assignAgentTask(testAgent, modelData.Task))
+					assignAgentTask(testAgent, modelData.Task)
 
 					// actually run the task.
 					// this function won't return until the whole thing is done.
@@ -584,7 +580,7 @@ func TestTaskAbortion(t *testing.T) {
 					defer testServer.Close()
 					testAgent, err := createAgent(testServer, modelData.Host)
 					testutil.HandleTestingErr(err, t, "failed to create agent: %v")
-					assignAgentTask(testAgent, modelData.Task))
+					assignAgentTask(testAgent, modelData.Task)
 					Convey("when the abort signal is triggered on the task", func() {
 						go func() {
 							// Wait for a few seconds, then switch the task to aborted!
@@ -633,7 +629,7 @@ func TestTaskTimeout(t *testing.T) {
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 			Convey("after the slow test runs beyond the timeout threshold", func() {
 				// actually run the task.
 				// this function won't return until the whole thing is done.
@@ -666,17 +662,18 @@ func TestFunctionVariantExclusion(t *testing.T) {
 					filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), modelutil.NoPatch)
 				testutil.HandleTestingErr(err, t, "Failed to find test task")
 
-				testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+				testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins)
 				testutil.HandleTestingErr(err, t, "Couldn't create apiserver")
 				defer testServer.Close()
 				testAgent, err := createAgent(testServer, modelData.Host)
 				testutil.HandleTestingErr(err, t, "failed to create agent")
 
-				assignAgentTask(testAgent, modelData.Task))
+				assignAgentTask(testAgent, modelData.Task)
+				So(modelData.Host.RunningTask, ShouldEqual, modelData.Task.Id)
 				Convey("running the task", func() {
-					_, err = testAgent.RunTask()
+
+					_, err := testAgent.RunTask()
 					So(err, ShouldBeNil)
-					testAgent.APILogger.Flush()
 					if variant == "windows8" {
 						Convey("the variant-specific function command should run", func() {
 							So(scanLogsForTask(modelData.Task.Id, "", "variant not excluded!"), ShouldBeTrue)
@@ -706,7 +703,7 @@ func TestTaskCallbackTimeout(t *testing.T) {
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 			prependConfigToVersion(t, modelData.Task.Version, "callback_timeout_secs: 1\n")
 
 			Convey("after the slow test runs beyond the timeout threshold", func() {
@@ -748,7 +745,7 @@ func TestTaskExecTimeout(t *testing.T) {
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 			Convey("after the slow test runs beyond the timeout threshold", func() {
 				// actually run the task.
 				// this function won't return until the whole thing is done.
@@ -785,7 +782,8 @@ func TestProjectTaskExecTimeout(t *testing.T) {
 
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
-			assignAgentTask(testAgent, modelData.Task))
+
+			assignAgentTask(testAgent, modelData.Task)
 
 			Convey("after the slow test runs beyond the project timeout threshold", func() {
 				// actually run the task.
@@ -824,13 +822,12 @@ func TestTaskEndEndpoint(t *testing.T) {
 			testAgent, err := createAgent(testServer, modelData.Host)
 			testutil.HandleTestingErr(err, t, "failed to create agent: %v")
 
-			assignAgentTask(testAgent, modelData.Task))
+			assignAgentTask(testAgent, modelData.Task)
 
 			testAgent.heartbeater.Interval = 10 * time.Second
 			testAgent.StartBackgroundActions(&NoopSignalHandler{})
 
-			Convey("calling end() should update task's/host's status properly "+
-				"and start running the next task", func() {
+			Convey("calling end() should update task's/host's status properly ", func() {
 				details := &apimodels.TaskEndDetail{Status: evergreen.TaskSucceeded}
 				taskEndResp, err := testAgent.End(details)
 				time.Sleep(1 * time.Second)

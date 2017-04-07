@@ -172,7 +172,6 @@ func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
 	)
 	retryFail, err := util.Retry(retriableLog, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		h.Logger.Errorf(slogger.ERROR, "error posting api logs: %v", err)
 		return errors.Wrapf(err, "logging failed after %vtries: %v", h.MaxAttempts)
 	}
 	return err
@@ -221,20 +220,22 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 	retriableGet := util.RetriableFunc(
 		func() error {
 			resp, err := h.TryTaskGet("distro")
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if resp != nil && resp.StatusCode == http.StatusConflict {
-				// Something very wrong, fail now with no retry.
-				return errors.New("conflict; wrong secret")
+			if resp == nil {
+				return util.RetriableError{errors.New("empty response")}
 			}
 
+			defer resp.Body.Close()
 			if err != nil {
 				// Some generic error trying to connect - try again
 				return util.RetriableError{err}
 			}
-			if resp == nil {
-				return util.RetriableError{errors.New("empty response")}
+
+			if resp != nil && resp.StatusCode == http.StatusConflict {
+				// Something very wrong, fail now with no retry.
+				return errors.New("conflict; wrong secret")
+			}
+			if resp.StatusCode != http.StatusOK {
+				return util.RetriableError{errors.Errorf("bad status: %s", resp.Status)}
 			}
 
 			err = util.ReadJSONInto(resp.Body, d)
