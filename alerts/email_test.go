@@ -1,6 +1,7 @@
 package alerts
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
@@ -11,6 +12,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/render"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -151,4 +154,59 @@ func TestEmailSubject(t *testing.T) {
 
 	})
 
+}
+
+func TestEmailBody(t *testing.T) {
+	Convey("With failed task alert types:", t, func() {
+		ctx := AlertContext{
+			AlertRequest: &alert.AlertRequest{
+				Trigger: alertrecord.TaskFailedId,
+			},
+			ProjectRef: &model.ProjectRef{DisplayName: ProjectName},
+			Task: &task.Task{
+				DisplayName: TaskName,
+				Details:     apimodels.TaskEndDetail{},
+				Id:          "t123",
+			},
+			Build:    &build.Build{DisplayName: BuildName},
+			Version:  &version.Version{Revision: VersionRevision},
+			Settings: testutil.TestConfig(),
+		}
+		Convey("a task with two failed tests should return a body with valid links", func() {
+			ctx.Task.TestResults = []task.TestResult{
+				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
+				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
+				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
+				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
+				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
+				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
+			}
+			ctx.FailedTests = []task.TestResult{
+				{URL: "test_log/321", TestFile: TestName1, Status: evergreen.TestFailedStatus},
+				{URL: "test_log/666", TestFile: TestName2, Status: evergreen.TestFailedStatus},
+			}
+			home := evergreen.FindEvergreenHome()
+
+			ed := &EmailDeliverer{
+				SMTPSettings{
+					From:     "",
+					Server:   "",
+					Port:     999,
+					Username: "",
+					Password: "",
+					UseSSL:   false,
+				},
+				render.New(render.Options{
+					Directory: filepath.Join(home, "alerts", "templates"),
+				}),
+			}
+			body, err := ed.getBody(ctx)
+			if err != nil {
+				t.Error(err)
+			}
+			So(body, ShouldNotBeEmpty)
+			So(body, ShouldContainSubstring, "href=\"localhost/task/"+ctx.Task.Id+"\"")
+			So(body, ShouldContainSubstring, "href=\"localhost/"+ctx.FailedTests[0].URL+"\"")
+		})
+	})
 }
