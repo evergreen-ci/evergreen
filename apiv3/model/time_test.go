@@ -1,4 +1,4 @@
-package apiv3
+package model
 
 import (
 	"encoding/json"
@@ -41,13 +41,21 @@ func TestTimeUnmarshal(t *testing.T) {
 		TestTimeAsString := "\"2017-04-06T19:53:46.404Z\""
 		TestTimeAsTime := time.Date(2017, time.April, 6, 19, 53, 46,
 			404000000, utcLoc)
-		Convey("then time should unmarshal correctly", func() {
+		Convey("then time should unmarshal correctly when non null", func() {
 			data := []byte(TestTimeAsString)
 			res := APITime{}
 			err := json.Unmarshal(data, &res)
 			So(err, ShouldBeNil)
 			t := NewTime(TestTimeAsTime)
 			So(res, ShouldResemble, t)
+		})
+		Convey("then time should unmarshal correctly when null", func() {
+			data := []byte("null")
+			res := APITime{}
+			err := json.Unmarshal(data, &res)
+			So(err, ShouldBeNil)
+			zt := time.Time(res)
+			So(zt.IsZero(), ShouldBeTrue)
 		})
 	})
 

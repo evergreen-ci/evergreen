@@ -1,4 +1,4 @@
-package apiv3
+package model
 
 import "time"
 
@@ -29,9 +29,14 @@ func NewTime(t time.Time) APITime {
 // UnmarshalJSON implements the custom unmarshalling of this type so that it can
 // be correctly parsed from an API request.
 func (at *APITime) UnmarshalJSON(b []byte) error {
-	t, err := time.ParseInLocation(APITimeFormat, string(b), time.FixedZone("", 0))
-	if err != nil {
-		return err
+	str := string(b)
+	t := time.Time{}
+	var err error
+	if str != "null" {
+		t, err = time.ParseInLocation(APITimeFormat, str, time.FixedZone("", 0))
+		if err != nil {
+			return err
+		}
 	}
 	(*at) = APITime(t)
 	return nil
