@@ -54,21 +54,23 @@ endef
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give linters 40s to run to avoid timeouts
-lintArgs := --tests --deadline=20m --vendor --enable-gc
+lintArgs := --tests --deadline=20m --vendor --aggregate --sort="path"
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas"
+lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="aligncheck" --disable="golint"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
-lintArgs += --enable="goimports" --enable="misspell" --enable="lll" --enable="unused"
-lintArgs += --line-length=100 --dupl-threshold=175
+lintArgs += --enable="goimports" --enable="misspell" --enable="unused" --enable="vet" --enable="unparam"
+# lintArgs += --enable="lll" --line-length=100
+lintArgs += --dupl-threshold=175
 #  two similar functions triggered the duplicate warning, but they're not.
 lintArgs += --exclude="file is not goimported" # test files aren't imported
 #  golint doesn't handle splitting package comments between multiple files.
-lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
+# lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude "error return value not checked \(defer.*"
-# end lint suppressions
+lintArgs += --exclude ".*occurrence(s) of \"true\" found in.*"
+# end lint configuration
 
 
 ######################################################################
@@ -140,17 +142,36 @@ gopath := $(shell go env GOPATH)
 ifeq ($(OS),Windows_NT)
 gopath := $(shell cygpath -m $(gopath))
 endif
-lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 testOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).test)
 raceOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).race)
 testBin := $(foreach target,$(packages),$(buildDir)/test.$(target))
 raceBin := $(foreach target,$(packages),$(buildDir)/race.$(target))
+lintTargets := $(foreach target,$(packages),lint-$(target))
 coverageOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage)
 coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).coverage.html)
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	go get $(subst $(gopath)/src/,,$@)
 # end dependency installation tools
+
+
+# lint activation targets
+lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
+lint:$(buildDir)/output.lint
+$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
+	./$< --lintArgs='$(lintArgs)' --packages="$(packages)" --output="$(buildDir)/lint.out"
+lint-%:$(buildDir)/.lintSetup
+	@echo "linting package: $*"
+	@$(gopath)/bin/gometalinter $(lintArgs) ./$(subst -,/,$*)
+lint-evergreen:$(buildDir)/.lintSetup
+	@echo "linting top level evergreen package"
+	@$(gopath)/bin/gometalinter $(lintArgs) ./
+$(buildDir)/.lintSetup:$(lintDeps)
+	@-$(gopath)/bin/gometalinter --install >/dev/null
+	@touch $@
+$(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
+	$(vendorGopath) go build -o $@ $<
+# end lint activation targets
 
 
 # distribution targets and implementation
@@ -176,9 +197,6 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 
 # userfacing targets for basic build and development operations
-lint:$(lintDeps)
-	@-$(gopath)/bin/gometalinter --install >/dev/null
-	$(gopath)/bin/gometalinter $(lintArgs) ./...
 build:$(binaries) cli agent
 build-race:$(raceBinaries)
 test:$(foreach target,$(packages),test-$(target))
@@ -283,7 +301,7 @@ $(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testTimeout) -test.v -test.coverprofile=$@ | tee $(subst coverage,test,$@ )
+	$(testRunEnv) ./$< $(testTimeout) -test.v -test.coverprofile=$@ | tee $(subst coverage,test,$@)
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(vendorGopath) go tool cover -html=$< -o $@

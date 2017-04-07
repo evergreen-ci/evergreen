@@ -220,6 +220,7 @@ tasks:
           directory: gopath/src/github.com/evergreen-ci/evergreen
       - func: run-make
         vars: { target: "${task_name}" }
+        make_args: "-k"
   - <<: *run-build
     name: dist
   - <<: *run-build
