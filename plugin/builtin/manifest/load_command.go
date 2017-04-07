@@ -60,10 +60,7 @@ func (mfc *ManifestLoadCommand) Load(log plugin.Logger, pluginCom plugin.PluginC
 				return util.RetriableError{errors.Errorf("Unexpected status code %v", resp.StatusCode)}
 			}
 			err = util.ReadJSONInto(resp.Body, &loadedManifest)
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		})
 
 	_, err = util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
@@ -147,10 +144,11 @@ func (mp *ManifestPlugin) ManifestLoadHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	// populate modules
+	var gitBranch *thirdparty.BranchEvent
 	modules := make(map[string]*manifest.Module)
 	for _, module := range project.Modules {
 		owner, repo := module.GetRepoOwnerAndName()
-		gitBranch, err := thirdparty.GetBranchEvent(mp.OAuthCredentials, owner, repo, module.Branch)
+		gitBranch, err = thirdparty.GetBranchEvent(mp.OAuthCredentials, owner, repo, module.Branch)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("error retrieving getting git branch for module %v: %v", module.Name, err),
 				http.StatusNotFound)

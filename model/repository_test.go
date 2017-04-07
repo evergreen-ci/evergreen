@@ -9,9 +9,8 @@ import (
 )
 
 var (
-	_            fmt.Stringer = nil
-	projectName               = "mongodb-mongo-testing"
-	lastRevision              = "kasdf892kjg23980phjifdas"
+	_           fmt.Stringer = nil
+	projectName              = "mongodb-mongo-testing"
 )
 
 func init() {
@@ -56,7 +55,7 @@ func TestGetNewRevisionOrderNumber(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(RepositoriesCollection)
+			So(db.Clear(RepositoriesCollection), ShouldBeNil)
 		})
 
 	})

@@ -17,7 +17,7 @@ var taskDurationEstimatorTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskDurationEstimatorTestConf))
-	grip.SetSender(testutil.SetupTestSender(taskDurationEstimatorTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskDurationEstimatorTestConf.Scheduler.LogFile)))
 }
 
 func TestDBTaskDurationEstimator(t *testing.T) {

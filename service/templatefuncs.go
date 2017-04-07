@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -53,7 +54,8 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interfac
 		// Gravatar returns a Gravatar URL for the given email string.
 		"Gravatar": func(email string) string {
 			h := md5.New()
-			io.WriteString(h, email)
+			_, err := io.WriteString(h, email)
+			grip.Warning(err)
 			return fmt.Sprintf("http://www.gravatar.com/avatar/%x?s=50", h.Sum(nil))
 		},
 
@@ -118,7 +120,7 @@ func MakeTemplateFuncs(fo FuncOptions, superUsers []string) (map[string]interfac
 		// UrlFor generates a URL for the given route.
 		"UrlFor": func(name string, pairs ...interface{}) (*url.URL, error) {
 			size := len(pairs)
-			strPairs := make([]string, size, size)
+			strPairs := make([]string, size)
 			for i := 0; i < size; i++ {
 				if v, ok := pairs[i].(string); ok {
 					strPairs[i] = v

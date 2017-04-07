@@ -44,7 +44,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		return err
 	}
 
-	runtime := time.Now().Sub(startTime)
+	runtime := time.Since(startTime)
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
 		err = errors.Wrap(err, "Error updating process status")
 		grip.Error(err)

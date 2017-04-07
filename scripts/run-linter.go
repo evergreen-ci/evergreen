@@ -7,12 +7,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
 type result struct {
 	name     string
+	cmd      string
 	passed   bool
 	duration time.Duration
 	output   []string
@@ -26,6 +28,7 @@ func (r *result) String() string {
 	if r.passed {
 		fmt.Fprintf(buf, "--- PASS: %s (%s)", r.name, r.duration)
 	} else {
+		// fmt.Fprintln(buf, "    CMD:", r.cmd)
 		fmt.Fprintf(buf, strings.Join(r.output, "\n"))
 		fmt.Fprintf(buf, "--- FAIL: %s (%s)", r.name, r.duration)
 	}
@@ -68,19 +71,22 @@ func main() {
 	dirname, _ := os.Getwd()
 	cwd := filepath.Base(dirname)
 	gopath, _ = filepath.Abs(gopath)
+	lintArgs += fmt.Sprintf(" --concurrency=%d", runtime.NumCPU()/2)
 
 	for _, pkg := range packages {
 		args := []string{lintBin, lintArgs}
 		if cwd == pkg {
 			args = append(args, ".")
 		} else {
-			args = append(args, "./"+pkg+"/.")
+			args = append(args, "./"+pkg)
 		}
 
 		startAt := time.Now()
-		out, err := exec.Command("sh", "-c", strings.Join(args, " ")).CombinedOutput()
+		cmd := strings.Join(args, " ")
+		out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
 
 		r := &result{
+			cmd:      strings.Join(args, " "),
 			name:     "lint-" + strings.Replace(pkg, "/", "-", -1),
 			passed:   err == nil,
 			duration: time.Since(startAt),
@@ -108,7 +114,7 @@ func main() {
 		}()
 
 		for _, r := range results {
-			f.WriteString(r.String())
+			f.WriteString(r.String() + "\n")
 		}
 	}
 

@@ -32,7 +32,7 @@ func TestPushTask(t *testing.T) {
 						"linux-64", filepath.Join(testDirectory, "testdata/config_test_plugin/project/evergreen-ci-render.yml"), NoPatch, t)
 					testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
 					testutil.HandleTestingErr(db.ClearCollections(artifact.Collection), t, "can't clear files collection")
-					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+					testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins)
 					testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 					defer testServer.Close()
 
@@ -43,7 +43,8 @@ func TestPushTask(t *testing.T) {
 
 					// actually run the task.
 					// this function won't return until the whole thing is done.
-					testAgent.RunTask()
+					_, err = testAgent.RunTask()
+					So(err, ShouldBeNil)
 					time.Sleep(100 * time.Millisecond)
 					testAgent.APILogger.FlushAndWait()
 					printLogsForTask(testTask.Id)

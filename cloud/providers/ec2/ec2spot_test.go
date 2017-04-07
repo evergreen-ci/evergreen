@@ -21,7 +21,7 @@ func TestSpawnSpotInstance(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpawnSpotInstance")
 
 	provider := &EC2SpotManager{}
-	provider.Configure(testConfig)
+	testutil.HandleTestingErr(provider.Configure(testConfig), t, "error configuring provider")
 
 	Convey("When spawning many hosts", t, func() {
 

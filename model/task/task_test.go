@@ -23,7 +23,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(conf))
-	grip.SetSender(testutil.SetupTestSender(""))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender("")))
 }
 
 var depTaskIds = []Dependency{
@@ -607,7 +607,7 @@ func TestTimeAggregations(t *testing.T) {
 			ScheduledTime: time.Unix(1000, 0),
 			StartTime:     time.Unix(1060, 0),
 			FinishTime:    time.Unix(1180, 0),
-			DistroId:      "templeos"}
+			DistroId:      "templOS"}
 		So(task1.Insert(), ShouldBeNil)
 		So(task2.Insert(), ShouldBeNil)
 		So(task3.Insert(), ShouldBeNil)
@@ -623,8 +623,8 @@ func TestTimeAggregations(t *testing.T) {
 			Convey("the proper averages should be computed", func() {
 				// osx = ([1030-1010] + [1050-1020])/2 = (20+30)/2 = 25
 				So(timeMap["osx"].Seconds(), ShouldEqual, 25)
-				// templeos = (1180 - 1060)/1 = 120/1 = 120
-				So(timeMap["templeos"].Seconds(), ShouldEqual, 120)
+				// templOS = (1180 - 1060)/1 = 120/1 = 120
+				So(timeMap["templOS"].Seconds(), ShouldEqual, 120)
 			})
 		})
 
@@ -639,8 +639,8 @@ func TestTimeAggregations(t *testing.T) {
 			Convey("the proper averages should be computed", func() {
 				// osx = ([1010-1000] + [1020-1000])/2 = (10+20)/2 = 15
 				So(timeMap["osx"].Seconds(), ShouldEqual, 15)
-				// templeos = (1060-1000)/1 = 60/1 = 60
-				So(timeMap["templeos"].Seconds(), ShouldEqual, 60)
+				// templOS = (1060-1000)/1 = 60/1 = 60
+				So(timeMap["templOS"].Seconds(), ShouldEqual, 60)
 			})
 		})
 

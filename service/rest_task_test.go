@@ -84,7 +84,7 @@ func TestGetTaskInfo(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 
@@ -133,41 +133,41 @@ func TestGetTaskInfo(t *testing.T) {
 			var jsonBody map[string]interface{}
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
-			Println(string(response.Body.Bytes()))
+			fmt.Println(string(response.Body.Bytes()))
 
-			var rawJsonBody map[string]*json.RawMessage
-			err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
+			rawJSONBody := map[string]*json.RawMessage{}
+			err = json.Unmarshal(response.Body.Bytes(), &rawJSONBody)
 			So(err, ShouldBeNil)
 
 			So(jsonBody["id"], ShouldEqual, testTask.Id)
 
 			var createTime time.Time
-			err = json.Unmarshal(*rawJsonBody["create_time"], &createTime)
+			err = json.Unmarshal(*rawJSONBody["create_time"], &createTime)
 			So(err, ShouldBeNil)
 			So(createTime, ShouldHappenWithin, TimePrecision, testTask.CreateTime)
 
 			var scheduledTime time.Time
-			err = json.Unmarshal(*rawJsonBody["scheduled_time"], &scheduledTime)
+			err = json.Unmarshal(*rawJSONBody["scheduled_time"], &scheduledTime)
 			So(err, ShouldBeNil)
 			So(scheduledTime, ShouldHappenWithin, TimePrecision, testTask.ScheduledTime)
 
 			var dispatchTime time.Time
-			err = json.Unmarshal(*rawJsonBody["dispatch_time"], &dispatchTime)
+			err = json.Unmarshal(*rawJSONBody["dispatch_time"], &dispatchTime)
 			So(err, ShouldBeNil)
 			So(dispatchTime, ShouldHappenWithin, TimePrecision, testTask.DispatchTime)
 
 			var startTime time.Time
-			err = json.Unmarshal(*rawJsonBody["start_time"], &startTime)
+			err = json.Unmarshal(*rawJSONBody["start_time"], &startTime)
 			So(err, ShouldBeNil)
 			So(startTime, ShouldHappenWithin, TimePrecision, testTask.StartTime)
 
 			var finishTime time.Time
-			err = json.Unmarshal(*rawJsonBody["finish_time"], &finishTime)
+			err = json.Unmarshal(*rawJSONBody["finish_time"], &finishTime)
 			So(err, ShouldBeNil)
 			So(finishTime, ShouldHappenWithin, TimePrecision, testTask.FinishTime)
 
 			var pushTime time.Time
-			err = json.Unmarshal(*rawJsonBody["push_time"], &pushTime)
+			err = json.Unmarshal(*rawJSONBody["push_time"], &pushTime)
 			So(err, ShouldBeNil)
 			So(pushTime, ShouldHappenWithin, TimePrecision, testTask.PushTime)
 
@@ -177,7 +177,7 @@ func TestGetTaskInfo(t *testing.T) {
 			So(jsonBody["priority"], ShouldEqual, testTask.Priority)
 
 			var lastHeartbeat time.Time
-			err = json.Unmarshal(*rawJsonBody["last_heartbeat"], &lastHeartbeat)
+			err = json.Unmarshal(*rawJSONBody["last_heartbeat"], &lastHeartbeat)
 			So(err, ShouldBeNil)
 			So(lastHeartbeat, ShouldHappenWithin, TimePrecision, testTask.LastHeartbeat)
 
@@ -187,8 +187,8 @@ func TestGetTaskInfo(t *testing.T) {
 			So(jsonBody["build_variant"], ShouldEqual, testTask.BuildVariant)
 
 			var dependsOn []task.Dependency
-			So(rawJsonBody["depends_on"], ShouldNotBeNil)
-			err = json.Unmarshal(*rawJsonBody["depends_on"], &dependsOn)
+			So(rawJSONBody["depends_on"], ShouldNotBeNil)
+			err = json.Unmarshal(*rawJSONBody["depends_on"], &dependsOn)
 			So(err, ShouldBeNil)
 			So(dependsOn, ShouldResemble, testTask.DependsOn)
 
@@ -235,7 +235,7 @@ func TestGetTaskInfo(t *testing.T) {
 			So(jsonTestResultLogs["url"], ShouldEqual, testResult.URL)
 
 			var jsonFiles []map[string]interface{}
-			err = json.Unmarshal(*rawJsonBody["files"], &jsonFiles)
+			err = json.Unmarshal(*rawJSONBody["files"], &jsonFiles)
 			So(err, ShouldBeNil)
 			So(len(jsonFiles), ShouldEqual, 1)
 
@@ -287,7 +287,7 @@ func TestGetTaskStatus(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
@@ -335,8 +335,8 @@ func TestGetTaskStatus(t *testing.T) {
 			err = json.Unmarshal(response.Body.Bytes(), &jsonBody)
 			So(err, ShouldBeNil)
 
-			var rawJsonBody map[string]*json.RawMessage
-			err = json.Unmarshal(response.Body.Bytes(), &rawJsonBody)
+			rawJSONBody := map[string]*json.RawMessage{}
+			err = json.Unmarshal(response.Body.Bytes(), &rawJSONBody)
 			So(err, ShouldBeNil)
 
 			So(jsonBody["task_id"], ShouldEqual, testTask.Id)

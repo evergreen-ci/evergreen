@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -21,7 +22,7 @@ func init() {
 }
 
 func resetCollection() {
-	db.Clear(RuntimesCollection)
+	grip.CatchError(db.Clear(RuntimesCollection))
 }
 
 // Test that Upserts happen properly
@@ -33,12 +34,12 @@ func TestRuntimeUpsert(t *testing.T) {
 			So(len(found), ShouldEqual, 0)
 			So(err, ShouldBeNil)
 
-			SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0))
+			So(SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0)), ShouldBeNil)
 			found, err = FindEveryProcessRuntime()
 			So(len(found), ShouldEqual, 1)
 			So(err, ShouldBeNil)
 
-			SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0))
+			So(SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0)), ShouldBeNil)
 			found, err = FindEveryProcessRuntime()
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
@@ -46,8 +47,8 @@ func TestRuntimeUpsert(t *testing.T) {
 
 		Convey("An update should not create new docs if the Id already"+
 			" exists", func() {
-			SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0))
-			SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0))
+			So(SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0)), ShouldBeNil)
+			So(SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0)), ShouldBeNil)
 			found, err := FindEveryProcessRuntime()
 			So(err, ShouldBeNil)
 			So(len(found), ShouldEqual, 2)
@@ -64,7 +65,7 @@ func TestRuntimeTimeUpdate(t *testing.T) {
 	Convey("When a new time is reported", t, func() {
 		Convey("The time document should save the time at which it was"+
 			" updated", func() {
-			SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0))
+			So(SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0)), ShouldBeNil)
 			time.Sleep(time.Millisecond)
 			testCutoff := time.Now()
 			time.Sleep(time.Millisecond)
@@ -73,7 +74,7 @@ func TestRuntimeTimeUpdate(t *testing.T) {
 			So(runtime, ShouldNotBeNil)
 			So(runtime.FinishedAt, ShouldHappenBefore, testCutoff)
 
-			SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0))
+			So(SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0)), ShouldBeNil)
 			runtime, err = FindOneProcessRuntime(bson.M{}, bson.M{})
 			So(err, ShouldBeNil)
 			So(runtime, ShouldNotBeNil)
@@ -89,12 +90,12 @@ func TestRuntimeTimeUpdate(t *testing.T) {
 // Tests that only runtimes before the given cutoff are returned
 func TestFindLateRuntimes(t *testing.T) {
 	Convey("When finding late runtime reports", t, func() {
-		SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0))
-		SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0))
+		So(SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0)), ShouldBeNil)
+		So(SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0)), ShouldBeNil)
 		time.Sleep(time.Millisecond)
 		testCutoff := time.Now()
 		time.Sleep(time.Millisecond)
-		SetProcessRuntimeCompleted(allRuntimeIds[2], time.Duration(0))
+		So(SetProcessRuntimeCompleted(allRuntimeIds[2], time.Duration(0)), ShouldBeNil)
 
 		Convey("Only times committed before the cutoff are returned", func() {
 			all, err := FindEveryProcessRuntime()
@@ -106,10 +107,9 @@ func TestFindLateRuntimes(t *testing.T) {
 			So(len(lateRuntimes), ShouldEqual, 2)
 		})
 
-		Convey("And when all times are more recent than the cutoff, none are"+
-			" returned", func() {
-			SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0))
-			SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0))
+		Convey("And when all times are more recent than the cutoff, none are returned", func() {
+			So(SetProcessRuntimeCompleted(allRuntimeIds[0], time.Duration(0)), ShouldBeNil)
+			So(SetProcessRuntimeCompleted(allRuntimeIds[1], time.Duration(0)), ShouldBeNil)
 			lateRuntimes, err := FindAllLateProcessRuntimes(testCutoff)
 			So(err, ShouldBeNil)
 			So(len(lateRuntimes), ShouldEqual, 0)

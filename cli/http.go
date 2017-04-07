@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -119,8 +120,8 @@ func (ac *APIClient) modifyExisting(patchId, action string) error {
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		encoder.Encode(data)
-		wPipe.Close()
+		grip.Warning(encoder.Encode(data))
+		grip.Warning(wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -285,8 +286,8 @@ func (ac *APIClient) UpdatePatchModule(patchId, module, patch, base string) erro
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		encoder.Encode(data)
-		wPipe.Close()
+		grip.Warning(encoder.Encode(data))
+		grip.Warning(wPipe.Close())
 	}()
 	defer rPipe.Close()
 
@@ -369,8 +370,8 @@ func (ac *APIClient) PutPatch(incomingPatch patchSubmission) (*patch.Patch, erro
 	rPipe, wPipe := io.Pipe()
 	encoder := json.NewEncoder(wPipe)
 	go func() {
-		encoder.Encode(data)
-		wPipe.Close()
+		grip.Warning(encoder.Encode(data))
+		grip.Warning(wPipe.Close())
 	}()
 	defer rPipe.Close()
 

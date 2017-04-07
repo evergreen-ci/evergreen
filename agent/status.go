@@ -42,7 +42,7 @@ func statusHandler(opts Options) http.HandlerFunc {
 		resp := buildResponse(&opts)
 
 		// in the future we may want to use the same render
-		// pacakge used in the service, but doing this
+		// package used in the service, but doing this
 		// manually is probably good enoug for now.
 		out, err := json.MarshalIndent(resp, " ", " ")
 		if err != nil {

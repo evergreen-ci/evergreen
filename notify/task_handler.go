@@ -80,7 +80,7 @@ func (self *TaskNotificationHandler) getRecentlyFinishedTasksWithStatus(key *Not
 	return taskNotifications, nil
 }
 
-func (self *TaskNotificationHandler) templateNotification(ae *web.App, configName string,
+func (self *TaskNotificationHandler) templateNotification(ae *web.App,
 	notification *TriggeredTaskNotification, changeInfo []ChangeInfo) (email Email, err error) {
 	// *This could potential break some buildlogger links when MCI changes version as in-progress
 	// tasks will still be using the previous version number.*
@@ -103,7 +103,7 @@ func (self *TaskNotificationHandler) templateNotification(ae *web.App, configNam
 
 	// get the failed tests (if any)
 	taskNotification.FailedTests = getFailedTests(current, notification.Key.NotificationName)
-	testFailureMessage := ""
+	var testFailureMessage string
 	switch len(taskNotification.FailedTests) {
 	case 0:
 		if current.Details.TimedOut {

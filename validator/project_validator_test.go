@@ -1264,7 +1264,7 @@ func TestCheckProjectSyntax(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(distro.Collection)
+			So(db.Clear(distro.Collection), ShouldBeNil)
 		})
 	})
 }
@@ -1293,7 +1293,7 @@ func TestCheckProjectSemantics(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(distro.Collection)
+			So(db.Clear(distro.Collection), ShouldBeNil)
 		})
 	})
 }

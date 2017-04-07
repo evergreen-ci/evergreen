@@ -238,7 +238,7 @@ func (h *HTTPCommunicator) GetDistro() (*distro.Distro, error) {
 			err = util.ReadJSONInto(resp.Body, d)
 			if err != nil {
 				err = errors.Wrap(err, "unable to read distro response")
-				h.Logger.Errorf(slogger.ERROR, err.Error())
+				h.Logger.Logf(slogger.ERROR, err.Error())
 				return util.RetriableError{err}
 			}
 			return nil
@@ -322,7 +322,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 			err = util.ReadJSONInto(resp.Body, v)
 			if err != nil {
 				err := errors.Wrap(err, "unable to read project version response")
-				h.Logger.Errorf(slogger.ERROR, err.Error())
+				h.Logger.Logf(slogger.ERROR, err.Error())
 				return err
 			}
 			return nil
@@ -393,11 +393,12 @@ func (h *HTTPCommunicator) tryRequestWithClient(path string, method string, clie
 	}
 
 	if data != nil {
-		jsonBytes, err := json.Marshal(*data)
+		var out []byte
+		out, err = json.Marshal(*data)
 		if err != nil {
 			return nil, err
 		}
-		req.Body = ioutil.NopCloser(bytes.NewReader(jsonBytes))
+		req.Body = ioutil.NopCloser(bytes.NewReader(out))
 	}
 	req.Header.Add(evergreen.TaskSecretHeader, h.TaskSecret)
 	req.Header.Add(evergreen.HostHeader, h.HostId)

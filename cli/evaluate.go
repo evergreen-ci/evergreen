@@ -36,7 +36,7 @@ func (ec *EvaluateCommand) Execute(args []string) error {
 		tmp := struct {
 			Functions interface{} `yaml:"functions,omitempty"`
 			Tasks     interface{} `yaml:"tasks,omitempty"`
-			Variants  interface{} `yaml:"buildvariants,omitempty`
+			Variants  interface{} `yaml:"buildvariants,omitempty"`
 		}{}
 		if ec.Tasks {
 			tmp.Functions = p.Functions

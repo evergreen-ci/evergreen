@@ -27,13 +27,11 @@ func init() {
 }
 
 func reset(t *testing.T) {
-	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, artifact.Collection), t,
-		"error clearing test collections")
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection, artifact.Collection),
+		t, "error clearing test collections")
 }
 
 func TestValidateS3BucketName(t *testing.T) {
-
 	Convey("When validating s3 bucket names", t, func() {
 
 		Convey("a bucket name that is too short should be rejected", func() {
@@ -72,9 +70,7 @@ func TestValidateS3BucketName(t *testing.T) {
 }
 
 func TestS3PutAndGetSingleFile(t *testing.T) {
-	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, artifact.Collection), t,
-		"error clearing test collections")
+	reset(t)
 
 	conf := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
@@ -219,7 +215,8 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 				"content_type": "text/plain",
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins)
+			testutil.HandleTestingErr(err, t, "problem setting up server")
 			defer server.Close()
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
@@ -243,7 +240,8 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 				"content_type": "text/plain",
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins)
+			testutil.HandleTestingErr(err, t, "problem setting up server")
 			defer server.Close()
 			httpCom := plugintest.TestAgentCommunicator("testTask", "taskSecret", server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
@@ -265,9 +263,7 @@ type multiPutFileInfo struct {
 }
 
 func TestS3PutAndGetMultiFile(t *testing.T) {
-	testutil.HandleTestingErr(
-		db.ClearCollections(task.Collection, artifact.Collection), t,
-		"error clearing test collections")
+	reset(t)
 
 	conf := testutil.TestConfig()
 	testutil.ConfigureIntegrationTest(t, conf, "TestS3PutAndGet")
@@ -360,20 +356,18 @@ func TestAttachResults(t *testing.T) {
 	displayName := "display_name"
 	testBucket := "testBucket"
 	Convey("When putting to an s3 bucket", t, func() {
-		testutil.HandleTestingErr(
-			db.ClearCollections(task.Collection, artifact.Collection), t,
-			"error clearing test collections")
+		reset(t)
 
 		testTask := &task.Task{
 			Id: taskId,
 		}
-		testTask.Insert()
-
+		err := testTask.Insert()
+		So(err, ShouldBeNil)
 		conf := testutil.TestConfig()
 		testutil.ConfigureIntegrationTest(t, conf, "TestAttachResults")
-		server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins)
+		testutil.HandleTestingErr(err, t, "problem setting up server")
 		defer server.Close()
-		So(err, ShouldBeNil)
 
 		httpCom := plugintest.TestAgentCommunicator(taskId, "taskSecret", server.URL)
 		pluginCom := &comm.TaskJSONCommunicator{"s3", httpCom}
@@ -387,8 +381,8 @@ func TestAttachResults(t *testing.T) {
 		}
 		Convey("and attach is multi", func() {
 			s3pc.LocalFilesIncludeFilter = []string{"one", "two"}
-			s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
-				s3pc.LocalFile, s3pc.RemoteFile)
+			So(s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
+				s3pc.LocalFile, s3pc.RemoteFile), ShouldBeNil)
 			Convey("files should each be added properly", func() {
 				entry, err := artifact.FindOne(artifact.ByTaskId(taskId))
 				So(err, ShouldBeNil)
@@ -401,8 +395,8 @@ func TestAttachResults(t *testing.T) {
 		})
 		Convey("and attaching is singular", func() {
 			s3pc.LocalFilesIncludeFilter = []string{}
-			s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
-				s3pc.LocalFile, s3pc.RemoteFile)
+			So(s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
+				s3pc.LocalFile, s3pc.RemoteFile), ShouldBeNil)
 			Convey("file should be added properly", func() {
 				entry, err := artifact.FindOne(artifact.ByTaskId(taskId))
 				So(err, ShouldBeNil)
@@ -420,8 +414,8 @@ func TestAttachResults(t *testing.T) {
 			}
 			s3pc.LocalFilesIncludeFilter = []string{"one", "two"}
 			for _, fileData := range filesList {
-				s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
-					fileData[1], fileData[0])
+				So(s3pc.AttachTaskFiles(&plugintest.MockLogger{}, pluginCom,
+					fileData[1], fileData[0]), ShouldBeNil)
 			}
 			Convey("files should each be added properly", func() {
 				entry, err := artifact.FindOne(artifact.ByTaskId(taskId))

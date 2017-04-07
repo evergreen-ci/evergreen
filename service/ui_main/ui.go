@@ -23,8 +23,6 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 )
 
-const UIPort = ":9090"
-
 var (
 	// requestTimeout is the duration to wait until killing
 	// active requests and stopping the server.

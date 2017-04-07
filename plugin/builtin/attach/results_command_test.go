@@ -37,9 +37,9 @@ func TestAttachResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
-		defer server.Close()
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		configFile := filepath.Join(cwd, "testdata", "plugin_attach_results.yml")
 		resultsLoc := filepath.Join(cwd, "testdata", "plugin_attach_results.json")
@@ -87,9 +87,9 @@ func TestAttachRawResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
-		defer server.Close()
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		configFile := filepath.Join(cwd, "testdata", "plugin_attach_results_raw.yml")
 		resultsLoc := filepath.Join(cwd, "testdata", "plugin_attach_results_raw.json")

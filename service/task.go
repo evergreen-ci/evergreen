@@ -505,6 +505,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	execution, err := strconv.Atoi(mux.Vars(r)["execution"])
+	grip.Warning(err)
 	logType := r.FormValue("type")
 
 	if logType == "" {

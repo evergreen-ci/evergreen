@@ -36,9 +36,10 @@ func runTest(t *testing.T, configPath string, customTests func()) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
-		defer server.Close()
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
+		defer server.Close()
+
 		httpCom := plugintest.TestAgentCommunicator("mocktaskid", "mocktasksecret", server.URL)
 		taskConfig, err := plugintest.CreateTestConfig(configPath, t)
 		testutil.HandleTestingErr(err, t, "failed to create test config: %v")

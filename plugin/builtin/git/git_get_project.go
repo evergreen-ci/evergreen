@@ -194,12 +194,12 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 	}
 	go func() {
 		pluginLogger.LogExecution(slogger.INFO, "Fetching patch.")
-		patch, err := ggpc.GetPatch(conf, pluginCom, pluginLogger)
+		patch, err := ggpc.GetPatch(pluginCom, pluginLogger)
 		if err != nil {
 			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch: %v", err)
 			errChan <- errors.Wrap(err, "Failed to get patch")
 		}
-		err = ggpc.getPatchContents(conf, pluginCom, pluginLogger, patch)
+		err = ggpc.getPatchContents(pluginCom, pluginLogger, patch)
 		if err != nil {
 			pluginLogger.LogExecution(slogger.ERROR, "Failed to get patch contents: %v", err)
 			errChan <- errors.Wrap(err, "Failed to get patch contents")

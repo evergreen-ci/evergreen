@@ -10,11 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
@@ -375,82 +372,6 @@ func (uis *UIServer) LoadProjectContext(rw http.ResponseWriter, r *http.Request)
 	return pc, nil
 }
 
-// populateTaskBuildVersion takes a task, build, and version ID and populates a projectContext
-// with as many of the task, build, and version documents as possible.
-// If any of the provided IDs is blank, they will be inferred from the more selective ones.
-// Returns the project ID of the data found, which may be blank if the IDs are empty.
-func (pc *projectContext) populateTaskBuildVersion(taskId, buildId, versionId string) (string, error) {
-	projectId := ""
-	var err error
-	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
-	if len(taskId) > 0 {
-		pc.Task, err = task.FindOne(task.ById(taskId))
-		if err != nil {
-			return "", err
-		}
-
-		if pc.Task != nil {
-			// override build and version ID with the ones this task belongs to
-			buildId = pc.Task.BuildId
-			versionId = pc.Task.Version
-			projectId = pc.Task.Project
-		}
-	}
-
-	// Fetch build if there's a build ID present; if we find one, populate version ID from it
-	if len(buildId) > 0 {
-		pc.Build, err = build.FindOne(build.ById(buildId))
-		if err != nil {
-			return "", err
-		}
-		if pc.Build != nil {
-			versionId = pc.Build.Version
-			projectId = pc.Build.Project
-		}
-	}
-	if len(versionId) > 0 {
-		pc.Version, err = version.FindOne(version.ById(versionId))
-		if err != nil {
-			return "", err
-		}
-		if pc.Version != nil {
-			projectId = pc.Version.Identifier
-		}
-	}
-	return projectId, nil
-
-}
-
-// populatePatch loads a patch into the project context, using patchId if provided.
-// If patchId is blank, will try to infer the patch ID from the version already loaded
-// into context, if available.
-func (pc *projectContext) populatePatch(patchId string) error {
-	var err error
-	if len(patchId) > 0 {
-		// The patch is explicitly identified in the URL, so fetch it
-		if !patch.IsValidId(patchId) {
-			return errors.Errorf("patch id '%v' is not an object id", patchId)
-		}
-		pc.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
-	} else if pc.Version != nil {
-		// patch isn't in URL but the version in context has one, get it
-		pc.Patch, err = patch.FindOne(patch.ByVersion(pc.Version.Id).Project(patch.ExcludePatchDiff))
-	}
-	if err != nil {
-		return err
-	}
-
-	// If there's a finalized patch loaded into context but not a version, load the version
-	// associated with the patch as the context's version.
-	if pc.Version == nil && pc.Patch != nil && pc.Patch.Version != "" {
-		pc.Version, err = version.FindOne(version.ById(pc.Patch.Version))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // UserMiddleware is middleware which checks for session tokens on the Request
 // and looks up and attaches a user for that token if one is found.
 func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
@@ -484,7 +405,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				grip.Infof("Error getting user %s: %+v", authDataName, err)
 			} else {
 				// Get the user's full details from the DB or create them if they don't exists
-				dbUser, err := model.GetOrCreateUser(dbUser.Username(), dbUser.DisplayName(), dbUser.Email())
+				dbUser, err = model.GetOrCreateUser(dbUser.Username(), dbUser.DisplayName(), dbUser.Email())
 				if err != nil {
 					grip.Infof("Error looking up user %s: %+v", dbUser.Username(), err)
 				} else {

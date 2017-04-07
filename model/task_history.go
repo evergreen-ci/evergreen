@@ -186,24 +186,28 @@ func (iter *taskHistoryIterator) findAllVersions(v *version.Version, numRevision
 // Returns tasks grouped by their versions, and sorted with the most
 // recent first (i.e. descending commit order number).
 func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfter int, include bool) (TaskHistoryChunk, error) {
-	session, database, err := db.GetGlobalSessionFactory().GetSession()
-	defer session.Close()
-
 	chunk := TaskHistoryChunk{
 		Tasks:       []bson.M{},
 		Versions:    []version.Version{},
 		FailedTests: map[string][]task.TestResult{},
 	}
 
+	session, database, err := db.GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return chunk, errors.Wrap(err, "problem getting database session")
+	}
+
+	defer session.Close()
+
 	versionsBefore, exhausted, err := iter.findAllVersions(v, numBefore, true, include)
 	if err != nil {
-		return chunk, err
+		return chunk, errors.WithStack(err)
 	}
 	chunk.Exhausted.Before = exhausted
 
 	versionsAfter, exhausted, err := iter.findAllVersions(v, numAfter, false, false)
 	if err != nil {
-		return chunk, err
+		return chunk, errors.WithStack(err)
 	}
 	chunk.Exhausted.After = exhausted
 
@@ -261,21 +265,25 @@ func (iter *taskHistoryIterator) GetChunk(v *version.Version, numBefore, numAfte
 	)
 
 	var aggregatedTasks []bson.M
-	if err := pipeline.All(&aggregatedTasks); err != nil {
-		return chunk, err
+	if err = pipeline.All(&aggregatedTasks); err != nil {
+		return chunk, errors.WithStack(err)
 	}
 	chunk.Tasks = aggregatedTasks
 
 	failedTests, err := iter.GetFailedTests(pipeline)
 	if err != nil {
-		return chunk, err
+		return chunk, errors.WithStack(err)
 	}
+
 	chunk.FailedTests = failedTests
 	return chunk, nil
 }
 
 func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string, error) {
 	session, db, err := db.GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting database session")
+	}
 	defer session.Close()
 
 	pipeline := db.C(task.Collection).Pipe(
@@ -294,9 +302,9 @@ func (self *taskHistoryIterator) GetDistinctTestNames(numCommits int) ([]string,
 	)
 
 	var output []bson.M
-	err = pipeline.All(&output)
-	if err != nil {
-		return nil, err
+
+	if err = pipeline.All(&output); err != nil {
+		return nil, errors.WithStack(err)
 	}
 
 	names := make([]string, 0)

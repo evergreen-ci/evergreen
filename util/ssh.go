@@ -17,7 +17,7 @@ type StaticHostInfo struct {
 	Port     string
 }
 
-var userHostPortRegex = regexp.MustCompile("(?:([\\w\\-_]+)@)?@?([\\w\\-_\\.]+)(?::(\\d+))?")
+var userHostPortRegex = regexp.MustCompile(`(?:([\w\-_]+)@)?@?([\w\-_\.]+)(?::(\d+))?`)
 
 // ParseSSHInfo reads in a hostname definition and reads the relevant
 // SSH connection information from it. For example,

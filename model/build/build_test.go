@@ -43,8 +43,6 @@ func TestGenericBuildFinding(t *testing.T) {
 				found, err := FindOne(ById(buildOne.Id))
 				So(err, ShouldBeNil)
 				So(found.Id, ShouldEqual, buildOne.Id)
-
-				found, err = FindOne(ById(buildTwo.Id))
 			})
 		})
 
@@ -521,6 +519,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 			testutil.HandleTestingErr(db.Clear(Collection), t, "Error clearing '%v' collection", Collection)
 		})
 
+		var err error
 		build := &Build{Id: "build"}
 		So(build.Insert(), ShouldBeNil)
 
@@ -528,7 +527,7 @@ func TestBuildUpdateStatus(t *testing.T) {
 			" in the database", func() {
 			So(build.UpdateStatus(evergreen.BuildSucceeded), ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
-			build, err := FindOne(ById(build.Id))
+			build, err = FindOne(ById(build.Id))
 			So(err, ShouldBeNil)
 			So(build.Status, ShouldEqual, evergreen.BuildSucceeded)
 		})

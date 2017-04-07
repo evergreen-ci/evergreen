@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 )
 
 const HostCheckTimeout = 10 * time.Second
@@ -47,7 +48,7 @@ func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) 
 
 	select {
 	case <-time.After(HostCheckTimeout):
-		remoteCommand.Stop()
+		grip.Warning(remoteCommand.Stop())
 		return false, nil
 	case err = <-done:
 		if err != nil {

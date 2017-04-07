@@ -47,7 +47,7 @@ func TestGetRecentVersions(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
@@ -253,7 +253,7 @@ func TestGetVersionInfo(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
@@ -309,7 +309,7 @@ func TestGetVersionInfo(t *testing.T) {
 		// in the actual handler function
 		router.ServeHTTP(response, request)
 
-		Println(response.Body)
+		fmt.Println(response.Body)
 
 		So(response.Code, ShouldEqual, http.StatusOK)
 		validateVersionInfo(v, response)
@@ -357,7 +357,7 @@ func TestGetVersionInfoViaRevision(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
@@ -451,7 +451,7 @@ func TestActivateVersion(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
@@ -595,7 +595,7 @@ func TestGetVersionStatus(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")

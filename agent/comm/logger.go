@@ -51,7 +51,7 @@ func (lgr *StreamLogger) GetSystemLogWriter(level slogger.Level) io.Writer {
 }
 
 // appendMessages sends a log message to every component sender in a slogger.Logger
-func appendMessages(logger *slogger.Logger, msg *slogger.Log) {
+func appendMessages(logger *slogger.Logger, msg message.Composer) {
 	for _, sender := range logger.Appenders {
 		sender.Send(msg)
 	}
@@ -219,11 +219,6 @@ type APILogger struct {
 	// When set to nil, flushing will only happen when called directly
 	// or the SendAfterLines threshold is reached.
 	autoFlushTimer *time.Timer
-
-	// Channel on which to send signals that must be propagated back to agent;
-	// for instance, if the secret doesn't match what the server expects,
-	// it must send IncorrectSecret on the channel.
-	signalChan chan Signal
 
 	// The mechanism for communicating with the remote endpoint.
 	TaskCommunicator

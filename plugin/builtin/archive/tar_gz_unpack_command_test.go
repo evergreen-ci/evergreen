@@ -61,13 +61,7 @@ func TestTarGzUnpackParseParams(t *testing.T) {
 func TestTarGzCommandUnpackArchive(t *testing.T) {
 
 	Convey("With a targz unpack command", t, func() {
-
-		var cmd *TarGzUnpackCommand
-
 		Convey("when unpacking an archive", func() {
-
-			cmd = &TarGzUnpackCommand{}
-
 			Convey("the archive's contents should be expanded into the"+
 				" specified target directory", func() {
 
@@ -93,7 +87,7 @@ func TestTarGzCommandUnpackArchive(t *testing.T) {
 				}
 
 				So(tarPackCmd.ParseParams(tarPackParams), ShouldBeNil)
-				numFound, err := tarPackCmd.BuildArchive("", &plugintest.MockLogger{})
+				numFound, err := tarPackCmd.BuildArchive(&plugintest.MockLogger{})
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 2)
 

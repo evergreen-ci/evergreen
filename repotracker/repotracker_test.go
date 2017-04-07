@@ -16,17 +16,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-type mockClock struct {
-	FakeTime time.Time
-}
-
-func (c mockClock) Now() time.Time {
-	return c.FakeTime
-}
-
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	grip.SetSender(testutil.SetupTestSender(testConfig.RepoTracker.LogFile))
 }
 
 func TestFetchRevisions(t *testing.T) {
@@ -35,14 +26,17 @@ func TestFetchRevisions(t *testing.T) {
 	Convey("With a GithubRepositoryPoller with a valid OAuth token...", t, func() {
 		err := modelutil.CreateTestLocalConfig(testConfig, "mci-test", "")
 		So(err, ShouldBeNil)
+
+		resetProjectRefs()
+
+		grip.Alertf("project: %+v", projectRef)
 		repoTracker := RepoTracker{
 			testConfig,
 			projectRef,
 			NewGithubRepositoryPoller(projectRef, testConfig.Credentials["github"]),
 		}
 
-		Convey("Fetching commits from the repository should not return "+
-			"any errors", func() {
+		Convey("Fetching commits from the repository should not return any errors", func() {
 			So(repoTracker.FetchRevisions(10), ShouldBeNil)
 		})
 
@@ -425,15 +419,6 @@ func findStatus(v *version.Version, buildVariant string) (*version.BuildStatus, 
 		}
 	}
 	return nil, false
-}
-
-func newTestRepoPollRevision(project string,
-	activationTime time.Time) *model.Repository {
-	return &model.Repository{
-		Project:             project,
-		RevisionOrderNumber: 0,
-		LastRevision:        firstRevision,
-	}
 }
 
 func createTestRevision(revision string,

@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -46,7 +47,9 @@ func (m *ManifestPlugin) Configure(conf map[string]interface{}) error {
 		return err
 	}
 	if mp.GithubToken == "" {
-		errors.New("GitHub token is empty")
+		// this should return an error, but never has before
+		// (caught an lint error.) Tests break if this returns early.
+		grip.Warning(errors.New("GitHub token is empty"))
 	}
 	m.OAuthCredentials = mp.GithubToken
 	return nil

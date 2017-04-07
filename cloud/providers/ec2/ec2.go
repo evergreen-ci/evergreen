@@ -65,11 +65,8 @@ func (self *EC2ProviderSettings) Validate() error {
 	}
 
 	_, err := makeBlockDeviceMappings(self.MountPoints)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return errors.WithStack(err)
 }
 
 //Configure loads necessary credentials or other settings from the global config

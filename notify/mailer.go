@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type Mailer interface {
@@ -45,8 +46,11 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	// - Bob Smith <bob@example.com>
 	var c *smtp.Client
 	var err error
+
 	if self.UseSSL {
-		tlsCon, err := tls.Dial("tcp", fmt.Sprintf("%v:%v", self.Server, self.Port), &tls.Config{})
+		var tlsCon *tls.Conn
+
+		tlsCon, err = tls.Dial("tcp", fmt.Sprintf("%v:%v", self.Server, self.Port), &tls.Config{})
 		if err != nil {
 			return err
 		}
@@ -67,9 +71,12 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 	}
 
 	// Set the sender
-	from := mail.Address{"Evergreen Alerts", self.From}
-	err = c.Mail(self.From)
-	if err != nil {
+	from := mail.Address{
+		Name:    "Evergreen Alerts",
+		Address: self.From,
+	}
+
+	if err = c.Mail(self.From); err != nil {
 		grip.Errorf("Error establishing mail sender (%s): %+v", self.From, err)
 		return err
 	}
@@ -108,8 +115,7 @@ func (self SmtpMailer) SendMail(recipients []string, subject, body string) error
 
 	// write the body
 	buf := bytes.NewBufferString(message)
-	if _, err = buf.WriteTo(wc); err != nil {
-		return err
-	}
-	return nil
+	_, err = buf.WriteTo(wc)
+
+	return errors.WithStack(err)
 }

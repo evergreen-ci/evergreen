@@ -72,22 +72,12 @@ var (
 		NotificationType:      taskType,
 		NotificationRequester: evergreen.RepotrackerVersionRequester,
 	}
-	allNotificationKeys = []NotificationKey{
-		buildFailureNotificationKey,
-		buildSucceessNotificationKey,
-		buildCompletionNotificationKey,
-		buildSuccessToFailureNotificationKey,
-		taskFailureNotificationKey,
-		taskSucceessNotificationKey,
-		taskCompletionNotificationKey,
-		taskSuccessToFailureNotificationKey,
-	}
 )
 
 var TestConfig = testutil.TestConfig()
 
 func TestNotify(t *testing.T) {
-	grip.SetSender(testutil.SetupTestSender(TestConfig.Notify.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(TestConfig.Notify.LogFile)))
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(TestConfig))
 	emailSubjects = make([]string, 0)
@@ -107,8 +97,7 @@ func TestNotify(t *testing.T) {
 			So(version.Insert(), ShouldBeNil)
 			Convey("BuildFailureHandler should return 1 email per failed build", func() {
 				handler := BuildFailureHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&buildFailureNotificationKey)
+				emails, err := handler.GetNotifications(ae, &buildFailureNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 2 failed notifications
 				So(len(emails), ShouldEqual, 2)
@@ -120,8 +109,7 @@ func TestNotify(t *testing.T) {
 
 			Convey("BuildSuccessHandler should return 1 email per successful build", func() {
 				handler := BuildSuccessHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&buildSucceessNotificationKey)
+				emails, err := handler.GetNotifications(ae, &buildSucceessNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 2 success notifications
 				So(len(emails), ShouldEqual, 2)
@@ -133,8 +121,7 @@ func TestNotify(t *testing.T) {
 
 			Convey("BuildCompletionHandler should return 1 email per completed build", func() {
 				handler := BuildCompletionHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&buildCompletionNotificationKey)
+				emails, err := handler.GetNotifications(ae, &buildCompletionNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 6 completed notifications
 				So(len(emails), ShouldEqual, 4)
@@ -151,8 +138,7 @@ func TestNotify(t *testing.T) {
 			Convey("BuildSuccessToFailureHandler should return 1 email per "+
 				"build success to failure transition", func() {
 				handler := BuildSuccessToFailureHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&buildSuccessToFailureNotificationKey)
+				emails, err := handler.GetNotifications(ae, &buildSuccessToFailureNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 1 success_to_failure notifications
 				So(len(emails), ShouldEqual, 1)
@@ -171,8 +157,7 @@ func TestNotify(t *testing.T) {
 
 			Convey("TaskFailureHandler should return 1 email per task failure", func() {
 				handler := TaskFailureHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&taskFailureNotificationKey)
+				emails, err := handler.GetNotifications(ae, &taskFailureNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 2 failed notifications
 				So(len(emails), ShouldEqual, 2)
@@ -184,8 +169,7 @@ func TestNotify(t *testing.T) {
 
 			Convey("TaskSuccessHandler should return 1 email per task success", func() {
 				handler := TaskSuccessHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&taskSucceessNotificationKey)
+				emails, err := handler.GetNotifications(ae, &taskSucceessNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 2 success notifications
 				So(len(emails), ShouldEqual, 2)
@@ -197,8 +181,7 @@ func TestNotify(t *testing.T) {
 
 			Convey("TaskCompletionHandler should return 1 email per completed task", func() {
 				handler := TaskCompletionHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&taskCompletionNotificationKey)
+				emails, err := handler.GetNotifications(ae, &taskCompletionNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 6 completion notifications
 				So(len(emails), ShouldEqual, 4)
@@ -215,8 +198,7 @@ func TestNotify(t *testing.T) {
 			Convey("TaskSuccessToFailureHandler should return 1 email per "+
 				"task success to failure transition", func() {
 				handler := TaskSuccessToFailureHandler{}
-				emails, err := handler.GetNotifications(ae, "config_test",
-					&taskSuccessToFailureNotificationKey)
+				emails, err := handler.GetNotifications(ae, &taskSuccessToFailureNotificationKey)
 				So(err, ShouldBeNil)
 				// check that we only returned 1 success to failure notifications
 				So(len(emails), ShouldEqual, 1)
@@ -260,7 +242,7 @@ func TestNotify(t *testing.T) {
 			ae, err := createEnvironment(TestConfig, map[string]interface{}{})
 			So(err, ShouldBeNil)
 
-			emails, err := ProcessNotifications(ae, "config_test", notificationSettings, false)
+			emails, err := ProcessNotifications(ae, notificationSettings, false)
 			So(err, ShouldBeNil)
 
 			So(len(emails[notificationKeyFailure]), ShouldEqual, 2)
@@ -292,7 +274,7 @@ func TestNotify(t *testing.T) {
 			}
 
 			fakeTask, err := task.FindOne(task.ById("task8"))
-
+			So(err, ShouldBeNil)
 			notificationKey := NotificationKey{"project", "task_failure", "task", "gitter_request"}
 
 			triggeredNotification := TriggeredTaskNotification{

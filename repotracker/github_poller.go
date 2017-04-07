@@ -39,12 +39,8 @@ func getCommitURL(projectRef *model.ProjectRef) string {
 
 // isLastRevision compares a Github Commit's sha with a revision and returns
 // true if they are the same
-func isLastRevision(revision string,
-	githubCommit *thirdparty.GithubCommit) bool {
-	if githubCommit.SHA == revision {
-		return true
-	}
-	return false
+func isLastRevision(revision string, githubCommit *thirdparty.GithubCommit) bool {
+	return githubCommit.SHA == revision
 }
 
 // githubCommitToRevision converts a GithubCommit struct to a

@@ -25,7 +25,6 @@ const (
 	SCPTimeout        = 3 * time.Minute
 	StartAgentTimeout = 2 * time.Minute
 	agentFile         = "agent"
-	pidFile           = ".pid"
 )
 
 // HostGateway is responsible for kicking off tasks on remote machines.
@@ -42,8 +41,6 @@ type HostGateway interface {
 type AgentHostGateway struct {
 	// Destination directory for the agent executables
 	ExecutablesDir string
-	// Internal cache of the agent package's current git hash
-	currentAgentHash string
 }
 
 // Start the task specified, on the host specified.  First runs any necessary
@@ -75,7 +72,7 @@ func (agbh *AgentHostGateway) RunTaskOnHost(settings *evergreen.Settings, taskTo
 
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
-		if err := hostObj.CreateSecret(); err != nil {
+		if err = hostObj.CreateSecret(); err != nil {
 			return "", errors.Wrapf(err, "creating secret for %s", hostObj.Id)
 		}
 	}
@@ -158,7 +155,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	if err != nil {
 		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
-			makeShellCmd.Stop()
+			grip.Warning(makeShellCmd.Stop())
 			return "", errors.Errorf("creating remote directories timed out: %v",
 				mkdirOutput.String())
 		}
@@ -192,7 +189,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
 	if err != nil {
 		if err == util.ErrTimedOut {
-			scpAgentCmd.Stop()
+			grip.Warning(scpAgentCmd.Stop())
 			return "", errors.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
 		}
 		return "", errors.Errorf(
@@ -247,7 +244,7 @@ func startAgentOnRemote(apiURL string, task *task.Task, hostObj *host.Host, sshO
 	)
 	if err != nil {
 		if err == util.ErrTimedOut {
-			startAgentCmd.Stop()
+			grip.Warning(startAgentCmd.Stop())
 			return errors.New("starting agent timed out")
 		}
 		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())

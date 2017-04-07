@@ -30,12 +30,15 @@ func prompt(message string) string {
 // confirm asks the user a yes/no question and returns true/false if they reply with y/yes/n/no.
 // if defaultYes is true, allows user to just hit enter without typing an explicit yes.
 func confirm(message string, defaultYes bool) bool {
-	reply := ""
+	var reply string
+
 	yes := []string{"y", "yes"}
 	no := []string{"n", "no"}
+
 	if defaultYes {
 		yes = append(yes, "")
 	}
+
 	for {
 		reply = prompt(message)
 		if util.SliceContains(yes, strings.ToLower(reply)) {

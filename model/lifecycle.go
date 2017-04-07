@@ -213,7 +213,7 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 
 	// archive all the tasks
 	for _, t := range allTasks {
-		if err := t.Archive(); err != nil {
+		if err = t.Archive(); err != nil {
 			return errors.Wrap(err, "failed to archive task")
 		}
 	}
@@ -246,6 +246,10 @@ func RestartVersion(versionId string, taskIds []string, abortInProgress bool, ca
 		bson.M{build.IdKey: bson.M{"$in": buildIdList}},
 		bson.M{"$set": bson.M{build.StatusKey: evergreen.BuildStarted}},
 	)
+
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
 	if abortInProgress {
 		// abort in-progress tasks in this build
@@ -364,7 +368,9 @@ func AddTasksToBuild(b *build.Build, project *Project, v *version.Version,
 	}
 
 	// update the build to hold the new tasks
-	RefreshTasksCache(b.Id)
+	if err := RefreshTasksCache(b.Id); err != nil {
+		return nil, errors.Wrapf(err, "error updating task cache for %s", b.Id)
+	}
 
 	return b, nil
 }
@@ -468,7 +474,7 @@ func createTasksForBuild(project *Project, buildVariant *BuildVariant,
 		// update task document with spec fields
 		task.Populate(taskSpec)
 
-		if ((task.Patchable != nil && *task.Patchable == false) || task.Name == evergreen.PushStage) && //TODO remove PushStage
+		if ((task.Patchable != nil && !*task.Patchable) || task.Name == evergreen.PushStage) && //TODO remove PushStage
 			b.Requester == evergreen.PatchVersionRequester {
 			continue
 		}

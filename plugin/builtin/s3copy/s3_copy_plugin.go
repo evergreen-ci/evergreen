@@ -34,8 +34,6 @@ const (
 
 	s3CopyRetrySleepTimeSec = 5
 	s3CopyRetryNumRetries   = 5
-	s3ResultsPostRetries    = 5
-	s3ResultsRetrySleepSec  = 10 * time.Second
 )
 
 // S3CopyRequest holds information necessary for the API server to
@@ -57,7 +55,7 @@ type S3CopyCommand struct {
 	// AwsKey & AwsSecret are provided to make it possible to transfer
 	// files to/from any bucket using the appropriate keys for each
 	AwsKey    string `mapstructure:"aws_key" plugin:"expand" json:"aws_key"`
-	AwsSecret string `mapstructure:"aws_secret" plugin:"expand" json:"aws_key"`
+	AwsSecret string `mapstructure:"aws_secret" plugin:"expand" json:"aws_secret"`
 
 	// An array of file copy configurations
 	S3CopyFiles []*s3CopyFile `mapstructure:"s3_copy_files" plugin:"expand"`

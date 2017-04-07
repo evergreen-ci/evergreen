@@ -73,20 +73,20 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 	if len(a.HostId) > 0 {
 		aCtx.Host, err = host.FindOne(host.ById(a.HostId))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	}
 	// Fetch task if there's a task ID present; if we find one, populate build/version IDs from it
 	if len(taskId) > 0 {
 		aCtx.Task, err = task.FindOne(task.ById(taskId))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if aCtx.Task != nil && aCtx.Task.Execution != a.Execution {
 			oldTaskId := fmt.Sprintf("%s_%v", taskId, a.Execution)
 			aCtx.Task, err = task.FindOneOld(task.ById(oldTaskId))
 			if err != nil {
-				return nil, err
+				return nil, errors.WithStack(err)
 			}
 		}
 
@@ -108,7 +108,7 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 	if len(buildId) > 0 {
 		aCtx.Build, err = build.FindOne(build.ById(buildId))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if aCtx.Build != nil {
 			versionId = aCtx.Build.Version
@@ -118,7 +118,7 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 	if len(versionId) > 0 {
 		aCtx.Version, err = version.FindOne(version.ById(versionId))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		if aCtx.Version != nil {
 			projectId = aCtx.Version.Identifier
@@ -130,9 +130,15 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 			return nil, errors.Errorf("patch id '%s' is not an object id", patchId)
 		}
 		aCtx.Patch, err = patch.FindOne(patch.ById(patch.NewId(patchId)).Project(patch.ExcludePatchDiff))
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
 	} else if aCtx.Version != nil {
 		// patch isn't in URL but the version in context has one, get it
 		aCtx.Patch, err = patch.FindOne(patch.ByVersion(aCtx.Version.Id).Project(patch.ExcludePatchDiff))
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
 	}
 
 	// If there's a finalized patch loaded into context but not a version, load the version
@@ -140,14 +146,14 @@ func (qp *QueueProcessor) loadAlertContext(a *alert.AlertRequest) (*AlertContext
 	if aCtx.Version == nil && aCtx.Patch != nil && aCtx.Patch.Version != "" {
 		aCtx.Version, err = version.FindOne(version.ById(aCtx.Patch.Version).WithoutFields(version.ConfigKey))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	}
 
 	if len(projectId) > 0 {
 		aCtx.ProjectRef, err = qp.findProject(projectId)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	}
 	return aCtx, nil
@@ -166,7 +172,7 @@ func (qp *QueueProcessor) findProject(projectId string) (*model.ProjectRef, erro
 	}
 	project, err := model.FindOneProjectRef(projectId)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	if project == nil {
 		return nil, nil

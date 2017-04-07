@@ -84,7 +84,8 @@ func (pfCmd *ParseFilesCommand) Execute(pluginLogger plugin.Logger,
 	pluginLogger.LogTask(slogger.INFO, "Sending test logs to server...")
 	allResults := []*TestResult{}
 	for idx, log := range logs {
-		logId := ""
+		var logId string
+
 		if logId, err = pluginCom.TaskPostTestLog(&log); err != nil {
 			// continue on error to let the other logs be posted
 			pluginLogger.LogTask(slogger.ERROR, "Error posting log: %v", err)
@@ -204,7 +205,7 @@ func ParseTestOutputFiles(outputFiles []string, stop chan bool,
 
 // ToModelTestResults converts the implementation of TestResults native
 // to the gotest plugin to the implementation used by MCI tasks
-func ToModelTestResults(t *task.Task, results []*TestResult) task.TestResults {
+func ToModelTestResults(_ *task.Task, results []*TestResult) task.TestResults {
 	var modelResults []task.TestResult
 	for _, res := range results {
 		// start and end are times that we don't know,

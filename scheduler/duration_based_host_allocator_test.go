@@ -20,7 +20,7 @@ var hostAllocatorTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostAllocatorTestConf))
-	grip.SetSender(testutil.SetupTestSender(hostAllocatorTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(hostAllocatorTestConf.Scheduler.LogFile)))
 }
 
 func TestDurationBasedNewHostsNeeded(t *testing.T) {

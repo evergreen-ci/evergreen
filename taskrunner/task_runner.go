@@ -65,7 +65,7 @@ func (self *TaskRunner) Run() error {
 			return err
 		}
 
-		distroRunTime := time.Now().Sub(distroStartTime)
+		distroRunTime := time.Since(distroStartTime)
 		grip.Infof("It took %s to schedule tasks on %s", distroRunTime, distroId)
 		// most of the time, processDistro should take less than distroSleep seconds, but
 		// if it takes longer, sleep longer to give other locks a chance to preempt this one
@@ -103,7 +103,7 @@ func (self *TaskRunner) processDistro(distroId string) error {
 		}
 	}()
 
-	lockRunTime := time.Now().Sub(lockStartTime)
+	lockRunTime := time.Since(lockStartTime)
 	grip.Infof("Taskrunner took %s to acquire global lock", lockRunTime)
 
 	freeHostsForDistro, err := self.FindAvailableHostsForDistro(distroId)

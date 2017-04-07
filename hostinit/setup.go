@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -155,9 +154,10 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 
 	// set the host's dns name, if it is not set
 	if host.Host == "" {
+		var hostDNS string
 
 		// get the DNS name for the host
-		hostDNS, err := cloudMgr.GetDNSName(host)
+		hostDNS, err = cloudMgr.GetDNSName(host)
 		if err != nil {
 			return false, errors.Wrapf(err, "error checking DNS name for host %s", host.Id)
 		}
@@ -169,7 +169,7 @@ func (init *HostInit) IsHostReady(host *host.Host) (bool, error) {
 		}
 
 		// update the host's DNS name
-		if err := host.SetDNSName(hostDNS); err != nil {
+		if err = host.SetDNSName(hostDNS); err != nil {
 			return false, errors.Wrapf(err, "error setting DNS name for host %s", host.Id)
 		}
 	}
@@ -201,7 +201,7 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 	}
 
 	// mark the host as initializing
-	if err := targetHost.SetInitializing(); err != nil {
+	if err = targetHost.SetInitializing(); err != nil {
 		if err == mgo.ErrNotFound {
 			return "", ErrHostAlreadyInitializing
 		} else {
@@ -271,8 +271,8 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 		return errors.Wrap(err, "error creating temporary script file")
 	}
 	defer func() {
-		file.Close()
-		os.Remove(file.Name())
+		grip.Error(file.Close())
+		grip.Error(os.Remove(file.Name()))
 	}()
 
 	expanded, err := init.expandScript(script)
@@ -305,7 +305,7 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 	err = util.RunFunctionWithTimeout(scpCmd.Run, SCPTimeout)
 	if err != nil {
 		if err == util.ErrTimedOut {
-			scpCmd.Stop()
+			grip.Warning(scpCmd.Stop())
 			return errors.Wrap(err, "scp-ing script timed out")
 		}
 		return errors.Wrapf(err, "error (%v) copying script to remote machine",
@@ -342,7 +342,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 			return nil
 		}
 
-		alerts.RunHostProvisionFailTriggers(h)
+		grip.Warning(alerts.RunHostProvisionFailTriggers(h))
 		event.LogProvisionFailed(h.Id, output)
 
 		// setup script failed, mark the host's provisioning as failed
@@ -568,25 +568,4 @@ func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, targ
 
 	// run the make shell command with a timeout
 	return errors.WithStack(util.RunFunctionWithTimeout(makeShellCmd.Run, 15*time.Minute))
-}
-
-// this helper is for local testing--it allows developers to get around
-// firewall restrictions by opening up an SSH tunnel.
-func setupDebugSSHTunnel(keyPath, hostUser, hostName string) {
-	// Note for testing - when running locally, if your API Server's URL is behind a gateway (i.e. not a
-	// static IP) the next step will fail because the API server will not be reachable.
-	// If you want it to reach your local API server, execute a command here that sets up a reverse ssh tunnel:
-	// ssh -f -N -T -R 8080:localhost:8080 -o UserKnownHostsFile=/dev/null
-	// ... or, add a time.Sleep() here that gives you enough time to log in and edit the config
-	// on the spawnhost manually.
-	fmt.Println("starting up tunnel.")
-	tunnelCmd := exec.Command("ssh", "-f", "-N", "-T", "-R", "8080:localhost:8080", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", "-i", keyPath, fmt.Sprintf("%s@%s", hostUser, hostName))
-	err := tunnelCmd.Start()
-	if err != nil {
-		fmt.Println("Setting up SSH tunnel failed - manual tunnel setup required.")
-		// Give the developer a 30 second grace period to set up the tunnel.
-		time.Sleep(30 * time.Second)
-	}
-	fmt.Println("Tunnel setup complete, starting fetch in 10 seconds...")
-	time.Sleep(10 * time.Second)
 }

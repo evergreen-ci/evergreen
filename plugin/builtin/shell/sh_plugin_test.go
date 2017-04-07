@@ -21,7 +21,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	defer close(stopper)
 
 	testConfig := testutil.TestConfig()
-	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 	if err != nil {
 		t.Fatalf("failed to create test server %+v", err)
 	}

@@ -18,13 +18,12 @@ import (
 func TestPatchListModulesEndPoints(t *testing.T) {
 	testDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()
 
 	const (
 		url     = "http://localhost:8181/api/patches/%s/%s/modules"
-		taskId  = "the_task_id"
 		githash = "1e5232709595db427893826ce19289461cba3f75"
 	)
 

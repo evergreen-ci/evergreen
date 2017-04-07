@@ -86,9 +86,9 @@ func TestArchiveRoundTrip(t *testing.T) {
 		found, err = BuildArchive(tarWriter, filepath.Join(testDir, "testdata", "artifacts_in"), includes, excludes, logger)
 		So(err, ShouldBeNil)
 		So(found, ShouldEqual, 2)
-		tarWriter.Close()
-		gz.Close()
-		f.Close()
+		So(tarWriter.Close(), ShouldBeNil)
+		So(gz.Close(), ShouldBeNil)
+		So(f.Close(), ShouldBeNil)
 
 		f2, gz2, tarReader, err := TarGzReader(filepath.Join(testDir, "testdata", "artifacts_out.tar.gz"))
 		testutil.HandleTestingErr(err, t, "Couldn't open test tarball")

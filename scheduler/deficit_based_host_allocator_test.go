@@ -14,7 +14,7 @@ import (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostAllocatorTestConf))
-	grip.SetSender(testutil.SetupTestSender(hostAllocatorTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(hostAllocatorTestConf.Scheduler.LogFile)))
 }
 
 func TestDeficitBasedHostAllocator(t *testing.T) {

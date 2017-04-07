@@ -19,7 +19,7 @@ func init() {
 
 func TestAlertQueue(t *testing.T) {
 	Convey("After queueing a few alerts", t, func() {
-		db.Clear(alert.Collection)
+		testutil.HandleTestingErr(db.Clear(alert.Collection), t, "problem clearing collections")
 		now := time.Now()
 
 		// a bunch of alerts, in order of oldest to newest

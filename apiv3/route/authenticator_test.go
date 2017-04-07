@@ -20,7 +20,7 @@ func TestAdminAuthenticator(t *testing.T) {
 		So(err, ShouldBeNil)
 		projectRef := model.ProjectRef{}
 		serviceContext := &servicecontext.MockServiceContext{}
-		auther := ProjectAdminAuthenticator{}
+		author := ProjectAdminAuthenticator{}
 		Convey("When authenticating", func() {
 
 			Reset(func() {
@@ -38,7 +38,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				}
 				context.Set(req, RequestUser, &u)
 				context.Set(req, RequestContext, &ctx)
-				So(auther.Authenticate(serviceContext, req), ShouldBeNil)
+				So(author.Authenticate(serviceContext, req), ShouldBeNil)
 			})
 			Convey("if user is in the super users, should succeed", func() {
 				superUsers := []string{"test_user"}
@@ -53,7 +53,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				}
 				context.Set(req, RequestUser, &u)
 				context.Set(req, RequestContext, &ctx)
-				So(auther.Authenticate(serviceContext, req), ShouldBeNil)
+				So(author.Authenticate(serviceContext, req), ShouldBeNil)
 			})
 			Convey("if user is not in the admin and not a super user, should error", func() {
 				superUsers := []string{"other_user"}
@@ -69,7 +69,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				}
 				context.Set(req, RequestUser, &u)
 				context.Set(req, RequestContext, &ctx)
-				err := auther.Authenticate(serviceContext, req)
+				err := author.Authenticate(serviceContext, req)
 
 				errToResemble := apiv3.APIError{
 					StatusCode: http.StatusNotFound,
@@ -87,7 +87,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		serviceContext := &servicecontext.MockServiceContext{}
-		auther := SuperUserAuthenticator{}
+		author := SuperUserAuthenticator{}
 		Convey("When authenticating", func() {
 
 			Reset(func() {
@@ -102,7 +102,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 					Id: "test_user",
 				}
 				context.Set(req, RequestUser, &u)
-				So(auther.Authenticate(serviceContext, req), ShouldBeNil)
+				So(author.Authenticate(serviceContext, req), ShouldBeNil)
 			})
 			Convey("if user is not in the superusers, should error", func() {
 				superUsers := []string{"other_user"}
@@ -112,7 +112,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 					Id: "test_user",
 				}
 				context.Set(req, RequestUser, &u)
-				err := auther.Authenticate(serviceContext, req)
+				err := author.Authenticate(serviceContext, req)
 
 				errToResemble := apiv3.APIError{
 					StatusCode: http.StatusNotFound,

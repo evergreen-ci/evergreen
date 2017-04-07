@@ -9,6 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -65,7 +66,7 @@ func TestMakePatchedConfig(t *testing.T) {
 			So(project.Tasks[0].Name, ShouldEqual, "hello")
 
 			Reset(func() {
-				os.Remove(remoteConfigPath)
+				grip.Warning(os.Remove(remoteConfigPath))
 			})
 		})
 	})

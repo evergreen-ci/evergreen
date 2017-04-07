@@ -17,7 +17,7 @@ var (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueueTestConf))
-	grip.SetSender(testutil.SetupTestSender("/tmp/task_queue_test.log"))
+	grip.Warning(grip.SetSender(testutil.SetupTestSender("/tmp/task_queue_test.log")))
 }
 
 func TestDequeueTask(t *testing.T) {

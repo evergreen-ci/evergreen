@@ -19,11 +19,9 @@ import (
 )
 
 var (
-	maxS3PutAttempts           = 5
-	s3PutSleep                 = 5 * time.Second
-	attachResultsPostRetries   = 5
-	attachResultsRetrySleepSec = 10 * time.Second
-	s3baseURL                  = "https://s3.amazonaws.com/"
+	maxS3PutAttempts = 5
+	s3PutSleep       = 5 * time.Second
+	s3baseURL        = "https://s3.amazonaws.com/"
 )
 
 var errSkippedFile = errors.New("missing optional file was skipped")
@@ -259,10 +257,9 @@ func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommu
 
 // Put the specified resource to s3.
 func (s3pc *S3PutCommand) Put() ([]string, error) {
-	var filesList []string
-
-	filesList = []string{s3pc.LocalFile}
 	var err error
+
+	filesList := []string{s3pc.LocalFile}
 
 	if s3pc.isMulti() {
 		filesList, err = util.BuildFileList(".", s3pc.LocalFilesIncludeFilter...)

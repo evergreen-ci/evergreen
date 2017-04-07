@@ -259,15 +259,12 @@ func (self *LogMessage) Insert(taskId string, execution int) error {
 		taskLog.Timestamp = self.Timestamp
 		taskLog.MessageCount = 1
 		taskLog.Messages = []LogMessage{*self}
+
 		return taskLog.Insert()
-	} else {
-		// update the existing task log document
-		return mostRecent[0].AddLogMessage(*self)
 	}
 
-	// unreachable
-	return nil
-
+	// update the existing task log document
+	return mostRecent[0].AddLogMessage(*self)
 }
 
 // note: to ignore severity or type filtering, pass in empty slices

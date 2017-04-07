@@ -69,8 +69,7 @@ func (p projectConfigError) Error() string {
 // The FetchRevisions method is used by a RepoTracker to run the pipeline for
 // tracking repositories. It performs everything from polling the repository to
 // persisting any changes retrieved from the repository reference.
-func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
-	err error) {
+func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) error {
 	settings := repoTracker.Settings
 	projectRef := repoTracker.ProjectRef
 	projectIdentifier := projectRef.String()
@@ -116,13 +115,14 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) (
 	}
 
 	if err != nil {
-		grip.Errorf("error fetching revisions for repository %s: %+v", projectRef, err)
+		grip.Errorf("error fetching revisions for repository %s: %+v", projectRef.Identifier, err)
 		repoTracker.sendFailureNotification(lastRevision, err)
 		return nil
 	}
 
 	if len(revisions) > 0 {
-		lastVersion, err := repoTracker.StoreRevisions(revisions)
+		var lastVersion *version.Version
+		lastVersion, err = repoTracker.StoreRevisions(revisions)
 		if err != nil {
 			grip.Errorf("error storing revisions for repository %s: %+v", projectRef, err)
 			return err
@@ -215,7 +215,7 @@ func (repoTracker *RepoTracker) sendFailureNotification(lastRevision string,
 		"within the most recent %v revisions at %v: %v", lastRevision, max, url, err)
 	nErr := notify.NotifyAdmins(subject, message, settings)
 	if nErr != nil {
-		grip.Errorln("error sending email: %+v", nErr)
+		grip.Errorf("error sending email: %+v", nErr)
 	}
 }
 
@@ -287,7 +287,7 @@ func (repoTracker *RepoTracker) StoreRevisions(revisions []model.Revision) (newe
 				if len(projectError.Errors) > 0 {
 					// Store just the stub version with the project errors
 					v.Errors = projectError.Errors
-					if err := v.Insert(); err != nil {
+					if err = v.Insert(); err != nil {
 						grip.Errorf("Failed storing stub version for project %s: %+v",
 							ref.Identifier, err)
 						return nil, err

@@ -9,11 +9,9 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 )
 
 type timePeriod struct {
@@ -43,40 +41,6 @@ func (self *MutableVar) Get() interface{} {
 func (self *MutableVar) Set(v interface{}) interface{} {
 	self.Value = v
 	return ""
-}
-
-func convertToTimezone(when time.Time, timezone string, layout string) string {
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		grip.Warningf("Could not load location from timezone %v: %+v", timezone, err)
-		return when.Format(layout)
-	}
-
-	whenTZ := when.In(loc)
-	return whenTZ.Format(layout)
-}
-
-func humanTimeDiff(sinceSecs int) []string {
-	var i, count int
-	var period timePeriod
-	for i, period = range Chunks {
-		count = sinceSecs / period.secs
-		if count != 0 {
-			break
-		}
-	}
-	returnVal := make([]string, 0, 5)
-	returnVal = append(returnVal, fmt.Sprintf("%d%s", count, period.unitShort))
-	for i+1 < len(Chunks) {
-		period2 := Chunks[i+1]
-		leftover := sinceSecs - (period.secs * count)
-		count2 := leftover / period2.secs
-		if count2 != 0 {
-			returnVal = append(returnVal, fmt.Sprintf("%d%s", count, period2.unitShort))
-		}
-		i++
-	}
-	return returnVal
 }
 
 //Create function Mappings - Add functions here to

@@ -59,11 +59,12 @@ func main() {
 
 	cmd := exec.Command(goBin, "build")
 
+	cmd.Args = append(cmd.Args, "-o", output)
+
 	if race {
 		cmd.Args = append(cmd.Args, "-race")
 	}
 
-	cmd.Args = append(cmd.Args, "-o", output)
 	if ldFlags != "" {
 		cmd.Args = append(cmd.Args, "-ldflags=\""+ldFlags+"\"")
 	}
@@ -82,7 +83,7 @@ func main() {
 			"GOARCH="+arch)
 	}
 
-	fmt.Println(strings.Join(cmd.Env, " "), strings.Join(cmd.Args, " "))
+	fmt.Println(strings.Join(cmd.Env[1:], " "), strings.Join(cmd.Args, " "))
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("problem building %s: %v\n", output, err)
 		os.Exit(1)

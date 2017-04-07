@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -30,7 +31,7 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 	done := make(chan bool)
 	errChan := make(chan error)
 	numFilesArchived := 0
-	go func(outputChan chan TarContentsFile) error {
+	go func(outputChan chan TarContentsFile) {
 		for _, includePattern := range includes {
 			dir, filematch := filepath.Split(includePattern)
 			dir = filepath.Join(rootPath, dir)
@@ -49,7 +50,7 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 					outputChan <- TarContentsFile{path, info}
 					return nil
 				}
-				filepath.Walk(dir, walk)
+				grip.Warning(filepath.Walk(dir, walk))
 			} else if strings.Contains(filematch, "**") {
 				globSuffix := filematch[2:]
 				walk = func(path string, info os.FileInfo, err error) error {
@@ -58,7 +59,7 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 					}
 					return nil
 				}
-				filepath.Walk(dir, walk)
+				grip.Warning(filepath.Walk(dir, walk))
 			} else {
 				walk = func(path string, info os.FileInfo, err error) error {
 					a, b := filepath.Split(path)
@@ -73,18 +74,18 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 					}
 					return nil
 				}
-				filepath.Walk(rootPath, walk)
+				grip.Warning(filepath.Walk(rootPath, walk))
 			}
 		}
 		close(outputChan)
-		return nil
+		return
 	}(pathsToAdd)
 
 	go func(inputChan chan TarContentsFile) {
 		processed := map[string]bool{}
 	FileChanLoop:
 		for file := range inputChan {
-			intarball := ""
+			var intarball string
 			// Tarring symlinks doesn't work reliably right now, so if the file is
 			// a symlink, leave intarball path intact but write from the file
 			// underlying the symlink.
@@ -155,26 +156,26 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 
 			amountWrote, err := io.Copy(tarWriter, in)
 			if err != nil {
-				in.Close()
+				grip.Debug(in.Close())
 				errChan <- errors.Wrapf(err, "Error writing into tar for %v", file.path)
 				return
 			}
 
 			if amountWrote != hdr.Size {
-				in.Close()
+				grip.Debug(in.Close())
 				errChan <- errors.Errorf(`Error writing to archive for %v:
 					header size %v but wrote %v`,
 					intarball, hdr.Size, amountWrote)
 				return
 			}
-			in.Close()
-			tarWriter.Flush()
+			grip.Debug(in.Close())
+			grip.Warning(tarWriter.Flush())
 		}
 		done <- true
 	}(pathsToAdd)
 
 	select {
-	case _ = <-done:
+	case <-done:
 		return numFilesArchived, nil
 	case err := <-errChan:
 		return numFilesArchived, err
@@ -189,7 +190,7 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 			return nil //reached end of archive, we are done.
 		}
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 
 		if hdr.Typeflag == tar.TypeDir {
@@ -197,7 +198,7 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 			localDir := fmt.Sprintf("%v/%v", rootPath, hdr.Name)
 			err = os.MkdirAll(localDir, 0755)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 		} else if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
 			// this tar entry is a regular file (not a dir or link)
@@ -206,7 +207,7 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 			dir := filepath.Dir(localFile)
 			err = os.MkdirAll(dir, 0755)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 
 			// Now create the file itself, and write in the contents.
@@ -217,22 +218,22 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 
 			f, err := os.Create(localFile)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 
 			_, err = io.Copy(f, tarReader)
 			if err != nil {
-				f.Close()
-				return err
+				grip.CatchError(f.Close())
+				return errors.WithStack(err)
 			}
 
 			// File's permissions should match what was in the archive
 			err = os.Chmod(f.Name(), os.FileMode(int32(hdr.Mode)))
 			if err != nil {
-				f.Close()
-				return err
+				grip.CatchError(f.Close())
+				return errors.WithStack(err)
 			}
-			f.Close()
+			grip.CatchError(f.Close())
 		} else {
 			return errors.New("Unknown file type in archive.")
 		}
@@ -244,12 +245,12 @@ func Extract(tarReader *tar.Reader, rootPath string) error {
 func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err error) {
 	f, err = os.Open(path)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.WithStack(err)
 	}
 	gz, err = gzip.NewReader(f)
 	if err != nil {
 		defer f.Close()
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.WithStack(err)
 	}
 	tarReader = tar.NewReader(gz)
 	return f, gz, tarReader, nil
@@ -260,7 +261,7 @@ func TarGzReader(path string) (f, gz io.ReadCloser, tarReader *tar.Reader, err e
 func TarGzWriter(path string) (f, gz io.WriteCloser, tarWriter *tar.Writer, err error) {
 	f, err = os.Create(path)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, errors.WithStack(err)
 	}
 	gz = gzip.NewWriter(f)
 	tarWriter = tar.NewWriter(gz)

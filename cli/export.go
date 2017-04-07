@@ -20,20 +20,17 @@ var (
 
 // ExportCommand is used to export statistics
 type ExportCommand struct {
-	GlobalOpts *Options `no-flag:"true"`
-
-	JSON        bool   `long:"json" description:"set the format to export to json"`
-	Granularity string `long:"granularity" description:"set the granularity, default hour, options are 'second', 'minute', 'hour'"`
-	Days        int    `long:"days" description:"set the number of days, default 1, max of 30 days back"`
-	StatsType   string `long:"stat"
-						description:"include the type of stats - 'host' for host utilization,'avg' for average scheduled to start times, 'makespan' for makespan ratios"
-						required:"true"`
-	DistroId string `long:"distro" description:"distro id - required for average scheduled to start times"`
-	Number   int    `long:"number" description:"set the number of revisions (for getting build makespan), default 100"`
-	Filepath string `long:"filepath" description:"path to directory where csv file is to be saved"`
+	GlobalOpts  *Options `no-flag:"true"`
+	JSON        bool     `long:"json" description:"set the format to export to json"`
+	Granularity string   `long:"granularity" description:"set the granularity, default hour, options are 'second', 'minute', 'hour'"`
+	Days        int      `long:"days" description:"set the number of days, default 1, max of 30 days back"`
+	StatsType   string   `long:"stat" description:"include the type of stats - 'host' for host utilization,'avg' for average scheduled to start times, 'makespan' for makespan ratios" required:"true"`
+	DistroId    string   `long:"distro" description:"distro id - required for average scheduled to start times"`
+	Number      int      `long:"number" description:"set the number of revisions (for getting build makespan), default 100"`
+	Filepath    string   `long:"filepath" description:"path to directory where csv file is to be saved"`
 }
 
-func (ec *ExportCommand) Execute(args []string) error {
+func (ec *ExportCommand) Execute(_ []string) error {
 	_, rc, _, err := getAPIClients(ec.GlobalOpts)
 	if err != nil {
 		return err
@@ -60,10 +57,11 @@ func (ec *ExportCommand) Execute(args []string) error {
 	isCSV := !ec.JSON
 
 	var body io.ReadCloser
-	switch ec.StatsType {
+	var granSeconds int
 
+	switch ec.StatsType {
 	case HostUtilizationStat:
-		granSeconds, err := convertGranularityToSeconds(ec.Granularity)
+		granSeconds, err = convertGranularityToSeconds(ec.Granularity)
 		if err != nil {
 			return err
 		}
@@ -75,7 +73,7 @@ func (ec *ExportCommand) Execute(args []string) error {
 		if ec.DistroId == "" {
 			return errors.New("cannot have empty distro id")
 		}
-		granSeconds, err := convertGranularityToSeconds(ec.Granularity)
+		granSeconds, err = convertGranularityToSeconds(ec.Granularity)
 		if err != nil {
 			return err
 		}

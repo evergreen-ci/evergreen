@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -59,8 +60,7 @@ type parserProject struct {
 	ExecTimeoutSecs int                        `yaml:"exec_timeout_secs"`
 
 	// Matrix code
-	Axes     []matrixAxis `yaml:"axes"`
-	matrices []matrix
+	Axes []matrixAxis `yaml:"axes"`
 }
 
 // parserTask represents an intermediary state of task definitions.
@@ -120,7 +120,7 @@ func (pd *parserDependency) UnmarshalYAML(unmarshal func(interface{}) error) err
 		PatchOptional bool   `yaml:"patch_optional"`
 	}{}
 	// ignore any errors here; if we're using a single-string selector, this is expected to fail
-	unmarshal(&otherFields)
+	grip.Debug(unmarshal(&otherFields))
 	pd.Status = otherFields.Status
 	pd.PatchOptional = otherFields.PatchOptional
 	return nil
@@ -524,7 +524,8 @@ func evaluateBuildVariants(tse *taskSelectorEvaluator, vse *variantSelectorEvalu
 					existing[t.Name] = &bv.Tasks[i]
 				}
 
-				added, errs := evaluateBVTasks(tse, vse, r.AddTasks)
+				var added []BuildVariantTask
+				added, errs = evaluateBVTasks(tse, vse, r.AddTasks)
 				evalErrs = append(evalErrs, errs...)
 				// check for conflicting duplicates
 				for _, t := range added {
@@ -602,7 +603,8 @@ func evaluateDependsOn(tse *taskSelectorEvaluator, vse *variantSelectorEvaluator
 	newDeps := []TaskDependency{}
 	newDepsByNameAndVariant := map[TVPair]TaskDependency{}
 	for _, d := range deps {
-		names := []string{""}
+		var names []string
+
 		if d.Name == AllDependencies {
 			// * is a special case for dependencies, so don't eval it
 			names = []string{AllDependencies}

@@ -26,7 +26,7 @@ const (
 
 var (
 	// Regular expression for validating S3 bucket names
-	BucketNameRegex = regexp.MustCompile("^[A-Za-z0-9_\\-.]+$")
+	BucketNameRegex = regexp.MustCompile(`^[A-Za-z0-9_\-.]+$`)
 )
 
 // Name returns the name of the plugin. Fulfills Plugin interface.

@@ -38,7 +38,7 @@ func TestExpansionsPlugin(t *testing.T) {
 			Expansions: &expansions,
 		}
 
-		updateCommand.ExecuteUpdates(&taskConfig)
+		So(updateCommand.ExecuteUpdates(&taskConfig), ShouldBeNil)
 
 		So(expansions.Get("base"), ShouldEqual, "eggs")
 		So(expansions.Get("topping"), ShouldEqual, "bacon,sausage")
@@ -51,11 +51,9 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	defer close(stopper)
 
 	testConfig := testutil.TestConfig()
-	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 	defer server.Close()
-	if err != nil {
-		t.Fatalf("failed to create test server %+v", err)
-	}
 
 	httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
 	jsonCom := &comm.TaskJSONCommunicator{"shell", httpCom}

@@ -80,7 +80,7 @@ func TestSpotPriceHistory(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestSpotPriceHistory")
 	Convey("With a Spot Manager", t, func() {
 		m := &EC2SpotManager{}
-		m.Configure(testConfig)
+		testutil.HandleTestingErr(m.Configure(testConfig), t, "failed to configure spot manager")
 		Convey("loading 2 hours of price history should succeed", func() {
 			ps, err := m.describeHourlySpotPriceHistory("m3.large", "us-east-1a", osLinux,
 				time.Now().Add(-2*time.Hour), time.Now())

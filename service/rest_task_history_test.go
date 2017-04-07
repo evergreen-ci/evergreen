@@ -41,7 +41,8 @@ func TestGetTestHistory(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem installing plugins")
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")
 

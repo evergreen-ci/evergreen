@@ -227,7 +227,7 @@ func computeRunningTasksDuration(existingDistroHosts []host.Host,
 		}
 		expectedDuration := model.GetTaskExpectedDuration(runningTask,
 			taskDurations)
-		elapsedTime := time.Now().Sub(runningTask.StartTime)
+		elapsedTime := time.Since(runningTask.StartTime)
 		if elapsedTime > expectedDuration {
 			// probably an outlier; or an unknown data point
 			continue

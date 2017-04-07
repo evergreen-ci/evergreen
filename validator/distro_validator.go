@@ -34,7 +34,7 @@ func CheckDistro(d *distro.Distro, s *evergreen.Settings, newDistro bool) ([]Val
 			return nil, err
 		}
 	}
-	validationErrs = append(validationErrs, ensureUniqueId(d, s, distroIds)...)
+	validationErrs = append(validationErrs, ensureUniqueId(d, distroIds)...)
 
 	for _, v := range distroSyntaxValidators {
 		validationErrs = append(validationErrs, v(d, s)...)
@@ -130,7 +130,7 @@ func ensureHasRequiredFields(d *distro.Distro, s *evergreen.Settings) []Validati
 }
 
 // ensureUniqueId checks that the distro's id does not collide with an existing id.
-func ensureUniqueId(d *distro.Distro, s *evergreen.Settings, distroIds []string) []ValidationError {
+func ensureUniqueId(d *distro.Distro, distroIds []string) []ValidationError {
 	if util.SliceContains(distroIds, d.Id) {
 		return []ValidationError{{Error, fmt.Sprintf("distro '%v' uses an existing identifier", d.Id)}}
 	}

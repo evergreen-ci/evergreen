@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -75,7 +76,8 @@ func WriteCSVResponse(w http.ResponseWriter, status int, data interface{}) {
 	if status != http.StatusOK {
 		bytes := []byte(fmt.Sprintf("%v", data))
 		w.WriteHeader(500)
-		w.Write(bytes)
+		_, err := w.Write(bytes)
+		grip.Debug(errors.Wrap(err, "problem writing cvs data to output"))
 		return
 	}
 
@@ -87,11 +89,12 @@ func WriteCSVResponse(w http.ResponseWriter, status int, data interface{}) {
 	if err != nil {
 		stringBytes := []byte(err.Error())
 		w.WriteHeader(500)
-		w.Write(stringBytes)
+		_, err = w.Write(stringBytes)
+		grip.Warning(errors.WithStack(err))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
 	csvWriter := csv.NewWriter(w)
-	csvWriter.WriteAll(csvRecords)
+	grip.Warning(errors.WithStack(csvWriter.WriteAll(csvRecords)))
 	return
 }

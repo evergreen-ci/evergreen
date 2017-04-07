@@ -156,7 +156,7 @@ type RemoveModuleCommand struct {
 	PatchId    string   `short:"i" description:"name of the module to remove from patch" required:"true" `
 }
 
-func (lpc *ListPatchesCommand) Execute(args []string) error {
+func (lpc *ListPatchesCommand) Execute(_ []string) error {
 	ac, _, settings, err := getAPIClients(lpc.GlobalOpts)
 	if err != nil {
 		return err
@@ -196,7 +196,7 @@ func getPatchDisplay(p *patch.Patch, summarize bool, uiHost string) (string, err
 	return out.String(), nil
 }
 
-func (rmc *RemoveModuleCommand) Execute(args []string) error {
+func (rmc *RemoveModuleCommand) Execute(_ []string) error {
 	ac, _, _, err := getAPIClients(rmc.GlobalOpts)
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func (rmc *RemoveModuleCommand) Execute(args []string) error {
 	return nil
 }
 
-func (vc *ValidateCommand) Execute(args []string) error {
+func (vc *ValidateCommand) Execute(_ []string) error {
 	if vc.Positional.FileName == "" {
 		return errors.New("must supply path to a file to validate.")
 	}
@@ -283,7 +283,7 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validatePatchSize(diffData, smc.Large); err != nil {
+	if err = validatePatchSize(diffData, smc.Large); err != nil {
 		return err
 	}
 
@@ -335,7 +335,7 @@ func (pc *PatchCommand) Execute(args []string) error {
 	return createPatch(pc.PatchCommandParams, ac, settings, diffData)
 }
 
-func (pfc *PatchFileCommand) Execute(args []string) error {
+func (pfc *PatchFileCommand) Execute(_ []string) error {
 	ac, settings, _, err := validatePatchCommand(&pfc.PatchCommandParams)
 	if err != nil {
 		return err
@@ -350,7 +350,7 @@ func (pfc *PatchFileCommand) Execute(args []string) error {
 	return createPatch(pfc.PatchCommandParams, ac, settings, diffData)
 }
 
-func (cpc *CancelPatchCommand) Execute(args []string) error {
+func (cpc *CancelPatchCommand) Execute(_ []string) error {
 	ac, _, _, err := getAPIClients(cpc.GlobalOpts)
 	if err != nil {
 		return err
@@ -365,7 +365,7 @@ func (cpc *CancelPatchCommand) Execute(args []string) error {
 	return nil
 }
 
-func (fpc *FinalizePatchCommand) Execute(args []string) error {
+func (fpc *FinalizePatchCommand) Execute(_ []string) error {
 	ac, _, _, err := getAPIClients(fpc.GlobalOpts)
 	if err != nil {
 		return err
@@ -380,7 +380,7 @@ func (fpc *FinalizePatchCommand) Execute(args []string) error {
 	return nil
 }
 
-func (lgc *LastGreenCommand) Execute(args []string) error {
+func (lgc *LastGreenCommand) Execute(_ []string) error {
 	ac, rc, settings, err := getAPIClients(lgc.GlobalOpts)
 	if err != nil {
 		return err
@@ -396,7 +396,7 @@ func (lgc *LastGreenCommand) Execute(args []string) error {
 	}{v, settings.UIServerHost})
 }
 
-func (lc *ListCommand) Execute(args []string) error {
+func (lc *ListCommand) Execute(_ []string) error {
 	// stop the user from using > 1 type flag
 	if (lc.Projects && (lc.Variants || lc.Tasks)) || (lc.Tasks && lc.Variants) {
 		return errors.Errorf("list command takes only one of --projects, --variants, or --tasks")
@@ -416,7 +416,7 @@ func (lc *ListCommand) Execute(args []string) error {
 func (lc *ListCommand) listProjects() error {
 	ac, _, _, err := getAPIClients(lc.GlobalOpts)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	notifyUserUpdate(ac)
 
@@ -445,8 +445,7 @@ func (lc *ListCommand) listProjects() error {
 		}
 		fmt.Fprintln(w, line)
 	}
-	w.Flush()
-	return nil
+	return errors.WithStack(w.Flush())
 }
 
 // LoadLocalConfig loads the local project config into a project
@@ -493,8 +492,8 @@ func (lc *ListCommand) listTasks() error {
 		line := fmt.Sprintf("\t%v\t", t.Name)
 		fmt.Fprintln(w, line)
 	}
-	w.Flush()
-	return nil
+
+	return w.Flush()
 }
 
 func (lc *ListCommand) listVariants() error {
@@ -537,8 +536,8 @@ func (lc *ListCommand) listVariants() error {
 		}
 		fmt.Fprintln(w, line)
 	}
-	w.Flush()
-	return nil
+
+	return w.Flush()
 }
 
 // Performs validation for patch or patch-file
@@ -555,7 +554,7 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 		if settings.FindDefaultProject() == "" &&
 			!params.SkipConfirm && confirm(fmt.Sprintf("Make %v your default project?", params.Project), true) {
 			settings.SetDefaultProject(params.Project)
-			if err := WriteSettings(settings, params.GlobalOpts); err != nil {
+			if err = WriteSettings(settings, params.GlobalOpts); err != nil {
 				fmt.Printf("warning - failed to set default project: %v\n", err)
 			}
 		}
@@ -729,8 +728,7 @@ func gitDiff(base string, diffArgs ...string) (string, error) {
 
 // getLog runs "git log <base>
 func gitLog(base string, logArgs ...string) (string, error) {
-	args := make([]string, 0, 1+len(logArgs))
-	args = append(logArgs, "--oneline")
+	args := append(logArgs, "--oneline")
 	return gitCmd("log", fmt.Sprintf("...%v", base), args...)
 }
 

@@ -37,7 +37,7 @@ type FetchCommand struct {
 
 // FetchCommand allows the user to download the artifacts for a task (and optionally its dependencies),
 // clone the source that a task was derived from, or both.
-func (fc *FetchCommand) Execute(args []string) error {
+func (fc *FetchCommand) Execute(_ []string) error {
 	ac, rc, _, err := getAPIClients(fc.GlobalOpts)
 	if err != nil {
 		return err
@@ -66,25 +66,8 @@ func (fc *FetchCommand) Execute(args []string) error {
 		}
 	}
 	if fc.Artifacts {
-		err = fetchArtifacts(ac, rc, fc.TaskId, wd, fc.Shallow)
+		err = fetchArtifacts(rc, fc.TaskId, wd, fc.Shallow)
 		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// executeCommands executes a list of commands sequentially, stopping to return an error as soon
-// as one fails. If verbose is set, also prints the commands to stdout as it is about to execute
-// each one.
-func executeCommands(cmds []*exec.Cmd, verbose bool) error {
-	for _, c := range cmds {
-		c.Stdout = os.Stdout
-		c.Stderr = os.Stderr
-		if verbose {
-			fmt.Println(strings.Join(c.Args, " "))
-		}
-		if err := c.Run(); err != nil {
 			return err
 		}
 	}
@@ -278,24 +261,22 @@ func applyPatch(patch *service.RestPatch, rootCloneDir string, conf *model.Proje
 	return nil
 }
 
-func fetchArtifacts(ac, rc *APIClient, taskId string, rootDir string, shallow bool) error {
+func fetchArtifacts(rc *APIClient, taskId string, rootDir string, shallow bool) error {
 	task, err := rc.GetTask(taskId)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "problem getting task for %s", taskId)
 	}
 	if task == nil {
-		return errors.New("task not found.")
+		return errors.New("task not found")
 	}
 
 	urls, err := getUrlsChannel(rc, task, shallow)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	err = downloadUrls(rootDir, urls, 4)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return errors.Wrapf(downloadUrls(rootDir, urls, 4),
+		"problem downloading artifacts for task %s", taskId)
 }
 
 // searchDependencies does a depth-first search of the dependencies of the "seed" task, returning
@@ -430,7 +411,7 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 				for {
 					fileNamesUsed.nameCounts[fileName] += 1
 					testFileName := fileNameWithIndex(fileName, fileNamesUsed.nameCounts[fileName])
-					_, err := os.Stat(testFileName)
+					_, err = os.Stat(testFileName)
 					if err != nil {
 						if os.IsNotExist(err) {
 							// we found a file name to safely create without collisions..
@@ -456,11 +437,13 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
+				defer out.Close()
 				resp, err := http.Get(u.url)
 				if err != nil {
 					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
+				defer resp.Body.Close()
 
 				// If we can get the info, determine the file size so that the human can get an
 				// idea of how long the file might take to download.
@@ -479,8 +462,6 @@ func downloadUrls(root string, urls chan artifactDownload, workers int) error {
 					errs <- errors.Errorf("Couldn't download %v: %v", u.url, err)
 					continue
 				}
-				resp.Body.Close()
-				out.Close()
 				counter++
 			}
 		}(i)

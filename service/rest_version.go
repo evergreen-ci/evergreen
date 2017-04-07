@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -221,7 +222,8 @@ func (restapi restAPI) getVersionConfig(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(projCtx.Version.Config))
+	_, err := w.Write([]byte(projCtx.Version.Config))
+	grip.Warning(errors.Wrap(err, "problem writing response"))
 	return
 }
 
@@ -270,10 +272,14 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var input struct {
+	input := struct {
 		Activated *bool `json:"activated"`
+	}{}
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, fmt.Sprintf("problem parsing input: %v", err.Error()),
+			http.StatusInternalServerError)
 	}
-	json.NewDecoder(r.Body).Decode(&input)
 
 	if input.Activated != nil {
 		if err := model.SetVersionActivation(v.Id, *input.Activated, user.Id); err != nil {
@@ -302,10 +308,10 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 	case "": // default to group by tasks
 		fallthrough
 	case "tasks":
-		restapi.getVersionStatusByTask(versionId, w, r)
+		restapi.getVersionStatusByTask(versionId, w)
 		return
 	case "builds":
-		restapi.getVersionStatusByBuild(versionId, w, r)
+		restapi.getVersionStatusByBuild(versionId, w)
 		return
 	default:
 		msg := fmt.Sprintf("Invalid groupby parameter '%v'", groupBy)
@@ -318,7 +324,7 @@ func (restapi *restAPI) getVersionStatus(w http.ResponseWriter, r *http.Request)
 // grouped on the tasks. The keys of the object are the task names,
 // with each key in the nested object representing a particular build
 // variant.
-func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter, r *http.Request) {
+func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.ResponseWriter) {
 	id := "_id"
 	taskName := "task_name"
 	statuses := "statuses"
@@ -406,7 +412,7 @@ func (restapi *restAPI) getVersionStatusByTask(versionId string, w http.Response
 // grouped on the build variants. The keys of the object are the build
 // variant name, with each key in the nested object representing a
 // particular task.
-func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter, r *http.Request) {
+func (restapi restAPI) getVersionStatusByBuild(versionId string, w http.ResponseWriter) {
 	// Get all of the builds corresponding to this version
 	builds, err := build.Find(
 		build.ByVersion(versionId).WithFields(build.BuildVariantKey, build.TasksKey),

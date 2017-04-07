@@ -3,10 +3,10 @@ package thirdparty
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -34,8 +34,8 @@ func doFollowingRedirectsWithHeaders(client *http.Client, ireq *http.Request) (r
 	// Default Go HTTP client silently wipes headers on redirect, so we need to
 	// write our own. See http://golang.org/src/pkg/net/http/client.go#L273
 	var base *url.URL
+	var urlStr string
 	req := ireq
-	urlStr := "" // next relative or absolute URL to fetch (after first request)
 	for redirect := 0; ; redirect++ {
 		if redirect != 0 {
 			req = new(http.Request)
@@ -49,15 +49,15 @@ func doFollowingRedirectsWithHeaders(client *http.Client, ireq *http.Request) (r
 				break
 			}
 		}
-		urlStr = req.URL.String()
+
 		if resp, err = client.Transport.RoundTrip(req); err != nil {
 			break
 		}
 
 		if shouldRedirectGet(resp.StatusCode) {
-			resp.Body.Close()
+			grip.Warning(resp.Body.Close())
 			if urlStr = resp.Header.Get("Location"); urlStr == "" {
-				err = errors.New(fmt.Sprintf("%d response missing Location header", resp.StatusCode))
+				err = errors.Errorf("%d response missing Location header", resp.StatusCode)
 				break
 			}
 

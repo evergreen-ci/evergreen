@@ -40,7 +40,7 @@ func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
 
 		// clean up all of the tasks. continue on error to allow further cleanup
 		// to progress
-		if errs := cleanUpTasks(tasksToCleanUp, projects); errs != nil {
+		if errs = cleanUpTasks(tasksToCleanUp, projects); errs != nil {
 			for _, err := range errs {
 				errs = append(errs, errors.Wrap(err, "error cleaning up tasks"))
 			}

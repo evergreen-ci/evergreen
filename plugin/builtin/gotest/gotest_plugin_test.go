@@ -37,7 +37,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)
@@ -104,7 +104,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := service.CreateTestServer(testutil.TestConfig(), nil, plugin.APIPlugins, true)
+		server, err := service.CreateTestServer(testutil.TestConfig(), nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

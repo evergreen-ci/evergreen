@@ -518,7 +518,7 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 		}
 	}
 
-	seen := make(map[string]bool, 0)
+	seen := make(map[string]bool)
 
 	// validate each function definition
 	for funcName, commands := range project.Functions {

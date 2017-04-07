@@ -29,7 +29,7 @@ type GetUpdateCommand struct {
 // Is used by auto-update to verify the new version.
 type VersionCommand struct{}
 
-func (vc *VersionCommand) Execute(args []string) error {
+func (vc *VersionCommand) Execute(_ []string) error {
 	fmt.Println(evergreen.ClientVersion)
 	return nil
 }
@@ -157,7 +157,7 @@ func notifyUserUpdate(ac *APIClient) {
 	}
 }
 
-func (uc *GetUpdateCommand) Execute(args []string) error {
+func (uc *GetUpdateCommand) Execute(_ []string) error {
 	ac, _, _, err := getAPIClients(uc.GlobalOpts)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (uc *GetUpdateCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	if update.needsUpdate == false || update.binary == nil {
+	if !update.needsUpdate || update.binary == nil {
 		return nil
 	}
 
@@ -216,7 +216,7 @@ func (uc *GetUpdateCommand) Execute(args []string) error {
 	if runtime.GOOS == "windows" {
 		installCommand = fmt.Sprintf("\tmove %v %v", updatedBin, binaryDest)
 	}
-	fmt.Println("\nTo complete the install, run the following command:\n")
+	fmt.Printf("\nTo complete the install, run the following command:\n\n")
 	fmt.Println(installCommand)
 
 	return nil
@@ -235,7 +235,7 @@ func copyFile(dst, src string) error {
 		return err
 	}
 	if _, err := io.Copy(d, s); err != nil {
-		d.Close()
+		_ = d.Close()
 		return err
 	}
 	return d.Close()

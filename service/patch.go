@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -62,7 +63,7 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	tasksList := []interface{}{}
 	for _, task := range projCtx.Project.Tasks {
 		// add a task name to the list if it's patchable
-		if !(task.Patchable != nil && *task.Patchable == false) {
+		if !(task.Patchable != nil && !*task.Patchable) {
 			tasksList = append(tasksList, struct{ Name string }{task.Name})
 		}
 	}
@@ -211,7 +212,11 @@ func (uis *UIServer) diffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	fullPatch.FetchPatchFiles()
+	if err = fullPatch.FetchPatchFiles(); err != nil {
+		http.Error(w, fmt.Sprintf("finding patch files: %v", err.Error),
+			http.StatusInternalServerError)
+		return
+	}
 	uis.WriteHTML(w, http.StatusOK, fullPatch, "base", "diff.html")
 }
 
@@ -227,7 +232,10 @@ func (uis *UIServer) fileDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	fullPatch.FetchPatchFiles()
+	if err = fullPatch.FetchPatchFiles(); err != nil {
+		http.Error(w, fmt.Sprintf("error finding patch: %v", err.Error),
+			http.StatusInternalServerError)
+	}
 	uis.WriteHTML(w, http.StatusOK, struct {
 		Data        patch.Patch
 		FileName    string
@@ -248,7 +256,11 @@ func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-	fullPatch.FetchPatchFiles()
+	if err = fullPatch.FetchPatchFiles(); err != nil {
+		http.Error(w, fmt.Sprintf("error fetching patch files: %v", err.Error),
+			http.StatusInternalServerError)
+		return
+	}
 	patchNum, err := strconv.Atoi(r.FormValue("patch_number"))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("error getting patch number: %v", err.Error),
@@ -262,5 +274,6 @@ func (uis *UIServer) rawDiffPage(w http.ResponseWriter, r *http.Request) {
 	diff := fullPatch.Patches[patchNum].PatchSet.Patch
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(diff))
+	_, err = w.Write([]byte(diff))
+	grip.Warning(err)
 }

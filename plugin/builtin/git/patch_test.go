@@ -27,10 +27,11 @@ func TestPatchPluginAPI(t *testing.T) {
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
-		defer server.Close()
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		taskConfig, _ := plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
+		defer server.Close()
+		_, err = plugintest.CreateTestConfig(filepath.Join(cwd, "testdata", "plugin_patch.yml"), t)
+		testutil.HandleTestingErr(err, t, "Couldn't set up test config")
 		testCommand := GitGetProjectCommand{Directory: "dir"}
 		_, _, err = plugintest.SetupAPITestData("testTask", filepath.Join(cwd, "testdata", "testmodule.patch"), t)
 		testutil.HandleTestingErr(err, t, "Couldn't set up test documents")
@@ -42,7 +43,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		Convey("calls to existing tasks with patches should succeed", func() {
 			httpCom := plugintest.TestAgentCommunicator(testTask.Id, testTask.Secret, server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
-			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
+			patch, err := testCommand.GetPatch(pluginCom, logger)
 			So(err, ShouldBeNil)
 			So(patch, ShouldNotBeNil)
 			testutil.HandleTestingErr(db.Clear(version.Collection), t,
@@ -53,7 +54,7 @@ func TestPatchPluginAPI(t *testing.T) {
 			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
 			httpCom := plugintest.TestAgentCommunicator("BAD_TASK_ID", "", server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
-			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
+			patch, err := testCommand.GetPatch(pluginCom, logger)
 			So(err.Error(), ShouldContainSubstring, "not found")
 			So(err, ShouldNotBeNil)
 			So(patch, ShouldBeNil)
@@ -69,7 +70,7 @@ func TestPatchPluginAPI(t *testing.T) {
 			testutil.HandleTestingErr(v.Insert(), t, "Couldn't insert dummy version")
 			httpCom := plugintest.TestAgentCommunicator(noPatchTask.Id, "", server.URL)
 			pluginCom := &comm.TaskJSONCommunicator{gitPlugin.Name(), httpCom}
-			patch, err := testCommand.GetPatch(taskConfig, pluginCom, logger)
+			patch, err := testCommand.GetPatch(pluginCom, logger)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "no patch found for task")
 			So(patch, ShouldBeNil)
@@ -95,7 +96,7 @@ func TestPatchPlugin(t *testing.T) {
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 		httpCom := plugintest.TestAgentCommunicator("testTaskId", "testTaskSecret", server.URL)

@@ -37,8 +37,7 @@ func (*GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 // GetPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure.
-func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
-	pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*patch.Patch, error) {
+func (ggpc GitGetProjectCommand) GetPatch(pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*patch.Patch, error) {
 	patch := &patch.Patch{}
 	retriableGet := util.RetriableFunc(
 		func() error {
@@ -110,7 +109,7 @@ func (ggpc GitGetProjectCommand) GetPatch(conf *model.TaskConfig,
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
 // the API server, and setting them into the patch object.
-func (ggpc GitGetProjectCommand) getPatchContents(conf *model.TaskConfig, com plugin.PluginCommunicator, log plugin.Logger, p *patch.Patch) error {
+func (ggpc GitGetProjectCommand) getPatchContents(com plugin.PluginCommunicator, log plugin.Logger, p *patch.Patch) error {
 	for i, patchPart := range p.Patches {
 		// If the patch isn't stored externally, no need to do anything.
 		if patchPart.PatchSet.PatchFileId == "" {
@@ -132,14 +131,12 @@ func (ggpc GitGetProjectCommand) getPatchContents(conf *model.TaskConfig, com pl
 				}
 				if resp != nil && resp.StatusCode != http.StatusOK {
 					log.LogExecution(slogger.WARN, "Unexpected status code %v, retrying", resp.StatusCode)
-					resp.Body.Close()
+					_ = resp.Body.Close()
 					return util.RetriableError{errors.Errorf("Unexpected status code %v", resp.StatusCode)}
 				}
 				result, err = ioutil.ReadAll(resp.Body)
-				if err != nil {
-					return err
-				}
-				return nil
+
+				return err
 			})
 
 		_, err := util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
@@ -264,5 +261,5 @@ func servePatchFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer data.Close()
-	io.Copy(w, data)
+	_, _ = io.Copy(w, data)
 }

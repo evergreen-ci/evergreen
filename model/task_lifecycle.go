@@ -97,7 +97,7 @@ func resetTask(taskId string) error {
 		return errors.WithStack(err)
 	}
 
-	if err := t.Archive(); err != nil {
+	if err = t.Archive(); err != nil {
 		return errors.Wrap(err, "can't restart task because it can't be archived")
 	}
 
@@ -147,7 +147,7 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	}
 
 	if detail != nil {
-		if err = t.MarkEnd(origin, time.Now(), detail); err != nil {
+		if err = t.MarkEnd(time.Now(), detail); err != nil {
 			return errors.Wrap(err, "Error marking task as ended")
 		}
 	}
@@ -241,7 +241,7 @@ func getStepback(taskId string, project *Project) (bool, error) {
 }
 
 // doStepBack performs a stepback on the task if there is a previous task and if not it returns nothing.
-func doStepback(t *task.Task, detail *apimodels.TaskEndDetail, deactivatePrevious bool) error {
+func doStepback(t *task.Task) error {
 	//See if there is a prior success for this particular task.
 	//If there isn't, we should not activate the previous task because
 	//it could trigger stepping backwards ad infinitum.
@@ -283,7 +283,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		return nil
 	}
 
-	err = t.MarkEnd(caller, finishTime, detail)
+	err = t.MarkEnd(finishTime, detail)
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 			return errors.WithStack(err)
 		}
 		if shouldStepBack {
-			if err = doStepback(t, detail, deactivatePrevious); err != nil {
+			if err = doStepback(t); err != nil {
 				return errors.Wrap(err, "Error during step back")
 			}
 		} else {
@@ -458,10 +458,11 @@ func UpdateBuildAndVersionStatusForTask(taskId string) error {
 						grip.Error(err)
 						return err
 					}
-				} else {
-					//This build does have a "push" task, but it hasn't finished yet
-					//So do nothing, since we don't know the status yet.
 				}
+
+				// Otherwise, this build does have a "push" task, but it hasn't finished yet
+				// So do nothing, since we don't know the status yet.
+
 				if err = MarkVersionCompleted(b.Version, finishTime); err != nil {
 					err = errors.Wrap(err, "Error marking version as finished")
 					grip.Error(err)

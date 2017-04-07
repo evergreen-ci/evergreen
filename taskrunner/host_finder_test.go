@@ -16,7 +16,7 @@ var hostFinderTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(hostFinderTestConf))
-	grip.SetSender(testutil.SetupTestSender(hostFinderTestConf.TaskRunner.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(hostFinderTestConf.TaskRunner.LogFile)))
 }
 
 func TestDBHostFinder(t *testing.T) {

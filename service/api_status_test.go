@@ -119,7 +119,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 
 func TestServiceStatusEndPoints(t *testing.T) {
 	testConfig := testutil.TestConfig()
-	testServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	testServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
 	testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 	defer testServer.Close()
 
@@ -135,7 +135,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 			So(resp.StatusCode, ShouldEqual, 200)
 			out := map[string]string{}
 
-			util.ReadJSONInto(resp.Body, &out)
+			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
 			So(len(out), ShouldEqual, 1)
 			_, ok := out["build_revision"]
 			So(ok, ShouldBeTrue)
@@ -150,7 +150,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 			So(resp.StatusCode, ShouldEqual, 200)
 			out := map[string]interface{}{}
 
-			util.ReadJSONInto(resp.Body, &out)
+			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
 
 			So(len(out), ShouldEqual, 3)
 			for _, key := range []string{"build_revision", "sys_info", "pid"} {

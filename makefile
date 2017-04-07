@@ -5,7 +5,6 @@ packages := $(name) agent db cli archive remote command taskrunner util plugin h
 packages += plugin-builtin-gotest plugin-builtin-attach plugin-builtin-manifest plugin-builtin-archive
 packages += plugin-builtin-shell plugin-builtin-s3copy plugin-builtin-expansions plugin-builtin-s3
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker apiv3-servicecontext apiv3-route apiv3-model
-
 packages += model-patch model-artifact model-host model-build model-event model-task db-bsonutil
 packages += plugin-builtin-attach-xunit cloud-providers cloud-providers-ec2 agent-comm
 orgPath := github.com/evergreen-ci
@@ -54,22 +53,27 @@ endef
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give linters 40s to run to avoid timeouts
-lintArgs := --tests --deadline=20m --vendor --aggregate --sort="path"
+lintArgs := --tests --deadline=20m --vendor --aggregate --sort="line"
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="aligncheck" --disable="golint"
+lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo"
+lintArgs += --disable="aligncheck" --disable="golint" --disable="goconst"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
 lintArgs += --enable="goimports" --enable="misspell" --enable="unused" --enable="vet" --enable="unparam"
 # lintArgs += --enable="lll" --line-length=100
 lintArgs += --dupl-threshold=175
 #  two similar functions triggered the duplicate warning, but they're not.
-lintArgs += --exclude="file is not goimported" # test files aren't imported
+# lintArgs += --exclude="file is not goimported" # test files aren't imported
 #  golint doesn't handle splitting package comments between multiple files.
 # lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
-lintArgs += --exclude "error return value not checked \(defer.*"
-lintArgs += --exclude ".*occurrence(s) of \"true\" found in.*"
+lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused)\)$$"
+lintArgs += --exclude=".*(procInfo|sysInfo|metricsCollector\).start).*is unused.* \(unused\)$$"
+lintArgs += --exclude="error return value not checked \(defer.* \(errcheck\)$$"
+lintArgs += --exclude="defers in this range loop.* \(staticcheck\)$$"
+lintArgs += --exclude=".*should use time.Until instead of t.Sub\(time.Now\(\)\).* \(gosimple\)$$"
+lintArgs += --exclude="suspect or:.*\(vet\)$$"
 # end lint configuration
 
 
@@ -155,23 +159,13 @@ $(gopath)/src/%:
 # end dependency installation tools
 
 
-# lint activation targets
+# lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
-lint:$(buildDir)/output.lint
-$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
-	./$< --lintArgs='$(lintArgs)' --packages="$(packages)" --output="$(buildDir)/lint.out"
-lint-%:$(buildDir)/.lintSetup
-	@echo "linting package: $*"
-	@$(gopath)/bin/gometalinter $(lintArgs) ./$(subst -,/,$*)
-lint-evergreen:$(buildDir)/.lintSetup
-	@echo "linting top level evergreen package"
-	@$(gopath)/bin/gometalinter $(lintArgs) ./
 $(buildDir)/.lintSetup:$(lintDeps)
-	@-$(gopath)/bin/gometalinter --install >/dev/null
-	@touch $@
+	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	$(vendorGopath) go build -o $@ $<
-# end lint activation targets
+# end lint setup targets
 
 
 # distribution targets and implementation
@@ -199,6 +193,7 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 # userfacing targets for basic build and development operations
 build:$(binaries) cli agent
 build-race:$(raceBinaries)
+lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
 coverage:$(coverageOutput)
@@ -208,9 +203,11 @@ list-tests:
 list-race:
 	@echo -e "test (race detector) targets:" $(foreach target,$(packages),\\n\\trace-$(target))
 phony += lint lint-deps build build-race race test coverage coverage-html list-race list-tests
-.PRECIOUS: $(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS: $(foreach target,$(packages),$(buildDir)/test.$(target))
-.PRECIOUS: $(foreach target,$(packages),$(buildDir)/race.$(target))
+.PRECIOUS:$(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS:$(foreach target,$(packages),$(buildDir)/test.$(target))
+.PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
+.PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+.PRECIOUS:$(buildDir)/output.lint
 # end front-ends
 
 
@@ -224,6 +221,8 @@ coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $(subst coverage,test,$<)
+lint-%:$(buildDir)/output.%.lint
+	@grep -v -s -q "^--- FAIL" $<
 # end convienence targets
 
 
@@ -299,6 +298,11 @@ $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
 $(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+#  targets to generate gotest output from the linter.
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
+	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
+	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testTimeout) -test.v -test.coverprofile=$@ | tee $(subst coverage,test,$@)

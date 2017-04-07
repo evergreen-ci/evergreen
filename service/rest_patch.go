@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -61,5 +62,6 @@ func (restapi restAPI) getPatchConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(projCtx.Patch.PatchedConfig))
+	_, err := w.Write([]byte(projCtx.Patch.PatchedConfig))
+	grip.Warning(err)
 }

@@ -132,11 +132,9 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 
 	if t.Requester != evergreen.PatchVersionRequester {
 		grip.Infoln("Processing alert triggers for task", t.Id)
-		err := errors.WithStack(alerts.RunTaskFailureTriggers(t.Id))
-		grip.ErrorWhenf(err != nil, "processing alert triggers for task %s: %+v", t.Id, err)
-	} else {
-		//TODO(EVG-223) process patch-specific triggers
-	}
+		grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
+			"processing alert triggers for task %s", t.Id))
+	} //TODO(EVG-223) process patch-specific triggers
 
 	// if task was aborted, reset to inactive
 	if details.Status == evergreen.TaskUndispatched {
@@ -222,7 +220,7 @@ func (as *APIServer) newEndTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// clear the running task on the host now that the task has finished
-	if err := currentHost.ClearRunningTask(t.Id, time.Now()); err != nil {
+	if err = currentHost.ClearRunningTask(t.Id, time.Now()); err != nil {
 		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
 		grip.Errorf(message.Error())
 		as.LoggedError(w, r, http.StatusInternalServerError, message)
@@ -259,11 +257,10 @@ func (as *APIServer) newEndTask(w http.ResponseWriter, r *http.Request) {
 
 	if t.Requester != evergreen.PatchVersionRequester {
 		grip.Infoln("Processing alert triggers for task", t.Id)
-		err := alerts.RunTaskFailureTriggers(t.Id)
+		err = alerts.RunTaskFailureTriggers(t.Id)
 		grip.ErrorWhenf(err != nil, "processing alert triggers for task %s: %+v", t.Id, err)
-	} else {
-		//TODO(EVG-223) process patch-specific triggers
 	}
+	// TODO(EVG-223) process patch-specific triggers
 
 	// update the bookkeeping entry for the task
 	err = bookkeeping.UpdateExpectedDuration(t, t.TimeTaken)

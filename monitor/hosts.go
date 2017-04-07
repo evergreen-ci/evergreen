@@ -38,11 +38,8 @@ func (hm *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error
 
 		// continue on error to allow the other monitoring functions to run
 		if errs := f(settings); errs != nil {
-			for _, err := range errs {
-				errors = append(errors, err)
-			}
+			errors = append(errors, errs...)
 		}
-
 	}
 
 	grip.Info("Finished running host monitoring checks")
@@ -77,7 +74,7 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 
 		// terminate all of the dead hosts. continue on error to allow further
 		// termination to work
-		if errs := terminateHosts(hostsToTerminate, settings, flagger.Reason); errs != nil {
+		if errs = terminateHosts(hostsToTerminate, settings, flagger.Reason); errs != nil {
 			for _, err := range errs {
 				errs = append(errs, errors.Wrap(err, "error terminating host"))
 			}

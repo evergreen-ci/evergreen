@@ -21,7 +21,7 @@ func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(projectTestConfig))
 }
 
-func TestbucketResource(t *testing.T) {
+func TestBucketResource(t *testing.T) {
 	Convey("With a start time and a bucket size of 10 and 10 buckets", t, func() {
 		frameStart := time.Now()
 		// 10 buckets * 10 bucket size = 100
@@ -35,7 +35,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("when resource start time is greater than end time should error", func() {
@@ -46,7 +46,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("when resource end time is equal to start time should error", func() {
@@ -57,7 +57,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("when resource end time is less than start time should error", func() {
@@ -68,7 +68,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("when resource end time is less than resource start time, should error", func() {
@@ -79,7 +79,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("when resource start is zero, errors out", func() {
@@ -90,7 +90,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldNotBeNil)
 		})
 		Convey("when the resource start and end time are in the same bucket, only one bucket has the difference", func() {
@@ -101,7 +101,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldBeNil)
 			So(buckets[0].TotalTime, ShouldEqual, time.Duration(4))
 			for i := 1; i < 10; i++ {
@@ -117,7 +117,7 @@ func TestbucketResource(t *testing.T) {
 				Start: resourceStart,
 				End:   resourceEnd,
 			}
-			buckets, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
+			_, err := bucketResource(resource, frameStart, frameEnd, bucketSize, buckets)
 			So(err, ShouldBeNil)
 			So(buckets[0].TotalTime, ShouldEqual, 0)
 			for i := 1; i < 10; i++ {

@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -13,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -59,47 +57,6 @@ type uiHostStatistics struct {
 	IdleStaticHosts   int `json:"idle_static_hosts"`
 }
 
-// simple struct for returning time aggregations to the ui
-type uiTaskTimeStatistic struct {
-	Id   string        `json:"id"`
-	Time time.Duration `json:"time"`
-}
-
-// taskTimeStatisticsHandler is a handler for task time aggretations.
-// it essentially acts as a wrapper for task.AverageTaskTimeDifference
-func (uis *UIServer) taskTimeStatisticsHandler(w http.ResponseWriter, r *http.Request) {
-	field1 := mux.Vars(r)["field1"]
-	field2 := mux.Vars(r)["field2"]
-	groupyBy := mux.Vars(r)["group_by"]
-	cutoffDaysAsString := mux.Vars(r)["cutoff_days"]
-	cutoffDays, err := strconv.Atoi(cutoffDaysAsString)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "Error converting cutoff_days to integer"))
-		return
-	}
-
-	var cutoff time.Time
-	// -1 is passed to represent "All Time", otherwise the number
-	// is an amount of days to include in the aggregation
-	if cutoffDays < 0 {
-		cutoff = time.Unix(1, 0) // 1 more than 0 time to ignore unset time fields
-	} else {
-		cutoff = time.Now().Add(time.Duration(-1*cutoffDays) * time.Hour * 24)
-	}
-
-	timeMap, err := task.AverageTaskTimeDifference(field1, field2, groupyBy, cutoff)
-	if err != nil {
-		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error computing time stats"))
-		return
-	}
-
-	var timeList []uiTaskTimeStatistic
-	for id, val := range timeMap {
-		timeList = append(timeList, uiTaskTimeStatistic{id, val})
-	}
-	uis.WriteJSON(w, http.StatusOK, timeList)
-}
-
 func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
 
@@ -127,6 +84,8 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 
 	// convert the task queues to the ui versions
 	uiTaskQueues := []uiTaskQueue{}
+	var tasks []task.Task
+
 	for _, tQ := range taskQueues {
 		asUI := uiTaskQueue{
 			Distro: tQ.Distro,
@@ -161,7 +120,7 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// find all the relevant tasks
-		tasks, err := task.Find(task.ByIds(taskIds).WithFields(task.VersionKey, task.BuildIdKey))
+		tasks, err = task.Find(task.ByIds(taskIds).WithFields(task.VersionKey, task.BuildIdKey))
 		if err != nil {
 			msg := fmt.Sprintf("Error finding tasks: %v", err)
 			grip.Error(msg)

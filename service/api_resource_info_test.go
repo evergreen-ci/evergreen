@@ -20,7 +20,7 @@ import (
 
 func TestResourceInfoEndPoints(t *testing.T) {
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()
 

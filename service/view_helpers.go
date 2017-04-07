@@ -3,11 +3,10 @@ package service
 import (
 	"crypto/md5"
 	"fmt"
-	"html/template"
 	"io"
 	"os/exec"
 
-	"github.com/evergreen-ci/evergreen/auth"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -20,22 +19,6 @@ const (
 
 type OtherPageData map[string]interface{}
 
-type pageData struct {
-	ActiveItem         string
-	Data               interface{}
-	User               auth.User
-	Project            string
-	ProjectDisplayName string
-	Other              OtherPageData
-}
-
-type pageContent struct {
-	CSSFiles    []string
-	JSFiles     []string
-	MenuHTML    template.HTML
-	ContentHTML template.HTML
-}
-
 // DirectoryChecksum compute an MD5 of a directory's contents. If a file in the directory changes,
 // the hash will be different.
 func DirectoryChecksum(home string) (string, error) {
@@ -43,11 +26,14 @@ func DirectoryChecksum(home string) (string, error) {
 	staticsDirectoryDetailsCmd := exec.Command("ls", "-lR", home)
 	staticsDirectoryDetails, err := staticsDirectoryDetailsCmd.Output()
 	if err != nil {
-		return "", err
+		return "", errors.WithStack(err)
 	}
 
 	hash := md5.New()
-	io.WriteString(hash, string(staticsDirectoryDetails))
+	if _, err = io.WriteString(hash, string(staticsDirectoryDetails)); err != nil {
+		return "", errors.WithStack(err)
+
+	}
 	// fmt.Sprintf("%x") is magic for getting an actual checksum out of crypto/md5
 	staticsMD5 := fmt.Sprintf("%x", hash.Sum(nil))
 

@@ -19,7 +19,7 @@ var taskRunnerTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskRunnerTestConf))
-	grip.SetSender(testutil.SetupTestSender(taskRunnerTestConf.TaskRunner.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskRunnerTestConf.TaskRunner.LogFile)))
 }
 
 // mock implementations, for testing purposes

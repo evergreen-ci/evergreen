@@ -76,6 +76,4 @@ func (ac *AgentCommand) Run(workingDir string) error {
 		}
 		return InterruptedCmdError
 	}
-
-	return err
 }

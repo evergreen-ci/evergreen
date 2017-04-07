@@ -54,12 +54,16 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	}
 
 	var c *smtp.Client
+	var tlsCon *tls.Conn
 	if es.UseSSL {
-		tlsCon, err := tls.Dial("tcp", fmt.Sprintf("%v:%v", es.Server, es.Port), &tls.Config{})
+		tlsCon, err = tls.Dial("tcp", fmt.Sprintf("%v:%v", es.Server, es.Port), &tls.Config{})
 		if err != nil {
 			return err
 		}
 		c, err = smtp.NewClient(tlsCon, es.Server)
+		if err != nil {
+			return err
+		}
 	} else {
 		c, err = smtp.Dial(fmt.Sprintf("%v:%v", es.Server, es.Port))
 	}
@@ -76,7 +80,10 @@ func (es *EmailDeliverer) Deliver(alertCtx AlertContext, alertConf model.AlertCo
 	}
 
 	// Set the sender
-	from := mail.Address{"Evergreen Alerts", es.From}
+	from := mail.Address{
+		Name:    "Evergreen Alerts",
+		Address: es.From,
+	}
 	err = c.Mail(es.From)
 	if err != nil {
 		grip.Errorf("Error establishing mail sender (%s): %+v", es.From, err)
@@ -209,11 +216,6 @@ func getSubject(alertCtx AlertContext) string {
 		// TODO(EVG-224) alertrecord.SpawnHostExpired:
 	}
 	return taskFailureSubject(alertCtx)
-}
-
-func encodeRFC2047(String string) string {
-	addr := mail.Address{String, ""}
-	return strings.Trim(addr.String(), " <>")
 }
 
 // cleanTestName returns the last item of a test's path.

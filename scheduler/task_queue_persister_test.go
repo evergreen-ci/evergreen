@@ -16,7 +16,7 @@ var taskQueuePersisterTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskQueuePersisterTestConf))
-	grip.SetSender(testutil.SetupTestSender(taskQueuePersisterTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskQueuePersisterTestConf.Scheduler.LogFile)))
 }
 
 func TestDBTaskQueuePersister(t *testing.T) {

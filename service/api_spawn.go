@@ -19,14 +19,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-type spawnRequest struct {
-	Id     string `bson:"_id" json:"id"`
-	User   string `bson:"user" json:"user"`
-	Distro string `bson:"distro" json:"distro"`
-	Status string `bson:"status" json:"status"`
-	Host   string `bson:"host" json:"host"` // foreign key
-}
-
 type spawnResponse struct {
 	Hosts    []host.Host `json:"hosts,omitempty"`
 	HostInfo host.Host   `json:"host_info,omitempty"`
@@ -122,12 +114,12 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status == evergreen.HostStatusSuccess {
-		if err := host.SetRunning(); err != nil {
+		if err = host.SetRunning(); err != nil {
 			grip.Errorf("Error marking host id %s as %s: %+v",
 				instanceId, evergreen.HostStatusSuccess, err)
 		}
 	} else {
-		alerts.RunHostProvisionFailTriggers(host)
+		grip.Warning(errors.WithStack(alerts.RunHostProvisionFailTriggers(host)))
 		if err = host.SetDecommissioned(); err != nil {
 			grip.Errorf("Error marking host %s for user %s as decommissioned: %+v",
 				host.Host, host.StartedBy, err)

@@ -15,7 +15,7 @@ var taskComparatorTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskComparatorTestConf))
-	grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile)))
 }
 
 func TestCmpBasedTaskComparator(t *testing.T) {
@@ -150,11 +150,9 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 	})
 
 	Convey("Splitting tasks by requester should separate tasks based on the Requester field", t, func() {
-
 		taskComparator = NewCmpBasedTaskComparator()
-
-		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
-		tasks := []task.Task{
+		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
+		tasks = []task.Task{
 			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester},
 			{Id: taskIds[1], Requester: evergreen.PatchVersionRequester},
 			{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},
@@ -176,9 +174,8 @@ func TestCmpBasedTaskComparator(t *testing.T) {
 	})
 	Convey("Splitting tasks with priority greater than 100 should always put those tasks in the high priority queue", t, func() {
 		taskComparator = NewCmpBasedTaskComparator()
-
-		taskIds := []string{"t1", "t2", "t3", "t4", "t5"}
-		tasks := []task.Task{
+		taskIds = []string{"t1", "t2", "t3", "t4", "t5"}
+		tasks = []task.Task{
 			{Id: taskIds[0], Requester: evergreen.RepotrackerVersionRequester, Priority: 101},
 			{Id: taskIds[1], Requester: evergreen.PatchVersionRequester, Priority: 101},
 			{Id: taskIds[2], Requester: evergreen.PatchVersionRequester},

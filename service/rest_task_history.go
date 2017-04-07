@@ -17,12 +17,6 @@ const (
 	MaxRestNumRevisions = 10
 )
 
-var (
-	jsonFormat   = "json"
-	csvFormat    = "csv"
-	prettyFormat = "pretty"
-)
-
 type RestTestHistoryResult struct {
 	TestFile     string        `json:"test_file" csv:"test_file"`
 	TaskName     string        `json:"task_name" csv:"task_name"`

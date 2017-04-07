@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os/exec"
@@ -63,7 +64,7 @@ func GitApplyNumstat(patch string) (*bytes.Buffer, error) {
 
 // ParseGitSummary takes in a buffer of data and parses it into a slice of
 // git summaries. It returns an error if it is unable to parse the data
-func ParseGitSummary(gitOutput *bytes.Buffer) (summaries []patch.Summary, err error) {
+func ParseGitSummary(gitOutput fmt.Stringer) (summaries []patch.Summary, err error) {
 	// separate stats per file
 	fileStats := strings.Split(gitOutput.String(), "\n")
 

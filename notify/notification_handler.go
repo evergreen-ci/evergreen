@@ -12,5 +12,5 @@ type NotificationHandler interface {
 	// Given a key, scan through database and generate the notifications that
 	// have been triggered since the last time this function ran. Returns the
 	// emails generated for this particular key.
-	GetNotifications(ae *web.App, configName string, key *NotificationKey) ([]Email, error)
+	GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error)
 }

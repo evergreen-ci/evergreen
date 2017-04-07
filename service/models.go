@@ -29,31 +29,10 @@ type hostsData struct {
 	Hosts []uiHost
 }
 
-type buildsData struct {
-	BuildVariants []string
-	TotalBuilds   int
-	Builds        []uiBuild
-}
-
 type pluginData struct {
 	Includes []template.HTML
 	Panels   plugin.PanelLayout
 	Data     map[string]interface{}
-}
-
-type tasksData struct {
-	BuildVariants []string
-	TotalTasks    int
-	Tasks         []uiTask
-}
-
-type historiesData struct {
-	TaskTypes []string
-}
-
-type taskHistoryData struct {
-	BuildVariants []string
-	Tasks         []uiTask
 }
 
 type uiVersion struct {
@@ -350,19 +329,6 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 	}
 	data.Hosts = uiHosts
 	return data, nil
-}
-
-func getHostData(hostId string) (*uiHost, error) {
-	hostAsUI := &uiHost{}
-	dbHost, err := host.FindOne(host.ById(hostId))
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	if dbHost == nil {
-		return nil, errors.New("Could not find host")
-	}
-	hostAsUI.Host = *dbHost
-	return hostAsUI, nil
 }
 
 // getPluginDataAndHTML returns all data needed to properly render plugins

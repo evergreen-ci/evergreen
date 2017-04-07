@@ -89,7 +89,7 @@ func TestCheckDistro(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(distro.Collection)
+			So(db.Clear(distro.Collection), ShouldBeNil)
 		})
 	})
 }
@@ -99,12 +99,12 @@ func TestEnsureUniqueId(t *testing.T) {
 	Convey("When validating a distros' ids...", t, func() {
 		distroIds := []string{"a", "b", "c"}
 		Convey("if a distro has a duplicate id, an error should be returned", func() {
-			err := ensureUniqueId(&distro.Distro{Id: "c"}, conf, distroIds)
+			err := ensureUniqueId(&distro.Distro{Id: "c"}, distroIds)
 			So(err, ShouldNotResemble, []ValidationError{})
 			So(len(err), ShouldEqual, 1)
 		})
 		Convey("if a distro doesn't have a duplicate id, no error should be returned", func() {
-			err := ensureUniqueId(&distro.Distro{Id: "d"}, conf, distroIds)
+			err := ensureUniqueId(&distro.Distro{Id: "d"}, distroIds)
 			So(err, ShouldBeNil)
 		})
 	})

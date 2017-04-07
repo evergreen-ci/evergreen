@@ -65,8 +65,9 @@ func hasTrigger(triggers []Trigger, t Trigger) bool {
 }
 
 func TestEmptyTaskTriggers(t *testing.T) {
-	db.Clear(task.Collection)
-	db.Clear(alertrecord.Collection)
+	testutil.HandleTestingErr(db.Clear(task.Collection), t, "problem clearing collection")
+	testutil.HandleTestingErr(db.Clear(alertrecord.Collection), t, "problem clearing collection")
+
 	Convey("With no existing tasks in the database", t, func() {
 		Convey("a newly failed task should return all triggers", func() {
 			// pre-bookkeeping
@@ -107,8 +108,8 @@ func TestEmptyTaskTriggers(t *testing.T) {
 
 func TestExistingPassedTaskTriggers(t *testing.T) {
 	Convey("With a previously passing instance of task in the database", t, func() {
-		db.Clear(task.Collection)
-		db.Clear(alertrecord.Collection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t, "problem clearing collection")
+		testutil.HandleTestingErr(db.Clear(alertrecord.Collection), t, "problem clearing collection")
 		testTask.Status = evergreen.TaskSucceeded
 		err := testTask.Insert()
 		So(err, ShouldBeNil)
@@ -153,9 +154,9 @@ func TestExistingPassedTaskTriggers(t *testing.T) {
 
 func TestExistingFailedTaskTriggers(t *testing.T) {
 	Convey("With a previously failed instance of task in the database", t, func() {
-		db.Clear(task.Collection)
-		db.Clear(model.ProjectRefCollection)
-		db.Clear(version.Collection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t, "problem clearing collection")
+		testutil.HandleTestingErr(db.Clear(model.ProjectRefCollection), t, "problem clearing collection")
+		testutil.HandleTestingErr(db.Clear(version.Collection), t, "problem clearing collection")
 		So(testProject.Insert(), ShouldBeNil)
 		So(testVersion.Insert(), ShouldBeNil)
 		testTask.Status = evergreen.TaskFailed
@@ -183,10 +184,10 @@ func TestExistingFailedTaskTriggers(t *testing.T) {
 
 func TestTransitionResend(t *testing.T) {
 	Convey("With a set of failures that previously transitioned", t, func() {
-		db.Clear(task.Collection)
-		db.Clear(alertrecord.Collection)
-		db.Clear(model.ProjectRefCollection)
-		db.Clear(version.Collection)
+		So(db.Clear(task.Collection), ShouldBeNil)
+		So(db.Clear(alertrecord.Collection), ShouldBeNil)
+		So(db.Clear(model.ProjectRefCollection), ShouldBeNil)
+		So(db.Clear(version.Collection), ShouldBeNil)
 		// insert 15 failed task documents
 		ts := []task.Task{
 			*testTask,
@@ -197,7 +198,7 @@ func TestTransitionResend(t *testing.T) {
 			ts[i].Id = fmt.Sprintf("t%v", i)
 			ts[i].BuildVariant = fmt.Sprintf("bv%v", i+1)
 			ts[i].FinishTime = time.Now().Add(-10 * time.Minute)
-			ts[i].Insert()
+			So(ts[i].Insert(), ShouldBeNil)
 		}
 		pastAlert := alertrecord.AlertRecord{
 			Id:        bson.NewObjectId(),
@@ -245,7 +246,7 @@ func TestTransitionResend(t *testing.T) {
 
 func TestSpawnExpireWarningTrigger(t *testing.T) {
 	Convey("With a spawnhost due to expire in two hours", t, func() {
-		db.Clear(host.Collection)
+		So(db.Clear(host.Collection), ShouldBeNil)
 		testHost := host.Host{
 			Id:             "testhost",
 			StartedBy:      "test_user",
@@ -272,9 +273,9 @@ func TestSpawnExpireWarningTrigger(t *testing.T) {
 
 func TestReachedFailureLimit(t *testing.T) {
 	Convey("With 3 failed task and relevant project variants", t, func() {
-		db.Clear(task.Collection)
-		db.Clear(model.ProjectRefCollection)
-		db.Clear(version.Collection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t, "problem clearing collection")
+		testutil.HandleTestingErr(db.Clear(model.ProjectRefCollection), t, "problem clearing collection")
+		testutil.HandleTestingErr(db.Clear(version.Collection), t, "problem clearing collection")
 		t := task.Task{
 			Id:           "t1",
 			Revision:     "aaa",

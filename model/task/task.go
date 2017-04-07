@@ -63,10 +63,10 @@ type Task struct {
 	HostId string `bson:"host_id" json:"host_id"`
 
 	// the number of times this task has been restarted
-	Restarts            int    `bson:"restarts" json:"restarts",omitempty`
+	Restarts            int    `bson:"restarts" json:"restarts,omitempty"`
 	Execution           int    `bson:"execution" json:"execution"`
-	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id",omitempty`
-	Archived            bool   `bson:"archived,omitempty" json:"archived",omitempty`
+	OldTaskId           string `bson:"old_task_id,omitempty" json:"old_task_id,omitempty"`
+	Archived            bool   `bson:"archived,omitempty" json:"archived,omitempty"`
 	RevisionOrderNumber int    `bson:"order,omitempty" json:"order,omitempty"`
 
 	// task requester - this is used to help tell the
@@ -449,7 +449,7 @@ func (t *Task) DeactivateTask(caller string) error {
 }
 
 // MarkEnd handles the Task updates associated with ending a task.
-func (t *Task) MarkEnd(caller string, finishTime time.Time, detail *apimodels.TaskEndDetail) error {
+func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) error {
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime

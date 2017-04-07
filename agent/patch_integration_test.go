@@ -36,7 +36,7 @@ func TestPatchTask(t *testing.T) {
 								patchRequest{"recursive", filepath.Join(testDirectory, "testdata/testmodule.patch"), githash})
 
 							testutil.HandleTestingErr(err, t, "Error setting up test data: %v", err)
-							testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins, Verbose)
+							testServer, err := service.CreateTestServer(testConfig, tlsConfig, plugin.APIPlugins)
 							testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 							defer testServer.Close()
 
@@ -46,7 +46,8 @@ func TestPatchTask(t *testing.T) {
 
 							// actually run the task.
 							// this function won't return until the whole thing is done.
-							testAgent.RunTask()
+							_, err = testAgent.RunTask()
+							So(err, ShouldBeNil)
 							time.Sleep(100 * time.Millisecond)
 							testAgent.APILogger.FlushAndWait()
 							printLogsForTask(testTask.Id)

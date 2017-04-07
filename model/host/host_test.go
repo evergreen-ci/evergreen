@@ -197,13 +197,15 @@ func TestMonitorHosts(t *testing.T) {
 func TestUpdatingHostStatus(t *testing.T) {
 
 	Convey("With a host", t, func() {
-
 		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
+
+		var err error
 
 		host := &Host{
 			Id: "hostOne",
 		}
+
 		So(host.Insert(), ShouldBeNil)
 
 		Convey("setting the host's status should update both the in-memory"+
@@ -212,7 +214,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 			So(host.SetStatus(evergreen.HostRunning), ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
@@ -225,7 +227,7 @@ func TestUpdatingHostStatus(t *testing.T) {
 			So(host.SetStatus(evergreen.HostRunning), ShouldNotBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 
@@ -242,9 +244,12 @@ func TestSetHostTerminated(t *testing.T) {
 		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
+		var err error
+
 		host := &Host{
 			Id: "hostOne",
 		}
+
 		So(host.Insert(), ShouldBeNil)
 
 		Convey("setting the host as terminated should set the status and the"+
@@ -255,7 +260,7 @@ func TestSetHostTerminated(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
 
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostTerminated)
 			So(host.TerminationTime.IsZero(), ShouldBeFalse)
@@ -266,6 +271,7 @@ func TestSetHostTerminated(t *testing.T) {
 }
 
 func TestHostSetDNSName(t *testing.T) {
+	var err error
 
 	Convey("With a host", t, func() {
 
@@ -275,6 +281,7 @@ func TestHostSetDNSName(t *testing.T) {
 		host := &Host{
 			Id: "hostOne",
 		}
+
 		So(host.Insert(), ShouldBeNil)
 
 		Convey("setting the hostname should update both the in-memory and"+
@@ -282,8 +289,7 @@ func TestHostSetDNSName(t *testing.T) {
 
 			So(host.SetDNSName("hostname"), ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
-
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Host, ShouldEqual, "hostname")
 
@@ -307,9 +313,12 @@ func TestMarkAsProvisioned(t *testing.T) {
 		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
+		var err error
+
 		host := &Host{
 			Id: "hostOne",
 		}
+
 		So(host.Insert(), ShouldBeNil)
 
 		Convey("marking the host as provisioned should update the status,"+
@@ -320,7 +329,7 @@ func TestMarkAsProvisioned(t *testing.T) {
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
 
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 			So(host.Provisioned, ShouldEqual, true)
@@ -366,7 +375,10 @@ func TestHostSetRunningTask(t *testing.T) {
 		host := &Host{
 			Id: "hostOne",
 		}
+
 		So(host.Insert(), ShouldBeNil)
+
+		var err error
 
 		Convey("setting the running task for the host should set the running"+
 			" task and task dispatch time for both the in-memory and database"+
@@ -380,7 +392,7 @@ func TestHostSetRunningTask(t *testing.T) {
 			So(host.TaskDispatchTime.Round(time.Second).Equal(
 				taskDispatchTime.Round(time.Second)), ShouldBeTrue)
 
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 			So(host.RunningTask, ShouldEqual, "taskId")
 			So(host.AgentRevision, ShouldEqual, "c")
@@ -525,6 +537,9 @@ func TestHostClearRunningTask(t *testing.T) {
 		testutil.HandleTestingErr(db.Clear(Collection), t, "Error"+
 			" clearing '%v' collection", Collection)
 
+		var err error
+		var count int
+
 		host := &Host{
 			Id:          "hostOne",
 			RunningTask: "taskId",
@@ -532,11 +547,12 @@ func TestHostClearRunningTask(t *testing.T) {
 			Status:      evergreen.HostRunning,
 			Pid:         "12345",
 		}
+
 		So(host.Insert(), ShouldBeNil)
 
 		Convey("host statistics should properly count this host as active"+
 			" but not idle", func() {
-			count, err := Count(IsActive)
+			count, err = Count(IsActive)
 			So(err, ShouldBeNil)
 			So(count, ShouldEqual, 1)
 			count, err = Count(IsIdle)
@@ -552,7 +568,7 @@ func TestHostClearRunningTask(t *testing.T) {
 			So(host.RunningTask, ShouldEqual, "")
 			So(host.LastTaskCompleted, ShouldEqual, "prevTask")
 
-			host, err := FindOne(ById(host.Id))
+			host, err = FindOne(ById(host.Id))
 			So(err, ShouldBeNil)
 
 			So(host.RunningTask, ShouldEqual, "")
@@ -620,8 +636,10 @@ func TestUpsert(t *testing.T) {
 			Status: evergreen.HostRunning,
 		}
 
+		var err error
+
 		Convey("Performing a host upsert should upsert correctly", func() {
-			_, err := host.Upsert()
+			_, err = host.Upsert()
 			So(err, ShouldBeNil)
 			So(host.Status, ShouldEqual, evergreen.HostRunning)
 
@@ -638,7 +656,7 @@ func TestUpsert(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(host.Status, ShouldEqual, evergreen.HostRunning)
 
-				host, err := FindOne(ById(host.Id))
+				host, err = FindOne(ById(host.Id))
 				So(err, ShouldBeNil)
 				So(host.Status, ShouldEqual, evergreen.HostRunning)
 				So(host.Host, ShouldEqual, "host")

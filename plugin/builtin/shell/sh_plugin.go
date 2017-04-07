@@ -2,10 +2,8 @@ package shell
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
@@ -242,43 +240,6 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	}
 
 	return nil
-}
-
-// listProc() returns a list of active pids on the system, by listing the contents of /proc
-// and looking for entries that appear to be valid pids. Only usable on systems with a /proc
-// filesystem (Solaris and UNIX/Linux)
-func listProc() ([]int, error) {
-	d, err := os.Open("/proc")
-	if err != nil {
-		return nil, err
-	}
-	defer d.Close()
-
-	results := make([]int, 0, 50)
-	for {
-		fis, err := d.Readdir(10)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		for _, fi := range fis {
-			// Pid must be a directory with a numeric name
-			if !fi.IsDir() {
-				continue
-			}
-
-			// Using Atoi here will also filter out . and ..
-			pid, err := strconv.Atoi(fi.Name())
-			if err != nil {
-				continue
-			}
-			results = append(results, int(pid))
-		}
-	}
-	return results, nil
 }
 
 // envHasMarkers returns a bool indicating if both marker vars are found in an environment var list

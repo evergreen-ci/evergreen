@@ -18,8 +18,7 @@ type TaskSuccessToFailureHandler struct {
 	Name string
 }
 
-func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configName string,
-	key *NotificationKey) ([]Email, error) {
+func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	tasks, err := getRecentlyFinishedTasks(key)
 	if err != nil {
@@ -83,7 +82,7 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 					Transition: transitionSubject,
 				}
 
-				email, err := self.TemplateNotification(ae, configName, &notification)
+				email, err := self.TemplateNotification(ae, &notification)
 				if err != nil {
 					grip.Errorf("Error executing template for '%s: %s",
 						currentTask.Id, err)
@@ -109,13 +108,12 @@ func (self *TaskSuccessToFailureHandler) GetNotifications(ae *web.App, configNam
 	return emails, nil
 }
 
-func (self *TaskSuccessToFailureHandler) TemplateNotification(ae *web.App,
-	configName string, notification *TriggeredTaskNotification) (Email, error) {
+func (self *TaskSuccessToFailureHandler) TemplateNotification(ae *web.App, notification *TriggeredTaskNotification) (Email, error) {
 	changeInfo, err := self.GetChangeInfo(notification)
 	if err != nil {
 		return nil, err
 	}
-	return self.templateNotification(ae, configName, notification, changeInfo)
+	return self.templateNotification(ae, notification, changeInfo)
 }
 
 func (self *TaskSuccessToFailureHandler) GetChangeInfo(

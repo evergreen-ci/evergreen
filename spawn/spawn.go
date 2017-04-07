@@ -131,7 +131,7 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.Distro))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	// add any extra user-specified data into the setup script
 	if d.UserData.File != "" {
@@ -164,7 +164,7 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 	// get the appropriate cloud manager
 	cloudManager, err := providers.GetCloudManager(d.Provider, sm.settings)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	// spawn the host
@@ -183,9 +183,5 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 	}
 
 	_, err = cloudManager.SpawnInstance(d, hostOptions)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return errors.WithStack(err)
 }

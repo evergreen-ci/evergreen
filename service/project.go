@@ -14,11 +14,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type projectSettings struct {
-	ProjectRef  *model.ProjectRef  `json:"proj_ref"`
-	ProjectVars *model.ProjectVars `json:"project_vars"`
-}
-
 // publicProjectFields are the fields needed by the UI
 // on base_angular and the menu
 type UIProjectFields struct {

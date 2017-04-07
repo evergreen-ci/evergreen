@@ -25,7 +25,7 @@ func TestS3ParseUrl(t *testing.T) {
 	Convey("When given an S3 location to parse...", t, func() {
 		Convey("the bucket and path should be parsed correctly", func() {
 			bucket, path, err := GetS3Location(testURL)
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			So(bucket, ShouldEqual, testURLBucket)
 			So(path, ShouldEqual, testURLPath)
 		})
@@ -38,11 +38,11 @@ func TestPutS3File(t *testing.T) {
 		Convey("a valid source file with a long key should return an error ", func() {
 			//Make a test file with some random content.
 			tempfile, err := ioutil.TempFile("", "randomString")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			randStr := util.RandomString()
 			_, err = tempfile.Write([]byte(randStr))
-			So(err, ShouldEqual, nil)
-			tempfile.Close()
+			So(err, ShouldBeNil)
+			So(tempfile.Close(), ShouldBeNil)
 
 			// put the test file on S3
 			auth := &aws.Auth{
@@ -56,11 +56,11 @@ func TestPutS3File(t *testing.T) {
 		Convey("a valid source file with a valid key should return no errors", func() {
 			//Make a test file with some random content.
 			tempfile, err := ioutil.TempFile("", "randomString")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			randStr := util.RandomString()
 			_, err = tempfile.Write([]byte(randStr))
-			So(err, ShouldEqual, nil)
-			tempfile.Close()
+			So(err, ShouldBeNil)
+			So(tempfile.Close(), ShouldBeNil)
 
 			// put the test file on S3
 			auth := &aws.Auth{
@@ -68,7 +68,7 @@ func TestPutS3File(t *testing.T) {
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
 			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 		})
 	})
 }
@@ -79,12 +79,12 @@ func TestS3Copy(t *testing.T) {
 		Convey("a valid source file should be copied to the valid destination", func() {
 			//Make a test file with some random content.
 			tempfile, err := ioutil.TempFile("", "randomString")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			randStr := util.RandomString()
 
 			_, err = tempfile.Write([]byte(randStr))
-			So(err, ShouldEqual, nil)
-			tempfile.Close()
+			So(err, ShouldBeNil)
+			So(tempfile.Close(), ShouldBeNil)
 
 			// Put the test file on S3
 			auth := &aws.Auth{
@@ -92,30 +92,32 @@ func TestS3Copy(t *testing.T) {
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
 			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 
 			// Copy the test file over to another location
 			err = CopyS3File(auth, sourceURL, destUrl, "public-read")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 
 			// Ensure that the file was actually copied
 			rdr, err := GetS3File(auth, destUrl)
-			defer rdr.Close()
-			So(err, ShouldEqual, nil)
+			defer func() {
+				So(rdr.Close(), ShouldBeNil)
+			}()
+			So(err, ShouldBeNil)
 
 			fileContents, err := ioutil.ReadAll(rdr)
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			So(string(fileContents), ShouldEqual, randStr)
 		})
 		Convey("a valid source file with a long key should return an error "+
 			"even if sent to a valid destination", func() {
 			//Make a test file with some random content.
 			tempfile, err := ioutil.TempFile("", "randomString")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			randStr := util.RandomString()
 			_, err = tempfile.Write([]byte(randStr))
-			So(err, ShouldEqual, nil)
-			tempfile.Close()
+			So(err, ShouldBeNil)
+			So(tempfile.Close(), ShouldBeNil)
 
 			// put the test file on S3
 			auth := &aws.Auth{
@@ -130,11 +132,11 @@ func TestS3Copy(t *testing.T) {
 			"key name should return an error", func() {
 			//Make a test file with some random content.
 			tempfile, err := ioutil.TempFile("", "randomString")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 			randStr := util.RandomString()
 			_, err = tempfile.Write([]byte(randStr))
-			So(err, ShouldEqual, nil)
-			tempfile.Close()
+			So(err, ShouldBeNil)
+			So(tempfile.Close(), ShouldBeNil)
 
 			// put the test file on S3
 			auth := &aws.Auth{
@@ -142,7 +144,7 @@ func TestS3Copy(t *testing.T) {
 				SecretKey: testConfig.Providers.AWS.Secret,
 			}
 			err = PutS3File(auth, tempfile.Name(), sourceURL, "application/x-tar", "public-read")
-			So(err, ShouldEqual, nil)
+			So(err, ShouldBeNil)
 
 			longURLKey := sourceURL + strings.Repeat("suffix", 300)
 			// Attempt to copy the test file over to another location

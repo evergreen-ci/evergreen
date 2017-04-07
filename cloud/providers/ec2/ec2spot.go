@@ -75,11 +75,7 @@ func (self *EC2SpotSettings) Validate() error {
 	}
 
 	_, err := makeBlockDeviceMappings(self.MountPoints)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return errors.WithStack(err)
 }
 
 //Configure loads necessary credentials or other settings from the global config
@@ -537,7 +533,12 @@ func spotCostForRange(start, end time.Time, rates []spotRate) float64 {
 // start time. Returns a slice of hour-separated spot prices or any errors that occur.
 func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
 	iType string, zone string, os osType, start, end time.Time) ([]spotRate, error) {
-	svc := ec2sdk.New(session.New(), &awssdk.Config{
+	ses, err := session.NewSession()
+	if err != nil {
+		return nil, errors.Wrap(err, "problem getting aws session")
+	}
+
+	svc := ec2sdk.New(ses, &awssdk.Config{
 		Region: awssdk.String(aws.USEast.Name),
 		Credentials: credentials.NewCredentials(&credentials.StaticProvider{
 			credentials.Value{
@@ -561,7 +562,7 @@ func (cloudManager *EC2SpotManager) describeHourlySpotPriceHistory(
 	for {
 		h, err := svc.DescribeSpotPriceHistory(filter)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		history = append(history, h.SpotPriceHistory...)
 		if *h.NextToken != "" {

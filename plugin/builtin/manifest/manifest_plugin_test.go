@@ -76,7 +76,7 @@ func TestManifestLoad(t *testing.T) {
 		gitPlugin := &git.GitPlugin{}
 		testutil.HandleTestingErr(registry.Register(gitPlugin), t, "failed to register git plugin")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

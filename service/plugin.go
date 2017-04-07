@@ -57,7 +57,10 @@ func (uis *UIServer) PluginWriteHTML(w http.ResponseWriter, status int, data int
 
 	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	w.WriteHeader(status)
-	w.Write(out.Bytes())
+	_, err = w.Write(out.Bytes())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // GetPluginHandler returns a handler function given the template route and data to go to that page.

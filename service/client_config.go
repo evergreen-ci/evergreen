@@ -26,7 +26,7 @@ func getClientConfig(settings *evergreen.Settings) (*evergreen.ClientConfig, err
 	if _, err := os.Stat(root); os.IsNotExist(err) {
 		grip.Warningf("client directory '%s' does not exist, creating empty "+
 			"directory and continuing with caution", root)
-		os.MkdirAll(root, 0755)
+		grip.Error(os.MkdirAll(root, 0755))
 	}
 
 	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {

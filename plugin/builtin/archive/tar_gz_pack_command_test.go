@@ -106,7 +106,7 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err := cmd.BuildArchive("", &plugintest.MockLogger{})
+				numFound, err := cmd.BuildArchive(&plugintest.MockLogger{})
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 1)
 

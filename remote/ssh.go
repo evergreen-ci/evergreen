@@ -4,6 +4,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )
@@ -81,13 +82,11 @@ func (cmd *SSHCommand) Run() ([]byte, error) {
 
 	// wait for the command to finish, or time out
 	select {
-
 	case err := <-errChan:
 		return output, errors.WithStack(err)
-
 	case <-time.After(cmd.Timeout):
 		// command timed out; kill the remote process
-		session.Signal(ssh.SIGKILL)
+		grip.CatchError(errors.WithStack(session.Signal(ssh.SIGKILL)))
 		return nil, ErrCmdTimedOut
 	}
 

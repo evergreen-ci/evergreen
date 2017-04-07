@@ -21,7 +21,7 @@ var schedulerTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(schedulerTestConf))
-	grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(schedulerTestConf.Scheduler.LogFile)))
 }
 
 const versionProjectString = `
@@ -121,7 +121,7 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(version.Collection)
+			So(db.Clear(version.Collection), ShouldBeNil)
 		})
 
 	})
@@ -188,10 +188,8 @@ func TestSpawnHosts(t *testing.T) {
 		})
 
 		Reset(func() {
-			db.Clear(distro.Collection)
-			db.Clear(host.Collection)
+			So(db.Clear(distro.Collection), ShouldBeNil)
+			So(db.Clear(host.Collection), ShouldBeNil)
 		})
-
 	})
-
 }

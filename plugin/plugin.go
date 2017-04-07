@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/gorilla/context"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -188,7 +189,7 @@ func Publish(plugin Plugin) {
 		published = true
 	}
 	if !published {
-		panic(fmt.Sprintf("Plugin '%v' does not implement any of CommandPlugin, APIPlugin, or UIPlugin"))
+		panic(fmt.Sprintf("Plugin '%v' does not implement any of CommandPlugin, APIPlugin, or UIPlugin", plugin.Name()))
 	}
 }
 
@@ -224,7 +225,8 @@ func WriteJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	w.Write(out)
+	_, err = w.Write(out)
+	grip.Warning(errors.WithStack(err))
 }
 
 type pluginTaskContext int

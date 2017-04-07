@@ -12,18 +12,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
-	earliestSort = "earliest"
-	latestSort   = "latest"
-
-	jsonFormat   = "json"
-	csvFormat    = "csv"
-	prettyFormat = "pretty"
-)
+var ()
 
 const (
 	prettyStringFormat = "%-25s %-15s %-40s%-40s %-40s %-40s \n"
 	timeFormat         = "2006-01-02T15:04:05"
+	csvFormat          = "csv"
+	prettyFormat       = "pretty"
+	// jsonFormat   = "json" // not used
 )
 
 // TestHistoryCommand represents the test-history command in the CLI
@@ -81,7 +77,7 @@ func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
 
 // Execute transfers the fields from a TestHistoryCommand to a TestHistoryParameter
 // and validates them. It then gets the test history from the api endpoint
-func (thc *TestHistoryCommand) Execute(args []string) error {
+func (thc *TestHistoryCommand) Execute(_ []string) error {
 	_, rc, _, err := getAPIClients(thc.GlobalOpts)
 	if err != nil {
 		return err
@@ -176,7 +172,11 @@ func (thc *TestHistoryCommand) Execute(args []string) error {
 
 	if thc.Format == prettyFormat {
 		results := []service.RestTestHistoryResult{}
-		util.ReadJSONInto(body, &results)
+
+		if err := util.ReadJSONInto(body, &results); err != nil {
+			return err
+		}
+
 		fmt.Printf(prettyStringFormat, "Start Time", "Duration(ms)", "Variant", "Task Name", "Test File", "URL")
 		for _, thr := range results {
 			if !util.IsZeroTime(thr.StartTime) {

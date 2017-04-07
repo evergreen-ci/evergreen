@@ -261,8 +261,8 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(fromDB), ShouldEqual, 10)
 			for _, logMsg := range fromDB {
-				So(logMsg.Severity != LogDebugPrefix ||
-					logMsg.Severity != LogInfoPrefix, ShouldBeTrue)
+				So(logMsg.Severity != LogDebugPrefix || logMsg.Severity != LogInfoPrefix,
+					ShouldBeTrue)
 			}
 
 			// filter on a non-existent severity

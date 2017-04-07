@@ -90,12 +90,12 @@ func (h *Host) IdleTime() time.Duration {
 	// if the host has run a task before, then the idle time is just the time
 	// passed since the last task finished
 	if h.LastTaskCompleted != "" {
-		return time.Now().Sub(h.LastTaskCompletedTime)
+		return time.Since(h.LastTaskCompletedTime)
 	}
 
 	// if the host has not run a task before, the idle time is just
 	// how long is has been since the host was created
-	return time.Now().Sub(h.CreationTime)
+	return time.Since(h.CreationTime)
 }
 
 func (h *Host) SetStatus(status string) error {
@@ -171,7 +171,7 @@ func (h *Host) SetUnprovisioned() error {
 	)
 }
 
-func (h *Host) SetQuarantined(status string) error {
+func (h *Host) SetQuarantined() error {
 	return h.SetStatus(evergreen.HostQuarantined)
 }
 

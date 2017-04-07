@@ -63,7 +63,7 @@ func TestMetricsCollectors(t *testing.T) {
 				go collector.processInfoCollector(500*time.Millisecond, time.Second, 2)
 				time.Sleep(time.Second)
 				stopper <- true
-				cmd.Process.Kill()
+				So(cmd.Process.Kill(), ShouldBeNil)
 
 				So(len(comm.Posts["process_info"]), ShouldEqual, 2)
 				for _, post := range comm.Posts["process_info"] {

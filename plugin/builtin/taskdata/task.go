@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -162,8 +163,6 @@ func InsertTask(t *task.Task, name string, data map[string]interface{}) error {
 		IsPatch:             t.Requester == evergreen.PatchVersionRequester,
 	}
 	_, err := db.Upsert(collection, bson.M{TaskIdKey: t.Id, NameKey: name}, jsonBlob)
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return errors.WithStack(err)
 }

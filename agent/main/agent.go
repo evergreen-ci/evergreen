@@ -146,7 +146,7 @@ func getHTTPSCertFile(httpsCertFile string) (string, error) {
 		}
 		// If we don't test the cert here, we won't know if
 		// the cert is invalid unil much later
-		decoded_cert, _ := pem.Decode([]byte(httpsCert))
+		decoded_cert, _ := pem.Decode(httpsCert)
 		if decoded_cert == nil {
 			return "", errors.Errorf("could not decode certficate file (%v)", httpsCertFile)
 		}

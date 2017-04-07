@@ -6,12 +6,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 var (
-	expansionRegex = regexp.MustCompile("\\$\\{.*?\\}")
+	expansionRegex = regexp.MustCompile(`\$\{.*?\}`)
 )
 
 // Wrapper for an expansions map, with some utility functions.

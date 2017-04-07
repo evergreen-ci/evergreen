@@ -16,7 +16,7 @@ var taskImportanceCmpTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskImportanceCmpTestConf))
-	grip.SetSender(testutil.SetupTestSender(taskImportanceCmpTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskImportanceCmpTestConf.Scheduler.LogFile)))
 }
 
 func TestTaskImportanceComparators(t *testing.T) {

@@ -35,8 +35,8 @@ func (self *Notifier) Notify(settings *evergreen.Settings) []error {
 
 		// send the actual notifications. continue on error to allow further
 		// notifications to be sent
-		if errs := sendNotifications(notifications, settings); errs != nil {
-			for _, err := range errs {
+		if newErrs := sendNotifications(notifications, settings); errs != nil {
+			for _, err := range newErrs {
 				errs = append(errs, errors.Wrap(err,
 					"error sending notifications"))
 			}

@@ -34,7 +34,7 @@ func TestProjectRoutes(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "error installing plugins")
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "error setting up router")
 	n := negroni.New()

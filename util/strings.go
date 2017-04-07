@@ -6,7 +6,7 @@ import (
 	"unicode"
 )
 
-var cleanFileRegex = regexp.MustCompile("[^a-zA-Z0-9_\\-\\.]")
+var cleanFileRegex = regexp.MustCompile(`[^a-zA-Z0-9_\-\.]`)
 
 // Truncate returns a string of at most the given length.
 func Truncate(input string, outputLength int) string {

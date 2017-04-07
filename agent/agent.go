@@ -139,10 +139,6 @@ type Agent struct {
 	// assigned task.
 	taskConfig *model.TaskConfig
 
-	// hostId holds the identifier of the host the agent thinks it is running on,
-	// for logging purposes.
-	hostId string
-
 	// Registry manages plugins available for the agent.
 	Registry plugin.Registry
 
@@ -597,7 +593,8 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 
 			if len(commandInfo.Vars) > 0 {
 				for key, val := range commandInfo.Vars {
-					newVal, err := agt.taskConfig.Expansions.ExpandString(val)
+					var newVal string
+					newVal, err = agt.taskConfig.Expansions.ExpandString(val)
 					if err != nil {
 						return errors.Wrapf(err, "Can't expand '%v'", val)
 					}
@@ -677,13 +674,18 @@ func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 func (agt *Agent) createTaskDirectory(taskConfig *model.TaskConfig) error {
 	h := md5.New()
 
-	h.Write([]byte(
+	_, err := h.Write([]byte(
 		fmt.Sprintf("%s_%d_%d", taskConfig.Task.Id, taskConfig.Task.Execution, os.Getpid())))
+	if err != nil {
+		agt.logger.LogExecution(slogger.ERROR, "Error creating task directory name: %v", err)
+		return err
+	}
+
 	dirName := hex.EncodeToString(h.Sum(nil))
 	newDir := filepath.Join(taskConfig.Distro.WorkDir, dirName)
 
 	agt.logger.LogExecution(slogger.INFO, "Making new folder for task execution: %v", newDir)
-	err := os.Mkdir(newDir, 0777)
+	err = os.Mkdir(newDir, 0777)
 	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error creating task directory: %v", err)
 		return err
@@ -736,7 +738,7 @@ func (agt *Agent) removeTaskDirectory() error {
 
 // ExitAgent attempts to terminate all processes started by the task
 // and exits the agent process with the specified exit code.
-func ExitAgent(logger *comm.StreamLogger, taskId string, exitCode int) {
+func ExitAgent(logger plugin.Logger, taskId string, exitCode int) {
 	if taskId != "" {
 		if err := shell.KillSpawnedProcs(taskId, logger); err != nil {
 			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)

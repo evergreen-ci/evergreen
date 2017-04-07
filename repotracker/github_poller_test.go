@@ -7,7 +7,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/thirdparty"
-	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -19,7 +18,13 @@ var (
 	firstRemoteConfigRef  = "6dbe53d948906ed3e0a355eb25b9d54e5b011209"
 	secondRemoteConfigRef = "9b6c7d7f479da84b767995076b13c31796a5e2bf"
 	badRemoteConfigRef    = "276382eb9f5ebcfce2791d1c99ce5e591023146b"
-	projectRef            = &model.ProjectRef{
+
+	projectRef    *model.ProjectRef
+	evgProjectRef *model.ProjectRef
+)
+
+func resetProjectRefs() {
+	projectRef = &model.ProjectRef{
 		Identifier:  "mci-test",
 		DisplayName: "MCI Test",
 		Owner:       "deafgoat",
@@ -38,11 +43,11 @@ var (
 		Branch:   "master",
 		RepoKind: "github",
 	}
-)
+}
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	grip.SetSender(testutil.SetupTestSender(testConfig.RepoTracker.LogFile))
+	resetProjectRefs()
 }
 
 func dropTestDB(t *testing.T) {
@@ -259,7 +264,7 @@ func TestGetCommitURL(t *testing.T) {
 	Convey("When calling getCommitURL...", t, func() {
 		Convey("the returned string should use the fields of the project "+
 			"ref correctly", func() {
-			projectRef := &model.ProjectRef{
+			projectRef = &model.ProjectRef{
 				Owner:  "a",
 				Repo:   "b",
 				Branch: "c",

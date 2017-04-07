@@ -15,10 +15,7 @@ import (
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -33,11 +30,8 @@ import (
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
-
-var Port = 8181
 
 type MockPlugin struct{}
 
@@ -123,6 +117,10 @@ func (mc *MockCommand) ParseParams(params map[string]interface{}) error {
 func (mc *MockCommand) Execute(logger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
 	resp, err := pluginCom.TaskGetJSON(fmt.Sprintf("blah/%s/%d", mc.Param1, mc.Param2))
+	if err != nil {
+		return err
+	}
+
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -161,15 +159,15 @@ func TestRegistry(t *testing.T) {
 		})
 		Convey("with a project file containing references to a valid plugin", func() {
 			registry := plugin.NewSimpleRegistry()
-			registry.Register(&MockPlugin{})
-			registry.Register(&shell.ShellPlugin{})
-			registry.Register(&expansions.ExpansionsPlugin{})
+			So(registry.Register(&MockPlugin{}), ShouldBeNil)
+			So(registry.Register(&shell.ShellPlugin{}), ShouldBeNil)
+			So(registry.Register(&expansions.ExpansionsPlugin{}), ShouldBeNil)
 
 			data, err := ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(),
 				"testdata", "plugin_project.yml"))
 			testutil.HandleTestingErr(err, t, "failed to load test yaml file")
 			project := &model.Project{}
-			err = yaml.Unmarshal(data, project)
+			So(yaml.Unmarshal(data, project), ShouldBeNil)
 			Convey("all commands in project file should load parse successfully", func() {
 				for _, newTask := range project.Tasks {
 					for _, command := range newTask.Commands {
@@ -195,7 +193,7 @@ func TestPluginFunctions(t *testing.T) {
 			err = registry.Register(&expansions.ExpansionsPlugin{})
 			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 
-			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, false)
+			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 			defer testServer.Close()
 
@@ -250,7 +248,7 @@ func TestPluginExecution(t *testing.T) {
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
 
-		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, apiPlugins, false)
+		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, apiPlugins)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 
@@ -297,9 +295,9 @@ func TestAttachLargeResults(t *testing.T) {
 		// TODO: Remove skip when compiler is upgraded to include fix for bug https://github.com/golang/go/issues/12781
 		t.Skip("skipping test to avoid httptest server bug")
 	}
-	db.ClearCollections(task.Collection)
+	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "problem clearning collections")
 	Convey("With a test task and server", t, func() {
-		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil, false)
+		testServer, err := service.CreateTestServer(testutil.TestConfig(), nil, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
 		httpCom, err := comm.NewHTTPCommunicator(testServer.URL, "mocktaskid", "mocktasksecret", "", "", "", nil)
@@ -388,98 +386,6 @@ func createTestConfig(filename string, t *testing.T) (*model.TaskConfig, error) 
 	testDistro := &distro.Distro{Id: "linux-64", WorkDir: workDir}
 	testVersion := &version.Version{}
 	return model.NewTaskConfig(testDistro, testVersion, testProject, testTask, testProjectRef)
-}
-
-func setupAPITestData(taskDisplayName string, isPatch bool, t *testing.T) (*task.Task, *build.Build, error) {
-	//ignore errs here because the ns might just not exist.
-	clearDataMsg := "Failed to clear test data collection"
-
-	currentDirectory := testutil.GetDirectoryOfFile()
-	testutil.HandleTestingErr(
-		db.ClearCollections(
-			task.Collection, build.Collection, host.Collection,
-			version.Collection, patch.Collection),
-		t, clearDataMsg)
-
-	testHost := &host.Host{
-		Id:          "testHost",
-		Host:        "testHost",
-		RunningTask: "testTaskId",
-		StartedBy:   evergreen.User,
-	}
-	testutil.HandleTestingErr(testHost.Insert(), t, "failed to insert host")
-
-	newTask := &task.Task{
-		Id:           "testTaskId",
-		BuildId:      "testBuildId",
-		DistroId:     "rhel55",
-		BuildVariant: "linux-64",
-		Project:      "mongodb-mongo-master",
-		DisplayName:  taskDisplayName,
-		HostId:       "testHost",
-		Secret:       "testTaskSecret",
-		Status:       evergreen.TaskDispatched,
-		Version:      "versionId",
-		Requester:    evergreen.RepotrackerVersionRequester,
-	}
-
-	if isPatch {
-		newTask.Requester = evergreen.PatchVersionRequester
-	}
-
-	testutil.HandleTestingErr(newTask.Insert(), t, "failed to insert task")
-
-	v := &version.Version{
-		Id:       "testVersionId",
-		BuildIds: []string{newTask.BuildId},
-	}
-	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version %v")
-	if isPatch {
-		mainPatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
-			"testdata", "test.patch"))
-		testutil.HandleTestingErr(err, t, "failed to read test patch file %v")
-		modulePatchContent, err := ioutil.ReadFile(filepath.Join(currentDirectory,
-			"testdata", "testmodule.patch"))
-		testutil.HandleTestingErr(err, t, "failed to read test module patch file %v")
-
-		p := &patch.Patch{
-			Status:  evergreen.PatchCreated,
-			Version: v.Id,
-			Patches: []patch.ModulePatch{
-				{
-					ModuleName: "",
-					Githash:    "cb91350bf017337a734dcd0321bf4e6c34990b6a",
-					PatchSet:   patch.PatchSet{Patch: string(mainPatchContent)},
-				},
-				{
-					ModuleName: "enterprise",
-					Githash:    "c2d7ce942a96d7dacd27c55b257e3f2774e04abf",
-					PatchSet:   patch.PatchSet{Patch: string(modulePatchContent)},
-				},
-			},
-		}
-
-		testutil.HandleTestingErr(p.Insert(), t, "failed to insert version %v")
-
-	}
-
-	session, _, err := db.GetGlobalSessionFactory().GetSession()
-	testutil.HandleTestingErr(err, t, "couldn't get db session!")
-
-	//Remove any logs for our test task from previous runs.
-	_, err = session.DB(model.TaskLogDB).C(model.TaskLogCollection).RemoveAll(bson.M{"t_id": newTask.Id})
-	testutil.HandleTestingErr(err, t, "failed to remove logs")
-
-	build := &build.Build{
-		Id: "testBuildId",
-		Tasks: []build.TaskCache{
-			build.NewTaskCache(newTask.Id, newTask.DisplayName, true),
-		},
-		Version: "testVersionId",
-	}
-
-	testutil.HandleTestingErr(build.Insert(), t, "failed to insert build %v")
-	return newTask, build, nil
 }
 
 func TestPluginSelfRegistration(t *testing.T) {

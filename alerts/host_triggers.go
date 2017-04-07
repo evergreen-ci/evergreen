@@ -91,7 +91,7 @@ func (sthw SlowProvisionWarning) CreateAlertRecord(ctx triggerContext) *alertrec
 func (sthw SlowProvisionWarning) ShouldExecute(ctx triggerContext) (bool, error) {
 	// don't execute if the host is actually provisioned, or if it's been less than 20 minutes
 	// since creation time
-	if ctx.host.Provisioned == true || ctx.host.CreationTime.Before(time.Now().Add(-20*time.Minute)) {
+	if ctx.host.Provisioned || ctx.host.CreationTime.Before(time.Now().Add(-20*time.Minute)) {
 		return false, nil
 	}
 	rec, err := alertrecord.FindOne(alertrecord.ByHostAlertRecordType(ctx.host.Id, alertrecord.SlowProvisionWarning))
@@ -116,7 +116,7 @@ func (pf ProvisionFailed) CreateAlertRecord(ctx triggerContext) *alertrecord.Ale
 
 func (pf *ProvisionFailed) ShouldExecute(ctx triggerContext) (bool, error) {
 	// don't execute if the host is actually provisioned
-	if ctx.host.Provisioned == true || ctx.host.Status == evergreen.HostRunning {
+	if ctx.host.Provisioned || ctx.host.Status == evergreen.HostRunning {
 		return false, nil
 	}
 	return true, nil

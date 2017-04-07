@@ -15,9 +15,9 @@ func TestRecoverHandler(t *testing.T) {
 	Convey("Recover handler should handle panics", t, func() {
 		Convey("without a panic there should be no log messages", func() {
 			sender := send.MakeInternalLogger()
-			grip.SetSender(sender)
+			So(grip.SetSender(sender), ShouldBeNil)
 			RecoverAndLogStackTrace()
-			grip.SetSender(send.MakeNative())
+			So(grip.SetSender(send.MakeNative()), ShouldBeNil)
 			msg := sender.GetMessage()
 			So(msg, ShouldBeNil)
 
@@ -25,12 +25,15 @@ func TestRecoverHandler(t *testing.T) {
 
 		Convey("with a panic there should be log messages", func() {
 			sender := send.MakeInternalLogger()
-			grip.SetSender(sender)
+			So(grip.SetSender(sender), ShouldBeNil)
 
-			defer RecoverAndLogStackTrace()
-			panic("sorry")
+			func() {
+				defer RecoverAndLogStackTrace()
+				panic("sorry")
+			}()
+
 			msgs := []interface{}{}
-			grip.SetSender(send.MakeNative())
+			So(grip.SetSender(send.MakeNative()), ShouldBeNil)
 
 			for {
 				m := sender.GetMessage()

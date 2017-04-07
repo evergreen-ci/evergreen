@@ -17,8 +17,7 @@ type BuildSuccessToFailureHandler struct {
 	Name string
 }
 
-func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configName string,
-	key *NotificationKey) ([]Email, error) {
+func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	builds, err := getRecentlyFinishedBuilds(key)
 	if err != nil {
@@ -46,7 +45,6 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 		if !previousBuild.IsFinished() {
 			grip.Debugf("Build before '%s' (on %s %s notification) isn't finished",
 				currentBuild.Id, key.Project, key.NotificationName)
-			unprocessedBuilds = append(unprocessedBuilds, currentBuild.Id)
 			continue
 		}
 
@@ -71,7 +69,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 				Preface:    fmt.Sprintf(preface, branchName),
 				Transition: transitionSubject,
 			}
-			email, err := self.TemplateNotification(ae, configName, &notification)
+			email, err := self.TemplateNotification(ae, &notification)
 			if err != nil {
 				grip.Debugf("Error templating for build '%s': %+v", currentBuild.Id, err)
 				continue
@@ -83,8 +81,7 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, configNa
 	return emails, nil
 }
 
-func (self *BuildSuccessToFailureHandler) TemplateNotification(ae *web.App, _ string,
-	notification *TriggeredBuildNotification) (Email, error) {
+func (self *BuildSuccessToFailureHandler) TemplateNotification(ae *web.App, notification *TriggeredBuildNotification) (Email, error) {
 	changeInfo, err := self.GetChangeInfo(notification)
 	if err != nil {
 		return nil, err

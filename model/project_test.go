@@ -10,8 +10,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var projectTestConf = testutil.TestConfig()
-
 func TestFindProject(t *testing.T) {
 
 	Convey("When finding a project", t, func() {

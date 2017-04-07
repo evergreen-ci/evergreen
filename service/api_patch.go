@@ -20,6 +20,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const formMimeType = "application/x-www-form-urlencoded"
+
 // PatchAPIResponse is returned by all patch-related API calls
 type PatchAPIResponse struct {
 	Message string       `json:"message"`
@@ -184,7 +186,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 	dbUser := MustHaveUser(r)
 	var apiRequest PatchAPIRequest
 	var finalize bool
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+	if r.Header.Get("Content-Type") == formMimeType {
 		patchContent := r.FormValue("patch")
 		if patchContent == "" {
 			as.LoggedError(w, r, http.StatusBadRequest, errors.New("Error: Patch must not be empty"))
@@ -319,7 +321,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 
 	var moduleName, patchContent, githash string
 
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+	if r.Header.Get("Content-Type") == formMimeType {
 		moduleName, patchContent, githash = r.FormValue("module"), r.FormValue("patch"), r.FormValue("githash")
 	} else {
 		data := struct {
@@ -435,7 +437,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 	defer releaseGlobalLock(r.RemoteAddr, p.Id.String(), PatchLockTitle)
 
 	var action, desc string
-	if r.Header.Get("Content-Type") == "application/x-www-form-urlencoded" {
+	if r.Header.Get("Content-Type") == formMimeType {
 		action = r.FormValue("action")
 	} else {
 		data := struct {
@@ -460,7 +462,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 		}
 		as.WriteJSON(w, http.StatusOK, "patch updated")
 	case "finalize":
-		if p.Activated == true {
+		if p.Activated {
 			http.Error(w, "patch is already finalized", http.StatusBadRequest)
 			return
 		}

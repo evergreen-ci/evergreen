@@ -55,7 +55,7 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	buildAsUI := &uiBuild{
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
-		Elapsed:     time.Now().Sub(projCtx.Build.StartTime),
+		Elapsed:     time.Since(projCtx.Build.StartTime),
 		Version:     *projCtx.Version,
 	}
 
@@ -139,9 +139,13 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("Error aborting build %v", projCtx.Build.Id), http.StatusInternalServerError)
 			return
 		}
-		model.RefreshTasksCache(projCtx.Build.Id)
+		if err := model.RefreshTasksCache(projCtx.Build.Id); err != nil {
+			http.Error(w, fmt.Sprintf("problem refreshing tasks cache %v", projCtx.Build.Id), http.StatusInternalServerError)
+			return
+		}
 	case "set_priority":
-		priority, err := strconv.ParseInt(putParams.Priority, 10, 64)
+		var priority int64
+		priority, err = strconv.ParseInt(putParams.Priority, 10, 64)
 		if err != nil {
 			http.Error(w, "Bad priority value; must be int", http.StatusBadRequest)
 			return
@@ -185,7 +189,7 @@ func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {
 	updatedBuild := uiBuild{
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
-		Elapsed:     time.Now().Sub(projCtx.Build.StartTime),
+		Elapsed:     time.Since(projCtx.Build.StartTime),
 		RepoOwner:   projCtx.ProjectRef.Owner,
 		Repo:        projCtx.ProjectRef.Repo,
 		Version:     *projCtx.Version,
@@ -240,7 +244,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		history.Builds[i] = &uiBuild{
 			Build:       builds[i],
 			CurrentTime: time.Now().UnixNano(),
-			Elapsed:     time.Now().Sub(builds[i].StartTime),
+			Elapsed:     time.Since(builds[i].StartTime),
 			RepoOwner:   v.Owner,
 			Repo:        v.Repo,
 			Version:     *v,
@@ -263,7 +267,7 @@ func (uis *UIServer) buildHistory(w http.ResponseWriter, r *http.Request) {
 		history.LastSuccess = &uiBuild{
 			Build:       *lastSuccess,
 			CurrentTime: time.Now().UnixNano(),
-			Elapsed:     time.Now().Sub(lastSuccess.StartTime),
+			Elapsed:     time.Since(lastSuccess.StartTime),
 			RepoOwner:   v.Owner,
 			Repo:        v.Repo,
 			Version:     *v,

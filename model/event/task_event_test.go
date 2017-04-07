@@ -78,6 +78,7 @@ func TestLoggingTaskEvents(t *testing.T) {
 			So(taskId, ShouldEqual, event.ResourceId)
 
 			eventData, ok = event.Data.Data.(*TaskEventData)
+			So(ok, ShouldBeTrue)
 			So(eventData.ResourceType, ShouldEqual, ResourceTypeTask)
 			So(eventData.HostId, ShouldBeBlank)
 			So(eventData.UserId, ShouldBeBlank)

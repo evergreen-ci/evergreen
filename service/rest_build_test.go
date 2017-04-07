@@ -36,7 +36,7 @@ func TestGetBuildInfo(t *testing.T) {
 		Settings:    *buildTestConfig,
 		UserManager: userManager,
 	}
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "error installing plugins")
 
 	home := evergreen.FindEvergreenHome()
 
@@ -214,7 +214,7 @@ func TestGetBuildStatus(t *testing.T) {
 		Directory:    filepath.Join(home, WebRootPath, Templates),
 		DisableCache: true,
 	})
-	uis.InitPlugins()
+	testutil.HandleTestingErr(uis.InitPlugins(), t, "problem loading plugins")
 
 	router, err := uis.NewRouter()
 	testutil.HandleTestingErr(err, t, "Failed to create ui server router")

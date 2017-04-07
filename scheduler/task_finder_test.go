@@ -15,7 +15,7 @@ var taskFinderTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
-	grip.SetSender(testutil.SetupTestSender(taskFinderTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(taskFinderTestConf.Scheduler.LogFile)))
 }
 
 func TestDBTaskFinder(t *testing.T) {

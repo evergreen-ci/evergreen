@@ -5,13 +5,11 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/s3"
 	"github.com/pkg/errors"
 )
 
 var (
-	BucketNameRegex = regexp.MustCompile("^[a-z0-9\\-.]+$")
+	BucketNameRegex = regexp.MustCompile(`^[a-z0-9\-.]+$`)
 )
 
 func validateS3BucketName(bucket string) error {
@@ -43,18 +41,4 @@ func validateS3BucketName(bucket string) error {
 		}
 	*/
 	return nil
-}
-
-func validS3Permissions(perm string) bool {
-	return util.SliceContains(
-		[]s3.ACL{
-			s3.Private,
-			s3.PublicRead,
-			s3.PublicReadWrite,
-			s3.AuthenticatedRead,
-			s3.BucketOwnerRead,
-			s3.BucketOwnerFull,
-		},
-		s3.ACL(perm),
-	)
 }

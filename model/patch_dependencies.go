@@ -7,11 +7,6 @@ type dependencyIncluder struct {
 	included map[TVPair]bool
 }
 
-type patchDep struct {
-	Variant string
-	BuildVariantTask
-}
-
 // Include crawls the tasks represented by the combination of variants and tasks and
 // add or removes tasks based on the dependency graph. Required and dependent tasks
 // are added; tasks that depend on unpatchable tasks are pruned. New slices

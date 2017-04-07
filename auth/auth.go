@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -33,7 +34,12 @@ func LoadUserManager(authConfig evergreen.AuthConfig) (UserManager, error) {
 		}
 		manager, err = NewGithubUserManager(authConfig.Github)
 
+		// if err!=nil has never returned an error, though it
+		// looks like it should, just printing a warning in
+		// the mean time.
+		grip.Warning(errors.WithStack(err))
 	}
+
 	if manager != nil {
 		return manager, nil
 	}

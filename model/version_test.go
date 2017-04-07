@@ -13,7 +13,7 @@ import (
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
-	grip.SetSender(testutil.SetupTestSender("/tmp/version_test.log"))
+	grip.Warning(grip.SetSender(testutil.SetupTestSender("/tmp/version_test.log")))
 }
 
 func TestLastKnownGoodConfig(t *testing.T) {
@@ -64,7 +64,7 @@ func TestLastKnownGoodConfig(t *testing.T) {
 			So(lastGood.Config, ShouldEqual, "5")
 		})
 		Reset(func() {
-			db.Clear(version.Collection)
+			So(db.Clear(version.Collection), ShouldBeNil)
 		})
 	})
 }

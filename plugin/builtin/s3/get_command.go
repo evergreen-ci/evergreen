@@ -212,8 +212,9 @@ func (self *S3GetCommand) Get() error {
 
 	// either untar the remote, or just write to a file
 	if self.LocalFile != "" {
+		var exists bool
 		// remove the file, if it exists
-		exists, err := util.FileExists(self.LocalFile)
+		exists, err = util.FileExists(self.LocalFile)
 		if err != nil {
 			return errors.Wrapf(err, "error checking existence of local file %v",
 				self.LocalFile)

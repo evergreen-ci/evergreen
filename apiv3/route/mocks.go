@@ -45,7 +45,7 @@ type mockAuthenticator struct {
 	err error
 }
 
-// Authenticate returns the error embeded in the mock authenticator.
+// Authenticate returns the error embedded in the mock authenticator.
 func (m *mockAuthenticator) Authenticate(sc servicecontext.ServiceContext, r *http.Request) error {
 	return m.err
 }

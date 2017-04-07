@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -83,30 +84,26 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 func DeleteTagFromTask(taskId, name string) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	_, err = db.UpdateAll(collection,
 		bson.M{VersionIdKey: t.Version, NameKey: name},
 		bson.M{"$unset": bson.M{TagKey: 1}})
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return errors.WithStack(err)
 }
 
 func SetTagForTask(taskId, name, tag string) error {
 	t, err := task.FindOne(task.ById(taskId))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	_, err = db.UpdateAll(collection,
 		bson.M{VersionIdKey: t.Version, NameKey: name},
 		bson.M{"$set": bson.M{TagKey: tag}})
-	if err != nil {
-		return err
-	}
-	return nil
+
+	return errors.WithStack(err)
 }
 func apiGetTagsForTask(w http.ResponseWriter, r *http.Request) {
 	t := plugin.GetTask(r)

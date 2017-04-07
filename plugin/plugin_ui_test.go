@@ -370,7 +370,6 @@ func TestPluginUIDataFunctionErrorHandling(t *testing.T) {
 								Position: plugin.PageCenter,
 								DataFunc: func(_ plugin.UIContext) (interface{}, error) {
 									panic("BOOM")
-									return "like perfection I am unreachable", nil
 								},
 							},
 						},

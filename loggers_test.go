@@ -20,7 +20,8 @@ func TestLoggingWriter(t *testing.T) {
 			logWriter := NewInfoLoggingWriter(testLogger)
 
 			testLogLine := "blah blah %x %fkjabsddg"
-			logWriter.Write([]byte(testLogLine + "\n"))
+			_, err := logWriter.Write([]byte(testLogLine + "\n"))
+			So(err, ShouldBeNil)
 			So(sender.Len(), ShouldEqual, 1)
 			So(strings.HasSuffix(sender.GetMessage().Rendered, testLogLine), ShouldBeTrue)
 		})

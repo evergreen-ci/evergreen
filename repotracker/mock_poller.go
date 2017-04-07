@@ -18,7 +18,8 @@ type mockRepoPoller struct {
 // Creates a new MockRepo poller with the given project settings
 func NewMockRepoPoller(mockProject *model.Project, mockRevisions []model.Revision) *mockRepoPoller {
 	return &mockRepoPoller{
-		project: mockProject,
+		project:   mockProject,
+		revisions: mockRevisions,
 	}
 }
 
@@ -52,16 +53,14 @@ func (d *mockRepoPoller) GetRemoteConfig(revision string) (*model.Project, error
 	return d.project, nil
 }
 
-func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) (
-	[]model.Revision, error) {
+func (d *mockRepoPoller) GetRevisionsSince(revision string, maxRevisionsToSearch int) ([]model.Revision, error) {
 	if d.nextError != nil {
 		return nil, d.clearError()
 	}
 	return d.revisions, nil
 }
 
-func (d *mockRepoPoller) GetRecentRevisions(maxRevisionsToSearch int) (
-	[]model.Revision, error) {
+func (d *mockRepoPoller) GetRecentRevisions(maxRevisionsToSearch int) ([]model.Revision, error) {
 	if d.nextError != nil {
 		return nil, d.clearError()
 	}

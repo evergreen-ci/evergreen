@@ -20,16 +20,14 @@ import (
 )
 
 var (
-	patchTestConfig   = testutil.TestConfig()
-	configFilePath    = "testing/mci.yml"
-	patchedProject    = "mci-config"
-	unpatchedProject  = "mci-test"
-	patchedRevision   = "582257a4ca3a9c890959b04d4dd2de5e4d34e9e7"
-	unpatchedRevision = "99162ee5bc41eb314f5bb01bd12f0c43e9cb5f32"
-	patchFile         = "testdata/patch.diff"
-	patchOwner        = "deafgoat"
-	patchRepo         = "config"
-	patchBranch       = "master"
+	patchTestConfig = testutil.TestConfig()
+	configFilePath  = "testing/mci.yml"
+	patchedProject  = "mci-config"
+	patchedRevision = "582257a4ca3a9c890959b04d4dd2de5e4d34e9e7"
+	patchFile       = "testdata/patch.diff"
+	patchOwner      = "deafgoat"
+	patchRepo       = "config"
+	patchBranch     = "master"
 
 	// newProjectPatchFile is a diff that adds a new project configuration file
 	// located at newConfigFilePath.
@@ -38,8 +36,7 @@ var (
 )
 
 func init() {
-	db.SetGlobalSessionProvider(
-		db.SessionFactoryFromConfig(patchTestConfig))
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(patchTestConfig))
 
 	current := testutil.GetDirectoryOfFile()
 	patchFile = filepath.Join(current, patchFile)
@@ -107,7 +104,7 @@ func resetPatchSetup(t *testing.T, testPath string) *patch.Patch {
 	return configPatch
 }
 
-func resetProjectlessPatchSetup(t *testing.T, testPath string) *patch.Patch {
+func resetProjectlessPatchSetup(t *testing.T) *patch.Patch {
 	clearAll(t)
 	projectRef := &model.ProjectRef{
 		Identifier: patchedProject,
@@ -173,14 +170,14 @@ func TestGetPatchedProject(t *testing.T) {
 			})
 
 			Convey("Calling GetPatchedProject on a project-less version returns a valid project", func() {
-				configPatch := resetProjectlessPatchSetup(t, configFilePath)
+				configPatch := resetProjectlessPatchSetup(t)
 				project, err := GetPatchedProject(configPatch, patchTestConfig)
 				So(err, ShouldBeNil)
 				So(project, ShouldNotBeNil)
 			})
 
 			Reset(func() {
-				db.Clear(distro.Collection)
+				So(db.Clear(distro.Collection), ShouldBeNil)
 			})
 		})
 }
@@ -236,7 +233,7 @@ func TestFinalizePatch(t *testing.T) {
 			})
 
 			Reset(func() {
-				db.Clear(distro.Collection)
+				So(db.Clear(distro.Collection), ShouldBeNil)
 			})
 		})
 }

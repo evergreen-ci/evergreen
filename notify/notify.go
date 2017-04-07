@@ -75,7 +75,6 @@ var (
 	taskCompletionKey        = "task_completion"
 	taskFailureKeys          = []string{taskFailureKey, taskSuccessToFailureKey}
 	buildFailureKeys         = []string{buildFailureKey, buildSuccessToFailureKey}
-	allFailureKeys           = []string{taskFailureKey, taskSuccessToFailureKey, buildFailureKey, buildSuccessToFailureKey}
 
 	// notification subjects
 	failureSubject    = "failed"
@@ -109,13 +108,6 @@ var (
 )
 
 var (
-	// These are helpful for situations where
-	// a current task/build has completed but not the
-	// previous task/build it is to be compared with
-	// *Not Yet Implemented*
-	unprocessedBuilds = []string{}
-	unprocessedTasks  = []string{}
-
 	// These help us to limit the tasks/builds we pull
 	// from the database on each run of the notifier
 	lastProjectNotificationTime = make(map[string]time.Time)
@@ -168,7 +160,7 @@ func Run(settings *evergreen.Settings) error {
 	}
 
 	// validate the notifications
-	err = ValidateNotifications(settings.ConfigDir, mciNotification)
+	err = ValidateNotifications(mciNotification)
 	if err != nil {
 		grip.Errorf("validating notifications: %+v", err)
 		return err
@@ -184,7 +176,7 @@ func Run(settings *evergreen.Settings) error {
 	}
 
 	// process the notifications
-	emails, err := ProcessNotifications(ae, settings.ConfigDir, mciNotification, true)
+	emails, err := ProcessNotifications(ae, mciNotification, true)
 	if err != nil {
 		grip.Errorf("processing notifications: %+v", err)
 		return err
@@ -194,9 +186,6 @@ func Run(settings *evergreen.Settings) error {
 	// we couldn't process on a prior run of the notifier
 	// Currently, this can only happen if an administrator
 	// bumps up the priority of a build/task
-	//
-	// grip.Infof("Remnant builds %d", len(unprocessedBuilds))
-	// grip.Infof("Remnant tasks %d", len(unprocessedTasks))
 
 	// send the notifications
 
@@ -252,11 +241,11 @@ func ParseNotifications(configName string) (*MCINotification, error) {
 }
 
 // This function is responsible for validating the notifications file
-func ValidateNotifications(configName string, mciNotification *MCINotification) error {
+func ValidateNotifications(mciNotification *MCINotification) error {
 	grip.Info("Validating notifications...")
 	allNotifications := []string{}
 
-	projectNameToBuildVariants, err := findProjectBuildVariants(configName)
+	projectNameToBuildVariants, err := findProjectBuildVariants()
 	if err != nil {
 		return errors.Wrap(err, "Error loading project build variants")
 	}
@@ -337,7 +326,7 @@ func ValidateNotifications(configName string, mciNotification *MCINotification) 
 }
 
 // This function is responsible for all notifications processing
-func ProcessNotifications(ae *web.App, configName string, mciNotification *MCINotification, updateTimes bool) (map[NotificationKey][]Email, error) {
+func ProcessNotifications(ae *web.App, mciNotification *MCINotification, updateTimes bool) (map[NotificationKey][]Email, error) {
 	// create MCI notifications
 	allNotificationsSlice := notificationsToStruct(mciNotification)
 
@@ -353,7 +342,7 @@ func ProcessNotifications(ae *web.App, configName string, mciNotification *MCINo
 
 	emails := make(map[NotificationKey][]Email)
 	for _, key := range allNotificationsSlice {
-		emailsForKey, err := Handlers[key.NotificationName].GetNotifications(ae, configName, &key)
+		emailsForKey, err := Handlers[key.NotificationName].GetNotifications(ae, &key)
 		if err != nil {
 			grip.Infof("Error processing %s on %s: %+v", key.NotificationName, key.Project, err)
 			continue
@@ -489,7 +478,7 @@ func UpdateNotificationTimes() (err error) {
 //***********************************\/
 
 // Construct a map of project names to build variants for that project
-func findProjectBuildVariants(configName string) (map[string][]string, error) {
+func findProjectBuildVariants() (map[string][]string, error) {
 	projectNameToBuildVariants := make(map[string][]string)
 
 	allProjects, err := model.FindAllTrackedProjectRefs()
@@ -584,7 +573,10 @@ func constructChangeInfo(v *version.Version, notification *NotificationKey) (cha
 
 // use mail's rfc2047 to encode any string
 func encodeRFC2047(String string) string {
-	addr := mail.Address{String, ""}
+	addr := mail.Address{
+		Name:    String,
+		Address: "",
+	}
 	return strings.Trim(addr.String(), " <>")
 }
 

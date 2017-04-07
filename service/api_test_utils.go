@@ -29,7 +29,7 @@ func (s *TestServer) Close() {
 	s.ts.Close()
 }
 
-func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugins []plugin.APIPlugin, verbose bool) (*TestServer, error) {
+func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugins []plugin.APIPlugin) (*TestServer, error) {
 	port := testutil.NextPort()
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		return nil, err

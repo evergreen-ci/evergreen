@@ -388,7 +388,7 @@ func (uis *UIServer) versionHistoryDrawer(w http.ResponseWriter, r *http.Request
 	}
 
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Identifier,
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier,
 		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
@@ -422,7 +422,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get the versions in the requested window
-	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Id, projCtx.Version.Identifier,
+	versions, err := getVersionsInWindow(drawerInfo.window, projCtx.Version.Identifier,
 		projCtx.Version.RevisionOrderNumber, drawerInfo.radius, projCtx.Version)
 
 	if err != nil {
@@ -442,7 +442,7 @@ func (uis *UIServer) taskHistoryDrawer(w http.ResponseWriter, r *http.Request) {
 	}{taskGroups})
 }
 
-func getVersionsInWindow(wt, anchorId, projectId string, anchorOrderNum, radius int,
+func getVersionsInWindow(wt, projectId string, anchorOrderNum, radius int,
 	center *version.Version) ([]version.Version, error) {
 	if wt == beforeWindow {
 		return makeVersionsQuery(anchorOrderNum, projectId, radius, true)

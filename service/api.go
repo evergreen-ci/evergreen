@@ -36,7 +36,6 @@ import (
 )
 
 type (
-	key           int
 	taskKey       int
 	hostKey       int
 	projectKey    int
@@ -435,12 +434,12 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 
 	heartbeatResponse := apimodels.HeartbeatResponse{}
 	if t.Aborted {
-		// grip.Infofln("Sending abort signal for task %s", task.Id)
+		grip.Noticef("Sending abort signal for task %s", t.Id)
 		heartbeatResponse.Abort = true
 	}
 
 	if err := t.UpdateHeartbeat(); err != nil {
-		// grip.Errorf("Error updating heartbeat for task %s : %+v", task.Id, err)
+		grip.Warningf("Error updating heartbeat for task %s: %+v", t.Id, err)
 	}
 	as.WriteJSON(w, http.StatusOK, heartbeatResponse)
 }
@@ -608,7 +607,8 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get/store setup logs
-		setupLog, err := ioutil.ReadAll(r.Body)
+		var setupLog []byte
+		setupLog, err = ioutil.ReadAll(r.Body)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return

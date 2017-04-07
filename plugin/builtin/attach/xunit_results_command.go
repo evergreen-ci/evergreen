@@ -155,7 +155,7 @@ func (c *AttachXUnitResultsCommand) parseAndUploadResults(
 	}
 
 	for i, log := range logs {
-		logId, err := SendJSONLogs(taskConfig, pluginLogger, pluginCom, log)
+		logId, err := SendJSONLogs(pluginLogger, pluginCom, log)
 		if err != nil {
 			pluginLogger.LogTask(slogger.WARN, "Error uploading logs for %v", log.Name)
 			continue

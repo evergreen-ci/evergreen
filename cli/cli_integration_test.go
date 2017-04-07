@@ -59,7 +59,7 @@ type cliTestHarness struct {
 
 func setupCLITestHarness() cliTestHarness {
 	// create a test API server
-	testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins, true)
+	testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
 	So(err, ShouldBeNil)
 	So(
 		db.ClearCollections(
@@ -104,7 +104,7 @@ func setupCLITestHarness() cliTestHarness {
 	So(err, ShouldBeNil)
 	_, err = settingsFile.Write(settingsBytes)
 	So(err, ShouldBeNil)
-	settingsFile.Close()
+	So(settingsFile.Close(), ShouldBeNil)
 	return cliTestHarness{testServer, settingsFile.Name()}
 }
 
@@ -130,12 +130,13 @@ func TestCLIFetchSource(t *testing.T) {
 		So(err, ShouldBeNil)
 		newPatch, err := ac.PutPatch(patchSub)
 		So(err, ShouldBeNil)
-		patches, err := ac.GetPatches(0)
+		_, err = ac.GetPatches(0)
 		So(err, ShouldBeNil)
-		err = ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", testModulePatch, "1e5232709595db427893826ce19289461cba3f75")
+		So(ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", testModulePatch, "1e5232709595db427893826ce19289461cba3f75"),
+			ShouldBeNil)
 		So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
 
-		patches, err = ac.GetPatches(0)
+		patches, err := ac.GetPatches(0)
 		So(err, ShouldBeNil)
 		testTask, err := task.FindOne(
 			db.Query(bson.M{
@@ -203,11 +204,11 @@ func TestCLIFetchArtifacts(t *testing.T) {
 		}).Upsert()
 		So(err, ShouldBeNil)
 
-		ac, rc, _, err := getAPIClients(&Options{testSetup.settingsFilePath})
+		_, rc, _, err := getAPIClients(&Options{testSetup.settingsFilePath})
 		So(err, ShouldBeNil)
 
 		Convey("shallow fetch artifacts should download a single task's artifacts successfully", func() {
-			err = fetchArtifacts(ac, rc, "rest_task_test_id1", "", true)
+			err = fetchArtifacts(rc, "rest_task_test_id1", "", true)
 			So(err, ShouldBeNil)
 			// downloaded file should exist where we expect
 			fileStat, err := os.Stat("./artifacts-abcdef-rest_task_variant_task_one/robots.txt")
@@ -217,7 +218,7 @@ func TestCLIFetchArtifacts(t *testing.T) {
 			fileStat, err = os.Stat("./rest_task_variant_task_two/humans.txt")
 			So(os.IsNotExist(err), ShouldBeTrue)
 			Convey("deep fetch artifacts should also download artifacts from dependency", func() {
-				err = fetchArtifacts(ac, rc, "rest_task_test_id1", "", false)
+				err = fetchArtifacts(rc, "rest_task_test_id1", "", false)
 				So(err, ShouldBeNil)
 				fileStat, err = os.Stat("./artifacts-abcdef-rest_task_variant_task_two/humans.txt")
 				So(os.IsNotExist(err), ShouldBeFalse)
@@ -305,6 +306,8 @@ func TestCLITestHistory(t *testing.T) {
 func TestCLIFunctions(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestCLIFunctions")
 
+	var patches []patch.Patch
+
 	Convey("with API test server running", t, func() {
 		testSetup := setupCLITestHarness()
 		defer testSetup.testServer.Close()
@@ -314,7 +317,7 @@ func TestCLIFunctions(t *testing.T) {
 
 		Convey("check that creating a patch works", func() {
 			Convey("user should start with no patches present", func() {
-				patches, err := ac.GetPatches(0)
+				patches, err = ac.GetPatches(0)
 				So(err, ShouldBeNil)
 				So(len(patches), ShouldEqual, 0)
 			})
@@ -332,7 +335,7 @@ func TestCLIFunctions(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
-					patches, err := ac.GetPatches(0)
+					patches, err = ac.GetPatches(0)
 					So(err, ShouldBeNil)
 					So(len(patches), ShouldEqual, 1)
 				})
@@ -340,26 +343,26 @@ func TestCLIFunctions(t *testing.T) {
 				Convey("Adding a module to the patch should work", func() {
 					err = ac.UpdatePatchModule(newPatch.Id.Hex(), "render-module", testPatch, "1e5232709595db427893826ce19289461cba3f75")
 					So(err, ShouldBeNil)
-					patches, err := ac.GetPatches(0)
+					patches, err = ac.GetPatches(0)
 					So(err, ShouldBeNil)
 					So(patches[0].Patches[0].ModuleName, ShouldEqual, "")
 					So(patches[0].Patches[1].ModuleName, ShouldEqual, "render-module")
 					Convey("Removing the module from the patch should work", func() {
 						So(ac.DeletePatchModule(newPatch.Id.Hex(), "render-module"), ShouldBeNil)
-						patches, err := ac.GetPatches(0)
+						patches, err = ac.GetPatches(0)
 						So(err, ShouldBeNil)
 						So(len(patches[0].Patches), ShouldEqual, 1)
 						Convey("Finalizing the patch should work", func() {
 							// First double check that the patch starts with no "version" field
 							So(patches[0].Version, ShouldEqual, "")
 							So(ac.FinalizePatch(newPatch.Id.Hex()), ShouldBeNil)
-							patches, err := ac.GetPatches(0)
+							patches, err = ac.GetPatches(0)
 							So(err, ShouldBeNil)
 							// After finalizing, the patch should now have a version populated
 							So(patches[0].Version, ShouldNotEqual, "")
 							Convey("Canceling the patch should work", func() {
 								So(ac.CancelPatch(newPatch.Id.Hex()), ShouldBeNil)
-								patches, err := ac.GetPatches(0)
+								patches, err = ac.GetPatches(0)
 								So(err, ShouldBeNil)
 								// After canceling, tasks in the version should be deactivated
 								tasks, err := task.Find(task.ByVersion(patches[0].Version))
@@ -400,7 +403,7 @@ func TestCLIFunctions(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
-					patches, err := ac.GetPatches(1)
+					patches, err = ac.GetPatches(1)
 					So(err, ShouldBeNil)
 					So(len(patches), ShouldEqual, 1)
 					So(len(patches[0].BuildVariants), ShouldEqual, 1)
@@ -415,12 +418,12 @@ func TestCLIFunctions(t *testing.T) {
 						_, err := ac.PutPatch(patchSub)
 						So(err, ShouldBeNil)
 						Convey("GetPatches where n=1 should return 1 patch", func() {
-							patches, err := ac.GetPatches(1)
+							patches, err = ac.GetPatches(1)
 							So(err, ShouldBeNil)
 							So(len(patches), ShouldEqual, 1)
 						})
 						Convey("GetPatches where n=2 should return 2 patches", func() {
-							patches, err := ac.GetPatches(2)
+							patches, err = ac.GetPatches(2)
 							So(err, ShouldBeNil)
 							So(len(patches), ShouldEqual, 2)
 						})
@@ -442,7 +445,7 @@ func TestCLIFunctions(t *testing.T) {
 				So(err, ShouldBeNil)
 
 				Convey("Newly created patch should be fetchable via API", func() {
-					patches, err := ac.GetPatches(0)
+					patches, err = ac.GetPatches(0)
 					So(err, ShouldBeNil)
 					So(len(patches), ShouldEqual, 1)
 				})

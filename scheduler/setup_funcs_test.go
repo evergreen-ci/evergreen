@@ -16,7 +16,7 @@ var setupFuncsTestConf = testutil.TestConfig()
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(taskFinderTestConf))
-	grip.SetSender(testutil.SetupTestSender(setupFuncsTestConf.Scheduler.LogFile))
+	grip.CatchError(grip.SetSender(testutil.SetupTestSender(setupFuncsTestConf.Scheduler.LogFile)))
 }
 
 func TestSetupFuncs(t *testing.T) {

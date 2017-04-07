@@ -20,6 +20,7 @@ import (
 
 	"github.com/goamz/goamz/aws"
 	"github.com/goamz/goamz/s3"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -134,7 +135,7 @@ func CopyS3File(awsAuth *aws.Auth, fromS3URL string, toS3URL string, permissionA
 	copyObjectResult := CopyObjectResult{}
 	xmlErr := xml.Unmarshal(respBody, &copyObjectResult)
 	if xmlErr != nil || resp.StatusCode != http.StatusOK {
-		errMsg := ""
+		var errMsg string
 		if xmlErr == nil {
 			errMsg = fmt.Sprintf("S3 returned status code: %d", resp.StatusCode)
 		} else {
@@ -195,7 +196,7 @@ func S3CopyFile(awsAuth *aws.Auth, fromS3Bucket, fromS3Path,
 	copyObjectResult := CopyObjectResult{}
 	xmlErr := xml.Unmarshal(respBody, &copyObjectResult)
 	if xmlErr != nil || resp.StatusCode != http.StatusOK {
-		errMsg := ""
+		var errMsg string
 		if xmlErr == nil {
 			errMsg = fmt.Sprintf("S3 returned status code: %d", resp.StatusCode)
 		} else {
@@ -246,11 +247,8 @@ func PutS3File(pushAuth *aws.Auth, localFilePath, s3URL, contentType, permission
 	bucket := session.Bucket(urlParsed.Host)
 	// options for the header
 	options := s3.Options{}
-	err = bucket.PutReader(urlParsed.Path, localFileReader, fi.Size(), contentType, s3.ACL(permissionACL), options)
-	if err != nil {
-		return err
-	}
-	return nil
+	return errors.Wrapf(bucket.PutReader(urlParsed.Path, localFileReader, fi.Size(), contentType, s3.ACL(permissionACL), options),
+		"problem putting %s to bucket", localFilePath)
 }
 
 func GetS3File(auth *aws.Auth, s3URL string) (io.ReadCloser, error) {
@@ -274,6 +272,7 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 	var md5, ctype, date, xamz string
 	var xamzDate bool
 	var sarray []string
+	var err error
 	for k, v := range headers {
 		k = strings.ToLower(k)
 		switch k {
@@ -329,7 +328,9 @@ func SignAWSRequest(auth aws.Auth, canonicalPath string, req *http.Request) {
 
 	payload := method + "\n" + md5 + "\n" + ctype + "\n" + date + "\n" + xamz + canonicalPath
 	hash := hmac.New(sha1.New, []byte(auth.SecretKey))
-	hash.Write([]byte(payload))
+	_, err = hash.Write([]byte(payload))
+	grip.Debug(err)
+
 	signature := make([]byte, base64.StdEncoding.EncodedLen(hash.Size()))
 	base64.StdEncoding.Encode(signature, hash.Sum(nil))
 

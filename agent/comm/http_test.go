@@ -14,8 +14,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/slogger"
+	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -218,7 +220,8 @@ func TestCommunicatorServerUp(t *testing.T) {
 			incoming := &model.TaskLog{}
 			serveMux.HandleFunc("/task/mocktaskid/log",
 				func(w http.ResponseWriter, req *http.Request) {
-					util.ReadJSONInto(ioutil.NopCloser(req.Body), incoming)
+					err := util.ReadJSONInto(ioutil.NopCloser(req.Body), incoming)
+					grip.Warning(errors.Wrap(err, "problem writing response to request for log"))
 				})
 			err := agentCommunicator.Log(outgoingMessages)
 			So(err, ShouldBeNil)

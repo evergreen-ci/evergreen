@@ -259,9 +259,14 @@ func (sbgf *sessionBackedGridFile) Close() error {
 // GetGridFile returns a ReadCloser for a file stored with the given name under the GridFS prefix.
 func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
 	session, db, err := GetGlobalSessionFactory().GetSession()
+	if err != nil {
+		err = errors.Wrap(err, "error establishing db connection")
+		grip.Error(err)
+		return nil, err
+	}
 	file, err := db.GridFS(fsPrefix).Open(name)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return &sessionBackedGridFile{file, session}, nil
 }
@@ -272,12 +277,13 @@ func GetGridFile(fsPrefix, name string) (io.ReadCloser, error) {
 func Aggregate(collection string, pipeline interface{}, out interface{}) error {
 	session, db, err := GetGlobalSessionFactory().GetSession()
 	if err != nil {
-		grip.Errorf("error establishing db connection: %+v", err)
+		err = errors.Wrap(err, "error establishing db connection")
+		grip.Error(err)
 		return err
 	}
 	defer session.Close()
 
 	session.SetSocketTimeout(0)
 	pipe := db.C(collection).Pipe(pipeline).AllowDiskUse()
-	return pipe.All(out)
+	return errors.WithStack(pipe.All(out))
 }

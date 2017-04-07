@@ -72,7 +72,7 @@ func TestFindTasksByBuildId(t *testing.T) {
 				Id:      fmt.Sprintf("task_%d", i),
 				BuildId: fmt.Sprintf("build_a"),
 			}
-			testTask.Insert()
+			So(testTask.Insert(), ShouldBeNil)
 		}
 		for i := 0; i < numTasks; i++ {
 			testTask := &task.Task{

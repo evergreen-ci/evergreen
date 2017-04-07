@@ -9,7 +9,7 @@ import (
 )
 
 // DBTaskConnector is a struct that implements the Task related methods
-// from the ServiceContext through interactions witht he backing database.
+// from the ServiceContext through interactions with he backing database.
 type DBTaskConnector struct{}
 
 // FindTaskById uses the service layer's task type to query the backing database for

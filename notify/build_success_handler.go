@@ -14,8 +14,7 @@ type BuildSuccessHandler struct {
 	Name string
 }
 
-func (self *BuildSuccessHandler) GetNotifications(ae *web.App, configName string,
-	key *NotificationKey) ([]Email, error) {
+func (self *BuildSuccessHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciSuccessPreface
 	if key.NotificationRequester == evergreen.PatchVersionRequester {
@@ -29,7 +28,7 @@ func (self *BuildSuccessHandler) GetNotifications(ae *web.App, configName string
 	}
 
 	for _, triggered := range triggeredNotifications {
-		email, err := self.TemplateNotification(ae, configName, &triggered)
+		email, err := self.TemplateNotification(ae, &triggered)
 		if err != nil {
 			grip.Warningf("Error templating notification for task '%s': %+v",
 				triggered.Current.Id, err)
@@ -42,8 +41,7 @@ func (self *BuildSuccessHandler) GetNotifications(ae *web.App, configName string
 	return emails, nil
 }
 
-func (self *BuildSuccessHandler) TemplateNotification(ae *web.App, _ string,
-	notification *TriggeredBuildNotification) (Email, error) {
+func (self *BuildSuccessHandler) TemplateNotification(ae *web.App, notification *TriggeredBuildNotification) (Email, error) {
 	changeInfo, err := self.GetChangeInfo(notification)
 	if err != nil {
 		return nil, err

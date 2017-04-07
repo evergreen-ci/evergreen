@@ -660,7 +660,7 @@ func TestRulesEvaluation(t *testing.T) {
 			}}
 			_, errs := evaluateBuildVariants(tse, nil, bvs)
 			So(errs, ShouldNotBeNil)
-			So(len(errs), ShouldEqual, 2)
+			So(len(errs), ShouldEqual, 3)
 		})
 		Convey("a 'remove' rule for an unknown task should fail", func() {
 			bvs := []parserBV{{

@@ -67,7 +67,7 @@ func (tc TestCase) ToModelTestResultAndLog(t *task.Task) (task.TestResult, *mode
 	res.TestFile = util.CleanForPath(res.TestFile)
 
 	res.StartTime = float64(time.Now().Unix())
-	res.EndTime = float64(res.StartTime + tc.Time)
+	res.EndTime = res.StartTime + tc.Time
 
 	// the presence of the Failure, Error, or Skipped fields
 	// is used to indicate an unsuccessful test case. Logs

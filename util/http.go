@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -20,12 +21,13 @@ func WriteJSON(w *http.ResponseWriter, data interface{}, status int) {
 	jsonBytes, err := json.Marshal(data)
 	if err != nil {
 		(*w).WriteHeader(500)
-		(*w).Write([]byte("{}"))
+		_, _ = (*w).Write([]byte("{}"))
 		return
 	}
 
 	(*w).WriteHeader(status)
-	(*w).Write([]byte(jsonBytes))
+	_, err = (*w).Write(jsonBytes)
+	grip.Warning(err)
 }
 
 // MakeTlsConfig creates a TLS Config from a certificate and key.
@@ -38,7 +40,7 @@ func MakeTlsConfig(cert string, key string) (*tls.Config, error) {
 	tlsConfig.Certificates[0], err =
 		tls.X509KeyPair([]byte(cert), []byte(key))
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 	return tlsConfig, nil
 }

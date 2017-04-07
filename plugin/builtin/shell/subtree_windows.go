@@ -66,7 +66,6 @@ var (
 	procAssignProcessToJobObject = modkernel32.NewProc("AssignProcessToJobObject")
 	procCloseHandle              = modkernel32.NewProc("CloseHandle")
 	procCreateJobObjectW         = modkernel32.NewProc("CreateJobObjectW")
-	procOpenJobObjectW           = modkernel32.NewProc("OpenJobObjectW")
 	procOpenProcess              = modkernel32.NewProc("OpenProcess")
 	procTerminateJobObject       = modkernel32.NewProc("TerminateJobObject")
 )

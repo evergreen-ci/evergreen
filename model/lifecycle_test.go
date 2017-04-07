@@ -432,6 +432,7 @@ func TestBuildSetActivated(t *testing.T) {
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
+				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeTrue)
 				So(b.ActivatedBy, ShouldEqual, user)
 
@@ -440,6 +441,7 @@ func TestBuildSetActivated(t *testing.T) {
 
 				// refresh from the database and check again
 				b, err = build.FindOne(build.ById(b.Id))
+				So(err, ShouldBeNil)
 				So(b.Activated, ShouldBeTrue)
 				So(b.ActivatedBy, ShouldEqual, user)
 

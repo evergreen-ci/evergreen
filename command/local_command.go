@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type LocalCommand struct {
@@ -98,15 +99,11 @@ func (lc *LocalCommand) PrepToRun(expansions *Expansions) error {
 
 	lc.CmdString, err = expansions.ExpandString(lc.CmdString)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	lc.WorkingDirectory, err = expansions.ExpandString(lc.WorkingDirectory)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return errors.WithStack(err)
 }
 
 type LocalCommandGroup struct {

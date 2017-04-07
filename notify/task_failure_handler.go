@@ -14,8 +14,7 @@ type TaskFailureHandler struct {
 	Name string
 }
 
-func (self *TaskFailureHandler) GetNotifications(ae *web.App, configName string,
-	key *NotificationKey) ([]Email, error) {
+func (self *TaskFailureHandler) GetNotifications(ae *web.App, key *NotificationKey) ([]Email, error) {
 	var emails []Email
 	preface := mciFailurePreface
 	if key.NotificationRequester == evergreen.PatchVersionRequester {
@@ -28,7 +27,7 @@ func (self *TaskFailureHandler) GetNotifications(ae *web.App, configName string,
 	}
 
 	for _, triggered := range triggeredNotifications {
-		email, err := self.TemplateNotification(ae, configName, &triggered)
+		email, err := self.TemplateNotification(ae, &triggered)
 		if err != nil {
 			grip.Warningf("Error templating notification for task '%s': %+v",
 				triggered.Current.Id, err)
@@ -41,13 +40,12 @@ func (self *TaskFailureHandler) GetNotifications(ae *web.App, configName string,
 	return emails, nil
 }
 
-func (self *TaskFailureHandler) TemplateNotification(ae *web.App, configName string,
-	notification *TriggeredTaskNotification) (Email, error) {
+func (self *TaskFailureHandler) TemplateNotification(ae *web.App, notification *TriggeredTaskNotification) (Email, error) {
 	changeInfo, err := self.GetChangeInfo(notification)
 	if err != nil {
 		return nil, err
 	}
-	return self.templateNotification(ae, configName, notification, changeInfo)
+	return self.templateNotification(ae, notification, changeInfo)
 }
 
 func (self *TaskFailureHandler) GetChangeInfo(

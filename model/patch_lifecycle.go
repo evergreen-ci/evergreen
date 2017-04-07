@@ -117,7 +117,6 @@ func AddNewBuildsForPatch(p *patch.Patch, patchVersion *version.Version, project
 			},
 		},
 	)
-	return nil
 }
 
 // Given a patch version and set of variant/task pairs, creates any tasks that don't exist yet,
@@ -293,7 +292,7 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		Message:       p.Description,
 		BuildIds:      []string{},
 		BuildVariants: []version.BuildStatus{},
-		Config:        string(p.PatchedConfig),
+		Config:        p.PatchedConfig,
 		Status:        evergreen.PatchCreated,
 		Requester:     evergreen.PatchVersionRequester,
 		Branch:        projectRef.Branch,

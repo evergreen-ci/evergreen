@@ -28,13 +28,15 @@ func TestSetActiveState(t *testing.T) {
 	Convey("With one task with no dependencies", t, func() {
 		testutil.HandleTestingErr(db.ClearCollections(task.Collection, build.Collection), t,
 			"Error clearing task and build collections")
+		var err error
+
 		displayName := "testName"
 		userName := "testUser"
 		testTime := time.Now()
 		b := &build.Build{
 			Id: "buildtest",
 		}
-		testTask := task.Task{
+		testTask := &task.Task{
 			Id:            "testone",
 			DisplayName:   displayName,
 			ScheduledTime: testTime,
@@ -42,12 +44,13 @@ func TestSetActiveState(t *testing.T) {
 			BuildId:       b.Id,
 		}
 		b.Tasks = []build.TaskCache{{Id: testTask.Id}}
+
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 
 		Convey("activating the task should set the task state to active", func() {
 			So(SetActiveState(testTask.Id, "randomUser", true), ShouldBeNil)
-			testTask, err := task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldBeTrue)
 			So(testTask.ScheduledTime, ShouldHappenWithin, oneMs, testTime)
@@ -61,7 +64,7 @@ func TestSetActiveState(t *testing.T) {
 		Convey("when deactivating an active task as evergreen", func() {
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, true), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
@@ -71,7 +74,7 @@ func TestSetActiveState(t *testing.T) {
 			})
 			Convey("if the task is activated by stepback user, the task should not deactivate", func() {
 				So(SetActiveState(testTask.Id, evergreen.StepbackTaskActivator, true), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
 				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
@@ -81,7 +84,7 @@ func TestSetActiveState(t *testing.T) {
 			})
 			Convey("if the task is not activated by evergreen, the task should not deactivate", func() {
 				So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
 				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, false), ShouldBeNil)
@@ -95,7 +98,7 @@ func TestSetActiveState(t *testing.T) {
 			u := "test_user"
 			Convey("if the task is activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(testTask.Id, evergreen.DefaultTaskActivator, true), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.DefaultTaskActivator)
 				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
@@ -105,7 +108,7 @@ func TestSetActiveState(t *testing.T) {
 			})
 			Convey("if the task is activated by stepback user, the task should deactivate", func() {
 				So(SetActiveState(testTask.Id, evergreen.StepbackTaskActivator, true), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, evergreen.StepbackTaskActivator)
 				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
@@ -115,7 +118,7 @@ func TestSetActiveState(t *testing.T) {
 			})
 			Convey("if the task is not activated by evergreen, the task should deactivate", func() {
 				So(SetActiveState(testTask.Id, userName, true), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.ActivatedBy, ShouldEqual, userName)
 				So(SetActiveState(testTask.Id, u, false), ShouldBeNil)
@@ -178,7 +181,7 @@ func TestSetActiveState(t *testing.T) {
 
 			Convey("deactivating the task should not deactive the tasks it depends on", func() {
 				So(SetActiveState(testTask.Id, userName, false), ShouldBeNil)
-				depTask, err := task.FindOne(task.ById(depTask.Id))
+				depTask, err = task.FindOne(task.ById(depTask.Id))
 				So(err, ShouldBeNil)
 				So(depTask.Activated, ShouldBeTrue)
 			})
@@ -339,9 +342,9 @@ func TestUpdateBuildStatusForTask(t *testing.T) {
 			b, err := build.FindOne(build.ById(b.Id))
 			So(err, ShouldBeNil)
 			So(b.Status, ShouldEqual, evergreen.BuildFailed)
-			v, err := version.FindOne(version.ById(v.Id))
+			v, err = version.FindOne(version.ById(v.Id))
+			So(err, ShouldBeNil)
 			So(v.Status, ShouldEqual, evergreen.VersionFailed)
-
 		})
 	})
 }
@@ -516,7 +519,7 @@ func TestTryResetTask(t *testing.T) {
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
 			}
-			testTask := task.Task{
+			testTask := &task.Task{
 				Id:          "testone",
 				DisplayName: displayName,
 				Activated:   false,
@@ -537,12 +540,15 @@ func TestTryResetTask(t *testing.T) {
 					Id: testTask.Id,
 				},
 			}
+
+			var err error
+
 			So(b.Insert(), ShouldBeNil)
 			So(testTask.Insert(), ShouldBeNil)
 			So(v.Insert(), ShouldBeNil)
 			Convey("should reset and add a task to the old tasks collection", func() {
 				So(TryResetTask(testTask.Id, userName, "", p, detail), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, apimodels.TaskEndDetail{})
 				So(testTask.Status, ShouldEqual, evergreen.TaskUndispatched)
@@ -572,7 +578,7 @@ func TestTryResetTask(t *testing.T) {
 				Id:     b.Version,
 				Status: evergreen.VersionStarted,
 			}
-			testTask := task.Task{
+			testTask := &task.Task{
 				Id:          "testone",
 				DisplayName: displayName,
 				Activated:   false,
@@ -587,7 +593,7 @@ func TestTryResetTask(t *testing.T) {
 			detail := &apimodels.TaskEndDetail{
 				Status: evergreen.TaskFailed,
 			}
-			anotherTask := task.Task{
+			anotherTask := &task.Task{
 				Id:          "two",
 				DisplayName: displayName,
 				Activated:   false,
@@ -609,9 +615,11 @@ func TestTryResetTask(t *testing.T) {
 			So(v.Insert(), ShouldBeNil)
 			So(anotherTask.Insert(), ShouldBeNil)
 
+			var err error
+
 			Convey("should not reset if an origin other than the ui package tries to reset", func() {
 				So(TryResetTask(testTask.Id, userName, "", p, detail), ShouldBeNil)
-				testTask, err := task.FindOne(task.ById(testTask.Id))
+				testTask, err = task.FindOne(task.ById(testTask.Id))
 				So(err, ShouldBeNil)
 				So(testTask.Details, ShouldResemble, *detail)
 				So(testTask.Status, ShouldEqual, detail.Status)
@@ -638,14 +646,14 @@ func TestAbortTask(t *testing.T) {
 		b := &build.Build{
 			Id: "buildtest",
 		}
-		testTask := task.Task{
+		testTask := &task.Task{
 			Id:          "testone",
 			DisplayName: displayName,
 			Activated:   false,
 			BuildId:     b.Id,
 			Status:      evergreen.TaskStarted,
 		}
-		finishedTask := task.Task{
+		finishedTask := &task.Task{
 			Id:          "another",
 			DisplayName: displayName,
 			Activated:   false,
@@ -663,9 +671,10 @@ func TestAbortTask(t *testing.T) {
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		So(finishedTask.Insert(), ShouldBeNil)
+		var err error
 		Convey("with a task that has started, aborting a task should work", func() {
 			So(AbortTask(testTask.Id, userName), ShouldBeNil)
-			testTask, err := task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Activated, ShouldEqual, false)
 			So(testTask.Aborted, ShouldEqual, true)
@@ -690,7 +699,7 @@ func TestMarkStart(t *testing.T) {
 			Id:     b.Version,
 			Status: evergreen.VersionCreated,
 		}
-		testTask := task.Task{
+		testTask := &task.Task{
 			Id:          "testTask",
 			DisplayName: displayName,
 			Activated:   true,
@@ -709,9 +718,12 @@ func TestMarkStart(t *testing.T) {
 		So(b.Insert(), ShouldBeNil)
 		So(testTask.Insert(), ShouldBeNil)
 		So(v.Insert(), ShouldBeNil)
+
+		var err error
+
 		Convey("when calling MarkStart, the task, version and build should be updated", func() {
 			So(MarkStart(testTask.Id), ShouldBeNil)
-			testTask, err := task.FindOne(task.ById(testTask.Id))
+			testTask, err = task.FindOne(task.ById(testTask.Id))
 			So(err, ShouldBeNil)
 			So(testTask.Status, ShouldEqual, evergreen.TaskStarted)
 			b, err := build.FindOne(build.ById(b.Id))

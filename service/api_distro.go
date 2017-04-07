@@ -25,7 +25,10 @@ func (as *APIServer) GetDistro(w http.ResponseWriter, r *http.Request) {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
 		}
-		h.SetRunningTask(t.Id, h.AgentRevision, h.TaskDispatchTime)
+		if err = h.SetRunningTask(t.Id, h.AgentRevision, h.TaskDispatchTime); err != nil {
+			as.LoggedError(w, r, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	if h == nil {

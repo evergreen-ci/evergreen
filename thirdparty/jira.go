@@ -13,7 +13,6 @@ import (
 // JiraTickets marshal to and unmarshal from the json issue
 // returned by the rest api at /rest/api/latest/issue/{ticket_id}
 type JiraTicket struct {
-	jiraBase
 	Key    string        `json:"key"`
 	Expand string        `json:"expand"`
 	Fields *TicketFields `json:"fields"`
@@ -49,24 +48,22 @@ type JiraCreateTicketResponse struct {
 	Self string `json:"self"`
 }
 
-type jiraBase struct {
+type JiraStatus struct {
 	Id   string `json:"id"`
 	Self string `json:"self"`
-}
-
-type JiraStatus struct {
-	jiraBase
 	Name string `json:"name"`
 }
 
 type JiraResolution struct {
-	jiraBase
+	Id          string `json:"id"`
+	Self        string `json:"self"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
 type TicketType struct {
-	jiraBase
+	Id          string `json:"id"`
+	Self        string `json:"self"`
 	Description string `json:"description"`
 	IconUrl     string `json:"iconUrl"`
 	Name        string `json:"name"`
@@ -74,13 +71,15 @@ type TicketType struct {
 }
 
 type JiraProject struct {
-	jiraBase
+	Id         string            `json:"id"`
+	Self       string            `json:"self"`
 	Key        string            `json:"key"`
 	Name       string            `json:"name"`
 	AvatarUrls map[string]string `json:"avatarUrls"`
 }
 
 type User struct {
+	Id           string            `json:"id"`
 	Self         string            `json:"self"`
 	Name         string            `json:"name"`
 	EmailAddress string            `json:"emailAddress"`

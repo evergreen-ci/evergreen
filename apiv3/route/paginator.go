@@ -20,7 +20,7 @@ var linkMatcher = regexp.MustCompile(`^\<(\S+)\>; rel=\"(\S+)\"`)
 
 // PaginationExecutor is a struct that handles gathering necessary
 // information for pagination and handles executing the pagination. It is
-// designed to be embeded into a request handler to completely handler the
+// designed to be embedded into a request handler to completely handler the
 // execution of endpoints with pagination.
 type PaginationExecutor struct {
 	// KeyQueryParam is the query param that a PaginationExecutor
@@ -66,7 +66,7 @@ type PageResult struct {
 type PaginatorFunc func(string, int, servicecontext.ServiceContext) ([]model.Model, *PageResult, error)
 
 // Execute serves as an implementation of the RequestHandler's 'Execute' method.
-// It calls the embeded PaginationFunc and then processes and returns the results.
+// It calls the embedded PaginationFunc and then processes and returns the results.
 func (pe *PaginationExecutor) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
 	models, pages, err := pe.Paginator(pe.key, pe.limit, sc)
 	if err != nil {
