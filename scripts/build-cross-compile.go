@@ -71,6 +71,7 @@ func main() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = []string{
+		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
 		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
 		"GOROOT=" + runtime.GOROOT(),
 	}
@@ -79,10 +80,6 @@ func main() {
 		cmd.Env = append(cmd.Env,
 			"GOOS="+system,
 			"GOARCH="+arch)
-	}
-
-	if system == "darwin" {
-		cmd.Env = append(cmd.Env, "PATH=/usr/bin")
 	}
 
 	fmt.Println(strings.Join(cmd.Env, " "), strings.Join(cmd.Args, " "))
