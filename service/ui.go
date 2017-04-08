@@ -180,7 +180,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/build_variant/{project_id}/{variant}", uis.loadCtx(uis.variantHistory))
 
 	// Task queues
-	r.HandleFunc("/task_queue/", uis.loadCtx(uis.allTaskQueues))
+	r.HandleFunc("/task_queue/", requireLogin(uis.loadCtx(uis.allTaskQueues)))
 
 	// Scheduler
 	r.HandleFunc("/scheduler/distro/{distro_id}", uis.loadCtx(uis.getSchedulerPage))
