@@ -537,3 +537,37 @@ func GetGithubUser(token string) (githubUser *GithubLoginUser, githubOrganizatio
 	}
 	return
 }
+
+// verifyGithubAPILimitHeader parses a Github API header to find the number of requests remaining
+func verifyGithubAPILimitHeader(header http.Header) (int64, error) {
+	h := (map[string][]string)(header)
+	limStr, okLim := h["X-Ratelimit-Limit"]
+	remStr, okRem := h["X-Ratelimit-Remaining"]
+
+	if !okLim || !okRem || len(limStr) == 0 || len(remStr) == 0 {
+		return 0, errors.New("Could not get rate limit data")
+	}
+
+	rem, err := strconv.ParseInt(remStr[0], 10, 0)
+	if err != nil {
+		return 0, errors.Errorf("Could not parse rate limit data: limit=%q, rate=%t", limStr, okLim)
+	}
+
+	return rem, nil
+}
+
+// CheckGithubAPILimit queries Github for the number of API requests remaining
+func CheckGithubAPILimit(token string) (int64, error) {
+	url := fmt.Sprintf("%v/rate_limit", GithubAPIBase)
+	resp, err := githubRequest("GET", url, token, nil)
+	if err != nil {
+		grip.Errorf("github GET rate limit failed on %s: %+v", url, err)
+		return 0, err
+	}
+	rem, err := verifyGithubAPILimitHeader(resp.Header)
+	if err != nil {
+		grip.Errorf("Error getting rate limit: %s", err)
+		return 0, err
+	}
+	return rem, nil
+}

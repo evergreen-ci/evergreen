@@ -17,6 +17,10 @@ type Runner struct{}
 const (
 	RunnerName  = "repotracker"
 	Description = "poll version control for new commits"
+	// githubAPILimitCeiling is arbitrary but corresponds to when we start logging errors in
+	// thirdparty/github.go/getGithubRateLimit
+	githubAPILimitCeiling = 20
+	githubCredentialsKey  = "github"
 )
 
 func (r *Runner) Name() string {
@@ -39,6 +43,26 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		grip.Error(errM)
 		return errM
 	}
+
+	token, ok := config.Credentials[githubCredentialsKey]
+	if !ok {
+		err = errors.New("Github credentials not specified in Evergreen credentials file")
+		grip.Error(err)
+		return err
+	}
+	remaining, err := thirdparty.CheckGithubAPILimit(token)
+	if err != nil {
+		err = errors.Wrap(err, "Error checking Github API limit")
+		grip.Error(err)
+		return err
+	}
+	if remaining < githubAPILimitCeiling {
+		err = errors.Errorf("Too few Github API requests remaining: %d < %d", remaining, githubAPILimitCeiling)
+		grip.Alert(err)
+		return err
+	}
+	grip.Debugf("%d Github API requests remaining", remaining)
+
 	lockAcquired, err := db.WaitTillAcquireGlobalLock(RunnerName, db.LockTimeout)
 	if err != nil {
 		err = errors.Wrap(err, "Error acquiring global lock")
