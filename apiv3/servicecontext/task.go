@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/apiv3"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 // DBTaskConnector is a struct that implements the Task related methods
@@ -71,6 +73,20 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	return ts, nil
 }
 
+// SetTaskPriority changes the priority value of a task using a call to the
+// service layer function.
+func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, priority int64) error {
+	err := t.SetPriority(priority)
+	return err
+}
+
+// SetTaskPriority changes the priority value of a task using a call to the
+// service layer function.
+func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
+	return errors.Wrap(serviceModel.SetActiveState(taskId, user, activated),
+		"Erorr setting task active")
+}
+
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the ServiceContext interface's Task related functions.
 type MockTaskConnector struct {
@@ -81,7 +97,12 @@ type MockTaskConnector struct {
 // ServiceContext interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
-	return &mdf.CachedTasks[0], nil
+	for _, t := range mdf.CachedTasks {
+		if t.Id == taskId {
+			return &t, nil
+		}
+	}
+	return nil, nil
 }
 
 func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
@@ -93,4 +114,29 @@ func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, err
 // based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit int) ([]task.Task, error) {
 	return mdf.CachedTasks, nil
+}
+
+// SetTaskPriority changes the priority value of a task using a call to the
+// service layer function.
+func (mdf *MockTaskConnector) SetTaskPriority(it *task.Task, priority int64) error {
+	for ix, t := range mdf.CachedTasks {
+		if t.Id == it.Id {
+			mdf.CachedTasks[ix].Priority = priority
+			return nil
+		}
+	}
+	return nil
+}
+
+// SetTaskActivated changes the activation value of a task using a call to the
+// service layer function.
+func (mdf *MockTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
+	for ix, t := range mdf.CachedTasks {
+		if t.Id == taskId {
+			mdf.CachedTasks[ix].Activated = activated
+			mdf.CachedTasks[ix].ActivatedBy = user
+			return nil
+		}
+	}
+	return nil
 }

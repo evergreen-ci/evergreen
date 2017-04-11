@@ -80,14 +80,14 @@ func PrefetchProjectContext(r *http.Request, sc servicecontext.ServiceContext) e
 		// Project is private and user is not authorized so return not found
 		return apiv3.APIError{
 			StatusCode: http.StatusNotFound,
-			Message:    "Project Not Found",
+			Message:    "Project not found",
 		}
 	}
 
 	if ctx.Patch != nil && GetUser(r) == nil {
 		return apiv3.APIError{
 			StatusCode: http.StatusNotFound,
-			Message:    "Not Found",
+			Message:    "Not found",
 		}
 	}
 	context.Set(r, RequestContext, &ctx)
@@ -102,7 +102,7 @@ func GetUser(r *http.Request) *user.DBUser {
 	return nil
 }
 
-// GetProjetCojntext returns the project context associated with a
+// GetProjectContext returns the project context associated with a
 // given request.
 func GetProjectContext(r *http.Request) (*model.Context, error) {
 	if rv := context.Get(r, RequestContext); rv != nil {
@@ -119,4 +119,14 @@ func MustHaveProjectContext(r *http.Request) *model.Context {
 		panic(err)
 	}
 	return pc
+}
+
+// MustHaveUser returns the user associated with a given request or panics
+// if none is present.
+func MustHaveUser(r *http.Request) *user.DBUser {
+	u := GetUser(r)
+	if u == nil {
+		panic("no user attached to request")
+	}
+	return u
 }

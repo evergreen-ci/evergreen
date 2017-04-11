@@ -14,6 +14,9 @@ import (
 // an API request. It contains an Authenticator to control access to the method
 // and a RequestHandler to perform the required work for the request.
 type MethodHandler struct {
+	// PrefetchFunctions is a list of functions to be run before the main request
+	// is executed.
+	PrefetchFunctions []PrefetchFunc
 	// MethodType is the HTTP Method Type that this handler will handler.
 	// POST, PUT, DELETE, etc.
 	MethodType string
@@ -61,6 +64,12 @@ type RequestHandler interface {
 func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext,
 	route string, version int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		for _, pf := range methodHandler.PrefetchFunctions {
+			if err := pf(r, sc); err != nil {
+				handleAPIError(err, w, r)
+				return
+			}
+		}
 
 		if err := methodHandler.Authenticate(sc, r); err != nil {
 			handleAPIError(err, w, r)

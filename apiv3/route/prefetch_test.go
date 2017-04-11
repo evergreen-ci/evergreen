@@ -117,7 +117,7 @@ func TestPrefetchProject(t *testing.T) {
 
 				errToResemble := apiv3.APIError{
 					StatusCode: http.StatusNotFound,
-					Message:    "Project Not Found",
+					Message:    "Project not found",
 				}
 				So(err, ShouldResemble, errToResemble)
 			})
@@ -130,7 +130,7 @@ func TestPrefetchProject(t *testing.T) {
 
 				errToResemble := apiv3.APIError{
 					StatusCode: http.StatusNotFound,
-					Message:    "Not Found",
+					Message:    "Not found",
 				}
 				So(err, ShouldResemble, errToResemble)
 			})

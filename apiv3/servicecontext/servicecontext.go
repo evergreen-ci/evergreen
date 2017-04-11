@@ -27,12 +27,14 @@ type ServiceContext interface {
 
 	// FindTaskById is a method to find a specific task given its ID.
 	FindTaskById(string) (*task.Task, error)
-
 	FindTasksByIds([]string) ([]task.Task, error)
+	SetTaskPriority(*task.Task, int64) error
+	SetTaskActivated(string, string, bool) error
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
-	// BuildId. It takes the buildId being queried for as its parameter and
-	// returns a list of tasks which match.
+	// BuildId. It takes the buildId being queried for as its first parameter,
+	// as well as a taskId and limit for paginating through the results.
+	// It returns a list of tasks which match.
 	FindTasksByBuildId(string, string, int) ([]task.Task, error)
 
 	// FindUserById is a method to find a specific user given its ID.
