@@ -7,7 +7,7 @@
 
   <div class="one-liner patch-message" ng-show="base">
     <span class="text-muted">on base commit</span>
-    <a class="base-link" ng-href="[[baselink]]/[[base]]">[[basecommit.gitspec.substr(0, 10)]]</a>
+    <a class="base-link" ng-href="[[baselink]]/[[base]]">[[patchinfo.shorthash]]</a>
   </div>
 
   <div class="description-box" ng-show="!hideDescription && patchinfo.Patch.Description != ''">  

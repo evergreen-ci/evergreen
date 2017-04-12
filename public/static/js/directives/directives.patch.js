@@ -18,6 +18,7 @@ directives.patch.directive('patchCommitPanel', function() {
       });
       scope.$parent.$watch(attrs.patchinfo, function(v) {
         scope.patchinfo = v;
+        scope.patchinfo.shorthash = scope.patchinfo.Patch.Githash.substr(0, 10)
         // get diff totals
         totalAdd = 0;
         totalDel = 0;

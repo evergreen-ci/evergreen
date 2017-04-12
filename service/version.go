@@ -65,6 +65,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 				diffs = append(diffs, diff.Tasks...)
 			}
 		}
+		s := fmt.Sprintf("%s_%s", projCtx.Version.Identifier, projCtx.Version.Revision)
+		versionAsUI.PatchInfo.BaseVersionId = s
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
