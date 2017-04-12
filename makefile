@@ -283,6 +283,9 @@ endif
 ifneq (,$(SETTINGS_OVERRIDE))
 testRunEnv += SETTINGS_OVERRIDE=$(SETTINGS_OVERRIDE)
 endif
+ifneq (,$(RUN_TEST))
+testArgs += -test.run='$(RUN_TEST)'
+endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
 	$(vendorGopath) go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
