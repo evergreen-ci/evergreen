@@ -709,7 +709,7 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 
 	project := &model.Project{}
 	validationErr := validator.ValidationError{}
-	if err := model.LoadProjectInto(yamlBytes, "", project); err != nil {
+	if err = model.LoadProjectInto(yamlBytes, "", project); err != nil {
 		validationErr.Message = err.Error()
 		as.WriteJSON(w, http.StatusBadRequest, []validator.ValidationError{validationErr})
 		return

@@ -356,6 +356,7 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 						UrlRawKey:          "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
 						TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
 						TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
+						LogIdKey:           "$" + task.TestResultsKey + "." + task.TestResultLogIdKey,
 					})
 				})
 

@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -148,10 +149,12 @@ func TestGetTestHistory(t *testing.T) {
 				task.TestResult{
 					Status:   evergreen.TestFailedStatus,
 					TestFile: "test1",
+					LogId:    "2",
 				},
 				task.TestResult{
 					Status:   evergreen.TestSucceededStatus,
 					TestFile: "test3",
+					LogId:    "4",
 				},
 			},
 		}
@@ -185,6 +188,9 @@ func TestGetTestHistory(t *testing.T) {
 			So(results[0].DurationMS, ShouldEqual, time.Duration(30*time.Second))
 			So(results[0].Url, ShouldEqual, "anotherurl")
 
+			So(results[1].Url, ShouldEqual, "url")
+			So(results[2].Url, ShouldEqual, "url")
+			So(results[3].Url, ShouldEqual, fmt.Sprintf("%v/test_log/2", taskTestConfig.Ui.Url))
 		})
 	})
 }

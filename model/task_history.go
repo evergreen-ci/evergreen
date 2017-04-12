@@ -76,6 +76,7 @@ type TestHistoryResult struct {
 	OldTaskId       string  `bson:"otid"`
 	TaskTimedOut    bool    `bson:"to"`
 	TaskDetailsType string  `bson:"tdt"`
+	LogId           string  `bson:"lid"`
 }
 
 // TestHistoryResult bson tags
@@ -96,6 +97,7 @@ var (
 	UrlRawKey          = bsonutil.MustHaveTag(TestHistoryResult{}, "UrlRaw")
 	TaskTimedOutKey    = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskTimedOut")
 	TaskDetailsTypeKey = bsonutil.MustHaveTag(TestHistoryResult{}, "TaskDetailsType")
+	LogIdKey           = bsonutil.MustHaveTag(TestHistoryResult{}, "LogId")
 )
 
 // TestHistoryParameters are the parameters that are used
@@ -599,6 +601,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			OldTaskIdKey:       "$" + task.OldTaskIdKey,
 			UrlKey:             "$" + task.TestResultsKey + "." + task.TestResultURLKey,
 			UrlRawKey:          "$" + task.TestResultsKey + "." + task.TestResultURLRawKey,
+			LogIdKey:           "$" + task.TestResultsKey + "." + task.TestResultLogIdKey,
 			TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
 			TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
 		}},

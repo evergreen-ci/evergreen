@@ -59,6 +59,15 @@ func (restapi restAPI) getTaskHistory(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// logURL returns the full URL for linking to a test's logs.
+// Returns the empty string if no internal or external log is referenced.
+func logURL(url, logId, root string) string {
+	if logId != "" {
+		return root + "/test_log/" + logId
+	}
+	return url
+}
+
 // getTestHistory retrieves the test history query parameters from the request
 // and passes them to the function that gets the test results.
 func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
@@ -145,6 +154,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 				taskStatus = model.TaskSystemFailure
 			}
 		}
+		url := logURL(result.Url, result.LogId, restapi.GetSettings().Ui.Url)
 		restHistoryResults = append(restHistoryResults, RestTestHistoryResult{
 			TestFile:     result.TestFile,
 			TaskName:     result.TaskName,
@@ -157,7 +167,7 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 			StartTime:    startTime,
 			EndTime:      endTime,
 			DurationMS:   endTime.Sub(startTime),
-			Url:          result.Url,
+			Url:          url,
 			UrlRaw:       result.UrlRaw,
 			Execution:    result.Execution,
 		})

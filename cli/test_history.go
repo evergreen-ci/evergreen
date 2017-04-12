@@ -142,6 +142,7 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 			return errors.Errorf("after date should have format YYYY-MM-DDTHH:MM:SS, error: %v", err)
 		}
 	}
+
 	// create a test history parameter struct and validate it
 	testHistoryParameters := model.TestHistoryParameters{
 		Project:        thc.Project,

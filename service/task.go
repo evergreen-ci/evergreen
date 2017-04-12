@@ -583,7 +583,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 	// determine what action needs to be taken
 	switch putParams.Action {
 	case "restart":
-		if err := model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, projCtx.Project, nil); err != nil {
+		if err = model.TryResetTask(projCtx.Task.Id, authName, evergreen.UIPackage, projCtx.Project, nil); err != nil {
 			http.Error(w, fmt.Sprintf("Error restarting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -596,7 +596,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		uis.WriteJSON(w, http.StatusOK, projCtx.Task)
 		return
 	case "abort":
-		if err := model.AbortTask(projCtx.Task.Id, authName); err != nil {
+		if err = model.AbortTask(projCtx.Task.Id, authName); err != nil {
 			http.Error(w, fmt.Sprintf("Error aborting task %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)
 			return
 		}
@@ -610,7 +610,7 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 		return
 	case "set_active":
 		active := putParams.Active
-		if err := model.SetActiveState(projCtx.Task.Id, authName, active); err != nil {
+		if err = model.SetActiveState(projCtx.Task.Id, authName, active); err != nil {
 			http.Error(w, fmt.Sprintf("Error activating task %v: %v", projCtx.Task.Id, err),
 				http.StatusInternalServerError)
 			return

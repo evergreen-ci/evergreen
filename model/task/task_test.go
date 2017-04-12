@@ -675,3 +675,21 @@ func TestTimeAggregations(t *testing.T) {
 		})
 	})
 }
+
+func TestGetTestUrl(t *testing.T) {
+	Convey("With a test result struct", t, func() {
+		tr := &TestResult{
+			URL: "testurl",
+		}
+		url := GetTestUrl(tr, "root")
+		So(url, ShouldEqual, "testurl")
+		anotherTr := &TestResult{
+			LogId: "5",
+		}
+		url = GetTestUrl(anotherTr, "root")
+		So(url, ShouldEqual, "root/test_log/5")
+		emptyTr := &TestResult{}
+		url = GetTestUrl(emptyTr, "root")
+		So(url, ShouldBeEmpty)
+	})
+}
