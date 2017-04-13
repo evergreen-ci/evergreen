@@ -43,7 +43,7 @@ func (s *SuperUserAuthenticator) Authenticate(sc servicecontext.ServiceContext,
 	}
 	return apiv3.APIError{
 		StatusCode: http.StatusNotFound,
-		Message:    "Not Found",
+		Message:    "Not found",
 	}
 }
 
@@ -67,6 +67,25 @@ func (p *ProjectAdminAuthenticator) Authenticate(sc servicecontext.ServiceContex
 
 	return apiv3.APIError{
 		StatusCode: http.StatusNotFound,
-		Message:    "Not Found",
+		Message:    "Not found",
 	}
+}
+
+// RequireUserAuthenticator requires that a user be attached to a request.
+type RequireUserAuthenticator struct{}
+
+// Authenticate checks that a user is set on the request. If one is
+// set, it is because PrefetchUser already set it, which checks the validity of
+// the APIKey, so that is no longer needed to be checked.
+func (rua *RequireUserAuthenticator) Authenticate(sc servicecontext.ServiceContext,
+	r *http.Request) error {
+	u := GetUser(r)
+	if u == nil {
+		return apiv3.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    "Not found",
+		}
+
+	}
+	return nil
 }

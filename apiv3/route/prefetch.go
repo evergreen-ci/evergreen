@@ -47,9 +47,8 @@ func PrefetchUser(r *http.Request, sc servicecontext.ServiceContext) error {
 	}
 
 	if len(authDataAPIKey) > 0 {
-		apiUser, err := sc.FindUserById((authDataName))
-		if apiUser != nil && err == nil {
-
+		apiUser, err := sc.FindUserById(authDataName)
+		if apiUser.(*user.DBUser) != nil && err == nil {
 			if apiUser.GetAPIKey() != authDataAPIKey {
 				return apiv3.APIError{
 					StatusCode: http.StatusUnauthorized,

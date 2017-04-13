@@ -123,7 +123,7 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	if t.Execution >= evergreen.MaxTaskExecution {
 		// restarting from the UI bypasses the restart cap
 		message := fmt.Sprintf("Task '%v' reached max execution (%v):", t.Id, evergreen.MaxTaskExecution)
-		if origin == evergreen.UIPackage {
+		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugln(message, "allowing exception for", user)
 		} else {
 			grip.Debugln(message, "marking as failed")
@@ -138,10 +138,10 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	// only allow re-execution for failed or successful tasks
 	if !task.IsFinished(*t) {
 		// this is to disallow terminating running tasks via the UI
-		if origin == evergreen.UIPackage {
+		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			grip.Debugf("Unsatisfiable '%s' reset request on '%s' (status: '%s')",
 				user, t.Id, t.Status)
-			return errors.Errorf("Task '%v' is currently '%v' - can not reset task in this status",
+			return errors.Errorf("Task '%v' is currently '%v' - cannot reset task in this status",
 				t.Id, t.Status)
 		}
 	}
@@ -153,7 +153,7 @@ func TryResetTask(taskId, user, origin string, p *Project, detail *apimodels.Tas
 	}
 
 	if err = resetTask(t.Id); err == nil {
-		if origin == evergreen.UIPackage {
+		if origin == evergreen.UIPackage || origin == evergreen.RESTV2Package {
 			event.LogTaskRestarted(t.Id, user)
 		} else {
 			event.LogTaskRestarted(t.Id, origin)

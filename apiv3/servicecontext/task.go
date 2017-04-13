@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apiv3"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -87,10 +89,18 @@ func (tc *DBTaskConnector) SetTaskActivated(taskId, user string, activated bool)
 		"Erorr setting task active")
 }
 
+// ResetTask sets the task to be in an unexecuted state and prepares it to be
+// run again.
+func (tc *DBTaskConnector) ResetTask(taskId, username string, proj *serviceModel.Project) error {
+	return errors.Wrap(serviceModel.TryResetTask(taskId, username, evergreen.RESTV2Package, proj, nil),
+		"Reset task error")
+}
+
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the ServiceContext interface's Task related functions.
 type MockTaskConnector struct {
 	CachedTasks []task.Task
+	StoredError error
 }
 
 // FindTaskById provides a mock implementation of the functions for the
@@ -99,21 +109,21 @@ type MockTaskConnector struct {
 func (mdf *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	for _, t := range mdf.CachedTasks {
 		if t.Id == taskId {
-			return &t, nil
+			return &t, mdf.StoredError
 		}
 	}
-	return nil, nil
+	return nil, mdf.StoredError
 }
 
 func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
-	return mdf.CachedTasks, nil
+	return mdf.CachedTasks, mdf.StoredError
 }
 
 // FindTaskByBuildId provides a mock implementation of the function for the
 // ServiceContext interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit int) ([]task.Task, error) {
-	return mdf.CachedTasks, nil
+	return mdf.CachedTasks, mdf.StoredError
 }
 
 // SetTaskPriority changes the priority value of a task using a call to the
@@ -122,10 +132,10 @@ func (mdf *MockTaskConnector) SetTaskPriority(it *task.Task, priority int64) err
 	for ix, t := range mdf.CachedTasks {
 		if t.Id == it.Id {
 			mdf.CachedTasks[ix].Priority = priority
-			return nil
+			return mdf.StoredError
 		}
 	}
-	return nil
+	return mdf.StoredError
 }
 
 // SetTaskActivated changes the activation value of a task using a call to the
@@ -135,8 +145,25 @@ func (mdf *MockTaskConnector) SetTaskActivated(taskId, user string, activated bo
 		if t.Id == taskId {
 			mdf.CachedTasks[ix].Activated = activated
 			mdf.CachedTasks[ix].ActivatedBy = user
-			return nil
+			return mdf.StoredError
 		}
 	}
-	return nil
+	return mdf.StoredError
+}
+
+func (mdf *MockTaskConnector) ResetTask(taskId, username string, proj *serviceModel.Project) error {
+	for ix, t := range mdf.CachedTasks {
+		if t.Id == taskId {
+			t.Activated = true
+			t.Secret = "new secret"
+			t.Status = evergreen.TaskUndispatched
+			t.DispatchTime = util.ZeroTime
+			t.StartTime = util.ZeroTime
+			t.ScheduledTime = util.ZeroTime
+			t.FinishTime = util.ZeroTime
+			t.TestResults = []task.TestResult{}
+			mdf.CachedTasks[ix] = t
+		}
+	}
+	return mdf.StoredError
 }

@@ -11,9 +11,104 @@ import (
 	"github.com/evergreen-ci/evergreen/apiv3/model"
 	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
 	"github.com/evergreen-ci/evergreen/auth"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
+
+func getTaskPatchRouteManager(route string, version int) *RouteManager {
+	tep := &TaskExecutionPatchHandler{}
+	TaskExecutionPatch := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    tep.Handler(),
+		MethodType:        evergreen.MethodPatch,
+	}
+
+	taskRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{TaskExecutionPatch},
+		Version: version,
+	}
+	return &taskRoute
+}
+
+// TaskRestartHandler implements the route POST /task/{task_id}/restart. It
+// fetches the needed task and project and calls the service function to
+// set the proper fields when reseting the task.
+type TaskRestartHandler struct {
+	taskId  string
+	project *serviceModel.Project
+
+	username string
+}
+
+// ParseAndValidate fetches the taskId and Project from the request context and
+// sets them on the TaskRestartHandler to be used by Execute.
+func (trh *TaskRestartHandler) ParseAndValidate(r *http.Request) error {
+	projCtx := MustHaveProjectContext(r)
+	if projCtx.Task == nil {
+		return apiv3.APIError{
+			Message:    "Task not found",
+			StatusCode: http.StatusNotFound,
+		}
+	}
+	trh.taskId = projCtx.Task.Id
+	if projCtx.Project == nil {
+		return fmt.Errorf("Unable to fetch associated project")
+	}
+	trh.project = projCtx.Project
+	u := MustHaveUser(r)
+	trh.username = u.DisplayName()
+	trh.username = "test user"
+	return nil
+}
+
+// Execute calls the servicecontext ResetTask function and returns the refreshed
+// task from the service.
+func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+	err := sc.ResetTask(trh.taskId, trh.username, trh.project)
+	if err != nil {
+		return ResponseData{},
+			apiv3.APIError{
+				Message:    err.Error(),
+				StatusCode: http.StatusBadRequest,
+			}
+	}
+
+	refreshedTask, err := sc.FindTaskById(trh.taskId)
+	if err != nil {
+		return ResponseData{}, err
+	}
+
+	taskModel := &model.APITask{}
+	taskModel.BuildFromService(refreshedTask)
+
+	return ResponseData{
+		Result: []model.Model{taskModel},
+	}, nil
+}
+
+func (trh *TaskRestartHandler) Handler() RequestHandler {
+	return &TaskRestartHandler{}
+}
+
+func getTaskRestartRouteManager(route string, version int) *RouteManager {
+	trh := &TaskRestartHandler{}
+	taskRestart := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    trh.Handler(),
+		MethodType:        evergreen.MethodPost,
+	}
+
+	taskRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{taskRestart},
+		Version: version,
+	}
+	return &taskRoute
+}
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
 // fetches the changes from request, changes in activation and priority, and
@@ -109,22 +204,4 @@ func (tep *TaskExecutionPatchHandler) Execute(sc servicecontext.ServiceContext) 
 
 func (tep *TaskExecutionPatchHandler) Handler() RequestHandler {
 	return &TaskExecutionPatchHandler{}
-}
-
-func getTaskRouteManager(route string, version int) *RouteManager {
-
-	tep := &TaskExecutionPatchHandler{}
-	TaskExecutionPatch := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext, PrefetchUser},
-		Authenticator:     &NoAuthAuthenticator{},
-		RequestHandler:    tep.Handler(),
-		MethodType:        evergreen.MethodPatch,
-	}
-
-	taskRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{TaskExecutionPatch},
-		Version: version,
-	}
-	return &taskRoute
 }

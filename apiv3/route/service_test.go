@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/apiv3"
 	"github.com/evergreen-ci/evergreen/apiv3/model"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -297,6 +299,102 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			So(resTask.ActivatedBy, ShouldEqual, "testUser")
 		})
 	})
+}
+
+func TestTaskResetPrepare(t *testing.T) {
+	Convey("With handler and a project context and user", t, func() {
+		trh := &TaskRestartHandler{}
+
+		projCtx := serviceModel.Context{
+			Task: &task.Task{
+				Id:        "testTaskId",
+				Priority:  0,
+				Activated: false,
+			},
+			Project: &serviceModel.Project{},
+		}
+		u := user.DBUser{
+			Id: "testUser",
+		}
+		Convey("should error on empty project", func() {
+			projCtx.Project = nil
+			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
+			So(err, ShouldBeNil)
+			context.Set(req, RequestUser, &u)
+			context.Set(req, RequestContext, &projCtx)
+			err = trh.ParseAndValidate(req)
+			So(err, ShouldNotBeNil)
+			expectedErr := fmt.Errorf("Unable to fetch associated project")
+			So(err, ShouldResemble, expectedErr)
+		})
+		Convey("then should error on empty task", func() {
+			projCtx.Task = nil
+			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
+			So(err, ShouldBeNil)
+			context.Set(req, RequestUser, &u)
+			context.Set(req, RequestContext, &projCtx)
+			err = trh.ParseAndValidate(req)
+			So(err, ShouldNotBeNil)
+			expectedErr := apiv3.APIError{
+				Message:    "Task not found",
+				StatusCode: http.StatusNotFound,
+			}
+
+			So(err, ShouldResemble, expectedErr)
+		})
+	})
+}
+
+func TestTaskResetExecute(t *testing.T) {
+	Convey("With a task returned by the ServiceContext", t, func() {
+		sc := servicecontext.MockServiceContext{}
+		timeNow := time.Now()
+		testTask := task.Task{
+			Id:           "testTaskId",
+			Activated:    false,
+			Secret:       "initialSecret",
+			DispatchTime: timeNow,
+		}
+		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
+		Convey("and an error from the service function", func() {
+			sc.MockTaskConnector.StoredError = fmt.Errorf("could not reset task")
+
+			trh := &TaskRestartHandler{
+				taskId:   "testTaskId",
+				project:  &serviceModel.Project{},
+				username: "testUser",
+			}
+
+			_, err := trh.Execute(&sc)
+			So(err, ShouldNotBeNil)
+			apiErr, ok := err.(apiv3.APIError)
+			So(ok, ShouldBeTrue)
+			So(apiErr.StatusCode, ShouldEqual, http.StatusBadRequest)
+
+		})
+
+		Convey("calling TryReset should reset the task", func() {
+
+			trh := &TaskRestartHandler{
+				taskId:   "testTaskId",
+				project:  &serviceModel.Project{},
+				username: "testUser",
+			}
+
+			res, err := trh.Execute(&sc)
+			So(err, ShouldBeNil)
+			So(len(res.Result), ShouldEqual, 1)
+			resModel := res.Result[0]
+			resTask, ok := resModel.(*model.APITask)
+			So(ok, ShouldBeTrue)
+			So(resTask.Activated, ShouldBeTrue)
+			So(time.Time(resTask.DispatchTime), ShouldResemble, util.ZeroTime)
+			dbTask, err := sc.FindTaskById("testTaskId")
+			So(err, ShouldBeNil)
+			So(string(dbTask.Secret), ShouldNotResemble, "initialSecret")
+		})
+	})
+
 }
 
 func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,

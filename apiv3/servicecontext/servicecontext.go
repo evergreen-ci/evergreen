@@ -30,6 +30,7 @@ type ServiceContext interface {
 	FindTasksByIds([]string) ([]task.Task, error)
 	SetTaskPriority(*task.Task, int64) error
 	SetTaskActivated(string, string, bool) error
+	ResetTask(string, string, *model.Project) error
 
 	// FindTasksByBuildId is a method to find a set of tasks which all have the same
 	// BuildId. It takes the buildId being queried for as its first parameter,
