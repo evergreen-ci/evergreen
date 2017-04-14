@@ -88,7 +88,7 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 
 		results := &task.TestResults{}
 		if err = util.ReadJSONInto(reportFile, results); err != nil {
-			errChan <- errors.Wrapf(err, "Couldn't read report file '%s'", reportFile)
+			errChan <- errors.Wrapf(err, "Couldn't read report file '%s'", reportFileLoc)
 			return
 		}
 		if err := reportFile.Close(); err != nil {
