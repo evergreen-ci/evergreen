@@ -29,8 +29,7 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
-					var nextModelHost model.Model
-					nextModelHost = &model.APIHost{
+					nextModelHost := &model.APIHost{
 						Id: model.APIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -57,8 +56,7 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
-					var nextModelHost model.Model
-					nextModelHost = &model.APIHost{
+					nextModelHost := &model.APIHost{
 						Id: model.APIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -85,8 +83,7 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
-					var nextModelHost model.Model
-					nextModelHost = &model.APIHost{
+					nextModelHost := &model.APIHost{
 						Id: model.APIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -113,8 +110,7 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < numHostsInDB; i++ {
-					var nextModelHost model.Model
-					nextModelHost = &model.APIHost{
+					nextModelHost := &model.APIHost{
 						Id: model.APIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)
@@ -136,8 +132,7 @@ func TestHostPaginator(t *testing.T) {
 				limit := 100
 				expectedHosts := []model.Model{}
 				for i := hostToStartAt; i < hostToStartAt+limit; i++ {
-					var nextModelHost model.Model
-					nextModelHost = &model.APIHost{
+					nextModelHost := &model.APIHost{
 						Id: model.APIString(fmt.Sprintf("host%d", i)),
 					}
 					expectedHosts = append(expectedHosts, nextModelHost)

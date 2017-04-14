@@ -305,7 +305,8 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	// if there is already a task assigned to the host send back that task
 	if h.RunningTask != "" {
-		t, err := task.FindOne(task.ById(h.RunningTask))
+		var t *task.Task
+		t, err = task.FindOne(task.ById(h.RunningTask))
 		if err != nil {
 			err = errors.WithStack(err)
 			grip.Error(err)
@@ -316,7 +317,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 		// if the task can be dispatched and activated dispatch it
 		if t.IsDispatchable() {
-			err := errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
+			err = errors.WithStack(model.MarkTaskDispatched(t, h.Id, h.Distro.Id))
 			if err != nil {
 				grip.Error(err)
 				as.WriteJSON(w, http.StatusInternalServerError,
@@ -333,7 +334,7 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 		}
 		// the task is not activated so the host's running task should be unset
 		// so it can retrieve a new task.
-		if err := h.ClearRunningTask(h.LastTaskCompleted, time.Now()); err != nil {
+		if err = h.ClearRunningTask(h.LastTaskCompleted, time.Now()); err != nil {
 			err = errors.WithStack(err)
 			grip.Error(err)
 			as.WriteJSON(w, http.StatusInternalServerError, err)

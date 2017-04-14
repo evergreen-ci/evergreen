@@ -86,15 +86,17 @@ func hostPaginator(key string, limit int, sc servicecontext.ServiceContext) ([]m
 	if err != nil {
 		if apiErr, ok := err.(*apiv3.APIError); !ok ||
 			(ok && apiErr.StatusCode != http.StatusNotFound) {
-			return []model.Model{}, nil, err
+			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
-		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
-	models := makeHostModelsWithTasks(hosts, tasks)
+	models, err := makeHostModelsWithTasks(hosts, tasks)
+	if err != nil {
+		return []model.Model{}, &PageResult{}, err
+	}
 	return models, pageResults, nil
 }
 
-func makeHostModelsWithTasks(hosts []host.Host, tasks []task.Task) []model.Model {
+func makeHostModelsWithTasks(hosts []host.Host, tasks []task.Task) ([]model.Model, error) {
 	// Build a map of tasks indexed by their Id to make them easily referenceable.
 	tasksById := make(map[string]task.Task, len(tasks))
 	for _, t := range tasks {
@@ -104,19 +106,25 @@ func makeHostModelsWithTasks(hosts []host.Host, tasks []task.Task) []model.Model
 	models := make([]model.Model, len(hosts))
 	for ix, h := range hosts {
 		apiHost := model.APIHost{}
-		apiHost.BuildFromService(h)
+		err := apiHost.BuildFromService(h)
+		if err != nil {
+			return []model.Model{}, err
+		}
 		if h.RunningTask != "" {
 			runningTask, ok := tasksById[h.RunningTask]
 			if !ok {
 				continue
 			}
 			// Add the task information to the host document.
-			apiHost.BuildFromService(runningTask)
+			err := apiHost.BuildFromService(runningTask)
+			if err != nil {
+				return []model.Model{}, err
+			}
 		}
 		// Put the model into the array
 		models[ix] = &apiHost
 	}
-	return models
+	return models, nil
 
 }
 
