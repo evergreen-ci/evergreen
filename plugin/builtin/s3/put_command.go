@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/goamz/goamz/aws"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -226,19 +227,14 @@ func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommu
 				return util.RetriableError{err}
 			}
 
-			for _, file := range filesList {
-				remoteName := s3pc.RemoteFile
-				if s3pc.isMulti() {
-					fname := filepath.Base(file)
-					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
-				}
+			catcher := grip.NewCatcher()
 
-				err = s3pc.AttachTaskFiles(log, com, file, remoteName)
-				if err != nil {
-					return errors.WithStack(err)
-				}
+			for _, file := range filesList {
+				catcher.Add(errors.Wrapf(s3pc.AttachTaskFiles(log, com, file, s3pc.RemoteFile),
+					"problem attaching file: %s to %s", file, s3pc.RemoteFile))
 			}
-			return nil
+
+			return catcher.Resolve()
 		},
 	)
 
@@ -306,11 +302,12 @@ func (s3pc *S3PutCommand) AttachTaskFiles(log plugin.Logger,
 	if s3pc.isMulti() {
 		remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(localFile))
 	}
+
 	fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
 
 	displayName := s3pc.DisplayName
 	if s3pc.isMulti() || displayName == "" {
-		displayName = fmt.Sprintf("%s%s", s3pc.DisplayName, filepath.Base(localFile))
+		displayName = fmt.Sprintf("%s %s", s3pc.DisplayName, filepath.Base(localFile))
 	}
 
 	file := &artifact.File{

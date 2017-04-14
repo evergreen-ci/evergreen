@@ -22,10 +22,12 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
+	reporting.QuietMode()
 }
 
 func reset(t *testing.T) {
@@ -402,7 +404,7 @@ func TestAttachResults(t *testing.T) {
 				file := entry.Files[0]
 
 				So(file.Link, ShouldEqual, fmt.Sprintf("%s%s/%s%s", s3baseURL, testBucket, remoteFname, filepath.Base(localFpath)))
-				So(file.Name, ShouldEqual, fmt.Sprintf("%s%s", displayName, filepath.Base(localFpath)))
+				So(file.Name, ShouldEqual, fmt.Sprintf("%s %s", displayName, filepath.Base(localFpath)))
 			})
 		})
 		Convey("and attaching is singular", func() {
@@ -439,7 +441,7 @@ func TestAttachResults(t *testing.T) {
 					So(entryIndex, ShouldNotEqual, -1)
 					So(file.Link, ShouldEqual, fmt.Sprintf("%s%s/%s%s", s3baseURL,
 						testBucket, filesList[entryIndex][0], filesList[entryIndex][1]))
-					So(file.Name, ShouldEqual, fmt.Sprintf("%s%s", displayName,
+					So(file.Name, ShouldEqual, fmt.Sprintf("%s %s", displayName,
 						filesList[entryIndex][1]))
 					filesList = append(filesList[:entryIndex], filesList[entryIndex+1:]...)
 				}
@@ -451,7 +453,7 @@ func TestAttachResults(t *testing.T) {
 
 func fetchFileIndex(fName, displayName string, filesList [][]string) int {
 	for index, fileData := range filesList {
-		fullDisplayName := fmt.Sprintf("%s%s", displayName, fileData[1])
+		fullDisplayName := fmt.Sprintf("%s %s", displayName, fileData[1])
 		if fName == fullDisplayName {
 			return index
 		}
