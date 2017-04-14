@@ -82,7 +82,7 @@ func (self *AttachResultsCommand) Execute(pluginLogger plugin.Logger,
 		// attempt to open the file
 		reportFile, err := os.Open(reportFileLoc)
 		if err != nil {
-			errChan <- errors.Wrapf(err, "Couldn't open report file '%s'", reportFile)
+			errChan <- errors.Wrapf(err, "Couldn't open report file '%s'", reportFileLoc)
 			return
 		}
 
