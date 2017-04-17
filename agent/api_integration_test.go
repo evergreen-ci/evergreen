@@ -404,6 +404,8 @@ func TestTaskSuccess(t *testing.T) {
 						So(err, ShouldBeNil)
 						Convey("expansions should be fetched", func() {
 							So(testAgent.taskConfig.Expansions.Get("aws_key"), ShouldEqual, testConfig.Providers.AWS.Id)
+							So(testAgent.taskConfig.Expansions.Get("distro_id"), ShouldEqual, testAgent.taskConfig.Distro.Id)
+							So(testAgent.taskConfig.Expansions.Get("distro_id"), ShouldEqual, "test-distro-one")
 							So(scanLogsForTask(modelData.Task.Id, "", "fetch_expansion_value"), ShouldBeTrue)
 						})
 						time.Sleep(100 * time.Millisecond)
