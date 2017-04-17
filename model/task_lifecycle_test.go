@@ -410,6 +410,33 @@ func TestTaskStatusImpactedByFailedTest(t *testing.T) {
 
 		})
 
+		Convey("task should not fail if there are only passing or silently failing tests", func() {
+			reset()
+			err := testTask.SetResults([]task.TestResult{
+				{
+					Status: evergreen.TestSilentlyFailedStatus,
+				},
+				{
+					Status: evergreen.TestSucceededStatus,
+				},
+				{
+					Status: evergreen.TestSilentlyFailedStatus,
+				},
+			})
+			So(err, ShouldBeNil)
+			So(MarkEnd(testTask.Id, "", time.Now(), detail, p, true), ShouldBeNil)
+
+			taskData, err := task.FindOne(task.ById(testTask.Id))
+			So(err, ShouldBeNil)
+			So(taskData.Status, ShouldEqual, evergreen.TaskSucceeded)
+			buildCache, err := build.FindOne(build.ById(b.Id))
+			So(err, ShouldBeNil)
+			So(buildCache.Status, ShouldEqual, evergreen.TaskSucceeded)
+			for _, t := range buildCache.Tasks {
+				So(t.Status, ShouldEqual, evergreen.TaskSucceeded)
+			}
+		})
+
 		Convey("task should fail if there is one failed test", func() {
 			reset()
 			err := testTask.SetResults([]task.TestResult{

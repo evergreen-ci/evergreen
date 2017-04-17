@@ -31,7 +31,7 @@ type TestHistoryCommand struct {
 	Tests          []string `long:"test" description:"test name"`
 	Variants       []string `long:"variant" short:"v" description:"variant name"`
 	TaskStatuses   []string `long:"task-status" description:"task status, either fail, pass, sysfail, or timeout "`
-	TestStatuses   []string `long:"test-status" description:"test status, either fail, pass, skip, or timeout "`
+	TestStatuses   []string `long:"test-status" description:"test status, either fail, silentfail, pass, skip, or timeout "`
 	BeforeRevision string   `long:"before-revision" description:"find tests that finished before a full revision hash (40 characters) (inclusive)"`
 	AfterRevision  string   `long:"after-revision" description:"find tests that finished after a full revision hash (40 characters) (exclusive)"`
 	// TODO EVG-1540 for user specific timezones.
@@ -91,6 +91,8 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 			testStatuses = append(testStatuses, evergreen.TestSucceededStatus)
 		case "fail":
 			testStatuses = append(testStatuses, evergreen.TestFailedStatus)
+		case "silentfail":
+			testStatuses = append(testStatuses, evergreen.TestSilentlyFailedStatus)
 		case "skip":
 			testStatuses = append(testStatuses, evergreen.TestSkippedStatus)
 		case "timeout":

@@ -303,7 +303,7 @@ Evergreen - {{Trunc .Task.Revision 10}} / {{.Task.BuildVariantDisplay}} / {{.Tas
               [[(task.test_results | filter:{'status' : 'pass'}).length]] Succeeded
             </span>
             <span class="label failed pull-left">
-              [[(task.test_results | filter:{'status' : 'fail'}).length]] Failed
+              [[(task.test_results | filter:hasTestFailureStatus).length]] Failed
             </span>
             <span class="label unlabel semi-muted pull-right">
               <i class="fa fa-clock-o"></i> [[totalTestTimeNano | stringifyNanoseconds]] total runtime

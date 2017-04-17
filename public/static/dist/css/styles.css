@@ -179,6 +179,9 @@ h3.section-heading {
 .progress-bar-failed {
   background-color: #d9534f;
 }
+.progress-bar-silently-failed {
+  background-color: #e7908e;
+}
 .status-label {
   width: 100%;
   font-size: 18px;

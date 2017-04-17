@@ -97,6 +97,29 @@ func TestJIRASummary(t *testing.T) {
 				})
 			})
 		})
+		Convey("a task with failing tests should return a subject omitting any silently failing tests", func() {
+			ctx.Task.TestResults = []task.TestResult{
+				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
+				{TestFile: TestName2, Status: evergreen.TestFailedStatus},
+				{TestFile: TestName3, Status: evergreen.TestSilentlyFailedStatus},
+			}
+			subj := getSummary(ctx)
+			So(subj, ShouldNotEqual, "")
+			Convey("denoting the failure and showing the task name and failed tests", func() {
+				So(subj, ShouldContainSubstring, "Failures")
+				So(subj, ShouldContainSubstring, TaskName)
+				So(subj, ShouldContainSubstring, BuildName)
+				So(subj, ShouldContainSubstring, VersionRevision[0:8])
+				So(subj, ShouldContainSubstring, ProjectName)
+				So(subj, ShouldContainSubstring, "big_test.js")
+				So(subj, ShouldContainSubstring, "FunUnitTest")
+				So(subj, ShouldNotContainSubstring, "cool.exe")
+				Convey("with test names properly truncated", func() {
+					So(subj, ShouldNotContainSubstring, "local")
+					So(subj, ShouldNotContainSubstring, "jstest")
+				})
+			})
+		})
 		Convey("a task with five failed tests should return a subject", func() {
 			ctx.Task.TestResults = []task.TestResult{
 				{TestFile: TestName1, Status: evergreen.TestFailedStatus},
@@ -124,6 +147,27 @@ func TestJIRASummary(t *testing.T) {
 				{TestFile: TestName1, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName2, Status: evergreen.TestSucceededStatus},
 				{TestFile: TestName3, Status: evergreen.TestSucceededStatus},
+			}
+			subj := getSummary(ctx)
+			So(subj, ShouldNotEqual, "")
+			Convey("denoting a task failure without a parenthetical", func() {
+				So(subj, ShouldContainSubstring, "Failed")
+				So(subj, ShouldContainSubstring, TaskName)
+				So(subj, ShouldContainSubstring, BuildName)
+				So(subj, ShouldContainSubstring, VersionRevision[0:8])
+				So(subj, ShouldContainSubstring, ProjectName)
+				So(subj, ShouldNotContainSubstring, "big_test.js")
+				So(subj, ShouldNotContainSubstring, "FunUnitTest")
+				So(subj, ShouldNotContainSubstring, "cool.exe")
+				So(subj, ShouldNotContainSubstring, "(")
+				So(subj, ShouldNotContainSubstring, ")")
+			})
+		})
+		Convey("a failed task with only passing or silently failing tests should return a subject", func() {
+			ctx.Task.TestResults = []task.TestResult{
+				{TestFile: TestName1, Status: evergreen.TestSilentlyFailedStatus},
+				{TestFile: TestName2, Status: evergreen.TestSucceededStatus},
+				{TestFile: TestName3, Status: evergreen.TestSilentlyFailedStatus},
 			}
 			subj := getSummary(ctx)
 			So(subj, ShouldNotEqual, "")

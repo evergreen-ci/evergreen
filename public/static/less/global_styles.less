@@ -41,6 +41,7 @@
 
 
 @errorRed: #d9534f;
+@quietErrorRed: #e7908e;
 @successGreen: #5cb85c;
 
 // Standard colors for page sections
@@ -313,6 +314,9 @@ h3.section-heading {
 }
 .progress-bar-failed {
     background-color: @errorRed;
+}
+.progress-bar-silently-failed {
+  background-color: @quietErrorRed;
 }
 
 // for wrapping a status label
@@ -675,7 +679,7 @@ button.alert-close {
 }
 
 /* for integrating text inline with labels but without background/all-caps */
-.label.unlabel{ 
+.label.unlabel{
   text-transform:none;
 }
 

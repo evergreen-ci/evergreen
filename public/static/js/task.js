@@ -231,11 +231,17 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   $scope.haveUser = $window.have_user;
   $scope.taskHost = $window.taskHost;
 
+  // Returns true if 'testResult' represents a test failure, and returns false otherwise.
+  $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
+    var failureStatuses = ['fail', 'silentfail'];
+    return failureStatuses.indexOf(testResult.status) >= 0;
+  };
+
   $scope.getURL = function(testResult, isRaw) {
     var url = (isRaw) ? testResult.url_raw : testResult.url;
 
     if (url != '') {
-      return url; 
+      return url;
     }
 
     var logid = testResult.log_id;
@@ -293,9 +299,17 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
     $scope.md5 = md5;
     $scope.maxTests = 1;
 
+    /**
+     * Defines the sort order for a test's status.
+     */
+    function ordinalForTestStatus(testResult) {
+      var orderedTestStatuses = ['fail', 'silentfail', 'pass', 'skip'];
+      return orderedTestStatuses.indexOf(testResult.status);
+    }
+
     $scope.sortOrders = [{
       name: 'Status',
-      by: ['status', 'display_name'],
+      by: [ordinalForTestStatus, 'display_name'],
       reverse: false
     }, {
       name: 'Name',
@@ -433,6 +447,7 @@ mciModule.directive('testsResultsBar', function($filter) {
                 successTimeTaken += (result.end - result.start);
                 break;
               case 'fail':
+              case 'silentfail':
                 numFailed++;
                 failureTimeTaken += (result.end - result.start);
                 break;
@@ -490,6 +505,9 @@ mciModule.directive('testResultBar', function($filter) {
             break;
           case 'fail':
             scope.progressBarClass = 'progress-bar-danger';
+            break;
+          case 'silentfail':
+            scope.progressBarClass = 'progress-bar-silently-failed';
             break;
           default:
             scope.progressBarClass = 'progress-bar-default';

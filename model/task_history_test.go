@@ -911,6 +911,10 @@ func TestGetTestHistory(t *testing.T) {
 					Status:   evergreen.TestSucceededStatus,
 					TestFile: "test3",
 				},
+				task.TestResult{
+					Status:   evergreen.TestSilentlyFailedStatus,
+					TestFile: "test4",
+				},
 			},
 		}
 		So(task3.Insert(), ShouldBeNil)
@@ -1016,6 +1020,17 @@ func TestGetTestHistory(t *testing.T) {
 			testResults, err := GetTestHistory(&params)
 			So(err, ShouldBeNil)
 			So(len(testResults), ShouldEqual, 3)
+		})
+		Convey("including a filter on test status of 'silentfail' should return relevant results", func() {
+			params := TestHistoryParameters{
+				Project:      project,
+				TaskNames:    []string{"test2"},
+				TestStatuses: []string{evergreen.TestSilentlyFailedStatus},
+			}
+			So(params.SetDefaultsAndValidate(), ShouldBeNil)
+			testResults, err := GetTestHistory(&params)
+			So(err, ShouldBeNil)
+			So(len(testResults), ShouldEqual, 1)
 		})
 		Convey("with a task with a different build variant,", func() {
 			anotherBV := task.Task{

@@ -31,9 +31,10 @@ const (
 	TaskSucceeded    = "success"
 	TaskInactive     = "inactive"
 
-	TestFailedStatus    = "fail"
-	TestSkippedStatus   = "skip"
-	TestSucceededStatus = "pass"
+	TestFailedStatus         = "fail"
+	TestSilentlyFailedStatus = "silentfail"
+	TestSkippedStatus        = "skip"
+	TestSucceededStatus      = "pass"
 
 	BuildStarted   = "started"
 	BuildCreated   = "created"

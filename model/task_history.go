@@ -373,8 +373,13 @@ func (t *TestHistoryParameters) validate() []string {
 	if len(t.TestNames) == 0 && len(t.TaskNames) == 0 {
 		validationErrors = append(validationErrors, "must include test names or task names")
 	}
-	// test statuses can be failed, skipped or success.
-	validTestStatuses := []string{evergreen.TestFailedStatus, evergreen.TestSkippedStatus, evergreen.TestSucceededStatus}
+	// A test can either have failed, silently failed, got skipped, or passed.
+	validTestStatuses := []string{
+		evergreen.TestFailedStatus,
+		evergreen.TestSilentlyFailedStatus,
+		evergreen.TestSkippedStatus,
+		evergreen.TestSucceededStatus,
+	}
 	for _, status := range t.TestStatuses {
 		if !util.SliceContains(validTestStatuses, status) {
 			validationErrors = append(validationErrors, fmt.Sprintf("invalid test status in parameters: %v", status))
