@@ -1,6 +1,7 @@
 package task
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -58,6 +59,7 @@ var (
 
 	// BSON fields for the test result struct
 	TestResultStatusKey    = bsonutil.MustHaveTag(TestResult{}, "Status")
+	TestResultLineNumKey   = bsonutil.MustHaveTag(TestResult{}, "LineNum")
 	TestResultTestFileKey  = bsonutil.MustHaveTag(TestResult{}, "TestFile")
 	TestResultURLKey       = bsonutil.MustHaveTag(TestResult{}, "URL")
 	TestResultLogIdKey     = bsonutil.MustHaveTag(TestResult{}, "LogId")
@@ -368,6 +370,59 @@ var (
 	})
 )
 
+// getTestResultsPipeline returns an aggregation pipeline for fetching a list
+// of test from a task by its Id.
+func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
+	sortDir int) []bson.M {
+	sortOperator := "$gte"
+	if sortDir < 0 {
+		sortOperator = "$lte"
+	}
+	pipeline := []bson.M{
+		{"$match": bson.M{"_id": taskId}},
+		{"$unwind": fmt.Sprintf("$%s", TestResultsKey)},
+		{"$project": bson.M{
+			"status":    fmt.Sprintf("$%s.%s", TestResultsKey, TestResultStatusKey),
+			"test_file": fmt.Sprintf("$%s.%s", TestResultsKey, TestResultTestFileKey),
+			"log_id":    fmt.Sprintf("$%s.%s", TestResultsKey, TestResultLogIdKey),
+			"line_num":  fmt.Sprintf("$%s.%s", TestResultsKey, TestResultLineNumKey),
+			"exit_code": fmt.Sprintf("$%s.%s", TestResultsKey, TestResultExitCodeKey),
+			"url":       fmt.Sprintf("$%s.%s", TestResultsKey, TestResultURLKey),
+			"url_raw":   fmt.Sprintf("$%s.%s", TestResultsKey, TestResultURLRawKey),
+			"start":     fmt.Sprintf("$%s.%s", TestResultsKey, TestResultStartTimeKey),
+			"end":       fmt.Sprintf("$%s.%s", TestResultsKey, TestResultEndTimeKey),
+			"_id":       0,
+		}},
+	}
+
+	if testStatus != "" {
+		statusMatch := bson.M{
+			"$match": bson.M{TestResultStatusKey: testStatus},
+		}
+		pipeline = append(pipeline, statusMatch)
+	}
+
+	if testFilename == "" {
+		testFilename = "\"\""
+	}
+	equalityStage := bson.M{
+		"$match": bson.M{TestResultTestFileKey: bson.M{sortOperator: testFilename}},
+	}
+	pipeline = append(pipeline, equalityStage)
+	sortStage := bson.M{
+		"$sort": bson.M{TestResultTestFileKey: 1},
+	}
+	pipeline = append(pipeline, sortStage)
+	if limit > 0 {
+		limitStage := bson.M{
+			"$limit": limit,
+		}
+		pipeline = append(pipeline, limitStage)
+	}
+	return pipeline
+
+}
+
 // DB Boilerplate
 
 // FindOne returns one task that satisfies the query.
@@ -440,6 +495,13 @@ func RemoveAllWithBuild(buildId string) error {
 	return db.RemoveAll(
 		Collection,
 		bson.M{BuildIdKey: buildId})
+}
+
+func Aggregate(pipeline []bson.M, results interface{}) error {
+	return db.Aggregate(
+		Collection,
+		pipeline,
+		results)
 }
 
 // Count returns the number of hosts that satisfy the given query.

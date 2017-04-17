@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/evergreen-ci/evergreen/util"
+)
 
 const (
 	// This string defines ISO-8601 UTC with 3 fractional seconds behind a dot
@@ -47,7 +51,7 @@ func (at *APITime) UnmarshalJSON(b []byte) error {
 // be correctly written out in an API response.
 func (at APITime) MarshalJSON() ([]byte, error) {
 	t := time.Time(at)
-	if t.IsZero() {
+	if util.IsZeroTime(t) {
 		return []byte("null"), nil
 	}
 	return []byte(t.Format(APITimeFormat)), nil

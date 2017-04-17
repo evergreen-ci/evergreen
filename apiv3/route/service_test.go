@@ -185,6 +185,192 @@ func TestHostPaginator(t *testing.T) {
 	})
 }
 
+func TestTestPaginator(t *testing.T) {
+	numTests := 300
+	Convey("When paginating with a ServiceContext", t, func() {
+		serviceContext := servicecontext.MockServiceContext{}
+		Convey("and there are tasks with tests to be found", func() {
+			cachedTests := []task.TestResult{}
+			for i := 0; i < numTests; i++ {
+				status := "pass"
+				if i%2 == 0 {
+					status = "fail"
+				}
+				nextTest := task.TestResult{
+					TestFile: fmt.Sprintf("test%d", i),
+					Status:   status,
+				}
+				cachedTests = append(cachedTests, nextTest)
+			}
+			serviceContext.MockTestConnector.CachedTests = cachedTests
+			Convey("then finding a key in the middle of the set should produce"+
+				" a full next and previous page and a full set of models", func() {
+				testToStartAt := 100
+				limit := 100
+				expectedTests := []model.Model{}
+				for i := testToStartAt; i < testToStartAt+limit; i++ {
+					status := "pass"
+					if i%2 == 0 {
+						status = "fail"
+					}
+					nextModelTest := &model.APITest{
+						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						StartTime: model.APITime(time.Unix(0, 0)),
+						EndTime:   model.APITime(time.Unix(0, 0)),
+						Status:    model.APIString(status),
+					}
+					expectedTests = append(expectedTests, nextModelTest)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Limit:    limit,
+						Relation: "next",
+					},
+					Prev: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Limit:    limit,
+						Relation: "prev",
+					},
+				}
+				args := testGetHandlerArgs{}
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+					limit, &serviceContext, args, expectedPages, expectedTests, nil)
+
+			})
+			Convey("then finding a key in the near the end of the set should produce"+
+				" a limited next and full previous page and a full set of models", func() {
+				testToStartAt := 150
+				limit := 100
+				expectedTests := []model.Model{}
+				for i := testToStartAt; i < testToStartAt+limit; i++ {
+					status := "pass"
+					if i%2 == 0 {
+						status = "fail"
+					}
+					nextModelTest := &model.APITest{
+						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						StartTime: model.APITime(time.Unix(0, 0)),
+						EndTime:   model.APITime(time.Unix(0, 0)),
+						Status:    model.APIString(status),
+					}
+					expectedTests = append(expectedTests, nextModelTest)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Limit:    50,
+						Relation: "next",
+					},
+					Prev: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Limit:    limit,
+						Relation: "prev",
+					},
+				}
+				args := testGetHandlerArgs{}
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+					limit, &serviceContext, args, expectedPages, expectedTests, nil)
+
+			})
+			Convey("then finding a key in the near the beginning of the set should produce"+
+				" a full next and a limited previous page and a full set of models", func() {
+				testToStartAt := 50
+				limit := 100
+				expectedTests := []model.Model{}
+				for i := testToStartAt; i < testToStartAt+limit; i++ {
+					status := "pass"
+					if i%2 == 0 {
+						status = "fail"
+					}
+					nextModelTest := &model.APITest{
+						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						StartTime: model.APITime(time.Unix(0, 0)),
+						EndTime:   model.APITime(time.Unix(0, 0)),
+						Status:    model.APIString(status),
+					}
+					expectedTests = append(expectedTests, nextModelTest)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Limit:    limit,
+						Relation: "next",
+					},
+					Prev: &Page{
+						Key:      fmt.Sprintf("test%d", 0),
+						Limit:    50,
+						Relation: "prev",
+					},
+				}
+				args := testGetHandlerArgs{}
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+					limit, &serviceContext, args, expectedPages, expectedTests, nil)
+
+			})
+			Convey("then finding a key in the last page should produce only a previous"+
+				" page and a limited set of models", func() {
+				testToStartAt := 299
+				limit := 100
+				expectedTests := []model.Model{}
+				for i := testToStartAt; i < numTests; i++ {
+					status := "pass"
+					if i%2 == 0 {
+						status = "fail"
+					}
+					nextModelTest := &model.APITest{
+						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						StartTime: model.APITime(time.Unix(0, 0)),
+						EndTime:   model.APITime(time.Unix(0, 0)),
+						Status:    model.APIString(status),
+					}
+					expectedTests = append(expectedTests, nextModelTest)
+				}
+				expectedPages := &PageResult{
+					Prev: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt-limit),
+						Limit:    limit,
+						Relation: "prev",
+					},
+				}
+				args := testGetHandlerArgs{}
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+					limit, &serviceContext, args, expectedPages, expectedTests, nil)
+
+			})
+			Convey("then finding the first key should produce only a next"+
+				" page and a full set of models", func() {
+				testToStartAt := 0
+				limit := 100
+				expectedTests := []model.Model{}
+				for i := testToStartAt; i < testToStartAt+limit; i++ {
+					status := "pass"
+					if i%2 == 0 {
+						status = "fail"
+					}
+					nextModelTest := &model.APITest{
+						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
+						StartTime: model.APITime(time.Unix(0, 0)),
+						EndTime:   model.APITime(time.Unix(0, 0)),
+						Status:    model.APIString(status),
+					}
+					expectedTests = append(expectedTests, nextModelTest)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("test%d", testToStartAt+limit),
+						Limit:    limit,
+						Relation: "next",
+					},
+				}
+				args := testGetHandlerArgs{}
+				checkPaginatorResultMatches(testPaginator, fmt.Sprintf("test%d", testToStartAt),
+					limit, &serviceContext, args, expectedPages, expectedTests, nil)
+			})
+		})
+	})
+}
+
 func TestTaskExecutionPatchPrepare(t *testing.T) {
 	Convey("With handler and a project context and user", t, func() {
 		tep := &TaskExecutionPatchHandler{}
