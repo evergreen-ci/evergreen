@@ -68,9 +68,9 @@ type TerminateHandler interface {
 // ExecTracker exposes functions to update and get the current execution stage
 // of the agent.
 type ExecTracker interface {
-	// Returns the current command being executed.
+	// CurrentCommand returns the current command being executed.
 	CurrentCommand() *model.PluginCommandConf
-	// Sets the current command being executed as well as a timeout for the command.
+	// CheckIn sets the current command being executed as well as a timeout for the command.
 	CheckIn(command model.PluginCommandConf, timeout time.Duration)
 }
 
@@ -650,6 +650,23 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 		}
 
 		for j, cmd := range cmds {
+			// check the kill channel and if it's closed, discontinue running tasks.
+			var closedKillChan bool
+			select {
+			case _, ok := <-agt.KillChan:
+				if !ok {
+					closedKillChan = true
+				}
+			default:
+				closedKillChan = false
+			}
+			if closedKillChan {
+				msg := "agent's kill channel is closed," +
+					"discontinuing running commands"
+				agt.logger.LogTask(slogger.WARN, msg)
+				return errors.New(msg)
+			}
+
 			fullCommandName := cmd.Plugin() + "." + cmd.Name()
 
 			parsedCommand := parsedCommands[j]
