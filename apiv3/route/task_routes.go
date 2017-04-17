@@ -42,9 +42,9 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
 		}
 		if e, ok := err.(*json.UnmarshalTypeError); ok {
 			return apiv3.APIError{
-				Message: fmt.Sprintf("Incorrect type given for field '%s', expecting '%s' "+
+				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
 					"but receieved '%s'",
-					e.Field, e.Type, e.Value),
+					e.Type, e.Value),
 				StatusCode: http.StatusBadRequest,
 			}
 		}

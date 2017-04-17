@@ -205,9 +205,9 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			err = tep.ParseAndValidate(req)
 			So(err, ShouldNotBeNil)
 			expectedErr := apiv3.APIError{
-				Message: fmt.Sprintf("Incorrect type given for field '%s', expecting '%s' "+
+				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
 					"but receieved '%s'",
-					"activated", "bool", "string"),
+					"bool", "string"),
 				StatusCode: http.StatusBadRequest,
 			}
 			So(err, ShouldResemble, expectedErr)
