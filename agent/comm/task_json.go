@@ -30,7 +30,12 @@ func (t *TaskJSONCommunicator) TaskGetJSON(endpoint string) (*http.Response, err
 }
 
 // TaskPostResults posts a set of test results for the communicator's task.
+// If results are empty or nil, this operation is a noop.
 func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error {
+	if results == nil || len(results.Results) == 0 {
+		return nil
+	}
+
 	retriableSendFile := util.RetriableFunc(
 		func() error {
 			resp, err := t.TryTaskPost("results", results)
@@ -95,8 +100,13 @@ func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error 
 	return nil
 }
 
-// TaskPostTestLog posts a test log for a communicator's task.
+// TaskPostTestLog posts a test log for a communicator's task. Is a
+// noop if the test Log is nil.
 func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, error) {
+	if log == nil {
+		return "", nil
+	}
+
 	var logId string
 	retriableSendFile := util.RetriableFunc(
 		func() error {

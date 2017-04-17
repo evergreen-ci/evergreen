@@ -19,7 +19,12 @@ import (
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
+
+func init() {
+	reporting.QuietMode()
+}
 
 func TestCommunicatorServerDown(t *testing.T) {
 	Convey("With an HTTP communicator and a dead HTTP server", t, func() {
