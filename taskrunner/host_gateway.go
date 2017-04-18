@@ -30,7 +30,7 @@ const (
 type HostGateway interface {
 	// run the specified task on the specified host, return the revision of the
 	// agent running the task on that host
-	StartAgentOnHost(*evergreen.Settings, host.Host) (string, error)
+	StartAgentOnHost(*evergreen.Settings, host.Host) error
 	// gets the current revision of the agent
 	GetAgentRevision() (string, error)
 }
@@ -46,23 +46,23 @@ type AgentHostGateway struct {
 // preparation on the remote machine, then kicks off the agent process on the
 // machine.
 // Returns an error if any step along the way fails.
-func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hostObj host.Host) (string, error) {
+func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hostObj host.Host) error {
 
 	// get the host's SSH options
 	cloudHost, err := providers.GetCloudHost(&hostObj, settings)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
+		return errors.Wrapf(err, "Failed to get cloud host for %s", hostObj.Id)
 	}
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
-		return "", errors.Wrapf(err, "Error getting ssh options for host %s", hostObj.Id)
+		return errors.Wrapf(err, "Error getting ssh options for host %s", hostObj.Id)
 	}
 
 	// prep the remote host
 	grip.Infof("Prepping remote host %v...", hostObj.Id)
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions)
 	if err != nil {
-		return "", errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
+		return errors.Wrapf(err, "error prepping remote host %s", hostObj.Id)
 	}
 	grip.Infof("Prepping host %v finished successfully", hostObj.Id)
 
@@ -72,17 +72,21 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 	// generate the host secret if none exists
 	if hostObj.Secret == "" {
 		if err = hostObj.CreateSecret(); err != nil {
-			return "", errors.Wrapf(err, "creating secret for %s", hostObj.Id)
+			return errors.Wrapf(err, "creating secret for %s", hostObj.Id)
 		}
 	}
 
 	err = startAgentOnRemote(settings.ApiUrl, &hostObj, sshOptions)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return errors.WithStack(err)
 	}
 	grip.Infof("Agent successfully started for host %v", hostObj.Id)
 
-	return agentRevision, nil
+	err = hostObj.SetAgentRevision(agentRevision)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 // Gets the git revision of the currently built agent

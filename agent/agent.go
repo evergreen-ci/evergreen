@@ -242,6 +242,7 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	receivedSignal := sh.awaitSignal()
 	detail := agt.getTaskEndDetail()
+	defer agt.cleanup()
 	switch receivedSignal {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
@@ -249,11 +250,9 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		return
 	case comm.IncorrectSecret:
 		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		agt.cleanup()
 		os.Exit(1)
 	case comm.HeartbeatMaxFailed:
 		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		agt.cleanup()
 		os.Exit(1)
 	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched

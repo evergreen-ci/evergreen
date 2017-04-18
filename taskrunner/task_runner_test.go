@@ -30,7 +30,7 @@ func (self *MockHostGateway) GetAgentRevision() (string, error) {
 }
 
 func (self *MockHostGateway) StartAgentOnHost(settings *evergreen.Settings,
-	targetHost host.Host) (string, error) {
+	targetHost host.Host) error {
 	return agtRevision, nil
 }
 

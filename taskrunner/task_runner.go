@@ -2,6 +2,8 @@ package taskrunner
 
 import (
 	"path/filepath"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -33,6 +35,12 @@ func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 	}
 }
 
+// agentStartData is the information needed to start an agent on a host
+type agentStartData struct {
+	Host     host.Host
+	Settings *evergreen.Settings
+}
+
 func (tr *TaskRunner) Run() error {
 	// Find all hosts that are running and have a LCT (last communication time)
 	// of 0 or ones that haven't been communicated in MaxLCT time.
@@ -43,16 +51,33 @@ func (tr *TaskRunner) Run() error {
 	}
 
 	grip.Infof("Found %d hosts that need agents dispatched", len(freeHosts))
-	// Dispatch an agent to all the free hosts
+
+	freeHostChan := make(chan agentStartData, len(freeHosts))
+
+	// put all of the information needed about the host in a channel
 	for _, h := range freeHosts {
-		revision, err := tr.StartAgentOnHost(tr.Settings, h)
-		if err != nil {
-			return errors.Wrapf(err, "error starting agent on host %s", h.Id)
-		}
-		// update host's agent revision
-		if err := h.SetAgentRevision(revision); err != nil {
-			return errors.Wrapf(err, "error setting new agent revision %s on host %s", revision, h.Id)
+		freeHostChan <- agentStartData{
+			Host:     h,
+			Settings: tr.Settings,
 		}
 	}
-	return nil
+	// close the free hosts channel
+	close(freeHostChan)
+	wg := sync.WaitGroup{}
+	workers := runtime.NumCPU()
+	wg.Add(workers)
+
+	catcher := grip.NewCatcher()
+	// for each worker create a new goroutine
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for input := range freeHostChan {
+				catcher.Add(errors.Wrapf(tr.StartAgentOnHost(input.Settings, input.Host),
+					"problem starting agent on host %s", input.Host))
+			}
+		}()
+	}
+	wg.Wait()
+	return catcher.Resolve()
 }
