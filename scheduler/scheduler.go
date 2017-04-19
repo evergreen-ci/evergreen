@@ -295,19 +295,22 @@ func (s *Scheduler) scheduleDistro(distroId string, runnableTasksForDistro []tas
 // type "versionBuildVariant") and updates the map with an entry for the
 // buildvariants associated with "versionStr"
 func (s *Scheduler) updateVersionBuildVarMap(versionStr string,
-	versionBuildVarMap map[versionBuildVariant]model.BuildVariant) (err error) {
+	versionBuildVarMap map[versionBuildVariant]model.BuildVariant) error {
+
 	version, err := version.FindOne(version.ById(versionStr))
 	if err != nil {
-		return
+		return err
 	}
+
 	if version == nil {
-		return errors.Errorf("nil version returned for version id '%v'", versionStr)
+		return errors.New("nil version returned for version '%s'", versionStr)
 	}
+
 	project := &model.Project{}
 
 	err = model.LoadProjectInto([]byte(version.Config), version.Identifier, project)
 	if err != nil {
-		return errors.Wrapf(err, "unable to load project config for version %v", versionStr)
+		return errors.Wrapf(err, "unable to load project config for version %s", versionStr)
 	}
 
 	// create buildvariant map (for accessing purposes)
@@ -315,7 +318,8 @@ func (s *Scheduler) updateVersionBuildVarMap(versionStr string,
 		key := versionBuildVariant{versionStr, buildVariant.Name}
 		versionBuildVarMap[key] = buildVariant
 	}
-	return
+
+	return nil
 }
 
 // Takes in a list of tasks, and splits them by distro.
@@ -336,8 +340,8 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if _, exists := versionBuildVarMap[key]; !exists {
 			err := s.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
 			if err != nil {
-				grip.Warningf("error getting buildvariant map for task %s: %+v",
-					task.Id, err)
+				grip.Noticef("skipping %s after problem getting buildvariant map for task %s: %v",
+					task.Version, task.Id, err)
 				continue
 			}
 		}
