@@ -148,6 +148,9 @@ type Agent struct {
 	// currentTaskDir holds the absolute path of the directory that the agent has
 	// created for executing the current task.
 	currentTaskDir string
+
+	// agent's runtime configuration options.
+	opts Options
 }
 
 // finishAndAwaitCleanup sends the returned TaskEndResponse and error
@@ -348,6 +351,7 @@ type Options struct {
 	HostId      string
 	HostSecret  string
 	Certificate string
+	StatusPort  int
 }
 
 // New creates a new agent to run a given task.
@@ -409,7 +413,13 @@ func New(opts Options) (*Agent, error) {
 		Registry:           plugin.NewSimpleRegistry(),
 		KillChan:           killChan,
 		endChan:            make(chan *apimodels.TaskEndDetail, 1),
+		opts:               opts,
 	}
+
+	// start the agent server as early as possible because the
+	// server is the mechanism that we use to ensure that there's
+	// only one agent running on a host.
+	go agt.startStatusServer()
 
 	// register plugins needed for execution
 	if err := registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
@@ -476,8 +486,8 @@ func (agt *Agent) Reset() error {
 // Run is the agent loop which gets the next task if it exists, and runs the task if it gets one.
 // It returns an exit code when the agent needs to exit
 func (agt *Agent) Run() error {
-
 	defer agt.cleanup()
+
 	// this loop continues until the agent exits
 	for {
 		var err error

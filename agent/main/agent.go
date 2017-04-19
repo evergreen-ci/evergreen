@@ -5,11 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"time"
 
-	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen/agent"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/util"
@@ -63,21 +61,6 @@ func getHTTPSCertFile(httpsCertFile string) (string, error) {
 	return string(httpsCert), nil
 }
 
-// runStatusServer starts an http server running on the specified
-// port. This will exit (e.g. os.Exit()) if the service fails to start.
-func runStatusServer(port int, opts agent.Options) {
-	// TODO (EVG-1440) eventually this should be a method on the agent
-	// object, when the loop (currently in main) is in the agent
-	// implementation itself.
-	n := negroni.New()
-	n.Use(negroni.NewRecovery())
-	n.UseHandler(agent.GetStatusRouter(opts))
-
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	grip.Infoln("starting status service on:", addr)
-	grip.CatchEmergencyFatal(http.ListenAndServe(addr, n))
-}
-
 func main() {
 	// Get the basic info needed to run the agent from command line flags.
 	hostId := flag.String("host_id", "", "id of machine agent is running on")
@@ -111,10 +94,8 @@ func main() {
 		Certificate: httpsCert,
 		HostId:      *hostId,
 		HostSecret:  *hostSecret,
+		StatusPort:  *port,
 	}
-
-	// Start a small HTTP server that has a single status endpoint
-	go runStatusServer(*port, initialOptions)
 
 	agt, err := agent.New(initialOptions)
 	if err != nil {
