@@ -240,12 +240,8 @@ func (vc *ValidateCommand) Execute(_ []string) error {
 			}
 			fmt.Printf("%v) %v: %v\n\n", i+1, e.Level, e.Message)
 		}
-		if numErrors > 0 {
-			return errors.New("Invalid project file!")
-		}
-		if numWarnings > 0 {
-			fmt.Printf("Project file has %v warnings, 0 errors.\n", numWarnings)
-		}
+
+		return errors.Errorf("Project file has %d warnings, %d errors.", numWarnings, numErrors)
 	}
 	fmt.Println("Valid!")
 	return nil
