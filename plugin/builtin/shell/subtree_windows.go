@@ -8,18 +8,12 @@ import (
 
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mongodb/grip/slogger"
-)
-
-// Map of TASK_ID to job object ID in windows
-var (
-	jobsMapping = make(map[string]*Job)
-	jobsMutex   sync.Mutex
+	"github.com/pkg/errors"
 )
 
 const (
 	ERROR_SUCCESS syscall.Errno = 0
-)
-const (
+
 	DELETE                   = 0x00010000
 	READ_CONTROL             = 0x00020000
 	WRITE_DAC                = 0x00040000
@@ -33,10 +27,8 @@ const (
 	SPECIFIC_RIGHTS_ALL      = 0x0000FFFF
 	ACCESS_SYSTEM_SECURITY   = 0x01000000
 	MAXIMUM_ALLOWED          = 0x02000000
-)
 
-// Constants for process permissions
-const (
+	// Constants for process permissions
 	PROCESS_TERMINATE                 = 0x0001
 	PROCESS_CREATE_THREAD             = 0x0002
 	PROCESS_SET_SESSIONID             = 0x0004
@@ -53,12 +45,6 @@ const (
 	PROCESS_ALL_ACCESS                = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF
 )
 
-type SECURITY_ATTRIBUTES struct {
-	Length             uint32
-	SecurityDescriptor *byte
-	InheritHandle      int32
-}
-
 var (
 	modkernel32 = syscall.NewLazyDLL("kernel32.dll")
 	modadvapi32 = syscall.NewLazyDLL("advapi32.dll")
@@ -68,34 +54,89 @@ var (
 	procCreateJobObjectW         = modkernel32.NewProc("CreateJobObjectW")
 	procOpenProcess              = modkernel32.NewProc("OpenProcess")
 	procTerminateJobObject       = modkernel32.NewProc("TerminateJobObject")
+
+	processMapping = newProcessRegistry()
 )
+
+////////////////////////////////////////////////////////////////////////
+//
+// implementation of the internals of our process mapping registry
+//
+////////////////////////////////////////////////////////////////////////
+
+type processRegistry struct {
+	jobs map[string]*Job
+	mu   sync.Mutex
+}
+
+func newProcessRegistry() *processRegistry {
+	return &processRegistry{
+		jobs: make(map[string]*Job),
+	}
+}
+
+func (r *processRegistry) getJob(taskId string) (*Job, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	j, ok := r.jobs[taskId]
+	if !ok {
+		var err error
+		j, err = NewJob(taskId)
+		if err != nil {
+			return nil, errors.Wrapf(err, "problem creating job object for %s", taskId)
+		}
+
+		r.jobs[taskId] = j
+
+		return j, nil
+	}
+
+	return j, nil
+}
+
+func (r *processRegistry) removeJob(taskId string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	job, ok := r.jobs[taskId]
+	if !ok {
+		return nil
+	}
+
+	var err error
+	defer func() {
+		err = errors.Wrapf(job.Close(), "problem closing job for task %s", taskId)
+	}()
+
+	delete(r.jobs, taskId)
+
+	return err
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Functions used to manage processes used by the shell command
+//
+////////////////////////////////////////////////////////////////////////
 
 // This windows-specific specific implementation of trackProcess associates the given pid with a
 // job object, which can later be used by "cleanup" to terminate all members of the job object at
 // once. If a job object doesn't already exist, it will create one automatically, scoped by the
 // task ID for which the shell process was started.
 func trackProcess(taskId string, pid int, log plugin.Logger) error {
-	jobsMutex.Lock()
-	defer jobsMutex.Unlock()
-	var job *Job
-	var err error
-	// If we have already created an existing job object for this task, find it
-	if jobObj, hasKey := jobsMapping[taskId]; hasKey {
-		job = jobObj
-	} else {
-		log.LogSystem(slogger.INFO, "tracking process with pid %v", pid)
-		// Job object does not exist yet for this task, so we must create one
-		job, err = NewJob(taskId)
-		if err != nil {
-			log.LogSystem(slogger.ERROR, "failed creating job object: %v", err)
-			return err
-		}
-		jobsMapping[taskId] = job
-	}
-	err = job.AssignProcess(uint(pid))
+	job, err := processMapping.getJob(taskId)
 	if err != nil {
+		log.LogSystem(slogger.ERROR, "failed creating job object: %v", err)
+		return errors.WithStack(err)
+	}
+
+	log.LogSystem(slogger.INFO, "tracking process with pid %v", pid)
+
+	if err = job.AssignProcess(uint(pid)); err != nil {
 		log.LogSystem(slogger.ERROR, "failed assigning process %v to job object: %v", pid, err)
 	}
+
 	return err
 }
 
@@ -103,32 +144,33 @@ func trackProcess(taskId string, pid int, log plugin.Logger) error {
 // given task key, and if it exists, terminates it. This will guarantee that any shell processes
 // started throughout the task run are destroyed, as long as they were captured in trackProcess.
 func cleanup(key string, log plugin.Logger) error {
-	jobsMutex.Lock()
-	defer jobsMutex.Unlock()
-	job, hasKey := jobsMapping[key]
-	if !hasKey {
+	job, err := processMapping.getJob(key)
+	if err != nil {
 		return nil
 	}
 
-	err := job.Terminate(0)
-	if err != nil {
-		log.LogSystem(slogger.ERROR, "terminating job object failed: %v", err)
-		return err
+	if err := job.Terminate(0); err != nil {
+		log.LogSystem(slogger.ERROR, "terminating job object [%s] failed: %v", key, err)
+		return errors.WithStack(err)
 	}
-	delete(jobsMapping, key)
-	defer job.Close()
-	return nil
+
+	return errors.Wrap(processMapping.removeJob(key),
+		"problem removing job object from internal evergreen tracking mechanism")
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////
+//
 // All the methods below are boilerplate functions for accessing the Windows syscalls for
 // working with Job objects.
+//
+///////////////////////////////////////////////////////////////////////////////////////////
 
 type Job struct {
 	handle syscall.Handle
 }
 
 func NewJob(name string) (*Job, error) {
-	hJob, err := CreateJobObject(nil, syscall.StringToUTF16Ptr(name))
+	hJob, err := CreateJobObject(syscall.StringToUTF16Ptr(name))
 	if err != nil {
 		return nil, NewWindowsError("CreateJobObject", err)
 	}
@@ -153,6 +195,7 @@ func (self *Job) Terminate(exitCode uint) error {
 	}
 	return nil
 }
+
 func OpenProcess(desiredAccess uint32, inheritHandle bool, processId uint32) (syscall.Handle, error) {
 	var inheritHandleRaw int32
 	if inheritHandle {
@@ -184,7 +227,13 @@ func (self *Job) Close() error {
 	return nil
 }
 
-func CreateJobObject(jobAttributes *SECURITY_ATTRIBUTES, name *uint16) (syscall.Handle, error) {
+func CreateJobObject(name *uint16) (syscall.Handle, error) {
+	jobAttributes := &struct {
+		Length             uint32
+		SecurityDescriptor *byte
+		InheritHandle      int32
+	}{}
+
 	r1, _, e1 := procCreateJobObjectW.Call(
 		uintptr(unsafe.Pointer(jobAttributes)),
 		uintptr(unsafe.Pointer(name)))
