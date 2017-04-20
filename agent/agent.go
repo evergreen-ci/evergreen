@@ -663,7 +663,7 @@ func (agt *Agent) RunCommands(commands []model.PluginCommandConf, returnOnError 
 			// check the kill channel and if it's closed, discontinue running tasks.
 			var closedKillChan bool
 			select {
-			case _, ok := <-agt.KillChan:
+			case _, ok := <-stop:
 				if !ok {
 					closedKillChan = true
 				}
