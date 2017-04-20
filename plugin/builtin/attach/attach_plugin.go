@@ -159,7 +159,7 @@ func AttachResultsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	results := &task.TestResults{}
-	err := util.ReadJSONInto(r.Body, results)
+	err := util.ReadJSONInto(util.NewRequestReader(r), results)
 	if err != nil {
 		message := fmt.Sprintf("error reading test results: %v", err)
 		grip.Error(message)

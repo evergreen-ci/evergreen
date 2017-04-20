@@ -15,7 +15,12 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
+
+func init() {
+	reporting.QuietMode()
+}
 
 func TestCheckHostWrapper(t *testing.T) {
 	h1 := host.Host{

@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/auth"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -125,10 +126,11 @@ type TaskExecutionPatchHandler struct {
 // It fetches the task and user from the request context and fetches the changes
 // in activation and priority from the request body.
 func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
-	decoder := json.NewDecoder(r.Body)
-	defer r.Body.Close()
-	err := decoder.Decode(tep)
-	if err != nil {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	decoder := json.NewDecoder(body)
+	if err := decoder.Decode(tep); err != nil {
 		if err == io.EOF {
 			return apiv3.APIError{
 				Message:    "No request body sent",

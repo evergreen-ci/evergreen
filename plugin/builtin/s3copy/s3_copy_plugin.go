@@ -308,7 +308,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s3CopyReq := &S3CopyRequest{}
-	err := util.ReadJSONInto(r.Body, s3CopyReq)
+	err := util.ReadJSONInto(util.NewRequestReader(r), s3CopyReq)
 	if err != nil {
 		grip.Errorln("error reading push request:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)

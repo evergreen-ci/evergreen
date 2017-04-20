@@ -48,7 +48,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		PublicKey string `json:"public_key"`
 		UserData  string `json:"userdata"`
 	}{}
-	err := util.ReadJSONInto(r.Body, &hostRequest)
+	err := util.ReadJSONInto(util.NewRequestReader(r), &hostRequest)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -135,7 +135,9 @@ func (as *APIServer) spawnHostReady(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// get/store setup logs
-		setupLog, err := ioutil.ReadAll(r.Body)
+		body := util.NewRequestReader(r)
+		defer body.Close()
+		setupLog, err := ioutil.ReadAll(body)
 		if err != nil {
 			grip.Errorln("problem reading request:", err)
 			as.LoggedError(w, r, http.StatusInternalServerError, err)

@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -47,8 +46,6 @@ const (
 	apiHostKey       hostKey       = 0
 	apiProjectKey    projectKey    = 0
 	apiProjectRefKey projectRefKey = 0
-
-	maxTestLogSize = 16 * 1024 * 1024 // 16 MB
 
 	APIServerLockTitle = evergreen.APIServerTaskActivator
 	PatchLockTitle     = "patches"
@@ -308,18 +305,8 @@ func (as *APIServer) GetProjectRef(w http.ResponseWriter, r *http.Request) {
 // the test logs and storing them in the test_logs collection.
 func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
-	// define a LimitedReader to prevent overly large logs from getting into memory
-	lr := &io.LimitedReader{R: r.Body, N: maxTestLogSize}
-	// manually close Body since LimitedReader is not a ReadCloser
-	defer r.Body.Close()
 	log := &model.TestLog{}
-	err := util.ReadJSONInto(ioutil.NopCloser(lr), log)
-	if lr.N == 0 {
-		// error if we used every available byte in the limit reader
-		as.LoggedError(w, r, http.StatusBadRequest,
-			errors.Errorf("test log size exceeds %v bytes", maxTestLogSize))
-		return
-	}
+	err := util.ReadJSONInto(util.NewRequestReader(r), log)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -343,7 +330,7 @@ func (as *APIServer) AttachTestLog(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AttachResults(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	results := &task.TestResults{}
-	err := util.ReadJSONInto(r.Body, results)
+	err := util.ReadJSONInto(util.NewRequestReader(r), results)
 	if err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
@@ -384,7 +371,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 		BuildId:         t.BuildId,
 	}
 
-	err := util.ReadJSONInto(r.Body, &entry.Files)
+	err := util.ReadJSONInto(util.NewRequestReader(r), &entry.Files)
 	if err != nil {
 		message := fmt.Sprintf("Error reading file definitions for task  %v: %v", t.Id, err)
 		grip.Error(message)
@@ -405,7 +392,7 @@ func (as *APIServer) AttachFiles(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) AppendTaskLog(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	taskLog := &model.TaskLog{}
-	if err := util.ReadJSONInto(r.Body, taskLog); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), taskLog); err != nil {
 		http.Error(w, "unable to read logs from request", http.StatusBadRequest)
 		return
 	}
@@ -449,9 +436,8 @@ func (as *APIServer) Heartbeat(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) TaskSystemInfo(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	info := &message.SystemInfo{}
-	defer r.Body.Close()
 
-	if err := util.ReadJSONInto(r.Body, info); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), info); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -466,9 +452,8 @@ func (as *APIServer) TaskSystemInfo(w http.ResponseWriter, r *http.Request) {
 func (as *APIServer) TaskProcessInfo(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 	procs := []*message.ProcessInfo{}
-	defer r.Body.Close()
 
-	if err := util.ReadJSONInto(r.Body, &procs); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &procs); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -543,7 +528,7 @@ func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}{}
 
-	if err := util.ReadJSONInto(r.Body, &userCredentials); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &userCredentials); err != nil {
 		as.LoggedError(w, r, http.StatusBadRequest, errors.Wrap(err, "Error reading user credentials"))
 		return
 	}
@@ -608,7 +593,10 @@ func (as *APIServer) hostReady(w http.ResponseWriter, r *http.Request) {
 
 		// get/store setup logs
 		var setupLog []byte
-		setupLog, err = ioutil.ReadAll(r.Body)
+		body := util.NewRequestReader(r)
+		defer body.Close()
+
+		setupLog, err = ioutil.ReadAll(body)
 		if err != nil {
 			as.LoggedError(w, r, http.StatusInternalServerError, err)
 			return
@@ -700,8 +688,9 @@ func (as *APIServer) listVariants(w http.ResponseWriter, r *http.Request) {
 // validateProjectConfig returns a slice containing a list of any errors
 // found in validating the given project configuration
 func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	yamlBytes, err := ioutil.ReadAll(r.Body)
+	body := util.NewRequestReader(r)
+	defer body.Close()
+	yamlBytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		as.WriteJSON(w, http.StatusBadRequest, fmt.Sprintf("Error reading request body: %v", err))
 		return

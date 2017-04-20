@@ -147,9 +147,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		} `json:"alert_config"`
 	}{}
 
-	err = util.ReadJSONInto(r.Body, &responseRef)
-
-	if err != nil {
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &responseRef); err != nil {
 		http.Error(w, fmt.Sprintf("Error parsing request body %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -260,11 +258,15 @@ func (uis *UIServer) setRevision(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["project_id"]
 
-	data, err := ioutil.ReadAll(r.Body)
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	data, err := ioutil.ReadAll(body)
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusNotFound, err)
 		return
 	}
+
 	revision := string(data)
 	if revision == "" {
 		uis.LoggedError(w, r, http.StatusBadRequest, errors.Errorf("revision sent was empty"))

@@ -132,7 +132,7 @@ func apiInsertTask(w http.ResponseWriter, r *http.Request) {
 	}
 	name := mux.Vars(r)["name"]
 	rawData := map[string]interface{}{}
-	err := util.ReadJSONInto(r.Body, &rawData)
+	err := util.ReadJSONInto(util.NewRequestReader(r), &rawData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -57,7 +57,7 @@ func uiHandleTaskTag(w http.ResponseWriter, r *http.Request) {
 		err = DeleteTagFromTask(taskId, name)
 	case evergreen.MethodPost:
 		tc := TagContainer{}
-		err = util.ReadJSONInto(r.Body, &tc)
+		err = util.ReadJSONInto(util.NewRequestReader(r), &tc)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

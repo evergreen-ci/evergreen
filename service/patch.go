@@ -107,8 +107,7 @@ func (uis *UIServer) schedulePatch(w http.ResponseWriter, r *http.Request) {
 
 	patchUpdateReq := patchVariantsTasksRequest{}
 
-	err = util.ReadJSONInto(r.Body, &patchUpdateReq)
-	if err != nil {
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &patchUpdateReq); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

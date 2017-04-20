@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
 )
@@ -44,14 +45,16 @@ func (uis *UIServer) modifyDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	b, err := ioutil.ReadAll(r.Body)
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	b, err := ioutil.ReadAll(body)
 	if err != nil {
 		message := fmt.Sprintf("error reading request: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, message, http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
 	oldDistro, err := distro.FindOne(distro.ById(id))
 	if err != nil {
@@ -160,14 +163,16 @@ func (uis *UIServer) addDistro(w http.ResponseWriter, r *http.Request) {
 
 	u := MustHaveUser(r)
 
-	b, err := ioutil.ReadAll(r.Body)
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	b, err := ioutil.ReadAll(body)
 	if err != nil {
 		message := fmt.Sprintf("error adding distro: %v", err)
 		PushFlash(uis.CookieStore, r, w, NewErrorFlash(message))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
 
 	var d distro.Distro
 

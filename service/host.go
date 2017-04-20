@@ -120,8 +120,8 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	opts := &uiParams{}
-	err = util.ReadJSONInto(r.Body, opts)
-	if err != nil {
+
+	if err = util.ReadJSONInto(util.NewRequestReader(r), opts); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -152,8 +152,8 @@ func (uis *UIServer) modifyHosts(w http.ResponseWriter, r *http.Request) {
 	_ = MustHaveUser(r)
 
 	opts := &uiParams{}
-	err := util.ReadJSONInto(r.Body, opts)
-	if err != nil {
+
+	if err := util.ReadJSONInto(util.NewRequestReader(r), opts); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

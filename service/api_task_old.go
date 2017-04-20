@@ -161,7 +161,7 @@ func (as *APIServer) oldEndTask(w http.ResponseWriter, r *http.Request) {
 	t := MustHaveTask(r)
 
 	details := &apimodels.TaskEndDetail{}
-	if err := util.ReadJSONInto(r.Body, details); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), details); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -257,7 +257,7 @@ func (as *APIServer) oldStartTask(w http.ResponseWriter, r *http.Request) {
 	grip.Infoln("Marking task started:", t.Id)
 
 	taskStartInfo := &apimodels.TaskStartRequest{}
-	if err := util.ReadJSONInto(r.Body, taskStartInfo); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), taskStartInfo); err != nil {
 		http.Error(w, fmt.Sprintf("Error reading task start request for %v: %v", t.Id, err), http.StatusBadRequest)
 		return
 	}

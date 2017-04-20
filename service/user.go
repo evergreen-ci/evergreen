@@ -45,7 +45,7 @@ func (uis *UIServer) login(w http.ResponseWriter, r *http.Request) {
 		Password string `json:"password"`
 	}{}
 
-	if err := util.ReadJSONInto(r.Body, &creds); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &creds); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -113,7 +113,7 @@ func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) 
 	currentUser := MustHaveUser(r)
 	userSettings := user.UserSettings{}
 
-	if err := util.ReadJSONInto(r.Body, &userSettings); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &userSettings); err != nil {
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}

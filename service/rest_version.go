@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -276,7 +277,10 @@ func (restapi restAPI) modifyVersionInfo(w http.ResponseWriter, r *http.Request)
 		Activated *bool `json:"activated"`
 	}{}
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := json.NewDecoder(body).Decode(&input); err != nil {
 		http.Error(w, fmt.Sprintf("problem parsing input: %v", err.Error()),
 			http.StatusInternalServerError)
 	}

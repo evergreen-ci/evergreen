@@ -113,7 +113,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData  string `json:"userdata"`
 	}{}
 
-	if err := util.ReadJSONInto(r.Body, &putParams); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &putParams); err != nil {
 		http.Error(w, fmt.Sprintf("Bad json in request: %v", err), http.StatusBadRequest)
 		return
 	}
@@ -177,7 +177,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 		AddHours string `json:"add_hours"`
 	}{}
 
-	if err := util.ReadJSONInto(r.Body, &updateParams); err != nil {
+	if err := util.ReadJSONInto(util.NewRequestReader(r), &updateParams); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 

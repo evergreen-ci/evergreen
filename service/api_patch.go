@@ -211,7 +211,7 @@ func (as *APIServer) submitPatch(w http.ResponseWriter, r *http.Request) {
 			Tasks       []string `json:"tasks"`
 			Finalize    bool     `json:"finalize"`
 		}{}
-		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
@@ -329,7 +329,7 @@ func (as *APIServer) updatePatchModule(w http.ResponseWriter, r *http.Request) {
 			Patch   string `json:"patch"`
 			Githash string `json:"githash"`
 		}{}
-		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}
@@ -445,7 +445,7 @@ func (as *APIServer) existingPatchRequest(w http.ResponseWriter, r *http.Request
 			Action      string `json:"action"`
 			Description string `json:"description"`
 		}{}
-		if err := util.ReadJSONInto(r.Body, &data); err != nil {
+		if err := util.ReadJSONInto(util.NewRequestReader(r), &data); err != nil {
 			as.LoggedError(w, r, http.StatusBadRequest, err)
 			return
 		}

@@ -107,6 +107,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
+	var err error
+
 	projCtx := MustHaveProjectContext(r)
 	user := MustHaveUser(r)
 	if projCtx.Project == nil || projCtx.Version == nil {
@@ -121,8 +123,8 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 		Priority int64    `json:"priority"`
 		TaskIds  []string `json:"task_ids"`
 	}{}
-	err := util.ReadJSONInto(r.Body, &jsonMap)
-	if err != nil {
+
+	if err = util.ReadJSONInto(util.NewRequestReader(r), &jsonMap); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
