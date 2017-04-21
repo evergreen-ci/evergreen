@@ -48,8 +48,8 @@ func (m *mockAuthenticator) Authenticate(sc servicecontext.ServiceContext, r *ht
 // returns the passed in parameters.
 func mockPaginatorFuncGenerator(result []model.Model, nextKey, prevKey string,
 	nextLimit, prevLimit int, errResult error) PaginatorFunc {
-	return func(key string, limit int, sc servicecontext.ServiceContext) ([]model.Model,
-		*PageResult, error) {
+	return func(key string, limit int, args interface{},
+		sc servicecontext.ServiceContext) ([]model.Model, *PageResult, error) {
 
 		nextPage := Page{
 			Limit:    nextLimit,

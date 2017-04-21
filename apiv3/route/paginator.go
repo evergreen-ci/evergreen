@@ -38,6 +38,10 @@ type PaginationExecutor struct {
 	// retrieve results from the service layer.
 	Paginator PaginatorFunc
 
+	// Args contain all additional arguments that will be passed to the paginator
+	// function.
+	Args interface{}
+
 	limit int
 	key   string
 }
@@ -67,12 +71,12 @@ type PageResult struct {
 // PaginatorFunc is a function that handles fetching results from the service
 // layer. It takes as parameters a string which is the key to fetch starting
 // from, and an int as the number of results to limit to.
-type PaginatorFunc func(string, int, servicecontext.ServiceContext) ([]model.Model, *PageResult, error)
+type PaginatorFunc func(string, int, interface{}, servicecontext.ServiceContext) ([]model.Model, *PageResult, error)
 
 // Execute serves as an implementation of the RequestHandler's 'Execute' method.
 // It calls the embedded PaginationFunc and then processes and returns the results.
 func (pe *PaginationExecutor) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
-	models, pages, err := pe.Paginator(pe.key, pe.limit, sc)
+	models, pages, err := pe.Paginator(pe.key, pe.limit, pe.Args, sc)
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -122,7 +126,7 @@ func (pe *PaginationExecutor) ParseAndValidate(r *http.Request) error {
 
 // buildLink creates the link string for a given page of the resource.
 func (p *Page) buildLink(keyQueryParam, limitQueryParam string,
-	baseURL url.URL) string {
+	baseURL *url.URL) string {
 
 	q := baseURL.Query()
 	q.Set(keyQueryParam, p.Key)
@@ -148,7 +152,6 @@ func ParsePaginationHeader(header, keyQueryParam,
 	scanner := bufio.NewScanner(strings.NewReader(header))
 
 	// Looks through the lines of the header and creates a new page for each
-	// link it describes.
 	for scanner.Scan() {
 		matches := linkMatcher.FindStringSubmatch(scanner.Text())
 		if len(matches) != 3 {
@@ -192,17 +195,17 @@ func ParsePaginationHeader(header, keyQueryParam,
 //		http://evergreen.mongodb.com/{route}?key={key}&limit={limit}; rel="{relation}"
 //    http://...
 func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter,
-	prefix, apiURL, route string, version int) error {
+	prefix, apiURL, route string) error {
 
 	//Not exactly sure what to do in this case
 	if pm.Pages == nil || (pm.Pages.Next == nil && pm.Pages.Prev == nil) {
 		return nil
 	}
-	baseURL := url.URL{
-		Scheme: "http",
-		Host:   apiURL,
-		Path:   path.Clean(fmt.Sprintf("/%s/v%d/%s", prefix, version, route)),
+	baseURL, err := url.Parse(apiURL)
+	if err != nil {
+		return err
 	}
+	baseURL.Path = path.Clean(fmt.Sprintf("/%s", route))
 
 	b := bytes.Buffer{}
 	if pm.Pages.Next != nil {

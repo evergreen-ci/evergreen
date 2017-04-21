@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/apiv3"
 	"github.com/evergreen-ci/evergreen/apiv3/model"
+	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -20,7 +23,6 @@ func TestMakePaginationHeader(t *testing.T) {
 	testNextKey := "nextkey"
 	testNextLimit := 100
 	testPrevLimit := 105
-	testVersion := 2
 
 	testLimitQueryParam := "limit"
 	testKeyQueryParam := "key"
@@ -48,7 +50,7 @@ func TestMakePaginationHeader(t *testing.T) {
 				LimitQueryParam: testLimitQueryParam,
 			}
 
-			err := pm.MakeHeader(w, testPrefix, testURL, testRoute, testVersion)
+			err := pm.MakeHeader(w, testPrefix, testURL, testRoute)
 			So(err, ShouldBeNil)
 			linksHeader, ok := w.Header()["Link"]
 			So(ok, ShouldBeTrue)
@@ -78,7 +80,7 @@ func TestMakePaginationHeader(t *testing.T) {
 				LimitQueryParam: testLimitQueryParam,
 			}
 
-			err := pm.MakeHeader(w, testPrefix, testURL, testRoute, testVersion)
+			err := pm.MakeHeader(w, testPrefix, testURL, testRoute)
 			So(err, ShouldBeNil)
 			linksHeader, ok := w.Header()["Link"]
 			So(ok, ShouldBeTrue)
@@ -105,7 +107,7 @@ func TestMakePaginationHeader(t *testing.T) {
 				LimitQueryParam: testLimitQueryParam,
 			}
 
-			err := pm.MakeHeader(w, testPrefix, testURL, testRoute, testVersion)
+			err := pm.MakeHeader(w, testPrefix, testURL, testRoute)
 			So(err, ShouldBeNil)
 			linksHeader, ok := w.Header()["Link"]
 			So(ok, ShouldBeTrue)
@@ -117,6 +119,14 @@ func TestMakePaginationHeader(t *testing.T) {
 			So(pmRes.Pages.Next, ShouldResemble, testPages.Next)
 		})
 	})
+}
+
+type testPaginationRequestHandler struct {
+	*PaginationExecutor
+}
+
+func (prh *testPaginationRequestHandler) Handler() RequestHandler {
+	return prh
 }
 
 func TestPaginationExecutor(t *testing.T) {
@@ -213,10 +223,84 @@ func TestPaginationExecutor(t *testing.T) {
 	})
 }
 
-type testPaginationRequestHandler struct {
+type testAdditionalArgsPaginator struct {
 	*PaginationExecutor
 }
 
-func (prh *testPaginationRequestHandler) Handler() RequestHandler {
-	return prh
+func (tap *testAdditionalArgsPaginator) Handler() RequestHandler {
+	return tap
+}
+
+type ArgHolder struct {
+	Arg1 int
+	Arg2 string
+}
+
+const (
+	testArg1Holder = "arg1"
+	testArg2Holder = "arg2"
+)
+
+func (tap *testAdditionalArgsPaginator) ParseAndValidate(r *http.Request) error {
+	arg1 := context.Get(r, testArg1Holder)
+	castArg1, ok := arg1.(int)
+	if !ok {
+		return fmt.Errorf("incorrect type for arg1. found %v", arg1)
+	}
+	arg2 := context.Get(r, testArg2Holder)
+	castArg2, ok := arg2.(string)
+	if !ok {
+		return fmt.Errorf("incorrect type for arg2. found %v", arg2)
+	}
+
+	ah := ArgHolder{
+		Arg1: castArg1,
+		Arg2: castArg2,
+	}
+	tap.Args = &ah
+	return tap.PaginationExecutor.ParseAndValidate(r)
+}
+
+func TestPaginatorAdditionalArgs(t *testing.T) {
+	Convey("When paginating with a additional args paginator func and args", t, func() {
+		arg1 := 7
+		arg2 := "testArg1"
+
+		sc := servicecontext.MockServiceContext{}
+
+		r := &http.Request{
+			URL: &url.URL{
+				RawQuery: "key=key&limit=100",
+			},
+		}
+
+		context.Set(r, testArg1Holder, arg1)
+		context.Set(r, testArg2Holder, arg2)
+
+		pf := func(key string, limit int, args interface{},
+			sc servicecontext.ServiceContext) ([]model.Model, *PageResult, error) {
+			castArgs, ok := args.(*ArgHolder)
+			So(ok, ShouldBeTrue)
+			So(castArgs.Arg1, ShouldEqual, arg1)
+			So(castArgs.Arg2, ShouldEqual, arg2)
+			So(key, ShouldEqual, "key")
+			So(limit, ShouldEqual, 100)
+			return []model.Model{}, nil, nil
+		}
+
+		executor := &PaginationExecutor{
+			KeyQueryParam:   "key",
+			LimitQueryParam: "limit",
+
+			Paginator: pf,
+		}
+		tap := testAdditionalArgsPaginator{executor}
+
+		Convey("parsing should succeed and args should be set", func() {
+			err := tap.ParseAndValidate(r)
+			So(err, ShouldBeNil)
+			_, err = tap.Execute(&sc)
+			So(err, ShouldBeNil)
+		})
+	})
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -19,6 +20,28 @@ import (
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+func TestHostParseAndValidate(t *testing.T) {
+	Convey("With a hostGetHandler and request", t, func() {
+		testStatus := "testStatus"
+		hgh := &hostGetHandler{}
+		hgh, ok := hgh.Handler().(*hostGetHandler)
+		So(ok, ShouldBeTrue)
+		u := url.URL{
+			RawQuery: fmt.Sprintf("status=%s", testStatus),
+		}
+		r := http.Request{
+			URL: &u,
+		}
+		Convey("parsing request should fetch status", func() {
+			err := hgh.ParseAndValidate(&r)
+			So(err, ShouldBeNil)
+			hga, ok := hgh.PaginationExecutor.Args.(hostGetArgs)
+			So(ok, ShouldBeTrue)
+			So(hga.status, ShouldEqual, testStatus)
+		})
+	})
+}
 
 func TestHostPaginator(t *testing.T) {
 	numHostsInDB := 300
@@ -57,7 +80,7 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, expectedPages, expectedHosts, nil)
+					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
 
 			})
 			Convey("then finding a key in the near the end of the set should produce"+
@@ -84,7 +107,7 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, expectedPages, expectedHosts, nil)
+					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
 
 			})
 			Convey("then finding a key in the near the beginning of the set should produce"+
@@ -111,7 +134,7 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, expectedPages, expectedHosts, nil)
+					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
 
 			})
 			Convey("then finding a key in the last page should produce only a previous"+
@@ -133,7 +156,7 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, expectedPages, expectedHosts, nil)
+					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
 
 			})
 			Convey("then finding the first key should produce only a next"+
@@ -155,7 +178,7 @@ func TestHostPaginator(t *testing.T) {
 					},
 				}
 				checkPaginatorResultMatches(hostPaginator, fmt.Sprintf("host%d", hostToStartAt),
-					limit, &serviceContext, expectedPages, expectedHosts, nil)
+					limit, &serviceContext, hostGetArgs{}, expectedPages, expectedHosts, nil)
 
 			})
 		})
@@ -398,10 +421,13 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
-	sc servicecontext.ServiceContext, expectedPages *PageResult,
+	sc servicecontext.ServiceContext, args interface{}, expectedPages *PageResult,
 	expectedModels []model.Model, expectedErr error) {
-	res, pages, err := paginator(key, limit, sc)
-	So(err, ShouldEqual, expectedErr)
-	So(res, ShouldResemble, expectedModels)
+	res, pages, err := paginator(key, limit, args, sc)
+	So(err, ShouldResemble, expectedErr)
+	So(len(res), ShouldEqual, len(expectedModels))
+	for ix := range expectedModels {
+		So(res[ix], ShouldResemble, expectedModels[ix])
+	}
 	So(pages, ShouldResemble, expectedPages)
 }

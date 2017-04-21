@@ -73,7 +73,7 @@ func TestAdminAuthenticator(t *testing.T) {
 
 				errToResemble := apiv3.APIError{
 					StatusCode: http.StatusNotFound,
-					Message:    "Not Found",
+					Message:    "Not found",
 				}
 				So(err, ShouldResemble, errToResemble)
 			})
@@ -116,7 +116,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 
 				errToResemble := apiv3.APIError{
 					StatusCode: http.StatusNotFound,
-					Message:    "Not Found",
+					Message:    "Not found",
 				}
 				So(err, ShouldResemble, errToResemble)
 
