@@ -303,7 +303,7 @@ func (s *Scheduler) updateVersionBuildVarMap(versionStr string,
 	}
 
 	if version == nil {
-		return errors.New("nil version returned for version '%s'", versionStr)
+		return errors.Errorf("nil version returned for version '%s'", versionStr)
 	}
 
 	project := &model.Project{}
