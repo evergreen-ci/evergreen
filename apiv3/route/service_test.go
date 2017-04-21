@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -19,6 +20,28 @@ import (
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+func TestHostParseAndValidate(t *testing.T) {
+	Convey("With a hostGetHandler and request", t, func() {
+		testStatus := "testStatus"
+		hgh := &hostGetHandler{}
+		hgh, ok := hgh.Handler().(*hostGetHandler)
+		So(ok, ShouldBeTrue)
+		u := url.URL{
+			RawQuery: fmt.Sprintf("status=%s", testStatus),
+		}
+		r := http.Request{
+			URL: &u,
+		}
+		Convey("parsing request should fetch status", func() {
+			err := hgh.ParseAndValidate(&r)
+			So(err, ShouldBeNil)
+			hga, ok := hgh.PaginationExecutor.Args.(hostGetArgs)
+			So(ok, ShouldBeTrue)
+			So(hga.status, ShouldEqual, testStatus)
+		})
+	})
+}
 
 func TestHostPaginator(t *testing.T) {
 	numHostsInDB := 300

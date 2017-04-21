@@ -301,20 +301,6 @@ func ByExpiredSince(time time.Time) db.Q {
 // failed to provision.
 var IsProvisioningFailure = db.Query(bson.D{{StatusKey, evergreen.HostProvisionFailed}})
 
-// ByAfterId provides a way to get an ordered list of hosts from after the
-// given hostId.
-func ByAfterId(hostId string, dir int) db.Q {
-	findOp := "$gte"
-	if dir < 0 {
-		findOp = "$lte"
-	}
-	return db.Query(bson.M{
-		IdKey: bson.M{
-			findOp: hostId,
-		},
-	}).Sort([]string{"+" + IdKey})
-}
-
 // ByRunningWithTimedOutLCT returns hosts that are running and either have no Last Commmunication Time
 // or have one that exists that is greater than the MaxLTCInterval duration away from the current time.
 func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
@@ -378,4 +364,37 @@ func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
 		query,
 		update,
 	)
+}
+
+func GetHostsByFromIdWithStatus(id, status string, limit, sortDir int) ([]Host, error) {
+	pipeline := geHostsFromIdWithStatusPipeline(id, status, limit, sortDir)
+	hostRes := []Host{}
+	err := db.Aggregate(Collection, pipeline, &hostRes)
+	if err != nil {
+		return nil, err
+	}
+	return hostRes, nil
+}
+
+func geHostsFromIdWithStatusPipeline(id, status string, limit, sortDir int) []bson.M {
+	sortOperator := "$gte"
+	if sortDir < 0 {
+		sortOperator = "$lte"
+	}
+	pipeline := []bson.M{
+		{"$match": bson.M{IdKey: bson.M{sortOperator: id}}},
+	}
+	if status != "" {
+		statusMatch := bson.M{
+			"$match": bson.M{StatusKey: status},
+		}
+		pipeline = append(pipeline, statusMatch)
+	}
+	if limit > 0 {
+		limitStage := bson.M{
+			"$limit": limit,
+		}
+		pipeline = append(pipeline, limitStage)
+	}
+	return pipeline
 }
