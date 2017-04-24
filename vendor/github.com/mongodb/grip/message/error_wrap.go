@@ -33,7 +33,7 @@ func NewErrorWrapMessage(p level.Priority, err error, base string, args ...inter
 	return m
 }
 
-// NewErrorWrapDefault produces a message.Composer that combines the
+// NewErrorWrap produces a message.Composer that combines the
 // functionality of an Error composer that renders a loggable error
 // message for non-nil errors with a normal formatted message
 // (e.g. fmt.Sprintf). These messages only log if the error is

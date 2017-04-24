@@ -8,9 +8,9 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-type BaseResetFunc func()
-type BaseCloseFunc func() error
-
+// Base provides most of the functionality of the Sender interface,
+// except for the Send method, to facilitate writing novel Sender
+// implementations. All implementations of the functions
 type Base struct {
 	// data exposed via the interface and tools to track them
 	name  string
@@ -21,11 +21,13 @@ type Base struct {
 	// they are set either in the constructor (e.g. MakeBase) of
 	// via the SetErrorHandler/SetFormatter injector.
 	errHandler ErrorHandler
-	reset      BaseResetFunc
-	closer     BaseCloseFunc
+	reset      func()
+	closer     func() error
 	formatter  MessageFormatter
 }
 
+// NewBase constructs a basic Base structure with no op functions for
+// reset, close, and error handling.
 func NewBase(n string) *Base {
 	return &Base{
 		name:       n,
@@ -35,16 +37,20 @@ func NewBase(n string) *Base {
 	}
 }
 
-func MakeBase(n string, r BaseResetFunc, c BaseCloseFunc) *Base {
+// MakeBase constructs a Base structure that allows callers to specify
+// the reset and caller function.
+func MakeBase(n string, reseter func(), closer func() error) *Base {
 	b := NewBase(n)
-	b.reset = r
-	b.closer = c
+	b.reset = reseter
+	b.closer = closer
 
 	return b
 }
 
+// Close calls the closer function.
 func (b *Base) Close() error { return b.closer() }
 
+// Name returns the name of the Sender.
 func (b *Base) Name() string {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()
@@ -52,6 +58,7 @@ func (b *Base) Name() string {
 	return b.name
 }
 
+// SetName allows clients to change the name of the Sender.
 func (b *Base) SetName(name string) {
 	b.mutex.Lock()
 	b.name = name
@@ -60,6 +67,7 @@ func (b *Base) SetName(name string) {
 	b.reset()
 }
 
+// SetFormatter users to set the formatting function used to construct log messages.
 func (b *Base) SetFormatter(mf MessageFormatter) error {
 	if mf == nil {
 		return errors.New("cannot set message formatter to nil")
@@ -72,6 +80,7 @@ func (b *Base) SetFormatter(mf MessageFormatter) error {
 	return nil
 }
 
+// SetErrorHandler configures the error handling function for this Sender.
 func (b *Base) SetErrorHandler(eh ErrorHandler) error {
 	if eh == nil {
 		return errors.New("error handler must be non-nil")
@@ -93,6 +102,8 @@ func (b *Base) ErrorHandler(err error, m message.Composer) {
 	b.errHandler(err, m)
 }
 
+// SetLevel configures the level (default levels and threshold levels)
+// for the Sender.
 func (b *Base) SetLevel(l LevelInfo) error {
 	if !l.Valid() {
 		return fmt.Errorf("level settings are not valid: %+v", l)
@@ -106,6 +117,7 @@ func (b *Base) SetLevel(l LevelInfo) error {
 	return nil
 }
 
+// Level reports the currently configured level for the Sender.
 func (b *Base) Level() LevelInfo {
 	b.mutex.RLock()
 	defer b.mutex.RUnlock()

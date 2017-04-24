@@ -38,7 +38,7 @@ func NewSMTPLogger(opts *SMTPOptions, l LevelInfo) (Sender, error) {
 	return s, nil
 }
 
-// MakeSMTPLoger constructs an unconfigured (e.g. without level information)
+// MakeSMTPLogger constructs an unconfigured (e.g. without level information)
 // SMTP Sender implementation that delivers mail for every loggable message.
 // The configuration of the outgoing SMTP server, and the formatting of the
 // log message is handled by the SMTPOptions structure, which you must use
@@ -170,7 +170,7 @@ func (o *SMTPOptions) AddRecipient(name, address string) error {
 	return nil
 }
 
-// AddRecpients accepts one or more string that can be, itself, comma
+// AddRecipients accepts one or more string that can be, itself, comma
 // separated lists of email addresses, which are then added to the
 // recipients for the logger.
 func (o *SMTPOptions) AddRecipients(addresses ...string) error {

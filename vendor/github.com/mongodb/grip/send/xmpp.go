@@ -50,7 +50,7 @@ func GetXMPPConnectionInfo() XMPPConnectionInfo {
 // a connection to the server via SSL, falling back automatically to an
 // unencrypted connection if the the first attempt fails.
 func NewXMPPLogger(name, target string, info XMPPConnectionInfo, l LevelInfo) (Sender, error) {
-	s, err := constructXMPPLogger(target, info)
+	s, err := constructXMPPLogger(name, target, info)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func NewXMPPLogger(name, target string, info XMPPConnectionInfo, l LevelInfo) (S
 func MakeXMPP(target string) (Sender, error) {
 	info := GetXMPPConnectionInfo()
 
-	s, err := constructXMPPLogger(target, info)
+	s, err := constructXMPPLogger("", target, info)
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +92,9 @@ func NewXMPP(name, target string, l LevelInfo) (Sender, error) {
 	return NewXMPPLogger(name, target, info, l)
 }
 
-func constructXMPPLogger(target string, info XMPPConnectionInfo) (Sender, error) {
+func constructXMPPLogger(name, target string, info XMPPConnectionInfo) (Sender, error) {
 	s := &xmppLogger{
-		Base:   NewBase(""),
+		Base:   NewBase(name),
 		target: target,
 	}
 
@@ -124,6 +124,7 @@ func constructXMPPLogger(target string, info XMPPConnectionInfo) (Sender, error)
 	}
 
 	s.reset = func() {
+		_ = s.SetFormatter(MakeXMPPFormatter(s.Name()))
 		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
 	}
 

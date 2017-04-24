@@ -2,7 +2,7 @@
 name := grip
 buildDir := build
 packages := logging message send slogger $(name)
-orgPath := github.com/tychoish
+orgPath := github.com/mongodb
 projectPath := $(orgPath)/$(name)
 # end project configuration
 
@@ -15,24 +15,23 @@ lintDeps := github.com/alecthomas/gometalinter
 lintArgs := --tests --deadline=1m --vendor
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
-lintArgs += --disable="gotype" --disable="gas"
+lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="buildscripts"
 #  add and configure additional linters
-lintArgs += --enable="goimports"
-lintArgs += --linter='misspell:misspell ./*.go:PATH:LINE:COL:MESSAGE' --enable=misspell
-lintArgs += --line-length=100 --dupl-threshold=175 --cyclo-over=17
+lintArgs += --enable="goimports" --enable="misspell"
+lintArgs += --line-length=100 --dupl-threshold=175
 #  two similar functions triggered the duplicate warning, but they're not.
 lintArgs += --exclude="duplicate of registry.go"
 lintArgs += --exclude="don.t use underscores.*_DependencyState.*"
 lintArgs += --exclude="file is not goimported" # test files aren't imported
 #  golint doesn't handle splitting package comments between multiple files.
-lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
+lintArgs += --exclude="package comment should be of the form .Package .* \(golint\)"
 lintArgs += --exclude="error return value not checked \(defer.*"
 #  there are a lot of logging methods that don't have doc strings, and probably shouldn't
 lintArgs += --exclude="exported method Grip\..*should have comment or be unexported.*"
 lintArgs += --exclude="exported function (Catch|Log|Default|Emergency|Alert|Critical|Error|Warning|Notice|Info|Debug).* should have comment.*"
 lintArgs += --exclude="exported func.*InternalLogger returns unexported type.*"
-lintArgs += --exclude="exported method (Log|SystemInfo)\..+ should have comment"
+lintArgs += --exclude="exported method (Log|SystemInfo|InternalSender)\..+ should have comment"
 # end lint suppressions
 
 
@@ -60,14 +59,15 @@ coverageHtmlOutput := $(foreach target,$(packages),$(buildDir)/output.$(target).
 $(gopath)/src/%:
 	@-[ ! -d $(gopath) ] && mkdir -p $(gopath) || true
 	go get $(subst $(gopath)/src/,,$@)
+$(buildDir)/run-linter:buildscripts/run-linter.go $(buildDir)/.lintSetup
+	$(vendorGopath) go build -o $@ $<
+$(buildDir)/.lintSetup:$(lintDeps)
+	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
 # end dependency installation tools
 
 
 # userfacing targets for basic build and development operations
-lint:$(lintDeps)
-	@-$(gopath)/bin/gometalinter --install >/dev/null
-	$(gopath)/bin/gometalinter $(lintArgs) ./...
-lint-deps:$(lintDeps)
+lint:$(buildDir)/output.lint
 build:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
 	$(vendorGopath) go build $(subst $(name),,$(subst -,/,$(foreach pkg,$(packages),./$(pkg))))
 build-race:$(deps) $(srcFiles) $(gopath)/src/$(projectPath)
@@ -76,12 +76,12 @@ test:$(testOutput)
 race:$(raceOutput)
 coverage:$(coverageOutput)
 coverage-html:$(coverageHtmlOutput)
-phony := lint build build-race race test coverage coverage-html
-phony += deps lint-deps
-.PRECIOUS: $(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS: $(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
-.PRECIOUS: $(foreach target,$(packages),$(buildDir)/test.$(target))
-.PRECIOUS: $(foreach target,$(packages),$(buildDir)/race.$(target))
+phony := lint build build-race race test coverage coverage-html deps
+.PRECIOUS:$(testOutput) $(raceOutput) $(coverageOutput) $(coverageHtmlOutput)
+.PRECIOUS:$(foreach target,$(packages),$(buildDir)/test.$(target))
+.PRECIOUS:$(foreach target,$(packages),$(buildDir)/race.$(target))
+.PRECIOUS:$(foreach target,$(packages),$(buildDir)/output.$(target).lint)
+.PRECIOUS:$(buildDir)/output.lint
 # end front-ends
 
 
@@ -111,6 +111,8 @@ coverage-%:$(buildDir)/output.%.coverage
 	@grep -s -q -e "^PASS" $<
 html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 	@grep -s -q -e "^PASS" $<
+lint-%:$(buildDir)/output.%.lint
+	@grep -v -s -q "^--- FAIL" $<
 # end convienence targets
 
 
@@ -119,6 +121,9 @@ html-coverage-%:$(buildDir)/output.%.coverage $(buildDir)/output.%.coverage.html
 #    that the tests actually need to run. (The "build" target is
 #    intentional and makes these targets rerun as expected.)
 testArgs := -test.v --test.timeout=5m
+ifneq (,$(RUN_TEST))
+testArgs += -test.run='$(RUN_TEST)'
+endif
 #    to avoid vendoring the coverage tool, install it as needed
 coverDeps := golang.org/x/tools/cmd/cover
 coverDeps := $(addprefix $(gopath)/src/,$(coverDeps))
@@ -138,9 +143,14 @@ $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
 $(buildDir)/output.%.race:$(buildDir)/race.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
+#  targets to generate gotest output from the linter.
+$(buildDir)/output.%.lint:$(buildDir)/run-linter $(testSrcFiles) .FORCE
+	@./$< --output=$@ --lintArgs='$(lintArgs)' --packages='$*'
+$(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
+	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE $(coverDeps)
-	$(testRunEnv) ./$< $(testTimeout) -test.coverprofile=$@ || true
+	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=$@ | tee $(subst coverage,test,$@)
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage $(coverDeps)
 	$(vendorGopath) go tool cover -html=$< -o $@
@@ -157,7 +167,7 @@ vendor-deps:$(vendorDeps)
 #   new-style vendor directories. When this codebase can drop support
 #   for go1.4, we can delete most of this.
 -include $(buildDir)/makefile.vendor
-nestedVendored := 
+nestedVendored :=
 nestedVendored := $(foreach project,$(nestedVendored),$(project)/build/vendor)
 $(buildDir)/makefile.vendor:$(buildDir)/render-gopath makefile
 	@mkdir -p $(buildDir)
@@ -200,7 +210,7 @@ clean:
 phony += clean
 # end dependency targets
 
-# configure phony targets
+
 # configure phony targets
 .FORCE:
 .PHONY:$(phony) .FORCE

@@ -10,6 +10,8 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
+const maxStackFrames = 1024
+
 // Log is a representation of a logging event, which matches the
 // structure and interface of the original slogger Log
 // type. Additionally implements grip's "message.Composer" interface
@@ -108,7 +110,8 @@ func (l *Log) appendCallerInfo(skip int) {
 
 func stacktrace() []string {
 	ret := make([]string, 0, 2)
-	for skip := 2; true; skip++ {
+
+	for skip := 2; skip < maxStackFrames; skip++ {
 		_, file, line, ok := runtime.Caller(skip)
 		if !ok {
 			break

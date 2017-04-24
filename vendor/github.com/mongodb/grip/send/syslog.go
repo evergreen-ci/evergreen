@@ -35,7 +35,7 @@ func MakeSysLogger(network, raddr string) Sender {
 	s := &syslogger{Base: NewBase("")}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)
-	s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
+	_ = s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
 
 	s.reset = func() {
 		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))

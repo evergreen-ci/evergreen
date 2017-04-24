@@ -91,6 +91,8 @@ func MakeErrorLogger() Sender {
 	s := &nativeLogger{
 		Base: NewBase(""),
 	}
+	_ = s.SetFormatter(MakeDefaultFormatter())
+
 	s.level = LevelInfo{level.Trace, level.Trace}
 
 	s.reset = func() {

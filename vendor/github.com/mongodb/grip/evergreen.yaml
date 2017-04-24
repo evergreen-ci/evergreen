@@ -61,8 +61,31 @@ post:
   - command: gotest.parse_files
     params:
       files:
+        - "gopath/src/github.com/mongodb/grip/build/output.*"
         - "gopath/src/github.com/mongodb/grip/build/test.*.out"
         - "gopath/src/github.com/mongodb/grip/build/race.*.out"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/mongodb/grip/build/output.*.coverage.html"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/html
+      permissions: public-read
+      display_name: "(html) coverage:"
+  - command: s3.put
+    type: system
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      local_files_include_filter: ["gopath/src/github.com/mongodb/grip/build/output.*.coverage"]
+      remote_file: evergreen/${task_id}/
+      bucket: mciuploads
+      content_type: text/plain
+      permissions: public-read
+      display_name: "(txt) coverage:"
 
 tasks:
   # the build (with and without the race detector) and lint tasks use
@@ -74,7 +97,7 @@ tasks:
         params:
           directory: gopath/src/github.com/mongodb/grip
       - func: run-make
-        vars: { target: "build" }
+        vars: { target: "lint" }
 
   - name: coverage
     tags: [ "report" ]
@@ -86,26 +109,6 @@ tasks:
         vars:
           target: "coverage-html"
           make_args: "-k"
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_files_include_filter: ["gopath/src/github.com/mongodb/grip/bin/coverage.*.html"]
-          remote_file: evergreen/${task_id}/
-          bucket: mciuploads
-          content_type: text/html
-          permissions: public-read
-          display_name: "(html) coverage:"
-      - command: s3.put
-        params:
-          aws_key: ${aws_key}
-          aws_secret: ${aws_secret}
-          local_files_include_filter: ["gopath/src/github.com/mongodb/grip/bin/coverage.*.out"]
-          remote_file: evergreen/${task_id}/
-          bucket: mciuploads
-          content_type: text/plain
-          permissions: public-read
-          display_name: "(txt) coverage:"
 
   - <<: *run-build
     tags: ["test"]

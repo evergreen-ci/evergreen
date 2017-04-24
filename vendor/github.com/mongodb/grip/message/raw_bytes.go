@@ -10,8 +10,8 @@ type bytesMessage struct {
 	Base
 }
 
-// NewDefaultMessage provides a Composer interface around a single
-// string, which are always logable unless the string is empty.
+// NewBytesMessage provides a Composer interface around a byte slice,
+// which are always logable unless the string is empty.
 func NewBytesMessage(p level.Priority, b []byte) Composer {
 	m := &bytesMessage{
 		data: b,

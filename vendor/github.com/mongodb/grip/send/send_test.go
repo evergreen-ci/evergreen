@@ -1,8 +1,12 @@
 package send
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -16,6 +20,7 @@ type SenderSuite struct {
 	senders map[string]Sender
 	require *require.Assertions
 	rand    *rand.Rand
+	tempDir string
 	suite.Suite
 }
 
@@ -31,19 +36,50 @@ func (s *SenderSuite) SetupSuite() {
 func (s *SenderSuite) SetupTest() {
 	l := LevelInfo{level.Info, level.Notice}
 	s.senders = map[string]Sender{
-		"slack":  &slackJournal{Base: NewBase("slack")},
-		"xmpp":   &xmppLogger{Base: NewBase("xmpp")},
-		"stream": &streamLogger{Base: NewBase("stream")},
+		"slack": &slackJournal{Base: NewBase("slack")},
+		"xmpp":  &xmppLogger{Base: NewBase("xmpp")},
+		"buildlogger": &buildlogger{
+			Base: NewBase("buildlogger"),
+			conf: &BuildloggerConfig{Local: MakeNative()},
+		},
 	}
 
-	internal := new(internalSender)
+	internal := new(InternalSender)
 	internal.name = "internal"
-	internal.output = make(chan *internalMessage)
+	internal.output = make(chan *InternalMessage)
 	s.senders["internal"] = internal
 
 	native, err := NewNativeLogger("native", l)
 	s.require.NoError(err)
 	s.senders["native"] = native
+
+	nativeErr, err := NewErrorLogger("error", l)
+	s.require.NoError(err)
+	s.senders["error"] = nativeErr
+
+	nativeFile, err := NewFileLogger("native-file", filepath.Join(s.tempDir, "file"), l)
+	s.require.NoError(err)
+	s.senders["native-file"] = nativeFile
+
+	callsite, err := NewCallSiteConsoleLogger("callsite", 1, l)
+	s.require.NoError(err)
+	s.senders["callsite"] = callsite
+
+	callsiteFile, err := NewCallSiteFileLogger("callsite", filepath.Join(s.tempDir, "cs"), 1, l)
+	s.require.NoError(err)
+	s.senders["callsite-file"] = callsiteFile
+
+	stream, err := NewStreamLogger("stream", &bytes.Buffer{}, l)
+	s.require.NoError(err)
+	s.senders["stream"] = stream
+
+	jsons, err := NewJSONConsoleLogger("json", LevelInfo{level.Info, level.Notice})
+	s.require.NoError(err)
+	s.senders["json"] = jsons
+
+	jsonf, err := NewJSONFileLogger("json", filepath.Join(s.tempDir, "js"), l)
+	s.require.NoError(err)
+	s.senders["json"] = jsonf
 
 	var sender Sender
 	multiSenders := []Sender{}
@@ -56,17 +92,20 @@ func (s *SenderSuite) SetupTest() {
 	multi, err := NewMultiSender("multi", l, multiSenders)
 	s.require.NoError(err)
 	s.senders["multi"] = multi
+
+	s.tempDir, err = ioutil.TempDir("", "sender-test")
+	s.require.NoError(err)
+}
+
+func (s *SenderSuite) TeardownTest() {
+	s.require.NoError(os.RemoveAll(s.tempDir))
 }
 
 func (s *SenderSuite) functionalMockSenders() map[string]Sender {
 	out := map[string]Sender{}
 	for t, sender := range s.senders {
-		if t == "slack" || t == "stream" || t == "internal" || t == "xmpp" {
+		if t == "slack" || t == "internal" || t == "xmpp" || t == "buildlogger" {
 			continue
-		} else if t == "json" {
-			var err error
-			out[t], err = NewJSONConsoleLogger("json", LevelInfo{level.Info, level.Notice})
-			s.require.NoError(err)
 		} else {
 			out[t] = sender
 		}

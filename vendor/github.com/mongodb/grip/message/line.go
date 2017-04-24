@@ -36,6 +36,18 @@ func NewLine(args ...interface{}) Composer {
 	return m
 }
 
+func newLinesFromStrings(p level.Priority, args []string) Composer {
+	m := &lineMessenger{}
+	_ = m.SetPriority(p)
+	for _, arg := range args {
+		if arg != "" {
+			m.Lines = append(m.Lines, arg)
+		}
+	}
+
+	return m
+}
+
 func (l *lineMessenger) Loggable() bool {
 	return len(l.Lines) > 0
 }

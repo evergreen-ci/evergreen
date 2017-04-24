@@ -17,7 +17,7 @@ type systemdJournal struct {
 	*Base
 }
 
-// NewJournaldLogger creates a Sender object that writes log messages
+// NewSystemdLogger creates a Sender object that writes log messages
 // to the system's systemd journald logging facility. If there's an
 // error with the sending to the journald, messages fallback to
 // writing to standard output.
@@ -34,7 +34,7 @@ func MakeSystemdLogger() Sender {
 	}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)
-	s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
+	_ = s.SetErrorHandler(ErrorHandlerFromLogger(fallback))
 
 	s.reset = func() {
 		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))

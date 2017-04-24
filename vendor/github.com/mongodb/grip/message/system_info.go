@@ -45,12 +45,13 @@ func MakeSystemInfo(message string) Composer {
 // NewSystemInfo returns a fully configured and populated SystemInfo
 // object.
 func NewSystemInfo(priority level.Priority, message string) Composer {
+	var err error
 	s := &SystemInfo{
 		Message: message,
 		NumCPU:  runtime.NumCPU(),
 	}
 
-	if err := s.SetPriority(priority); err != nil {
+	if err = s.SetPriority(priority); err != nil {
 		s.Errors = append(s.Errors, err.Error())
 		return s
 	}
@@ -67,7 +68,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 
 	vmstat, err := mem.VirtualMemory()
 	s.saveError(err)
-	if err != nil && vmstat != nil {
+	if err == nil && vmstat != nil {
 		s.VMStat = *vmstat
 	}
 
@@ -79,7 +80,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 
 	partitions, err := disk.Partitions(true)
 	s.saveError(err)
-	if err != nil {
+	if err == nil {
 		for _, p := range partitions {
 			u, err := disk.Usage(p.Mountpoint)
 			s.saveError(err)
