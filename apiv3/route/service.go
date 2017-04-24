@@ -41,8 +41,7 @@ func getHandler(r *mux.Router, sc servicecontext.ServiceContext) http.Handler {
 	}
 
 	getHostRouteManager("/hosts", 2).Register(r, sc)
-	getTestRouteManager("/tasks/{task_id}/tests", 2).Register(r, sc)
-	getTaskPatchRouteManager("/tasks/{task_id}", 2).Register(r, sc)
+	getTaskRouteManager("/tasks/{task_id}", 2).Register(r, sc)
 	getTaskRestartRouteManager("/tasks/{task_id}/restart", 2).Register(r, sc)
 	placeHolderRoute.Register(r, sc)
 	return r

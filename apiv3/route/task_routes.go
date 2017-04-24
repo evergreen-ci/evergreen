@@ -14,24 +14,100 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
 
-func getTaskPatchRouteManager(route string, version int) *RouteManager {
-	tep := &TaskExecutionPatchHandler{}
-	TaskExecutionPatch := MethodHandler{
+func getTaskRestartRouteManager(route string, version int) *RouteManager {
+	trh := &TaskRestartHandler{}
+	taskRestart := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    tep.Handler(),
-		MethodType:        evergreen.MethodPatch,
+		RequestHandler:    trh.Handler(),
+		MethodType:        evergreen.MethodPost,
 	}
 
 	taskRoute := RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{TaskExecutionPatch},
+		Methods: []MethodHandler{taskRestart},
 		Version: version,
 	}
 	return &taskRoute
+}
+
+func getTaskRouteManager(route string, version int) *RouteManager {
+	tep := &TaskExecutionPatchHandler{}
+	taskExecutionPatch := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchProjectContext, PrefetchUser},
+		Authenticator:     &NoAuthAuthenticator{},
+		RequestHandler:    tep.Handler(),
+		MethodType:        evergreen.MethodPatch,
+	}
+
+	tgh := &taskGetHandler{}
+	taskGet := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    tgh.Handler(),
+		MethodType:        evergreen.MethodGet,
+	}
+
+	taskRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{taskExecutionPatch, taskGet},
+		Version: version,
+	}
+	return &taskRoute
+}
+
+// taskGetHandler implements the route GET /task/{task_id}. It fetches the associated
+// task and returns it to the user.
+type taskGetHandler struct {
+	taskId string
+}
+
+// ParseAndValidate fetches the taskId from the http request.
+func (tgh *taskGetHandler) ParseAndValidate(r *http.Request) error {
+	vars := mux.Vars(r)
+	tgh.taskId = vars["task_id"]
+	return nil
+}
+
+// Execute calls the servicecontext FindTaskById function and returns the task
+// from the provider.
+func (tgh *taskGetHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+	foundTask, err := sc.FindTaskById(tgh.taskId)
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+
+	taskModel := &model.APITask{}
+	err = taskModel.BuildFromService(foundTask)
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	err = taskModel.BuildFromService(sc.GetURL())
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{taskModel},
+	}, nil
+}
+
+func (trh *taskGetHandler) Handler() RequestHandler {
+	return &taskGetHandler{}
 }
 
 // TaskRestartHandler implements the route POST /task/{task_id}/restart. It
@@ -61,7 +137,6 @@ func (trh *TaskRestartHandler) ParseAndValidate(r *http.Request) error {
 	trh.project = projCtx.Project
 	u := MustHaveUser(r)
 	trh.username = u.DisplayName()
-	trh.username = "test user"
 	return nil
 }
 
@@ -83,7 +158,13 @@ func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (Respon
 	}
 
 	taskModel := &model.APITask{}
-	taskModel.BuildFromService(refreshedTask)
+	err = taskModel.BuildFromService(refreshedTask)
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
 
 	return ResponseData{
 		Result: []model.Model{taskModel},
@@ -92,23 +173,6 @@ func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (Respon
 
 func (trh *TaskRestartHandler) Handler() RequestHandler {
 	return &TaskRestartHandler{}
-}
-
-func getTaskRestartRouteManager(route string, version int) *RouteManager {
-	trh := &TaskRestartHandler{}
-	taskRestart := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    trh.Handler(),
-		MethodType:        evergreen.MethodPost,
-	}
-
-	taskRoute := RouteManager{
-		Route:   route,
-		Methods: []MethodHandler{taskRestart},
-		Version: version,
-	}
-	return &taskRoute
 }
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
@@ -197,7 +261,13 @@ func (tep *TaskExecutionPatchHandler) Execute(sc servicecontext.ServiceContext) 
 	}
 
 	taskModel := &model.APITask{}
-	taskModel.BuildFromService(refreshedTask)
+	err = taskModel.BuildFromService(refreshedTask)
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
 
 	return ResponseData{
 		Result: []model.Model{taskModel},

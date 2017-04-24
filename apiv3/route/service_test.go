@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
+	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -550,6 +552,55 @@ func TestTaskResetPrepare(t *testing.T) {
 			}
 
 			So(err, ShouldResemble, expectedErr)
+		})
+	})
+}
+
+func TestTaskGetHandler(t *testing.T) {
+	Convey("With test server with a handler and mock servicecontext", t, func() {
+		rm := getTaskRouteManager("/tasks/{task_id}", 2)
+		sc := &servicecontext.MockServiceContext{}
+		sc.SetPrefix("rest")
+		r := mux.NewRouter()
+
+		Convey("and task is in the service context", func() {
+			sc.MockTaskConnector.CachedTasks = []task.Task{
+				{Id: "testTaskId"},
+			}
+			rm.Register(r, sc)
+			Convey("a request with a user should then return no error and a task should"+
+				" should be returned", func() {
+				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
+				So(err, ShouldBeNil)
+				req.Header.Add("Api-Key", "Key")
+				req.Header.Add("Api-User", "User")
+
+				sc.MockUserConnector.CachedUsers = map[string]*user.DBUser{
+					"User": &user.DBUser{
+						APIKey: "Key",
+						Id:     "User",
+					},
+				}
+
+				rr := httptest.NewRecorder()
+				r.ServeHTTP(rr, req)
+				So(rr.Code, ShouldEqual, http.StatusOK)
+
+				res := model.APITask{}
+				err = json.Unmarshal(rr.Body.Bytes(), &res)
+				So(res.Id, ShouldEqual, "testTaskId")
+			})
+			Convey("a request without a user should then return a 404 error and a task should"+
+				" should be not returned", func() {
+				req, err := http.NewRequest("GET", "/rest/v2/tasks/testTaskId", nil)
+				So(err, ShouldBeNil)
+				req.Header.Add("Api-Key", "Key")
+				req.Header.Add("Api-User", "User")
+
+				rr := httptest.NewRecorder()
+				r.ServeHTTP(rr, req)
+				So(rr.Code, ShouldEqual, http.StatusNotFound)
+			})
 		})
 	})
 }

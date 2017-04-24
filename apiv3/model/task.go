@@ -49,7 +49,7 @@ type logLinks struct {
 	AllLogLink    APIString `json:"all_log"`
 	TaskLogLink   APIString `json:"task_log"`
 	AgentLogLink  APIString `json:"agent_log"`
-	SystemLogLink APIString `json:"sytem_log"`
+	SystemLogLink APIString `json:"system_log"`
 }
 type apiTaskEndDetail struct {
 	Status      APIString `json:"status"`
