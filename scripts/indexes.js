@@ -11,7 +11,7 @@ db.builds.ensureIndex({ "version" : 1 })
 db.builds.ensureIndex({ "branch" : 1, "r" : 1, "order" : 1 })
 
 //======patch files====//
-db.patchfiles.files.createIndex({"filename":1})
+db.patchfiles.files.ensureIndex({"filename":1})
 
 //======event_log======//
 db.event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
@@ -30,6 +30,15 @@ db.hosts.ensureIndex({ "running_task": 1}, {sparse: true, unique: true})
 
 //======pushes======//
 db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
+
+//======patches======//
+db.patches.ensureIndex({ "branch" : 1, "create_time" : 1 })
+db.patches.ensureIndex({ "version" : 1 })
+db.patches.ensureIndex({ "author" : 1 })
+db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
+
+//======project_ref======//
+db.project_ref.ensureIndex({ "identifier" : 1 })
 
 //======spawn_requests======//
 db.spawn_requests.ensureIndex({ "host" : 1 })
@@ -62,7 +71,7 @@ db.versions.ensureIndex({ "branch" : 1, "gitspec" : 1 })
 db.versions.ensureIndex({ "versions.build_variant_status.build_variant" : 1, "versions.build_variant_status.activated" : 1, "r": 1 })
 
 //======alerts=======//
-db.alerts.createIndex({queue_status:1})
+db.alerts.ensureIndex({ "queue_status" : 1 })
 
 //======test_logs=====//
 db.test_logs.ensureIndex({ "execution" : 1, "name" : 1, "task" : 1 })
@@ -71,4 +80,3 @@ db.test_logs.ensureIndex({ "execution" : 1, "name" : 1, "task" : 1 })
 db.json.ensureIndex({ "task_id" : 1 })
 db.json.ensureIndex({ "project_id" : 1, "tag" : 1 })
 db.json.ensureIndex({ "name" : 1, "task_id" : 1 })
-
