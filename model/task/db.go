@@ -447,6 +447,35 @@ func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus s
 	return pipeline
 }
 
+// TasksByBuildIdPipeline fetches the pipeline to get the retrieve all tasks
+// associated with a given build.
+func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
+	limit, sortDir int) []bson.M {
+	sortOperator := "$gte"
+	if sortDir < 0 {
+		sortOperator = "$lte"
+	}
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			BuildIdKey: buildId,
+			IdKey:      bson.M{sortOperator: taskId},
+		}},
+	}
+	if taskStatus != "" {
+		statusMatch := bson.M{
+			"$match": bson.M{StatusKey: taskStatus},
+		}
+		pipeline = append(pipeline, statusMatch)
+	}
+	if limit > 0 {
+		limitStage := bson.M{
+			"$limit": limit,
+		}
+		pipeline = append(pipeline, limitStage)
+	}
+	return pipeline
+}
+
 // DB Boilerplate
 
 // FindOne returns one task that satisfies the query.

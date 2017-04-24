@@ -36,7 +36,7 @@ type ServiceContext interface {
 	// BuildId. It takes the buildId being queried for as its first parameter,
 	// as well as a taskId and limit for paginating through the results.
 	// It returns a list of tasks which match.
-	FindTasksByBuildId(string, string, int) ([]task.Task, error)
+	FindTasksByBuildId(string, string, string, int, int) ([]task.Task, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId

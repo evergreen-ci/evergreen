@@ -35,30 +35,44 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 // FindTasksByBuildId uses the service layer's task type to query the backing database for a
 // list of task that matches buildId. It accepts the startTaskId and a limit
 // to allow for pagination of the queries. It returns results sorted by taskId.
-func (tc *DBTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit int) ([]task.Task, error) {
-	var ts []task.Task
-	var err error
-	// If we have specified a taskId to start the iteration from, then search
-	// for it and fetch the list of tasks starting there.
-	if startTaskId != "" {
-		ts, err = task.Find(task.ByBuildIdAfterTaskId(buildId, startTaskId).Limit(limit))
-		if err != nil {
-			return nil, err
-		}
-		// Otherwise, begin the iteration from the beginning of the list of tasks.
-	} else {
-		ts, err = task.Find(task.ByBuildId(buildId).Sort([]string{"+" + task.IdKey}).Limit(limit))
-		if err != nil {
-			return nil, err
-		}
+func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, limit int, sortDir int) ([]task.Task, error) {
+	pipeline := task.TasksByBuildIdPipeline(buildId, taskId, status, limit, sortDir)
+	res := []task.Task{}
+
+	err := task.Aggregate(pipeline, &res)
+	if err != nil {
+		return []task.Task{}, err
 	}
-	if len(ts) == 0 {
-		return nil, &apiv3.APIError{
+	if len(res) == 0 {
+		var message string
+		if status != "" {
+			message = fmt.Sprintf("tasks from build '%s' with status '%s' "+
+				"not found", buildId, status)
+		} else {
+			message = fmt.Sprintf("tasks from build '%s' not found", buildId)
+		}
+		return []task.Task{}, &apiv3.APIError{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("tasks with buildId %v not found", buildId),
+			Message:    message,
 		}
 	}
-	return ts, nil
+
+	if taskId != "" {
+		found := false
+		for _, t := range res {
+			if t.Id == taskId {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return []task.Task{}, &apiv3.APIError{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+			}
+		}
+	}
+	return res, nil
 }
 
 func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
@@ -202,8 +216,42 @@ func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, err
 // FindTaskByBuildId provides a mock implementation of the function for the
 // ServiceContext interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
-func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId string, limit int) ([]task.Task, error) {
-	return mdf.CachedTasks, mdf.StoredError
+func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit,
+	sortDir int) ([]task.Task, error) {
+	if mdf.StoredError != nil {
+		return []task.Task{}, mdf.StoredError
+	}
+	ofBuildIdAndStatus := []task.Task{}
+	for _, t := range mdf.CachedTasks {
+		if t.BuildId == buildId {
+			if status == "" || t.Status == status {
+				ofBuildIdAndStatus = append(ofBuildIdAndStatus, t)
+			}
+		}
+	}
+
+	// loop until the start task is found
+	for ix, t := range ofBuildIdAndStatus {
+		if t.Id == startTaskId {
+			// We've found the task
+			var tasksToReturn []task.Task
+			if sortDir < 0 {
+				if ix-limit > 0 {
+					tasksToReturn = mdf.CachedTasks[ix-(limit) : ix]
+				} else {
+					tasksToReturn = mdf.CachedTasks[:ix]
+				}
+			} else {
+				if ix+limit > len(mdf.CachedTasks) {
+					tasksToReturn = mdf.CachedTasks[ix:]
+				} else {
+					tasksToReturn = mdf.CachedTasks[ix : ix+limit]
+				}
+			}
+			return tasksToReturn, nil
+		}
+	}
+	return nil, nil
 }
 
 // SetTaskPriority changes the priority value of a task using a call to the

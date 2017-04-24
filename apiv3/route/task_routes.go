@@ -18,6 +18,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	incorrectArgsTypeErrorMessage = "programmer error: incorrect type for paginator args"
+)
+
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	trh := &TaskRestartHandler{}
 	taskRestart := MethodHandler{
@@ -30,6 +34,23 @@ func getTaskRestartRouteManager(route string, version int) *RouteManager {
 	taskRoute := RouteManager{
 		Route:   route,
 		Methods: []MethodHandler{taskRestart},
+		Version: version,
+	}
+	return &taskRoute
+}
+
+func getTasksByBuildRouteManager(route string, version int) *RouteManager {
+	tbh := &tasksByBuildHandler{}
+	tasksByBuild := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    tbh.Handler(),
+		MethodType:        evergreen.MethodGet,
+	}
+
+	taskRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{tasksByBuild},
 		Version: version,
 	}
 	return &taskRoute
@@ -252,6 +273,100 @@ func (tgh *taskGetHandler) Execute(sc servicecontext.ServiceContext) (ResponseDa
 
 func (trh *taskGetHandler) Handler() RequestHandler {
 	return &taskGetHandler{}
+}
+
+type tasksByBuildHandler struct {
+	*PaginationExecutor
+}
+
+type tasksByBuildArgs struct {
+	buildId string
+	status  string
+}
+
+func (tbh *tasksByBuildHandler) ParseAndValidate(r *http.Request) error {
+	args := tasksByBuildArgs{
+		buildId: mux.Vars(r)["build_id"],
+		status:  r.URL.Query().Get("status"),
+	}
+	if args.buildId == "" {
+		return apiv3.APIError{
+			Message:    "buildId cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	tbh.Args = args
+	return tbh.PaginationExecutor.ParseAndValidate(r)
+}
+
+func tasksByBuildPaginator(key string, limit int, args interface{}, sc servicecontext.ServiceContext) ([]model.Model,
+	*PageResult, error) {
+	btArgs, ok := args.(tasksByBuildArgs)
+	if !ok {
+		panic(incorrectArgsTypeErrorMessage)
+	}
+	// Fetch all of the tasks to be returned in this page plus the tasks used for
+	// calculating information about the next page. Here the limit is multiplied
+	// by two to fetch the next page.
+	tasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit*2, 1)
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return []model.Model{}, nil, err
+	}
+
+	// Fetch tasks to get information about the previous page.
+	prevTasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit, -1)
+	if err != nil {
+		if apiErr, ok := err.(*apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+			return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		}
+	}
+
+	nextPage := makeNextTasksPage(tasks, limit)
+	pageResults := &PageResult{
+		Next: nextPage,
+		Prev: makePrevTasksPage(prevTasks),
+	}
+
+	lastIndex := len(tasks)
+	if nextPage != nil {
+		lastIndex = limit
+	}
+
+	// Truncate the tasks to just those that will be returned, removing the
+	// tasks that would be used to create the next page.
+	tasks = tasks[:lastIndex]
+
+	// Create an array of models which will be returned.
+	models := make([]model.Model, len(tasks))
+	for ix, st := range tasks {
+		taskModel := &model.APITask{}
+		// Build an APIModel from the task and place it into the array.
+		err = taskModel.BuildFromService(&st)
+		if err != nil {
+			return []model.Model{}, nil, errors.Wrap(err, "API model error")
+		}
+		err = taskModel.BuildFromService(sc.GetURL())
+		if err != nil {
+			return []model.Model{}, nil, errors.Wrap(err, "API model error")
+		}
+		models[ix] = taskModel
+	}
+	return models, pageResults, nil
+}
+
+func (hgh *tasksByBuildHandler) Handler() RequestHandler {
+	taskPaginationExecutor := &PaginationExecutor{
+		KeyQueryParam:   "start_at",
+		LimitQueryParam: "limit",
+		Paginator:       tasksByBuildPaginator,
+
+		Args: tasksByBuildArgs{},
+	}
+
+	return &tasksByBuildHandler{taskPaginationExecutor}
 }
 
 // TaskRestartHandler implements the route POST /task/{task_id}/restart. It

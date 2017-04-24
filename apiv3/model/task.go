@@ -2,12 +2,11 @@ package model
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/apiv3"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -112,10 +111,7 @@ func (at *APITask) BuildFromService(t interface{}) error {
 		}
 		at.Logs = ll
 	default:
-		return &apiv3.APIError{
-			StatusCode: http.StatusBadRequest,
-			Message:    "Incorrect type when unmarshalling task",
-		}
+		return errors.New("Incorrect type when unmarshalling task")
 	}
 
 	return nil
