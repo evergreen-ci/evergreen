@@ -1,3 +1,6 @@
+//======alertrecord======//
+db.alertrecord.ensureIndex({ "type" : 1, "version_id" : 1 })
+
 //======artifact_files======//
 db.artifact_files.ensureIndex({ "task" : 1 })
 db.artifact_files.ensureIndex({ "build" : 1 })
