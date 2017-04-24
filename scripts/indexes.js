@@ -52,6 +52,9 @@ db.spawn_requests.ensureIndex({ "user" : 1, "status" : 1 })
 //======task_bk======//
 db.task_bk.ensureIndex({ "branch" : 1, "build_variant" : 1, "name" : 1 })
 
+//======task_event_log======//
+db.task_event_log.ensureIndex({ "r_id" : 1, "data.r_type" : 1, "ts" : 1 })
+
 //======tasks======//
 db.tasks.ensureIndex({ "build_variant" : 1, "display_name" : 1, "order" : 1 })
 db.tasks.ensureIndex({ "gitspec" : 1, "build_variant" : 1, "display_name" : 1 })
