@@ -1,4 +1,6 @@
 //======alertrecord======//
+db.alertrecord.ensureIndex({ "host_id" : 1 })
+db.alertrecord.ensureIndex({ "version_id" : 1, "type" : 1 })
 db.alertrecord.ensureIndex({ "type" : 1, "version_id" : 1 })
 
 //======artifact_files======//
