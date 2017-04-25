@@ -187,6 +187,201 @@ func TestHostPaginator(t *testing.T) {
 	})
 }
 
+func TestTasksByProjectAndCommitPaginator(t *testing.T) {
+	numTasks := 300
+	projectName := "project_1"
+	commit := "commit_1"
+	Convey("When paginating with a ServiceContext", t, func() {
+		serviceContext := servicecontext.MockServiceContext{}
+		Convey("and there are tasks to be found", func() {
+			cachedTasks := []task.Task{}
+			for i := 0; i < numTasks; i++ {
+				nextTask := task.Task{
+					Id:       fmt.Sprintf("task_%d", i),
+					Revision: commit,
+					Project:  projectName,
+				}
+				cachedTasks = append(cachedTasks, nextTask)
+			}
+			serviceContext.MockTaskConnector.CachedTasks = cachedTasks
+			Convey("then finding a key in the middle of the set should produce"+
+				" a full next and previous page and a full set of models", func() {
+				taskToStartAt := 100
+				limit := 100
+				expectedTasks := []model.Model{}
+				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					nextModelTask := &model.APITask{
+						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
+						Revision: model.APIString(commit),
+						Branch:   model.APIString(projectName),
+					}
+					err := nextModelTask.BuildFromService("")
+					So(err, ShouldBeNil)
+					expectedTasks = append(expectedTasks, nextModelTask)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:    limit,
+						Relation: "next",
+					},
+					Prev: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt-limit),
+						Limit:    limit,
+						Relation: "prev",
+					},
+				}
+				tphArgs := tasksByProjectArgs{
+					projectId:  projectName,
+					commitHash: commit,
+				}
+				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
+					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
+
+			})
+			Convey("then finding a key in the near the end of the set should produce"+
+				" a limited next and full previous page and a full set of models", func() {
+				taskToStartAt := 150
+				limit := 100
+				expectedTasks := []model.Model{}
+				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					nextModelTask := &model.APITask{
+						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
+						Revision: model.APIString(commit),
+						Branch:   model.APIString(projectName),
+					}
+					err := nextModelTask.BuildFromService("")
+					So(err, ShouldBeNil)
+					expectedTasks = append(expectedTasks, nextModelTask)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:    50,
+						Relation: "next",
+					},
+					Prev: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt-limit),
+						Limit:    limit,
+						Relation: "prev",
+					},
+				}
+				tphArgs := tasksByProjectArgs{
+					projectId:  projectName,
+					commitHash: commit,
+				}
+				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
+					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
+
+			})
+			Convey("then finding a key in the near the beginning of the set should produce"+
+				" a full next and a limited previous page and a full set of models", func() {
+				taskToStartAt := 50
+				limit := 100
+				expectedTasks := []model.Model{}
+				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					nextModelTask := &model.APITask{
+						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
+						Revision: model.APIString(commit),
+						Branch:   model.APIString(projectName),
+					}
+					err := nextModelTask.BuildFromService("")
+					So(err, ShouldBeNil)
+					expectedTasks = append(expectedTasks, nextModelTask)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:    limit,
+						Relation: "next",
+					},
+					Prev: &Page{
+						Key:      fmt.Sprintf("task_%d", 0),
+						Limit:    50,
+						Relation: "prev",
+					},
+				}
+				tphArgs := tasksByProjectArgs{
+					projectId:  projectName,
+					commitHash: commit,
+				}
+				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
+					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
+
+			})
+			Convey("then finding a key in the last page should produce only a previous"+
+				" page and a limited set of models", func() {
+				taskToStartAt := 299
+				limit := 100
+				expectedTasks := []model.Model{}
+				for i := taskToStartAt; i < numTasks; i++ {
+					nextModelTask := &model.APITask{
+						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
+						Revision: model.APIString(commit),
+						Branch:   model.APIString(projectName),
+					}
+					err := nextModelTask.BuildFromService("")
+					So(err, ShouldBeNil)
+					expectedTasks = append(expectedTasks, nextModelTask)
+				}
+				expectedPages := &PageResult{
+					Prev: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt-limit),
+						Limit:    limit,
+						Relation: "prev",
+					},
+				}
+				tphArgs := tasksByProjectArgs{
+					projectId:  projectName,
+					commitHash: commit,
+				}
+				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
+					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
+
+			})
+			Convey("then finding the first key should produce only a next"+
+				" page and a full set of models", func() {
+				taskToStartAt := 0
+				limit := 100
+				expectedTasks := []model.Model{}
+				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
+					nextModelTask := &model.APITask{
+						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
+						Revision: model.APIString(commit),
+						Branch:   model.APIString(projectName),
+					}
+					err := nextModelTask.BuildFromService("")
+					So(err, ShouldBeNil)
+					expectedTasks = append(expectedTasks, nextModelTask)
+				}
+				expectedPages := &PageResult{
+					Next: &Page{
+						Key:      fmt.Sprintf("task_%d", taskToStartAt+limit),
+						Limit:    limit,
+						Relation: "next",
+					},
+				}
+				tphArgs := tasksByProjectArgs{
+					projectId:  projectName,
+					commitHash: commit,
+				}
+				checkPaginatorResultMatches(tasksByProjectPaginator, fmt.Sprintf("task_%d", taskToStartAt),
+					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
+			})
+			Convey("when APIError is returned from DB, should percolate upward", func() {
+				expectedErr := apiv3.APIError{
+					StatusCode: http.StatusNotFound,
+					Message:    "not found",
+				}
+				serviceContext.MockTaskConnector.StoredError = &expectedErr
+				checkPaginatorResultMatches(tasksByProjectPaginator, "",
+					0, &serviceContext, tasksByProjectArgs{}, nil, nil, &expectedErr)
+
+			})
+		})
+	})
+}
+
 func TestTestPaginator(t *testing.T) {
 	numTests := 300
 	Convey("When paginating with a ServiceContext", t, func() {

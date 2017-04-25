@@ -60,6 +60,150 @@ func getTaskRouteManager(route string, version int) *RouteManager {
 	return &taskRoute
 }
 
+func getTasksByProjectAndCommitRouteManager(route string, version int) *RouteManager {
+	tph := &tasksByProjectHandler{}
+	tasksByProj := MethodHandler{
+		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+		Authenticator:     &RequireUserAuthenticator{},
+		RequestHandler:    tph.Handler(),
+		MethodType:        evergreen.MethodGet,
+	}
+
+	taskRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{tasksByProj},
+		Version: version,
+	}
+	return &taskRoute
+}
+
+// taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
+// It fetches the associated tasks and returns them to the user.
+type tasksByProjectHandler struct {
+	*PaginationExecutor
+}
+
+type tasksByProjectArgs struct {
+	projectId  string
+	commitHash string
+	status     string
+}
+
+// ParseAndValidate fetches the project context and task status from the request
+// and loads them into the arguments to be used by the execution.
+func (tph *tasksByProjectHandler) ParseAndValidate(r *http.Request) error {
+	args := tasksByProjectArgs{
+		projectId:  mux.Vars(r)["project_id"],
+		commitHash: mux.Vars(r)["commit_hash"],
+		status:     r.URL.Query().Get("status"),
+	}
+	if args.projectId == "" {
+		return apiv3.APIError{
+			Message:    "ProjectId cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	if args.commitHash == "" {
+		return apiv3.APIError{
+			Message:    "Revision cannot be empty",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	tph.Args = args
+	return tph.PaginationExecutor.ParseAndValidate(r)
+}
+
+func tasksByProjectPaginator(key string, limit int, args interface{}, sc servicecontext.ServiceContext) ([]model.Model,
+	*PageResult, error) {
+	ptArgs, ok := args.(tasksByProjectArgs)
+	if !ok {
+		panic("ARGS HAD WRONG TYPE!")
+	}
+	tasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit*2, 1)
+	if err != nil {
+		if _, ok := err.(*apiv3.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return []model.Model{}, nil, err
+	}
+
+	// Make the previous page
+	prevTasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit, -1)
+	if err != nil {
+		if apiErr, ok := err.(*apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+			return []model.Model{}, nil, errors.Wrap(err, "Database error")
+		}
+	}
+
+	nextPage := makeNextTasksPage(tasks, limit)
+
+	pageResults := &PageResult{
+		Next: nextPage,
+		Prev: makePrevTasksPage(prevTasks),
+	}
+
+	lastIndex := len(tasks)
+	if nextPage != nil {
+		lastIndex = limit
+	}
+
+	// Truncate the tasks to just those that will be returned.
+	tasks = tasks[:lastIndex]
+
+	models := make([]model.Model, len(tasks))
+	for ix, st := range tasks {
+		taskModel := &model.APITask{}
+		err = taskModel.BuildFromService(&st)
+		if err != nil {
+			return []model.Model{}, nil, err
+		}
+		err = taskModel.BuildFromService(sc.GetURL())
+		if err != nil {
+			return []model.Model{}, nil, err
+		}
+		models[ix] = taskModel
+	}
+	return models, pageResults, nil
+}
+
+func makeNextTasksPage(tasks []task.Task, limit int) *Page {
+	var nextPage *Page
+	if len(tasks) > limit {
+		nextLimit := len(tasks) - limit
+		nextPage = &Page{
+			Relation: "next",
+			Key:      tasks[limit].Id,
+			Limit:    nextLimit,
+		}
+	}
+	return nextPage
+}
+
+func makePrevTasksPage(tasks []task.Task) *Page {
+	var prevPage *Page
+	if len(tasks) > 1 {
+		prevPage = &Page{
+			Relation: "prev",
+			Key:      tasks[0].Id,
+			Limit:    len(tasks),
+		}
+	}
+	return prevPage
+}
+
+func (tph *tasksByProjectHandler) Handler() RequestHandler {
+	taskPaginationExecutor := &PaginationExecutor{
+		KeyQueryParam:   "start_at",
+		LimitQueryParam: "limit",
+		Paginator:       tasksByProjectPaginator,
+
+		Args: tasksByProjectArgs{},
+	}
+
+	return &tasksByProjectHandler{taskPaginationExecutor}
+}
+
 // taskGetHandler implements the route GET /task/{task_id}. It fetches the associated
 // task and returns it to the user.
 type taskGetHandler struct {

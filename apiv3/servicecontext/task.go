@@ -75,6 +75,49 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 	return ts, nil
 }
 
+func (tc *DBTestConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
+	status string, limit, sortDir int) ([]task.Task, error) {
+	pipeline := task.TasksByProjectAndCommitPipeline(projectId, commitHash, taskId,
+		status, limit, sortDir)
+	res := []task.Task{}
+
+	err := task.Aggregate(pipeline, &res)
+	if err != nil {
+		return []task.Task{}, err
+	}
+	if len(res) == 0 {
+		var message string
+		if status != "" {
+			message = fmt.Sprintf("task from project '%s' and commit '%s' with status '%s' "+
+				"not found", projectId, commitHash, status)
+		} else {
+			message = fmt.Sprintf("task from project '%s' and commit '%s' not found",
+				projectId, commitHash)
+		}
+		return []task.Task{}, &apiv3.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    message,
+		}
+	}
+
+	if taskId != "" {
+		found := false
+		for _, t := range res {
+			if t.Id == taskId {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return []task.Task{}, &apiv3.APIError{
+				StatusCode: http.StatusNotFound,
+				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
+			}
+		}
+	}
+	return res, nil
+}
+
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
 func (tc *DBTaskConnector) SetTaskPriority(t *task.Task, priority int64) error {
@@ -106,15 +149,52 @@ type MockTaskConnector struct {
 // FindTaskById provides a mock implementation of the functions for the
 // ServiceContext interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
-func (mdf *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
-	for _, t := range mdf.CachedTasks {
+func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
+	for _, t := range mtc.CachedTasks {
 		if t.Id == taskId {
-			return &t, mdf.StoredError
+			return &t, mtc.StoredError
 		}
 	}
-	return nil, mdf.StoredError
+	return nil, mtc.StoredError
 }
 
+// FindTestsBytaskId
+func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash, taskId,
+	status string, limit, sortDir int) ([]task.Task, error) {
+	if mtc.StoredError != nil {
+		return []task.Task{}, mtc.StoredError
+	}
+
+	ofProjectAndCommit := []task.Task{}
+	for _, t := range mtc.CachedTasks {
+		if t.Project == projectId && t.Revision == commitHash {
+			ofProjectAndCommit = append(ofProjectAndCommit, t)
+		}
+	}
+
+	// loop until the filename is found
+	for ix, t := range ofProjectAndCommit {
+		if t.Id == taskId {
+			// We've found the test
+			var testsToReturn []task.Task
+			if sortDir < 0 {
+				if ix-limit > 0 {
+					testsToReturn = ofProjectAndCommit[ix-(limit) : ix]
+				} else {
+					testsToReturn = ofProjectAndCommit[:ix]
+				}
+			} else {
+				if ix+limit > len(ofProjectAndCommit) {
+					testsToReturn = ofProjectAndCommit[ix:]
+				} else {
+					testsToReturn = ofProjectAndCommit[ix : ix+limit]
+				}
+			}
+			return testsToReturn, nil
+		}
+	}
+	return nil, nil
+}
 func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
 	return mdf.CachedTasks, mdf.StoredError
 }

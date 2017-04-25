@@ -394,16 +394,11 @@ func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
 			"_id":       0,
 		}},
 	}
-
 	if testStatus != "" {
 		statusMatch := bson.M{
 			"$match": bson.M{TestResultStatusKey: testStatus},
 		}
 		pipeline = append(pipeline, statusMatch)
-	}
-
-	if testFilename == "" {
-		testFilename = "\"\""
 	}
 	equalityStage := bson.M{
 		"$match": bson.M{TestResultTestFileKey: bson.M{sortOperator: testFilename}},
@@ -420,7 +415,36 @@ func TestResultsByTaskIdPipeline(taskId, testFilename, testStatus string, limit,
 		pipeline = append(pipeline, limitStage)
 	}
 	return pipeline
+}
 
+// TasksByProjectAndCommitPipeline fetches the pipeline to get the retrieve all tasks
+// associated with a given project and commit hash.
+func TasksByProjectAndCommitPipeline(projectId, commitHash, taskId, taskStatus string,
+	limit, sortDir int) []bson.M {
+	sortOperator := "$gte"
+	if sortDir < 0 {
+		sortOperator = "$lte"
+	}
+	pipeline := []bson.M{
+		{"$match": bson.M{
+			ProjectKey:  projectId,
+			RevisionKey: commitHash,
+			IdKey:       bson.M{sortOperator: taskId},
+		}},
+	}
+	if taskStatus != "" {
+		statusMatch := bson.M{
+			"$match": bson.M{StatusKey: taskStatus},
+		}
+		pipeline = append(pipeline, statusMatch)
+	}
+	if limit > 0 {
+		limitStage := bson.M{
+			"$limit": limit,
+		}
+		pipeline = append(pipeline, limitStage)
+	}
+	return pipeline
 }
 
 // DB Boilerplate
