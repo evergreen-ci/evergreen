@@ -37,20 +37,8 @@ func (hgh *hostGetHandler) Handler() RequestHandler {
 		KeyQueryParam:   "host_id",
 		LimitQueryParam: "limit",
 		Paginator:       hostPaginator,
-		Args:            hostGetArgs{},
 	}
 	return &hostGetHandler{hostPaginationExecutor}
-}
-
-type hostGetArgs struct {
-	status string
-}
-
-func (hgh *hostGetHandler) ParseAndValidate(r *http.Request) error {
-	hgh.Args = hostGetArgs{
-		status: r.URL.Query().Get("status"),
-	}
-	return hgh.PaginationExecutor.ParseAndValidate(r)
 }
 
 // hostPaginator is an instance of a PaginatorFunc that defines how to paginate on
@@ -59,25 +47,16 @@ func hostPaginator(key string, limit int, sc servicecontext.ServiceContext) ([]m
 	*PageResult, error) {
 	// Fetch this page of hosts, plus the next one
 	// Perhaps these could be cached in case user is making multiple calls idk?
-	hpArgs, ok := args.(hostGetArgs)
-	if !ok {
-		panic("Wrong args type passed in for host paginator")
-	}
-	hosts, err := sc.FindHostsById(key, hpArgs.status, limit*2, 1)
+	hosts, err := sc.FindHostsById(key, limit*2, 1)
 	if err != nil {
-		if apiErr, ok := err.(apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
-			err = errors.Wrap(err, "Database error")
-		}
-		return []model.Model{}, nil, err
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 	nextPage := makeNextHostsPage(hosts, limit)
 
 	// Make the previous page
-	prevHosts, err := sc.FindHostsById(key, hpArgs.status, limit, -1)
+	prevHosts, err := sc.FindHostsById(key, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
-			return []model.Model{}, nil, errors.Wrap(err, "Database error")
-		}
+		return []model.Model{}, nil, errors.Wrap(err, "Database error")
 	}
 
 	prevPage := makePrevHostsPage(prevHosts)

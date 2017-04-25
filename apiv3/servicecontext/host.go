@@ -13,18 +13,18 @@ type DBHostConnector struct{}
 
 // FindHosts uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *DBHostConnector) FindHostsById(id, status string, limit int, sortDir int) ([]host.Host, error) {
-	hostRes, err := host.GetHostsByFromIdWithStatus(id, status, limit, sortDir)
+func (hc *DBHostConnector) FindHostsById(id string, limit int, sort int) ([]host.Host, error) {
+	t, err := host.Find(host.ByAfterId(id, sort).Limit(limit))
 	if err != nil {
 		return nil, err
 	}
-	if len(hostRes) == 0 {
-		return nil, apiv3.APIError{
+	if t == nil {
+		return nil, &apiv3.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "no hosts found",
 		}
 	}
-	return hostRes, nil
+	return t, nil
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -35,7 +35,7 @@ type MockHostConnector struct {
 
 // FindHosts uses the service layer's host type to query the backing database for
 // the hosts.
-func (hc *MockHostConnector) FindHostsById(id, status string, limit int, sort int) ([]host.Host, error) {
+func (hc *MockHostConnector) FindHostsById(id string, limit int, sort int) ([]host.Host, error) {
 	// loop until the key is found
 
 	for ix, h := range hc.CachedHosts {
