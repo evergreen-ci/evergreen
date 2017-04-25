@@ -242,7 +242,7 @@ func NewAPILogger(tc TaskCommunicator) *APILogger {
 // buffer, and translates the log message into a format that is used by the
 // remote endpoint.
 func (apiLgr *APILogger) Append(log *slogger.Log) error {
-	message := strings.TrimRight(log.Message(), "\r\n \t")
+	message := strings.TrimRight(log.Message(), " \t")
 
 	// MCI-972: ensure message is valid UTF-8
 	if !utf8.ValidString(message) {
