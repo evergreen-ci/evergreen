@@ -49,16 +49,16 @@ func (self *ScpCommand) Start() error {
 	// build the remote side of the connection, in user@host: format
 	remote := self.RemoteHostName
 	if self.User != "" {
-		remote = fmt.Sprintf("%v@%v", self.User, remote)
+		remote = fmt.Sprintf("%s@%s", self.User, remote)
 	}
 
 	// set up the source and destination
 	source := self.Source
 	dest := self.Dest
 	if self.SourceIsRemote {
-		source = fmt.Sprintf("%v:%v", remote, source)
+		source = fmt.Sprintf("%s:%s", remote, source)
 	} else {
-		dest = fmt.Sprintf("%v:%v", remote, dest)
+		dest = fmt.Sprintf("%s:%s", remote, dest)
 	}
 
 	// build the command

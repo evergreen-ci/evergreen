@@ -150,15 +150,14 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 		Background:     false,
 	}
-
 	grip.Infof("Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
 	err = util.RunFunctionWithTimeout(makeShellCmd.Run, MakeShellTimeout)
+	defer grip.Notice(makeShellCmd.Stop())
 	if err != nil {
 		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
-			grip.Warning(makeShellCmd.Stop())
 			return "", errors.Errorf("creating remote directories timed out: %v",
 				mkdirOutput.String())
 		}
@@ -190,9 +189,9 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// run the command to scp the agent with a timeout
 	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
+	defer grip.Notice(scpAgentCmd.Stop())
 	if err != nil {
 		if err == util.ErrTimedOut {
-			grip.Warning(scpAgentCmd.Stop())
 			return "", errors.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
 		}
 		return "", errors.Errorf(
@@ -245,9 +244,9 @@ func startAgentOnRemote(apiURL string, hostObj *host.Host, sshOptions []string) 
 		startAgentCmd.Run,
 		StartAgentTimeout,
 	)
+	defer grip.Notice(startAgentCmd.Stop())
 	if err != nil {
 		if err == util.ErrTimedOut {
-			grip.Warning(startAgentCmd.Stop())
 			return errors.New("starting agent timed out")
 		}
 		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())

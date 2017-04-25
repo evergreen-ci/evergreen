@@ -74,7 +74,7 @@ func (tr *TaskRunner) Run() error {
 			defer wg.Done()
 			for input := range freeHostChan {
 				catcher.Add(errors.Wrapf(tr.StartAgentOnHost(input.Settings, input.Host),
-					"problem starting agent on host %s", input.Host))
+					"problem starting agent on host %s", input.Host.Id))
 			}
 		}()
 	}

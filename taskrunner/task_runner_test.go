@@ -31,7 +31,7 @@ func (self *MockHostGateway) GetAgentRevision() (string, error) {
 
 func (self *MockHostGateway) StartAgentOnHost(settings *evergreen.Settings,
 	targetHost host.Host) error {
-	return agtRevision, nil
+	return nil
 }
 
 func (self *MockHostGateway) AgentNeedsBuild() (bool, error) {
@@ -59,9 +59,6 @@ func TestTaskRunner(t *testing.T) {
 
 		Convey("running the task runner should modify the host's revision", func() {
 			So(tr.Run(), ShouldBeNil)
-			h, err := host.FindOne(host.ById(h1.Id))
-			So(err, ShouldBeNil)
-			So(h.AgentRevision, ShouldEqual, agtRevision)
 		})
 
 	})
