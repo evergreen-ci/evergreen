@@ -320,7 +320,8 @@ func ByAfterId(hostId string, dir int) db.Q {
 func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 	cutoffTime := currentTime.Add(-MaxLCTInterval)
 	return db.Query(bson.M{
-		StatusKey: evergreen.HostRunning,
+		StatusKey:    evergreen.HostRunning,
+		StartedByKey: evergreen.User,
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
