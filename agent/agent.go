@@ -159,7 +159,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 	// Signal all background actions to stop. If HandleSignals is still running,
 	// this will cause it to return.
 	close(agt.signalHandler.stopBackgroundChan)
-	defer agt.cleanup()
+	defer agt.cleanup(agt.GetCurrentTaskId())
 	var detail *apimodels.TaskEndDetail
 	select {
 	case detail = <-agt.endChan:
@@ -175,7 +175,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 	}
 
 	// Run cleanup before and after post commands
-	agt.cleanup()
+	agt.cleanup(agt.GetCurrentTaskId())
 	// run post commands
 	if agt.taskConfig.Project.Post != nil {
 		agt.logger.LogTask(slogger.INFO, "Running post-task commands.")
@@ -186,7 +186,7 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 		}
 		agt.logger.LogTask(slogger.INFO, "Finished running post-task commands in %v.", time.Since(start).String())
 	}
-	agt.cleanup()
+	agt.cleanup(agt.GetCurrentTaskId())
 
 	err := agt.removeTaskDirectory()
 	if err != nil {
@@ -242,7 +242,7 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	receivedSignal := sh.awaitSignal()
 	detail := agt.getTaskEndDetail()
-	defer agt.cleanup()
+	defer agt.cleanup(agt.GetCurrentTaskId())
 	switch receivedSignal {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
@@ -485,8 +485,7 @@ func (agt *Agent) Reset() error {
 // Run is the agent loop which gets the next task if it exists, and runs the task if it gets one.
 // It returns an exit code when the agent needs to exit
 func (agt *Agent) Run() error {
-	defer agt.cleanup()
-
+	var currentTask string
 	// this loop continues until the agent exits
 	for {
 		var err error
@@ -505,20 +504,24 @@ func (agt *Agent) Run() error {
 			grip.Infof("Agent sleeping %v", DefaultAgentSleepInterval)
 			time.Sleep(DefaultAgentSleepInterval)
 		}
+		currentTask = agt.GetCurrentTaskId()
 		resp, err := agt.RunTask()
 		if err != nil {
 			grip.Criticalf("error running task: %+v", err)
+			agt.cleanup(currentTask)
 			return err
 		}
 
 		if resp == nil {
 			message := "received nil response from API server"
 			grip.Criticalf(message)
+			agt.cleanup(currentTask)
 			return errors.New(message)
 		}
 		// this isn't an error, so it should just exit
 		if resp.ShouldExit {
 			grip.Infof("task response indicates that agent should exit: %s", resp.Message)
+			agt.cleanup(currentTask)
 			return nil
 		}
 
@@ -526,9 +529,15 @@ func (agt *Agent) Run() error {
 		// reset the agent in between task runs.
 		if err := agt.Reset(); err != nil {
 			grip.Criticalf("error resetting agent: %+v", err)
+			agt.cleanup(currentTask)
 			return err
 		}
 	}
+	// we need the current task that has been assigned to the agent
+	// on its last run of get next task.
+	agt.cleanup(currentTask)
+	return nil
+
 }
 
 // RunTask manages the process of running a task. It returns a response
@@ -864,8 +873,7 @@ func (agt *Agent) removeTaskDirectory() error {
 
 // cleanup attempts to terminate all processes started by the task
 // and flushes the logs.
-func (agt *Agent) cleanup() {
-	taskId := agt.GetCurrentTaskId()
+func (agt *Agent) cleanup(taskId string) {
 	grip.Infof("cleaning up processes for task: %s", taskId)
 	if taskId != "" {
 		if err := shell.KillSpawnedProcs(taskId, agt.logger); err != nil {
