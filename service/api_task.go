@@ -125,14 +125,6 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// clear the running task on the host now that the task has finished
-	if err = currentHost.ClearRunningTask(t.Id, time.Now()); err != nil {
-		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
-		grip.Errorf(message.Error())
-		as.LoggedError(w, r, http.StatusInternalServerError, message)
-		return
-	}
-
 	// mark task as finished
 	err = model.MarkEnd(t.Id, APIServerLockTitle, finishTime, details,
 		project, projectRef.DeactivatePrevious)
@@ -155,6 +147,14 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 			Message:    message,
 		}
 		as.WriteJSON(w, http.StatusOK, endTaskResp)
+		return
+	}
+
+	// clear the running task on the host now that the task has finished
+	if err = currentHost.ClearRunningTask(t.Id, time.Now()); err != nil {
+		message := fmt.Errorf("error clearing running task %s for host %s : %v", t.Id, currentHost.Id, err)
+		grip.Errorf(message.Error())
+		as.LoggedError(w, r, http.StatusInternalServerError, message)
 		return
 	}
 
