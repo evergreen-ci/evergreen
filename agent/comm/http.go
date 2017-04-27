@@ -50,7 +50,7 @@ type HTTPCommunicator struct {
 
 // NewHTTPCommunicator returns an initialized HTTPCommunicator.
 // The cert parameter may be blank if default system certificates are being used.
-func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string, sigChan chan Signal) (*HTTPCommunicator, error) {
+func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string) (*HTTPCommunicator, error) {
 	agentCommunicator := &HTTPCommunicator{
 		ServerURLRoot: fmt.Sprintf("%v/api/%v", serverURL, evergreen.AgentAPIVersion),
 		HostId:        hostId,
@@ -58,7 +58,6 @@ func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string, sigChan cha
 		MaxAttempts:   httpMaxAttempts,
 		RetrySleep:    time.Second * 3,
 		HttpsCert:     cert,
-		SignalChan:    sigChan,
 	}
 
 	if agentCommunicator.HttpsCert != "" {
@@ -75,6 +74,14 @@ func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string, sigChan cha
 		agentCommunicator.heartbeatClient = &http.Client{Timeout: HeartbeatTimeout}
 	}
 	return agentCommunicator, nil
+}
+
+func (h *HTTPCommunicator) SetSignalChan(communicatorChan chan Signal) {
+	h.SignalChan = communicatorChan
+}
+
+func (h *HTTPCommunicator) SetLogger(logger *slogger.Logger) {
+	h.Logger = logger
 }
 
 // Heartbeat encapsulates heartbeat behavior (i.e., pinging the API server at regular
@@ -412,11 +419,7 @@ func (h *HTTPCommunicator) GetCurrentTaskId() string {
 	return h.TaskId
 }
 
-// Reset unsets the task id and task secret and re-initializes a new
 func (h *HTTPCommunicator) Reset(commSignal chan Signal, timeoutWatcher *TimeoutWatcher) (*APILogger, *StreamLogger, error) {
-
-	h.TaskId = ""
-	h.TaskSecret = ""
 
 	h.SignalChan = commSignal
 	// set up logger to API server

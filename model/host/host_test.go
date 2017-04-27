@@ -714,8 +714,9 @@ func TestFindByLCT(t *testing.T) {
 		now := time.Now()
 		Convey("with a host that has no last communication time", func() {
 			h := Host{
-				Id:     "id",
-				Status: evergreen.HostRunning,
+				Id:        "id",
+				Status:    evergreen.HostRunning,
+				StartedBy: evergreen.User,
 			}
 			So(h.Insert(), ShouldBeNil)
 			hosts, err := Find(ByRunningWithTimedOutLCT(time.Now()))
@@ -729,6 +730,7 @@ func TestFindByLCT(t *testing.T) {
 				Id: "anotherID",
 				LastCommunicationTime: now.Add(-time.Duration(20) * time.Minute),
 				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
 			hosts, err := Find(ByRunningWithTimedOutLCT(now))
@@ -742,6 +744,7 @@ func TestFindByLCT(t *testing.T) {
 				Id: "testhost",
 				LastCommunicationTime: now.Add(time.Duration(5) * time.Minute),
 				Status:                evergreen.HostRunning,
+				StartedBy:             evergreen.User,
 			}
 			So(anotherHost.Insert(), ShouldBeNil)
 			hosts, err := Find(ByRunningWithTimedOutLCT(now))
@@ -758,8 +761,20 @@ func TestFindByLCT(t *testing.T) {
 		})
 		Convey("with a terminated host that has no LCT", func() {
 			h := Host{
-				Id:     "h",
-				Status: evergreen.HostTerminated,
+				Id:        "h",
+				Status:    evergreen.HostTerminated,
+				StartedBy: evergreen.User,
+			}
+			So(h.Insert(), ShouldBeNil)
+			hosts, err := Find(ByRunningWithTimedOutLCT(now))
+			So(err, ShouldBeNil)
+			So(len(hosts), ShouldEqual, 0)
+		})
+		Convey("with a host with that does not have a user", func() {
+			h := Host{
+				Id:        "h",
+				Status:    evergreen.HostRunning,
+				StartedBy: "anotherUser",
 			}
 			So(h.Insert(), ShouldBeNil)
 			hosts, err := Find(ByRunningWithTimedOutLCT(now))

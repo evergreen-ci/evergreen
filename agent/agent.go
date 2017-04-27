@@ -353,79 +353,95 @@ type Options struct {
 	StatusPort  int
 }
 
-// New creates a new agent to run a given task.
-func New(opts Options) (*Agent, error) {
-	sh := &SignalHandler{}
-	sh.makeChannels()
+// Setup initializes all the signal chans and loggers that are used during one run of the agent.
+func (agt *Agent) Setup() error {
 
-	// set up communicator with API server
-	httpCommunicator, err := comm.NewHTTPCommunicator(
-		opts.APIURL, opts.HostId, opts.HostSecret,
-		opts.Certificate, sh.communicatorChan)
-	if err != nil {
-		return nil, err
-	}
+	// set signal handler
+	sigHandler := &SignalHandler{}
+	sigHandler.makeChannels()
+	agt.signalHandler = sigHandler
 
-	// set up logger to API server
-	apiLogger := comm.NewAPILogger(httpCommunicator)
-	idleTimeoutWatcher := comm.NewTimeoutWatcher(sh.stopBackgroundChan)
+	agt.TaskCommunicator.SetSignalChan(sigHandler.communicatorChan)
+
+	// create and set the idle timeout watcher
+	idleTimeoutWatcher := comm.NewTimeoutWatcher(sigHandler.stopBackgroundChan)
 	idleTimeoutWatcher.SetDuration(DefaultIdleTimeout)
+	agt.idleTimeoutWatcher = idleTimeoutWatcher
+
+	// Loggers
+	apiLogger := comm.NewAPILogger(agt.TaskCommunicator)
+	agt.APILogger = apiLogger
 
 	// set up timeout logger, local and API logger streams
 	streamLogger, err := comm.NewStreamLogger(idleTimeoutWatcher, apiLogger)
 	if err != nil {
-		return nil, err
+		return errors.Wrapf(err, "Error create new stream logger")
 	}
-	httpCommunicator.Logger = streamLogger.Execution
+	agt.TaskCommunicator.SetLogger(streamLogger.Execution)
+	agt.logger = streamLogger
 
 	// set up the heartbeat ticker
-	hbTicker := comm.NewHeartbeatTicker(sh.stopBackgroundChan)
+	hbTicker := comm.NewHeartbeatTicker(sigHandler.stopBackgroundChan)
 	hbTicker.MaxFailedHeartbeats = 10
-	hbTicker.SignalChan = sh.heartbeatChan
-	hbTicker.TaskCommunicator = httpCommunicator
-	hbTicker.Logger = httpCommunicator.Logger
+	hbTicker.SignalChan = sigHandler.heartbeatChan
+	hbTicker.TaskCommunicator = agt.TaskCommunicator
+	hbTicker.Logger = streamLogger.Execution
 	hbTicker.Interval = DefaultHeartbeatInterval
+	agt.heartbeater = hbTicker
 
+	agt.KillChan = make(chan bool)
+	agt.metricsCollector = &metricsCollector{
+		comm: agt.TaskCommunicator,
+		stop: agt.KillChan,
+	}
+	agt.endChan = make(chan *apimodels.TaskEndDetail, 1)
+	return nil
+}
+
+// New creates a new agent to run a given task.
+func New(opts Options) (*Agent, error) {
+
+	// set up communicator with API server
+	httpCommunicator, err := comm.NewHTTPCommunicator(
+		opts.APIURL, opts.HostId, opts.HostSecret,
+		opts.Certificate)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error creating new http communicator")
+	}
+	agt := &Agent{
+		opts:             opts,
+		TaskCommunicator: httpCommunicator,
+	}
+
+	agt.TaskCommunicator = httpCommunicator
+	if err := agt.Setup(); err != nil {
+		return nil, err
+	}
 	// set up the system stats collector
-	statsCollector := NewSimpleStatsCollector(
-		streamLogger.System,
+	agt.statsCollector = NewSimpleStatsCollector(
+		agt.logger.System,
 		DefaultStatsInterval,
-		sh.stopBackgroundChan,
+		agt.signalHandler.stopBackgroundChan,
 		"uptime",
 		"df -h",
 		"${ps|ps}",
 	)
-	killChan := make(chan bool)
 
-	agt := &Agent{
-		signalHandler:    sh,
-		logger:           streamLogger,
-		TaskCommunicator: httpCommunicator,
-		heartbeater:      hbTicker,
-		statsCollector:   statsCollector,
-		metricsCollector: &metricsCollector{
-			comm: httpCommunicator,
-			stop: killChan,
-		},
-		idleTimeoutWatcher: idleTimeoutWatcher,
-		APILogger:          apiLogger,
-		Registry:           plugin.NewSimpleRegistry(),
-		KillChan:           killChan,
-		endChan:            make(chan *apimodels.TaskEndDetail, 1),
-		opts:               opts,
+	agt.Registry = plugin.NewSimpleRegistry()
+	agt.metricsCollector = &metricsCollector{
+		comm: agt.TaskCommunicator,
+		stop: agt.KillChan,
 	}
 
 	// start the agent server as early as possible because the
 	// server is the mechanism that we use to ensure that there's
 	// only one agent running on a host.
 	go agt.startStatusServer()
-
 	// register plugins needed for execution
 	if err := registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
 		grip.Criticalf("error registering plugins: %+v", err)
 		return nil, err
 	}
-
 	return agt, nil
 }
 
@@ -458,30 +474,6 @@ func (agt *Agent) getNextTask() (bool, error) {
 	return true, nil
 }
 
-// Reset is run in between each agent run.
-// It cleans up tasks and unsets the task id and task secret, and resets the logging
-// This is a bandaid because of our over complicated logging and should be taken out once
-// EVG-1616 has been completed.
-func (agt *Agent) Reset() error {
-	sh := &SignalHandler{}
-	sh.makeChannels()
-
-	idleTimeoutWatcher := comm.NewTimeoutWatcher(sh.stopBackgroundChan)
-	idleTimeoutWatcher.SetDuration(DefaultIdleTimeout)
-
-	apiLogger, streamLogger, err := agt.TaskCommunicator.Reset(sh.communicatorChan, idleTimeoutWatcher)
-	if err != nil {
-		return err
-	}
-	agt.APILogger = apiLogger
-	agt.signalHandler = sh
-	agt.idleTimeoutWatcher = idleTimeoutWatcher
-	agt.endChan = make(chan *apimodels.TaskEndDetail, 1)
-	agt.logger = streamLogger
-
-	return nil
-}
-
 // Run is the agent loop which gets the next task if it exists, and runs the task if it gets one.
 // It returns an exit code when the agent needs to exit
 func (agt *Agent) Run() error {
@@ -504,17 +496,19 @@ func (agt *Agent) Run() error {
 			grip.Infof("Agent sleeping %v", DefaultAgentSleepInterval)
 			time.Sleep(DefaultAgentSleepInterval)
 		}
+		if err = agt.Setup(); err != nil {
+			agt.cleanup(currentTask)
+			return errors.Wrapf(err, "error setting up task")
+		}
 		currentTask = agt.GetCurrentTaskId()
 		resp, err := agt.RunTask()
 		if err != nil {
-			grip.Criticalf("error running task: %+v", err)
 			agt.cleanup(currentTask)
-			return err
+			return errors.Wrapf(err, "error running task")
 		}
 
 		if resp == nil {
 			message := "received nil response from API server"
-			grip.Criticalf(message)
 			agt.cleanup(currentTask)
 			return errors.New(message)
 		}
@@ -525,13 +519,6 @@ func (agt *Agent) Run() error {
 			return nil
 		}
 
-		// TODO: EVG-1616 once we simplify logging, we can re-evaluate whether or not we need to
-		// reset the agent in between task runs.
-		if err := agt.Reset(); err != nil {
-			grip.Criticalf("error resetting agent: %+v", err)
-			agt.cleanup(currentTask)
-			return err
-		}
 	}
 	// we need the current task that has been assigned to the agent
 	// on its last run of get next task.

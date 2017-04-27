@@ -24,7 +24,7 @@ func TestAgentRun(t *testing.T) {
 		hostId := "host"
 		hostSecret := "secret"
 		agentCommunicator, err := comm.NewHTTPCommunicator(
-			ts.URL, hostId, hostSecret, "", make(chan comm.Signal))
+			ts.URL, hostId, hostSecret, "")
 		So(err, ShouldBeNil)
 
 		testAgent := Agent{
@@ -70,7 +70,7 @@ func TestAgentGetNextTask(t *testing.T) {
 		hostId := "host"
 		hostSecret := "secret"
 		agentCommunicator, err := comm.NewHTTPCommunicator(
-			ts.URL, hostId, hostSecret, "", make(chan comm.Signal))
+			ts.URL, hostId, hostSecret, "")
 		So(err, ShouldBeNil)
 
 		testAgent := Agent{
@@ -149,7 +149,7 @@ func TestAgentEndTask(t *testing.T) {
 		hostSecret := "secret"
 
 		agentCommunicator, err := comm.NewHTTPCommunicator(
-			ts.URL, hostId, hostSecret, "", make(chan comm.Signal))
+			ts.URL, hostId, hostSecret, "")
 		So(err, ShouldBeNil)
 		agentCommunicator.Logger = &slogger.Logger{}
 

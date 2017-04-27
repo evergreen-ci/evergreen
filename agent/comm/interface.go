@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/mongodb/grip/slogger"
 )
 
 // TaskCommunicator is an interface that handles the remote procedure calls
@@ -29,5 +30,6 @@ type TaskCommunicator interface {
 	TryPostJSON(path string, data interface{}) (*http.Response, error)
 	SetTask(taskId, taskSecret string)
 	GetCurrentTaskId() string
-	Reset(chan Signal, *TimeoutWatcher) (*APILogger, *StreamLogger, error)
+	SetSignalChan(chan Signal)
+	SetLogger(*slogger.Logger)
 }

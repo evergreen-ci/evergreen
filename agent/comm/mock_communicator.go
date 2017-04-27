@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
 
@@ -157,4 +158,12 @@ func (mc *MockCommunicator) Heartbeat() (bool, error) {
 
 func (*MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{}, nil
+}
+
+func (m *MockCommunicator) SetSignalChan(chan Signal) {
+	return
+}
+
+func (m *MockCommunicator) SetLogger(*slogger.Logger) {
+	return
 }

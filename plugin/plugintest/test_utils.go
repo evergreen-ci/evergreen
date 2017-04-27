@@ -31,7 +31,7 @@ func TestAgentCommunicator(testData *modelutil.TestModelData, apiRootUrl string)
 		hostId = testData.Host.Id
 		hostSecret = testData.Host.Secret
 	}
-	agentCommunicator, err := comm.NewHTTPCommunicator(apiRootUrl, hostId, hostSecret, "", nil)
+	agentCommunicator, err := comm.NewHTTPCommunicator(apiRootUrl, hostId, hostSecret, "")
 	if err != nil {
 		panic(err)
 	}
