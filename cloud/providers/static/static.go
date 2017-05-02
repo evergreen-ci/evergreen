@@ -71,7 +71,7 @@ func (staticMgr *StaticManager) TerminateInstance(host *host.Host) error {
 				host.Distro, host.Host, err)
 		}
 	}
-	grip.Debugf("Not terminating static %s host: %s", host.Distro, host.Host)
+	grip.Debugf("Not terminating static '%s' host: %s", host.Distro.Id, host.Host)
 	return nil
 }
 
