@@ -23,7 +23,7 @@ func TestCleanupTask(t *testing.T) {
 	Convey("When cleaning up a task", t, func() {
 
 		// reset the db
-		testutil.HandleTestingErr(db.ClearCollections(task.Collection),
+		testutil.HandleTestingErr(db.ClearCollections(task.Collection, task.OldCollection, build.Collection),
 			t, "error clearing tasks collection")
 		testutil.HandleTestingErr(db.ClearCollections(host.Collection),
 			t, "error clearing hosts collection")
@@ -40,34 +40,6 @@ func TestCleanupTask(t *testing.T) {
 			err := cleanUpTask(wrapper, projects)
 			So(err, ShouldNotBeNil)
 			So(err.Error(), ShouldContainSubstring, "could not find project")
-
-		})
-
-		Convey("an error should be thrown if the task's host is marked with"+
-			" the wrong running task id", func() {
-
-			wrapper := doomedTaskWrapper{
-				task: task.Task{
-					Id:      "t1",
-					HostId:  "h1",
-					Project: "proj",
-				},
-			}
-			projects := map[string]model.Project{
-				"proj": {
-					Identifier: "proj",
-				},
-			}
-			host := &host.Host{
-				Id:          "h1",
-				RunningTask: "nott1",
-			}
-			So(host.Insert(), ShouldBeNil)
-
-			err := cleanUpTask(wrapper, projects)
-			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "but the host thinks it"+
-				" is running task")
 
 		})
 

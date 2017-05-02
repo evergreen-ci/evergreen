@@ -97,11 +97,13 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 		return errors.WithStack(wrapper.task.MarkUnscheduled())
 	}
 
-	// sanity check that the host is actually running the task
-	if host.RunningTask != wrapper.task.Id {
-		return errors.Errorf("task %v says it is running on host %v, but the"+
-			" host thinks it is running task %v", wrapper.task.Id, host.Id,
-			host.RunningTask)
+	// if the host still has the task as its running task, clear it.
+	if host.RunningTask == wrapper.task.Id {
+		// clear out the host's running task
+		if err := host.ClearRunningTask(wrapper.task.Id, time.Now()); err != nil {
+			return errors.Wrapf(err, "error clearing running task %v from host %v: %v",
+				wrapper.task.Id, host.Id)
+		}
 	}
 
 	// take different action, depending on the type of task death
@@ -133,13 +135,6 @@ func cleanUpTimedOutHeartbeat(t task.Task, project model.Project, host *host.Hos
 	if err := model.TryResetTask(t.Id, "", RunnerName, &project, detail); err != nil {
 		return errors.Wrapf(err, "error trying to reset task %s", t.Id)
 	}
-
-	// clear out the host's running task
-	if err := host.ClearRunningTask(t.Id, time.Now()); err != nil {
-		return errors.Wrapf(err, "error clearing running task %v from host %v: %v",
-			t.Id, host.Id)
-	}
-
 	// success
 	return nil
 }
