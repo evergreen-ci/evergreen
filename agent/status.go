@@ -35,7 +35,7 @@ type statusResponse struct {
 	HostId      string                 `json:"host_id"`
 	SystemInfo  *message.SystemInfo    `json:"sys_info"`
 	ProcessTree []*message.ProcessInfo `json:"ps_info"`
-	TaskId      string                 `json:'task_id`
+	TaskId      string                 `json:"task_id"`
 
 	// TODO (EVG-1440) include the current task ID when the service is part
 	// of the agent itself.

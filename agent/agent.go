@@ -520,11 +520,7 @@ func (agt *Agent) Run() error {
 		}
 
 	}
-	// we need the current task that has been assigned to the agent
-	// on its last run of get next task.
-	agt.cleanup(currentTask)
 	return nil
-
 }
 
 // RunTask manages the process of running a task. It returns a response
