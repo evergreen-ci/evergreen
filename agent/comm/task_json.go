@@ -111,13 +111,10 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 	retriableSendFile := util.RetriableFunc(
 		func() error {
 			resp, err := t.TryTaskPost("test_logs", log)
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-
 			if err != nil {
 				return util.RetriableError{errors.Wrap(err, "error posting logs")}
 			}
+			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusOK {
 				logReply := struct {

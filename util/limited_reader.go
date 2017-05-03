@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-const maxRequestSize = 6 * 1024 * 1024 // 16 MB
+const maxRequestSize = 16 * 1024 * 1024 // 16 MB
 
 type requestReader struct {
 	req *http.Request

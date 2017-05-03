@@ -324,7 +324,7 @@ func TestAttachLargeResults(t *testing.T) {
 			})
 			So(id, ShouldEqual, "")
 			So(err, ShouldNotBeNil)
-			So(err.Error(), ShouldContainSubstring, "size exceeds")
+			So(err.Error(), ShouldContainSubstring, "unexpected end")
 		})
 	})
 }
