@@ -69,7 +69,7 @@ func TestMetricsCollectors(t *testing.T) {
 				for _, post := range comm.Posts["process_info"] {
 					out, ok := post.([]message.Composer)
 					So(ok, ShouldBeTrue)
-					So(len(out), ShouldEqual, 2)
+					So(len(out), ShouldBeGreaterThanOrEqualTo, 2)
 				}
 			})
 		})
