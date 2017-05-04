@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -691,5 +692,69 @@ func TestGetTestUrl(t *testing.T) {
 		emptyTr := &TestResult{}
 		url = GetTestUrl(emptyTr, "root")
 		So(url, ShouldBeEmpty)
+	})
+}
+
+func TestEndingTask(t *testing.T) {
+	Convey("With tasks that are attempting to be marked as finished", t, func() {
+		So(db.Clear(Collection), ShouldBeNil)
+		Convey("a task that has a start time set", func() {
+			now := time.Now()
+			t := &Task{
+				Id:        "taskId",
+				Status:    evergreen.TaskStarted,
+				StartTime: now.Add(-5 * time.Minute),
+			}
+			So(t.Insert(), ShouldBeNil)
+			details := &apimodels.TaskEndDetail{
+				Status: evergreen.TaskFailed,
+			}
+
+			So(t.MarkEnd(now, details), ShouldBeNil)
+			t, err := FindOne(ById(t.Id))
+			So(err, ShouldBeNil)
+			So(t.Status, ShouldEqual, evergreen.TaskFailed)
+			So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
+			So(t.StartTime.Unix(), ShouldEqual, now.Add(-5*time.Minute).Unix())
+		})
+		Convey("a task with no start time set should have one added", func() {
+			now := time.Now()
+			Convey("a task with a create time < 2 hours should have the start time set to the create time", func() {
+				t := &Task{
+					Id:         "tid",
+					Status:     evergreen.TaskDispatched,
+					CreateTime: now.Add(-30 * time.Minute),
+				}
+				So(t.Insert(), ShouldBeNil)
+				details := &apimodels.TaskEndDetail{
+					Status: evergreen.TaskFailed,
+				}
+				So(t.MarkEnd(now, details), ShouldBeNil)
+				t, err := FindOne(ById(t.Id))
+				So(err, ShouldBeNil)
+				So(t.StartTime.Unix(), ShouldEqual, t.CreateTime.Unix())
+				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
+			})
+			Convey("a task with a create time > 2 hours should have the start time set to two hours"+
+				"before the finish time", func() {
+				t := &Task{
+					Id:         "tid",
+					Status:     evergreen.TaskDispatched,
+					CreateTime: now.Add(-3 * time.Hour),
+				}
+				So(t.Insert(), ShouldBeNil)
+				details := &apimodels.TaskEndDetail{
+					Status: evergreen.TaskFailed,
+				}
+				So(t.MarkEnd(now, details), ShouldBeNil)
+				t, err := FindOne(ById(t.Id))
+				So(err, ShouldBeNil)
+				startTime := now.Add(-2 * time.Hour)
+				So(t.StartTime.Unix(), ShouldEqual, startTime.Unix())
+				So(t.FinishTime.Unix(), ShouldEqual, now.Unix())
+			})
+
+		})
+
 	})
 }

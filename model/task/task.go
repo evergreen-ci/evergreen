@@ -448,11 +448,23 @@ func (t *Task) DeactivateTask(caller string) error {
 	)
 }
 
-// MarkEnd handles the Task updates associated with ending a task.
+// MarkEnd handles the Task updates associated with ending a task. If the task's start time is zero
+// at this time, it will set it to the finish time minus the timeout time.
 func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) error {
 	// record that the task has finished, in memory and in the db
 	t.Status = detail.Status
 	t.FinishTime = finishTime
+
+	// if there is no start time set, either set it to the create time
+	// or set 2 hours previous to the finish time.
+	if util.IsZeroTime(t.StartTime) {
+		timedOutStart := finishTime.Add(-2 * time.Hour)
+		t.StartTime = timedOutStart
+		if timedOutStart.Before(t.CreateTime) {
+			t.StartTime = t.CreateTime
+		}
+	}
+
 	t.TimeTaken = finishTime.Sub(t.StartTime)
 	t.Details = *detail
 	return UpdateOne(
@@ -465,6 +477,7 @@ func (t *Task) MarkEnd(finishTime time.Time, detail *apimodels.TaskEndDetail) er
 				StatusKey:     detail.Status,
 				TimeTakenKey:  t.TimeTaken,
 				DetailsKey:    t.Details,
+				StartTimeKey:  t.StartTime,
 			},
 			"$unset": bson.M{
 				AbortedKey: "",
