@@ -11,17 +11,18 @@ const (
 	ResourceTypeHost = "HOST"
 
 	// event types
-	EventHostCreated            = "HOST_CREATED"
-	EventHostStatusChanged      = "HOST_STATUS_CHANGED"
-	EventHostDNSNameSet         = "HOST_DNS_NAME_SET"
-	EventHostProvisionFailed    = "HOST_PROVISION_FAILED"
-	EventHostProvisioned        = "HOST_PROVISIONED"
-	EventHostRunningTaskSet     = "HOST_RUNNING_TASK_SET"
-	EventHostRunningTaskCleared = "HOST_RUNNING_TASK_CLEARED"
-	EventHostTaskPidSet         = "HOST_TASK_PID_SET"
-	EventHostMonitorFlag        = "HOST_MONITOR_FLAG"
-	EventTaskFinished           = "HOST_TASK_FINISHED"
-	EventHostTeardown           = "HOST_TEARDOWN"
+	EventHostCreated              = "HOST_CREATED"
+	EventHostStatusChanged        = "HOST_STATUS_CHANGED"
+	EventHostDNSNameSet           = "HOST_DNS_NAME_SET"
+	EventHostProvisionFailed      = "HOST_PROVISION_FAILED"
+	EventHostProvisioned          = "HOST_PROVISIONED"
+	EventHostRunningTaskSet       = "HOST_RUNNING_TASK_SET"
+	EventHostRunningTaskCleared   = "HOST_RUNNING_TASK_CLEARED"
+	EventHostTaskPidSet           = "HOST_TASK_PID_SET"
+	EventHostMonitorFlag          = "HOST_MONITOR_FLAG"
+	EventTaskFinished             = "HOST_TASK_FINISHED"
+	EventHostTeardown             = "HOST_TEARDOWN"
+	EventHostTerminatedExternally = "HOST_TERMINATED_EXTERNALLY"
 )
 
 // implements EventData
@@ -62,6 +63,10 @@ func LogHostEvent(hostId string, eventType string, eventData HostEventData) {
 
 func LogHostCreated(hostId string) {
 	LogHostEvent(hostId, EventHostCreated, HostEventData{})
+}
+
+func LogHostTerminatedExternally(hostId string) {
+	LogHostEvent(hostId, EventHostStatusChanged, HostEventData{NewStatus: EventHostTerminatedExternally})
 }
 
 func LogHostStatusChanged(hostId string, oldStatus string, newStatus string) {

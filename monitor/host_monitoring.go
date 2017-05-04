@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
+	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -120,6 +121,7 @@ func checkHostReachability(host host.Host, settings *evergreen.Settings) error {
 		}
 	case cloud.StatusTerminated:
 		grip.Infof("Host %s terminated externally; updating db status to terminated", host.Id)
+		event.LogHostTerminatedExternally(host.Id)
 
 		// the instance was terminated from outside our control
 		if err := host.SetTerminated(); err != nil {
