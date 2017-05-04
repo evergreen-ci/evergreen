@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -114,6 +115,7 @@ type TestHistoryParameters struct {
 	BeforeDate     time.Time `json:"before_date"`
 	AfterDate      time.Time `json:"after_date"`
 	Sort           int       `json:"sort"`
+	Limit          int       `json:"limit"`
 }
 
 type TaskHistoryIterator interface {
@@ -525,7 +527,6 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 	if len(testHistoryParameters.TestNames) > 0 {
 		taskMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
 		testMatchQuery[task.TestResultsKey+"."+task.TestResultTestFileKey] = bson.M{"$in": testHistoryParameters.TestNames}
-
 	}
 
 	// add in date to  task query if necessary
@@ -540,8 +541,26 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		taskMatchQuery[task.StartTimeKey] = startTimeClause
 	}
 
-	//  add in revision to task query if necessary
-	if testHistoryParameters.BeforeRevision != "" || testHistoryParameters.AfterRevision != "" {
+	var pipeline []bson.M
+
+	// we begin to build the pipeline here. This if/else clause
+	// builds the initial match and limit. This returns early if
+	// you do not specify a revision range or a limit; and issues
+	// a warning if you specify only *one* bound without a limit.
+	//
+	// This operation will return an error if the before or after
+	// revision are empty.
+	if testHistoryParameters.BeforeRevision == "" && testHistoryParameters.AfterRevision == "" {
+		if testHistoryParameters.Limit == 0 {
+			return nil, errors.New("must specify a range of revisions *or* a limit")
+		}
+
+		pipeline = append(pipeline,
+			bson.M{"$match": taskMatchQuery},
+			bson.M{"$limit": testHistoryParameters.Limit})
+	} else {
+		//  add in revision to task query if necessary
+
 		revisionOrderNumberClause := bson.M{}
 		if testHistoryParameters.BeforeRevision != "" {
 			v, err := version.FindOne(version.ByProjectIdAndRevision(testHistoryParameters.Project,
@@ -567,11 +586,18 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			revisionOrderNumberClause["$gt"] = v.RevisionOrderNumber
 		}
 		taskMatchQuery[task.RevisionOrderNumberKey] = revisionOrderNumberClause
+
+		pipeline = append(pipeline, bson.M{"$match": taskMatchQuery})
+
+		if testHistoryParameters.Limit > 0 {
+			pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
+		} else if len(revisionOrderNumberClause) != 2 {
+			grip.Notice("task history query contains a potentially unbounded range of revisions")
+		}
 	}
 
-	pipeline := []bson.M{
-		{"$match": taskMatchQuery},
-		{"$project": bson.M{
+	pipeline = append(pipeline,
+		bson.M{"$project": bson.M{
 			task.DisplayNameKey:         1,
 			task.BuildVariantKey:        1,
 			task.StatusKey:              1,
@@ -585,13 +611,13 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.ProjectKey:             1,
 			task.DetailsKey:             1,
 		}},
-		{"$unwind": "$" + task.TestResultsKey},
-		{"$match": testMatchQuery},
-		{"$sort": bson.D{
+		bson.M{"$unwind": "$" + task.TestResultsKey},
+		bson.M{"$match": testMatchQuery},
+		bson.M{"$sort": bson.D{
 			{task.RevisionOrderNumberKey, testHistoryParameters.Sort},
 			{task.TestResultsKey + "." + task.TestResultTestFileKey, testHistoryParameters.Sort},
 		}},
-		{"$project": bson.M{
+		bson.M{"$project": bson.M{
 			TestFileKey:        "$" + task.TestResultsKey + "." + task.TestResultTestFileKey,
 			TaskIdKey:          "$" + task.IdKey,
 			TestStatusKey:      "$" + task.TestResultsKey + "." + task.TestResultStatusKey,
@@ -609,8 +635,8 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			LogIdKey:           "$" + task.TestResultsKey + "." + task.TestResultLogIdKey,
 			TaskTimedOutKey:    "$" + task.DetailsKey + "." + task.TaskEndDetailTimedOut,
 			TaskDetailsTypeKey: "$" + task.DetailsKey + "." + task.TaskEndDetailType,
-		}},
-		{"$limit": 10}}
+		}})
+
 	return pipeline, nil
 }
 
@@ -633,5 +659,4 @@ func GetTestHistory(testHistoryParameters *TestHistoryParameters) ([]TestHistory
 		return nil, err
 	}
 	return mergeResults(aggTestResults, aggOldTestResults), nil
-
 }

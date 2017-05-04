@@ -40,6 +40,7 @@ type TestHistoryCommand struct {
 	Earliest   bool   `long:"earliest" description:"sort test history from the earliest revisions to latest"`
 	Filepath   string `long:"filepath" description:"path to directory where file is to be saved, only used with json or csv format"`
 	Format     string `long:"format" description:"format to export test history, options are 'json', 'csv', 'pretty', default pretty to stdout"`
+	Limit      int    `long:"limit" description:"number of tasks to include the request. defaults to no limit, but you must specify either a limit or before/after revisions."`
 }
 
 // createUrlQuery returns a string url query parameter with relevant url parameters.
@@ -158,6 +159,7 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 		BeforeDate:     beforeDate,
 		AfterDate:      afterDate,
 		Sort:           sort,
+		Limit:          thc.Limit,
 	}
 
 	if err := testHistoryParameters.SetDefaultsAndValidate(); err != nil {
