@@ -723,6 +723,20 @@ func TestFindByLCT(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 1)
 			So(hosts[0].Id, ShouldEqual, "id")
+			Convey("after unsetting the host's lct", func() {
+				err := UpdateOne(bson.M{IdKey: h.Id},
+					bson.M{
+						"$unset": bson.M{LastCommunicationTimeKey: 0},
+					})
+				So(err, ShouldBeNil)
+				foundHost, err := FindOne(ById(h.Id))
+				So(err, ShouldBeNil)
+				So(foundHost, ShouldNotBeNil)
+				hosts, err := Find(ByRunningWithTimedOutLCT(time.Now()))
+				So(err, ShouldBeNil)
+				So(len(hosts), ShouldEqual, 1)
+				So(hosts[0].Id, ShouldEqual, h.Id)
+			})
 		})
 
 		Convey("with a host with a last communication time > 10 mins", func() {
@@ -780,6 +794,7 @@ func TestFindByLCT(t *testing.T) {
 			hosts, err := Find(ByRunningWithTimedOutLCT(now))
 			So(err, ShouldBeNil)
 			So(len(hosts), ShouldEqual, 0)
+
 		})
 
 	})

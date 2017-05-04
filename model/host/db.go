@@ -311,6 +311,7 @@ func ByRunningWithTimedOutLCT(currentTime time.Time) db.Q {
 		"$or": []bson.M{
 			{LastCommunicationTimeKey: util.ZeroTime},
 			{LastCommunicationTimeKey: bson.M{"$lte": cutoffTime}},
+			{LastCommunicationTimeKey: bson.M{"$exists": false}},
 		},
 	})
 }
