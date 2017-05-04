@@ -18,13 +18,13 @@ func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) ht
 	sc.SetURL(URL)
 	sc.SetPrefix(prefix)
 	sc.SetSuperUsers(superUsers)
-	return getHandler(root, sc)
+	return GetHandler(root, sc)
 }
 
-// getHandler builds each of the functions that this api implements and then
+// GetHandler builds each of the functions that this api implements and then
 // registers them on the given router. It then returns the given router as an
 // http handler which can be given more functions.
-func getHandler(r *mux.Router, sc servicecontext.ServiceContext) http.Handler {
+func GetHandler(r *mux.Router, sc servicecontext.ServiceContext) http.Handler {
 	// PLACE HOLDER ROUTE DEFINITION
 	// make object
 	placeHolderGet := MethodHandler{
