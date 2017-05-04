@@ -15,7 +15,7 @@ import (
 )
 
 func TestMakePaginationHeader(t *testing.T) {
-	testURL := "evergreen.url.com"
+	testURL := "http://evergreenurl.com"
 	testRoute := "test/route"
 	testPrefix := "rest"
 
