@@ -1,4 +1,4 @@
-github.com/evergreen-ci/keyval                9f20abff839064fbc93677f0e70a2536bf27e84e keyval.go keyval
+github.com/evergreen-ci/keyval                71b61a1507af8b0da815506c71bd60ed4a8292de keyval.go keyval
 github.com/evergreen-ci/build-baron-plugin    628042badf5a7bc30efec221edf6159e6c228da3 build_baron.go buildbaron
 github.com/10gen/evg-perf                     3847c2c82a243098a84c3673b7ab3d4416c67f2e perf.go perf
 github.com/10gen/evg-perf-dashboard           746a9d055a612bb59b6bd0ba331adc8952f2dee6 perf_dashboard.go dashboard
