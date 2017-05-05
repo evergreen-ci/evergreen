@@ -255,7 +255,7 @@ func getModuleBranch(moduleName string, proj *model.Project) (string, error) {
 			return module.Branch, nil
 		}
 	}
-	return "", errors.New("module branch not found")
+	return "", errors.Errorf("module '%s' unknown or not found", moduleName)
 }
 
 func (smc *SetModuleCommand) Execute(args []string) error {
@@ -272,8 +272,19 @@ func (smc *SetModuleCommand) Execute(args []string) error {
 
 	moduleBranch, err := getModuleBranch(smc.Module, proj)
 	if err != nil {
-		return err
+		grip.Error(err)
+		mods, merr := ac.GetPatchModules(smc.PatchId, proj.Identifier)
+		if merr != nil {
+			return errors.Wrap(merr, "errors fetching list of available modules")
+		}
+
+		if len(mods) != 0 {
+			grip.Noticef("known modules includes:\n\t%s", strings.Join(mods, "\n\t"))
+		}
+
+		return errors.Errorf("could not set specified module: \"%s\"", smc.Module)
 	}
+
 	// diff against the module branch.
 	diffData, err := loadGitData(moduleBranch, args...)
 	if err != nil {

@@ -524,6 +524,9 @@ func (as *APIServer) listPatchModules(w http.ResponseWriter, r *http.Request) {
 	mods := map[string]struct{}{}
 
 	for _, m := range project.Modules {
+		if m.Name == "" {
+			continue
+		}
 		mods[m.Name] = struct{}{}
 	}
 
