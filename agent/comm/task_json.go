@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -59,7 +60,7 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error 
 			}
 		},
 	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1)
+	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1*time.Second)
 	if retryFail {
 		return errors.Wrapf(err, "attaching test results failed after %d tries", httpMaxAttempts)
 	}
@@ -93,7 +94,7 @@ func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error 
 			}
 		},
 	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1)
+	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1*time.Second)
 	if retryFail {
 		return errors.Wrapf(err, "attaching task files failed after %d tries", httpMaxAttempts)
 	}
@@ -138,7 +139,7 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 			return util.RetriableError{errors.Errorf("failed posting logs: %s", string(bodyErr))}
 		},
 	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1)
+	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1*time.Second)
 	if err != nil {
 		if retryFail {
 			return "", errors.Wrapf(err, "attaching test logs failed after %v tries", httpMaxAttempts)
