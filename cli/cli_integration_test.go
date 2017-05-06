@@ -295,6 +295,7 @@ func TestCLITestHistory(t *testing.T) {
 					GlobalOpts: &Options{testSetup.settingsFilePath},
 					Project:    project,
 					Tasks:      []string{"testTask_1"},
+					Limit:      20,
 				}
 				So(thc.Execute([]string{}), ShouldBeNil)
 			})

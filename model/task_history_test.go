@@ -927,6 +927,7 @@ func TestGetTestHistory(t *testing.T) {
 				Sort:         1,
 				TaskStatuses: []string{evergreen.TaskFailed},
 				TestStatuses: []string{evergreen.TestSucceededStatus, evergreen.TestFailedStatus},
+				Limit:        20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -953,6 +954,7 @@ func TestGetTestHistory(t *testing.T) {
 			params := TestHistoryParameters{
 				TestNames: []string{"test1"},
 				Project:   project,
+				Limit:     20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -1004,6 +1006,7 @@ func TestGetTestHistory(t *testing.T) {
 				TaskNames:  []string{"test"},
 				Project:    project,
 				BeforeDate: now.Add(time.Duration(15 * time.Minute)),
+				Limit:      20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -1016,6 +1019,7 @@ func TestGetTestHistory(t *testing.T) {
 				TaskNames: []string{"test"},
 				Project:   project,
 				AfterDate: now,
+				Limit:     20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -1027,6 +1031,7 @@ func TestGetTestHistory(t *testing.T) {
 				Project:      project,
 				TaskNames:    []string{"test2"},
 				TestStatuses: []string{evergreen.TestSilentlyFailedStatus},
+				Limit:        20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -1059,6 +1064,7 @@ func TestGetTestHistory(t *testing.T) {
 					TaskNames:     []string{"test"},
 					Project:       project,
 					BuildVariants: []string{"bv2"},
+					Limit:         20,
 				}
 				So(params.SetDefaultsAndValidate(), ShouldBeNil)
 				testResults, err := GetTestHistory(&params)
@@ -1069,6 +1075,7 @@ func TestGetTestHistory(t *testing.T) {
 				params := TestHistoryParameters{
 					TaskNames: []string{"test"},
 					Project:   project,
+					Limit:     20,
 				}
 				So(params.SetDefaultsAndValidate(), ShouldBeNil)
 				testResults, err := GetTestHistory(&params)
@@ -1090,6 +1097,7 @@ func TestGetTestHistory(t *testing.T) {
 			params := TestHistoryParameters{
 				TaskNames: []string{"anothertest"},
 				Project:   project,
+				Limit:     20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -1140,6 +1148,7 @@ func TestGetTestHistory(t *testing.T) {
 				params := TestHistoryParameters{
 					TaskNames: []string{"testTask"},
 					Project:   project,
+					Limit:     20,
 				}
 				So(params.SetDefaultsAndValidate(), ShouldBeNil)
 				testResults, err := GetTestHistory(&params)
@@ -1181,6 +1190,7 @@ func TestGetTestHistory(t *testing.T) {
 				Project:      project,
 				TaskNames:    []string{"test"},
 				TaskStatuses: []string{TaskTimeout},
+				Limit:        20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)
@@ -1211,6 +1221,7 @@ func TestGetTestHistory(t *testing.T) {
 				Project:      project,
 				TaskNames:    []string{"test"},
 				TaskStatuses: []string{TaskSystemFailure},
+				Limit:        20,
 			}
 			So(params.SetDefaultsAndValidate(), ShouldBeNil)
 			testResults, err := GetTestHistory(&params)

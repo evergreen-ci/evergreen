@@ -83,6 +83,14 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 	params.BuildVariants = util.GetStringArrayValue(r, "variants", []string{})
 	params.TestStatuses = util.GetStringArrayValue(r, "testStatuses", []string{})
 	params.TaskStatuses = util.GetStringArrayValue(r, "taskStatuses", []string{})
+
+	var err error
+	params.Limit, err = util.GetIntValue(r, "limit", 0)
+	if err != nil {
+		restapi.WriteJSON(w, http.StatusBadRequest, "invalid value for field 'limit'")
+		return
+	}
+
 	if len(params.TaskStatuses) == 0 {
 		params.TaskStatuses = []string{evergreen.TaskFailed}
 	}
@@ -95,22 +103,20 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 
 	beforeDate := r.FormValue("beforeDate")
 	if beforeDate != "" {
-		b, err := time.Parse(time.RFC3339, beforeDate)
+		params.BeforeDate, err = time.Parse(time.RFC3339, beforeDate)
 		if err != nil {
 			restapi.WriteJSON(w, http.StatusBadRequest, "invalid format for field 'before date'")
 			return
 		}
-		params.BeforeDate = b
 	}
 
 	afterDate := r.FormValue("afterDate")
 	if afterDate != "" {
-		b, err := time.Parse(time.RFC3339, afterDate)
+		params.AfterDate, err = time.Parse(time.RFC3339, afterDate)
 		if err != nil {
 			restapi.WriteJSON(w, http.StatusBadRequest, "invalid format for field 'after date'")
 			return
 		}
-		params.AfterDate = b
 	}
 
 	sort := r.FormValue("sort")
