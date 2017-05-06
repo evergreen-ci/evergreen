@@ -365,7 +365,7 @@ func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
 
 	grip.Infof("performing S3 copy: '%s' => '%s'", copyFromLocation, copyToLocation)
 
-	_, err = util.RetryArithmeticBackoff(func() error {
+	_, err = util.Retry(func() error {
 		err = errors.WithStack(thirdparty.S3CopyFile(auth,
 			s3CopyReq.S3SourceBucket,
 			s3CopyReq.S3SourcePath,

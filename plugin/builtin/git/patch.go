@@ -39,70 +39,73 @@ func (*GitApplyPatchCommand) Execute(pluginLogger plugin.Logger,
 // multiple times upon failure.
 func (ggpc GitGetProjectCommand) GetPatch(pluginCom plugin.PluginCommunicator, pluginLogger plugin.Logger) (*patch.Patch, error) {
 	patch := &patch.Patch{}
-	retriableGet := util.RetriableFunc(
-		func() error {
-			resp, err := pluginCom.TaskGetJSON(GitPatchPath)
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if err != nil {
-				//Some generic error trying to connect - try again
-				pluginLogger.LogExecution(slogger.WARN, "Error connecting to API server: %v", err)
-				return util.RetriableError{err}
-			}
-			if resp != nil && resp.StatusCode == http.StatusNotFound {
-				//nothing broke, but no patch was found for task Id - no retry
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					pluginLogger.LogExecution(slogger.ERROR, "Error reading response body")
-				}
-				msg := fmt.Sprintf("no patch found for task: %v", string(body))
-				pluginLogger.LogExecution(slogger.WARN, msg)
-				return errors.New(msg)
-			}
-			if resp != nil && resp.StatusCode == http.StatusInternalServerError {
-				//something went wrong in api server
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					pluginLogger.LogExecution(slogger.ERROR, "Error reading response body")
-				}
-				msg := fmt.Sprintf("error fetching patch from server: %v", string(body))
-				pluginLogger.LogExecution(slogger.WARN, msg)
-				return util.RetriableError{
-					errors.New(msg),
-				}
-			}
-			if resp != nil && resp.StatusCode == http.StatusConflict {
-				//wrong secret
-				body, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					pluginLogger.LogExecution(slogger.ERROR, "Error reading response body")
-				}
-				msg := fmt.Sprintf("secret conflict: %v", string(body))
-				pluginLogger.LogExecution(slogger.ERROR, msg)
-				return errors.New(msg)
-			}
-			if resp == nil {
-				pluginLogger.LogExecution(slogger.WARN, "Empty response from API server")
-				return util.RetriableError{errors.New("empty response")}
-			} else {
-				err = util.ReadJSONInto(resp.Body, patch)
-				if err != nil {
-					pluginLogger.LogExecution(slogger.ERROR,
-						"Error reading json into patch struct: %v", err)
-					return util.RetriableError{err}
-				}
-				return nil
-			}
-		},
-	)
+	retriableGet := func() error {
+		resp, err := pluginCom.TaskGetJSON(GitPatchPath)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
-	retryFail, err := util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
+		if err != nil {
+			//Some generic error trying to connect - try again
+			pluginLogger.LogExecution(slogger.WARN, "Error connecting to API server: %v", err)
+			return util.RetriableError{err}
+		}
+
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
+			//nothing broke, but no patch was found for task Id - no retry
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Error reading response body")
+			}
+			msg := fmt.Sprintf("no patch found for task: %v", string(body))
+			pluginLogger.LogExecution(slogger.WARN, msg)
+			return errors.New(msg)
+		}
+
+		if resp != nil && resp.StatusCode == http.StatusInternalServerError {
+			//something went wrong in api server
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Error reading response body")
+			}
+			msg := fmt.Sprintf("error fetching patch from server: %v", string(body))
+			pluginLogger.LogExecution(slogger.WARN, msg)
+			return util.RetriableError{
+				errors.New(msg),
+			}
+		}
+
+		if resp != nil && resp.StatusCode == http.StatusConflict {
+			//wrong secret
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				pluginLogger.LogExecution(slogger.ERROR, "Error reading response body")
+			}
+			msg := fmt.Sprintf("secret conflict: %v", string(body))
+			pluginLogger.LogExecution(slogger.ERROR, msg)
+			return errors.New(msg)
+		}
+
+		if resp == nil {
+			pluginLogger.LogExecution(slogger.WARN, "Empty response from API server")
+			return util.RetriableError{errors.New("empty response")}
+		}
+
+		err = util.ReadJSONInto(resp.Body, patch)
+		if err != nil {
+			pluginLogger.LogExecution(slogger.ERROR,
+				"Error reading json into patch struct: %v", err)
+			return util.RetriableError{err}
+		}
+		return nil
+	}
+
+	retryFail, err := util.Retry(retriableGet, 10, 1*time.Second)
 	if retryFail {
-		return nil, errors.Wrapf(err, "getting patch failed after %v tries", 10)
+		return nil, errors.Wrapf(err, "getting patch failed after %d tries", 10)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "getting patch failed: %v")
+		return nil, errors.Wrap(err, "getting patch failed")
 	}
 	return patch, nil
 }
@@ -139,7 +142,7 @@ func (ggpc GitGetProjectCommand) getPatchContents(com plugin.PluginCommunicator,
 				return err
 			})
 
-		_, err := util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
+		_, err := util.Retry(retriableGet, 10, 1*time.Second)
 		if err != nil {
 			return err
 		}

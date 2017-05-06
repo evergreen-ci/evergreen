@@ -79,3 +79,5 @@ imports:
     version: 6ef479354081d8d156829c654585943bd9a5da1f
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
+  - name: github.com/jpillora/backoff
+    version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d

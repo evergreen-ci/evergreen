@@ -21,7 +21,7 @@ import (
 
 var (
 	MaxS3GetAttempts = 10
-	S3GetSleep       = 5 * time.Second
+	S3GetSleep       = 2 * time.Second
 )
 
 // A plugin command to fetch a resource from an s3 bucket and download it to
@@ -182,8 +182,7 @@ func (self *S3GetCommand) GetWithRetry(pluginLogger plugin.Logger) error {
 		},
 	)
 
-	retryFail, err := util.RetryArithmeticBackoff(retriableGet,
-		MaxS3GetAttempts, S3GetSleep)
+	retryFail, err := util.Retry(retriableGet, MaxS3GetAttempts, S3GetSleep)
 	err = errors.WithStack(err)
 	if retryFail {
 		pluginLogger.LogExecution(slogger.ERROR, "S3 get failed with error: %v", err)

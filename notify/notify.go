@@ -29,7 +29,7 @@ const (
 	NumSmtpRetries = 3
 
 	// period to sleep between tries
-	SmtpSleepTime = time.Duration(1) * time.Second
+	SmtpSleepTime = 1 * time.Second
 
 	// smtp port to connect to
 	SmtpPort = 25
@@ -767,7 +767,7 @@ func (nk NotificationKey) String() string {
 func TrySendNotification(recipients []string, subject, body string, mailer Mailer) (err error) {
 	// grip.Debugf("address: %s subject: %s body: %s", recipients, subject, body)
 	// return nil
-	_, err = util.RetryArithmeticBackoff(func() error {
+	_, err = util.Retry(func() error {
 		err = mailer.SendMail(recipients, subject, body)
 		if err != nil {
 			grip.Errorln("Error sending notification:", err)

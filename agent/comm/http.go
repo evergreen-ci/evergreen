@@ -56,7 +56,7 @@ func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string) (*HTTPCommu
 		HostId:        hostId,
 		HostSecret:    hostSecret,
 		MaxAttempts:   httpMaxAttempts,
-		RetrySleep:    time.Second * 3,
+		RetrySleep:    time.Second * 2,
 		HttpsCert:     cert,
 	}
 

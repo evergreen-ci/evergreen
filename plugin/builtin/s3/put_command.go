@@ -238,7 +238,7 @@ func (s3pc *S3PutCommand) PutWithRetry(log plugin.Logger, com plugin.PluginCommu
 		},
 	)
 
-	retryFail, err := util.RetryArithmeticBackoff(retriablePut, maxS3PutAttempts, s3PutSleep)
+	retryFail, err := util.Retry(retriablePut, maxS3PutAttempts, s3PutSleep)
 	if err == errSkippedFile {
 		log.LogExecution(slogger.INFO, "S3 put skipped optional missing file.")
 		return nil

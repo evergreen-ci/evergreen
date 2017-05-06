@@ -19,7 +19,7 @@ import (
 
 const (
 	GithubBase          = "https://github.com"
-	NumGithubRetries    = 3
+	NumGithubRetries    = 5
 	GithubSleepTimeSecs = 1
 	GithubAPIBase       = "https://api.github.com"
 	GithubStatusBase    = "https://status.github.com"

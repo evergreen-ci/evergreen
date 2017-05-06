@@ -37,30 +37,29 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error 
 		return nil
 	}
 
-	retriableSendFile := util.RetriableFunc(
-		func() error {
-			resp, err := t.TryTaskPost("results", results)
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if err != nil {
-				return util.RetriableError{errors.Wrap(err, "error posting results")}
-			}
+	retriableSendFile := func() error {
+		resp, err := t.TryTaskPost("results", results)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return util.RetriableError{errors.Wrap(err, "error posting results")}
+		}
 
-			body, _ := ioutil.ReadAll(resp.Body)
-			bodyErr := errors.Errorf("error posting results (%v): %s",
-				resp.StatusCode, string(body))
-			switch resp.StatusCode {
-			case http.StatusOK:
-				return nil
-			case http.StatusBadRequest:
-				return bodyErr
-			default:
-				return util.RetriableError{bodyErr}
-			}
-		},
-	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1*time.Second)
+		body, _ := ioutil.ReadAll(resp.Body)
+		bodyErr := errors.Errorf("error posting results (%v): %s",
+			resp.StatusCode, string(body))
+		switch resp.StatusCode {
+		case http.StatusOK:
+			return nil
+		case http.StatusBadRequest:
+			return bodyErr
+		default:
+			return util.RetriableError{bodyErr}
+		}
+	}
+
+	retryFail, err := util.Retry(retriableSendFile, httpMaxAttempts, 1*time.Second)
 	if retryFail {
 		return errors.Wrapf(err, "attaching test results failed after %d tries", httpMaxAttempts)
 	}
@@ -69,32 +68,31 @@ func (t *TaskJSONCommunicator) TaskPostResults(results *task.TestResults) error 
 
 // PostTaskFiles is used by the PluginCommunicator interface for attaching task files.
 func (t *TaskJSONCommunicator) PostTaskFiles(task_files []*artifact.File) error {
-	retriableSendFile := util.RetriableFunc(
-		func() error {
-			resp, err := t.TryTaskPost("files", task_files)
-			if resp != nil {
-				defer resp.Body.Close()
-			}
-			if err != nil {
-				return util.RetriableError{errors.Wrap(err, "error posting results")}
-			}
-			body, readAllErr := ioutil.ReadAll(resp.Body)
-			bodyErr := errors.Errorf("error posting results (%v): %v",
-				resp.StatusCode, string(body))
-			if readAllErr != nil {
-				return bodyErr
-			}
-			switch resp.StatusCode {
-			case http.StatusOK:
-				return nil
-			case http.StatusBadRequest:
-				return bodyErr
-			default:
-				return util.RetriableError{bodyErr}
-			}
-		},
-	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1*time.Second)
+	retriableSendFile := func() error {
+		resp, err := t.TryTaskPost("files", task_files)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return util.RetriableError{errors.Wrap(err, "error posting results")}
+		}
+		body, readAllErr := ioutil.ReadAll(resp.Body)
+		bodyErr := errors.Errorf("error posting results (%v): %v",
+			resp.StatusCode, string(body))
+		if readAllErr != nil {
+			return bodyErr
+		}
+		switch resp.StatusCode {
+		case http.StatusOK:
+			return nil
+		case http.StatusBadRequest:
+			return bodyErr
+		default:
+			return util.RetriableError{bodyErr}
+		}
+	}
+
+	retryFail, err := util.Retry(retriableSendFile, httpMaxAttempts, 1*time.Second)
 	if retryFail {
 		return errors.Wrapf(err, "attaching task files failed after %d tries", httpMaxAttempts)
 	}
@@ -109,37 +107,36 @@ func (t *TaskJSONCommunicator) TaskPostTestLog(log *model.TestLog) (string, erro
 	}
 
 	var logId string
-	retriableSendFile := util.RetriableFunc(
-		func() error {
-			resp, err := t.TryTaskPost("test_logs", log)
-			if err != nil {
-				return util.RetriableError{errors.Wrap(err, "error posting logs")}
-			}
-			defer resp.Body.Close()
+	retriableSendFile := func() error {
+		resp, err := t.TryTaskPost("test_logs", log)
+		if err != nil {
+			return util.RetriableError{errors.Wrap(err, "error posting logs")}
+		}
+		defer resp.Body.Close()
 
-			if resp.StatusCode == http.StatusOK {
-				logReply := struct {
-					Id string `json:"_id"`
-				}{}
+		if resp.StatusCode == http.StatusOK {
+			logReply := struct {
+				Id string `json:"_id"`
+			}{}
 
-				err = util.ReadJSONInto(resp.Body, &logReply)
-				logId = logReply.Id
-				return errors.WithStack(err)
-			}
+			err = util.ReadJSONInto(resp.Body, &logReply)
+			logId = logReply.Id
+			return errors.WithStack(err)
+		}
 
-			bodyErr, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return util.RetriableError{errors.WithStack(err)}
-			}
+		bodyErr, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return util.RetriableError{errors.WithStack(err)}
+		}
 
-			if resp.StatusCode == http.StatusBadRequest {
-				return errors.Errorf("bad request posting logs: %s", string(bodyErr))
-			}
+		if resp.StatusCode == http.StatusBadRequest {
+			return errors.Errorf("bad request posting logs: %s", string(bodyErr))
+		}
 
-			return util.RetriableError{errors.Errorf("failed posting logs: %s", string(bodyErr))}
-		},
-	)
-	retryFail, err := util.RetryArithmeticBackoff(retriableSendFile, httpMaxAttempts, 1*time.Second)
+		return util.RetriableError{errors.Errorf("failed posting logs: %s", string(bodyErr))}
+	}
+
+	retryFail, err := util.Retry(retriableSendFile, httpMaxAttempts, 1*time.Second)
 	if err != nil {
 		if retryFail {
 			return "", errors.Wrapf(err, "attaching test logs failed after %v tries", httpMaxAttempts)

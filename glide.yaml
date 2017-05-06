@@ -42,3 +42,4 @@ import:
   - package: github.com/aws/aws-sdk-go
   - package: github.com/mongodb/grip
   - package: github.com/pkg/errors
+  - package: github.com/jpillora/backoff

@@ -63,7 +63,7 @@ func (mfc *ManifestLoadCommand) Load(log plugin.Logger, pluginCom plugin.PluginC
 			return err
 		})
 
-	_, err = util.RetryArithmeticBackoff(retriableGet, 5, 5*time.Second)
+	_, err = util.Retry(retriableGet, 10, 1*time.Second)
 	if err != nil {
 		return err
 	}
