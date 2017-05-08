@@ -421,15 +421,6 @@ func New(opts Options) (*Agent, error) {
 	if err := agt.Setup(); err != nil {
 		return nil, err
 	}
-	// set up the system stats collector
-	agt.statsCollector = NewSimpleStatsCollector(
-		agt.logger.System,
-		DefaultStatsInterval,
-		agt.signalHandler.stopBackgroundChan,
-		"uptime",
-		"df -h",
-		"${ps|ps}",
-	)
 
 	agt.Registry = plugin.NewSimpleRegistry()
 	agt.metricsCollector = &metricsCollector{
@@ -529,6 +520,7 @@ func (agt *Agent) Run() error {
 // RunTask manages the process of running a task. It returns a response
 // indicating the end result of the task.
 func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
+
 	agt.CheckIn(InitialSetupCommand, InitialSetupTimeout)
 
 	agt.logger.LogLocal(slogger.INFO, "Local logger initialized.")
@@ -575,6 +567,21 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 	}
 	taskConfig.Expansions.Update(*expVars)
 	agt.taskConfig = taskConfig
+
+	// set up the system stats collector
+	statsCollectorKill := make(chan struct{})
+	agt.statsCollector = NewSimpleStatsCollector(
+		agt.logger.System,
+		DefaultStatsInterval,
+		statsCollectorKill,
+		"uptime",
+		"df -h",
+		"${ps|ps}",
+	)
+	defer func() {
+		statsCollectorKill <- struct{}{}
+		grip.Debugf("stopping simple stats collector for task:", agt.GetCurrentTaskId())
+	}()
 
 	// start the heartbeater, timeout watcher, system stats collector, and signal listener
 	agt.StartBackgroundActions(agt.signalHandler)
