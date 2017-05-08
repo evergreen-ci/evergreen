@@ -10,10 +10,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen/agent"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -32,12 +30,6 @@ const (
 	statsPort         = 2285
 	agentSleep        = time.Minute * 1
 )
-
-// logSuffix a unique log filename suffix that is namespaced
-// to the PID and Date of the agent's execution.
-func logSuffix() string {
-	return fmt.Sprintf("_%v_pid_%v.log", time.Now().Format(filenameTimestamp), os.Getpid())
-}
 
 // getHTTPSCertFile fetches the contents of the file at httpsCertFile and
 // attempts to decode the pem encoded data contained therein. Returns the
@@ -71,14 +63,9 @@ func main() {
 	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 
-	logFile := *logPrefix + logSuffix()
+	grip.CatchEmergencyFatal(agent.SetupLogging(logfile))
 
-	sender, err := send.MakeFileLogger(logFile)
-	grip.CatchEmergencyFatal(err)
-	defer util.RecoverAndLogStackTrace()
-
-	defer sender.Close()
-	grip.CatchEmergencyFatal(grip.SetSender(sender))
+	grip.CatchEmergencyFatal()
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
@@ -95,6 +82,7 @@ func main() {
 		HostId:      *hostId,
 		HostSecret:  *hostSecret,
 		StatusPort:  *port,
+		LogPrefix:   *logPrefix,
 	}
 
 	agt, err := agent.New(initialOptions)

@@ -350,11 +350,15 @@ type Options struct {
 	HostId      string
 	HostSecret  string
 	Certificate string
+	LogPrefix   string
 	StatusPort  int
 }
 
 // Setup initializes all the signal chans and loggers that are used during one run of the agent.
 func (agt *Agent) Setup() error {
+	if err := SetupLogging(fmt.Sprintf("%s_%s", agt.opts.LogPrefix)); err != nil {
+		return errors.Wrap(err, "problem setting up logging")
+	}
 
 	// set signal handler
 	sigHandler := &SignalHandler{}
@@ -375,7 +379,7 @@ func (agt *Agent) Setup() error {
 	// set up timeout logger, local and API logger streams
 	streamLogger, err := comm.NewStreamLogger(idleTimeoutWatcher, apiLogger)
 	if err != nil {
-		return errors.Wrapf(err, "Error create new stream logger")
+		return errors.Wrap(err, "Error create new stream logger")
 	}
 	agt.TaskCommunicator.SetLogger(streamLogger.Execution)
 	agt.logger = streamLogger
@@ -493,28 +497,27 @@ func (agt *Agent) Run() error {
 			if hasTask {
 				break nextTaskLoop
 			}
-			grip.Infof("Agent sleeping %v", DefaultAgentSleepInterval)
+			grip.Debugf("Agent sleeping %s", DefaultAgentSleepInterval)
 			time.Sleep(DefaultAgentSleepInterval)
 		}
 		if err = agt.Setup(); err != nil {
 			agt.cleanup(currentTask)
-			return errors.Wrapf(err, "error setting up task")
+			return errors.Wrap(err, "error setting up task")
 		}
 		currentTask = agt.GetCurrentTaskId()
 		resp, err := agt.RunTask()
 		if err != nil {
 			agt.cleanup(currentTask)
-			return errors.Wrapf(err, "error running task")
+			return errors.Wrap(err, "error running task")
 		}
 
 		if resp == nil {
-			message := "received nil response from API server"
 			agt.cleanup(currentTask)
-			return errors.New(message)
+			return errors.New("received nil response from API server")
 		}
 		// this isn't an error, so it should just exit
 		if resp.ShouldExit {
-			grip.Infof("task response indicates that agent should exit: %s", resp.Message)
+			grip.Noticeln("task response indicates that agent should exit:", resp.Message)
 			agt.cleanup(currentTask)
 			return nil
 		}
