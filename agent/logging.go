@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+const filenameTimestamp = "2006-01-02_15_04_05"
+
 // SetupLogging configures the agent's local logging to a file.
 func SetupLogging(prefix string) error {
 	logFile := fmt.Sprintf("%s_%s_pid_%d.log",

@@ -26,9 +26,8 @@ func init() {
 }
 
 const (
-	filenameTimestamp = "2006-01-02_15_04_05"
-	statsPort         = 2285
-	agentSleep        = time.Minute * 1
+	statsPort  = 2285
+	agentSleep = time.Minute * 1
 )
 
 // getHTTPSCertFile fetches the contents of the file at httpsCertFile and
@@ -63,9 +62,7 @@ func main() {
 	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 
-	grip.CatchEmergencyFatal(agent.SetupLogging(logfile))
-
-	grip.CatchEmergencyFatal()
+	grip.CatchEmergencyFatal(agent.SetupLogging("agent-startup"))
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
