@@ -58,11 +58,8 @@ type RequestHandler interface {
 // makeHandler makes an http.HandlerFunc that wraps calls to each of the api
 // Method functions. It marshalls the response to JSON and writes it out to
 // as the response. If any of the functions return an error, it handles creating
-// a JSON error and sending it as the response. The 'route' is the path that is
-// used to access this API endpoint and 'version' is the version number of the API
-// that this method is used for.
-func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext,
-	route string, version int) http.HandlerFunc {
+// a JSON error and sending it as the response.
+func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		for _, pf := range methodHandler.PrefetchFunctions {
 			if err := pf(r, sc); err != nil {

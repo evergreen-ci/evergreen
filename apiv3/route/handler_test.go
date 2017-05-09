@@ -118,8 +118,7 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 	testVersion := 2
 	testRoute := "/test/route"
 
-	handler := makeHandler(m, &servicecontext.MockServiceContext{},
-		testRoute, testVersion)
+	handler := makeHandler(m, &servicecontext.MockServiceContext{})
 
 	u := &url.URL{
 		RawQuery: queryParams,

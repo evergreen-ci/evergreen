@@ -205,7 +205,7 @@ func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter,
 	if err != nil {
 		return err
 	}
-	baseURL.Path = path.Clean(fmt.Sprintf("/%s", route))
+	baseURL.Path = path.Clean(fmt.Sprintf("/%s/%s", prefix, route))
 
 	b := bytes.Buffer{}
 	if pm.Pages.Next != nil {

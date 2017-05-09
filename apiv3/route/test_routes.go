@@ -92,8 +92,9 @@ func testPaginator(key string, limit int, args interface{}, sc servicecontext.Se
 	prevTests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit, -1)
 	if err != nil {
 		if apiErr, ok := err.(*apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
-			err = errors.Wrap(err, "Database error dude")
+			err = errors.Wrap(err, "Database error")
 		}
+		return []model.Model{}, nil, err
 	}
 
 	nextPage := makeNextTestsPage(tests, limit)

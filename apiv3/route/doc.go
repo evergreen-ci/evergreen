@@ -36,7 +36,7 @@
 	From the Route Variables
 
 	Variables from routes defined with variables such as /tasks/{task_id} can be
-	fetched using calls to the mux.Vars funciton and providing the variable name
+	fetched using calls to the mux.Vars function and providing the variable name
 	to the returned map. For example, the taskId of that route could be fetched using:
 
 					mux.Vars(r)["task_id"]
@@ -136,7 +136,7 @@
 
 	- The RequestHandler this method uses for the main execution of its request
 
-	A MethodHandler is a compositon of defined structs and functions that in total
+	A MethodHandler is a composition of defined structs and functions that in total
 	comprise the method. Many Authenticator and PrefetchFunc are already implemented
 	and only need to be attached to this object to create the method once the Requesthandler
 	is complete.

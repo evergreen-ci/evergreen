@@ -25,7 +25,7 @@ type RouteManager struct {
 // these to the given router.
 func (rm *RouteManager) Register(r *mux.Router, sc servicecontext.ServiceContext) {
 	for _, method := range rm.Methods {
-		routeHandlerFunc := makeHandler(method, sc, rm.Route, rm.Version)
+		routeHandlerFunc := makeHandler(method, sc)
 		sr := r.PathPrefix(fmt.Sprintf("/%s/v%d/", sc.GetPrefix(), rm.Version)).Subrouter().StrictSlash(true)
 
 		sr.HandleFunc(rm.Route, routeHandlerFunc).Methods(method.MethodType)

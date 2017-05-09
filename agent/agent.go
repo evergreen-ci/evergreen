@@ -356,7 +356,7 @@ type Options struct {
 
 // Setup initializes all the signal chans and loggers that are used during one run of the agent.
 func (agt *Agent) Setup() error {
-	if err := SetupLogging(fmt.Sprintf("%s_%s", agt.opts.LogPrefix)); err != nil {
+	if err := SetupLogging(fmt.Sprintf("%s_%s", agt.opts.LogPrefix, agt.GetCurrentTaskId())); err != nil {
 		return errors.Wrap(err, "problem setting up logging")
 	}
 
@@ -514,7 +514,6 @@ func (agt *Agent) Run() error {
 		}
 
 	}
-	return nil
 }
 
 // RunTask manages the process of running a task. It returns a response

@@ -100,7 +100,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 	// if the host still has the task as its running task, clear it.
 	if host.RunningTask == wrapper.task.Id {
 		// clear out the host's running task
-		if err := host.ClearRunningTask(wrapper.task.Id, time.Now()); err != nil {
+		if err = host.ClearRunningTask(wrapper.task.Id, time.Now()); err != nil {
 			return errors.Wrapf(err, "error clearing running task %v from host %v: %v",
 				wrapper.task.Id, host.Id)
 		}
@@ -109,7 +109,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 	// take different action, depending on the type of task death
 	switch wrapper.reason {
 	case HeartbeatTimeout:
-		err = cleanUpTimedOutHeartbeat(wrapper.task, project, host)
+		err = cleanUpTimedOutHeartbeat(wrapper.task, project)
 	default:
 		return errors.Errorf("unknown reason for cleaning up task: %v", wrapper.reason)
 	}
@@ -123,7 +123,7 @@ func cleanUpTask(wrapper doomedTaskWrapper, projects map[string]model.Project) e
 }
 
 // clean up a task whose heartbeat has timed out
-func cleanUpTimedOutHeartbeat(t task.Task, project model.Project, host *host.Host) error {
+func cleanUpTimedOutHeartbeat(t task.Task, project model.Project) error {
 	// mock up the failure details of the task
 	detail := &apimodels.TaskEndDetail{
 		Description: task.AgentHeartbeat,
