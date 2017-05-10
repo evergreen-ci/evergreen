@@ -577,6 +577,7 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 		"df -h",
 		"${ps|ps}",
 	)
+	agt.statsCollector.LogStats(agt.taskConfig.Expansions)
 	defer func() {
 		statsCollectorKill <- struct{}{}
 		grip.Debugf("stopping simple stats collector for task:", agt.GetCurrentTaskId())
@@ -765,7 +766,6 @@ func (agt *Agent) callbackTimeoutSignal() chan bool {
 // execution - heartbeats, timeouts, logging, etc.
 func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 	agt.heartbeater.StartHeartbeating()
-	agt.statsCollector.LogStats(agt.taskConfig.Expansions)
 	agt.idleTimeoutWatcher.NotifyTimeouts(agt.signalHandler.idleTimeoutChan)
 
 	// DISABLED: pending studies into the capacity of the API

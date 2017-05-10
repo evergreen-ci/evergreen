@@ -94,11 +94,18 @@ func createAgent(testServer *service.TestServer, testHost *host.Host) (*Agent, e
 		HostSecret:  testHost.Secret,
 		Certificate: testConfig.Api.HttpsCert,
 	})
+
 	if err != nil {
 		return nil, err
 	}
+
 	testAgent.heartbeater.Interval = 10 * time.Second
 	testAgent.taskConfig = &model.TaskConfig{Expansions: &command.Expansions{}}
+
+	if err := testAgent.Setup(); err != nil {
+		return nil, err
+	}
+
 	return testAgent, nil
 }
 
