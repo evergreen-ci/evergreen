@@ -163,7 +163,7 @@ func TestGetTestHistory(t *testing.T) {
 		url, err := router.Get("test_history").URL("project_id", project)
 		So(err, ShouldBeNil)
 
-		request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2", nil)
+		request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20", nil)
 		So(err, ShouldBeNil)
 
 		response := httptest.NewRecorder()
