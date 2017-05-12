@@ -115,7 +115,6 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 	expectedModels []model.Model, headerCheck headerCheckFunc, queryParams string,
 	expectedStatusCode int, t *testing.T) {
 
-	testVersion := 2
 	testRoute := "/test/route"
 
 	handler := makeHandler(m, &servicecontext.MockServiceContext{})
