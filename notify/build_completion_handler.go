@@ -30,8 +30,8 @@ func (self *BuildCompletionHandler) GetNotifications(ae *web.App, key *Notificat
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, &triggered)
 		if err != nil {
-			grip.Warningf("Error templating notification for build '%s': %+v",
-				triggered.Current.Id, err)
+			grip.Noticef("template error with build completion notification for '%s': %s",
+				triggered.Current.Id, err.Error())
 			continue
 		}
 

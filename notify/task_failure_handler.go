@@ -29,8 +29,8 @@ func (self *TaskFailureHandler) GetNotifications(ae *web.App, key *NotificationK
 	for _, triggered := range triggeredNotifications {
 		email, err := self.TemplateNotification(ae, &triggered)
 		if err != nil {
-			grip.Warningf("Error templating notification for task '%s': %+v",
-				triggered.Current.Id, err)
+			grip.Warningf("tempalte error with task failure notification for '%s': %s",
+				triggered.Current.Id, err.Error())
 			continue
 		}
 

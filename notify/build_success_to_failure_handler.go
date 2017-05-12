@@ -71,7 +71,8 @@ func (self *BuildSuccessToFailureHandler) GetNotifications(ae *web.App, key *Not
 			}
 			email, err := self.TemplateNotification(ae, &notification)
 			if err != nil {
-				grip.Debugf("Error templating for build '%s': %+v", currentBuild.Id, err)
+				grip.Noticef("template error for build success to failure notification with '%s': %s",
+					currentBuild.Id, err.Error())
 				continue
 			}
 			emails = append(emails, email)
