@@ -68,7 +68,7 @@ lintArgs += --dupl-threshold=175
 #  golint doesn't handle splitting package comments between multiple files.
 # lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
-lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused)\)$$"
+lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE|testSorter) is unused \((deadcode|unused)\)$$"
 lintArgs += --exclude=".*(procInfo|sysInfo|metricsCollector\).start).*is unused.* \(unused\)$$"
 lintArgs += --exclude="error return value not checked \(defer.* \(errcheck\)$$"
 lintArgs += --exclude="defers in this range loop.* \(staticcheck\)$$"
