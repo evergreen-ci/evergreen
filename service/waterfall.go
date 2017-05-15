@@ -106,17 +106,6 @@ type waterfallTask struct {
 	StartTime        int64                   `json:"start_time"`
 }
 
-// taskStatusCount holds all the counts for task statuses for a given build.
-type taskStatusCount struct {
-	Succeeded    int `json:"succeeded"`
-	Failed       int `json:"failed"`
-	Started      int `json:"started"`
-	Undispatched int `json:"undispatched"`
-	Inactive     int `json:"inactive"`
-	Dispatched   int `json:"dispatched"`
-	TimedOut     int `json:"timed_out"`
-}
-
 // failedTest holds all the information for displaying context about tests that failed in a
 // waterfall page tooltip.
 
@@ -200,26 +189,7 @@ func createWaterfallTasks(tasks []build.TaskCache) ([]waterfallTask, taskStatusC
 		}
 		taskForWaterfall.Status = uiStatus(taskForWaterfall)
 
-		switch taskForWaterfall.Status {
-		case evergreen.TaskSucceeded:
-			statusCount.Succeeded++
-		case evergreen.TaskFailed:
-			if taskForWaterfall.StatusDetails.TimedOut && taskForWaterfall.StatusDetails.Description == "heartbeat" {
-				statusCount.TimedOut++
-			} else {
-				statusCount.Failed++
-			}
-		case evergreen.TaskStarted, evergreen.TaskDispatched:
-			statusCount.Started++
-		case evergreen.TaskUndispatched:
-			statusCount.Undispatched++
-		case evergreen.TaskInactive:
-			statusCount.Inactive++
-		}
-		// if the task is inactive, set its status to inactive
-		if !t.Activated {
-			taskForWaterfall.Status = InactiveStatus
-		}
+		statusCount.incrementStatus(taskForWaterfall.Status, taskForWaterfall.StatusDetails)
 
 		waterfallTasks = append(waterfallTasks, taskForWaterfall)
 	}

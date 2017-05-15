@@ -82,6 +82,59 @@ directives.visualization.directive('progressBar', function($filter) {
     template: '<a ng-repeat="result in results" ng-style="{ display : \'block\', width : widthPerSlice }" ' +
       ' ng-class="result.class" class="result-slice"></div>'
   };
+})
+ //buildGrid creates a group of task boxes in react. It serves as a shim between
+//our angularjs and the React code used to create and manage the boxes.
+  .directive('buildGrid', function gridDirective() {
+    return ({
+        link: link,
+        scope: {
+          collapsed: "=",
+          onClose: "&",
+          build: "="
+        }
+    });
+   function link(scope, element, attributes) {
+     //project out the tasks from the uiTask struct to what the react code expects.
+     var tasks = _.map(scope.build.Tasks, function (task) {
+        var t = task.Task;
+        t.failed_test_names = task.failed_test_names;
+        return t;
+     });
+     // bind the angular $destroy to a function that removes the react element
+     // from the DOM.
+     scope.$on("$destroy", unmountReactElement);
+
+     // bind angular's changes in the 'collapsed' variable to re-render the React
+     // element.
+     scope.$watch("collapsed", renderReactElement);
+
+     // renderReactElement packages the props and renders the React element into the DOM.
+     function renderReactElement() {
+     var props = {
+       onClose: function() {
+         scope.$apply(scope.onClose);
+       },
+       build: {
+         id: scope.build.Build._id,
+         taskStatusCount: scope.build.taskStatusCount,
+         tasks: tasks
+       },
+       rolledUp: false,
+       collapseInfo: {
+         collapsed: scope.collapsed,
+         activeTaskStatuses : ['failed','system-failed']
+       }
+     }
+     ReactDOM.render(
+       React.createElement(Build, props),
+       element[0]
+     );
+   }
+  function unmountReactElement() {
+    React.unmountComponentAtNode(element[0]);
+  }
+   }
 }).directive('ngBindHtmlUnsafe', function() {
   // Because ng-bind-html prevents you from entering text with left angle
   // bracket (<) we can't use it for logs

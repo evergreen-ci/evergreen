@@ -1904,9 +1904,6 @@ pre {
   float: left;
   padding: 0px 20px 0px 0px;
 }
-.build {
-  list-style: none;
-}
 #version {
   padding-top: 20px;
 }
@@ -1931,6 +1928,12 @@ pre {
   height: 23px;
   float: left;
   background-color: #999;
+}
+.version-build-grid {
+  width: 60%;
+}
+.collapse-panel {
+  margin: 10px;
 }
 /* body {
  background-color: #f3f3f3;
@@ -1994,7 +1997,7 @@ pre {
 #collapsed-prompt {
   margin-right: 6px;
 }
-.build {
+.waterfall-build {
   padding: 8px;
   width: 20%;
   float: left;
@@ -2065,7 +2068,6 @@ a.task-summary:hover {
   margin-right: 5px;
 }
 .header-col {
-  list-style: none;
   padding: 8px;
   width: 20%;
   float: left;

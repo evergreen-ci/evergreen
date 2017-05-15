@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -63,25 +64,57 @@ type uiHost struct {
 }
 
 type uiBuild struct {
-	Build       build.Build
-	Version     version.Version
-	PatchInfo   *uiPatch `json:",omitempty"`
-	Tasks       []uiTask
-	Elapsed     time.Duration
-	CurrentTime int64
-	RepoOwner   string `json:"repo_owner"`
-	Repo        string `json:"repo_name"`
+	Build           build.Build
+	Version         version.Version
+	PatchInfo       *uiPatch `json:",omitempty"`
+	Tasks           []uiTask
+	Elapsed         time.Duration
+	CurrentTime     int64
+	RepoOwner       string          `json:"repo_owner"`
+	Repo            string          `json:"repo_name"`
+	TaskStatusCount taskStatusCount `json:"taskStatusCount"`
+}
+
+// taskStatusCount holds all the counts for task statuses for a given build.
+type taskStatusCount struct {
+	Succeeded    int `json:"succeeded"`
+	Failed       int `json:"failed"`
+	Started      int `json:"started"`
+	Undispatched int `json:"undispatched"`
+	Inactive     int `json:"inactive"`
+	Dispatched   int `json:"dispatched"`
+	TimedOut     int `json:"timed_out"`
+}
+
+func (tsc *taskStatusCount) incrementStatus(status string, statusDetails apimodels.TaskEndDetail) {
+	switch status {
+	case evergreen.TaskSucceeded:
+		tsc.Succeeded++
+	case evergreen.TaskFailed:
+		if statusDetails.TimedOut && statusDetails.Description == "heartbeat" {
+			tsc.TimedOut++
+		} else {
+			tsc.Failed++
+		}
+	case evergreen.TaskStarted, evergreen.TaskDispatched:
+		tsc.Started++
+	case evergreen.TaskUndispatched:
+		tsc.Undispatched++
+	case evergreen.TaskInactive:
+		tsc.Inactive++
+	}
 }
 
 type uiTask struct {
-	Task          task.Task
-	Gitspec       string
-	BuildDisplay  string
-	TaskLog       []model.LogMessage
-	NextTasks     []task.Task
-	PreviousTasks []task.Task
-	Elapsed       time.Duration
-	StartTime     int64
+	Task            task.Task
+	Gitspec         string
+	BuildDisplay    string
+	TaskLog         []model.LogMessage
+	NextTasks       []task.Task
+	PreviousTasks   []task.Task
+	Elapsed         time.Duration
+	StartTime       int64
+	FailedTestNames []string `json:"failed_test_names"`
 }
 
 func PopulateUIVersion(version *version.Version) (*uiVersion, error) {

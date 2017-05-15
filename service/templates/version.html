@@ -2,12 +2,20 @@
 <style type="text/css">
   body{ background: #f5f6f7; }
 </style>
+
+<!-- ReactJS libs -->
+<script type="text/javascript" src="/static/js/react.min.js"></script>
+<script type="text/javascript" src="/static/js/react-dom.min.js"></script>
+<script type="text/javascript" src="/static/js/browser.min.js"></script>
+<script type="text/javascript" src="/static/js/react-bootstrap.min.js"></script>
+
 <script type="text/javascript">
   window.version = {{ .Version }};
   window.canEdit = {{ .CanEdit }};
   window.plugins = {{.PluginContent.Data}}
 </script>
 <script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
+<script type="text/javascript" src="{{Static "js" "tasks_grid.js"}}?hash={{ StaticsMD5 }}"></script>
 {{if .User}}
   <script type="text/javascript" src="{{Static "js" "version_admin.js"}}?hash={{ StaticsMD5 }}"></script>
 {{end}}
@@ -136,11 +144,15 @@ Evergreen - Version {{Trunc .Version.Version.Revision 10}}
              <li ng-class="{active:tab==1}"><a href="#" ng-click="setTab(1)">Grid</a></li>
            </ul>
            <div class="row" ng-hide="tab!=0">
+            <div class="semi-muted collapse-panel">
+              <span id="collapsed-prompt">Show collapsed view</span>
+                   <input type="checkbox" ng-model="collapsed"></input>
+            </div>
              <div ng-repeat="build in version.Builds | orderBy:'Build.display_name'" class="col-lg-4">
                <h4 class="one-liner" style="margin-bottom: 5px;">
                  <a ng-href="/build/[[build.Build._id]]" class="semi-muted">[[build.Build.display_name]]</a>
                </h4>
-               <div class="progress" results-bar="taskStatuses[build.Build._id]"></div>
+                   <build-grid build="build" collapsed="collapsed"></build-grid>
              </div>
            </div>
            <div class="row" ng-hide="tab!=1">

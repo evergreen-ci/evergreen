@@ -8,6 +8,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   $scope.taskStatuses = {};
   hash = $location.hash();
   path = $location.path();
+  $scope.collapsed = localStorage.getItem("collapsed") == "true";
 
   // If a tab number is specified in the URL, parse it out and set the tab
   // number in the scope so that the correct tab is open when the page loads.
@@ -16,6 +17,10 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
   } else if (!isNaN(parseInt(hash))) {
     $scope.tab = parseInt(hash);
   }
+
+  $scope.$watch("collapsed", function() {
+    localStorage.setItem("collapsed", $scope.collapsed);
+  });
 
   $scope.getTab = function() {
     return $scope.tab;
@@ -34,8 +39,6 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     newVersion.PatchInfo = $scope.version['PatchInfo']
     $scope.setVersion(newVersion);
   })
-
-
 
   $scope.setVersion = function(version) {
     $scope.version = version;

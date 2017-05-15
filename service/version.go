@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -14,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +45,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		canEditPatch = uis.canEditPatch(currentUser, projCtx.Patch)
 		versionAsUI.PatchInfo = &uiPatch{Patch: *projCtx.Patch}
 		// diff builds for each build in the version
-		baseBuilds, err := build.Find(build.ByRevision(projCtx.Version.Revision))
+		var baseBuilds []build.Build
+		baseBuilds, err = build.Find(build.ByRevision(projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w,
 				fmt.Sprintf("error loading base builds for patch: %v", err),
@@ -66,7 +69,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 				diffs = append(diffs, diff.Tasks...)
 			}
 		}
-		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
+		var baseVersion *version.Version
+		baseVersion, err = version.FindOne(version.BaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -82,6 +86,7 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
+	failedTaskIds := []string{}
 	uiBuilds := make([]uiBuild, 0, len(projCtx.Version.BuildIds))
 	for _, build := range dbBuilds {
 		buildAsUI := uiBuild{Build: build}
@@ -94,12 +99,21 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 						Id: t.Id, Activated: t.Activated, StartTime: t.StartTime, TimeTaken: t.TimeTaken,
 						Status: t.Status, Details: t.StatusDetails, DisplayName: t.DisplayName,
 					}})
+			buildAsUI.TaskStatusCount.incrementStatus(t.Status, t.StatusDetails)
+			if t.Status == evergreen.TaskFailed {
+				failedTaskIds = append(failedTaskIds, t.Id)
+			}
 			if t.Activated {
 				versionAsUI.ActiveTasks++
 			}
 		}
 		buildAsUI.Tasks = uiTasks
 		uiBuilds = append(uiBuilds, buildAsUI)
+	}
+	err = addFailedTests(failedTaskIds, uiBuilds)
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 	versionAsUI.Builds = uiBuilds
 
@@ -215,6 +229,38 @@ func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
 	}
 	versionAsUI.Builds = uiBuilds
 	uis.WriteJSON(w, http.StatusOK, versionAsUI)
+}
+
+// addFailedTests fetches the tasks that failed from the database and attaches
+// the associated failed tests to the uiBuilds.
+func addFailedTests(failedTaskIds []string, uiBuilds []uiBuild) error {
+	if len(failedTaskIds) == 0 {
+		return nil
+	}
+	failedTasks, err := task.Find(task.ByIds(failedTaskIds))
+	if err != nil {
+		return errors.Wrap(err, "error fetching failed tasks")
+	}
+
+	failedTestsByTaskId := map[string][]string{}
+	for _, t := range failedTasks {
+		failedTests := []string{}
+		for _, r := range t.TestResults {
+			if r.Status == evergreen.TestFailedStatus {
+				failedTests = append(failedTests, r.TestFile)
+			}
+		}
+		failedTestsByTaskId[t.Id] = failedTests
+	}
+	for i, build := range uiBuilds {
+		for j, t := range build.Tasks {
+			if len(failedTestsByTaskId[t.Task.Id]) != 0 {
+				uiBuilds[i].Tasks[j].FailedTestNames = append(uiBuilds[i].Tasks[j].FailedTestNames, failedTestsByTaskId[t.Task.Id]...)
+				sort.Strings(uiBuilds[i].Tasks[j].FailedTestNames)
+			}
+		}
+	}
+	return nil
 }
 
 func (uis *UIServer) versionHistory(w http.ResponseWriter, r *http.Request) {
