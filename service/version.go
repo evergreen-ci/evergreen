@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/grip"
 )
 
 func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
@@ -65,8 +66,19 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 				diffs = append(diffs, diff.Tasks...)
 			}
 		}
-		s := fmt.Sprintf("%s_%s", projCtx.Version.Identifier, projCtx.Version.Revision)
-		versionAsUI.PatchInfo.BaseVersionId = s
+		baseVersion, err := version.FindOne(version.BaseVersionFromPatch(projCtx.Version.Identifier, projCtx.Version.Revision))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if baseVersion == nil {
+			grip.Warningln("Could not find version for base commmit of patch build: ", projCtx.Version.Id)
+		}
+		baseId := ""
+		if baseVersion != nil {
+			baseId = baseVersion.Id
+		}
+		versionAsUI.PatchInfo.BaseVersionId = baseId
 		versionAsUI.PatchInfo.StatusDiffs = diffs
 	}
 
