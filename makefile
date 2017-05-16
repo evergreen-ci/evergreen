@@ -90,10 +90,13 @@ plugins:$(buildDir)/.plugins
 $(buildDir)/.plugins:Plugins install_plugins.sh
 	./install_plugins.sh
 	@touch $@
+evergreen_api_server:$(buildDir)/evergreen_api_server
 $(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(buildDir) -source=$<
+evergreen_ui_server:$(buildDir)/evergreen_ui_server
 $(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(buildDir) -source=$<
+evergreen_runner:$(buildDir)/evergreen_runner
 $(buildDir)/evergreen_runner:runner/main/runner.go $(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(buildDir) -source=$<
 #   build the server binaries with the race detector:
