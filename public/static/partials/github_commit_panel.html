@@ -2,7 +2,7 @@
   <div class="commit-meta-data-wrapper">
     <img gravatar="commit.author_email" class="gravatar-small">
     <div class="commit-message">
-      <strong>[[commit.message]]</strong>
+      <strong ng-bind-html="commit.message | escapeHtml | jiraLinkify: jiraHost | ansi | trustAsHtml"></strong>
     </div>
     <div class="commit-message-author">
       <span class="semi-muted">

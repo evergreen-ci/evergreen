@@ -630,5 +630,6 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 		ProjectData projectContext
 		User        *user.DBUser
 		Data        waterfallData
-	}{projCtx, GetUser(r), finalData}, "base", "waterfall.html", "base_angular.html", "menu.html")
+		JiraHost    string
+	}{projCtx, GetUser(r), finalData, uis.Settings.Jira.Host}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }

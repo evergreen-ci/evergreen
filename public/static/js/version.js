@@ -1,6 +1,7 @@
 mciModule.controller('VersionController', function($scope, $rootScope, $location, $http, $filter, $now, $window, notificationService) {
   var nsPerMs = 1000000
   $scope.canEdit = $window.canEdit
+  $scope.jiraHost = $window.jiraHost;
 
   var dateSorter = function(a, b){ return (+a) - (+b) }
   $scope.tab = 0

@@ -13,6 +13,7 @@
   window.version = {{ .Version }};
   window.canEdit = {{ .CanEdit }};
   window.plugins = {{.PluginContent.Data}}
+  window.jiraHost= {{.JiraHost}}
 </script>
 <script type="text/javascript" src="{{Static "js" "version.js"}}?hash={{ StaticsMD5 }}"></script>
 <script type="text/javascript" src="{{Static "js" "tasks_grid.js"}}?hash={{ StaticsMD5 }}"></script>

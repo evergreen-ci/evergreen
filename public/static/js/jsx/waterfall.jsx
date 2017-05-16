@@ -43,6 +43,43 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
   window.history.replaceState({}, '', baseURL + "?" + paramString);
 }
 
+var JIRA_REGEX = /[A-Z]{1,10}-\d{1,6}/ig;
+
+class JiraLink extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    var contents
+
+    if (_.isString(this.props.children)) {
+      let tokens = this.props.children.split(/\s/);
+      let jiraHost = this.props.jiraHost;
+      
+      contents = _.map(tokens, function(token, i){
+        let hasSpace = i !== (tokens.length - 1);
+        let maybeSpace = hasSpace ? ' ': '';
+        if(token.match(JIRA_REGEX)) {
+          let jiraLink = jiraHost+"/browse/"+token;
+          return (
+             <a href={jiraLink}>{token+maybeSpace}</a>
+          );
+        } else {
+          return token + maybeSpace;
+        }
+      });
+    } else {
+      return null;
+    }
+    return (
+      <div>
+        {contents}
+      </div>
+    );
+  }
+}
+
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
@@ -135,6 +172,7 @@ class Root extends React.Component{
           versions={this.props.data.versions} 
           onLinkClick={this.handleHeaderLinkClick} 
           userTz={this.props.userTz}
+          jiraHost={this.props.jiraHost}
         /> 
         <Grid 
           data={this.props.data} 
@@ -273,7 +311,7 @@ class CollapseButton extends React.Component{
 
 // Headers
 
-function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
+function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost}) {
   return (
     <div className="row version-header">
       <div className="variant-col col-xs-2 version-header-rolled"></div>
@@ -282,7 +320,14 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
         {
           versions.map(function(version){
             if (version.rolled_up) {
-              return <RolledUpVersionHeader key={version.ids[0]} version={version} userTz={userTz} />;
+              return( 
+                <RolledUpVersionHeader 
+                  key={version.ids[0]} 
+                  version={version} 
+                  userTz={userTz} 
+                  jiraHost={jiraHost}
+                />
+              );
             }
             // Unrolled up version, no popover
             return (
@@ -292,6 +337,7 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
                 userTz = {userTz} 
                 shortenCommitMessage={shortenCommitMessage} 
                 onLinkClick={onLinkClick} 
+                jiraHost={jiraHost}
               />
             );
           })
@@ -303,7 +349,7 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
 }
 
 
-function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz}) {
+function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz, jiraHost}) {
   var message = version.messages[0];
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
@@ -321,7 +367,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
       <HideHeaderButton onLinkClick={onLinkClick} shortenCommitMessage={shortenCommitMessage} />
     );
   }
- 
+
   return (
       <div className="header-col">
         <div className="version-header-expanded">
@@ -333,7 +379,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
           </div>
           <div className="col-xs-12">
             <div className="row">
-              <strong>{author}</strong> - {message}
+              <strong>{author}</strong> - <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
               {button}
             </div>
           </div>
@@ -358,7 +404,7 @@ class HideHeaderButton extends React.Component{
   }
 }
 
-function RolledUpVersionHeader({version, userTz}){
+function RolledUpVersionHeader({version, userTz, jiraHost}){
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Button = ReactBootstrap.Button;
@@ -366,11 +412,18 @@ function RolledUpVersionHeader({version, userTz}){
   var versionStr = (version.messages.length > 1) ? "versions" : "version";
   var rolledHeader = version.messages.length + " inactive " + versionStr; 
  
-  const popovers = (
+  var popovers = (
     <Popover id="popover-positioned-bottom" title="">
       {
         version.ids.map(function(id,i) {
-          return <RolledUpVersionSummary version={version} key={id} i={i} userTz={userTz} />
+          return <RolledUpVersionSummary 
+            author={version.authors[i]}  
+            commit={version.revisions[i]} 
+            message={version.messages[i]} 
+            versionId={version.ids[i]} 
+            key={id} userTz={userTz} 
+            createTime={version.create_times[i]} 
+            jiraHost={jiraHost} />
         })
       }
     </Popover>
@@ -382,23 +435,22 @@ function RolledUpVersionHeader({version, userTz}){
           <span className="pointer"> {rolledHeader} </span>
       </OverlayTrigger>
     </div>
-  )
-};
-
-function RolledUpVersionSummary ({version, i, userTz}) {
-  var formatted_time = getFormattedTime(new Date(version.create_times[i]), userTz, 'M/D/YY h:mm A' );
-  var author = version.authors[i];
-  var commit =  version.revisions[i].substring(0,10);
-  var message = version.messages[i];
+  ) 
+}; 
+function RolledUpVersionSummary ({author, commit, message, versionId, createTime, userTz, jiraHost}) {
+  var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A' );
+  commit =  commit.substring(0,10);
     
   return (
     <div className="rolled-up-version-summary">
       <span className="version-header-time">{formatted_time}</span>
       <br /> 
-      <a href={"/version/" + version.ids[i]}>{commit}</a> - <strong>{author}</strong> 
+      <a href={"/version/" + versionId}>{commit}</a> - <strong>{author}</strong> 
       <br /> 
-      {message} 
+      <JiraLink jiraHost={jiraHost}>{message}</JiraLink>
       <br />
     </div>
-  )
-};
+  );
+}
+
+

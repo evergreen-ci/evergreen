@@ -395,10 +395,10 @@ h3.section-heading {
   font-size: 13px;
 }
 .commit-message a {
-  color: #333333;
+  color: #006cbc;
 }
 .commit-message a.highlight {
-  color: #4183C4;
+  color: #006cbc;
 }
 img.gravatar-small {
   float: left;

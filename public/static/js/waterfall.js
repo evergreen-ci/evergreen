@@ -43,6 +43,43 @@ function updateURLParams(bvFilter, taskFilter, skip, baseURL) {
   window.history.replaceState({}, '', baseURL + "?" + paramString);
 }
 
+var JIRA_REGEX = /[A-Z]{1,10}-\d{1,6}/ig;
+
+class JiraLink extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
+  render() {
+    var contents
+
+    if (_.isString(this.props.children)) {
+      let tokens = this.props.children.split(/\s/);
+      let jiraHost = this.props.jiraHost;
+      
+      contents = _.map(tokens, function(token, i){
+        let hasSpace = i !== (tokens.length - 1);
+        let maybeSpace = hasSpace ? ' ': '';
+        if(token.match(JIRA_REGEX)) {
+          let jiraLink = jiraHost+"/browse/"+token;
+          return (
+             React.createElement("a", {href: jiraLink}, token+maybeSpace)
+          );
+        } else {
+          return token + maybeSpace;
+        }
+      });
+    } else {
+      return null;
+    }
+    return (
+      React.createElement("div", null, 
+        contents
+      )
+    );
+  }
+}
+
 
 // The Root class renders all components on the waterfall page, including the grid view and the filter and new page buttons
 // The one exception is the header, which is written in Angular and managed by menu.html
@@ -134,7 +171,8 @@ class Root extends React.Component{
           shortenCommitMessage: this.state.shortenCommitMessage, 
           versions: this.props.data.versions, 
           onLinkClick: this.handleHeaderLinkClick, 
-          userTz: this.props.userTz}
+          userTz: this.props.userTz, 
+          jiraHost: this.props.jiraHost}
         ), 
         React.createElement(Grid, {
           data: this.props.data, 
@@ -273,7 +311,7 @@ class CollapseButton extends React.Component{
 
 // Headers
 
-function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
+function Headers ({shortenCommitMessage, versions, onLinkClick, userTz, jiraHost}) {
   return (
     React.createElement("div", {className: "row version-header"}, 
       React.createElement("div", {className: "variant-col col-xs-2 version-header-rolled"}), 
@@ -282,7 +320,14 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
         
           versions.map(function(version){
             if (version.rolled_up) {
-              return React.createElement(RolledUpVersionHeader, {key: version.ids[0], version: version, userTz: userTz});
+              return( 
+                React.createElement(RolledUpVersionHeader, {
+                  key: version.ids[0], 
+                  version: version, 
+                  userTz: userTz, 
+                  jiraHost: jiraHost}
+                )
+              );
             }
             // Unrolled up version, no popover
             return (
@@ -291,7 +336,8 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
                 version: version, 
                 userTz: userTz, 
                 shortenCommitMessage: shortenCommitMessage, 
-                onLinkClick: onLinkClick}
+                onLinkClick: onLinkClick, 
+                jiraHost: jiraHost}
               )
             );
           })
@@ -303,7 +349,7 @@ function Headers ({shortenCommitMessage, versions, onLinkClick, userTz}) {
 }
 
 
-function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz}) {
+function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz, jiraHost}) {
   var message = version.messages[0];
   var author = version.authors[0];
   var id_link = "/version/" + version.ids[0];
@@ -321,7 +367,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
       React.createElement(HideHeaderButton, {onLinkClick: onLinkClick, shortenCommitMessage: shortenCommitMessage})
     );
   }
- 
+
   return (
       React.createElement("div", {className: "header-col"}, 
         React.createElement("div", {className: "version-header-expanded"}, 
@@ -333,7 +379,7 @@ function ActiveVersionHeader({shortenCommitMessage, version, onLinkClick, userTz
           ), 
           React.createElement("div", {className: "col-xs-12"}, 
             React.createElement("div", {className: "row"}, 
-              React.createElement("strong", null, author), " - ", message, 
+              React.createElement("strong", null, author), " - ", React.createElement(JiraLink, {jiraHost: jiraHost}, message), 
               button
             )
           )
@@ -358,7 +404,7 @@ class HideHeaderButton extends React.Component{
   }
 }
 
-function RolledUpVersionHeader({version, userTz}){
+function RolledUpVersionHeader({version, userTz, jiraHost}){
   var Popover = ReactBootstrap.Popover;
   var OverlayTrigger = ReactBootstrap.OverlayTrigger;
   var Button = ReactBootstrap.Button;
@@ -366,11 +412,18 @@ function RolledUpVersionHeader({version, userTz}){
   var versionStr = (version.messages.length > 1) ? "versions" : "version";
   var rolledHeader = version.messages.length + " inactive " + versionStr; 
  
-  const popovers = (
+  var popovers = (
     React.createElement(Popover, {id: "popover-positioned-bottom", title: ""}, 
       
         version.ids.map(function(id,i) {
-          return React.createElement(RolledUpVersionSummary, {version: version, key: id, i: i, userTz: userTz})
+          return React.createElement(RolledUpVersionSummary, {
+            author: version.authors[i], 
+            commit: version.revisions[i], 
+            message: version.messages[i], 
+            versionId: version.ids[i], 
+            key: id, userTz: userTz, 
+            createTime: version.create_times[i], 
+            jiraHost: jiraHost})
         })
       
     )
@@ -382,23 +435,22 @@ function RolledUpVersionHeader({version, userTz}){
           React.createElement("span", {className: "pointer"}, " ", rolledHeader, " ")
       )
     )
-  )
-};
-
-function RolledUpVersionSummary ({version, i, userTz}) {
-  var formatted_time = getFormattedTime(new Date(version.create_times[i]), userTz, 'M/D/YY h:mm A' );
-  var author = version.authors[i];
-  var commit =  version.revisions[i].substring(0,10);
-  var message = version.messages[i];
+  ) 
+}; 
+function RolledUpVersionSummary ({author, commit, message, versionId, createTime, userTz, jiraHost}) {
+  var formatted_time = getFormattedTime(new Date(createTime), userTz, 'M/D/YY h:mm A' );
+  commit =  commit.substring(0,10);
     
   return (
     React.createElement("div", {className: "rolled-up-version-summary"}, 
       React.createElement("span", {className: "version-header-time"}, formatted_time), 
       React.createElement("br", null), 
-      React.createElement("a", {href: "/version/" + version.ids[i]}, commit), " - ", React.createElement("strong", null, author), 
+      React.createElement("a", {href: "/version/" + versionId}, commit), " - ", React.createElement("strong", null, author), 
       React.createElement("br", null), 
-      message, 
+      React.createElement(JiraLink, {jiraHost: jiraHost}, message), 
       React.createElement("br", null)
     )
-  )
-};
+  );
+}
+
+

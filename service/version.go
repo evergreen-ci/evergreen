@@ -128,8 +128,9 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 		Version       *uiVersion
 		PluginContent pluginData
 		CanEdit       bool
-	}{projCtx, currentUser, flashes, &versionAsUI, pluginContent, canEditPatch}, "base",
-		"version.html", "base_angular.html", "menu.html")
+		JiraHost      string
+	}{projCtx, currentUser, flashes, &versionAsUI, pluginContent, canEditPatch,
+		uis.Settings.Jira.Host}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {

@@ -15,6 +15,8 @@ filters.common = angular.module('filters.common', []);
 var LINK_REGEXP =
   /(http|https):\/\/([\w\-_]+(?:(?:\.[\w\-_]+)+))([\w\-\.,@?^=%&amp;:\/~\+#]*[\w\-\@?^=%&amp;\/~\+#])?/ig;
 
+var JIRA_REGEXP = /[A-Z]{1,10}-\d{1,6}/ig;
+
 filters.common.filter('conditional', function() {
   return function(b, t, f) {
     return b ? t : f;
@@ -143,6 +145,15 @@ filters.common.filter('conditional', function() {
       return '<a href="' + match + '">' + match + '</a>';
     });
   };
+}).filter('jiraLinkify', function() {
+  return function(input, jiraHost) {
+    if (!input) {
+      return input;
+    }
+    return input.replace(JIRA_REGEXP, function(match) {
+      return '<a href="'+jiraHost +'/browse/' + match + '">' + match + '</a>';
+    });
+  }
 }).filter('convertDateToUserTimezone', function() {
   return function(input, timezone, format) {
     return moment(input).tz(timezone).format(format);
