@@ -148,3 +148,36 @@ func TestHostTaskAuditing(t *testing.T) {
 		})
 	})
 }
+
+func TestStuckHostAuditing(t *testing.T) {
+	Convey("With tasks and hosts inserted into the db", t, func() {
+		testutil.HandleTestingErr(db.Clear(host.Collection), t,
+			"Error clearing '%v' collection", host.Collection)
+		testutil.HandleTestingErr(db.Clear(task.Collection), t,
+			"Error clearing '%v' collection", task.Collection)
+		h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
+		h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}
+		h3 := host.Host{Id: "h3", Status: evergreen.HostRunning}
+
+		So(h1.Insert(), ShouldBeNil)
+		So(h2.Insert(), ShouldBeNil)
+		So(h3.Insert(), ShouldBeNil)
+
+		t1 := task.Task{Id: "t1", Status: evergreen.TaskDispatched, HostId: h1.Id}
+		t2 := task.Task{Id: "t2", Status: evergreen.TaskFailed, HostId: h2.Id}
+		So(t1.Insert(), ShouldBeNil)
+		So(t2.Insert(), ShouldBeNil)
+
+		Convey("hosts with running tasks that are completed should be returned", func() {
+			stuckHosts, err := CheckStuckHosts()
+			So(err, ShouldBeNil)
+			So(len(stuckHosts), ShouldEqual, 1)
+			So(stuckHosts[0].Host, ShouldEqual, h2.Id)
+			So(stuckHosts[0].RunningTask, ShouldEqual, t2.Id)
+			So(stuckHosts[0].TaskStatus, ShouldEqual, evergreen.TaskFailed)
+			So(stuckHosts[0].Error(), ShouldEqual,
+				fmt.Sprintf("host h2 has a running task t2 with complete status %s", evergreen.TaskFailed))
+		})
+
+	})
+}

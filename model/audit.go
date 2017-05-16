@@ -3,9 +3,12 @@ package model
 import (
 	"fmt"
 
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // HostTaskInconsistency represents a mismatch between task and host documents.
@@ -18,6 +21,21 @@ type HostTaskInconsistency struct {
 	Task          string
 	TaskHostCache string
 }
+
+// StuckHostInconsistncy represents hosts that have running
+// tasks but the tasks have been marked as completed.
+type StuckHostInconsistency struct {
+	Host        string `bson:"host_id"`
+	RunningTask string `bson:"running_task"`
+	TaskStatus  string `bson:"task_status"`
+}
+
+var (
+	StuckHostKey            = bsonutil.MustHaveTag(StuckHostInconsistency{}, "Host")
+	StuckHostRunningTaskKey = bsonutil.MustHaveTag(StuckHostInconsistency{}, "RunningTask")
+	StuckHostTaskStatusKey  = bsonutil.MustHaveTag(StuckHostInconsistency{}, "TaskStatus")
+	HostTaskKey             = "task"
+)
 
 // Error returns a human-readible explanation of a HostTaskInconsistency.
 func (i HostTaskInconsistency) Error() string {
@@ -154,4 +172,30 @@ func auditHostTaskMapping(hostToTask, taskToHost map[string]string) []HostTaskIn
 		}
 	}
 	return found
+}
+
+func (shi StuckHostInconsistency) Error() string {
+	return fmt.Sprintf(
+		"host %s has a running task %s with complete status %s", shi.Host, shi.RunningTask, shi.TaskStatus)
+}
+
+// CheckStuckHosts queries for hosts that tasks that are
+// completed but that still have them as a running task
+func CheckStuckHosts() ([]StuckHostInconsistency, error) {
+	// find all hosts with tasks that are completed
+	pipeline := []bson.M{
+		{"$match": bson.M{host.RunningTaskKey: bson.M{"$exists": true}}},
+		{"$lookup": bson.M{"from": task.Collection, "localField": host.RunningTaskKey,
+			"foreignField": task.IdKey, "as": HostTaskKey}},
+		{"$unwind": "$" + HostTaskKey},
+		{"$match": bson.M{HostTaskKey + "." + task.StatusKey: bson.M{"$in": task.CompletedStatuses}}},
+		{"$project": bson.M{
+			StuckHostKey:            "$" + host.IdKey,
+			StuckHostRunningTaskKey: "$" + host.RunningTaskKey,
+			StuckHostTaskStatusKey:  "$" + HostTaskKey + "." + task.StatusKey,
+		}},
+	}
+	stuckHosts := []StuckHostInconsistency{}
+	err := db.Aggregate(host.Collection, pipeline, &stuckHosts)
+	return stuckHosts, err
 }

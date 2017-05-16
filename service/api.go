@@ -826,6 +826,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	status := apiRootOld.PathPrefix("/status/").Subrouter()
 	status.HandleFunc("/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
 	status.HandleFunc("/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
+	status.HandleFunc("/stuck_hosts", as.getStuckHosts).Methods("GET")
 
 	// Hosts callback
 	host := r.PathPrefix("/host/{tag:[\\w_\\-\\@]+}/").Subrouter()

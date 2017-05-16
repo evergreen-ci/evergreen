@@ -46,6 +46,30 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	return w
 }
 
+func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
+	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
+		t.Fatal("could not create client directory required to start the API server:", err.Error())
+	}
+
+	as, err := NewAPIServer(testutil.TestConfig(), nil)
+	if err != nil {
+		t.Fatalf("creating test API server: %v", err)
+	}
+	handler, err := as.Handler()
+	if err != nil {
+		t.Fatalf("creating test API handler: %v", err)
+	}
+	url := "/api/status/stuck_hosts"
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Fatalf("building request: %v", err)
+	}
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, request)
+	return w
+}
+
 func TestConsistentTaskAssignment(t *testing.T) {
 
 	Convey("With various states of tasks and hosts in the DB", t, func() {
@@ -157,6 +181,79 @@ func TestServiceStatusEndPoints(t *testing.T) {
 				_, ok := out[key]
 				So(ok, ShouldBeTrue)
 			}
+
+		})
+	})
+}
+
+func TestStuckHostEndpoints(t *testing.T) {
+	Convey("With a test server and test config", t, func() {
+		testConfig := testutil.TestConfig()
+		testServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
+		defer testServer.Close()
+
+		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
+			t.Fatalf("clearing db: %v", err)
+		}
+
+		url := fmt.Sprintf("%s/api/status/stuck_hosts", testServer.URL)
+		Convey("With hosts and tasks that are all consistent, the response should success", func() {
+			h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
+			h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}
+			h3 := host.Host{Id: "h3", Status: evergreen.HostRunning}
+			t1 := task.Task{Id: "t1", Status: evergreen.TaskStarted, HostId: "h1"}
+			t2 := task.Task{Id: "t2", Status: evergreen.TaskDispatched, HostId: "h2"}
+			t3 := task.Task{Id: "t3", Status: evergreen.TaskFailed}
+
+			So(h1.Insert(), ShouldBeNil)
+			So(h2.Insert(), ShouldBeNil)
+			So(h3.Insert(), ShouldBeNil)
+			So(t1.Insert(), ShouldBeNil)
+			So(t2.Insert(), ShouldBeNil)
+			So(t3.Insert(), ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url, nil)
+			So(err, ShouldBeNil)
+
+			resp, err := http.DefaultClient.Do(request)
+			So(err, ShouldBeNil)
+			So(resp.StatusCode, ShouldEqual, 200)
+			out := stuckHostResp{}
+
+			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
+			So(out.Status, ShouldEqual, apiStatusSuccess)
+
+		})
+		Convey("With hosts that have running tasks that have completed", func() {
+			h1 := host.Host{Id: "h1", Status: evergreen.HostRunning, RunningTask: "t1"}
+			h2 := host.Host{Id: "h2", Status: evergreen.HostRunning, RunningTask: "t2"}
+			h3 := host.Host{Id: "h3", Status: evergreen.HostRunning}
+			t1 := task.Task{Id: "t1", Status: evergreen.TaskStarted, HostId: "h1"}
+			t2 := task.Task{Id: "t2", Status: evergreen.TaskFailed, HostId: "h2"}
+			t3 := task.Task{Id: "t3", Status: evergreen.TaskFailed}
+
+			So(h1.Insert(), ShouldBeNil)
+			So(h2.Insert(), ShouldBeNil)
+			So(h3.Insert(), ShouldBeNil)
+			So(t1.Insert(), ShouldBeNil)
+			So(t2.Insert(), ShouldBeNil)
+			So(t3.Insert(), ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url, nil)
+			So(err, ShouldBeNil)
+
+			resp, err := http.DefaultClient.Do(request)
+			So(err, ShouldBeNil)
+			So(resp.StatusCode, ShouldEqual, 200)
+			out := stuckHostResp{}
+
+			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
+			So(out.Status, ShouldEqual, apiStatusError)
+			So(len(out.HostIds), ShouldEqual, 1)
+			So(len(out.TaskIds), ShouldEqual, 1)
+			So(out.HostIds[0], ShouldEqual, "h2")
+			So(out.TaskIds[0], ShouldEqual, "t2")
 
 		})
 	})

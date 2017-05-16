@@ -35,6 +35,13 @@ type taskAssignmentResp struct {
 	HostRunningTasks []string `json:"host_running_tasks"`
 }
 
+type stuckHostResp struct {
+	Status  string   `json:"status"`
+	Errors  []string `json:"errors"`
+	TaskIds []string `json:"tasks"`
+	HostIds []string `json:"hosts"`
+}
+
 // consistentTaskAssignment returns any disparities between tasks' and hosts's views
 // of their mapping between each other. JSON responses take the form of
 //  {status: “ERROR/SUCCESS”, errors:[error strings], tasks:[ids], hosts:[ids]}
@@ -177,4 +184,32 @@ func (as *APIServer) checkTaskQueueSize(w http.ResponseWriter, r *http.Request) 
 	}{status, distroNames}
 
 	as.WriteJSON(w, http.StatusOK, growthResponse)
+}
+
+// getStuckHosts returns hosts that have tasks running that are completed
+func (as *APIServer) getStuckHosts(w http.ResponseWriter, r *http.Request) {
+	stuckHosts, err := model.CheckStuckHosts()
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+	errors := []string{}
+	hosts := []string{}
+	tasks := []string{}
+	for _, disparity := range stuckHosts {
+		errors = append(errors, disparity.Error())
+		hosts = append(hosts, disparity.Host)
+		tasks = append(tasks, disparity.RunningTask)
+	}
+	status := apiStatusSuccess
+	if len(stuckHosts) > 0 {
+		status = apiStatusError
+	}
+
+	as.WriteJSON(w, http.StatusOK, stuckHostResp{
+		Status:  status,
+		Errors:  errors,
+		HostIds: hosts,
+		TaskIds: tasks,
+	})
 }
