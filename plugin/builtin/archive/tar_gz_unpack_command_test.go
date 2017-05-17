@@ -61,6 +61,8 @@ func TestTarGzUnpackParseParams(t *testing.T) {
 func TestTarGzCommandUnpackArchive(t *testing.T) {
 
 	Convey("With a targz unpack command", t, func() {
+		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
+
 		Convey("when unpacking an archive", func() {
 			Convey("the archive's contents should be expanded into the"+
 				" specified target directory", func() {

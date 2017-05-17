@@ -14,14 +14,8 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-var (
-	testDataDir = "testdata"
-)
-
 func TestTarGzPackParseParams(t *testing.T) {
-
 	Convey("With a targz pack command", t, func() {
-
 		var cmd *TarGzPackCommand
 
 		Convey("when parsing params into the command", func() {
@@ -83,7 +77,7 @@ func TestTarGzPackParseParams(t *testing.T) {
 func TestTarGzCommandBuildArchive(t *testing.T) {
 
 	Convey("With a targz pack command", t, func() {
-
+		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
 		var cmd *TarGzPackCommand
 
 		Convey("when building an archive", func() {
