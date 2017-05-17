@@ -247,6 +247,8 @@ vendor-sync:$(vendorDeps)
 	rm -rf vendor
 	glide install -s
 	rm vendor/github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus/terminal_freebsd.go
+vendor-clean:
+	rm -rf vendor/github.com/stretchr/testify/vendor/
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1

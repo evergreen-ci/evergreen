@@ -37,6 +37,16 @@ imports:
     version: 287b4346dc4e71a038c346375a9d572453bc469b
   - name: github.com/smartystreets/goconvey
     version: bf58a9a1291224109919756b4dcc469c670cc7e4
+
+  - name: github.com/davecgh/go-spew
+    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+  - name: github.com/stretchr/objx
+    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+  - name: github.com/stretchr/testify
+    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+  - name: github.com/pmezard/go-difflib
+    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
   - name: github.com/jtolds/gls
