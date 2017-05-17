@@ -579,7 +579,7 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 	)
 	agt.statsCollector.LogStats(agt.taskConfig.Expansions)
 	defer func() {
-		statsCollectorKill <- struct{}{}
+		close(statsCollectorKill)
 		grip.Debugf("stopping simple stats collector for task:", agt.GetCurrentTaskId())
 	}()
 
