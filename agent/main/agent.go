@@ -58,7 +58,7 @@ func main() {
 	hostSecret := flag.String("host_secret", "", "secret for the current host")
 	apiServer := flag.String("api_server", "", "URL of API server")
 	httpsCertFile := flag.String("https_cert", "", "path to a self-signed private cert")
-	logPrefix := flag.String("log_prefix", "", "prefix for the agent's log filename")
+	logPrefix := flag.String("log_prefix", "evg-agent", "prefix for the agent's log filename")
 	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 

@@ -356,7 +356,7 @@ type Options struct {
 
 // Setup initializes all the signal chans and loggers that are used during one run of the agent.
 func (agt *Agent) Setup() error {
-	if err := SetupLogging(fmt.Sprintf("%s_%s", agt.opts.LogPrefix, agt.GetCurrentTaskId())); err != nil {
+	if err := SetupLogging(agt.opts.LogPrefix, agt.GetCurrentTaskId()); err != nil {
 		return errors.Wrap(err, "problem setting up logging")
 	}
 
@@ -420,7 +420,7 @@ func New(opts Options) (*Agent, error) {
 	// start the agent server as early as possible because the
 	// server is the mechanism that we use to ensure that there's
 	// only one agent running on a host.
-	go agt.startStatusServer()
+	agt.startStatusServer(opts.StatusPort)
 
 	agt.TaskCommunicator = httpCommunicator
 	if err := agt.Setup(); err != nil {

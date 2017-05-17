@@ -13,17 +13,21 @@ import (
 	"github.com/mongodb/grip/message"
 )
 
-func (agt *Agent) startStatusServer() {
-	r := mux.NewRouter().StrictSlash(false)
-	r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
+func (agt *Agent) startStatusServer(port int) {
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 
-	n := negroni.New()
-	n.Use(negroni.NewRecovery())
-	n.UseHandler(r)
+	go func() {
+		r := mux.NewRouter().StrictSlash(false)
+		r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
 
-	addr := fmt.Sprintf("127.0.0.1:%d", agt.opts.StatusPort)
+		n := negroni.New()
+		n.Use(negroni.NewRecovery())
+		n.UseHandler(r)
+
+		grip.CatchEmergencyFatal(http.ListenAndServe(addr, n))
+	}()
+
 	grip.Infoln("starting status service on:", addr)
-	grip.CatchEmergencyFatal(http.ListenAndServe(addr, n))
 }
 
 // statusResponse is the structure of the response objects produced by

@@ -29,6 +29,8 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -60,6 +62,7 @@ func init() {
 		{"With plugin mode test config"},
 	}
 	reporting.QuietMode()
+	grip.SetThreshold(level.Debug)
 }
 
 func (*NoopSignalHandler) HandleSignals(_ *Agent) {
