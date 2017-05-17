@@ -762,16 +762,6 @@ func (t *Task) Archive() error {
 	return nil
 }
 
-// GetTestUrl returns the correct relative URL to a test log, given a
-// TestResult structure
-func GetTestUrl(tr *TestResult, root string) string {
-	// Return url if it exists. If there is no test, return empty string.
-	if tr.URL != "" || tr.LogId == "" { // If LogId is empty, URL must also be empty
-		return tr.URL
-	}
-	return root + TestLogPath + tr.LogId
-}
-
 // Aggregation
 
 // AverageTaskTimeDifference takes two field names (such that field2 happened
