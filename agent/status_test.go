@@ -54,7 +54,7 @@ func TestAgentConstructorStartsStatusServer(t *testing.T) {
 	testOpts := Options{
 		APIURL:     "http://evergreen.example.net",
 		HostId:     "none",
-		StatusPort: 2285,
+		StatusPort: 2286,
 	}
 
 	Convey("the agent constructor", t, func() {
@@ -65,7 +65,7 @@ func TestAgentConstructorStartsStatusServer(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 
 		Convey("should start a status server.", func() {
-			resp, err := http.Get("http://127.0.0.1:2285/status")
+			resp, err := http.Get("http://127.0.0.1:2286/status")
 			So(err, ShouldBeNil)
 			So(resp.StatusCode, ShouldEqual, 200)
 		})
