@@ -417,21 +417,18 @@ func New(opts Options) (*Agent, error) {
 		TaskCommunicator: httpCommunicator,
 	}
 
+	// start the agent server as early as possible because the
+	// server is the mechanism that we use to ensure that there's
+	// only one agent running on a host.
+	go agt.startStatusServer()
+
 	agt.TaskCommunicator = httpCommunicator
 	if err := agt.Setup(); err != nil {
 		return nil, err
 	}
 
 	agt.Registry = plugin.NewSimpleRegistry()
-	agt.metricsCollector = &metricsCollector{
-		comm: agt.TaskCommunicator,
-		stop: agt.KillChan,
-	}
 
-	// start the agent server as early as possible because the
-	// server is the mechanism that we use to ensure that there's
-	// only one agent running on a host.
-	go agt.startStatusServer()
 	// register plugins needed for execution
 	if err := registerPlugins(agt.Registry, plugin.CommandPlugins, agt.logger); err != nil {
 		grip.Criticalf("error registering plugins: %+v", err)

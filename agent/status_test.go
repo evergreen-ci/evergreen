@@ -3,9 +3,12 @@ package agent
 import (
 	"net/http"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/mongodb/grip"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -25,6 +28,7 @@ func TestAgentStatusHandler(t *testing.T) {
 		})
 
 		Convey("the system information should be populated", func() {
+			grip.Alert(strings.Join(resp.SystemInfo.Errors, ";\n"))
 			So(resp.SystemInfo, ShouldNotBeNil)
 			So(len(resp.SystemInfo.Errors), ShouldEqual, 0)
 		})
@@ -46,7 +50,7 @@ func TestAgentStatusHandler(t *testing.T) {
 	})
 }
 
-func TestAgentConstructorStartsServer(t *testing.T) {
+func TestAgentConstructorStartsStatusServer(t *testing.T) {
 	testOpts := Options{
 		APIURL:     "http://evergreen.example.net",
 		HostId:     "none",
@@ -57,6 +61,8 @@ func TestAgentConstructorStartsServer(t *testing.T) {
 		agt, err := New(testOpts)
 		So(err, ShouldBeNil)
 		defer agt.stop()
+
+		time.Sleep(100 * time.Millisecond)
 
 		Convey("should start a status server.", func() {
 			resp, err := http.Get("http://127.0.0.1:2285/status")
