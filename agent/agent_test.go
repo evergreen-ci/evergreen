@@ -168,7 +168,7 @@ func TestAgentEndTask(t *testing.T) {
 			resp := &apimodels.EndTaskResponse{
 				ShouldExit: true,
 			}
-			serveMux.HandleFunc(fmt.Sprintf("/api/2/task/%v/new_end", testTask.Id),
+			serveMux.HandleFunc(fmt.Sprintf("/api/2/task/%v/end", testTask.Id),
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, resp, http.StatusOK)
 				})

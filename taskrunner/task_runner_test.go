@@ -45,8 +45,6 @@ func TestTaskRunner(t *testing.T) {
 		}
 		tr := TaskRunner{
 			taskRunnerTestConf,
-			nil,
-			nil,
 			&MockHostGateway{},
 		}
 

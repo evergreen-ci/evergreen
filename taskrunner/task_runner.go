@@ -15,8 +15,6 @@ import (
 // TODO: take out task queue finder and host finder once transition is complete
 type TaskRunner struct {
 	*evergreen.Settings
-	HostFinder
-	TaskQueueFinder
 	HostGateway
 }
 
@@ -27,8 +25,6 @@ func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 
 	return &TaskRunner{
 		settings,
-		&DBHostFinder{},
-		&DBTaskQueueFinder{},
 		&AgentHostGateway{
 			ExecutablesDir: filepath.Join(evgHome, settings.AgentExecutablesDir),
 		},

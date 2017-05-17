@@ -94,7 +94,7 @@ type Heartbeat interface {
 func (h *HTTPCommunicator) Start() error {
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
-	resp, retryFail, err := h.postJSON("new_start", taskStartRequest)
+	resp, retryFail, err := h.postJSON("start", taskStartRequest)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -113,7 +113,7 @@ func (h *HTTPCommunicator) Start() error {
 // End marks the communicator's task as finished with the given status.
 func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndTaskResponse, error) {
 	taskEndResp := &apimodels.EndTaskResponse{}
-	resp, retryFail, err := h.postJSON("new_end", detail)
+	resp, retryFail, err := h.postJSON("end", detail)
 	if resp == nil {
 		return nil, errors.New("empty response when trying to end task")
 	}

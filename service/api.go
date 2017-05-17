@@ -843,8 +843,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	taskRouter := r.PathPrefix("/task/{taskId}").Subrouter()
 
-	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.oldStartTask))).Methods("POST")
-	taskRouter.HandleFunc("/end", as.checkTask(true, as.checkHost(as.oldEndTask))).Methods("POST")
+	taskRouter.HandleFunc("/end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
+	taskRouter.HandleFunc("/start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
 	taskRouter.HandleFunc("/new_end", as.checkTask(true, as.checkHost(as.EndTask))).Methods("POST")
 	taskRouter.HandleFunc("/new_start", as.checkTask(true, as.checkHost(as.StartTask))).Methods("POST")
 

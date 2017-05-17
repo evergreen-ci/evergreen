@@ -79,11 +79,11 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 		Convey("Calls to start() or end() should not return err", func() {
 			// Mock start/end handlers to answer the agent's requests
-			serveMux.HandleFunc("/task/mocktaskid/new_start",
+			serveMux.HandleFunc("/task/mocktaskid/start",
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskStartRequest{}, http.StatusOK)
 				})
-			serveMux.HandleFunc("/task/mocktaskid/new_end",
+			serveMux.HandleFunc("/task/mocktaskid/end",
 				func(w http.ResponseWriter, req *http.Request) {
 					util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusOK)
 				})
@@ -182,7 +182,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 
 			// Use mock start and end handlers which will succeed only after
 			// a certain number of requests have been made.
-			serveMux.HandleFunc("/task/mocktaskid/new_start",
+			serveMux.HandleFunc("/task/mocktaskid/start",
 				func(w http.ResponseWriter, req *http.Request) {
 					startCount++
 					if startCount == 3 {
@@ -191,7 +191,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 						util.WriteJSON(&w, apimodels.TaskEndResponse{}, http.StatusInternalServerError)
 					}
 				})
-			serveMux.HandleFunc("/task/mocktaskid/new_end",
+			serveMux.HandleFunc("/task/mocktaskid/end",
 				func(w http.ResponseWriter, req *http.Request) {
 					endCount++
 					if endCount == 3 {
