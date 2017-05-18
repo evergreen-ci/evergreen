@@ -313,7 +313,7 @@ $(buildDir)/output.lint:$(buildDir)/run-linter .FORCE
 	@./$< --output="$@" --lintArgs='$(lintArgs)' --packages="$(packages)"
 #  targets to process and generate coverage reports
 $(buildDir)/output.%.coverage:$(buildDir)/test.% .FORCE
-	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=$@ | tee $(subst coverage,test,$@)
+	$(testRunEnv) ./$< $(testArgs) -test.coverprofile=./$@ 2>&1 | tee $(subst coverage,test,$@)
 	@-[ -f $@ ] && go tool cover -func=$@ | sed 's%$(projectPath)/%%' | column -t
 $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 	$(vendorGopath) go tool cover -html=$< -o $@

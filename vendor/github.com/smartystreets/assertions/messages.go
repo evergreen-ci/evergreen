@@ -6,8 +6,7 @@ const ( // equality
 	shouldHaveBeenEqualTypeMismatch = "Expected: '%v' (%T)\nActual:   '%v' (%T)\n(Should be equal, type mismatch)"
 	shouldHaveBeenAlmostEqual       = "Expected '%v' to almost equal '%v' (but it didn't)!"
 	shouldHaveNotBeenAlmostEqual    = "Expected '%v' to NOT almost equal '%v' (but it did)!"
-	shouldHaveResembled             = "Expected: '%#v'\nActual:   '%#v'\n(Should resemble)!"
-	shouldHaveResembledTypeMismatch = "Expected: '%#v' (%T)\nActual:   '%#v' (%T)\n(Should resemble, type mismatch)"
+	shouldHaveResembled             = "Expected: '%s'\nActual:   '%s'\n(Should resemble)!"
 	shouldNotHaveResembled          = "Expected        '%#v'\nto NOT resemble '%#v'\n(but it did)!"
 	shouldBePointers                = "Both arguments should be pointers "
 	shouldHaveBeenNonNilPointer     = shouldBePointers + "(the %s was %s)!"
@@ -78,6 +77,9 @@ const ( // type checking
 	shouldNotHaveImplemented          = "Expected         '%v'\nto NOT implement '%v'\n(but it did)!"
 	shouldCompareWithInterfacePointer = "The expected value must be a pointer to an interface type (eg. *fmt.Stringer)"
 	shouldNotBeNilActual              = "The actual value was 'nil' and should be a value or a pointer to a value!"
+
+	shouldBeError                       = "Expected an error value (but was '%v' instead)!"
+	shouldBeErrorInvalidComparisonValue = "The final argument to this assertion must be a string or an error value (you provided: '%v')."
 )
 
 const ( // time comparisons
