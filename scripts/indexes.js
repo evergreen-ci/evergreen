@@ -39,7 +39,6 @@ db.pushes.ensureIndex({ "status" : 1, "location" : 1, "order" : 1 })
 //======patches======//
 db.patches.ensureIndex({ "branch" : 1, "create_time" : 1 })
 db.patches.ensureIndex({ "version" : 1 })
-db.patches.ensureIndex({ "author" : 1 })
 db.patches.ensureIndex({ "author" : 1, "create_time" : 1 })
 
 //======project_ref======//
