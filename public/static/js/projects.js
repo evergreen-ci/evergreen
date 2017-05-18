@@ -194,7 +194,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   }
 
   $scope.saveProject = function() {
-    debugger;
     $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time)
     if ($scope.proj_var) {
       $scope.addProjectVar();
@@ -221,7 +220,6 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
        $scope.settingsFormData.private_vars[$scope.proj_var.name] = true;
       }
 
-      debugger;
       $scope.proj_var.name="";
       $scope.proj_var.value="";
       $scope.proj_var.is_private=false;
