@@ -62,7 +62,7 @@ func main() {
 	port := flag.Int("status_port", statsPort, "port to run the status server on")
 	flag.Parse()
 
-	grip.CatchEmergencyFatal(agent.SetupLogging("agent-startup"), "init")
+	grip.CatchEmergencyFatal(agent.SetupLogging("agent-startup", "init"))
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
