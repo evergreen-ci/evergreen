@@ -134,17 +134,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       .success(function(data, status){
         $scope.projectView = true;
         $scope.projectRef = data.ProjectRef;
-
-        if (data.ProjectVars) {
-         $scope.projectVars = data.ProjectVars.vars;
-        }
-        else {
-          $scope.projectVars = {};
-        }
+         $scope.projectVars = data.ProjectVars.vars || {};
+         $scope.privateVars = data.ProjectVars.private_vars || {};
 
         $scope.settingsFormData = {
           identifier : $scope.projectRef.identifier,
           project_vars: $scope.projectVars,
+          private_vars: $scope.privateVars,
           display_name : $scope.projectRef.display_name,
           remote_path:$scope.projectRef.remote_path,
           batch_time: parseInt($scope.projectRef.batch_time),
@@ -183,6 +179,13 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
     }
   }
 
+  $scope.valueString = function(name,value) {
+    if($scope.privateVars[name]){
+      return '{REDACTED}';
+    }
+    return value;
+  }
+
   $scope.shouldHighlight = function(project) {
     if ($scope.projectRef) {
       return project.identifier == $scope.projectRef.identifier;
@@ -191,6 +194,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   }
 
   $scope.saveProject = function() {
+    debugger;
     $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time)
     if ($scope.proj_var) {
       $scope.addProjectVar();
@@ -213,13 +217,20 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.addProjectVar = function() {
     if ($scope.proj_var.name && $scope.proj_var.value) {
       $scope.settingsFormData.project_vars[$scope.proj_var.name] = $scope.proj_var.value;
+      if ($scope.proj_var.is_private) {
+       $scope.settingsFormData.private_vars[$scope.proj_var.name] = true;
+      }
+
+      debugger;
       $scope.proj_var.name="";
       $scope.proj_var.value="";
+      $scope.proj_var.is_private=false;
     }
   };
 
   $scope.removeProjectVar = function(name) {
     delete $scope.settingsFormData.project_vars[name];
+    delete $scope.settingsFormData.private_vars[name];
     $scope.isDirty = true;
   };
 

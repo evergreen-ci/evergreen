@@ -10,6 +10,7 @@ import (
 var (
 	ProjectVarIdKey   = bsonutil.MustHaveTag(ProjectVars{}, "Id")
 	ProjectVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "Vars")
+	PrivateVarsMapKey = bsonutil.MustHaveTag(ProjectVars{}, "PrivateVars")
 )
 
 const (
@@ -27,6 +28,10 @@ type ProjectVars struct {
 
 	//The actual mapping of variables for this project
 	Vars map[string]string `bson:"vars" json:"vars"`
+
+	//PrivateVars keeps track of which variables are private and should therefore not
+	//be returned to the UI server.
+	PrivateVars map[string]bool `bson:"private_vars" json:"private_vars"`
 }
 
 func FindOneProjectVars(projectId string) (*ProjectVars, error) {
@@ -58,7 +63,21 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 		bson.M{
 			"$set": bson.M{
 				ProjectVarsMapKey: projectVars.Vars,
+				PrivateVarsMapKey: projectVars.PrivateVars,
 			},
 		},
 	)
+}
+
+func (projectVars *ProjectVars) RedactPrivateVars() {
+	if projectVars != nil &&
+		projectVars.Vars != nil &&
+		projectVars.PrivateVars != nil {
+		// Redact private variables
+		for k := range projectVars.Vars {
+			if _, ok := projectVars.PrivateVars[k]; ok {
+				projectVars.Vars[k] = ""
+			}
+		}
+	}
 }

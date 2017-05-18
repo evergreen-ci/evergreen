@@ -32,3 +32,25 @@ func TestFindOneProjectVar(t *testing.T) {
 		})
 	})
 }
+
+func TestRedactPrivateVars(t *testing.T) {
+	Convey("With vars", t, func() {
+		vars := map[string]string{
+			"a": "a",
+			"b": "b",
+		}
+		privateVars := map[string]bool{
+			"a": true,
+		}
+		projectVars := ProjectVars{
+			Id:          "mongodb",
+			Vars:        vars,
+			PrivateVars: privateVars,
+		}
+
+		Convey("then redacting should return empty strings for private vars", func() {
+			projectVars.RedactPrivateVars()
+			So(projectVars.Vars["a"], ShouldEqual, "")
+		})
+	})
+}

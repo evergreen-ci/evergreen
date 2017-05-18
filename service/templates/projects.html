@@ -252,10 +252,10 @@ Evergreen Projects
           <div class="form-group">
             <div class="col-header col-lg-4 form-control-static"> <h3> Variables </h3></div>
           </div>
-          <div id="projectVarsList" class="form-group" ng-repeat="(name, key) in settingsFormData.project_vars">
+          <div id="projectVarsList" class="form-group" ng-repeat="(name, value) in settingsFormData.project_vars">
             <div class="col-lg-2"> <label class="control-label">[[name]]</label> </div>
             <div class="col-lg-4" >
-              <textarea class="form-control" style="font-family:monospace;" readonly>[[key]]</textarea>
+              <textarea class="form-control" style="font-family:monospace;" readonly>[[valueString(name, value)]]</textarea>
             </div>
             <div class="col-lg-2">
               <button class="btn btn-default btn-danger" id="variable-add" type="button" ng-click="removeProjectVar(name)">
@@ -269,6 +269,10 @@ Evergreen Projects
             </div>
             <div class="col-lg-4">
               <textarea ng-model="proj_var.value" class="form-control" placeholder="variable" style="font-family:monospace;"></textarea>
+            </div>
+            <div>
+             <label class="control-label">
+               <input type="checkbox" name="set_private" ng-model="proj_var.is_private" ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" /> <strong>Private Variable</strong>
             </div>
             <div class="col-lg-6">
               <button class="plus-button btn btn-primary " ng-disabled="!validKeyValue(proj_var.name, proj_var.value)" id="variable-add" type="button" ng-click="addProjectVar()">

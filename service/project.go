@@ -90,6 +90,8 @@ func (uis *UIServer) projectPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	projVars.RedactPrivateVars()
+
 	data := struct {
 		ProjectRef  *model.ProjectRef
 		ProjectVars *model.ProjectVars
@@ -136,6 +138,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 		DeactivatePrevious bool              `json:"deactivate_previous"`
 		Branch             string            `json:"branch_name"`
 		ProjVarsMap        map[string]string `json:"project_vars"`
+		PrivateVars        map[string]bool   `json:"private_vars"`
 		Enabled            bool              `json:"enabled"`
 		Private            bool              `json:"private"`
 		Owner              string            `json:"owner_name"`
@@ -183,7 +186,7 @@ func (uis *UIServer) modifyProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//modify project vars if necessary
-	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap}
+	projectVars := model.ProjectVars{id, responseRef.ProjVarsMap, responseRef.PrivateVars}
 	_, err = projectVars.Upsert()
 
 	if err != nil {
