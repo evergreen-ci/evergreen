@@ -2,6 +2,7 @@ package util
 
 import (
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/mongodb/grip"
@@ -10,6 +11,9 @@ import (
 )
 
 func TestRecoverHandler(t *testing.T) {
+	if runtime.Compiler == "gccgo" && runtime.GOARCH == "s390x" {
+		t.Skip("test encounters runtime bug on gccgo on zLinux; see EVG-1689")
+	}
 	grip.Error(os.Setenv("EVERGREEN_TEST", "true"))
 
 	Convey("Recover handler should handle panics", t, func() {
