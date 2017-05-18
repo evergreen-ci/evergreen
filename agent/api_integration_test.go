@@ -57,6 +57,8 @@ type testConfigPath struct {
 }
 
 func init() {
+	testDirectory = testutil.GetDirectoryOfFile()
+
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(testConfig))
 	testSetups = []testConfigPath{
 		{"With plugin mode test config"},
@@ -941,18 +943,4 @@ func prependConfigToVersion(t *testing.T, versionId, configData string) {
 	v.Config = configData + v.Config
 	testutil.HandleTestingErr(dbutil.ClearCollections(version.Collection), t, "couldnt reset version")
 	testutil.HandleTestingErr(v.Insert(), t, "failed to insert version")
-}
-
-func TestMain(m *testing.M) {
-	var err error
-
-	testDirectory = testutil.GetDirectoryOfFile()
-	exitCode := m.Run()
-
-	err = os.Chdir(testDirectory)
-	if err != nil {
-		panic(err)
-	}
-
-	os.Exit(exitCode)
 }

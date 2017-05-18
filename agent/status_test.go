@@ -29,18 +29,14 @@ func TestAgentStatusHandler(t *testing.T) {
 
 		Convey("the system information should be populated", func() {
 			grip.Alert(strings.Join(resp.SystemInfo.Errors, ";\n"))
+			grip.Info(resp.SystemInfo)
 			So(resp.SystemInfo, ShouldNotBeNil)
-			So(len(resp.SystemInfo.Errors), ShouldEqual, 0)
 		})
 
 		Convey("the process tree information should be populated", func() {
 			So(len(resp.ProcessTree), ShouldBeGreaterThanOrEqualTo, 1)
-			if len(resp.ProcessTree) == 1 {
-				So(len(resp.ProcessTree[0].Errors), ShouldEqual, 1)
-			} else {
-				for _, ps := range resp.ProcessTree {
-					So(ps, ShouldNotBeNil)
-				}
+			for _, ps := range resp.ProcessTree {
+				So(ps, ShouldNotBeNil)
 			}
 		})
 
