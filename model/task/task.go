@@ -235,6 +235,39 @@ func (t *Task) DependenciesMet(depCaches map[string]Task) (bool, error) {
 	return true, nil
 }
 
+// UIStatus returns the status for this task that should be displayed in the
+// UI. It uses a combination of the TaskEndDetails and the Task's status to
+// determine the state of the task.
+func (t *Task) UIStatus() string {
+	status := t.Status
+	if t.Status == evergreen.TaskUndispatched {
+		if !t.Activated {
+			status = evergreen.TaskInactive
+		} else {
+			status = "unstarted"
+		}
+	} else if t.Status == evergreen.TaskStarted {
+		status = evergreen.TaskStarted
+	} else if t.Status == evergreen.TaskSucceeded {
+		status = evergreen.TaskSucceeded
+	} else if t.Status == evergreen.TaskFailed {
+		status = evergreen.TaskFailed
+		if t.Details.Type == "system" {
+			status = evergreen.TaskSystemFailed
+			if t.Details.TimedOut {
+				if t.Details.Description == "heartbeat" {
+					status = evergreen.TaskSystemUnresponse
+				}
+				if t.Details.Type == "system" {
+					status = evergreen.TaskSystemTimedOut
+				}
+				status = evergreen.TaskTestTimedOut
+			}
+		}
+	}
+	return status
+}
+
 // FindTaskOnBaseCommit returns the task that is on the base commit.
 func (t *Task) FindTaskOnBaseCommit() (*Task, error) {
 	return FindOne(ByCommit(t.Revision, t.BuildVariant, t.DisplayName, t.Project, evergreen.RepotrackerVersionRequester))

@@ -287,7 +287,8 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 	if err != nil {
 		return err
 	}
-	event.LogTaskFinished(t.Id, t.HostId, detail.Status)
+	status := t.UIStatus()
+	event.LogTaskFinished(t.Id, t.HostId, status)
 
 	// update the cached version of the task, in its build document
 	err = build.SetCachedTaskFinished(t.BuildId, t.Id, detail, t.TimeTaken)
