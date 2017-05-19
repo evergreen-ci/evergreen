@@ -209,7 +209,7 @@ tasks:
       - func: set-up-mongodb
       - func: run-make
         vars:
-          target: "coverage-html"
+          target: "coverage-html || true"
           make_args: "-k"
   - name: lint
     tags: [ "report" ]
