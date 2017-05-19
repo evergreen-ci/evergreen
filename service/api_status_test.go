@@ -46,7 +46,6 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	return w
 }
 
-/*
 // EVG-1602: this fixture is not used yet. Commented to avoid deadcode lint error.
 func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
@@ -71,7 +70,6 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	handler.ServeHTTP(w, request)
 	return w
 }
-*/
 
 func TestConsistentTaskAssignment(t *testing.T) {
 
@@ -243,15 +241,13 @@ func TestStuckHostEndpoints(t *testing.T) {
 			So(t2.Insert(), ShouldBeNil)
 			So(t3.Insert(), ShouldBeNil)
 
-			request, err := http.NewRequest("GET", url, nil)
-			So(err, ShouldBeNil)
+			resp := getStuckHostEndpoint(t)
+			So(resp, ShouldNotBeNil)
+			So(resp.Code, ShouldEqual, http.StatusOK)
 
-			resp, err := http.DefaultClient.Do(request)
-			So(err, ShouldBeNil)
-			So(resp.StatusCode, ShouldEqual, 200)
 			out := stuckHostResp{}
 
-			So(util.ReadJSONInto(resp.Body, &out), ShouldBeNil)
+			So(json.NewDecoder(resp.Body).Decode(&out), ShouldBeNil)
 			So(out.Status, ShouldEqual, apiStatusError)
 			So(len(out.HostIds), ShouldEqual, 1)
 			So(len(out.TaskIds), ShouldEqual, 1)
