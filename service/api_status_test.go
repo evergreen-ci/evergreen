@@ -46,6 +46,8 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	return w
 }
 
+/*
+// EVG-1602: this fixture is not used yet. Commented to avoid deadcode lint error.
 func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
@@ -69,6 +71,7 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 	handler.ServeHTTP(w, request)
 	return w
 }
+*/
 
 func TestConsistentTaskAssignment(t *testing.T) {
 
