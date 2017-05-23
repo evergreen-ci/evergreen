@@ -3,9 +3,9 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
@@ -113,12 +113,12 @@ func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext) 
 // and is returned as such.
 func handleAPIError(e error, w http.ResponseWriter, r *http.Request) {
 
-	apiErr := apiv3.APIError{}
+	apiErr := rest.APIError{}
 
 	apiErr.StatusCode = http.StatusInternalServerError
 	apiErr.Message = e.Error()
 
-	if castError, ok := e.(apiv3.APIError); ok {
+	if castError, ok := e.(rest.APIError); ok {
 		apiErr = castError
 		grip.Warningln("User error", r.Method, r.URL, e)
 	} else {

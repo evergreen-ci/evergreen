@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -59,7 +59,7 @@ func (hgh *testGetHandler) Handler() RequestHandler {
 func (tgh *testGetHandler) ParseAndValidate(r *http.Request) error {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -82,7 +82,7 @@ func testPaginator(key string, limit int, args interface{}, sc servicecontext.Se
 	}
 	tests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -91,7 +91,7 @@ func testPaginator(key string, limit int, args interface{}, sc servicecontext.Se
 	// Make the previous page
 	prevTests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(*apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err

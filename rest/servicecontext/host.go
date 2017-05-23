@@ -3,7 +3,7 @@ package servicecontext
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
@@ -19,7 +19,7 @@ func (hc *DBHostConnector) FindHostsById(id, status string, limit int, sortDir i
 		return nil, err
 	}
 	if len(hostRes) == 0 {
-		return nil, apiv3.APIError{
+		return nil, rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "no hosts found",
 		}

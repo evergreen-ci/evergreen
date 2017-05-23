@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/context"
@@ -71,7 +71,7 @@ func TestAdminAuthenticator(t *testing.T) {
 				context.Set(req, RequestContext, &ctx)
 				err := author.Authenticate(serviceContext, req)
 
-				errToResemble := apiv3.APIError{
+				errToResemble := rest.APIError{
 					StatusCode: http.StatusNotFound,
 					Message:    "Not found",
 				}
@@ -114,7 +114,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 				context.Set(req, RequestUser, &u)
 				err := author.Authenticate(serviceContext, req)
 
-				errToResemble := apiv3.APIError{
+				errToResemble := rest.APIError{
 					StatusCode: http.StatusNotFound,
 					Message:    "Not found",
 				}

@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -65,7 +65,7 @@ func hostPaginator(key string, limit int, args interface{}, sc servicecontext.Se
 	}
 	hosts, err := sc.FindHostsById(key, hpArgs.status, limit*2, 1)
 	if err != nil {
-		if apiErr, ok := err.(apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -75,7 +75,7 @@ func hostPaginator(key string, limit int, args interface{}, sc servicecontext.Se
 	// Make the previous page
 	prevHosts, err := sc.FindHostsById(key, hpArgs.status, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
 	}
@@ -105,7 +105,7 @@ func hostPaginator(key string, limit int, args interface{}, sc servicecontext.Se
 
 	tasks, err := sc.FindTasksByIds(taskIds)
 	if err != nil {
-		if apiErr, ok := err.(*apiv3.APIError); !ok ||
+		if apiErr, ok := err.(*rest.APIError); !ok ||
 			(ok && apiErr.StatusCode != http.StatusNotFound) {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -84,7 +84,7 @@ func TestPrefetchUser(t *testing.T) {
 
 					err := PrefetchUser(req, serviceContext)
 
-					errToResemble := apiv3.APIError{
+					errToResemble := rest.APIError{
 						StatusCode: http.StatusUnauthorized,
 						Message:    "Invalid API key",
 					}
@@ -115,7 +115,7 @@ func TestPrefetchProject(t *testing.T) {
 				err := PrefetchProjectContext(req, serviceContext)
 				So(context.Get(req, RequestContext), ShouldBeNil)
 
-				errToResemble := apiv3.APIError{
+				errToResemble := rest.APIError{
 					StatusCode: http.StatusNotFound,
 					Message:    "Project not found",
 				}
@@ -128,7 +128,7 @@ func TestPrefetchProject(t *testing.T) {
 				err := PrefetchProjectContext(req, serviceContext)
 				So(context.Get(req, RequestContext), ShouldBeNil)
 
-				errToResemble := apiv3.APIError{
+				errToResemble := rest.APIError{
 					StatusCode: http.StatusNotFound,
 					Message:    "Not found",
 				}

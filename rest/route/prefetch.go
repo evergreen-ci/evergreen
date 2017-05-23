@@ -3,8 +3,8 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/context"
@@ -50,7 +50,7 @@ func PrefetchUser(r *http.Request, sc servicecontext.ServiceContext) error {
 		apiUser, err := sc.FindUserById(authDataName)
 		if apiUser.(*user.DBUser) != nil && err == nil {
 			if apiUser.GetAPIKey() != authDataAPIKey {
-				return apiv3.APIError{
+				return rest.APIError{
 					StatusCode: http.StatusUnauthorized,
 					Message:    "Invalid API key",
 				}
@@ -77,14 +77,14 @@ func PrefetchProjectContext(r *http.Request, sc servicecontext.ServiceContext) e
 
 	if ctx.ProjectRef != nil && ctx.ProjectRef.Private && GetUser(r) == nil {
 		// Project is private and user is not authorized so return not found
-		return apiv3.APIError{
+		return rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "Project not found",
 		}
 	}
 
 	if ctx.Patch != nil && GetUser(r) == nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
 		}

@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/gorilla/mux"
 )
 
@@ -61,7 +61,7 @@ func (p *PlaceHolderRequestHandler) ParseAndValidate(r *http.Request) error {
 	return nil
 }
 func (p *PlaceHolderRequestHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
-	return ResponseData{}, apiv3.APIError{
+	return ResponseData{}, rest.APIError{
 		StatusCode: 200,
 		Message:    "this is a placeholder for now",
 	}

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -112,8 +112,8 @@ func TestFindTestsByTaskId(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(len(foundTests), ShouldEqual, 0)
 
-			So(err, ShouldHaveSameTypeAs, &apiv3.APIError{})
-			apiErr, ok := err.(*apiv3.APIError)
+			So(err, ShouldHaveSameTypeAs, &rest.APIError{})
+			apiErr, ok := err.(*rest.APIError)
 			So(ok, ShouldBeTrue)
 			So(apiErr.StatusCode, ShouldEqual, http.StatusNotFound)
 		})
@@ -133,8 +133,8 @@ func TestFindTestsByTaskId(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(len(foundTests), ShouldEqual, 0)
 
-			So(err, ShouldHaveSameTypeAs, &apiv3.APIError{})
-			apiErr, ok := err.(*apiv3.APIError)
+			So(err, ShouldHaveSameTypeAs, &rest.APIError{})
+			apiErr, ok := err.(*rest.APIError)
 			So(ok, ShouldBeTrue)
 			So(apiErr.StatusCode, ShouldEqual, http.StatusNotFound)
 		})

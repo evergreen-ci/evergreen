@@ -3,7 +3,7 @@ package route
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/gorilla/mux"
 )
 

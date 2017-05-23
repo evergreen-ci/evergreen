@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -369,7 +369,7 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 					limit, &serviceContext, tphArgs, expectedPages, expectedTasks, nil)
 			})
 			Convey("when APIError is returned from DB, should percolate upward", func() {
-				expectedErr := apiv3.APIError{
+				expectedErr := rest.APIError{
 					StatusCode: http.StatusNotFound,
 					Message:    "not found",
 				}
@@ -741,7 +741,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			context.Set(req, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(req)
 			So(err, ShouldNotBeNil)
-			expectedErr := apiv3.APIError{
+			expectedErr := rest.APIError{
 				Message:    "No request body sent",
 				StatusCode: http.StatusBadRequest,
 			}
@@ -764,7 +764,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			context.Set(req, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(req)
 			So(err, ShouldNotBeNil)
-			expectedErr := apiv3.APIError{
+			expectedErr := rest.APIError{
 				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
 					"but receieved '%s'",
 					"bool", "string"),
@@ -786,7 +786,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 			context.Set(req, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(req)
 			So(err, ShouldNotBeNil)
-			expectedErr := apiv3.APIError{
+			expectedErr := rest.APIError{
 				Message:    "Must set 'activated' or 'priority'",
 				StatusCode: http.StatusBadRequest,
 			}
@@ -893,7 +893,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			context.Set(req, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(req)
 			So(err, ShouldNotBeNil)
-			expectedErr := apiv3.APIError{
+			expectedErr := rest.APIError{
 				Message:    "Task not found",
 				StatusCode: http.StatusNotFound,
 			}
@@ -975,7 +975,7 @@ func TestTaskResetExecute(t *testing.T) {
 
 			_, err := trh.Execute(&sc)
 			So(err, ShouldNotBeNil)
-			apiErr, ok := err.(apiv3.APIError)
+			apiErr, ok := err.(rest.APIError)
 			So(ok, ShouldBeTrue)
 			So(apiErr.StatusCode, ShouldEqual, http.StatusBadRequest)
 

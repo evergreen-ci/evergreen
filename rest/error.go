@@ -1,4 +1,4 @@
-package apiv3
+package rest
 
 // APIError implements the Error() interface
 type APIError struct {

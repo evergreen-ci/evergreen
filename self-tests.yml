@@ -236,10 +236,10 @@ tasks:
     name: test-auth
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
-    name: test-apiv3-route
+    name: test-rest-route
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
-    name: test-apiv3-model
+    name: test-rest-model
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-command
@@ -254,7 +254,7 @@ tasks:
     name: test-agent
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-apiv3-servicecontext
+    name: test-rest-servicecontext
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
     name: test-cli

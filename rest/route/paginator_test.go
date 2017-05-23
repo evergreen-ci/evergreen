@@ -7,9 +7,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -203,7 +203,7 @@ func TestPaginationExecutor(t *testing.T) {
 
 				queryParams := fmt.Sprintf("%s=%s", testLimitQueryParam, "garbage")
 
-				expectedError := apiv3.APIError{
+				expectedError := rest.APIError{
 					StatusCode: http.StatusBadRequest,
 					Message: fmt.Sprintf("Value '%v' provided for '%v' must be integer",
 						"garbage", testLimitQueryParam),

@@ -51,4 +51,4 @@
 	adding paginated API resources.
 
 */
-package apiv3
+package rest

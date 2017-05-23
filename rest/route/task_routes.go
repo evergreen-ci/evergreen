@@ -7,9 +7,9 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/auth"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -119,14 +119,14 @@ func (tph *tasksByProjectHandler) ParseAndValidate(r *http.Request) error {
 		status:     r.URL.Query().Get("status"),
 	}
 	if args.projectId == "" {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "ProjectId cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 
 	if args.commitHash == "" {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "Revision cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -143,7 +143,7 @@ func tasksByProjectPaginator(key string, limit int, args interface{}, sc service
 	}
 	tasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -152,7 +152,7 @@ func tasksByProjectPaginator(key string, limit int, args interface{}, sc service
 	// Make the previous page
 	prevTasks, err := sc.FindTasksByProjectAndCommit(ptArgs.projectId, ptArgs.commitHash, key, ptArgs.status, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(*apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
 	}
@@ -243,7 +243,7 @@ func (tgh *taskGetHandler) ParseAndValidate(r *http.Request) error {
 func (tgh *taskGetHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
 	foundTask, err := sc.FindTaskById(tgh.taskId)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err
@@ -252,7 +252,7 @@ func (tgh *taskGetHandler) Execute(sc servicecontext.ServiceContext) (ResponseDa
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(foundTask)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
 		}
 		return ResponseData{}, err
@@ -260,7 +260,7 @@ func (tgh *taskGetHandler) Execute(sc servicecontext.ServiceContext) (ResponseDa
 
 	err = taskModel.BuildFromService(sc.GetURL())
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
 		}
 		return ResponseData{}, err
@@ -290,7 +290,7 @@ func (tbh *tasksByBuildHandler) ParseAndValidate(r *http.Request) error {
 		status:  r.URL.Query().Get("status"),
 	}
 	if args.buildId == "" {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "buildId cannot be empty",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -310,7 +310,7 @@ func tasksByBuildPaginator(key string, limit int, args interface{}, sc serviceco
 	// by two to fetch the next page.
 	tasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit*2, 1)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -319,7 +319,7 @@ func tasksByBuildPaginator(key string, limit int, args interface{}, sc serviceco
 	// Fetch tasks to get information about the previous page.
 	prevTasks, err := sc.FindTasksByBuildId(btArgs.buildId, key, btArgs.status, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(*apiv3.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
 	}
@@ -384,7 +384,7 @@ type TaskRestartHandler struct {
 func (trh *TaskRestartHandler) ParseAndValidate(r *http.Request) error {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -405,7 +405,7 @@ func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (Respon
 	err := sc.ResetTask(trh.taskId, trh.username, trh.project)
 	if err != nil {
 		return ResponseData{},
-			apiv3.APIError{
+			rest.APIError{
 				Message:    err.Error(),
 				StatusCode: http.StatusBadRequest,
 			}
@@ -419,7 +419,7 @@ func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (Respon
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(refreshedTask)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err
@@ -455,13 +455,13 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
 	decoder := json.NewDecoder(body)
 	if err := decoder.Decode(tep); err != nil {
 		if err == io.EOF {
-			return apiv3.APIError{
+			return rest.APIError{
 				Message:    "No request body sent",
 				StatusCode: http.StatusBadRequest,
 			}
 		}
 		if e, ok := err.(*json.UnmarshalTypeError); ok {
-			return apiv3.APIError{
+			return rest.APIError{
 				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
 					"but receieved '%s'",
 					e.Type, e.Value),
@@ -472,14 +472,14 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
 	}
 
 	if tep.Activated == nil && tep.Priority == nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "Must set 'activated' or 'priority'",
 			StatusCode: http.StatusBadRequest,
 		}
 	}
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			Message:    "Task not found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -498,7 +498,7 @@ func (tep *TaskExecutionPatchHandler) Execute(sc servicecontext.ServiceContext) 
 		priority := *tep.Priority
 		if priority > evergreen.MaxTaskPriority &&
 			!auth.IsSuperUser(sc.GetSuperUsers(), tep.user) {
-			return ResponseData{}, apiv3.APIError{
+			return ResponseData{}, rest.APIError{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,
@@ -522,7 +522,7 @@ func (tep *TaskExecutionPatchHandler) Execute(sc servicecontext.ServiceContext) 
 	taskModel := &model.APITask{}
 	err = taskModel.BuildFromService(refreshedTask)
 	if err != nil {
-		if _, ok := err.(*apiv3.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, err

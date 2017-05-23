@@ -3,8 +3,8 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 )
 
 type mockRequestHandler struct {

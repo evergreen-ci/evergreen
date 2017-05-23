@@ -3,8 +3,8 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/util"
 )
@@ -41,7 +41,7 @@ func (s *SuperUserAuthenticator) Authenticate(sc servicecontext.ServiceContext,
 	if auth.IsSuperUser(sc.GetSuperUsers(), u) {
 		return nil
 	}
-	return apiv3.APIError{
+	return rest.APIError{
 		StatusCode: http.StatusNotFound,
 		Message:    "Not found",
 	}
@@ -65,7 +65,7 @@ func (p *ProjectAdminAuthenticator) Authenticate(sc servicecontext.ServiceContex
 		return nil
 	}
 
-	return apiv3.APIError{
+	return rest.APIError{
 		StatusCode: http.StatusNotFound,
 		Message:    "Not found",
 	}
@@ -81,7 +81,7 @@ func (rua *RequireUserAuthenticator) Authenticate(sc servicecontext.ServiceConte
 	r *http.Request) error {
 	u := GetUser(r)
 	if u == nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
 		}

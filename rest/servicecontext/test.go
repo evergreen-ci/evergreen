@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/model/task"
 )
 
@@ -28,7 +28,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string
 		} else {
 			message = fmt.Sprintf("tests for task with taskId '%s' not found", taskId)
 		}
-		return []task.TestResult{}, &apiv3.APIError{
+		return []task.TestResult{}, &rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -43,7 +43,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string
 			}
 		}
 		if !found {
-			return []task.TestResult{}, &apiv3.APIError{
+			return []task.TestResult{}, &rest.APIError{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("test with filename %s not found", testFilename),
 			}

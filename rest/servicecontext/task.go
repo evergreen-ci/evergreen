@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/apiv3"
+	"github.com/evergreen-ci/evergreen/rest"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
@@ -24,7 +24,7 @@ func (tc *DBTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 		return nil, err
 	}
 	if t == nil {
-		return nil, &apiv3.APIError{
+		return nil, &rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    fmt.Sprintf("task with id %s not found", taskId),
 		}
@@ -51,7 +51,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 		} else {
 			message = fmt.Sprintf("tasks from build '%s' not found", buildId)
 		}
-		return []task.Task{}, &apiv3.APIError{
+		return []task.Task{}, &rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -66,7 +66,7 @@ func (tc *DBTaskConnector) FindTasksByBuildId(buildId, taskId, status string, li
 			}
 		}
 		if !found {
-			return []task.Task{}, &apiv3.APIError{
+			return []task.Task{}, &rest.APIError{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
 			}
@@ -81,7 +81,7 @@ func (tc *DBTaskConnector) FindTasksByIds(ids []string) ([]task.Task, error) {
 		return nil, err
 	}
 	if len(ts) == 0 {
-		return []task.Task{}, &apiv3.APIError{
+		return []task.Task{}, &rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "no tasks found",
 		}
@@ -108,7 +108,7 @@ func (tc *DBTestConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 			message = fmt.Sprintf("task from project '%s' and commit '%s' not found",
 				projectId, commitHash)
 		}
-		return []task.Task{}, &apiv3.APIError{
+		return []task.Task{}, &rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    message,
 		}
@@ -123,7 +123,7 @@ func (tc *DBTestConnector) FindTasksByProjectAndCommit(projectId, commitHash, ta
 			}
 		}
 		if !found {
-			return []task.Task{}, &apiv3.APIError{
+			return []task.Task{}, &rest.APIError{
 				StatusCode: http.StatusNotFound,
 				Message:    fmt.Sprintf("task with id '%s' not found", taskId),
 			}

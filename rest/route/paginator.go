@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/apiv3"
-	"github.com/evergreen-ci/evergreen/apiv3/model"
-	"github.com/evergreen-ci/evergreen/apiv3/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 )
 
 const (
@@ -115,7 +115,7 @@ func (pe *PaginationExecutor) ParseAndValidate(r *http.Request) error {
 	var err error
 	pe.limit, err = strconv.Atoi(limit)
 	if err != nil {
-		return apiv3.APIError{
+		return rest.APIError{
 			StatusCode: http.StatusBadRequest,
 			Message: fmt.Sprintf("Value '%v' provided for '%v' must be integer",
 				limit, pe.LimitQueryParam),
