@@ -68,6 +68,19 @@ func TestEmailSubject(t *testing.T) {
 				So(subj, ShouldContainSubstring, ProjectName)
 			})
 		})
+		Convey("a task that has a hearbeat failure should return a subject", func() {
+			ctx.Task.Details.Description = task.AgentHeartbeat
+			subj := getSummary(ctx)
+			So(subj, ShouldNotEqual, "")
+			Convey("denoting the system failure and showing the task name", func() {
+				So(subj, ShouldContainSubstring, "System Failure")
+				So(subj, ShouldContainSubstring, TaskName)
+				So(subj, ShouldContainSubstring, BuildName)
+				So(subj, ShouldContainSubstring, VersionRevision[0:8])
+				So(subj, ShouldNotContainSubstring, VersionRevision[0:9])
+				So(subj, ShouldContainSubstring, ProjectName)
+			})
+		})
 		Convey("a task that failed on a normal command with no tests should return a subject", func() {
 			subj := getSubject(ctx)
 			So(subj, ShouldNotEqual, "")

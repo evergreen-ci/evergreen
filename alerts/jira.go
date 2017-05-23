@@ -111,11 +111,14 @@ func getSummary(ctx AlertContext) string {
 			failed = append(failed, cleanTestName(test.TestFile))
 		}
 	}
+
 	switch {
-	case ctx.Task.Details.TimedOut:
-		subj.WriteString("Timed Out: ")
+	case ctx.Task.Details.Description == task.AgentHeartbeat:
+		subj.WriteString("System Failure: ")
 	case ctx.Task.Details.Type == model.SystemCommandType:
 		subj.WriteString("System Failure: ")
+	case ctx.Task.Details.TimedOut:
+		subj.WriteString("Timed Out: ")
 	case len(failed) == 1:
 		subj.WriteString("Failure: ")
 	case len(failed) > 1:
