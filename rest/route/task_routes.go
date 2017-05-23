@@ -7,12 +7,12 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/auth"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -23,7 +23,7 @@ const (
 )
 
 func getTaskRestartRouteManager(route string, version int) *RouteManager {
-	trh := &TaskRestartHandler{}
+	trh := &taskRestartHandler{}
 	taskRestart := MethodHandler{
 		PrefetchFunctions: []PrefetchFunc{PrefetchUser, PrefetchProjectContext},
 		Authenticator:     &RequireUserAuthenticator{},
@@ -369,10 +369,10 @@ func (hgh *tasksByBuildHandler) Handler() RequestHandler {
 	return &tasksByBuildHandler{taskPaginationExecutor}
 }
 
-// TaskRestartHandler implements the route POST /task/{task_id}/restart. It
+// taskRestartHandler implements the route POST /task/{task_id}/restart. It
 // fetches the needed task and project and calls the service function to
 // set the proper fields when reseting the task.
-type TaskRestartHandler struct {
+type taskRestartHandler struct {
 	taskId  string
 	project *serviceModel.Project
 
@@ -380,8 +380,8 @@ type TaskRestartHandler struct {
 }
 
 // ParseAndValidate fetches the taskId and Project from the request context and
-// sets them on the TaskRestartHandler to be used by Execute.
-func (trh *TaskRestartHandler) ParseAndValidate(r *http.Request) error {
+// sets them on the taskRestartHandler to be used by Execute.
+func (trh *taskRestartHandler) ParseAndValidate(r *http.Request) error {
 	projCtx := MustHaveProjectContext(r)
 	if projCtx.Task == nil {
 		return rest.APIError{
@@ -401,7 +401,7 @@ func (trh *TaskRestartHandler) ParseAndValidate(r *http.Request) error {
 
 // Execute calls the servicecontext ResetTask function and returns the refreshed
 // task from the service.
-func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+func (trh *taskRestartHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
 	err := sc.ResetTask(trh.taskId, trh.username, trh.project)
 	if err != nil {
 		return ResponseData{},
@@ -430,8 +430,8 @@ func (trh *TaskRestartHandler) Execute(sc servicecontext.ServiceContext) (Respon
 	}, nil
 }
 
-func (trh *TaskRestartHandler) Handler() RequestHandler {
-	return &TaskRestartHandler{}
+func (trh *taskRestartHandler) Handler() RequestHandler {
+	return &taskRestartHandler{}
 }
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
