@@ -23,12 +23,19 @@ func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) ht
 // registers them on the given router. It then returns the given router as an
 // http handler which can be given more functions.
 func GetHandler(r *mux.Router, sc servicecontext.ServiceContext) http.Handler {
-	getHostRouteManager("/hosts", 2).Register(r, sc)
-	getTaskRouteManager("/tasks/{task_id}", 2).Register(r, sc)
-	getTestRouteManager("/tasks/{task_id}/tests", 2).Register(r, sc)
-	getTasksByProjectAndCommitRouteManager("/projects/{project_id}/revisions/{commit_hash}/tasks", 2).Register(r, sc)
-	getTasksByBuildRouteManager("/builds/{build_id}/tasks", 2).Register(r, sc)
-	getTaskRestartRouteManager("/tasks/{task_id}/restart", 2).Register(r, sc)
-	getPlaceHolderManger("/", 2).Register(r, sc)
+	routes := map[string]routeManagerFactory{
+		"/builds/{build_id}/tasks": getTasksByBuildRouteManager,
+		"/hosts":                   getHostRouteManager,
+		"/projects/{project_id}/revisions/{commit_hash}/tasks": getTasksByProjectAndCommitRouteManager,
+		"/tasks/{task_id}":                                     getTaskRouteManager,
+		"/tasks/{task_id}/restart":                             getTaskRestartRouteManager,
+		"/tasks/{task_id}/tests":                               getTestRouteManager,
+		"/": getPlaceHolderManger,
+	}
+
+	for path, getManager := range routes {
+		getManager(path, 2).Register(r, sc)
+	}
+
 	return r
 }

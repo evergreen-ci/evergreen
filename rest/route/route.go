@@ -7,6 +7,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// routeManagerFactory is a function type used to create RouteManagers and used to register handlders.
+type routeManagerFactory func(string, int) *RouteManger
+
 // Route defines all of the functioning of a particular API route. It contains
 // implementations of the various API methods that are defined on this endpoint.
 type RouteManager struct {
