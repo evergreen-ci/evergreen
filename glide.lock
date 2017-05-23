@@ -5,6 +5,10 @@ imports:
     version: e3f150b4372fce47109dbd8fef5f03cd2af08700
     subpackages:
       - ssh
+  - name: golang.org/x/net
+    version: 1358eff22f0dd0c54fc521042cc607f6ff4b531a
+    subpackages:
+      - context
   - name: github.com/pkg/sftp
     version: 506297c9013d2893d5c5daaa9155e7333a1c58de
   - name: github.com/vaughan0/go-ini

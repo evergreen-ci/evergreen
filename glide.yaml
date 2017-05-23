@@ -3,6 +3,9 @@ import:
   - package: golang.org/x/crypto
     subpackages:
       - ssh
+  - package: golang.org/x/net
+    subpackages:
+      - context
   - package: github.com/pkg/sftp
   - package: github.com/vaughan0/go-ini
   - package: github.com/10gen/goamz/
