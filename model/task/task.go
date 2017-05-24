@@ -257,11 +257,11 @@ func (t *Task) UIStatus() string {
 			if t.Details.TimedOut {
 				if t.Details.Description == "heartbeat" {
 					status = evergreen.TaskSystemUnresponse
-				}
-				if t.Details.Type == "system" {
+				} else if t.Details.Type == "system" {
 					status = evergreen.TaskSystemTimedOut
+				} else {
+					status = evergreen.TaskTestTimedOut
 				}
-				status = evergreen.TaskTestTimedOut
 			}
 		}
 	}

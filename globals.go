@@ -32,7 +32,7 @@ const (
 	TaskInactive         = "inactive"
 	TaskSystemFailed     = "system-failed"
 	TaskTimedOut         = "task-timed-out"
-	TaskSystemUnresponse = "system-unresponse"
+	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTestTimedOut     = "test-timed-out"
 
