@@ -33,7 +33,7 @@ raceBinaries := $(foreach bin,$(binaries),$(bin).race)
 agentSource := agent/main/agent.go
 clientSource := cli/main/cli.go
 
-distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates
+distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates ./notify/templates
 distContents := $(agentBuildDir) $(clientBuildDir) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg) $(buildDir)/race.$(pkg))
 

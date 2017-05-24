@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 )
 
 type RemoteCommand struct {
@@ -81,7 +82,11 @@ func (rc *RemoteCommand) Start() error {
 func (rc *RemoteCommand) Stop() error {
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
 		grip.Debugf("RemoteCommand(%s) killing process %d", rc.Id, rc.Cmd.Process.Pid)
-		return rc.Cmd.Process.Kill()
+		err := rc.Cmd.Process.Kill()
+		if strings.Contains(err.Error(), "process already finished") {
+			return nil
+		}
+		return errors.WithStack(err)
 	}
 	grip.Warningf("RemoteCommand(%s) Trying to stop command but Cmd / Process was nil", rc.Id)
 	return nil

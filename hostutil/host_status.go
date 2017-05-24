@@ -27,13 +27,14 @@ func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) 
 
 	// construct a command to check reachability
 	remoteCommand := &command.RemoteCommand{
-		CmdString:      "echo hi",
-		Stdout:         ioutil.Discard,
-		Stderr:         ioutil.Discard,
-		RemoteHostName: hostInfo.Hostname,
-		User:           hostInfo.User,
-		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:     false,
+		CmdString:       "echo hi",
+		Stdout:          ioutil.Discard,
+		Stderr:          ioutil.Discard,
+		RemoteHostName:  hostInfo.Hostname,
+		User:            hostInfo.User,
+		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
+		Background:      false,
+		LoggingDisabled: true,
 	}
 
 	done := make(chan error)

@@ -154,7 +154,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// run the make shell command with a timeout
 	err = util.RunFunctionWithTimeout(makeShellCmd.Run, MakeShellTimeout)
-	defer grip.Notice(makeShellCmd.Stop())
+	grip.Notice(makeShellCmd.Stop())
 	if err != nil {
 		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
@@ -189,7 +189,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// run the command to scp the agent with a timeout
 	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
-	defer grip.Notice(scpAgentCmd.Stop())
+	grip.Notice(scpAgentCmd.Stop())
 	if err != nil {
 		if err == util.ErrTimedOut {
 			return "", errors.Errorf("scp-ing agent binary timed out: %v", scpAgentOutput.String())
@@ -229,7 +229,7 @@ func startAgentOnRemote(apiURL string, hostObj *host.Host, sshOptions []string) 
 	// run the command to kick off the agent remotely
 	var startAgentLog bytes.Buffer
 	startAgentCmd := &command.RemoteCommand{
-		Id:             fmt.Sprintf("startagent-%v", rand.Int()),
+		Id:             fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int()),
 		CmdString:      remoteCmd,
 		Stdout:         &startAgentLog,
 		Stderr:         &startAgentLog,
@@ -244,10 +244,13 @@ func startAgentOnRemote(apiURL string, hostObj *host.Host, sshOptions []string) 
 		startAgentCmd.Run,
 		StartAgentTimeout,
 	)
-	defer grip.Notice(startAgentCmd.Stop())
+
+	// run cleanup regardless of what happens.
+	grip.Notice(startAgentCmd.Stop())
+
 	if err != nil {
 		if err == util.ErrTimedOut {
-			return errors.New("starting agent timed out")
+			return errors.Errorf("starting agent timed out on %s", hostObj.Id)
 		}
 		return errors.Wrapf(err, "error starting agent (%v): %v", hostObj.Id, startAgentLog.String())
 	}

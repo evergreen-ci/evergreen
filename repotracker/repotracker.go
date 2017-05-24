@@ -94,11 +94,11 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 	if lastRevision == "" {
 		// if this is the first time we're running the tracker for this project,
 		// fetch the most recent `numNewRepoRevisionsToFetch` revisions
-		grip.Infoln("No last recorded repository revision for", projectRef,
+		grip.Debugln("No last recorded repository revision for", projectRef,
 			"Proceeding to fetch most recent", numNewRepoRevisionsToFetch, "revisions")
 		revisions, err = repoTracker.GetRecentRevisions(numNewRepoRevisionsToFetch)
 	} else {
-		grip.Infof("Last recorded revision for %s is %s", projectRef, lastRevision)
+		grip.Debugf("Last recorded revision for %s is %s", projectRef, lastRevision)
 		// if the projectRef has a repotracker error then don't get the revisions
 		if projectRef.RepotrackerError != nil {
 			if projectRef.RepotrackerError.Exists {

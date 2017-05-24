@@ -340,7 +340,7 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		if _, exists := versionBuildVarMap[key]; !exists {
 			err := s.updateVersionBuildVarMap(task.Version, versionBuildVarMap)
 			if err != nil {
-				grip.Noticef("skipping %s after problem getting buildvariant map for task %s: %v",
+				grip.Infof("skipping %s after problem getting buildvariant map for task %s: %v",
 					task.Version, task.Id, err)
 				continue
 			}
@@ -349,7 +349,7 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 		// get the build variant for the task
 		buildVariant, ok := versionBuildVarMap[key]
 		if !ok {
-			grip.Warningf("task %s has no buildvariant called '%s' on project %s",
+			grip.Infof("task %s has no buildvariant called '%s' on project %s",
 				task.Id, task.BuildVariant, task.Project)
 			continue
 		}
@@ -365,7 +365,7 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 
 		// if no matching spec was found log it and continue
 		if taskSpec.Name == "" {
-			grip.Warningf("task %s has no matching spec for build variant %s on project %s",
+			grip.Infof("task %s has no matching spec for build variant %s on project %s",
 				task.Id, task.BuildVariant, task.Project)
 			continue
 		}
