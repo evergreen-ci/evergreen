@@ -3,8 +3,8 @@ package servicecontext
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/rest"
 )
 
 // DBHostConnector is a struct that implements the Host related methods

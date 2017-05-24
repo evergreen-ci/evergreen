@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )

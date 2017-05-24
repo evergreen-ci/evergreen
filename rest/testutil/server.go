@@ -7,9 +7,9 @@ import (
 
 	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/rest/servicecontext"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 )
