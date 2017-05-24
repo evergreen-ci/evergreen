@@ -3,12 +3,12 @@ package route
 import (
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/mux"
 )
 
 // routeManagerFactory is a function type used to create RouteManagers and used to register handlders.
-type routeManagerFactory func(string, int) *RouteManger
+type routeManagerFactory func(string, int) *RouteManager
 
 // Route defines all of the functioning of a particular API route. It contains
 // implementations of the various API methods that are defined on this endpoint.
@@ -26,7 +26,7 @@ type RouteManager struct {
 
 // Register builds http handlers for each of the defined methods and attaches
 // these to the given router.
-func (rm *RouteManager) Register(r *mux.Router, sc servicecontext.ServiceContext) {
+func (rm *RouteManager) Register(r *mux.Router, sc data.Connector) {
 	for _, method := range rm.Methods {
 		routeHandlerFunc := makeHandler(method, sc)
 		sr := r.PathPrefix(fmt.Sprintf("/%s/v%d/", sc.GetPrefix(), rm.Version)).Subrouter().StrictSlash(true)

@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"github.com/evergreen-ci/evergreen/auth"
@@ -6,7 +6,7 @@ import (
 )
 
 // DBUserConnector is a struct that implements the User related interface
-// of the ServiceContext interface through interactions with the backing database.
+// of the Connector interface through interactions with the backing database.
 type DBUserConnector struct{}
 
 // FindUserById uses the service layer's user type to query the backing database for
@@ -26,7 +26,7 @@ type MockUserConnector struct {
 }
 
 // FindUserById provides a mock implementation of the User functions
-// from the ServiceContext that does not need to use a database.
+// from the Connector that does not need to use a database.
 // It returns results based on the cached users in the MockUserConnector.
 func (muc *MockUserConnector) FindUserById(userId string) (auth.APIUser, error) {
 	u := muc.CachedUsers[userId]

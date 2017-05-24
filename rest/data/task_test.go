@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ func TestFindTaskById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTaskById")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := &DBServiceContext{}
+	serviceContext := &DBConnector{}
 	numTasks := 10
 
 	Convey("When there are task documents in the database", t, func() {
@@ -61,7 +61,7 @@ func TestFindTasksByBuildId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTasksByBuildId")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := &DBServiceContext{}
+	serviceContext := &DBConnector{}
 	numBuilds := 2
 	numTasks := 16
 	taskIds := make([][]string, numBuilds)
@@ -198,7 +198,7 @@ func TestFindTasksByProjectAndCommit(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTasksByProjectAndCommit")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := &DBServiceContext{}
+	serviceContext := &DBConnector{}
 	numCommits := 2
 	numProjects := 2
 	numTasks := 16

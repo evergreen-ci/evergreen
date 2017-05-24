@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 )
 
 // DBTaskConnector is a struct that implements the Task related methods
-// from the ServiceContext through interactions with he backing database.
+// from the Connector through interactions with he backing database.
 type DBTaskConnector struct{}
 
 // FindTaskById uses the service layer's task type to query the backing database for
@@ -154,14 +154,14 @@ func (tc *DBTaskConnector) ResetTask(taskId, username string, proj *serviceModel
 }
 
 // MockTaskConnector stores a cached set of tasks that are queried against by the
-// implementations of the ServiceContext interface's Task related functions.
+// implementations of the Connector interface's Task related functions.
 type MockTaskConnector struct {
 	CachedTasks []task.Task
 	StoredError error
 }
 
 // FindTaskById provides a mock implementation of the functions for the
-// ServiceContext interface without needing to use a database. It returns results
+// Connector interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
 func (mtc *MockTaskConnector) FindTaskById(taskId string) (*task.Task, error) {
 	for _, t := range mtc.CachedTasks {
@@ -214,7 +214,7 @@ func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, err
 }
 
 // FindTaskByBuildId provides a mock implementation of the function for the
-// ServiceContext interface without needing to use a database. It returns results
+// Connector interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
 func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit,
 	sortDir int) ([]task.Task, error) {

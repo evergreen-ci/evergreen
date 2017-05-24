@@ -9,7 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/rest/route"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 )
@@ -22,18 +22,18 @@ const (
 // REST v2 test server. It automatically starts the server on port 9191.
 func NewTestServerFromSettings(settings *evergreen.Settings) (*httptest.Server, error) {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
-	sc := &servicecontext.DBServiceContext{}
+	sc := &data.DBConnector{}
 
 	sc.SetPrefix(evergreen.RestRoutePrefix)
 	sc.SetSuperUsers(settings.SuperUsers)
 
-	return NewTestServerFromServiceContext(testServerPort, sc)
+	return NewTestServerFromConnector(testServerPort, sc)
 }
 
-// NewTestServerFromServiceContext takes in a port and already constructed ServiceContext
+// NewTestServerFromConnector takes in a port and already constructed Connector
 // and creates an REST v2 API server. This is very useful when testing, especially when
-// mocking out sections of the ServiceContext to make sure request occur as expected.
-func NewTestServerFromServiceContext(port int, sc servicecontext.ServiceContext) (*httptest.Server, error) {
+// mocking out sections of the Connector to make sure request occur as expected.
+func NewTestServerFromConnector(port int, sc data.Connector) (*httptest.Server, error) {
 	root := mux.NewRouter()
 	route.GetHandler(root, sc)
 	n := negroni.New()

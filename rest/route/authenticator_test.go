@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -19,7 +19,7 @@ func TestAdminAuthenticator(t *testing.T) {
 		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		projectRef := model.ProjectRef{}
-		serviceContext := &servicecontext.MockServiceContext{}
+		serviceContext := &data.MockConnector{}
 		author := ProjectAdminAuthenticator{}
 		Convey("When authenticating", func() {
 
@@ -86,7 +86,7 @@ func TestSuperUserAuthenticator(t *testing.T) {
 		"an authenticator, and a service context", t, func() {
 		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
-		serviceContext := &servicecontext.MockServiceContext{}
+		serviceContext := &data.MockConnector{}
 		author := SuperUserAuthenticator{}
 		Convey("When authenticating", func() {
 

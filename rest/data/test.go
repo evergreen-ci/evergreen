@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 )
 
 // DBTestConnector is a struct that implements the Test related methods
-// from the ServiceContext through interactions with the backing database.
+// from the Connector through interactions with the backing database.
 type DBTestConnector struct{}
 
 func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string, limit,
@@ -53,7 +53,7 @@ func (tc *DBTestConnector) FindTestsByTaskId(taskId, testFilename, status string
 }
 
 // MockTaskConnector stores a cached set of tests that are queried against by the
-// implementations of the ServiceContext interface's Test related functions.
+// implementations of the Connector interface's Test related functions.
 type MockTestConnector struct {
 	CachedTests []task.TestResult
 	StoredError error

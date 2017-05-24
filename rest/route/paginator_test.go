@@ -9,7 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -266,7 +266,7 @@ func TestPaginatorAdditionalArgs(t *testing.T) {
 		arg1 := 7
 		arg2 := "testArg1"
 
-		sc := servicecontext.MockServiceContext{}
+		sc := data.MockConnector{}
 
 		r := &http.Request{
 			URL: &url.URL{
@@ -278,7 +278,7 @@ func TestPaginatorAdditionalArgs(t *testing.T) {
 		context.Set(r, testArg2Holder, arg2)
 
 		pf := func(key string, limit int, args interface{},
-			sc servicecontext.ServiceContext) ([]model.Model, *PageResult, error) {
+			sc data.Connector) ([]model.Model, *PageResult, error) {
 			castArgs, ok := args.(*ArgHolder)
 			So(ok, ShouldBeTrue)
 			So(castArgs.Arg1, ShouldEqual, arg1)

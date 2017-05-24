@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func TestFindTestsByTaskId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := &DBServiceContext{}
+	serviceContext := &DBConnector{}
 	numTests := 10
 	numTasks := 2
 	testFileNames := make([]string, numTests)

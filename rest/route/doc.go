@@ -12,7 +12,7 @@
 					type RequestHandler interface {
 						Handler() RequestHandler
 						ParseAndValidate(*http.Request) error
-						Execute(servicecontext.ServiceContext) (ResponseData, error)
+						Execute(data.Connector) (ResponseData, error)
 					}
 
 	RequestHandlers should be placed in files in the route/ directory depending on the type
@@ -48,7 +48,7 @@
 
 					r.URL.Query().Get("status")
 
-	Finally, the Execute method is the only method with access to the ServiceContext
+	Finally, the Execute method is the only method with access to the Connector
 	and is therefore capable of making calls to the backing database to fetch and alter
 	its state. The Execute method should use the parameters gathered in the ParseAndValidate
 	method to implement the main logic and functionality of the request.
@@ -63,7 +63,7 @@
 	A PaginatorFunc defines how to paginate over a resource given a key to start pagination
 	from and a limit to limit the number of results. PaginatorFunc has the following signature:
 
-					func(key string, limit int, args interface{}, sc ServiceContext)([]Model, *PageResult, error)
+					func(key string, limit int, args interface{}, sc Connector)([]Model, *PageResult, error)
 
 	The key and limit are fetched automatically by the PaginationExecutor's ParseAndValidate
 	function. These parameters should be used to query for the correct set of results.
@@ -91,7 +91,7 @@
 					}
 
 					func fooRequestPaginator(key string, limit int, args interface{},
-						 sc servicecontext.ServiceContext)([]model.Model, *PageResult, error){
+						 sc data.Connector)([]model.Model, *PageResult, error){
 
 						 fooArgs, ok := args.(extraFooArgs)
 						 if !ok {
@@ -154,7 +154,7 @@
 	Its implementation only needs to be added to the existing RouteManager.
 
 	Once created, the RouteManager must be registered onto the mux.Router with the
-	ServiceContext by calling
+	Connector by calling
 
 	     route.Register(router, serviceContext).
 */

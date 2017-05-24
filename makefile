@@ -4,9 +4,10 @@ buildDir := bin
 packages := $(name) agent db cli archive remote command taskrunner util plugin hostinit plugin-builtin-git
 packages += plugin-builtin-gotest plugin-builtin-attach plugin-builtin-manifest plugin-builtin-archive
 packages += plugin-builtin-shell plugin-builtin-s3copy plugin-builtin-expansions plugin-builtin-s3
-packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker apiv3-servicecontext apiv3-route apiv3-model
+packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task db-bsonutil
 packages += plugin-builtin-attach-xunit cloud-providers cloud-providers-ec2 agent-comm
+packages += rest-data rest-route rest-model
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration

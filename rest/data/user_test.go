@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func TestFindUserById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindUserById")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	serviceContext := &DBServiceContext{}
+	serviceContext := &DBConnector{}
 	numUsers := 10
 
 	Convey("When there are user documents in the database", t, func() {

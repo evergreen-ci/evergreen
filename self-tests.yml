@@ -254,7 +254,7 @@ tasks:
     name: test-agent
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-rest-servicecontext
+    name: test-rest-data
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "cli"]
     name: test-cli

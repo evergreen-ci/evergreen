@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -135,7 +135,7 @@ func (tph *tasksByProjectHandler) ParseAndValidate(r *http.Request) error {
 	return tph.PaginationExecutor.ParseAndValidate(r)
 }
 
-func tasksByProjectPaginator(key string, limit int, args interface{}, sc servicecontext.ServiceContext) ([]model.Model,
+func tasksByProjectPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
 	*PageResult, error) {
 	ptArgs, ok := args.(tasksByProjectArgs)
 	if !ok {
@@ -238,9 +238,9 @@ func (tgh *taskGetHandler) ParseAndValidate(r *http.Request) error {
 	return nil
 }
 
-// Execute calls the servicecontext FindTaskById function and returns the task
+// Execute calls the data FindTaskById function and returns the task
 // from the provider.
-func (tgh *taskGetHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+func (tgh *taskGetHandler) Execute(sc data.Connector) (ResponseData, error) {
 	foundTask, err := sc.FindTaskById(tgh.taskId)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
@@ -299,7 +299,7 @@ func (tbh *tasksByBuildHandler) ParseAndValidate(r *http.Request) error {
 	return tbh.PaginationExecutor.ParseAndValidate(r)
 }
 
-func tasksByBuildPaginator(key string, limit int, args interface{}, sc servicecontext.ServiceContext) ([]model.Model,
+func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
 	*PageResult, error) {
 	btArgs, ok := args.(tasksByBuildArgs)
 	if !ok {
@@ -399,9 +399,9 @@ func (trh *taskRestartHandler) ParseAndValidate(r *http.Request) error {
 	return nil
 }
 
-// Execute calls the servicecontext ResetTask function and returns the refreshed
+// Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
-func (trh *taskRestartHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+func (trh *taskRestartHandler) Execute(sc data.Connector) (ResponseData, error) {
 	err := sc.ResetTask(trh.taskId, trh.username, trh.project)
 	if err != nil {
 		return ResponseData{},
@@ -436,7 +436,7 @@ func (trh *taskRestartHandler) Handler() RequestHandler {
 
 // TaskExecutionPatchHandler implements the route PATCH /task/{task_id}. It
 // fetches the changes from request, changes in activation and priority, and
-// calls out to functions in the servicecontext to change these values.
+// calls out to functions in the data to change these values.
 type TaskExecutionPatchHandler struct {
 	Activated *bool  `json:"activated"`
 	Priority  *int64 `json:"priority"`
@@ -493,7 +493,7 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
 
 // Execute sets the Activated and Priority field of the given task and returns
 // an updated version of the task.
-func (tep *TaskExecutionPatchHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+func (tep *TaskExecutionPatchHandler) Execute(sc data.Connector) (ResponseData, error) {
 	if tep.Priority != nil {
 		priority := *tep.Priority
 		if priority > evergreen.MaxTaskPriority &&

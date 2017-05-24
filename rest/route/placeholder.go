@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 )
 
 func getPlaceHolderManger(route string, version int) *RouteManager {
@@ -31,7 +31,7 @@ func (p *placeHolderHandler) Handler() RequestHandler {
 func (p *placeHolderHandler) ParseAndValidate(r *http.Request) error {
 	return nil
 }
-func (p *placeHolderHandler) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+func (p *placeHolderHandler) Execute(sc data.Connector) (ResponseData, error) {
 	return ResponseData{}, rest.APIError{
 		StatusCode: 200,
 		Message:    "this is a placeholder for now",

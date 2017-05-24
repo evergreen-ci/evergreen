@@ -10,14 +10,14 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestPrefetchUser(t *testing.T) {
 	Convey("When there are users to fetch and a request", t, func() {
-		serviceContext := &servicecontext.MockServiceContext{}
+		serviceContext := &data.MockConnector{}
 		users := map[string]*user.DBUser{}
 		numUsers := 10
 		for i := 0; i < numUsers; i++ {
@@ -98,8 +98,8 @@ func TestPrefetchUser(t *testing.T) {
 }
 
 func TestPrefetchProject(t *testing.T) {
-	Convey("When there is a servicecontext and a request", t, func() {
-		serviceContext := &servicecontext.MockServiceContext{}
+	Convey("When there is a data and a request", t, func() {
+		serviceContext := &data.MockConnector{}
 		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		Convey("When fetching the project context", func() {

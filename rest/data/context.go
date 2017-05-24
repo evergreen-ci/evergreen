@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"github.com/evergreen-ci/evergreen/model"

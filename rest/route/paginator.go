@@ -13,7 +13,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 )
 
 const (
@@ -71,11 +71,11 @@ type PageResult struct {
 // PaginatorFunc is a function that handles fetching results from the service
 // layer. It takes as parameters a string which is the key to fetch starting
 // from, and an int as the number of results to limit to.
-type PaginatorFunc func(string, int, interface{}, servicecontext.ServiceContext) ([]model.Model, *PageResult, error)
+type PaginatorFunc func(string, int, interface{}, data.Connector) ([]model.Model, *PageResult, error)
 
 // Execute serves as an implementation of the RequestHandler's 'Execute' method.
 // It calls the embedded PaginationFunc and then processes and returns the results.
-func (pe *PaginationExecutor) Execute(sc servicecontext.ServiceContext) (ResponseData, error) {
+func (pe *PaginationExecutor) Execute(sc data.Connector) (ResponseData, error) {
 	models, pages, err := pe.Paginator(pe.key, pe.limit, pe.Args, sc)
 	if err != nil {
 		return ResponseData{}, err

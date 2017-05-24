@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
@@ -52,14 +52,14 @@ type RequestHandler interface {
 
 	// Execute performs the necessary work on the evergreen backend and returns
 	// an API model to be surfaced to the user.
-	Execute(servicecontext.ServiceContext) (ResponseData, error)
+	Execute(data.Connector) (ResponseData, error)
 }
 
 // makeHandler makes an http.HandlerFunc that wraps calls to each of the api
 // Method functions. It marshalls the response to JSON and writes it out to
 // as the response. If any of the functions return an error, it handles creating
 // a JSON error and sending it as the response.
-func makeHandler(methodHandler MethodHandler, sc servicecontext.ServiceContext) http.HandlerFunc {
+func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		for _, pf := range methodHandler.PrefetchFunctions {
 			if err := pf(r, sc); err != nil {

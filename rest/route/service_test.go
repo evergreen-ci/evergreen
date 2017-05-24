@@ -15,8 +15,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -47,8 +47,8 @@ func TestHostParseAndValidate(t *testing.T) {
 
 func TestHostPaginator(t *testing.T) {
 	numHostsInDB := 300
-	Convey("When paginating with a ServiceContext", t, func() {
-		serviceContext := servicecontext.MockServiceContext{}
+	Convey("When paginating with a Connector", t, func() {
+		serviceContext := data.MockConnector{}
 		Convey("and there are hosts to be found", func() {
 			cachedHosts := []host.Host{}
 			for i := 0; i < numHostsInDB; i++ {
@@ -191,8 +191,8 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 	numTasks := 300
 	projectName := "project_1"
 	commit := "commit_1"
-	Convey("When paginating with a ServiceContext", t, func() {
-		serviceContext := servicecontext.MockServiceContext{}
+	Convey("When paginating with a Connector", t, func() {
+		serviceContext := data.MockConnector{}
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
@@ -384,8 +384,8 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 
 func TestTaskByBuildPaginator(t *testing.T) {
 	numTasks := 300
-	Convey("When paginating with a ServiceContext", t, func() {
-		serviceContext := servicecontext.MockServiceContext{}
+	Convey("When paginating with a Connector", t, func() {
+		serviceContext := data.MockConnector{}
 		Convey("and there are tasks to be found", func() {
 			cachedTasks := []task.Task{}
 			for i := 0; i < numTasks; i++ {
@@ -536,8 +536,8 @@ func TestTaskByBuildPaginator(t *testing.T) {
 
 func TestTestPaginator(t *testing.T) {
 	numTests := 300
-	Convey("When paginating with a ServiceContext", t, func() {
-		serviceContext := servicecontext.MockServiceContext{}
+	Convey("When paginating with a Connector", t, func() {
+		serviceContext := data.MockConnector{}
 		Convey("and there are tasks with tests to be found", func() {
 			cachedTests := []task.TestResult{}
 			for i := 0; i < numTests; i++ {
@@ -823,8 +823,8 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 }
 
 func TestTaskExecutionPatchExecute(t *testing.T) {
-	Convey("With a task in the DB and a ServiceContext", t, func() {
-		sc := servicecontext.MockServiceContext{}
+	Convey("With a task in the DB and a Connector", t, func() {
+		sc := data.MockConnector{}
 		testTask := task.Task{
 			Id:        "testTaskId",
 			Activated: false,
@@ -861,7 +861,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 
 func TestTaskResetPrepare(t *testing.T) {
 	Convey("With handler and a project context and user", t, func() {
-		trh := &TaskRestartHandler{}
+		trh := &taskRestartHandler{}
 
 		projCtx := serviceModel.Context{
 			Task: &task.Task{
@@ -904,9 +904,9 @@ func TestTaskResetPrepare(t *testing.T) {
 }
 
 func TestTaskGetHandler(t *testing.T) {
-	Convey("With test server with a handler and mock servicecontext", t, func() {
+	Convey("With test server with a handler and mock data", t, func() {
 		rm := getTaskRouteManager("/tasks/{task_id}", 2)
-		sc := &servicecontext.MockServiceContext{}
+		sc := &data.MockConnector{}
 		sc.SetPrefix("rest")
 		r := mux.NewRouter()
 
@@ -954,8 +954,8 @@ func TestTaskGetHandler(t *testing.T) {
 }
 
 func TestTaskResetExecute(t *testing.T) {
-	Convey("With a task returned by the ServiceContext", t, func() {
-		sc := servicecontext.MockServiceContext{}
+	Convey("With a task returned by the Connector", t, func() {
+		sc := data.MockConnector{}
 		timeNow := time.Now()
 		testTask := task.Task{
 			Id:           "testTaskId",
@@ -967,7 +967,7 @@ func TestTaskResetExecute(t *testing.T) {
 		Convey("and an error from the service function", func() {
 			sc.MockTaskConnector.StoredError = fmt.Errorf("could not reset task")
 
-			trh := &TaskRestartHandler{
+			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
 				project:  &serviceModel.Project{},
 				username: "testUser",
@@ -983,7 +983,7 @@ func TestTaskResetExecute(t *testing.T) {
 
 		Convey("calling TryReset should reset the task", func() {
 
-			trh := &TaskRestartHandler{
+			trh := &taskRestartHandler{
 				taskId:   "testTaskId",
 				project:  &serviceModel.Project{},
 				username: "testUser",
@@ -1006,7 +1006,7 @@ func TestTaskResetExecute(t *testing.T) {
 }
 
 func checkPaginatorResultMatches(paginator PaginatorFunc, key string, limit int,
-	sc servicecontext.ServiceContext, args interface{}, expectedPages *PageResult,
+	sc data.Connector, args interface{}, expectedPages *PageResult,
 	expectedModels []model.Model, expectedErr error) {
 	res, pages, err := paginator(key, limit, args, sc)
 	So(err, ShouldResemble, expectedErr)

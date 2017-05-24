@@ -3,15 +3,15 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/mux"
 )
 
 // AttachHandler attaches the api's request handlers to the given mux router.
-// It builds a ServiceContext then attaches each of the main functions for
+// It builds a Connector then attaches each of the main functions for
 // the api to the router.
 func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) http.Handler {
-	sc := &servicecontext.DBServiceContext{}
+	sc := &data.DBConnector{}
 
 	sc.SetURL(URL)
 	sc.SetPrefix(prefix)
@@ -22,7 +22,7 @@ func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) ht
 // GetHandler builds each of the functions that this api implements and then
 // registers them on the given router. It then returns the given router as an
 // http handler which can be given more functions.
-func GetHandler(r *mux.Router, sc servicecontext.ServiceContext) http.Handler {
+func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 	routes := map[string]routeManagerFactory{
 		"/builds/{build_id}/tasks": getTasksByBuildRouteManager,
 		"/hosts":                   getHostRouteManager,

@@ -5,14 +5,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 )
 
 // Authenticator is an interface which defines how requests can authenticate
 // against the API service.
 type Authenticator interface {
-	Authenticate(servicecontext.ServiceContext, *http.Request) error
+	Authenticate(data.Connector, *http.Request) error
 }
 
 // NoAuthAuthenticator is an authenticator which allows all requests to pass
@@ -21,7 +21,7 @@ type NoAuthAuthenticator struct{}
 
 // Authenticate does not examine the request and allows all requests to pass
 // through.
-func (n *NoAuthAuthenticator) Authenticate(sc servicecontext.ServiceContext,
+func (n *NoAuthAuthenticator) Authenticate(sc data.Connector,
 	r *http.Request) error {
 	return nil
 }
@@ -34,7 +34,7 @@ type SuperUserAuthenticator struct{}
 // and checks if it matches the users in the settings file. If no SuperUsers
 // exist in the settings file, all users are considered super. It returns
 // 'NotFound' errors to prevent leaking sensitive information.
-func (s *SuperUserAuthenticator) Authenticate(sc servicecontext.ServiceContext,
+func (s *SuperUserAuthenticator) Authenticate(sc data.Connector,
 	r *http.Request) error {
 	u := GetUser(r)
 
@@ -54,7 +54,7 @@ type ProjectAdminAuthenticator struct{}
 
 // ProjectAdminAuthenticator checks that the user is either a super user or is
 // part of the project context's project admins.
-func (p *ProjectAdminAuthenticator) Authenticate(sc servicecontext.ServiceContext,
+func (p *ProjectAdminAuthenticator) Authenticate(sc data.Connector,
 	r *http.Request) error {
 	projCtx := MustHaveProjectContext(r)
 	u := GetUser(r)
@@ -77,7 +77,7 @@ type RequireUserAuthenticator struct{}
 // Authenticate checks that a user is set on the request. If one is
 // set, it is because PrefetchUser already set it, which checks the validity of
 // the APIKey, so that is no longer needed to be checked.
-func (rua *RequireUserAuthenticator) Authenticate(sc servicecontext.ServiceContext,
+func (rua *RequireUserAuthenticator) Authenticate(sc data.Connector,
 	r *http.Request) error {
 	u := GetUser(r)
 	if u == nil {

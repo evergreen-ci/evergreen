@@ -8,7 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/pkg/errors"
 )
 
@@ -55,7 +55,7 @@ func (hgh *hostGetHandler) ParseAndValidate(r *http.Request) error {
 
 // hostPaginator is an instance of a PaginatorFunc that defines how to paginate on
 // the host collection.
-func hostPaginator(key string, limit int, args interface{}, sc servicecontext.ServiceContext) ([]model.Model,
+func hostPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
 	*PageResult, error) {
 	// Fetch this page of hosts, plus the next one
 	// Perhaps these could be cached in case user is making multiple calls idk?

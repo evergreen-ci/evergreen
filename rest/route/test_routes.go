@@ -7,7 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -74,7 +74,7 @@ func (tgh *testGetHandler) ParseAndValidate(r *http.Request) error {
 // testPaginator is the PaginatorFunc that implements the functionality of paginating
 // over the tests results of a task. It executes the database lookup and creates
 // the pages for pagination.
-func testPaginator(key string, limit int, args interface{}, sc servicecontext.ServiceContext) ([]model.Model,
+func testPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
 	*PageResult, error) {
 	tghArgs, ok := args.(testGetHandlerArgs)
 	if !ok {

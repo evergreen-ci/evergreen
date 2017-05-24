@@ -6,7 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -28,11 +28,11 @@ const (
 // PrefetchFunc is a function signature that defines types of functions which may
 // be used to fetch data before the main request handler is called. They should
 // fetch data using the ServiceeContext and set them on the request context.
-type PrefetchFunc func(*http.Request, servicecontext.ServiceContext) error
+type PrefetchFunc func(*http.Request, data.Connector) error
 
 // PrefetchUser gets the user information from a request, and uses it to
 // get the associated user from the database and attaches it to the request context.
-func PrefetchUser(r *http.Request, sc servicecontext.ServiceContext) error {
+func PrefetchUser(r *http.Request, sc data.Connector) error {
 	// Grab API auth details from header
 	var authDataAPIKey, authDataName string
 
@@ -63,7 +63,7 @@ func PrefetchUser(r *http.Request, sc servicecontext.ServiceContext) error {
 
 // PrefetchProjectContext gets the information related to the project that the request contains
 // and fetches the associated project context and attaches that to the request context.
-func PrefetchProjectContext(r *http.Request, sc servicecontext.ServiceContext) error {
+func PrefetchProjectContext(r *http.Request, sc data.Connector) error {
 	vars := mux.Vars(r)
 	taskId := vars["task_id"]
 	buildId := vars["build_id"]

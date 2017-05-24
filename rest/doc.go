@@ -8,12 +8,12 @@
 	is an interface with two methods, BuildFromService and ToService that
 	define how to transform to and from an API model.
 
-	ServiceContext
+	Connector
 
-	ServiceContext is a very large interface that defines interaction with the backing
+	Connector is a very large interface that defines interaction with the backing
 	database and service layer. It has two main sets of implementations: one that
 	communicate with the database and one that mocks the same functionality. Development
-	does not require the creation of new ServiceContext's, only addition to extant ones.
+	does not require the creation of new Connector's, only addition to extant ones.
 
 	RequestHandler
 

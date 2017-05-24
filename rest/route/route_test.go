@@ -9,7 +9,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -60,7 +60,7 @@ func TestMakeRoute(t *testing.T) {
 			MethodType:     evergreen.MethodDelete,
 		}
 		Convey("then adding and registering should result in a correct route", func() {
-			sc := &servicecontext.MockServiceContext{}
+			sc := &data.MockConnector{}
 			sc.SetPrefix("rest")
 			r := mux.NewRouter()
 			route := &RouteManager{

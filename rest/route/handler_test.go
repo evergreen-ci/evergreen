@@ -10,7 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/rest/servicecontext"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -117,7 +117,7 @@ func checkResultMatches(m MethodHandler, expectedErr error,
 
 	testRoute := "/test/route"
 
-	handler := makeHandler(m, &servicecontext.MockServiceContext{})
+	handler := makeHandler(m, &data.MockConnector{})
 
 	u := &url.URL{
 		RawQuery: queryParams,

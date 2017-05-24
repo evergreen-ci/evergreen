@@ -1,4 +1,4 @@
-package servicecontext
+package data
 
 import (
 	"github.com/evergreen-ci/evergreen/auth"
@@ -7,11 +7,11 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 )
 
-// ServiceContext is an interface that contains all of the methods which
+// Connector is an interface that contains all of the methods which
 // connect to the service layer of evergreen. These methods abstract the link
 // between the service and the API layers, allowing for changes in the
 // service architecture without forcing changes to the API.
-type ServiceContext interface {
+type Connector interface {
 	// Get and Set SuperUsers provide access to the list of API super users.
 	GetSuperUsers() []string
 	SetSuperUsers([]string)
