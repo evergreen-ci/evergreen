@@ -195,7 +195,7 @@ func ParsePaginationHeader(header, keyQueryParam,
 //		http://evergreen.mongodb.com/{route}?key={key}&limit={limit}; rel="{relation}"
 //    http://...
 func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter,
-	prefix, apiURL, route string) error {
+	apiURL, route string) error {
 
 	//Not exactly sure what to do in this case
 	if pm.Pages == nil || (pm.Pages.Next == nil && pm.Pages.Prev == nil) {
@@ -205,7 +205,7 @@ func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter,
 	if err != nil {
 		return err
 	}
-	baseURL.Path = path.Clean(fmt.Sprintf("/%s/%s", prefix, route))
+	baseURL.Path = path.Clean(fmt.Sprintf("/%s", route))
 
 	b := bytes.Buffer{}
 	if pm.Pages.Next != nil {

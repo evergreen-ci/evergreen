@@ -90,7 +90,7 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 		// other specific cases for how to handle results.
 		switch m := result.Metadata.(type) {
 		case *PaginationMetadata:
-			err := m.MakeHeader(w, sc.GetPrefix(), sc.GetURL(), r.URL.Path)
+			err := m.MakeHeader(w, sc.GetURL(), r.URL.Path)
 			if err != nil {
 				handleAPIError(err, w, r)
 				return
