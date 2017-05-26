@@ -151,7 +151,7 @@ filters.common.filter('conditional', function() {
       return input;
     }
     return input.replace(JIRA_REGEXP, function(match) {
-      return '<a href="'+jiraHost +'/browse/' + match + '">' + match + '</a>';
+      return '<a href="https://'+jiraHost +'/browse/' + match + '">' + match + '</a>';
     });
   }
 }).filter('convertDateToUserTimezone', function() {
