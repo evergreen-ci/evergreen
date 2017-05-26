@@ -65,7 +65,7 @@ lintArgs += --enable="goimports" --enable="misspell" --enable="unused" --enable=
 # lintArgs += --enable="lll" --line-length=100
 lintArgs += --dupl-threshold=175
 #  two similar functions triggered the duplicate warning, but they're not.
-# lintArgs += --exclude="file is not goimported" # test files aren't imported
+lintArgs += --exclude="file is not goimported" # test files aren't imported
 #  golint doesn't handle splitting package comments between multiple files.
 # lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
