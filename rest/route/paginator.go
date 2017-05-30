@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 )
 
 const (
@@ -194,8 +194,7 @@ func ParsePaginationHeader(header, keyQueryParam,
 // Link:
 //		http://evergreen.mongodb.com/{route}?key={key}&limit={limit}; rel="{relation}"
 //    http://...
-func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter,
-	apiURL, route string) error {
+func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter, apiURL, route string) error {
 
 	//Not exactly sure what to do in this case
 	if pm.Pages == nil || (pm.Pages.Next == nil && pm.Pages.Prev == nil) {

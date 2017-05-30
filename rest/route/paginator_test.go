@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -17,7 +17,6 @@ import (
 func TestMakePaginationHeader(t *testing.T) {
 	testURL := "http://evergreenurl.com"
 	testRoute := "test/route"
-	testPrefix := "rest"
 
 	testPrevKey := "prevkey"
 	testNextKey := "nextkey"
@@ -50,7 +49,7 @@ func TestMakePaginationHeader(t *testing.T) {
 				LimitQueryParam: testLimitQueryParam,
 			}
 
-			err := pm.MakeHeader(w, testPrefix, testURL, testRoute)
+			err := pm.MakeHeader(w, testURL, testRoute)
 			So(err, ShouldBeNil)
 			linksHeader, ok := w.Header()["Link"]
 			So(ok, ShouldBeTrue)
@@ -80,7 +79,7 @@ func TestMakePaginationHeader(t *testing.T) {
 				LimitQueryParam: testLimitQueryParam,
 			}
 
-			err := pm.MakeHeader(w, testPrefix, testURL, testRoute)
+			err := pm.MakeHeader(w, testURL, testRoute)
 			So(err, ShouldBeNil)
 			linksHeader, ok := w.Header()["Link"]
 			So(ok, ShouldBeTrue)
@@ -107,7 +106,7 @@ func TestMakePaginationHeader(t *testing.T) {
 				LimitQueryParam: testLimitQueryParam,
 			}
 
-			err := pm.MakeHeader(w, testPrefix, testURL, testRoute)
+			err := pm.MakeHeader(w, testURL, testRoute)
 			So(err, ShouldBeNil)
 			linksHeader, ok := w.Header()["Link"]
 			So(ok, ShouldBeTrue)
