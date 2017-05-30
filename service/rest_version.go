@@ -470,7 +470,7 @@ func (ra *restAPI) lastGreen(w http.ResponseWriter, r *http.Request) {
 		if p.FindBuildVariant(key) != nil {
 			bvs = append(bvs, key)
 		} else {
-			msg := fmt.Sprintf("build variant '%v' does not exit", key)
+			msg := fmt.Sprintf("build variant '%v' does not exist", key)
 			http.Error(w, msg, http.StatusNotFound)
 			return
 		}
