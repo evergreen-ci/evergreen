@@ -83,7 +83,7 @@ func (rc *RemoteCommand) Stop() error {
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
 		grip.Debugf("RemoteCommand(%s) killing process %d", rc.Id, rc.Cmd.Process.Pid)
 		err := rc.Cmd.Process.Kill()
-		if strings.Contains(err.Error(), "process already finished") {
+		if err == nil || strings.Contains(err.Error(), "process already finished") {
 			return nil
 		}
 		return errors.WithStack(err)
