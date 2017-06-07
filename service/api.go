@@ -744,7 +744,8 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	// attaches the /rest/v1 routes
 	AttachRESTHandler(root, as)
 	// attaches /rest/v2 routes
-	route.AttachHandler(root, as.Settings.SuperUsers, as.Settings.ApiUrl, evergreen.RestRoutePrefix)
+	APIV2Prefix := evergreen.APIRoutePrefix + "/" + evergreen.RestRoutePrefix
+	route.AttachHandler(root, as.Settings.SuperUsers, as.Settings.ApiUrl, APIV2Prefix)
 
 	r := root.PathPrefix("/api/2/").Subrouter()
 	r.HandleFunc("/", home)

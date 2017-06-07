@@ -81,6 +81,7 @@ const (
 	APIServerTaskActivator = "apiserver"
 
 	RestRoutePrefix = "rest"
+	APIRoutePrefix  = "api"
 
 	AgentAPIVersion = 2
 )

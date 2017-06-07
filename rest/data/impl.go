@@ -12,6 +12,7 @@ type DBConnector struct {
 	DBUserConnector
 	DBTaskConnector
 	DBContextConnector
+	DBDistroConnector
 	DBHostConnector
 	DBTestConnector
 }
@@ -31,6 +32,7 @@ type MockConnector struct {
 	MockUserConnector
 	MockTaskConnector
 	MockContextConnector
+	MockDistroConnector
 	MockHostConnector
 	MockTestConnector
 }

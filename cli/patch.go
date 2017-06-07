@@ -86,6 +86,7 @@ type ListCommand struct {
 	Projects   bool     `long:"projects" description:"list all available projects"`
 	Variants   bool     `long:"variants" description:"list all variants for a project"`
 	Tasks      bool     `long:"tasks" description:"list all tasks for a project"`
+	Distros    bool     `long:"distros" description:"list all distros for a project"`
 }
 
 // ValidateCommand is used to verify that a config file is valid.
@@ -405,9 +406,17 @@ func (lgc *LastGreenCommand) Execute(_ []string) error {
 
 func (lc *ListCommand) Execute(_ []string) error {
 	// stop the user from using > 1 type flag
-	if (lc.Projects && (lc.Variants || lc.Tasks)) || (lc.Tasks && lc.Variants) {
-		return errors.Errorf("list command takes only one of --projects, --variants, or --tasks")
+	opts := []bool{lc.Projects, lc.Variants, lc.Tasks, lc.Distros}
+	var numOpts int
+	for _, opt := range opts {
+		if opt {
+			numOpts++
+		}
 	}
+	if numOpts != 1 {
+		return errors.Errorf("must specify one and only one of --projects, --variants, --tasks, or --distros")
+	}
+
 	if lc.Projects {
 		return lc.listProjects()
 	}
@@ -417,7 +426,10 @@ func (lc *ListCommand) Execute(_ []string) error {
 	if lc.Variants {
 		return lc.listVariants()
 	}
-	return errors.Errorf("must specify one of --projects, --variants, or --tasks")
+	if lc.Distros {
+		return lc.listDistros()
+	}
+	return errors.Errorf("this code should not be reachable")
 }
 
 func (lc *ListCommand) listProjects() error {
@@ -453,6 +465,24 @@ func (lc *ListCommand) listProjects() error {
 		fmt.Fprintln(w, line)
 	}
 	return errors.WithStack(w.Flush())
+}
+
+func (lc *ListCommand) listDistros() error {
+	ac, _, _, err := getAPIClients(lc.GlobalOpts)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	notifyUserUpdate(ac)
+
+	distros, err := ac.ListDistros()
+	if err != nil {
+		return err
+	}
+	fmt.Println(len(distros), "distros:")
+	for _, distro := range distros {
+		fmt.Println(distro.Id)
+	}
+	return nil
 }
 
 // LoadLocalConfig loads the local project config into a project

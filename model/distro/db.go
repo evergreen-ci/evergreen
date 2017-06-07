@@ -33,7 +33,7 @@ var (
 const Collection = "distro"
 
 // All is a query that returns all distros.
-var All = db.Query(nil)
+var All = db.Query(nil).Sort([]string{IdKey})
 
 // FindOne gets one Distro for the given query.
 func FindOne(query db.Q) (*Distro, error) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/service"
@@ -28,6 +29,7 @@ type APIClient struct {
 	httpClient http.Client
 	User       string
 	APIKey     string
+	APIRootV2  string
 }
 
 // APIError is an implementation of error for reporting unexpected results from API calls.
@@ -57,28 +59,45 @@ func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, erro
 		return nil, nil, nil, err
 	}
 
-	// create a client for the regular API server
-	ac := &APIClient{APIRoot: settings.APIServerHost, User: settings.User, APIKey: settings.APIKey}
+	// create a client for the API servers
+	APIV2Root := settings.APIServerHost + "/rest/v2"
+	ac := &APIClient{
+		APIRoot:   settings.APIServerHost,
+		APIRootV2: APIV2Root,
+		User:      settings.User,
+		APIKey:    settings.APIKey,
+	}
 
-	// create client for the REST api
+	// create client for the REST APIs
 	apiUrl, err := url.Parse(settings.APIServerHost)
 	if err != nil {
 		return nil, nil, nil, errors.Errorf("Settings file contains an invalid url: %v", err)
 	}
 
 	rc := &APIClient{
-		APIRoot: apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v1",
-		User:    settings.User,
-		APIKey:  settings.APIKey,
+		APIRoot:   apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v1",
+		APIRootV2: apiUrl.Scheme + "://" + apiUrl.Host + "/rest/v2",
+		User:      settings.User,
+		APIKey:    settings.APIKey,
 	}
+
 	return ac, rc, settings, nil
 }
 
 // doReq performs a request of the given method type against path.
 // If body is not nil, also includes it as a request body as url-encoded data with the
 // appropriate header
-func (ac *APIClient) doReq(method, path string, body io.Reader) (*http.Response, error) {
-	req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRoot, path), body)
+func (ac *APIClient) doReq(method, path string, apiVersion int, body io.Reader) (*http.Response, error) {
+	var req *http.Request
+	var err error
+
+	if apiVersion == 1 {
+		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRoot, path), body)
+	} else if apiVersion == 2 {
+		req, err = http.NewRequest(method, fmt.Sprintf("%s/%s", ac.APIRootV2, path), body)
+	} else {
+		return nil, errors.Errorf("apiVersion must be 1 or 2")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -96,19 +115,23 @@ func (ac *APIClient) doReq(method, path string, body io.Reader) (*http.Response,
 }
 
 func (ac *APIClient) get(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("GET", path, body)
+	return ac.doReq("GET", path, 1, body)
+}
+
+func (ac *APIClient) get2(path string, body io.Reader) (*http.Response, error) {
+	return ac.doReq("GET", path, 2, body)
 }
 
 func (ac *APIClient) delete(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("DELETE", path, body)
+	return ac.doReq("DELETE", path, 1, body)
 }
 
 func (ac *APIClient) put(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("PUT", path, body)
+	return ac.doReq("PUT", path, 1, body)
 }
 
 func (ac *APIClient) post(path string, body io.Reader) (*http.Response, error) {
-	return ac.doReq("POST", path, body)
+	return ac.doReq("POST", path, 1, body)
 }
 
 func (ac *APIClient) modifyExisting(patchId, action string) error {
@@ -344,6 +367,21 @@ func (ac *APIClient) ListVariants(project string) ([]model.BuildVariant, error) 
 		return nil, err
 	}
 	return variants, nil
+}
+
+func (ac *APIClient) ListDistros() ([]distro.Distro, error) {
+	resp, err := ac.get2("distros", nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem querying api server")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Wrap(NewAPIError(resp), "bad status from api server")
+	}
+	distros := []distro.Distro{}
+	if err := util.ReadJSONInto(resp.Body, &distros); err != nil {
+		return nil, errors.Wrap(err, "error reading json")
+	}
+	return distros, nil
 }
 
 // PutPatch submits a new patch for the given project to the API server. If successful, returns

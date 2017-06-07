@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
@@ -100,8 +100,11 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 			if len(result.Result) < 1 {
 				http.Error(w, "{}", http.StatusInternalServerError)
 				return
+			} else if len(result.Result) > 1 {
+				util.WriteJSON(&w, result.Result, http.StatusOK)
+			} else {
+				util.WriteJSON(&w, result.Result[0], http.StatusOK)
 			}
-			util.WriteJSON(&w, result.Result[0], http.StatusOK)
 		}
 	}
 }

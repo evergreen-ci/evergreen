@@ -3,6 +3,7 @@ package data
 import (
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 )
@@ -57,4 +58,7 @@ type Connector interface {
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
+
+	// FindAllDistros is a method to find a sorted list of all distros.
+	FindAllDistros() ([]distro.Distro, error)
 }
