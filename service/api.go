@@ -48,13 +48,9 @@ const (
 	apiProjectRefKey projectRefKey = 0
 
 	APIServerLockTitle = evergreen.APIServerTaskActivator
-	PatchLockTitle     = "patches"
 	TaskStartCaller    = "start task"
 	EndTaskCaller      = "end task"
 )
-
-// ErrLockTimeout is returned when the database lock takes too long to be acquired.
-var ErrLockTimeout = errors.New("Timed out acquiring global lock")
 
 // APIServer handles communication with Evergreen agents and other back-end requests.
 type APIServer struct {
