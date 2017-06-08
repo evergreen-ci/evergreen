@@ -1,0 +1,19 @@
+tasks:
+  - name: testinc
+    commands:
+     - command: keyval.inc
+       params:
+         key: "remote_testkey"
+         destination: "testkey"
+     - command: keyval.inc
+       params:
+         key: "remote_testkey"
+         destination: "testkey"
+     - command: keyval.inc
+       params:
+         key: "remote_testkey_2"
+         destination: "testkey_x"
+
+buildvariants:
+ - name: linux-64
+        
