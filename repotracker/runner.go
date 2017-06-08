@@ -97,23 +97,34 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		numNewRepoRevisionsToFetch = DefaultNumNewRepoRevisionsToFetch
 	}
 
+	numRequests := config.RepoTracker.MaxConcurrentRequests
+	if numRequests <= 0 {
+		numRequests = DefaultNumConcurrentRequests
+	}
+
+	jobs := make(chan *repoTrackerJob)
+
+	go func(projects []model.ProjectRef) {
+		for _, projectRef := range projects {
+			jobs <- &repoTrackerJob{
+				conf:  config,
+				ref:   &projectRef,
+				creds: config.Credentials["github"],
+				num:   numNewRepoRevisionsToFetch,
+			}
+		}
+		close(jobs)
+	}(allProjects)
+
 	var wg sync.WaitGroup
-	wg.Add(len(allProjects))
-	for _, projectRef := range allProjects {
-		go func(projectRef model.ProjectRef) {
+	for i := 0; i < numRequests; i++ {
+		wg.Add(1)
+		go func(jobs <-chan *repoTrackerJob) {
 			defer wg.Done()
-
-			tracker := &RepoTracker{
-				config,
-				&projectRef,
-				NewGithubRepositoryPoller(&projectRef, config.Credentials["github"]),
+			for job := range jobs {
+				job.Run()
 			}
-
-			err = tracker.FetchRevisions(numNewRepoRevisionsToFetch)
-			if err != nil {
-				grip.Errorln("Error fetching revisions:", err)
-			}
-		}(projectRef)
+		}(jobs)
 	}
 	wg.Wait()
 
@@ -125,4 +136,23 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	}
 	grip.Infof("Repository tracker took %s to run", runtime)
 	return nil
+}
+
+type repoTrackerJob struct {
+	conf  *evergreen.Settings
+	ref   *model.ProjectRef
+	creds string
+	num   int
+}
+
+func (j *repoTrackerJob) Run() {
+	tracker := &RepoTracker{
+		j.conf,
+		j.ref,
+		NewGithubRepositoryPoller(j.ref, j.creds),
+	}
+
+	if err := tracker.FetchRevisions(j.num); err != nil {
+		grip.Errorln("Error fetching revisions:", err)
+	}
 }

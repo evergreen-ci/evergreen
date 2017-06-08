@@ -66,6 +66,7 @@ type AuthConfig struct {
 type RepoTrackerConfig struct {
 	NumNewRepoRevisionsToFetch int
 	MaxRepoRevisionsToSearch   int
+	MaxConcurrentRequests      int
 	LogFile                    string
 }
 
