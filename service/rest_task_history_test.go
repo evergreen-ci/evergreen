@@ -90,6 +90,7 @@ func TestGetTestHistory(t *testing.T) {
 			StartTime:           now,
 			RevisionOrderNumber: 1,
 			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.RepotrackerVersionRequester,
 			TestResults: []task.TestResult{
 				task.TestResult{
 					Status:    evergreen.TestFailedStatus,
@@ -117,6 +118,7 @@ func TestGetTestHistory(t *testing.T) {
 			StartTime:           now.Add(time.Duration(30 * time.Minute)),
 			RevisionOrderNumber: 2,
 			Status:              evergreen.TaskFailed,
+			Requester:           evergreen.PatchVersionRequester,
 			TestResults: []task.TestResult{
 				task.TestResult{
 					Status:    evergreen.TestFailedStatus,
@@ -160,18 +162,20 @@ func TestGetTestHistory(t *testing.T) {
 		}
 		So(task3.Insert(), ShouldBeNil)
 
-		url, err := router.Get("test_history").URL("project_id", project)
-		So(err, ShouldBeNil)
-
-		request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20", nil)
-		So(err, ShouldBeNil)
-
-		response := httptest.NewRecorder()
-		// Need match variables to be set so can call mux.Vars(request)
-		// in the actual handler function
-		router.ServeHTTP(response, request)
-		So(response.Code, ShouldEqual, http.StatusOK)
 		Convey("response should be a list of test results", func() {
+
+			url, err := router.Get("test_history").URL("project_id", project)
+			So(err, ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20&requestSource=any", nil)
+			So(err, ShouldBeNil)
+
+			response := httptest.NewRecorder()
+			// Need match variables to be set so can call mux.Vars(request)
+			// in the actual handler function
+			router.ServeHTTP(response, request)
+			So(response.Code, ShouldEqual, http.StatusOK)
+
 			var results []RestTestHistoryResult
 			err = json.Unmarshal(response.Body.Bytes(), &results)
 			So(err, ShouldBeNil)
@@ -189,8 +193,79 @@ func TestGetTestHistory(t *testing.T) {
 			So(results[0].Url, ShouldEqual, "anotherurl")
 
 			So(results[1].Url, ShouldEqual, "url")
-			So(results[2].Url, ShouldEqual, "url")
 			So(results[3].Url, ShouldEqual, fmt.Sprintf("%v/test_log/2", taskTestConfig.Ui.Url))
+		})
+
+		Convey("response when only requesting patches should have one result ", func() {
+			url, err := router.Get("test_history").URL("project_id", project)
+			So(err, ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20&requestSource=patch", nil)
+			So(err, ShouldBeNil)
+
+			response := httptest.NewRecorder()
+			// Need match variables to be set so can call mux.Vars(request)
+			// in the actual handler function
+			router.ServeHTTP(response, request)
+			So(response.Code, ShouldEqual, http.StatusOK)
+
+			var results []RestTestHistoryResult
+			err = json.Unmarshal(response.Body.Bytes(), &results)
+			So(err, ShouldBeNil)
+			So(len(results), ShouldEqual, 2)
+			So(results[0].Url, ShouldEqual, "anotherurl")
+		})
+
+		Convey("response with invalid build request source should be an error", func() {
+			url, err := router.Get("test_history").URL("project_id", project)
+			So(err, ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20&requestSource=INVALID", nil)
+			So(err, ShouldBeNil)
+
+			response := httptest.NewRecorder()
+			// Need match variables to be set so can call mux.Vars(request)
+			// in the actual handler function
+			router.ServeHTTP(response, request)
+			So(response.Code, ShouldEqual, http.StatusBadRequest)
+		})
+
+		Convey("response with commit requests should have the expected results", func() {
+			url, err := router.Get("test_history").URL("project_id", project)
+			So(err, ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20&requestSource=commit", nil)
+			So(err, ShouldBeNil)
+
+			response := httptest.NewRecorder()
+			// Need match variables to be set so can call mux.Vars(request)
+			// in the actual handler function
+			router.ServeHTTP(response, request)
+			So(response.Code, ShouldEqual, http.StatusOK)
+
+			var results []RestTestHistoryResult
+			err = json.Unmarshal(response.Body.Bytes(), &results)
+			So(err, ShouldBeNil)
+			So(len(results), ShouldEqual, 1)
+		})
+
+		Convey("response with no request source argument should have the same results as commit", func() {
+			url, err := router.Get("test_history").URL("project_id", project)
+			So(err, ShouldBeNil)
+
+			request, err := http.NewRequest("GET", url.String()+"?tasks=test,test2&limit=20", nil)
+			So(err, ShouldBeNil)
+
+			response := httptest.NewRecorder()
+			// Need match variables to be set so can call mux.Vars(request)
+			// in the actual handler function
+			router.ServeHTTP(response, request)
+			So(response.Code, ShouldEqual, http.StatusOK)
+
+			var results []RestTestHistoryResult
+			err = json.Unmarshal(response.Body.Bytes(), &results)
+			So(err, ShouldBeNil)
+			So(len(results), ShouldEqual, 1)
 		})
 	})
 }

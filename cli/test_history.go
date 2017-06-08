@@ -41,12 +41,15 @@ type TestHistoryCommand struct {
 	Filepath   string `long:"filepath" description:"path to directory where file is to be saved, only used with json or csv format"`
 	Format     string `long:"format" description:"format to export test history, options are 'json', 'csv', 'pretty', default pretty to stdout"`
 	Limit      int    `long:"limit" description:"number of tasks to include the request. defaults to no limit, but you must specify either a limit or before/after revisions."`
+	Request    string `long:"request-source" short:"r" description:"include 'patch', 'commit' or 'all' builds. Only shows commit builds if not specified."`
 }
 
 // createUrlQuery returns a string url query parameter with relevant url parameters.
 func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
-	queryString := fmt.Sprintf("testStatuses=%v&taskStatuses=%v", strings.Join(testHistoryParameters.TestStatuses, ","),
-		strings.Join(testHistoryParameters.TaskStatuses, ","))
+	queryString := fmt.Sprintf("testStatuses=%s&taskStatuses=%s&buildType=%s",
+		strings.Join(testHistoryParameters.TestStatuses, ","),
+		strings.Join(testHistoryParameters.TaskStatuses, ","),
+		testHistoryParameters.TaskRequestType)
 
 	if len(testHistoryParameters.TaskNames) > 0 {
 		queryString += fmt.Sprintf("&tasks=%v", strings.Join(testHistoryParameters.TaskNames, ","))
@@ -153,18 +156,19 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 
 	// create a test history parameter struct and validate it
 	testHistoryParameters := model.TestHistoryParameters{
-		Project:        thc.Project,
-		TaskNames:      thc.Tasks,
-		TestNames:      thc.Tests,
-		BuildVariants:  thc.Variants,
-		TaskStatuses:   taskStatuses,
-		TestStatuses:   testStatuses,
-		BeforeRevision: thc.BeforeRevision,
-		AfterRevision:  thc.AfterRevision,
-		BeforeDate:     beforeDate,
-		AfterDate:      afterDate,
-		Sort:           sort,
-		Limit:          thc.Limit,
+		Project:         thc.Project,
+		TaskNames:       thc.Tasks,
+		TestNames:       thc.Tests,
+		BuildVariants:   thc.Variants,
+		TaskStatuses:    taskStatuses,
+		TestStatuses:    testStatuses,
+		BeforeRevision:  thc.BeforeRevision,
+		AfterRevision:   thc.AfterRevision,
+		BeforeDate:      beforeDate,
+		AfterDate:       afterDate,
+		Sort:            sort,
+		Limit:           thc.Limit,
+		TaskRequestType: thc.Request,
 	}
 
 	if err := testHistoryParameters.SetDefaultsAndValidate(); err != nil {

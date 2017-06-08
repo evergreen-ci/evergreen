@@ -104,18 +104,19 @@ var (
 // TestHistoryParameters are the parameters that are used
 // to retrieve Test Results.
 type TestHistoryParameters struct {
-	Project        string    `json:"project"`
-	TestNames      []string  `json:"test_names"`
-	TaskNames      []string  `json:"task_names"`
-	BuildVariants  []string  `json:"variants"`
-	TaskStatuses   []string  `json:"task_statuses"`
-	TestStatuses   []string  `json:"test_statuses"`
-	BeforeRevision string    `json:"before_revision"`
-	AfterRevision  string    `json:"after_revision"`
-	BeforeDate     time.Time `json:"before_date"`
-	AfterDate      time.Time `json:"after_date"`
-	Sort           int       `json:"sort"`
-	Limit          int       `json:"limit"`
+	Project         string    `json:"project"`
+	TestNames       []string  `json:"test_names"`
+	TaskNames       []string  `json:"task_names"`
+	BuildVariants   []string  `json:"variants"`
+	TaskStatuses    []string  `json:"task_statuses"`
+	TestStatuses    []string  `json:"test_statuses"`
+	BeforeRevision  string    `json:"before_revision"`
+	AfterRevision   string    `json:"after_revision"`
+	TaskRequestType string    `json:"task_request"`
+	BeforeDate      time.Time `json:"before_date"`
+	AfterDate       time.Time `json:"after_date"`
+	Sort            int       `json:"sort"`
+	Limit           int       `json:"limit"`
 }
 
 type TaskHistoryIterator interface {
@@ -419,6 +420,7 @@ func (thp *TestHistoryParameters) SetDefaultsAndValidate() error {
 	if thp.Sort == 0 {
 		thp.Sort = -1
 	}
+
 	validationErrors := thp.validate()
 	if len(validationErrors) > 0 {
 		return errors.Errorf("validation error on test history parameters: %s",
@@ -513,6 +515,10 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.StatusKey:                                 evergreen.TaskFailed,
 			task.DetailsKey + "." + task.TaskEndDetailType: "system",
 		})
+	}
+
+	if testHistoryParameters.TaskRequestType != "" {
+		taskMatchQuery[task.RequesterKey] = testHistoryParameters.TaskRequestType
 	}
 
 	taskMatchQuery["$or"] = statusQuery

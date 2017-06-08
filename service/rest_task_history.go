@@ -119,6 +119,20 @@ func (restapi restAPI) GetTestHistory(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	switch r.FormValue("requestSource") {
+	case "patch", "patch_request":
+		params.TaskRequestType = evergreen.PatchVersionRequester
+	case "", "commit", "gitter", "gitter_request", "repotracker":
+		params.TaskRequestType = evergreen.RepotrackerVersionRequester
+	case "all", "both", "any":
+		params.TaskRequestType = ""
+	default:
+		restapi.WriteJSON(w, http.StatusBadRequest,
+			fmt.Sprintf("invalid request type '%s', should be 'patch' or 'commit'",
+				r.FormValue("requestSource")))
+		return
+	}
+
 	sort := r.FormValue("sort")
 	switch sort {
 	case "earliest":
