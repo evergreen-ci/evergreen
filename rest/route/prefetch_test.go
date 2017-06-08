@@ -11,8 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestPrefetchUser(t *testing.T) {
@@ -33,15 +33,13 @@ func TestPrefetchUser(t *testing.T) {
 		So(err, ShouldBeNil)
 		Convey("When examining users", func() {
 
-			Reset(func() {
-				context.Clear(req)
-			})
+			ctx := context.Background()
 
 			Convey("When no header is set, should no-op", func() {
-				err := PrefetchUser(req, serviceContext)
+				ctx, err = PrefetchUser(ctx, serviceContext, req)
 				So(err, ShouldBeNil)
 
-				So(context.Get(req, RequestUser), ShouldBeNil)
+				So(ctx.Value(RequestUser), ShouldBeNil)
 			})
 
 			Convey("When just API-Key is set, should not set anything", func() {
@@ -49,10 +47,10 @@ func TestPrefetchUser(t *testing.T) {
 					req.Header = http.Header{}
 					userId := fmt.Sprintf("user_%d", i)
 					req.Header.Set("Api-User", userId)
-					err := PrefetchUser(req, serviceContext)
+					ctx, err = PrefetchUser(ctx, serviceContext, req)
 					So(err, ShouldBeNil)
 
-					So(context.Get(req, RequestUser), ShouldBeNil)
+					So(ctx.Value(RequestUser), ShouldBeNil)
 				}
 			})
 			Convey("When API-User and API-Key is set,"+
@@ -63,14 +61,14 @@ func TestPrefetchUser(t *testing.T) {
 					apiKey := fmt.Sprintf("apiKey_%d", i)
 					req.Header.Set("Api-Key", apiKey)
 					req.Header.Set("Api-User", userId)
-					err := PrefetchUser(req, serviceContext)
+					ctx, err = PrefetchUser(ctx, serviceContext, req)
 					So(err, ShouldBeNil)
 					u := user.DBUser{
 						Id:     userId,
 						APIKey: apiKey,
 					}
 
-					So(context.Get(req, RequestUser), ShouldResemble, &u)
+					So(ctx.Value(RequestUser), ShouldResemble, &u)
 				}
 			})
 			Convey("When API-User and API-Key is set incorrectly,"+
@@ -82,7 +80,7 @@ func TestPrefetchUser(t *testing.T) {
 					req.Header.Set("Api-Key", apiKey)
 					req.Header.Set("Api-User", userId)
 
-					err := PrefetchUser(req, serviceContext)
+					ctx, err = PrefetchUser(ctx, serviceContext, req)
 
 					errToResemble := rest.APIError{
 						StatusCode: http.StatusUnauthorized,
@@ -90,7 +88,7 @@ func TestPrefetchUser(t *testing.T) {
 					}
 
 					So(err, ShouldResemble, errToResemble)
-					So(context.Get(req, RequestUser), ShouldBeNil)
+					So(ctx.Value(RequestUser), ShouldBeNil)
 				}
 			})
 		})
@@ -103,17 +101,15 @@ func TestPrefetchProject(t *testing.T) {
 		req, err := http.NewRequest(evergreen.MethodGet, "/", nil)
 		So(err, ShouldBeNil)
 		Convey("When fetching the project context", func() {
-			Reset(func() {
-				context.Clear(req)
-			})
+			ctx := context.Background()
 			Convey("should error if project is private and no user is set", func() {
-				ctx := model.Context{}
-				ctx.ProjectRef = &model.ProjectRef{
+				opCtx := model.Context{}
+				opCtx.ProjectRef = &model.ProjectRef{
 					Private: true,
 				}
-				serviceContext.MockContextConnector.CachedContext = ctx
-				err := PrefetchProjectContext(req, serviceContext)
-				So(context.Get(req, RequestContext), ShouldBeNil)
+				serviceContext.MockContextConnector.CachedContext = opCtx
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				So(ctx.Value(RequestContext), ShouldBeNil)
 
 				errToResemble := rest.APIError{
 					StatusCode: http.StatusNotFound,
@@ -122,11 +118,11 @@ func TestPrefetchProject(t *testing.T) {
 				So(err, ShouldResemble, errToResemble)
 			})
 			Convey("should error if patch exists and no user is set", func() {
-				ctx := model.Context{}
-				ctx.Patch = &patch.Patch{}
-				serviceContext.MockContextConnector.CachedContext = ctx
-				err := PrefetchProjectContext(req, serviceContext)
-				So(context.Get(req, RequestContext), ShouldBeNil)
+				opCtx := model.Context{}
+				opCtx.Patch = &patch.Patch{}
+				serviceContext.MockContextConnector.CachedContext = opCtx
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
+				So(ctx.Value(RequestContext), ShouldBeNil)
 
 				errToResemble := rest.APIError{
 					StatusCode: http.StatusNotFound,
@@ -135,16 +131,16 @@ func TestPrefetchProject(t *testing.T) {
 				So(err, ShouldResemble, errToResemble)
 			})
 			Convey("should succeed if project ref exists and user is set", func() {
-				ctx := model.Context{}
-				ctx.ProjectRef = &model.ProjectRef{
+				opCtx := model.Context{}
+				opCtx.ProjectRef = &model.ProjectRef{
 					Private: true,
 				}
-				context.Set(req, RequestUser, &user.DBUser{Id: "test_user"})
-				serviceContext.MockContextConnector.CachedContext = ctx
-				err := PrefetchProjectContext(req, serviceContext)
+				ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "test_user"})
+				serviceContext.MockContextConnector.CachedContext = opCtx
+				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(err, ShouldBeNil)
 
-				So(context.Get(req, RequestContext), ShouldResemble, &ctx)
+				So(ctx.Value(RequestContext), ShouldResemble, &opCtx)
 			})
 		})
 	})

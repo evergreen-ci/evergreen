@@ -10,8 +10,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/gorilla/context"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestMakePaginationHeader(t *testing.T) {
@@ -240,13 +240,13 @@ const (
 	testArg2Holder = "arg2"
 )
 
-func (tap *testAdditionalArgsPaginator) ParseAndValidate(r *http.Request) error {
-	arg1 := context.Get(r, testArg1Holder)
+func (tap *testAdditionalArgsPaginator) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	arg1 := ctx.Value(testArg1Holder)
 	castArg1, ok := arg1.(int)
 	if !ok {
 		return fmt.Errorf("incorrect type for arg1. found %v", arg1)
 	}
-	arg2 := context.Get(r, testArg2Holder)
+	arg2 := ctx.Value(testArg2Holder)
 	castArg2, ok := arg2.(string)
 	if !ok {
 		return fmt.Errorf("incorrect type for arg2. found %v", arg2)
@@ -257,7 +257,7 @@ func (tap *testAdditionalArgsPaginator) ParseAndValidate(r *http.Request) error 
 		Arg2: castArg2,
 	}
 	tap.Args = &ah
-	return tap.PaginationExecutor.ParseAndValidate(r)
+	return tap.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
 func TestPaginatorAdditionalArgs(t *testing.T) {
@@ -265,6 +265,7 @@ func TestPaginatorAdditionalArgs(t *testing.T) {
 		arg1 := 7
 		arg2 := "testArg1"
 
+		ctx := context.Background()
 		sc := data.MockConnector{}
 
 		r := &http.Request{
@@ -273,8 +274,8 @@ func TestPaginatorAdditionalArgs(t *testing.T) {
 			},
 		}
 
-		context.Set(r, testArg1Holder, arg1)
-		context.Set(r, testArg2Holder, arg2)
+		ctx = context.WithValue(ctx, testArg1Holder, arg1)
+		ctx = context.WithValue(ctx, testArg2Holder, arg2)
 
 		pf := func(key string, limit int, args interface{},
 			sc data.Connector) ([]model.Model, *PageResult, error) {
@@ -296,9 +297,9 @@ func TestPaginatorAdditionalArgs(t *testing.T) {
 		tap := testAdditionalArgsPaginator{executor}
 
 		Convey("parsing should succeed and args should be set", func() {
-			err := tap.ParseAndValidate(r)
+			err := tap.ParseAndValidate(ctx, r)
 			So(err, ShouldBeNil)
-			_, err = tap.Execute(&sc)
+			_, err = tap.Execute(ctx, &sc)
 			So(err, ShouldBeNil)
 		})
 	})

@@ -3,8 +3,9 @@ package route
 import (
 	"net/http"
 
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"golang.org/x/net/context"
 )
 
 type mockRequestHandler struct {
@@ -22,11 +23,11 @@ func (m *mockRequestHandler) Handler() RequestHandler {
 		executeErr:       m.executeErr,
 	}
 }
-func (m *mockRequestHandler) ParseAndValidate(h *http.Request) error {
+func (m *mockRequestHandler) ParseAndValidate(ctx context.Context, h *http.Request) error {
 	return m.parseValidateErr
 }
 
-func (m *mockRequestHandler) Execute(sc data.Connector) (ResponseData, error) {
+func (m *mockRequestHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	return ResponseData{
 		Result:   m.storedModels,
 		Metadata: m.storedMetadata,
@@ -40,7 +41,7 @@ type mockAuthenticator struct {
 }
 
 // Authenticate returns the error embedded in the mock authenticator.
-func (m *mockAuthenticator) Authenticate(sc data.Connector, r *http.Request) error {
+func (m *mockAuthenticator) Authenticate(ctx context.Context, sc data.Connector) error {
 	return m.err
 }
 

@@ -18,9 +18,9 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestHostParseAndValidate(t *testing.T) {
@@ -35,8 +35,10 @@ func TestHostParseAndValidate(t *testing.T) {
 		r := http.Request{
 			URL: &u,
 		}
+		ctx := context.Background()
+
 		Convey("parsing request should fetch status", func() {
-			err := hgh.ParseAndValidate(&r)
+			err := hgh.ParseAndValidate(ctx, &r)
 			So(err, ShouldBeNil)
 			hga, ok := hgh.PaginationExecutor.Args.(hostGetArgs)
 			So(ok, ShouldBeTrue)
@@ -734,12 +736,13 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 		u := user.DBUser{
 			Id: "testUser",
 		}
+		ctx := context.Background()
 		Convey("then should error on empty body", func() {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			context.Set(req, RequestUser, &u)
-			context.Set(req, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(req)
+			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
 				Message:    "No request body sent",
@@ -760,9 +763,9 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			context.Set(req, RequestUser, &u)
-			context.Set(req, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(req)
+			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
 				Message: fmt.Sprintf("Incorrect type given, expecting '%s' "+
@@ -782,9 +785,9 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			context.Set(req, RequestUser, &u)
-			context.Set(req, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(req)
+			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
 				Message:    "Must set 'activated' or 'priority'",
@@ -806,9 +809,9 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			context.Set(req, RequestUser, &u)
-			context.Set(req, RequestContext, &projCtx)
-			err = tep.ParseAndValidate(req)
+			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldBeNil)
 			So(*tep.Activated, ShouldBeTrue)
 			So(*tep.Priority, ShouldEqual, 100)
@@ -831,7 +834,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 			Priority:  10,
 		}
 		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
-
+		ctx := context.Background()
 		Convey("then setting priority should change it's priority", func() {
 			act := true
 			var prio int64 = 100
@@ -846,7 +849,7 @@ func TestTaskExecutionPatchExecute(t *testing.T) {
 					Id: "testUser",
 				},
 			}
-			res, err := tep.Execute(&sc)
+			res, err := tep.Execute(ctx, &sc)
 			So(err, ShouldBeNil)
 			So(len(res.Result), ShouldEqual, 1)
 			resModel := res.Result[0]
@@ -874,13 +877,15 @@ func TestTaskResetPrepare(t *testing.T) {
 		u := user.DBUser{
 			Id: "testUser",
 		}
+		ctx := context.Background()
+
 		Convey("should error on empty project", func() {
 			projCtx.Project = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			context.Set(req, RequestUser, &u)
-			context.Set(req, RequestContext, &projCtx)
-			err = trh.ParseAndValidate(req)
+			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := fmt.Errorf("Unable to fetch associated project")
 			So(err, ShouldResemble, expectedErr)
@@ -889,9 +894,9 @@ func TestTaskResetPrepare(t *testing.T) {
 			projCtx.Task = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			context.Set(req, RequestUser, &u)
-			context.Set(req, RequestContext, &projCtx)
-			err = trh.ParseAndValidate(req)
+			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, RequestContext, &projCtx)
+			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
 			expectedErr := rest.APIError{
 				Message:    "Task not found",
@@ -964,6 +969,7 @@ func TestTaskResetExecute(t *testing.T) {
 			DispatchTime: timeNow,
 		}
 		sc.MockTaskConnector.CachedTasks = append(sc.MockTaskConnector.CachedTasks, testTask)
+		ctx := context.Background()
 		Convey("and an error from the service function", func() {
 			sc.MockTaskConnector.StoredError = fmt.Errorf("could not reset task")
 
@@ -973,7 +979,7 @@ func TestTaskResetExecute(t *testing.T) {
 				username: "testUser",
 			}
 
-			_, err := trh.Execute(&sc)
+			_, err := trh.Execute(ctx, &sc)
 			So(err, ShouldNotBeNil)
 			apiErr, ok := err.(rest.APIError)
 			So(ok, ShouldBeTrue)
@@ -989,7 +995,7 @@ func TestTaskResetExecute(t *testing.T) {
 				username: "testUser",
 			}
 
-			res, err := trh.Execute(&sc)
+			res, err := trh.Execute(ctx, &sc)
 			So(err, ShouldBeNil)
 			So(len(res.Result), ShouldEqual, 1)
 			resModel := res.Result[0]

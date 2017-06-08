@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"golang.org/x/net/context"
 )
 
 func getPlaceHolderManger(route string, version int) *RouteManager {
@@ -28,10 +29,10 @@ func (p *placeHolderHandler) Handler() RequestHandler {
 	return &placeHolderHandler{}
 }
 
-func (p *placeHolderHandler) ParseAndValidate(r *http.Request) error {
+func (p *placeHolderHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	return nil
 }
-func (p *placeHolderHandler) Execute(sc data.Connector) (ResponseData, error) {
+func (p *placeHolderHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	return ResponseData{}, rest.APIError{
 		StatusCode: 200,
 		Message:    "this is a placeholder for now",

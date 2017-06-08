@@ -11,11 +11,12 @@ import (
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -112,7 +113,7 @@ type tasksByProjectArgs struct {
 
 // ParseAndValidate fetches the project context and task status from the request
 // and loads them into the arguments to be used by the execution.
-func (tph *tasksByProjectHandler) ParseAndValidate(r *http.Request) error {
+func (tph *tasksByProjectHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	args := tasksByProjectArgs{
 		projectId:  mux.Vars(r)["project_id"],
 		commitHash: mux.Vars(r)["commit_hash"],
@@ -132,7 +133,7 @@ func (tph *tasksByProjectHandler) ParseAndValidate(r *http.Request) error {
 		}
 	}
 	tph.Args = args
-	return tph.PaginationExecutor.ParseAndValidate(r)
+	return tph.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
 func tasksByProjectPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
@@ -232,7 +233,7 @@ type taskGetHandler struct {
 }
 
 // ParseAndValidate fetches the taskId from the http request.
-func (tgh *taskGetHandler) ParseAndValidate(r *http.Request) error {
+func (tgh *taskGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	vars := mux.Vars(r)
 	tgh.taskId = vars["task_id"]
 	return nil
@@ -240,7 +241,7 @@ func (tgh *taskGetHandler) ParseAndValidate(r *http.Request) error {
 
 // Execute calls the data FindTaskById function and returns the task
 // from the provider.
-func (tgh *taskGetHandler) Execute(sc data.Connector) (ResponseData, error) {
+func (tgh *taskGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	foundTask, err := sc.FindTaskById(tgh.taskId)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
@@ -284,7 +285,7 @@ type tasksByBuildArgs struct {
 	status  string
 }
 
-func (tbh *tasksByBuildHandler) ParseAndValidate(r *http.Request) error {
+func (tbh *tasksByBuildHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	args := tasksByBuildArgs{
 		buildId: mux.Vars(r)["build_id"],
 		status:  r.URL.Query().Get("status"),
@@ -296,7 +297,7 @@ func (tbh *tasksByBuildHandler) ParseAndValidate(r *http.Request) error {
 		}
 	}
 	tbh.Args = args
-	return tbh.PaginationExecutor.ParseAndValidate(r)
+	return tbh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
 func tasksByBuildPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model,
@@ -381,8 +382,8 @@ type taskRestartHandler struct {
 
 // ParseAndValidate fetches the taskId and Project from the request context and
 // sets them on the taskRestartHandler to be used by Execute.
-func (trh *taskRestartHandler) ParseAndValidate(r *http.Request) error {
-	projCtx := MustHaveProjectContext(r)
+func (trh *taskRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
@@ -394,14 +395,14 @@ func (trh *taskRestartHandler) ParseAndValidate(r *http.Request) error {
 		return fmt.Errorf("Unable to fetch associated project")
 	}
 	trh.project = projCtx.Project
-	u := MustHaveUser(r)
+	u := MustHaveUser(ctx)
 	trh.username = u.DisplayName()
 	return nil
 }
 
 // Execute calls the data ResetTask function and returns the refreshed
 // task from the service.
-func (trh *taskRestartHandler) Execute(sc data.Connector) (ResponseData, error) {
+func (trh *taskRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	err := sc.ResetTask(trh.taskId, trh.username, trh.project)
 	if err != nil {
 		return ResponseData{},
@@ -448,7 +449,7 @@ type TaskExecutionPatchHandler struct {
 // ParseAndValidate fetches the needed data from the request and errors otherwise.
 // It fetches the task and user from the request context and fetches the changes
 // in activation and priority from the request body.
-func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
+func (tep *TaskExecutionPatchHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	body := util.NewRequestReader(r)
 	defer body.Close()
 
@@ -477,7 +478,7 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
 			StatusCode: http.StatusBadRequest,
 		}
 	}
-	projCtx := MustHaveProjectContext(r)
+	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
@@ -486,14 +487,14 @@ func (tep *TaskExecutionPatchHandler) ParseAndValidate(r *http.Request) error {
 	}
 
 	tep.task = projCtx.Task
-	u := MustHaveUser(r)
+	u := MustHaveUser(ctx)
 	tep.user = u
 	return nil
 }
 
 // Execute sets the Activated and Priority field of the given task and returns
 // an updated version of the task.
-func (tep *TaskExecutionPatchHandler) Execute(sc data.Connector) (ResponseData, error) {
+func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	if tep.Priority != nil {
 		priority := *tep.Priority
 		if priority > evergreen.MaxTaskPriority &&

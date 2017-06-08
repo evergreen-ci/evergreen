@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -75,7 +76,7 @@ type PaginatorFunc func(string, int, interface{}, data.Connector) ([]model.Model
 
 // Execute serves as an implementation of the RequestHandler's 'Execute' method.
 // It calls the embedded PaginationFunc and then processes and returns the results.
-func (pe *PaginationExecutor) Execute(sc data.Connector) (ResponseData, error) {
+func (pe *PaginationExecutor) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	models, pages, err := pe.Paginator(pe.key, pe.limit, pe.Args, sc)
 	if err != nil {
 		return ResponseData{}, err
@@ -96,7 +97,7 @@ func (pe *PaginationExecutor) Execute(sc data.Connector) (ResponseData, error) {
 
 // ParseAndValidate gets the key and limit from the request
 // and sets them on the PaginationExecutor.
-func (pe *PaginationExecutor) ParseAndValidate(r *http.Request) error {
+func (pe *PaginationExecutor) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	vals := r.URL.Query()
 	if k, ok := vals[pe.KeyQueryParam]; ok && len(k) > 0 {
 		pe.key = k[0]

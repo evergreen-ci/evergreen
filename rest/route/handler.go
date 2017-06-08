@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"golang.org/x/net/context"
 )
 
 // MethodHandler contains all of the methods necessary for completely processing
@@ -48,11 +49,11 @@ type RequestHandler interface {
 	// ParseAndValidate defines how to retrieve the needed parameters from the HTTP
 	// request. All needed data should be retrieved during the parse function since
 	// other functions do not have access to the HTTP request.
-	ParseAndValidate(*http.Request) error
+	ParseAndValidate(context.Context, *http.Request) error
 
 	// Execute performs the necessary work on the evergreen backend and returns
 	// an API model to be surfaced to the user.
-	Execute(data.Connector) (ResponseData, error)
+	Execute(context.Context, data.Connector) (ResponseData, error)
 }
 
 // makeHandler makes an http.HandlerFunc that wraps calls to each of the api
@@ -61,24 +62,27 @@ type RequestHandler interface {
 // a JSON error and sending it as the response.
 func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		ctx := context.Background()
+
 		for _, pf := range methodHandler.PrefetchFunctions {
-			if err := pf(r, sc); err != nil {
+			if ctx, err = pf(ctx, sc, r); err != nil {
 				handleAPIError(err, w, r)
 				return
 			}
 		}
 
-		if err := methodHandler.Authenticate(sc, r); err != nil {
+		if err = methodHandler.Authenticate(ctx, sc); err != nil {
 			handleAPIError(err, w, r)
 			return
 		}
 		reqHandler := methodHandler.RequestHandler.Handler()
 
-		if err := reqHandler.ParseAndValidate(r); err != nil {
+		if err = reqHandler.ParseAndValidate(ctx, r); err != nil {
 			handleAPIError(err, w, r)
 			return
 		}
-		result, err := reqHandler.Execute(sc)
+		result, err := reqHandler.Execute(ctx, sc)
 		if err != nil {
 			handleAPIError(err, w, r)
 			return
@@ -115,7 +119,6 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 // from a service layer package, in which case it is an internal server error
 // and is returned as such.
 func handleAPIError(e error, w http.ResponseWriter, r *http.Request) {
-
 	apiErr := rest.APIError{}
 
 	apiErr.StatusCode = http.StatusInternalServerError

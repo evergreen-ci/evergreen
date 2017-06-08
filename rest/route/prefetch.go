@@ -7,9 +7,8 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type (
@@ -27,12 +26,12 @@ const (
 
 // PrefetchFunc is a function signature that defines types of functions which may
 // be used to fetch data before the main request handler is called. They should
-// fetch data using the ServiceeContext and set them on the request context.
-type PrefetchFunc func(*http.Request, data.Connector) error
+// fetch data using data.Connector set them on the request context.
+type PrefetchFunc func(context.Context, data.Connector, *http.Request) (context.Context, error)
 
 // PrefetchUser gets the user information from a request, and uses it to
 // get the associated user from the database and attaches it to the request context.
-func PrefetchUser(r *http.Request, sc data.Connector) error {
+func PrefetchUser(ctx context.Context, sc data.Connector, r *http.Request) (context.Context, error) {
 	// Grab API auth details from header
 	var authDataAPIKey, authDataName string
 
@@ -50,80 +49,83 @@ func PrefetchUser(r *http.Request, sc data.Connector) error {
 		apiUser, err := sc.FindUserById(authDataName)
 		if apiUser.(*user.DBUser) != nil && err == nil {
 			if apiUser.GetAPIKey() != authDataAPIKey {
-				return rest.APIError{
+				return ctx, rest.APIError{
 					StatusCode: http.StatusUnauthorized,
 					Message:    "Invalid API key",
 				}
 			}
-			context.Set(r, RequestUser, apiUser)
+
+			ctx = context.WithValue(ctx, RequestUser, apiUser)
 		}
 	}
-	return nil
+
+	return ctx, nil
 }
 
 // PrefetchProjectContext gets the information related to the project that the request contains
 // and fetches the associated project context and attaches that to the request context.
-func PrefetchProjectContext(r *http.Request, sc data.Connector) error {
+func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Request) (context.Context, error) {
 	vars := mux.Vars(r)
 	taskId := vars["task_id"]
 	buildId := vars["build_id"]
 	versionId := vars["version_id"]
 	patchId := vars["patch_id"]
 	projectId := vars["project_id"]
-	ctx, err := sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
+
+	opCtx, err := sc.FetchContext(taskId, buildId, versionId, patchId, projectId)
 	if err != nil {
-		return err
+		return ctx, err
 	}
 
-	if ctx.ProjectRef != nil && ctx.ProjectRef.Private && GetUser(r) == nil {
+	user := GetUser(ctx)
+
+	if opCtx.ProjectRef != nil && opCtx.ProjectRef.Private && user == nil {
 		// Project is private and user is not authorized so return not found
-		return rest.APIError{
+		return ctx, rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "Project not found",
 		}
 	}
 
-	if ctx.Patch != nil && GetUser(r) == nil {
-		return rest.APIError{
+	if opCtx.Patch != nil && user == nil {
+		return ctx, rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "Not found",
 		}
 	}
-	context.Set(r, RequestContext, &ctx)
-	return nil
+
+	ctx = context.WithValue(ctx, RequestContext, &opCtx)
+
+	return ctx, nil
 }
 
 // GetUser returns the user associated with a given http request.
-func GetUser(r *http.Request) *user.DBUser {
-	if rv := context.Get(r, RequestUser); rv != nil {
-		return rv.(*user.DBUser)
-	}
-	return nil
+func GetUser(ctx context.Context) *user.DBUser {
+	u, _ := ctx.Value(RequestUser).(*user.DBUser)
+	return u
 }
 
 // GetProjectContext returns the project context associated with a
 // given request.
-func GetProjectContext(r *http.Request) (*model.Context, error) {
-	if rv := context.Get(r, RequestContext); rv != nil {
-		return rv.(*model.Context), nil
-	}
-	return &model.Context{}, errors.New("No context loaded")
+func GetProjectContext(ctx context.Context) *model.Context {
+	p, _ := ctx.Value(RequestContext).(*model.Context)
+	return p
 }
 
 // MustHaveProjectContext returns the project context set on the
 // http request context. It panics if none is set.
-func MustHaveProjectContext(r *http.Request) *model.Context {
-	pc, err := GetProjectContext(r)
-	if err != nil {
-		panic(err)
+func MustHaveProjectContext(ctx context.Context) *model.Context {
+	pc := GetProjectContext(ctx)
+	if pc == nil {
+		panic("project context not attached to request")
 	}
 	return pc
 }
 
 // MustHaveUser returns the user associated with a given request or panics
 // if none is present.
-func MustHaveUser(r *http.Request) *user.DBUser {
-	u := GetUser(r)
+func MustHaveUser(ctx context.Context) *user.DBUser {
+	u := GetUser(ctx)
 	if u == nil {
 		panic("no user attached to request")
 	}

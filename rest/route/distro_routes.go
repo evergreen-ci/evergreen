@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type distroGetHandler struct{}
@@ -30,11 +31,11 @@ func (dgh *distroGetHandler) Handler() RequestHandler {
 	return &distroGetHandler{}
 }
 
-func (dgh *distroGetHandler) ParseAndValidate(r *http.Request) error {
+func (dgh *distroGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	return nil
 }
 
-func (dgh *distroGetHandler) Execute(sc data.Connector) (ResponseData, error) {
+func (dgh *distroGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	distros, err := sc.FindAllDistros()
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {

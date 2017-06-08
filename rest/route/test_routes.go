@@ -6,10 +6,11 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // getTestRouteManager gets the route manager for the GET /tasks/{task_id}/tests.
@@ -56,8 +57,8 @@ func (hgh *testGetHandler) Handler() RequestHandler {
 
 // ParseAndValidate fetches the task Id and 'status' from the url and
 // sets them as part of the args.
-func (tgh *testGetHandler) ParseAndValidate(r *http.Request) error {
-	projCtx := MustHaveProjectContext(r)
+func (tgh *testGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	projCtx := MustHaveProjectContext(ctx)
 	if projCtx.Task == nil {
 		return rest.APIError{
 			Message:    "Task not found",
@@ -68,7 +69,7 @@ func (tgh *testGetHandler) ParseAndValidate(r *http.Request) error {
 		taskId:     projCtx.Task.Id,
 		testStatus: r.URL.Query().Get("status"),
 	}
-	return tgh.PaginationExecutor.ParseAndValidate(r)
+	return tgh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
 // testPaginator is the PaginatorFunc that implements the functionality of paginating

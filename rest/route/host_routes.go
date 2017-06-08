@@ -7,9 +7,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/rest/data"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type hostGetHandler struct {
@@ -46,11 +47,11 @@ type hostGetArgs struct {
 	status string
 }
 
-func (hgh *hostGetHandler) ParseAndValidate(r *http.Request) error {
+func (hgh *hostGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	hgh.Args = hostGetArgs{
 		status: r.URL.Query().Get("status"),
 	}
-	return hgh.PaginationExecutor.ParseAndValidate(r)
+	return hgh.PaginationExecutor.ParseAndValidate(ctx, r)
 }
 
 // hostPaginator is an instance of a PaginatorFunc that defines how to paginate on
