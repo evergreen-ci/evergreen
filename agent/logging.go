@@ -18,6 +18,10 @@ func SetupLogging(prefix, taskId string) error {
 		return nil
 	}
 
+	if len(taskId) > 100 {
+		taskId = taskId[100:]
+	}
+
 	logFile := fmt.Sprintf("%s_%s_%s_pid_%d.log",
 		prefix, taskId, time.Now().Format(filenameTimestamp), os.Getpid())
 
