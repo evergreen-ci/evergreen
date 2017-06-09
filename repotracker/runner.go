@@ -102,30 +102,21 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		numRequests = DefaultNumConcurrentRequests
 	}
 
-	jobs := make(chan *repoTrackerJob)
+	jobs := make(chan model.ProjectRef, len(allProjects))
+	for _, p := range allProjects {
+		jobs <- p
+	}
+	close(jobs)
+	grip.Debugf("sent %d jobs to the repotracker", len(allProjects))
 
-	go func(projects []model.ProjectRef) {
-		for _, projectRef := range projects {
-			jobs <- &repoTrackerJob{
-				conf:  config,
-				ref:   &projectRef,
-				creds: config.Credentials["github"],
-				num:   numNewRepoRevisionsToFetch,
-			}
-		}
-		close(jobs)
-	}(allProjects)
+	wg := &sync.WaitGroup{}
 
-	var wg sync.WaitGroup
 	for i := 0; i < numRequests; i++ {
 		wg.Add(1)
-		go func(jobs <-chan *repoTrackerJob) {
-			defer wg.Done()
-			for job := range jobs {
-				job.Run()
-			}
-		}(jobs)
+		go repoTrackerWorker(config, numNewRepoRevisionsToFetch, jobs, i, wg)
 	}
+
+	grip.Debugf("waiting for repotracker %d jobs to complete on %d workers", len(allProjects), numRequests)
 	wg.Wait()
 
 	runtime := time.Since(startTime)
@@ -138,21 +129,28 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	return nil
 }
 
-type repoTrackerJob struct {
-	conf  *evergreen.Settings
-	ref   *model.ProjectRef
-	creds string
-	num   int
-}
+func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.ProjectRef, id int, wg *sync.WaitGroup) {
+	grip.Debugln("starting repotracker worker number:", id)
+	done := 0
+	defer wg.Done()
 
-func (j *repoTrackerJob) Run() {
-	tracker := &RepoTracker{
-		j.conf,
-		j.ref,
-		NewGithubRepositoryPoller(j.ref, j.creds),
-	}
+	for project := range projects {
+		tracker := &RepoTracker{
+			conf,
+			&project,
+			NewGithubRepositoryPoller(&project, conf.Credentials["github"]),
+		}
 
-	if err := tracker.FetchRevisions(j.num); err != nil {
-		grip.Errorln("Error fetching revisions:", err)
+		grip.Debugln("running repotracker for:", project.Identifier)
+
+		if err := tracker.FetchRevisions(num); err != nil {
+			grip.Errorln("problem fetching revisions for %s: %+v", project.Identifier, err)
+			done++
+			continue
+		}
+
+		done++
+		grip.Infof("fetched all revisions for '%s' without errors", project.Identifier)
 	}
+	grip.Debugf("shutting down repotracker worker %d after %d jobs", id, done)
 }

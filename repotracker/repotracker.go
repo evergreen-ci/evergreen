@@ -103,7 +103,7 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 		// if the projectRef has a repotracker error then don't get the revisions
 		if projectRef.RepotrackerError != nil {
 			if projectRef.RepotrackerError.Exists {
-				grip.Errorf("repotracker error for base revision '%s' on project '%s/%s:%s'",
+				grip.Warningf("repotracker error for base revision '%s' on project '%s/%s:%s'",
 					projectRef.RepotrackerError.InvalidRevision,
 					projectRef.Owner, projectRef.Repo, projectRef.Branch)
 				return nil
