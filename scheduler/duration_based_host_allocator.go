@@ -149,7 +149,9 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 		}
 	}
 
-	grip.Infof("Reporting hosts needed: %+v", newHostsNeeded)
+	grip.InfoWhenf(len(newHostsNeeded) > 0, "Reporting hosts needed: %+v", newHostsNeeded)
+	grip.InfoWhen(len(newHostsNeeded) == 0, "no new hosts needed.")
+
 	return newHostsNeeded, nil
 }
 
