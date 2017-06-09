@@ -97,8 +97,7 @@ type sortableDistroByNumStaticHost struct {
 // distro while taking the duration of running/scheduled tasks into
 // consideration. Returns a map of distro to number of hosts to spawn.
 func (self *DurationBasedHostAllocator) NewHostsNeeded(
-	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (newHostsNeeded map[string]int,
-	err error) {
+	hostAllocatorData HostAllocatorData, settings *evergreen.Settings) (newHostsNeeded map[string]int, err error) {
 
 	queueDistros := make([]distro.Distro, 0,
 		len(hostAllocatorData.taskQueueItems))
@@ -150,7 +149,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 		}
 	}
 
-	grip.Infof("Reporting hosts needed: %#v", newHostsNeeded)
+	grip.Infof("Reporting hosts needed: %+v", newHostsNeeded)
 	return newHostsNeeded, nil
 }
 
