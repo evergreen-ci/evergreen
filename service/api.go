@@ -14,7 +14,6 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/event"
@@ -710,35 +709,6 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	as.WriteJSON(w, http.StatusOK, []validator.ValidationError{})
-}
-
-// getGlobalLock attempts to acquire the global lock and takes in
-// client - a remote address of what is trying to get the global lock
-// taskId, and caller, which is the function that is called.
-func getGlobalLock(client, taskId, caller string) bool {
-	grip.Debugf("Attempting to acquire global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
-
-	lockAcquired, err := db.WaitTillAcquireGlobalLock(client, db.LockTimeout)
-	if err != nil {
-		grip.Errorf("Error acquiring global lock for %s (remote addr: %s) with caller %s: %+v", taskId, client, caller, err)
-		return false
-	}
-	if !lockAcquired {
-		grip.Errorf("Timed out attempting to acquire global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
-		return false
-	}
-
-	grip.Debugf("Acquired global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
-	return true
-}
-
-// helper function for releasing the global lock
-func releaseGlobalLock(client, taskId, caller string) {
-	grip.Debugf("Attempting to release global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
-	if err := db.ReleaseGlobalLock(client); err != nil {
-		grip.Errorf("Error releasing global lock for %s (remote addr: %s) with caller %s - this is really bad: %s", taskId, client, caller, err)
-	}
-	grip.Debugf("Released global lock for %s (remote addr: %s) with caller %s", taskId, client, caller)
 }
 
 // LoggedError logs the given error and writes an HTTP response with its details formatted

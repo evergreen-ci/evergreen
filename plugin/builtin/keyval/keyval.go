@@ -113,8 +113,7 @@ func (incCmd *IncCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig,
 	stop chan bool) error {
 
-	err := plugin.ExpandValues(incCmd, conf.Expansions)
-	if err != nil {
+	if err := plugin.ExpandValues(incCmd, conf.Expansions); err != nil {
 		return err
 	}
 
