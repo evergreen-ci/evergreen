@@ -46,10 +46,14 @@ type TestHistoryCommand struct {
 
 // createUrlQuery returns a string url query parameter with relevant url parameters.
 func createUrlQuery(testHistoryParameters model.TestHistoryParameters) string {
-	queryString := fmt.Sprintf("testStatuses=%s&taskStatuses=%s&buildType=%s",
+	queryString := fmt.Sprintf("testStatuses=%s&taskStatuses=%s",
 		strings.Join(testHistoryParameters.TestStatuses, ","),
 		strings.Join(testHistoryParameters.TaskStatuses, ","),
-		testHistoryParameters.TaskRequestType)
+	)
+
+	if testHistoryParameters.TaskRequestType != "" {
+		queryString += fmt.Sprintf("&buildType=%s", testHistoryParameters.TaskRequestType)
+	}
 
 	if len(testHistoryParameters.TaskNames) > 0 {
 		queryString += fmt.Sprintf("&tasks=%v", strings.Join(testHistoryParameters.TaskNames, ","))
