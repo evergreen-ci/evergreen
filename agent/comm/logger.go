@@ -2,6 +2,7 @@ package comm
 
 import (
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +16,8 @@ import (
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/slogger"
 )
+
+var backspaceRegex = regexp.MustCompile("\b+")
 
 // StreamLogger holds a set of stream-delineated loggers. Each logger is used
 // to communicate different kinds of logs to the API Server or local file system.
@@ -243,6 +246,7 @@ func NewAPILogger(tc TaskCommunicator) *APILogger {
 // remote endpoint.
 func (apiLgr *APILogger) Append(log *slogger.Log) error {
 	message := strings.TrimRight(log.Message(), "\r\t")
+	message = backspaceRegex.ReplaceAllString(message, "\n")
 
 	// MCI-972: ensure message is valid UTF-8
 	if !utf8.ValidString(message) {
