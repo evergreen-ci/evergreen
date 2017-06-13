@@ -240,20 +240,27 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 
 // HandleSignals listens on its signal channel and properly handles any signal received.
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
+	var err error
 	receivedSignal := sh.awaitSignal()
 	detail := agt.getTaskEndDetail()
+
+	defer func() { grip.CatchEmergencyFatal(err) }()
+	defer agt.removeTaskDirectory()
 	defer agt.cleanup(agt.GetCurrentTaskId())
+
 	switch receivedSignal {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
 		// everything went according to plan, so we just exit the signal handler routine
 		return
 	case comm.IncorrectSecret:
-		agt.logger.LogLocal(slogger.ERROR, "Secret doesn't match - exiting.")
-		os.Exit(1)
+		err = errors.New("Secret doesn't match - exiting.")
+		// we want to exit here, but want to make sure the other defers run
+		return
 	case comm.HeartbeatMaxFailed:
-		agt.logger.LogLocal(slogger.ERROR, "Max heartbeats failed - exiting.")
-		os.Exit(1)
+		err = errors.New("Max heartbeats failed - exiting.")
+		// we want to exit here, but want to make sure the other defers run
+		return
 	case comm.AbortedByUser:
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
