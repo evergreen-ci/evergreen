@@ -32,6 +32,7 @@ import:
   - package: github.com/jtolds/gls
   - package: gopkg.in/yaml.v2
   - package: github.com/dynport/gocloud
+  - package: github.com/gophercloud/gophercloud
   - package: github.com/dynport/gologger
   - package: golang.org/x/tools
     subpackages:
