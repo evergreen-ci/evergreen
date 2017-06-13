@@ -48,8 +48,7 @@ func (hgh *testGetHandler) Handler() RequestHandler {
 		KeyQueryParam:   "start_at",
 		LimitQueryParam: "limit",
 		Paginator:       testPaginator,
-
-		Args: testGetHandlerArgs{},
+		Args:            testGetHandlerArgs{},
 	}
 
 	return &testGetHandler{testPaginationExecutor}

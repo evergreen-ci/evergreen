@@ -11,11 +11,16 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
 
 var (
 	testConfig = testutil.TestConfig()
 )
+
+func init() {
+	reporting.QuietMode()
+}
 
 func TestFindTaskById(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTaskById")

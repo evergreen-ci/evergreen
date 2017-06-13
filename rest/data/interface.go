@@ -1,11 +1,14 @@
 package data
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/mongodb/grip/message"
 )
 
 // Connector is an interface that contains all of the methods which
@@ -61,4 +64,9 @@ type Connector interface {
 
 	// FindAllDistros is a method to find a sorted list of all distros.
 	FindAllDistros() ([]distro.Distro, error)
+
+	// FindTaskSystemMetrics and FindTaskProcessMetrics provide
+	// access to the metrics data collected by agents during task execution
+	FindTaskSystemMetrics(string, time.Time, int, int) ([]*message.SystemInfo, error)
+	FindTaskProcessMetrics(string, time.Time, int, int) ([][]*message.ProcessInfo, error)
 }

@@ -123,7 +123,11 @@ func LogTaskSystemData(taskId string, info *message.SystemInfo) {
 		EventType:  EventTaskSystemInfo,
 	}
 
-	info.Base = message.Base{}
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now()
+		info.Base = message.Base{Time: event.Timestamp}
+	}
+
 	data := TaskSystemResourceData{
 		ResourceType: EventTaskSystemInfo,
 		SystemInfo:   info,
@@ -207,10 +211,10 @@ func LogTaskProcessData(taskId string, procs []*message.ProcessInfo) {
 		// if p.Parent is 0, then this is the root of the
 		// process, and we should use the timestamp from this
 		// collector.
-		if p.Parent == 0 {
+		if p.Parent == 0 && !p.Base.Time.IsZero() {
 			ts = p.Base.Time
+			b.Time = ts
 		}
-
 		p.Base = b
 	}
 

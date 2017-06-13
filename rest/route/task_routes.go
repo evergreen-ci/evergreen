@@ -156,6 +156,7 @@ func tasksByProjectPaginator(key string, limit int, args interface{}, sc data.Co
 		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
+		return []model.Model{}, nil, err
 	}
 
 	nextPage := makeNextTasksPage(tasks, limit)
@@ -219,8 +220,7 @@ func (tph *tasksByProjectHandler) Handler() RequestHandler {
 		KeyQueryParam:   "start_at",
 		LimitQueryParam: "limit",
 		Paginator:       tasksByProjectPaginator,
-
-		Args: tasksByProjectArgs{},
+		Args:            tasksByProjectArgs{},
 	}
 
 	return &tasksByProjectHandler{taskPaginationExecutor}

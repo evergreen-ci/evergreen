@@ -1,6 +1,8 @@
 package event
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -13,6 +15,38 @@ func Find(coll string, query db.Q) ([]Event, error) {
 	events := []Event{}
 	err := db.FindAllQ(coll, query, &events)
 	return events, err
+}
+
+// CountSystemEvents returns the total number of system metrics events
+// captured for the specified task. If taskId is "", then this will
+// return a count of all system events captured.
+func CountSystemEvents(taskId string) (int, error) {
+	filter := bson.M{
+		DataKey + "." + ResourceTypeKey: EventTaskSystemInfo,
+		TypeKey: EventTaskSystemInfo,
+	}
+
+	if taskId != "" {
+		filter[ResourceIdKey] = taskId
+	}
+
+	return db.CountQ(TaskLogCollection, db.Query(filter))
+}
+
+// CountProcessEvents returns the total number of process tree metrics events
+// captured for the specified task. If taskId is "", then this will
+// return a count of all process metrics captured.
+func CountProcessEvents(taskId string) (int, error) {
+	filter := bson.M{
+		DataKey + "." + ResourceTypeKey: EventTaskProcessInfo,
+		TypeKey: EventTaskProcessInfo,
+	}
+
+	if taskId != "" {
+		filter[ResourceIdKey] = taskId
+	}
+
+	return db.CountQ(TaskLogCollection, db.Query(filter))
 }
 
 // === Queries ===
@@ -80,23 +114,51 @@ func RecentSchedulerEvents(distroId string, n int) db.Q {
 // TaskSystemInfoEvents builds a query for system info,
 // (e.g. aggregate information about the system as a whole) collected
 // during a task.
-func TaskSystemInfoEvents(taskId string, n int) db.Q {
-	// TODO: (EVG-1497) decide on an better index/sort
-	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, EventTaskSystemInfo},
-		{ResourceIdKey, taskId},
-		{TypeKey, EventTaskSystemInfo},
-	}).Sort([]string{TimestampKey}).Limit(n)
+//
+// If the sort value is less than 0, the query will return all
+// matching events that occur before the specified time, and otherwise
+// will return all matching events that occur after the specified time.
+func TaskSystemInfoEvents(taskId string, ts time.Time, limit, sort int) db.Q {
+	filter := bson.M{
+		DataKey + "." + ResourceTypeKey: EventTaskSystemInfo,
+		ResourceIdKey:                   taskId,
+		TypeKey:                         EventTaskSystemInfo,
+	}
+
+	sortSpec := TimestampKey
+
+	if sort < 0 {
+		sortSpec = "-" + sortSpec
+		filter[TimestampKey] = bson.M{"$lte": ts}
+	} else {
+		filter[TimestampKey] = bson.M{"$gte": ts}
+	}
+
+	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 }
 
 // TaskProcessInfoEvents builds a query for process info, which
 // returns information about each process (and children) spawned
 // during task execution.
-func TaskProcessInfoEvents(taskId string, n int) db.Q {
-	// TODO: (EVG-1497) decide on an better index/sort
-	return db.Query(bson.D{
-		{DataKey + "." + ResourceTypeKey, EventTaskProcessInfo},
-		{ResourceIdKey, taskId},
-		{TypeKey, EventTaskProcessInfo},
-	}).Sort([]string{TimestampKey}).Limit(n)
+//
+// If the sort value is less than 0, the query will return all
+// matching events that occur before the specified time, and otherwise
+// will return all matching events that occur after the specified time.
+func TaskProcessInfoEvents(taskId string, ts time.Time, limit, sort int) db.Q {
+	filter := bson.M{
+		DataKey + "." + ResourceTypeKey: EventTaskProcessInfo,
+		ResourceIdKey:                   taskId,
+		TypeKey:                         EventTaskProcessInfo,
+	}
+
+	sortSpec := TimestampKey
+
+	if sort < 0 {
+		sortSpec = "-" + sortSpec
+		filter[TimestampKey] = bson.M{"$lte": ts}
+	} else {
+		filter[TimestampKey] = bson.M{"$gte": ts}
+	}
+
+	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 }

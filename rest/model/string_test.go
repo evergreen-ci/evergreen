@@ -6,7 +6,12 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/smartystreets/goconvey/convey/reporting"
 )
+
+func init() {
+	reporting.QuietMode()
+}
 
 func TestStringMarshal(t *testing.T) {
 	Convey("When checking string", t, func() {

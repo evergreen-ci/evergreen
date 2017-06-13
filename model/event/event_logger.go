@@ -1,8 +1,6 @@
 package event
 
-import (
-	"github.com/evergreen-ci/evergreen/db"
-)
+import "github.com/evergreen-ci/evergreen/db"
 
 type EventLogger interface {
 	LogEvent(event *Event) error
