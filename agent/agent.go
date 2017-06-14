@@ -147,7 +147,8 @@ type Agent struct {
 
 	// currentTaskDir holds the absolute path of the directory that the agent has
 	// created for executing the current task.
-	currentTaskDir string
+	currentTaskDir      string
+	currentTaskDirMutex sync.RWMutex
 
 	// agent's runtime configuration options.
 	opts Options
@@ -812,9 +813,9 @@ func (agt *Agent) createTaskDirectory(taskConfig *model.TaskConfig) error {
 		agt.logger.LogExecution(slogger.ERROR, "Error changing into task directory: %v", err)
 		return err
 	}
-	agt.currentTaskDir = newDir
+	agt.setCurrentTaskDir(newDir)
 
-	taskConfig.WorkDir = agt.currentTaskDir
+	taskConfig.WorkDir = agt.getCurrentTaskDir()
 	return nil
 }
 
@@ -831,6 +832,20 @@ func (agt *Agent) stop() {
 	}
 }
 
+func (agt *Agent) getCurrentTaskDir() string {
+	agt.currentTaskDirMutex.RLock()
+	defer agt.currentTaskDirMutex.RUnlock()
+
+	return agt.currentTaskDir
+}
+
+func (agt *Agent) setCurrentTaskDir(d string) {
+	agt.currentTaskDirMutex.Lock()
+	defer agt.currentTaskDirMutex.Unlock()
+
+	agt.currentTaskDir = d
+}
+
 // removeTaskDirectory removes the folder the agent created for the
 // task it was executing.
 func (agt *Agent) removeTaskDirectory() error {
@@ -842,12 +857,13 @@ func (agt *Agent) removeTaskDirectory() error {
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Deleting directory for completed task.")
-	err = os.RemoveAll(agt.currentTaskDir)
+	err = os.RemoveAll(agt.getCurrentTaskDir())
 	if err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error removing working directory for the task: %v", err)
 		return err
 	}
-	agt.currentTaskDir = ""
+
+	agt.setCurrentTaskDir("")
 	return nil
 }
 
