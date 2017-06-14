@@ -76,7 +76,7 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 		}
 	}
 
-	err = startAgentOnRemote(settings.ApiUrl, &hostObj, sshOptions)
+	err = startAgentOnRemote(settings, &hostObj, sshOptions)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -209,7 +209,8 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 }
 
 // Start the agent process on the specified remote host, and have it run the specified task.
-func startAgentOnRemote(apiURL string, hostObj *host.Host, sshOptions []string) error {
+func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
+	apiURL := settings.ApiUrl
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "main")
 
@@ -219,6 +220,10 @@ func startAgentOnRemote(apiURL string, hostObj *host.Host, sshOptions []string) 
 		pathToExecutable, apiURL, hostObj.Id, hostObj.Secret,
 		filepath.Join(hostObj.Distro.WorkDir, agentFile), "")
 	grip.Info(remoteCmd)
+
+	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
+		remoteCmd = fmt.Sprintf("GRIP_SUMO_ENDPOINT='%s' %s", sumoEndpoint, remoteCmd)
+	}
 
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
+	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 
 	"gopkg.in/yaml.v2"
@@ -204,6 +206,11 @@ type DBSettings struct {
 	WriteConcernSettings WriteConcern `yaml:"write_concern"`
 }
 
+type LogBuffering struct {
+	DurationSeconds int `yaml:"duration_seconds"`
+	BufferCount     int `yaml:"count"`
+}
+
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
 	Database            DBSettings        `yaml:"database"`
@@ -231,6 +238,7 @@ type Settings struct {
 	Expansions          map[string]string `yaml:"expansions"`
 	Plugins             PluginConfig      `yaml:"plugins"`
 	IsProd              bool              `yaml:"isprod"`
+	LogBuffering        LogBuffering      `yaml:"log_buffering"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -271,6 +279,24 @@ func GetSettingsOrExit() *Settings {
 	return settings
 }
 
+func (s *Settings) GetSender(fileName string) (send.Sender, error) {
+	if endpoint, ok := s.Credentials["sumologic"]; ok {
+		sender, err := send.NewSumo("", endpoint)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+
+		return send.NewBufferedSender(sender,
+			time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
+			s.LogBuffering.BufferCount), nil
+
+	} else if fileName != "" {
+		return send.MakeFileLogger(fileName)
+	} else {
+		return send.MakeNative(), nil
+	}
+}
+
 // GetSettings returns Evergreen Settings or an error.
 func GetSettings() (*Settings, error) {
 	var settingsPath = flag.String("conf", DefaultConfFile, "path to config file")
@@ -279,8 +305,8 @@ func GetSettings() (*Settings, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = settings.Validate(ConfigValidationRules)
-	if err != nil {
+
+	if err = settings.Validate(ConfigValidationRules); err != nil {
 		return nil, err
 	}
 	return settings, nil
@@ -290,11 +316,20 @@ func GetSettings() (*Settings, error) {
 // struct for any errors or missing required fields.
 type ConfigValidator func(settings *Settings) error
 
+const defaultLogBufferingDuration = 20
+
 // ConfigValidationRules is the set of all ConfigValidator functions.
 var ConfigValidationRules = []ConfigValidator{
 	func(settings *Settings) error {
 		if settings.Database.Url == "" || settings.Database.DB == "" {
 			return errors.New("DBUrl and DB must not be empty")
+		}
+		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.LogBuffering.DurationSeconds == 0 {
+			settings.LogBuffering.DurationSeconds = defaultLogBufferingDuration
 		}
 		return nil
 	},

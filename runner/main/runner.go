@@ -22,7 +22,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 )
 
@@ -65,20 +64,15 @@ const (
 
 func main() {
 	settings := evergreen.GetSettingsOrExit()
-	if settings.Runner.LogFile != "" {
-		sender, err := send.MakeFileLogger(settings.Runner.LogFile)
-		grip.CatchEmergencyFatal(err)
-		defer sender.Close()
-		grip.CatchEmergencyFatal(grip.SetSender(sender))
-	} else {
-		sender := send.MakeNative()
-		defer sender.Close()
-		grip.CatchEmergencyFatal(grip.SetSender(sender))
-	}
+	sender, err := settings.GetSender(settings.Runner.LogFile)
+	grip.CatchEmergencyFatal(err)
+	defer sender.Close()
+	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	evergreen.SetLegacyLogger()
 	grip.SetName("evg-runner")
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
+
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	home := evergreen.FindEvergreenHome()

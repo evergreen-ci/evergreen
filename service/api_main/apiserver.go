@@ -17,7 +17,6 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
@@ -38,22 +37,15 @@ func init() {
 
 func main() {
 	settings := evergreen.GetSettingsOrExit()
-
-	// setup the logging
-	if settings.Api.LogFile != "" {
-		sender, err := send.MakeFileLogger(settings.Api.LogFile)
-		grip.CatchEmergencyFatal(err)
-		defer sender.Close()
-		grip.CatchEmergencyFatal(grip.SetSender(sender))
-	} else {
-		sender := send.MakeNative()
-		defer sender.Close()
-		grip.CatchEmergencyFatal(grip.SetSender(sender))
-	}
+	sender, err := settings.GetSender(settings.Api.LogFile)
+	grip.CatchEmergencyFatal(err)
+	defer sender.Close()
+	grip.CatchEmergencyFatal(grip.SetSender(sender))
 	evergreen.SetLegacyLogger()
 	grip.SetName("evg-api-server")
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
+
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	defer util.RecoverAndLogStackTrace()

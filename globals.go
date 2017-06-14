@@ -142,7 +142,7 @@ var (
 // SetLegacyLogger sets the global (s)logger instance to wrap the current grip Logger.
 func SetLegacyLogger() {
 	Logger = slogger.Logger{
-		Name:      fmt.Sprintf("evg-gloal.%s", grip.Name()),
+		Name:      fmt.Sprintf("evg-log.%s", grip.Name()),
 		Appenders: []send.Sender{grip.GetSender()},
 	}
 }
