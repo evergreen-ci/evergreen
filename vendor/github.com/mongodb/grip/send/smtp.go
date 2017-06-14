@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/mail"
 	"net/smtp"
@@ -48,7 +49,12 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 		return nil, err
 	}
 
+	if err := opts.client.Create(opts); err != nil {
+		return nil, err
+	}
+
 	s := &smtpLogger{
+		Base: NewBase(opts.Name),
 		opts: opts,
 	}
 
@@ -58,7 +64,7 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 	}
 
 	s.reset = func() {
-		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
+		fallback.SetPrefix(fmt.Sprintf("[%s] ", s.Name()))
 	}
 
 	s.SetName(opts.Name)
@@ -67,12 +73,10 @@ func MakeSMTPLogger(opts *SMTPOptions) (Sender, error) {
 }
 
 func (s *smtpLogger) Send(m message.Composer) {
-	if !s.level.ShouldLog(m) {
-		return
-	}
-
-	if err := s.opts.sendMail(m); err != nil {
-		s.errHandler(err, m)
+	if s.level.ShouldLog(m) {
+		if err := s.opts.sendMail(m); err != nil {
+			s.errHandler(err, m)
+		}
 	}
 }
 
@@ -137,7 +141,7 @@ type SMTPOptions struct {
 	MessageAsSubject              bool
 	PlainTextContents             bool
 
-	client   *smtp.Client
+	client   smtpClient
 	fromAddr *mail.Address
 	toAddrs  []*mail.Address
 	mutex    sync.Mutex
@@ -197,6 +201,10 @@ func (o *SMTPOptions) AddRecipients(addresses ...string) error {
 // is not valid. The constructor for the SMTP sender calls this method
 // to make sure that options struct is valid before initiating the sender.
 func (o *SMTPOptions) Validate() error {
+	if o == nil {
+		return errors.New("must specify non-nil SMTP options")
+	}
+
 	o.mutex.Lock()
 	defer o.mutex.Unlock()
 
@@ -211,27 +219,7 @@ func (o *SMTPOptions) Validate() error {
 	}
 
 	if o.client == nil {
-		var err error
-		if o.UseSSL {
-			var tlsCon *tls.Conn
-			tlsCon, err = tls.Dial("tcp", fmt.Sprintf("%v:%v", o.Server, o.Port), &tls.Config{})
-			if err != nil {
-				return err
-			}
-			o.client, err = smtp.NewClient(tlsCon, o.Server)
-		} else {
-			o.client, err = smtp.Dial(fmt.Sprintf("%v:%v", o.Server, o.Port))
-		}
-
-		if err != nil {
-			return err
-		}
-
-		if o.Username != "" {
-			if err = o.client.Auth(smtp.PlainAuth("", o.Username, o.Password, o.Server)); err != nil {
-				return err
-			}
-		}
+		o.client = &smtpClientImpl{}
 	}
 
 	if o.GetContents == nil {
@@ -305,7 +293,6 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 
 	if len(o.toAddrs) == 0 {
 		return fmt.Errorf("no recipients specified, cannot send mail")
-
 	}
 
 	if err := o.client.Mail(o.From); err != nil {
@@ -359,4 +346,48 @@ func (o *SMTPOptions) sendMail(m message.Composer) error {
 	// write the body
 	_, err = bytes.NewBufferString(strings.Join(contents, "\r\n")).WriteTo(wc)
 	return err
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// interface mock for testability
+//
+////////////////////////////////////////////////////////////////////////
+
+type smtpClient interface {
+	Create(*SMTPOptions) error
+	Mail(string) error
+	Rcpt(string) error
+	Data() (io.WriteCloser, error)
+}
+
+type smtpClientImpl struct {
+	*smtp.Client
+}
+
+func (c *smtpClientImpl) Create(opts *SMTPOptions) error {
+	var err error
+
+	if opts.UseSSL {
+		var tlsCon *tls.Conn
+		tlsCon, err = tls.Dial("tcp", fmt.Sprintf("%v:%v", opts.Server, opts.Port), &tls.Config{})
+		if err != nil {
+			return err
+		}
+		c.Client, err = smtp.NewClient(tlsCon, opts.Server)
+	} else {
+		c.Client, err = smtp.Dial(fmt.Sprintf("%v:%v", opts.Server, opts.Port))
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if opts.Username != "" {
+		if err = c.Client.Auth(smtp.PlainAuth("", opts.Username, opts.Password, opts.Server)); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

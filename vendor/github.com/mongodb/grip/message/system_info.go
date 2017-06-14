@@ -59,7 +59,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 	s.loggable = true
 
 	times, err := cpu.Times(false)
-	s.saveError(err)
+	s.saveError("cpu_times", err)
 	if err == nil && len(times) > 0 {
 		// since we're not storing per-core information,
 		// there's only one thing we care about in this struct
@@ -67,23 +67,23 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 	}
 
 	vmstat, err := mem.VirtualMemory()
-	s.saveError(err)
+	s.saveError("vmstat", err)
 	if err == nil && vmstat != nil {
 		s.VMStat = *vmstat
 	}
 
 	netstat, err := net.IOCounters(false)
-	s.saveError(err)
+	s.saveError("netstat", err)
 	if err == nil && len(netstat) > 0 {
 		s.NetStat = netstat[0]
 	}
 
 	partitions, err := disk.Partitions(true)
-	s.saveError(err)
+	s.saveError("disk_part", err)
 	if err == nil {
 		for _, p := range partitions {
 			u, err := disk.Usage(p.Mountpoint)
-			s.saveError(err)
+			s.saveError("partition", err)
 			if err != nil {
 				continue
 			}
@@ -95,7 +95,7 @@ func NewSystemInfo(priority level.Priority, message string) Composer {
 	}
 
 	iostatMap, err := disk.IOCounters()
-	s.saveError(err)
+	s.saveError("iostat", err)
 	for _, stat := range iostatMap {
 		s.IOStat = append(s.IOStat, stat)
 	}
@@ -121,9 +121,9 @@ func (s *SystemInfo) String() string {
 	return s.rendered
 }
 
-func (s *SystemInfo) saveError(err error) {
+func (s *SystemInfo) saveError(stat string, err error) {
 	if shouldSaveError(err) {
-		s.Errors = append(s.Errors, err.Error())
+		s.Errors = append(s.Errors, fmt.Sprintf("%s: %v", stat, err))
 	}
 }
 

@@ -5,6 +5,8 @@ imports:
   version: 6dc8b843c670f2027cc26b164935635840a40526
   subpackages:
   - journal
+- name: github.com/nutmegdevelopment/sumologic
+  version: 42ed9b372fa36887ba95cba2eab345991ca6e217
 - name: github.com/bluele/slack
   version: 1f14901342cf5347555c2a6b0160d1a94f9c46ea
 - name: github.com/mattn/go-xmpp
@@ -28,5 +30,19 @@ imports:
   version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
 - name: github.com/stretchr/testify
   version: d77da356e56a7428ad25149ca77381849a6a5232
+
+- name: github.com/fuyufjh/splunk-hec-go
+  version: 69956d6a6cbd511dade209563c3256c204c9ae51
+- name: github.com/satori/go.uuid
+  version: 879c5887cd475cd7864858769793b2ceb0d44feb
+
+- name: github.com/andygrunwald/go-jira
+  version: c8c6680f245f3721d613b773ea4ab9ee7741b828
+- name: github.com/trivago/tgo
+  version: 27c472027c1e3b665eb2f6368d000ce9b879f34a
+- name: github.com/fatih/structs
+  version: 74a29b9fac7397d933f47e33eba94d2d83a464a2
+- name: github.com/google/go-querystring
+  version: 53e6ce116135b80d037921a7fdd5138cf32d7a8a
 
 devImports: []

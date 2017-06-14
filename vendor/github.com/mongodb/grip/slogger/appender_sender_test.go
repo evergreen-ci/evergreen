@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type AppenderSenderSuite struct {
@@ -40,10 +40,6 @@ func (s *AppenderSenderSuite) SetupTest() {
 func (s *AppenderSenderSuite) TearDownSuite() {
 	s.NoError(s.sender.Close())
 	s.NoError(s.appender.Close())
-}
-
-func (s *AppenderSenderSuite) Test() {
-	s.require.False(false)
 }
 
 func (s *AppenderSenderSuite) TestSenderImplementsInterface() {

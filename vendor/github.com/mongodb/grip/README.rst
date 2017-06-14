@@ -217,6 +217,3 @@ composed logging.
 Grip includes a number of message types, including those that collect
 system information, process information, stacktraces, or simple
 user-specified structured information.
-
-The ``LogMany`` methods, provide a way to send *groups* of
-message.Composers.

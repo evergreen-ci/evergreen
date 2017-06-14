@@ -7,6 +7,10 @@ import (
 	"github.com/mongodb/grip/level"
 )
 
+// FieldsMsgName is the name of the default "message" field in the
+// fields structure.
+const FieldsMsgName = "msg"
+
 type fieldMessage struct {
 	message      string
 	fields       Fields
@@ -60,7 +64,7 @@ func (m *fieldMessage) String() string {
 		const tmpl = "%s='%v'"
 		out := []string{}
 		if m.message != "" {
-			out = append(out, fmt.Sprintf(tmpl, "msg", m.message))
+			out = append(out, fmt.Sprintf(tmpl, FieldsMsgName, m.message))
 		}
 
 		for k, v := range m.fields {

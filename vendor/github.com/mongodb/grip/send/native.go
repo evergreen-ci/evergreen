@@ -33,14 +33,16 @@ func NewFileLogger(name, filePath string, l LevelInfo) (Sender, error) {
 func MakeFileLogger(filePath string) (Sender, error) {
 	s := &nativeLogger{Base: NewBase("")}
 
+	if err := s.SetFormatter(MakeDefaultFormatter()); err != nil {
+		return nil, err
+	}
+
 	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		return nil, fmt.Errorf("error opening logging file, %s", err.Error())
 	}
 
 	s.level = LevelInfo{level.Trace, level.Trace}
-
-	_ = s.SetFormatter(MakeDefaultFormatter())
 
 	s.reset = func() {
 		s.logger = log.New(f, fmt.Sprintf("[%s] ", s.Name()), log.LstdFlags)

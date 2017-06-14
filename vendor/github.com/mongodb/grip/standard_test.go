@@ -15,15 +15,13 @@ import (
 const testMessage = "hello world"
 
 type (
-	basicMethod    func(interface{})
-	lnMethod       func(...interface{})
-	fMethod        func(string, ...interface{})
-	catchMethod    func(error)
-	whenMethod     func(bool, interface{})
-	whenlnMethod   func(bool, ...interface{})
-	whenfMethod    func(bool, string, ...interface{})
-	manyMethod     func(...message.Composer)
-	manyWhenMethod func(bool, ...message.Composer)
+	basicMethod  func(interface{})
+	lnMethod     func(...interface{})
+	fMethod      func(string, ...interface{})
+	catchMethod  func(error)
+	whenMethod   func(bool, interface{})
+	whenlnMethod func(bool, ...interface{})
+	whenfMethod  func(bool, string, ...interface{})
 )
 
 type LoggingMethodSuite struct {
@@ -268,111 +266,23 @@ func (s *LoggingMethodSuite) TestfMethods() {
 	}
 }
 
-func (s *LoggingMethodSuite) TestManyMethods() {
-	msgs := []message.Composer{
-		message.NewString("three"),
-		message.NewString("two"),
-		message.NewString("one"),
-	}
-
-	cases := map[string][]manyMethod{
-		"emergency": []manyMethod{EmergencyMany, s.logger.EmergencyMany},
-		"alert":     []manyMethod{AlertMany, s.logger.AlertMany},
-		"critical":  []manyMethod{CriticalMany, s.logger.CriticalMany},
-		"error":     []manyMethod{ErrorMany, s.logger.ErrorMany},
-		"warning":   []manyMethod{WarningMany, s.logger.WarningMany},
-		"notice":    []manyMethod{NoticeMany, s.logger.NoticeMany},
-		"info":      []manyMethod{InfoMany, s.logger.InfoMany},
-		"debug":     []manyMethod{DebugMany, s.logger.DebugMany},
-	}
-
-	for kind, loggers := range cases {
-		s.Len(loggers, 2)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
-
-		loggers[0](msgs...)
-		loggers[1](msgs...)
-
-		for i := 0; i < len(msgs); i++ {
-			s.True(s.loggingSender.HasMessage())
-			s.True(s.stdSender.HasMessage())
-			lgrMsg := s.loggingSender.GetMessage()
-			stdMsg := s.stdSender.GetMessage()
-			s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
-				fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
-		}
-	}
-}
-
-func (s *LoggingMethodSuite) TestManyWhenMethods() {
-	msgs := []message.Composer{
-		message.NewString("one"),
-		message.NewString("two"),
-		message.NewString("three"),
-	}
-
-	cases := map[string][]manyWhenMethod{
-		"emergency": []manyWhenMethod{EmergencyManyWhen, s.logger.EmergencyManyWhen},
-		"alert":     []manyWhenMethod{AlertManyWhen, s.logger.AlertManyWhen},
-		"critical":  []manyWhenMethod{CriticalManyWhen, s.logger.CriticalManyWhen},
-		"error":     []manyWhenMethod{ErrorManyWhen, s.logger.ErrorManyWhen},
-		"warning":   []manyWhenMethod{WarningManyWhen, s.logger.WarningManyWhen},
-		"notice":    []manyWhenMethod{NoticeManyWhen, s.logger.NoticeManyWhen},
-		"info":      []manyWhenMethod{InfoManyWhen, s.logger.InfoManyWhen},
-		"debug":     []manyWhenMethod{DebugManyWhen, s.logger.DebugManyWhen},
-	}
-
-	for kind, loggers := range cases {
-		s.Len(loggers, 2)
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
-
-		loggers[0](true, msgs...)
-		loggers[1](true, msgs...)
-
-		for i := 0; i < len(msgs); i++ {
-			s.True(s.loggingSender.HasMessage())
-			s.True(s.stdSender.HasMessage())
-			lgrMsg := s.loggingSender.GetMessage()
-			stdMsg := s.stdSender.GetMessage()
-			s.Equal(lgrMsg.Rendered, stdMsg.Rendered,
-				fmt.Sprintf("%s: \n\tlogger: %+v \n\tstandard: %+v", kind, lgrMsg, stdMsg))
-		}
-
-		s.False(s.loggingSender.HasMessage())
-		s.False(s.stdSender.HasMessage())
-		loggers[0](false, msgs...)
-		loggers[1](false, msgs...)
-
-		for i := 0; i < len(msgs); i++ {
-			s.False(s.loggingSender.HasMessage())
-			s.False(s.stdSender.HasMessage())
-		}
-	}
-}
-
 func (s *LoggingMethodSuite) TestProgramaticLevelMethods() {
 	type (
-		lgwhen     func(bool, level.Priority, interface{})
-		lgwhenln   func(bool, level.Priority, ...interface{})
-		lgwhenf    func(bool, level.Priority, string, ...interface{})
-		lgmanywhen func(bool, level.Priority, ...message.Composer)
-		lg         func(level.Priority, interface{})
-		lgln       func(level.Priority, ...interface{})
-		lgf        func(level.Priority, string, ...interface{})
-		lgmany     func(level.Priority, ...message.Composer)
+		lgwhen   func(bool, level.Priority, interface{})
+		lgwhenln func(bool, level.Priority, ...interface{})
+		lgwhenf  func(bool, level.Priority, string, ...interface{})
+		lg       func(level.Priority, interface{})
+		lgln     func(level.Priority, ...interface{})
+		lgf      func(level.Priority, string, ...interface{})
 	)
 
 	cases := map[string]interface{}{
-		"when":     []lgwhen{LogWhen, s.logger.LogWhen},
-		"whenln":   []lgwhenln{LogWhenln, s.logger.LogWhenln},
-		"whenf":    []lgwhenf{LogWhenf, s.logger.LogWhenf},
-		"manywhen": []lgmanywhen{LogManyWhen, s.logger.LogManyWhen},
-		"lg":       []lg{Log, s.logger.Log},
-		"lgln":     []lgln{Logln, s.logger.Logln},
-		"lgf":      []lgf{Logf, s.logger.Logf},
-		"lgmany":   []lgmany{LogMany, s.logger.LogMany},
+		"when":   []lgwhen{LogWhen, s.logger.LogWhen},
+		"whenln": []lgwhenln{LogWhenln, s.logger.LogWhenln},
+		"whenf":  []lgwhenf{LogWhenf, s.logger.LogWhenf},
+		"lg":     []lg{Log, s.logger.Log},
+		"lgln":   []lgln{Logln, s.logger.Logln},
+		"lgf":    []lgf{Logf, s.logger.Logf},
 	}
 
 	const l = level.Emergency
@@ -401,12 +311,6 @@ func (s *LoggingMethodSuite) TestProgramaticLevelMethods() {
 		case []lgf:
 			log[0](l, "%T: (%s) %s", log, kind, testMessage)
 			log[1](l, "%T: (%s) %s", log, kind, testMessage)
-		case []lgmany:
-			log[0](l, message.ConvertToComposer(l, testMessage))
-			log[1](l, message.ConvertToComposer(l, testMessage))
-		case []lgmanywhen:
-			log[0](true, l, message.ConvertToComposer(l, testMessage))
-			log[1](true, l, message.ConvertToComposer(l, testMessage))
 		default:
 			panic("testing error")
 		}

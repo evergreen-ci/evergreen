@@ -132,7 +132,7 @@ buildvariants:
   - name: rhel62-gccgo
     display_name: RHEL 6.2 (gccgo)
     expansions:
-      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH"
+      build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
     run_on:
       - rhel62-small
     tasks: [ ".test" ]

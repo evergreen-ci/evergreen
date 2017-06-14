@@ -38,6 +38,10 @@ func ConvertToComposer(p level.Priority, message interface{}) Composer {
 	case Composer:
 		_ = message.SetPriority(p)
 		return message
+	case []Composer:
+		out := NewGroupComposer(message)
+		_ = out.SetPriority(p)
+		return out
 	case string:
 		return NewDefaultMessage(p, message)
 	case error:

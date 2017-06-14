@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 
 	"strings"
@@ -35,6 +36,10 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		NewLineMessage(level.Error, testMsg, ""):                               testMsg,
 		NewLine(testMsg):                                                       testMsg,
 		NewLineMessage(level.Error, testMsg):                                   testMsg,
+		MakeGroupComposer(NewString(testMsg)):                                  testMsg,
+		NewGroupComposer([]Composer{NewString(testMsg)}):                       testMsg,
+		MakeJiraMessage(JiraIssue{Summary: testMsg}):                           testMsg,
+		NewJiraMessage("", testMsg):                                            testMsg,
 	}
 
 	for msg, output := range cases {
@@ -76,6 +81,8 @@ func TestUnpopulatedMessageComposers(t *testing.T) {
 		NewStack(1, ""),
 		NewStackLines(1),
 		NewStackFormatted(1, ""),
+		MakeGroupComposer(),
+		&GroupComposer{},
 	}
 
 	for _, msg := range cases {
@@ -122,7 +129,12 @@ func TestDataCollecterComposerConstructors(t *testing.T) {
 
 func TestStackMessages(t *testing.T) {
 	const testMsg = "hello"
-	const stackMsg = "message/composer_test"
+	var stackMsg = "message/composer_test"
+
+	if runtime.GOOS == "windows" {
+		stackMsg = strings.Replace(stackMsg, "/", "\\", 1)
+	}
+
 	assert := assert.New(t)
 	// map objects to output (prefix)
 	cases := map[Composer]string{
@@ -165,6 +177,7 @@ func TestComposerConverter(t *testing.T) {
 		[]string{testMsg},
 		[]interface{}{testMsg},
 		[]byte(testMsg),
+		[]Composer{NewString(testMsg)},
 	}
 
 	for _, msg := range cases {
@@ -202,4 +215,24 @@ func TestComposerConverter(t *testing.T) {
 		assert.Equal(out, comp.String(), fmt.Sprintf("%T", in))
 	}
 
+}
+
+func TestJiraMessageComposerConstructor(t *testing.T) {
+	const testMsg = "hello"
+	assert := assert.New(t)
+	reporterField := JiraField{Key: "Reporter", Value: "Annie"}
+	assigneeField := JiraField{Key: "Assignee", Value: "Sejin"}
+	typeField := JiraField{Key: "Type", Value: "Bug"}
+	labelsField := JiraField{Key: "Labels", Value: []string{"Soul", "Pop"}}
+	unknownField := JiraField{Key: "Artist", Value: "Adele"}
+	msg := NewJiraMessage("project", testMsg, reporterField, assigneeField, typeField, labelsField, unknownField)
+	issue := msg.Raw().(JiraIssue)
+
+	assert.Equal(issue.Project, "project")
+	assert.Equal(issue.Summary, testMsg)
+	assert.Equal(issue.Reporter, reporterField.Value)
+	assert.Equal(issue.Assignee, assigneeField.Value)
+	assert.Equal(issue.Type, typeField.Value)
+	assert.Equal(issue.Labels, labelsField.Value)
+	assert.Equal(issue.Fields[unknownField.Key], unknownField.Value)
 }

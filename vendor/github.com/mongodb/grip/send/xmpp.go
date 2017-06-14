@@ -12,7 +12,7 @@ import (
 
 type xmppLogger struct {
 	target string
-	client *xmpp.Client
+	info   XMPPConnectionInfo
 	*Base
 }
 
@@ -22,6 +22,8 @@ type XMPPConnectionInfo struct {
 	Hostname string
 	Username string
 	Password string
+
+	client xmppClient
 }
 
 const (
@@ -96,22 +98,19 @@ func constructXMPPLogger(name, target string, info XMPPConnectionInfo) (Sender, 
 	s := &xmppLogger{
 		Base:   NewBase(name),
 		target: target,
+		info:   info,
 	}
 
-	client, err := xmpp.NewClient(info.Hostname, info.Username, info.Password, false)
-	if err != nil {
-		errs := []string{err.Error()}
-		client, err = xmpp.NewClientNoTLS(info.Hostname, info.Username, info.Password, false)
-		if err != nil {
-			errs = append(errs, err.Error())
-			return nil, fmt.Errorf("cannot connect to server '%s', as '%s': %s",
-				info.Hostname, info.Username, strings.Join(errs, "; "))
-		}
+	if s.info.client == nil {
+		s.info.client = &xmppClientImpl{}
 	}
-	s.client = client
+
+	if err := s.info.client.Create(info); err != nil {
+		return nil, err
+	}
 
 	s.closer = func() error {
-		return client.Close()
+		return s.info.client.Close()
 	}
 
 	fallback := log.New(os.Stdout, "", log.LstdFlags)
@@ -125,7 +124,7 @@ func constructXMPPLogger(name, target string, info XMPPConnectionInfo) (Sender, 
 
 	s.reset = func() {
 		_ = s.SetFormatter(MakeXMPPFormatter(s.Name()))
-		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
+		fallback.SetPrefix(fmt.Sprintf("[%s] ", s.Name()))
 	}
 
 	return s, nil
@@ -145,8 +144,41 @@ func (s *xmppLogger) Send(m message.Composer) {
 			Text:   text,
 		}
 
-		if _, err := s.client.Send(c); err != nil {
+		if _, err := s.info.client.Send(c); err != nil {
 			s.errHandler(err, m)
 		}
 	}
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// interface to wrap xmpp client interaction
+//
+////////////////////////////////////////////////////////////////////////
+
+type xmppClient interface {
+	Create(XMPPConnectionInfo) error
+	Send(xmpp.Chat) (int, error)
+	Close() error
+}
+
+type xmppClientImpl struct {
+	*xmpp.Client
+}
+
+func (c *xmppClientImpl) Create(info XMPPConnectionInfo) error {
+	client, err := xmpp.NewClient(info.Hostname, info.Username, info.Password, false)
+	if err != nil {
+		errs := []string{err.Error()}
+		client, err = xmpp.NewClientNoTLS(info.Hostname, info.Username, info.Password, false)
+		if err != nil {
+			errs = append(errs, err.Error())
+			return fmt.Errorf("cannot connect to server '%s', as '%s': %s",
+				info.Hostname, info.Username, strings.Join(errs, "; "))
+		}
+	}
+
+	c.Client = client
+
+	return nil
 }

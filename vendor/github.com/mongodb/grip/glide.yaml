@@ -4,6 +4,7 @@ import:
   version: ^9.0.0
   subpackages:
   - journal
+- package: github.com/nutmegdevelopment/sumologic
 - package: github.com/bluele/slack
 - package: github.com/mattn/go-xmpp
 - package: github.com/shirou/gopsutil
@@ -14,3 +15,9 @@ import:
 - package: github.com/stretchr/objx
 - package: github.com/pmezard/go-difflib
 - package: github.com/davecgh/go-spew
+- package: github.com/fuyufjh/splunk-hec-go
+- package: github.com/satori/go.uuid
+- package: github.com/andygrunwald/go-jira
+- package: github.com/trivago/tgo
+- package: github.com/fatih/structs
+- package: github.com/google/go-querystring

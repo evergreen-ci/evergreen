@@ -30,4 +30,7 @@ func (s *GripSuite) TestSenderGetterReturnsExpectedJournaler() {
 	fs, _ := send.NewFileLogger("file_sender", "foo", s.grip.GetSender().Level())
 	defer fs.Close()
 	s.IsType(grip.GetSender(), fs)
+
+	s.Error(grip.SetSender(nil))
+
 }

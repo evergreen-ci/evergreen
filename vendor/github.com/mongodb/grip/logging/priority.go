@@ -41,7 +41,11 @@ func convertPriority(priority interface{}, fallback level.Priority) level.Priori
 	case level.Priority:
 		return p
 	case int:
-		return level.Priority(p)
+		out := level.Priority(p)
+		if !level.IsValidPriority(out) {
+			return fallback
+		}
+		return out
 	case string:
 		l := level.FromString(p)
 		if l == level.Invalid {
