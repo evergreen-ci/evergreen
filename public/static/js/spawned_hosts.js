@@ -247,6 +247,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
       if (publicKeys == 'null') {
         publicKeys = [];
       }
+      $scope.userKeys = [];
       _.each(publicKeys, function(publicKey) {
         $scope.userKeys.push({ 'name': publicKey.name, 'key': publicKey.key });
       });
