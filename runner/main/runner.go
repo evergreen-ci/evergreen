@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	. "github.com/evergreen-ci/evergreen/runner"
+	"github.com/evergreen-ci/evergreen/scheduler"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
@@ -57,8 +58,9 @@ at regular intervals.
 	}
 }
 
-var (
-	runInterval = int64(30)
+const (
+	schedulerInterval  = 20 * time.Second
+	defaultRunInterval = 60 * time.Second
 )
 
 func main() {
@@ -93,13 +95,6 @@ func main() {
 		grip.CatchEmergencyFatal(runProcessByName(flag.Arg(0), settings))
 	}
 
-	if settings.Runner.IntervalSeconds <= 0 {
-		grip.Warningf("Interval set to %v (<= 0s) using %v instead",
-			settings.Runner.IntervalSeconds, runInterval)
-	} else {
-		runInterval = settings.Runner.IntervalSeconds
-	}
-
 	// start and schedule runners
 	wg := &sync.WaitGroup{}
 	ch := startRunners(wg, settings)
@@ -114,36 +109,52 @@ func main() {
 // returns a channel on which all runners listen on, for when to terminate.
 func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan bool {
 	c := make(chan bool)
-	duration := time.Duration(runInterval) * time.Second
+
+	duration := defaultRunInterval
+	if s.Runner.IntervalSeconds > 0 {
+		duration = time.Duration(s.Runner.IntervalSeconds) * time.Second
+	}
+
+	grip.Noticef("runner periodicity set to %s (default: %s, scheduler: %s)",
+		time.Duration(s.Runner.IntervalSeconds)*time.Second,
+		defaultRunInterval, schedulerInterval)
 
 	for _, r := range Runners {
 		wg.Add(1)
 
-		// start each runner in its own goroutine
-		go func(r ProcessRunner, s *evergreen.Settings, terminateChan chan bool) {
-			defer wg.Done()
-
-			grip.Infoln("Starting runner process:", r.Name())
-
-			loop := true
-
-			for loop {
-				if err := r.Run(s); err != nil {
-					subject := fmt.Sprintf("%v failure", r.Name())
-					grip.Error(err)
-					if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
-						grip.Errorln("sending email: %+v", err)
-					}
-				}
-				select {
-				case <-time.NewTimer(duration).C:
-				case loop = <-terminateChan:
-				}
-			}
-			grip.Infoln("Cleanly terminated runner process:", r.Name())
-		}(r, s, c)
+		if r.Name() == scheduler.RunnerName {
+			go runnerBackgroundWorker(r, s, c, schedulerInterval, wg)
+		} else {
+			go runnerBackgroundWorker(r, s, c, duration, wg)
+		}
 	}
 	return c
+}
+
+func runnerBackgroundWorker(r ProcessRunner, s *evergreen.Settings, terminateChan chan bool, dur time.Duration, wg *sync.WaitGroup) {
+	timer := time.NewTimer(0)
+	defer wg.Done()
+
+	grip.Infoln("Starting runner process:", r.Name())
+
+	for {
+		select {
+		case <-terminateChan:
+			grip.Infoln("Cleanly terminated runner process:", r.Name())
+			return
+		case <-timer.C:
+			if err := r.Run(s); err != nil {
+				subject := fmt.Sprintf("%s failure", r.Name())
+				grip.Error(err)
+				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
+					grip.Errorln("sending email: %+v", err)
+				}
+			}
+
+			grip.Debugln("restarting runner loop for:", r.Name())
+			timer.Reset(dur)
+		}
+	}
 }
 
 // listenForSIGTERM listens for the SIGTERM signal and closes the
