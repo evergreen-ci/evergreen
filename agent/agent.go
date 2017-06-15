@@ -159,7 +159,7 @@ type Agent struct {
 func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskResponse, error) {
 	// Signal all background actions to stop. If HandleSignals is still running,
 	// this will cause it to return.
-	close(agt.signalHandler.stopBackgroundChan)
+	defer close(agt.signalHandler.stopBackgroundChan)
 	defer agt.cleanup(agt.GetCurrentTaskId())
 	var detail *apimodels.TaskEndDetail
 	select {
@@ -189,16 +189,19 @@ func (agt *Agent) finishAndAwaitCleanup(status string) (*apimodels.EndTaskRespon
 	}
 	agt.cleanup(agt.GetCurrentTaskId())
 
-	err := agt.removeTaskDirectory()
-	if err != nil {
+	if err := agt.removeTaskDirectory(); err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error removing task directory: %v", err)
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Sending final status as: %v", detail.Status)
 	agt.APILogger.FlushAndWait()
 
-	return agt.End(detail)
+	resp, err := agt.End(detail)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem marking task complete")
+	}
 
+	return resp, nil
 }
 
 // getTaskEndDetail returns a default TaskEndDetail struct based on the current
@@ -850,15 +853,14 @@ func (agt *Agent) setCurrentTaskDir(d string) {
 // task it was executing.
 func (agt *Agent) removeTaskDirectory() error {
 	agt.logger.LogExecution(slogger.INFO, "Changing directory back to distro working directory.")
-	err := os.Chdir(agt.taskConfig.Distro.WorkDir)
-	if err != nil {
+	if err := os.Chdir(agt.taskConfig.Distro.WorkDir); err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error changing directory out of task directory: %v", err)
 		return err
 	}
 
 	agt.logger.LogExecution(slogger.INFO, "Deleting directory for completed task.")
-	err = os.RemoveAll(agt.getCurrentTaskDir())
-	if err != nil {
+
+	if err := os.RemoveAll(agt.getCurrentTaskDir()); err != nil {
 		agt.logger.LogExecution(slogger.ERROR, "Error removing working directory for the task: %v", err)
 		return err
 	}

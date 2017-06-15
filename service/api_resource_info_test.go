@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
@@ -60,7 +61,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		})
 
 		Convey("the system data should persist in the database", func() {
-			events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, 0))
+			events, err := event.Find(event.TaskLogCollection, event.TaskSystemInfoEvents(taskId, time.Now(), 0, -1))
 			testutil.HandleTestingErr(err, t, "problem finding task event")
 			So(len(events), ShouldEqual, 1)
 			e := events[0]
@@ -86,7 +87,7 @@ func TestResourceInfoEndPoints(t *testing.T) {
 		})
 
 		Convey("the process data should persist in the database", func() {
-			events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, 0))
+			events, err := event.Find(event.TaskLogCollection, event.TaskProcessInfoEvents(taskId, time.Now(), 0, -1))
 			testutil.HandleTestingErr(err, t, "problem finding task event")
 			So(len(events), ShouldEqual, 1)
 			e := events[0]
