@@ -71,7 +71,7 @@ func (c *metricsCollector) processInfoCollector(firstInterval, secondInterval ti
 			msgs := message.CollectProcessInfoSelfWithChildren()
 			_, err := c.comm.TryTaskPost("process_info", msgs)
 			grip.CatchNotice(err)
-			grip.DebugManyWhen(sometimes.Fifth(), msgs...)
+			grip.DebugWhen(sometimes.Fifth(), msgs)
 
 			if count <= numFirstIterations {
 				timer.Reset(firstInterval)
