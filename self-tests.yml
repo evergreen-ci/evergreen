@@ -518,7 +518,7 @@ buildvariants:
   - name: osx
     display_name: OSX
     run_on:
-      - osx-1010
+      - macos-1012
     expansions:
       build_env: "EVERGREEN_ALL=true DISABLE_COVERAGE=yes"
       mongodb_url: https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-3.2.9.tgz
