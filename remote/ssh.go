@@ -68,7 +68,7 @@ func (cmd *SSHCommand) Run() ([]byte, error) {
 	}
 
 	// request a pseudo terminal
-	if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
+	if err = session.RequestPty("xterm", 80, 40, modes); err != nil {
 		return nil, errors.Errorf("error requesting pty: %v", err)
 	}
 

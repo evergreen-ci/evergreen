@@ -60,28 +60,28 @@ func (s *MetricsSuite) TestWriteMethidsAreNotImplemented() {
 }
 
 func (s *MetricsSuite) TestBuildingFromServiceAffectsStateOfModel() {
-	s.sysInfo.BuildFromService(message.CollectSystemInfo())
+	s.NoError(s.sysInfo.BuildFromService(message.CollectSystemInfo()))
 	s.NotEqual(s.sysInfo, &APISystemMetrics{})
 
 	s.Empty(s.procs)
-	s.procs.BuildFromService(s.procData)
+	s.NoError(s.procs.BuildFromService(s.procData))
 	s.Equal(len([]APIProcessStat(s.procs)), len(s.procData))
 }
 
 func (s *MetricsSuite) TestProcConverterOverwritesExistingData() {
 	// first approach uses the existing data but changes the length.
-	s.procs.BuildFromService(s.procData)
+	s.NoError(s.procs.BuildFromService(s.procData))
 	s.Equal(len([]APIProcessStat(s.procs)), len(s.procData))
-	s.procs.BuildFromService(s.procData[1:])
+	s.NoError(s.procs.BuildFromService(s.procData[1:]))
 	s.NotEqual(len([]APIProcessStat(s.procs)), len(s.procData))
 	s.Equal(len([]APIProcessStat(s.procs)), len(s.procData)-1)
 
 	// second approach generates new data and makes sure it overwrites
 	existing := s.procs
 	newProcs := getCurrentProcStats()
-	s.procs.BuildFromService(s.procData)
+	s.NoError(s.procs.BuildFromService(s.procData))
 	s.NotEqual(newProcs, s.procData)
-	s.procs.BuildFromService(newProcs)
+	s.NoError(s.procs.BuildFromService(newProcs))
 	s.NotEqual(s.procs, existing)
 }
 
@@ -91,9 +91,9 @@ func (s *MetricsSuite) TestSysInfoConverterOverwritesExistingData() {
 
 	s.NotEqual(first, second)
 
-	s.sysInfo.BuildFromService(first)
+	s.NoError(s.sysInfo.BuildFromService(first))
 	firstM := *s.sysInfo
-	s.sysInfo.BuildFromService(second)
+	s.NoError(s.sysInfo.BuildFromService(second))
 	s.NotEqual(firstM, s.sysInfo)
 }
 

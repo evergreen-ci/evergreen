@@ -361,7 +361,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 
 			err = util.ReadJSONInto(resp.Body, v)
 			if err != nil {
-				err := errors.Wrap(err, "unable to read project version response")
+				err = errors.Wrap(err, "unable to read project version response")
 				h.Logger.Logf(slogger.ERROR, err.Error())
 				return err
 			}

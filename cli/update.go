@@ -180,7 +180,8 @@ func (uc *GetUpdateCommand) Execute(_ []string) error {
 	if uc.Install {
 		fmt.Println("Upgraded binary successfully downloaded to temporary file:", updatedBin)
 
-		binaryDest, err := osext.Executable()
+		var binaryDest string
+		binaryDest, err = osext.Executable()
 		if err != nil {
 			return errors.Errorf("Failed to get installation path: %v", err)
 		}

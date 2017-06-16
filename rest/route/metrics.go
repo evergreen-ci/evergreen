@@ -138,7 +138,7 @@ func getTaskProcessMetricsManager(route string, version int) *RouteManager {
 			{
 				MethodType:     evergreen.MethodGet,
 				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &taskSystemMetricsHandler{},
+				RequestHandler: &taskProcessMetricsHandler{},
 			},
 		},
 	}

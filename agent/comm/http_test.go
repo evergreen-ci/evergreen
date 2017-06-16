@@ -28,7 +28,10 @@ func init() {
 
 func TestCommunicatorServerDown(t *testing.T) {
 	Convey("With an HTTP communicator and a dead HTTP server", t, func() {
-		logger := &slogger.Logger{"test", []send.Sender{slogger.StdOutAppender()}}
+		logger := &slogger.Logger{
+			Name:      "test",
+			Appenders: []send.Sender{slogger.StdOutAppender()},
+		}
 		downServer := httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 		)
@@ -62,7 +65,10 @@ func TestCommunicatorServerUp(t *testing.T) {
 	Convey("With an HTTP communicator and live HTTP server", t, func() {
 		serveMux := http.NewServeMux()
 		ts := httptest.NewServer(serveMux)
-		logger := &slogger.Logger{"test", []send.Sender{slogger.StdOutAppender()}}
+		logger := &slogger.Logger{
+			Name:      "test",
+			Appenders: []send.Sender{slogger.StdOutAppender()},
+		}
 
 		agentCommunicator := HTTPCommunicator{
 			ServerURLRoot:   ts.URL,

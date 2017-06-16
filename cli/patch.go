@@ -624,7 +624,7 @@ func validatePatchCommand(params *PatchCommandParams) (ac *APIClient, settings *
 			confirm(fmt.Sprintf("Set %v as the default variants for project '%v'?",
 				params.Variants, params.Project), false) {
 			settings.SetDefaultVariants(params.Project, params.Variants...)
-			if err := WriteSettings(settings, params.GlobalOpts); err != nil {
+			if err = WriteSettings(settings, params.GlobalOpts); err != nil {
 				fmt.Printf("warning - failed to set default variants: %v\n", err)
 			}
 		}

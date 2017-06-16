@@ -138,7 +138,7 @@ func (s *TaskResourceSuite) TestLoggedProcessEventsWithoutTimestampsGetCurrentTi
 func (s *TaskResourceSuite) TestProcessInfosWithTimestampsPersist() {
 	startTime := time.Now().Add(-100 * time.Millisecond)
 	info := &message.ProcessInfo{}
-	info.Base.Collect()
+	s.NoError(info.Base.Collect())
 	s.False(info.Base.Time.IsZero())
 	s.True(startTime.Before(info.Base.Time))
 
@@ -157,7 +157,7 @@ func (s *TaskResourceSuite) TestProcessInfosWithTimestampsPersist() {
 func (s *TaskResourceSuite) TestSystemInfosWithTimestampsPersist() {
 	startTime := time.Now().Add(-100 * time.Millisecond)
 	info := &message.SystemInfo{}
-	info.Base.Collect()
+	s.NoError(info.Base.Collect())
 	s.False(info.Base.Time.IsZero())
 	s.True(startTime.Before(info.Base.Time))
 

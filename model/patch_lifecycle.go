@@ -320,7 +320,9 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 		if _, ok := variantsProcessed[vt.Variant]; ok {
 			continue
 		}
-		buildId, err := CreateBuildFromVersion(project, patchVersion, tt, vt.Variant, true, vt.Tasks)
+
+		var buildId string
+		buildId, err = CreateBuildFromVersion(project, patchVersion, tt, vt.Variant, true, vt.Tasks)
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
