@@ -61,7 +61,7 @@ class JiraLink extends React.Component {
         let hasSpace = i !== (tokens.length - 1);
         let maybeSpace = hasSpace ? ' ': '';
         if(token.match(JIRA_REGEX)) {
-          let jiraLink = jiraHost+"/browse/"+token;
+          let jiraLink = "https://"+jiraHost+"/browse/"+token;
           return (
              React.createElement("a", {href: jiraLink}, token+maybeSpace)
           );
