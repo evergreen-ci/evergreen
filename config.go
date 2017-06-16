@@ -162,6 +162,7 @@ type TaskRunnerConfig struct {
 type CloudProviders struct {
 	AWS          AWSConfig          `yaml:"aws"`
 	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
+	OpenStack    OpenStackConfig    `yaml:"openstack"`
 }
 
 // AWSConfig stores auth info for Amazon Web Services.
@@ -174,6 +175,22 @@ type AWSConfig struct {
 type DigitalOceanConfig struct {
 	ClientId string `yaml:"client_id"`
 	Key      string `yaml:"key"`
+}
+
+// OpenStackConfig stores auth info for Linaro using Identity V3. All fields required.
+//
+// The config is NOT compatible with Identity V2.
+type OpenStackConfig struct {
+	IdentityEndpoint string
+
+	Username         string
+	Password         string
+	DomainName       string
+
+	ProjectName      string
+	ProjectID        string
+
+	Region           string
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
