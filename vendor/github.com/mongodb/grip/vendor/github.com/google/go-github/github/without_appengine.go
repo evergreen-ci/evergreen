@@ -4,14 +4,16 @@
 // license that can be found in the LICENSE file.
 
 // +build !appengine
+// +build go1.7
 
 // This file provides glue for making github work without App Engine.
 
 package github
 
 import (
-	"golang.org/x/net/context"
 	"net/http"
+
+	"golang.org/x/net/context"
 )
 
 func withContext(ctx context.Context, req *http.Request) (context.Context, *http.Request) {
