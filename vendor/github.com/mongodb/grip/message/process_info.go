@@ -70,13 +70,7 @@ func CollectProcessInfoWithChildren(pid int32) []Composer {
 	parentMsg.populate(parent)
 	results = append(results, parentMsg)
 
-	children, err := parent.Children()
-	parentMsg.saveError("childreen", err)
-	if err != nil {
-		return results
-	}
-
-	for _, child := range children {
+	for _, child := range getChildrenRecursively(parent) {
 		cm := &ProcessInfo{}
 		cm.loggable = true
 		cm.populate(child)
@@ -84,6 +78,22 @@ func CollectProcessInfoWithChildren(pid int32) []Composer {
 	}
 
 	return results
+}
+
+func getChildrenRecursively(proc *process.Process) []*process.Process {
+	var out []*process.Process
+
+	children, err := proc.Children()
+	if len(children) == 0 || err != nil {
+		return out
+	}
+
+	for _, p := range children {
+		out = append(out, p)
+		out = append(out, getChildrenRecursively(p)...)
+	}
+
+	return out
 }
 
 // NewProcessInfo constructs a fully configured and populated

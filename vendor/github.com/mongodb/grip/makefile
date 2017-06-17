@@ -182,7 +182,8 @@ vendor-clean:
 	sed -ri 's%(\tlog.*)%// \1%g' `find vendor/github.com/nutmegdevelopment/sumologic/upload/upload.go`
 	rm -rf vendor/github.com/mongodb/amboy/vendor/golang.org/x/net/
 	sed -ri 's/json:"(.*)"/json:"\1" bson:"\1"/' `grep -R -l 'json:\".*\" [^bson]' vendor/github.com/shirou/gopsutil/*` || true
-	find vendor/github.com/shirou/gopsutil/ -name "*.go" | xargs -n 1 go fmt || true
+	find vendor/ -name "*.go" | xargs -n 1 go fmt -w -r '"context" -> "golang.org/x/net/context"
+	find vendor/github.com/shirou/gopsutil/ -name "*.go" | xargs -n 1 gofmt || true
 	find vendor/ -name "*.gif" -o -name "*.gz" -o -name "*.png" -o -name "*.ico" -o -name "*.dat" -o -name "*testdata" | xargs rm -fr
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
@@ -215,3 +216,4 @@ phony += clean
 # configure phony targets
 .FORCE:
 .PHONY:$(phony) .FORCE
+

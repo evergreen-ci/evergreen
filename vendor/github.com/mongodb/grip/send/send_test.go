@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -116,6 +117,24 @@ func (s *SenderSuite) SetupTest() {
 	bufferedInternal, err := NewNativeLogger("buffered", l)
 	s.Require().NoError(err)
 	s.senders["buffered"] = NewBufferedSender(bufferedInternal, minBufferLength, 1)
+
+	s.senders["github"], err = NewGithubIssuesLogger("gh", GithubOptions{})
+	s.Require().NoError(err)
+
+	s.senders["github-comment"], err = NewGithubCommentLogger("ghcomment", 100, GithubOptions{})
+	s.Require().NoError(err)
+
+	s.senders["gh-mocked"] = &githubLogger{
+		Base: NewBase("gh-mocked"),
+		gh:   &githubClientMock{},
+	}
+	s.senders["gh-mocked"].SetFormatter(MakeDefaultFormatter())
+	s.senders["gh-comment-mocked"] = &githubCommentLogger{
+		Base:  NewBase("gh-mocked"),
+		gh:    &githubClientMock{},
+		issue: 200,
+	}
+	s.senders["gh-comment-mocked"].SetFormatter(MakeDefaultFormatter())
 }
 
 func (s *SenderSuite) TeardownTest() {
@@ -130,6 +149,9 @@ func (s *SenderSuite) functionalMockSenders() map[string]Sender {
 	for t, sender := range s.senders {
 		if t == "slack" || t == "internal" || t == "xmpp" || t == "buildlogger" {
 			continue
+		} else if strings.HasPrefix(t, "github") {
+			continue
+
 		} else {
 			out[t] = sender
 		}

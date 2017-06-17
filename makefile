@@ -254,6 +254,7 @@ vendor-sync:$(vendorDeps)
 	rm vendor/github.com/fsouza/go-dockerclient/external/github.com/Sirupsen/logrus/terminal_freebsd.go
 vendor-clean:
 	rm -rf vendor/github.com/stretchr/testify/vendor/
+	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/net/
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1

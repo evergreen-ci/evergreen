@@ -7,7 +7,8 @@ import (
 	"os"
 	"strings"
 
-	jira "github.com/andygrunwald/go-jira"
+	"github.com/andygrunwald/go-jira"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/trivago/tgo/tcontainer"
 )
@@ -19,12 +20,18 @@ type jiraJournal struct {
 
 // JiraOptions include configurations for the JIRA client
 type JiraOptions struct {
-	Name     string // name of the journaler
+	Name     string // Name of the journaler
 	BaseURL  string // URL of the JIRA instance
 	Username string
 	Password string
 
 	client jiraClient
+}
+
+// MakeJiraLogger is the same as NewJiraLogger but uses a warning
+// level of Trace
+func MakeJiraLogger(opts *JiraOptions) (Sender, error) {
+	return NewJiraLogger(opts, LevelInfo{level.Trace, level.Trace})
 }
 
 // NewJiraLogger constructs a Sender that creates issues to jira, given
@@ -172,6 +179,7 @@ type jiraClient interface {
 	CreateClient(string) error
 	Authenticate(string, string) (bool, error)
 	PostIssue(*jira.IssueFields) error
+	PostComment(string, string) error
 }
 
 type jiraClientImpl struct {
@@ -192,5 +200,11 @@ func (c *jiraClientImpl) Authenticate(username string, password string) (bool, e
 func (c *jiraClientImpl) PostIssue(issueFields *jira.IssueFields) error {
 	i := jira.Issue{Fields: issueFields}
 	_, _, err := c.Client.Issue.Create(&i)
+	return err
+}
+
+// todo: allow more parameters than just body?
+func (c *jiraClientImpl) PostComment(issueID string, commentToPost string) error {
+	_, _, err := c.Client.Issue.AddComment(issueID, &jira.Comment{Body: commentToPost})
 	return err
 }

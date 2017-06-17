@@ -21,3 +21,6 @@ import:
 - package: github.com/trivago/tgo
 - package: github.com/fatih/structs
 - package: github.com/google/go-querystring
+- package: github.com/google/go-github
+- package: golang.org/x/oauth2
+- package: golang.org/x/net

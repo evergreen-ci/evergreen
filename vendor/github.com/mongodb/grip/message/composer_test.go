@@ -236,3 +236,18 @@ func TestJiraMessageComposerConstructor(t *testing.T) {
 	assert.Equal(issue.Labels, labelsField.Value)
 	assert.Equal(issue.Fields[unknownField.Key], unknownField.Value)
 }
+
+func TestProcessTreeDoesNotHaveDuplicates(t *testing.T) {
+	assert := assert.New(t)
+
+	procs := CollectProcessInfoWithChildren(1)
+	seen := make(map[int32]struct{})
+
+	for _, p := range procs {
+		pinfo, ok := p.(*ProcessInfo)
+		assert.True(ok)
+		seen[pinfo.Pid] = struct{}{}
+	}
+
+	assert.Equal(len(seen), len(procs))
+}

@@ -29,7 +29,17 @@ func (j *jiraClientMock) Authenticate(_ string, _ string) (bool, error) {
 
 func (j *jiraClientMock) PostIssue(_ *jira.IssueFields) error {
 	if j.failSend {
-		return errors.New("mock failed sending")
+		return errors.New("mock failed to post issue")
+	}
+
+	j.numSent++
+
+	return nil
+}
+
+func (j *jiraClientMock) PostComment(issueID string, comment string) error {
+	if j.failSend {
+		return errors.New("mock failed to post comment")
 	}
 
 	j.numSent++
