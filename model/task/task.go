@@ -101,6 +101,13 @@ type Dependency struct {
 	Status string `bson:"status" json:"status"`
 }
 
+// VersionCost is service level model for representing cost data related to a version.
+// SumTimeTaken is the aggregation of time taken by all tasks associated with a version.
+type VersionCost struct {
+	VersionId    string        `bson:"version_id"`
+	SumTimeTaken time.Duration `bson:"sum_time_taken"`
+}
+
 // SetBSON allows us to use dependency representation of both
 // just task Ids and of true Dependency structs.
 //  TODO eventually drop all of this switching

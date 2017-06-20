@@ -476,6 +476,25 @@ func TasksByBuildIdPipeline(buildId, taskId, taskStatus string,
 	return pipeline
 }
 
+// CostDataByVersionIdPipeline returns an aggregation pipeline for fetching
+// cost data (sum of time taken) from a version by its Id.
+func CostDataByVersionIdPipeline(versionId string) []bson.M {
+	pipeline := []bson.M{
+		{"$match": bson.M{VersionKey: versionId}},
+		{"$group": bson.M{
+			"_id":            "$" + VersionKey,
+			"sum_time_taken": bson.M{"$sum": "$" + TimeTakenKey},
+		}},
+		{"$project": bson.M{
+			"_id":            0,
+			"version_id":     "$_id",
+			"sum_time_taken": 1,
+		}},
+	}
+
+	return pipeline
+}
+
 // DB Boilerplate
 
 // FindOne returns one task that satisfies the query.
