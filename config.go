@@ -181,16 +181,16 @@ type DigitalOceanConfig struct {
 //
 // The config is NOT compatible with Identity V2.
 type OpenStackConfig struct {
-	IdentityEndpoint string
+	IdentityEndpoint string `yaml:"identity_endpoint"`
 
-	Username         string
-	Password         string
-	DomainName       string
+	Username         string `yaml:"username"`
+	Password         string `yaml:"password"`
+	DomainName       string `yaml:"domain_name"`
 
-	ProjectName      string
-	ProjectID        string
+	ProjectName      string `yaml:"project_name"`
+	ProjectID        string `yaml:"project_id"`
 
-	Region           string
+	Region           string `yaml:"region"`
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.

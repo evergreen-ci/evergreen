@@ -18,7 +18,7 @@ import (
 
 const (
 	// ProviderName is used to distinguish between different cloud providers.
-	ProviderName = "OpenStack"
+	ProviderName = "openstack"
 )
 
 // Manager implements the CloudManager interface for OpenStack.
@@ -30,10 +30,10 @@ type Manager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type ProviderSettings struct {
-	ImageName      string
-	FlavorName     string
-	KeyName        string
-	SecurityGroups []string
+	ImageName      string `mapstructure:"image_name"`
+	FlavorName     string `mapstructure:"flavor_name"`
+	KeyName        string `mapstructure:"key_name"`
+	SecurityGroup  string `mapstructure:"security_group"`
 }
 
 // Validate verifies a set of ProviderSettings.
@@ -87,10 +87,10 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // ProviderSettings in the distro should have the following settings:
-//     - ImageName:      image name
-//     - FlavorName:     like an AWS instance type i.e. m1.large
-//     - KeyName:        (optional) keypair name associated with the account
-//     - SecurityGroups: (optional) security group names
+//     - ImageName:     image name
+//     - FlavorName:    like an AWS instance type i.e. m1.large
+//     - KeyName:       (optional) keypair name associated with the account
+//     - SecurityGroup: (optional) security group name
 func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != ProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
@@ -118,7 +118,7 @@ func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*
 	grip.Debugf("Inserted intent host '%s' for distro '%s' to signal instance spawn intent", name, d.Id)
 
 	// Start the instance, and remove the intent host document if unsuccessful.
-	opts := getSpawnOptions(intentHost, settings)
+	opts := getSpawnOptions(intentHost, settings, d)
 	server, err := m.client.CreateInstance(opts, settings.KeyName)
 	if err != nil {
 		if rmErr := intentHost.Remove(); rmErr != nil {

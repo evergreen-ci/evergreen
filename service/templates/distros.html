@@ -215,6 +215,27 @@ Evergreen - Distros
                 <button ng-hide="readOnly" type="button" ng-disabled="mountPoints.devName.$dirty && mountPoints.$invalid || mountPoints.devName.$error.required" class="btn btn-primary" ng-click="form.$setDirty();addMount()"><i class="fa fa-plus"></i>Add Mount Point</button>
               </div>
             </div>
+            <div ng-show="activeDistro.provider == 'openstack'">
+              <div>
+                <label class="distro-label">Image Name:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'openstack'" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="OpenStack image name e.g. xenial-server" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Image name is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Flavor Name:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'openstack'" name="flavorName" class="form-control" ng-model="activeDistro.settings.flavor_name" placeholder="OpenStack flavor name for the image e.g m1.tiny (must be available)" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.flavorName.$dirty && form.flavorName.$error.required || form.flavorName.$invalid">Flavor name is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Key Name:</label>
+                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'openstack'" name="keyName" class="form-control" ng-model="activeDistro.settings.key_name" placeholder="SSH Key (public part in OpenStack cloud) to add on host machine" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.keyName.$dirty && form.keyName.$error.required || form.keyName.$invalid">OpenStack key name is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Security Group:</label>
+                <input type="text" ng-readonly="readOnly" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="(optional) OpenStack security group (must already exist)" class="form-control">
+              </div>
+            </div>
             <div ng-show="activeDistro.provider != 'static'">
               <label class="distro-label">Maximum number of hosts allowed:</label>
               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
