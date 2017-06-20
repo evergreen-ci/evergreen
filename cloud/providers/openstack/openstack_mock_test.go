@@ -8,10 +8,14 @@ import (
 )
 
 type clientMock struct {
+	// API call options
 	failInit   bool
 	failCreate bool
 	failGet    bool
 	failDelete bool
+
+	// Other options
+	isServerActive bool
 }
 
 func (c *clientMock) Init(_ gophercloud.AuthOptions, _ gophercloud.EndpointOpts) error {
@@ -22,12 +26,12 @@ func (c *clientMock) Init(_ gophercloud.AuthOptions, _ gophercloud.EndpointOpts)
 	return nil
 }
 
-func (c *clientMock) CreateInstance(options servers.CreateOpts) (*servers.Server, error) {
+func (c *clientMock) CreateInstance(_ servers.CreateOpts, _ string) (*servers.Server, error) {
 	if c.failCreate {
 		return nil, errors.New("failed to create instance")
 	}
 
-	return &servers.Server{}, nil
+	return &servers.Server{ID: "id"}, nil
 }
 
 func (c *clientMock) GetInstance(id string) (*servers.Server, error) {
@@ -35,7 +39,12 @@ func (c *clientMock) GetInstance(id string) (*servers.Server, error) {
 		return nil, errors.New("failed to get instance")
 	}
 
-	return &servers.Server{}, nil
+	server := &servers.Server{Status: "ACTIVE"}
+	if !c.isServerActive {
+		server.Status = "SHUTOFF"
+	}
+
+	return server, nil
 }
 
 func (c *clientMock) DeleteInstance(id string) error {

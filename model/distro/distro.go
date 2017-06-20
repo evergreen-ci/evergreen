@@ -1,10 +1,18 @@
 package distro
 
+import (
+	"fmt"
+	"time"
+	"math/rand"
+)
+
 // UserData validation formats
 const (
 	UserDataFormatFormURLEncoded = "x-www-form-urlencoded"
 	UserDataFormatJSON           = "json"
 	UserDataFormatYAML           = "yaml"
+	// NameTimeFormat is the format in which to log times like instance start time.
+	NameTimeFormat               = "20060102150405"
 )
 
 type Distro struct {
@@ -37,4 +45,10 @@ type UserData struct {
 type Expansion struct {
 	Key   string `bson:"key,omitempty" json:"key,omitempty"`
 	Value string `bson:"value,omitempty" json:"value,omitempty"`
+}
+
+// GenerateName generates a unique instance name for a distro.
+func (d *Distro) GenerateName() string {
+	return "evg_" + d.Id + "_" + time.Now().Format(NameTimeFormat) +
+		fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }

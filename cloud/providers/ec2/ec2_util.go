@@ -2,10 +2,8 @@ package ec2
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"math"
-	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -27,9 +25,10 @@ import (
 )
 
 const (
+	// NameTimeFormat is the format in which to log times like instance start time.
+	NameTimeFormat       = "20060102150405"
 	OnDemandProviderName = "ec2"
 	SpotProviderName     = "ec2-spot"
-	NameTimeFormat       = "20060102150405"
 	SpawnHostExpireDays  = 90
 	MciHostExpireDays    = 30
 )
@@ -69,12 +68,6 @@ const (
 	osSUSE    osType = "SUSE Linux"
 	osWindows osType = "Windows"
 )
-
-//Utility func to create a create a temporary instance name for a host
-func generateName(distroId string) string {
-	return "evg_" + distroId + "_" + time.Now().Format(NameTimeFormat) +
-		fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-}
 
 // regionFullname takes the API ID of amazon region and returns the
 // full region name. For instance, "us-west-1" becomes "US West (N. California)".

@@ -504,3 +504,42 @@ func DecommissionHostsWithDistroId(distroId string) error {
 	)
 	return err
 }
+
+// UpdateDocumentID updates the host document corresponding to the current host to have
+// a new ID by finding, deleting, and replacing the document with a new one.
+func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
+	oldID := h.Id
+
+	// Find the host document in the database with the old ID.
+	host, err := FindOne(ById(oldID))
+	if host == nil {
+		err = errors.Wrapf(err, "Could not locate record inserted for host '%s'", oldID)
+		grip.Error(err)
+		return nil, err
+	}
+
+	if err != nil {
+		err = errors.Wrapf(err, "Could not locate record inserted for host '%s' due to error", oldID)
+		grip.Error(err)
+		return nil, err
+	}
+
+	// Insert the new document.
+	host.Id = newID
+	if err := host.Insert(); err != nil {
+		err = errors.Wrapf(err, "Could not insert updated host information for '%s' with '%s'",
+			h.Id, host.Id)
+		grip.Error(err)
+		return nil, err
+	}
+
+	// Remove the old document.
+	if err := h.Remove(); err != nil {
+		err = errors.Wrapf(err, "Could not remove insert host '%s' (replaced by '%s')",
+			h.Id, host.Id)
+		grip.Error(err)
+		return nil, err
+	}
+
+	return host, nil
+}

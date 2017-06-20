@@ -133,7 +133,7 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		return nil, errors.WithStack(err)
 	}
 
-	instanceName := generateName(d.Id)
+	instanceName := d.GenerateName()
 
 	// proactively write all possible information pertaining
 	// to the host we want to create. this way, if we are unable
@@ -281,37 +281,8 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 	grip.Debugln("Key name:", options.KeyName)
 
 	// find old intent host
-	host, err := host.FindOne(host.ById(intentHost.Id))
-	if host == nil {
-		err = errors.Errorf("can't locate record inserted for intended host '%s'",
-			intentHost.Id)
-		grip.Error(err)
-		return nil, nil, err
-	}
+	actualHost, err := intentHost.UpdateDocumentID(instance.InstanceId)
 	if err != nil {
-		err = errors.Wrapf(err, "Can't locate record inserted for intended host '%v' "+
-			"due to error", intentHost.Id)
-
-		grip.Error(err)
-		return nil, nil, err
-	}
-
-	// we found the old document now we can insert the new one
-	host.Id = instance.InstanceId
-	err = host.Insert()
-	if err != nil {
-		err = errors.Wrapf(err, "Could not insert updated host information for '%v' with '%v'",
-			intentHost.Id, host.Id)
-		grip.Error(err)
-		return nil, nil, err
-	}
-
-	// remove the intent host document
-	err = intentHost.Remove()
-	if err != nil {
-		err = errors.Wrapf(err, "Could not remove insert host '%v' (replaced by '%v')",
-			intentHost.Id, host.Id)
-		grip.Error(err)
 		return nil, nil, err
 	}
 
@@ -346,7 +317,7 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 		return nil, resp, errors.New("Reservation appears to have no " +
 			"associated instances")
 	}
-	return host, resp, nil
+	return actualHost, resp, nil
 }
 
 // CostForDuration returns the cost of running a host between the given start and end times

@@ -243,7 +243,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 		return nil, err
 	}
 
-	instanceName := generateName(d.Id)
+	instanceName := d.GenerateName()
 	intentHost := cloud.NewIntent(*d, instanceName, SpotProviderName, hostOpts)
 	intentHost.InstanceType = ec2Settings.InstanceType
 
