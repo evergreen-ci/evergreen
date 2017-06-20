@@ -247,7 +247,7 @@ var mciModule = angular.module('MCI', [
       cls = 'failed';
       if ('task_end_details' in task) {
         if ('type' in task.task_end_details) {
-          if (task.task_end_details.type == 'system') {
+          if (task.task_end_details.type == 'system' && task.task_end_details.status != 'success') {
             cls = 'system-failed';
           }
         }
@@ -291,7 +291,7 @@ var mciModule = angular.module('MCI', [
           }
           return 'test timed out';
         }
-        if (task.task_end_details.type == 'system') {
+        if (task.task_end_details.type == 'system' && task.task_end_details.status != 'success') {
           return 'system failure';
         }
         return 'failed';
