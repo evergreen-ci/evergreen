@@ -117,16 +117,38 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
       $scope.newProject = {};
       return;
     }
-    $http.put('/project/' + $scope.newProject.identifier, $scope.newProject)
-    .success(function(data, status) {
-      $scope.refreshTrackedProjects(data.AllProjects);
-      $scope.loadProject(data.ProjectId);
-      $scope.newProject = {};
-    })
-    .error(function(data, status){
-      console.log(status);
-    });
 
+    // if copyProject is set, copy the current project
+    if ($scope.newProject.copyProject) {
+      $scope.settingsFormData.batch_time = parseInt($scope.settingsFormData.batch_time);
+      $http.put('/project/' + $scope.newProject.identifier, $scope.newProject).
+        success(function(data_put, status_put) {
+          $http.post('/project/' + $scope.newProject.identifier, $scope.settingsFormData).
+            success(function(data_post, status_post) {
+              $scope.refreshTrackedProjects(data_put.AllProjects);
+              $scope.loadProject(data_put.ProjectId);
+              $scope.newProject = {};
+            }).
+            error(function(data, status, errorThrown) {
+              console.log("error saving data for new project: " + status);
+            });
+        }).
+        error(function(data, status, errorThrown) {
+          console.log("error creating new project: " + status);
+        });
+
+    // otherwise, create a blank project
+    } else {
+      $http.put('/project/' + $scope.newProject.identifier, $scope.newProject)
+        .success(function(data, status) {
+          $scope.refreshTrackedProjects(data.AllProjects);
+          $scope.loadProject(data.ProjectId);
+          $scope.newProject = {};
+        })
+        .error(function(data, status){
+          console.log("error creating project: " + status);
+        });
+    }
   };
 
   $scope.loadProject = function(projectId) {
@@ -304,6 +326,8 @@ mciModule.directive('adminNewProject', function() {
         'Enter project name ' +
         '<form style="display: inline" ng-submit="addProject()">' +
           '<input type="text" id="project-name" placeholder="project name" ng-model="newProject.identifier">' +
+          ' <input type="checkbox" id="copy-project" ng-model="newProject.copyProject">' +
+        ' Duplicate current project' +
         '</form>' +
         '<button type="submit" class="btn btn-primary" style="float: right; margin-left: 10px;" ng-click="addProject()">Create Project</button>' +
       '</div>' +
