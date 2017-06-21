@@ -237,6 +237,16 @@ func (uis *UIServer) addProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	newProjectVars := model.ProjectVars{
+		Id: newProject.Identifier,
+	}
+
+	err = newProjectVars.Insert()
+	if err != nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
+	}
+
 	allProjects, err := uis.filterAuthorizedProjects(dbUser)
 
 	if err != nil {
