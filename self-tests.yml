@@ -241,6 +241,9 @@ tasks:
     tags: ["nodb", "test"]
     name: test-rest-model
   - <<: *run-go-test-suite
+    tags: ["nodb", "test"]
+    name: test-rest-client
+  - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-command
   - <<: *run-go-test-suite

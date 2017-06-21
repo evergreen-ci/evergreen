@@ -93,10 +93,12 @@ const (
 )
 
 const (
-	AuthTokenCookie  = "mci-token"
-	TaskSecretHeader = "Task-Secret"
-	HostHeader       = "Host-Id"
-	HostSecretHeader = "Host-Secret"
+	AuthTokenCookie   = "mci-token"
+	TaskSecretHeader  = "Task-Secret"
+	HostHeader        = "Host-Id"
+	HostSecretHeader  = "Host-Secret"
+	ContentTypeHeader = "Content-Type"
+	ContentTypeValue  = "application/json"
 )
 
 // HTTP constants. Added after Go1.4. Here for compatibility with GCCGO
