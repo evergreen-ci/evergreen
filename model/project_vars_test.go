@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFindOneProjectVar(t *testing.T) {
@@ -31,6 +32,22 @@ func TestFindOneProjectVar(t *testing.T) {
 			So(projectVarsFromDB.Vars, ShouldResemble, vars)
 		})
 	})
+}
+
+func TestProjectVarsInsert(t *testing.T) {
+	assert := assert.New(t)
+
+	testutil.HandleTestingErr(db.Clear(ProjectVarsCollection), t,
+		"Error clearing collection")
+
+	vars := &ProjectVars{Id: "mongodb", Vars: map[string]string{"a": "1"}}
+	assert.NoError(vars.Insert())
+
+	projectVarsFromDB, err := FindOneProjectVars("mongodb")
+	assert.NoError(err)
+	assert.Equal("mongodb", projectVarsFromDB.Id)
+	assert.NotEmpty(projectVarsFromDB.Vars)
+	assert.Equal("1", projectVarsFromDB.Vars["a"])
 }
 
 func TestRedactPrivateVars(t *testing.T) {

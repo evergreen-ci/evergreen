@@ -72,11 +72,7 @@ func (projectVars *ProjectVars) Upsert() (*mgo.ChangeInfo, error) {
 func (projectVars *ProjectVars) Insert() error {
 	return db.Insert(
 		ProjectVarsCollection,
-		bson.M{
-			ProjectVarIdKey:   projectVars.Id,
-			ProjectVarsMapKey: projectVars.Vars,
-			PrivateVarsMapKey: projectVars.PrivateVars,
-		},
+		projectVars,
 	)
 }
 
