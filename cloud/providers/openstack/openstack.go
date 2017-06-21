@@ -46,6 +46,10 @@ func (opts *ProviderSettings) Validate() error {
 		return errors.New("Flavor name must not be blank")
 	}
 
+	if opts.KeyName == "" {
+		return errors.New("Key name must not be blank")
+	}
+
 	return nil
 }
 

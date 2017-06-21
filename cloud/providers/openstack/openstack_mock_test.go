@@ -1,7 +1,10 @@
 package openstack
 
 import (
+	"fmt"
+	"time"
 	"errors"
+	"math/rand"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -26,12 +29,17 @@ func (c *clientMock) Init(_ gophercloud.AuthOptions, _ gophercloud.EndpointOpts)
 	return nil
 }
 
+// CreateInstance returns a mock server with an ID that is guaranteed to uniquely identify
+// this server amongst all other mock servers.
 func (c *clientMock) CreateInstance(_ servers.CreateOpts, _ string) (*servers.Server, error) {
 	if c.failCreate {
 		return nil, errors.New("failed to create instance")
 	}
 
-	return &servers.Server{ID: "id"}, nil
+	server := &servers.Server{
+		ID: fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int()),
+	}
+	return server, nil
 }
 
 func (c *clientMock) GetInstance(id string) (*servers.Server, error) {

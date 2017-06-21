@@ -41,14 +41,27 @@ func (s *OpenStackSuite) TestValidateSettings() {
 	settingsOk := &ProviderSettings{
 		ImageName:  "image",
 		FlavorName: "flavor",
+		KeyName:    "key",
 	}
 	s.NoError(settingsOk.Validate())
 
-	settingsNoImage := &ProviderSettings{FlavorName: "flavor"}
+	settingsNoImage := &ProviderSettings{
+		FlavorName: "flavor",
+		KeyName:    "key",
+	}
 	s.Error(settingsNoImage.Validate())
 
-	settingsNoFlavor := &ProviderSettings{ImageName:  "image"}
+	settingsNoFlavor := &ProviderSettings{
+		ImageName:  "image",
+		KeyName:    "key",
+	}
 	s.Error(settingsNoFlavor.Validate())
+
+	settingsNoKey := &ProviderSettings{
+		ImageName:  "image",
+		FlavorName: "flavor",
+	}
+	s.Error(settingsNoKey.Validate())
 }
 
 func (s *OpenStackSuite) TestConfigureAPICall() {
@@ -159,21 +172,53 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	s.Error(err)
 	s.Nil(host)
 
-	dInvalidSettings := &distro.Distro{Provider: "OpenStack"}
-	host, err = s.manager.SpawnInstance(dInvalidSettings, hostOpts)
+	dSettingsNone := &distro.Distro{Provider: "openstack"}
+	host, err = s.manager.SpawnInstance(dSettingsNone, hostOpts)
 	s.Error(err)
 	s.Nil(host)
+
+	dSettingsInvalid := &distro.Distro{
+		Provider: "openstack",
+		ProviderSettings: &map[string]interface{}{"image_name": ""},
+	}
+	host, err = s.manager.SpawnInstance(dSettingsInvalid, hostOpts)
+	s.Error(err)
+	s.Nil(host)
+}
+
+func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
+	dist := &distro.Distro{
+		Id:       "host",
+		Provider: "openstack",
+		ProviderSettings: &map[string]interface{}{
+			"image_name":     "image",
+			"flavor_name":    "flavor",
+			"key_name":       "key",
+			"security_group": "group",
+		},
+	}
+	opts := cloud.HostOptions{}
+
+	// SpawnInstance should generate a unique ID for each instance, even
+	// when using the same distro. Otherwise the DB would return an error.
+	hostOne, err := s.manager.SpawnInstance(dist, opts)
+	s.NoError(err)
+	s.NotNil(hostOne)
+
+	hostTwo, err := s.manager.SpawnInstance(dist, opts)
+	s.NoError(err)
+	s.NotNil(hostTwo)
 }
 
 func (s *OpenStackSuite) TestSpawnAPICall() {
 	dist := &distro.Distro{
 		Id:       "id",
-		Provider: "OpenStack",
+		Provider: "openstack",
 		ProviderSettings: &map[string]interface{}{
-			"ImageName":      "image",
-			"FlavorName":     "flavor",
-			"KeyName":        "key",
-			"SecurityGroups": []string{"group"},
+			"image_name":     "image",
+			"flavor_name":    "flavor",
+			"key_name":       "key",
+			"security_group": "group",
 		},
 	}
 	opts := cloud.HostOptions{}
