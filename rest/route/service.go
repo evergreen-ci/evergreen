@@ -36,6 +36,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/tasks/{task_id}/metrics/system":                      getTaskSystemMetricsManager,
 		"/tasks/{task_id}/restart":                             getTaskRestartRouteManager,
 		"/tasks/{task_id}/tests":                               getTestRouteManager,
+		"/cost/{version_id}":                                   getCostByVersionIdRouteManager,
 	}
 
 	for path, getManager := range routes {

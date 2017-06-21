@@ -17,7 +17,7 @@ type APIVersionCost struct {
 // into the appropriate fields of the APIVersionCost.
 func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case task.VersionCost:
+	case *task.VersionCost:
 		apiVersionCost.VersionId = APIString(v.VersionId)
 		apiVersionCost.SumTimeTaken = v.SumTimeTaken
 	default:
