@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -31,6 +32,63 @@ func getHostRouteManager(route string, version int) *RouteManager {
 		Version: version,
 	}
 	return &hostRoute
+}
+
+func getHostIDRouteManager(route string, version int) *RouteManager {
+	high := &hostIDGetHandler{}
+	hostGet := MethodHandler{
+		Authenticator:  &NoAuthAuthenticator{},
+		RequestHandler: high.Handler(),
+		MethodType:     evergreen.MethodGet,
+	}
+
+	hostRoute := RouteManager{
+		Route:   route,
+		Methods: []MethodHandler{hostGet},
+		Version: version,
+	}
+
+	return &hostRoute
+}
+
+type hostIDGetHandler struct {
+	hostId string
+}
+
+func (high *hostIDGetHandler) Handler() RequestHandler {
+	return &hostIDGetHandler{}
+}
+
+// ParseAndValidate fetches the hostId from the http request.
+func (high *hostIDGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	high.hostId = vars["host_id"]
+	return nil
+}
+
+// Execute calls the data FindHostById function and returns the host
+// from the provider.
+func (high *hostIDGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	foundHost, err := sc.FindHostById(high.hostId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+
+	hostModel := &model.APIHost{}
+	err = hostModel.BuildFromService(*foundHost)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{hostModel},
+	}, nil
 }
 
 func (hgh *hostGetHandler) Handler() RequestHandler {

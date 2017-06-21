@@ -3,6 +3,8 @@ package data
 import (
 	"net/http"
 
+	"fmt"
+
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/rest"
 )
@@ -25,6 +27,21 @@ func (hc *DBHostConnector) FindHostsById(id, status string, limit int, sortDir i
 		}
 	}
 	return hostRes, nil
+}
+
+// FindHostById queries the database for the host with id matching the hostId
+func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
+	h, err := host.FindOne(host.ById(id))
+	if err != nil {
+		return nil, err
+	}
+	if h == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("host with id %s not found", id),
+		}
+	}
+	return h, nil
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -59,4 +76,16 @@ func (hc *MockHostConnector) FindHostsById(id, status string, limit int, sort in
 		}
 	}
 	return nil, nil
+}
+
+func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
+	for _, h := range hc.CachedHosts {
+		if h.Id == id {
+			return &h, nil
+		}
+	}
+	return nil, &rest.APIError{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("host with id %s not found", id),
+	}
 }

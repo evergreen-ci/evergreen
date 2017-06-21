@@ -65,6 +65,7 @@ type Connector interface {
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
 	FindHostsById(string, string, int, int) ([]host.Host, error)
+	FindHostById(string) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)
