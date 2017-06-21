@@ -42,7 +42,7 @@
 	paginating and handles executing the necessary parts of the API request. The
 	PaginationExecutor type is an implemention of the RequestHandler so that writing paginated
 	endpoints does not necessarily require rewriting these methods; However, any of
-	these methods may be overwritten to provide additional flexibility and funcitonality.
+	these methods may be overwritten to provide additional flexibility and functionality.
 
 	PaginatorFunc
 

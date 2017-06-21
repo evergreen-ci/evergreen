@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -41,6 +42,12 @@ type Connector interface {
 	// as well as a taskId and limit for paginating through the results.
 	// It returns a list of tasks which match.
 	FindTasksByBuildId(string, string, string, int, int) ([]task.Task, error)
+
+	// FindBuildById is a method to find the build matching the same BuildId.
+	FindBuildById(string) (*build.Build, error)
+
+	// FindProjectByBranch is a method to find the projectref given a branch name.
+	FindProjectByBranch(string) (*model.ProjectRef, error)
 
 	// FindByProjectAndCommit is a method to find a set of tasks which ran as part of
 	// certain version in a project. It takes the projectId, commit hash, and a taskId
