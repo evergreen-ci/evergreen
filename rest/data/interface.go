@@ -80,4 +80,7 @@ type Connector interface {
 
 	// FindCostByVersionId returns cost data of a version given its ID.
 	FindCostByVersionId(string) (*task.VersionCost, error)
+
+	// FindCostByDistroId returns cost data of a distro given its ID.
+	FindCostByDistroId(string) (*task.DistroCost, error)
 }

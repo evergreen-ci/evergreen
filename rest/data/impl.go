@@ -41,6 +41,7 @@ type MockConnector struct {
 	MockMetricsConnector
 	MockBuildConnector
 	MockVersionConnector
+	MockDistroCostConnector
 }
 
 func (ctx *MockConnector) GetSuperUsers() []string   { return ctx.superUsers }
