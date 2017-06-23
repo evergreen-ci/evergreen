@@ -1,5 +1,5 @@
-owner: deafgoat
-repo: mci_test
+owner: evergreen-ci
+repo: sample
 repokind: github
 branch: master
 enabled: true
@@ -13,16 +13,16 @@ tasks:
             directory: src
 
 modules:
-- name: enterprise
-  repo: git@github.com:10gen/mongo-enterprise-modules.git
-  prefix: src/mongo/db/modules
-  branch: v2.6
+- name: sample
+  repo: git@github.com:evergreen-ci/sample.git
+  ref: cf46076567e4949f9fc68e0634139d4ac495c89b
+  prefix: module
 
 buildvariants:
 - name: linux-64
   display_name: Linux 64-bit
   modules:
-    - enterprise
+    - sample
   test_flags: --continue-on-failure
   expansions:
     blah: "blah"

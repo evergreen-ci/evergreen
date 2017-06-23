@@ -144,9 +144,13 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 
 		revision := ggpc.Revisions[moduleName]
 
-		// if there is no revision, then use the branch name
+		// if there is no revision, then use the revision from the module, then branch name
 		if revision == "" {
-			revision = module.Branch
+			if module.Ref != "" {
+				revision = module.Ref
+			} else {
+				revision = module.Branch
+			}
 		}
 
 		moduleCmds := []string{
