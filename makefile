@@ -294,6 +294,9 @@ endif
 ifneq (,$(RUN_TEST))
 testArgs += -test.run='$(RUN_TEST)'
 endif
+ifneq (,$(RUN_CASE))
+testArgs += -testify.m='$(RUN_CASE)'
+endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
 	$(vendorGopath) go test $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
