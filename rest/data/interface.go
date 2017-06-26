@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip/message"
 )
 
@@ -83,4 +84,7 @@ type Connector interface {
 
 	// FindCostByDistroId returns cost data of a distro given its ID.
 	FindCostByDistroId(string) (*task.DistroCost, error)
+
+	// FindVersionById returns version given its ID.
+	FindVersionById(string) (*version.Version, error)
 }

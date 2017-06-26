@@ -24,11 +24,11 @@ func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) ht
 // http handler which can be given more functions.
 func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 	routes := map[string]routeManagerFactory{
-		"/":                        getPlaceHolderManger,
-		"/builds/{build_id}":       getBuildIdRouteManager,
-		"/builds/{build_id}/tasks": getTasksByBuildRouteManager,
-		"/distros":                 getDistroRouteManager,
-		"/hosts":                   getHostRouteManager,
+		"/":                                                    getPlaceHolderManger,
+		"/builds/{build_id}":                                   getBuildIdRouteManager,
+		"/builds/{build_id}/tasks":                             getTasksByBuildRouteManager,
+		"/distros":                                             getDistroRouteManager,
+		"/hosts":                                               getHostRouteManager,
 		"/hosts/{host_id}":                                     getHostIDRouteManager,
 		"/projects/{project_id}/revisions/{commit_hash}/tasks": getTasksByProjectAndCommitRouteManager,
 		"/tasks/{task_id}":                                     getTaskRouteManager,
@@ -38,6 +38,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/tasks/{task_id}/tests":                               getTestRouteManager,
 		"/cost/version/{version_id}":                           getCostByVersionIdRouteManager,
 		"/cost/distro/{distro_id}":                             getCostByDistroIdRouteManager,
+		"/versions/{version_id}":                               getVersionIdRouteManager,
 	}
 
 	for path, getManager := range routes {
