@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/gorilla/context"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -74,8 +73,8 @@ type LoggerProducer interface {
 	// The writer functions return an io.Writer for use with
 	// exec.Cmd operations for capturing standard output and standard
 	// error from sbprocesses.
-	TaskWriter(level.Priority) io.Writer
-	SystemWriter(level.Priority) io.Writer
+	TaskWriter() io.Writer
+	SystemWriter() io.Writer
 
 	// Close releases all resources by calling Close on all underlying senders.
 	Close() error
