@@ -124,6 +124,9 @@ testArgs := -test.v --test.timeout=5m
 ifneq (,$(RUN_TEST))
 testArgs += -test.run='$(RUN_TEST)'
 endif
+ifneq (,$(RUN_CASE))
+testArgs += -testify.m='$(RUN_CASE)'
+endif
 #    to avoid vendoring the coverage tool, install it as needed
 coverDeps := $(if $(DISABLE_COVERAGE),,golang.org/x/tools/cmd/cover)
 coverDeps := $(addprefix $(gopath)/src/,$(coverDeps))

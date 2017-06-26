@@ -145,12 +145,12 @@ buildvariants:
       - debian81-test
     tasks: [ ".test" ]
 
-  - name: osx
-    display_name: OS X 10.10
+  - name: macos
+    display_name: macOS 10.12
     expansions:
       build_env: "PATH=/usr/local/go/bin:$PATH"
     run_on:
-      - osx-1010
+      - macos-1012
     tasks: [ ".test" ]
 
   - name: windows

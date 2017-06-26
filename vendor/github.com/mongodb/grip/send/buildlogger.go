@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,7 +20,6 @@ import (
 type buildlogger struct {
 	conf   *BuildloggerConfig
 	name   string
-	testID string
 	cache  chan []interface{}
 	client *http.Client
 	*Base
@@ -44,14 +44,12 @@ type BuildloggerConfig struct {
 	Test    string
 	Command string
 
-	BufferCount    int
-	BufferInterval time.Duration
-
 	// Configure a local sender for "fallback" operations and to
 	// collect the location (URLS) of the buildlogger output
 	Local Sender
 
 	buildID  string
+	testID   string
 	username string
 	password string
 }
@@ -124,12 +122,10 @@ func (c *BuildloggerConfig) SetCredentials(username, password string) {
 //    testOne := MakeBuildlogger("<name>-testOne", conf)
 func GetBuildloggerConfig() (*BuildloggerConfig, error) {
 	conf := &BuildloggerConfig{
-		URL:            os.Getenv("BULDLOGGER_URL"),
-		Phase:          os.Getenv("MONGO_PHASE"),
-		Builder:        os.Getenv("MONGO_BUILDER_NAME"),
-		Test:           os.Getenv("MONGO_TEST_FILENAME"),
-		BufferCount:    1000,
-		BufferInterval: 20 * time.Second,
+		URL:     os.Getenv("BULDLOGGER_URL"),
+		Phase:   os.Getenv("MONGO_PHASE"),
+		Builder: os.Getenv("MONGO_BUILDER_NAME"),
+		Test:    os.Getenv("MONGO_TEST_FILENAME"),
 	}
 
 	if creds := os.Getenv("BUILDLOGGER_CREDENTIALS"); creds != "" {
@@ -153,6 +149,18 @@ func GetBuildloggerConfig() (*BuildloggerConfig, error) {
 	}
 
 	return conf, nil
+}
+
+// GetGlobalLogURL returns the URL for the current global log in use.
+// Must use after constructing the buildlogger instance.
+func (c *BuildloggerConfig) GetGlobalLogURL() string {
+	return fmt.Sprintf("%s/build/%s", c.URL, c.buildID)
+}
+
+// GetTestLogURL returns the current URL for the test log currently in
+// use. Must use after constructing the buildlogger instance.
+func (c *BuildloggerConfig) GetTestLogURL() string {
+	return fmt.Sprintf("%s/build/%s/test/%s", c.URL, c.buildID, c.testID)
 }
 
 // NewBuildlogger constructs a Buildlogger-targeted Sender, with level
@@ -209,9 +217,9 @@ func MakeBuildlogger(name string, conf *BuildloggerConfig) (Sender, error) {
 
 		b.conf.buildID = out.ID
 
-		b.conf.Local.Send(message.NewFormattedMessage(level.Notice,
-			"Writing logs to buildlogger global log at %s/build/%s",
-			b.conf.URL, b.conf.buildID))
+		b.conf.Local.Send(message.NewLineMessage(level.Notice,
+			"Writing logs to buildlogger global log at:",
+			b.conf.GetGlobalLogURL()))
 	}
 
 	if b.conf.CreateTest {
@@ -231,77 +239,31 @@ func MakeBuildlogger(name string, conf *BuildloggerConfig) (Sender, error) {
 			return nil, err
 		}
 
-		b.testID = out.ID
+		b.conf.testID = out.ID
 
-		b.conf.Local.Send(message.NewFormattedMessage(level.Notice,
-			"Writing logs to buildlogger test log at %s/build/%s/test/%s",
-			conf.URL, b.conf.buildID, b.testID))
+		b.conf.Local.Send(message.NewLineMessage(level.Notice,
+			"Writing logs to buildlogger test log at:",
+			b.conf.GetTestLogURL()))
 	}
-
-	stop := make(chan struct{})
-	finished := make(chan struct{})
-	b.closer = func() error {
-		signal := struct{}{}
-		for {
-			select {
-			case stop <- signal:
-				continue
-			case <-finished:
-				return nil
-			}
-		}
-	}
-	go b.backgroundSender(stop, finished)
 
 	return b, nil
 }
 
 func (b *buildlogger) Send(m message.Composer) {
 	if b.level.ShouldLog(m) {
-		b.cache <- []interface{}{float64(time.Now().Unix()), m.String()}
-	}
-}
+		req := [][]interface{}{
+			[]interface{}{float64(time.Now().Unix()), m.String()},
+		}
 
-func (b *buildlogger) backgroundSender(stop <-chan struct{}, finished chan<- struct{}) {
-	buffer := [][]interface{}{}
-
-	timer := time.NewTimer(b.conf.BufferInterval)
-
-	for {
-		select {
-		case msg := <-b.cache:
-			buffer = append(buffer, msg)
-
-			if len(buffer) > b.conf.BufferCount {
-				b.sendMessages(buffer)
-
-				buffer = [][]interface{}{}
-				timer.Reset(b.conf.BufferInterval)
-			}
-		case <-timer.C:
-			b.sendMessages(buffer)
-			buffer = [][]interface{}{}
-			timer.Reset(b.conf.BufferInterval)
-		case <-stop:
-			b.sendMessages(buffer)
-			close(finished)
+		out, err := json.Marshal(req)
+		if err != nil {
+			b.conf.Local.Send(message.NewErrorMessage(level.Error, err))
 			return
 		}
-	}
 
-}
-
-func (b *buildlogger) sendMessages(buffer [][]interface{}) {
-	if len(buffer) == 0 {
-		return
-	}
-	out, err := json.Marshal(buffer)
-	if err != nil {
-		b.conf.Local.Send(message.NewErrorMessage(level.Error, err))
-	}
-
-	if err := b.postLines(bytes.NewBuffer(out)); err != nil {
-		b.errHandler(err, message.NewBytesMessage(b.level.Default, out))
+		if err := b.postLines(bytes.NewBuffer(out)); err != nil {
+			b.errHandler(err, message.NewBytesMessage(b.level.Default, out))
+		}
 	}
 }
 
@@ -370,14 +332,14 @@ func (b *buildlogger) getURL() string {
 	// if we want to create a test id, (e.g. the CreateTest flag
 	// is set and we don't have a testID), then the following URL
 	// will generate a testID.
-	if b.conf.CreateTest && b.testID == "" {
+	if b.conf.CreateTest && b.conf.testID == "" {
 		// this will create the testID.
 		parts = append(parts, "test")
 	}
 
 	// if a test id is present, then we want to append to the test logs.
-	if b.testID != "" {
-		parts = append(parts, "test", b.testID)
+	if b.conf.testID != "" {
+		parts = append(parts, "test", b.conf.testID)
 	}
 
 	return strings.Join(parts, "/")

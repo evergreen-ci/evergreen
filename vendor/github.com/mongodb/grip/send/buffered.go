@@ -75,8 +75,10 @@ daemon:
 			buffer = []message.Composer{}
 			timer.Reset(s.duration)
 		case <-s.signal:
-			close(s.pipe)
-			close(s.signal)
+			if len(buffer) != 0 {
+				s.backgroundSender(buffer, complete)
+			}
+
 			break daemon
 		}
 
@@ -84,6 +86,9 @@ daemon:
 	}
 
 	<-complete
+
+	close(s.pipe)
+	close(s.signal)
 	_ = s.Sender.Close()
 }
 

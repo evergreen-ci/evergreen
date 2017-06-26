@@ -12,7 +12,7 @@ import (
 )
 
 type githubLogger struct {
-	opts GithubOptions
+	opts *GithubOptions
 	gh   githubClient
 
 	*Base
@@ -27,9 +27,9 @@ type GithubOptions struct {
 	Token   string
 }
 
-// NewGitHubIssuesLogger builds a sender implementation that creates a
+// NewGithubIssuesLogger builds a sender implementation that creates a
 // new issue in a Github Project for each log message.
-func NewGithubIssuesLogger(name string, opts GithubOptions) (Sender, error) {
+func NewGithubIssuesLogger(name string, opts *GithubOptions) (Sender, error) {
 	s := &githubLogger{
 		Base: NewBase(name),
 		opts: opts,
