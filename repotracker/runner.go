@@ -40,8 +40,11 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	}
 	if status != thirdparty.GithubAPIStatusGood {
 		errM := errors.Errorf("bad github api status: %v", status)
-		grip.Error(errM)
-		return errM
+		if status == thirdpary.GithubAPIStatusMajor {
+			grip.Error(errM)
+			return errM
+		}
+		grip.Warning(errM)
 	}
 
 	token, ok := config.Credentials[githubCredentialsKey]
