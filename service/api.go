@@ -834,6 +834,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter.HandleFunc("/git/patch", as.checkTask(false, as.gitServePatch)).Methods("GET")
 	taskRouter.HandleFunc("/keyval/inc", as.checkTask(false, as.keyValPluginInc)).Methods("POST")
 	taskRouter.HandleFunc("/manifest/load", as.checkTask(false, makeGetManifestHandler(as))).Methods("GET")
+	taskRouter.HandleFunc("/s3copy/s3copy", as.checkTask(false, as.s3copyPlugin)).Methods("POST")
 
 	// Install plugin routes
 	for _, pl := range as.plugins {

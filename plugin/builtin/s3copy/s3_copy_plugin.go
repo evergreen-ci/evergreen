@@ -1,23 +1,16 @@
 package s3copy
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"strings"
-	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/goamz/goamz/aws"
-	"github.com/goamz/goamz/s3"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -31,23 +24,7 @@ const (
 	s3CopyPluginName  = "s3Copy"
 	s3CopyAPIEndpoint = "s3Copy"
 	s3baseURL         = "https://s3.amazonaws.com/"
-
-	s3CopyRetrySleepTimeSec = 5
-	s3CopyRetryNumRetries   = 5
 )
-
-// S3CopyRequest holds information necessary for the API server to
-// complete an S3 copy request; namely, an S3 key/secret, a source and
-// a destination path
-type S3CopyRequest struct {
-	AwsKey              string `json:"aws_key"`
-	AwsSecret           string `json:"aws_secret"`
-	S3SourceBucket      string `json:"s3_source_bucket"`
-	S3SourcePath        string `json:"s3_source_path"`
-	S3DestinationBucket string `json:"s3_destination_bucket"`
-	S3DestinationPath   string `json:"s3_destination_path"`
-	S3DisplayName       string `json:"display_name"`
-}
 
 // The S3CopyPlugin consists of zero or more files that are to be copied
 // from one location in S3 to the other.
@@ -103,13 +80,6 @@ type s3Loc struct {
 // the 'Plugin' interface
 func (scp *S3CopyPlugin) Name() string {
 	return s3CopyPluginName
-}
-
-func (scp *S3CopyPlugin) GetAPIHandler() http.Handler {
-	r := http.NewServeMux()
-	r.HandleFunc(fmt.Sprintf("/%v", s3CopyAPIEndpoint), S3CopyHandler) // POST
-	r.HandleFunc("/", http.NotFound)
-	return r
 }
 
 func (self *S3CopyPlugin) Configure(map[string]interface{}) error {
@@ -244,7 +214,7 @@ func (scc *S3CopyCommand) S3Copy(taskConfig *model.TaskConfig,
 			s3CopyFile.Source.Path, s3CopyFile.Destination.Bucket,
 			s3CopyFile.Destination.Path)
 
-		s3CopyReq := S3CopyRequest{
+		s3CopyReq := apimodels.S3CopyRequest{
 			AwsKey:              scc.AwsKey,
 			AwsSecret:           scc.AwsSecret,
 			S3SourceBucket:      s3CopyFile.Source.Bucket,
@@ -298,110 +268,10 @@ func (scc *S3CopyCommand) S3Copy(taskConfig *model.TaskConfig,
 	return nil
 }
 
-// Takes a request for a task's file to be copied from
-// one s3 location to another. Ensures that if the destination
-// file path already exists, no file copy is performed.
-func S3CopyHandler(w http.ResponseWriter, r *http.Request) {
-	task := plugin.GetTask(r)
-	if task == nil {
-		http.Error(w, "task not found", http.StatusNotFound)
-		return
-	}
-	s3CopyReq := &S3CopyRequest{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), s3CopyReq)
-	if err != nil {
-		grip.Errorln("error reading push request:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Get the version for this task, so we can check if it has
-	// any already-done pushes
-	v, err := version.FindOne(version.ById(task.Version))
-	if err != nil {
-		grip.Errorf("error querying task %s with version id %s: %v",
-			task.Id, task.Version, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Check for an already-pushed file with this same file path,
-	// but from a conflicting or newer commit sequence num
-	if v == nil {
-		grip.Errorln("no version found for build", task.BuildId)
-		http.Error(w, "version not found", http.StatusNotFound)
-		return
-	}
-
-	copyFromLocation := strings.Join([]string{s3CopyReq.S3SourceBucket, s3CopyReq.S3SourcePath}, "/")
-	copyToLocation := strings.Join([]string{s3CopyReq.S3DestinationBucket, s3CopyReq.S3DestinationPath}, "/")
-
-	newestPushLog, err := model.FindPushLogAfter(copyToLocation, v.RevisionOrderNumber)
-	if err != nil {
-		grip.Errorf("error querying for push log at %s: %+v", copyToLocation, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if newestPushLog != nil {
-		grip.Warningln("conflict with existing pushed file:", copyToLocation)
-		return
-	}
-
-	// It's now safe to put the file in its permanent location.
-	newPushLog := model.NewPushLog(v, task, copyToLocation)
-	err = newPushLog.Insert()
-	if err != nil {
-		grip.Errorf("failed to create new push log: %+v %+v", newPushLog, err)
-		http.Error(w, fmt.Sprintf("failed to create push log: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Now copy the file into the permanent location
-	auth := &aws.Auth{
-		AccessKey: s3CopyReq.AwsKey,
-		SecretKey: s3CopyReq.AwsSecret,
-	}
-
-	grip.Infof("performing S3 copy: '%s' => '%s'", copyFromLocation, copyToLocation)
-
-	_, err = util.Retry(func() error {
-		err = errors.WithStack(thirdparty.S3CopyFile(auth,
-			s3CopyReq.S3SourceBucket,
-			s3CopyReq.S3SourcePath,
-			s3CopyReq.S3DestinationBucket,
-			s3CopyReq.S3DestinationPath,
-			string(s3.PublicRead),
-		))
-		if err != nil {
-			grip.Errorf("S3 copy failed for task %s, retrying: %+v", task.Id, err)
-			return util.RetriableError{err}
-		}
-
-		err = errors.WithStack(newPushLog.UpdateStatus(model.PushLogSuccess))
-		if err != nil {
-			grip.Errorf("updating pushlog status failed for task %s: %+v", task.Id, err)
-		}
-		return err
-	}, s3CopyRetryNumRetries, s3CopyRetrySleepTimeSec*time.Second)
-
-	if err != nil {
-		message := fmt.Sprintf("S3 copy failed for task %v: %v", task.Id, err)
-		grip.Error(message)
-		err = errors.WithStack(newPushLog.UpdateStatus(model.PushLogFailed))
-		if err != nil {
-			grip.Errorf("updating pushlog status failed: %+v", err)
-		}
-		http.Error(w, message, http.StatusInternalServerError)
-		return
-	}
-	plugin.WriteJSON(w, http.StatusOK, "S3 copy Successful")
-}
-
 // AttachTaskFiles is responsible for sending the
 // specified file to the API Server
 func (c *S3CopyCommand) AttachTaskFiles(pluginLogger plugin.Logger,
-	pluginCom plugin.PluginCommunicator, request S3CopyRequest) error {
+	pluginCom plugin.PluginCommunicator, request apimodels.S3CopyRequest) error {
 
 	remotePath := filepath.ToSlash(request.S3DestinationPath)
 	fileLink := s3baseURL + request.S3DestinationBucket + "/" + remotePath
