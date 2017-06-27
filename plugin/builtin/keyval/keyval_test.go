@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/builtin/keyval"
@@ -23,8 +24,8 @@ func init() {
 
 func TestIncKey(t *testing.T) {
 	Convey("With keyval plugin installed", t, func() {
-		err := db.Clear(keyval.KeyValCollection)
-		testutil.HandleTestingErr(err, t, "Couldn't clear test collection: %s", keyval.KeyValCollection)
+		err := db.Clear(model.KeyValCollection)
+		testutil.HandleTestingErr(err, t, "Couldn't clear test collection: %s", model.KeyValCollection)
 		registry := plugin.NewSimpleRegistry()
 		kvPlugin := &keyval.KeyValPlugin{}
 		err = registry.Register(kvPlugin)
@@ -32,7 +33,7 @@ func TestIncKey(t *testing.T) {
 
 		testConfig := testutil.TestConfig()
 
-		server, err := service.CreateTestServer(testConfig, nil, []plugin.APIPlugin{kvPlugin})
+		server, err := service.CreateTestServer(testConfig, nil, []plugin.APIPlugin{})
 		testutil.HandleTestingErr(err, t, "couldn't create test server")
 
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_keyval.yml")

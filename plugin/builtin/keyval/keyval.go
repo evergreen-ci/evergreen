@@ -5,28 +5,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip/slogger"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
-	KeyValCollection = "keyval_plugin"
 	KeyValPluginName = "keyval"
 	IncCommandName   = "inc"
 	IncRoute         = "inc"
 )
-
-type KeyVal struct {
-	Key   string `bson:"_id" json:"key"`
-	Value int64  `bson:"value" json:"value"`
-}
 
 func init() {
 	plugin.Publish(&KeyValPlugin{})
@@ -71,43 +60,6 @@ func (incCmd *IncCommand) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-// GetAPIHandler returns the routes to be bound by the API server
-func (self *KeyValPlugin) GetAPIHandler() http.Handler {
-	r := http.NewServeMux()
-	r.HandleFunc("/inc", IncKeyHandler)
-	r.HandleFunc("/", http.NotFound)
-	return r
-}
-
-// IncKeyHandler increments the value stored in the given key, and returns it
-func IncKeyHandler(w http.ResponseWriter, r *http.Request) {
-	key := ""
-	err := util.ReadJSONInto(r.Body, &key)
-	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "Error geting key: %v", err)
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	change := mgo.Change{
-		Update: bson.M{
-			"$inc": bson.M{"value": 1},
-		},
-		ReturnNew: true,
-		Upsert:    true,
-	}
-
-	keyVal := &KeyVal{}
-	_, err = db.FindAndModify(KeyValCollection, bson.M{"_id": key}, nil, change, keyVal)
-	if err != nil {
-		evergreen.Logger.Logf(slogger.ERROR, "error doing findAndModify: %v", err)
-		plugin.WriteJSON(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	plugin.WriteJSON(w, http.StatusOK, keyVal)
-}
-
 // Execute fetches the expansions from the API server
 func (incCmd *IncCommand) Execute(pluginLogger plugin.Logger,
 	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig,
@@ -117,7 +69,7 @@ func (incCmd *IncCommand) Execute(pluginLogger plugin.Logger,
 		return err
 	}
 
-	keyVal := &KeyVal{}
+	keyVal := &model.KeyVal{}
 	postFunc := func() error {
 		resp, err := pluginCom.TaskPostJSON(IncRoute, incCmd.Key)
 		if resp != nil {
