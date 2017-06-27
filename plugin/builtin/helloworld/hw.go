@@ -1,7 +1,6 @@
 package git
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -19,23 +18,6 @@ type HelloWorldPlugin struct{}
 // Name implements Plugin Interface.
 func (self *HelloWorldPlugin) Name() string {
 	return "helloworld"
-}
-
-// GetRoutes returns an API route for serving patch data.
-func (self *HelloWorldPlugin) GetAPIHandler() http.Handler {
-	r := http.NewServeMux()
-	r.HandleFunc("/cmd1", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("cmd1 got called with path:", r.URL.Path)
-	})
-	r.HandleFunc("/cmd2", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("cmd2 got called with path:", r.URL.Path)
-	})
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("hello world: command not found!")
-		http.Error(w, "not found", http.StatusNotFound)
-	})
-	return r
-
 }
 
 func (hwp *HelloWorldPlugin) GetUIHandler() http.Handler {

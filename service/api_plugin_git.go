@@ -26,8 +26,8 @@ func (as *APIServer) gitServePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	as.WriteJSON(w, http.StatusOK, patch)
-
 }
+
 func (as *APIServer) gitServePatchFile(w http.ResponseWriter, r *http.Request) {
 	fileId := mux.Vars(r)["patchfile_id"]
 	data, err := db.GetGridFile(patch.GridFSPrefix, fileId)

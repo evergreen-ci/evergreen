@@ -1,8 +1,6 @@
 package expansions
 
 import (
-	"fmt"
-	"net/http"
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
@@ -27,15 +25,6 @@ type ExpansionsPlugin struct{}
 // Name fulfills the Plugin interface.
 func (self *ExpansionsPlugin) Name() string {
 	return ExpansionsPluginName
-}
-
-// GetRoutes registers the API handler for fetching expansion variables
-// from the API server.
-func (self *ExpansionsPlugin) GetAPIHandler() http.Handler {
-	r := http.NewServeMux()
-	r.HandleFunc(fmt.Sprintf("/%v", FetchVarsRoute), FetchVarsHandler) // GET
-	r.HandleFunc("/", http.NotFound)
-	return r
 }
 
 func (self *ExpansionsPlugin) Configure(map[string]interface{}) error {

@@ -60,12 +60,6 @@ func (mp *MockPlugin) Configure(conf map[string]interface{}) error {
 	return nil
 }
 
-func (mp *MockPlugin) GetAPIHandler() http.Handler {
-	r := mux.NewRouter()
-	r.Path("/blah/{param1}/{param2}").Methods("GET").HandlerFunc(MockPluginEcho)
-	return r
-}
-
 func (mp *MockPlugin) GetUIHandler() http.Handler {
 	return nil
 }

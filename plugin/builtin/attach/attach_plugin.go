@@ -1,17 +1,13 @@
 package attach
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -40,13 +36,6 @@ type AttachPlugin struct{}
 // the 'Plugin' interface
 func (self *AttachPlugin) Name() string {
 	return AttachPluginName
-}
-
-func (self *AttachPlugin) GetAPIHandler() http.Handler {
-	r := http.NewServeMux()
-	r.HandleFunc(fmt.Sprintf("/%v", AttachResultsAPIEndpoint), AttachResultsHandler)
-	r.HandleFunc("/", http.NotFound) // 404 any request not routable to these endpoints
-	return r
 }
 
 func (self *AttachPlugin) GetUIHandler() http.Handler {
@@ -146,32 +135,4 @@ func SendJSONLogs(pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicato
 	}
 	pluginLogger.LogTask(slogger.INFO, "Attach test logs succeeded")
 	return logId, nil
-}
-
-//XXX remove this once the transition is complete...
-//AttachResultsHandler is an API hook for receiving and updating test results
-func AttachResultsHandler(w http.ResponseWriter, r *http.Request) {
-	t := plugin.GetTask(r)
-	if t == nil {
-		message := "Cannot find task for attach results request"
-		grip.Error(message)
-		http.Error(w, message, http.StatusBadRequest)
-		return
-	}
-	results := &task.TestResults{}
-	err := util.ReadJSONInto(util.NewRequestReader(r), results)
-	if err != nil {
-		message := fmt.Sprintf("error reading test results: %v", err)
-		grip.Error(message)
-		http.Error(w, message, http.StatusBadRequest)
-		return
-	}
-	// set test result of task
-	if err := t.SetResults(results.Results); err != nil {
-		message := fmt.Sprintf("Error calling set results on task %v: %v", t.Id, err)
-		grip.Error(message)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
-	}
-	plugin.WriteJSON(w, http.StatusOK, "Test results successfully attached")
 }

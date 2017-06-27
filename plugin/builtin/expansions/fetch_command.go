@@ -1,21 +1,15 @@
 package expansions
 
 import (
-	"fmt"
-	"net/http"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
 
 const FetchVarsRoute = "fetch_vars"
 const FetchVarsCmdname = "fetch"
-
-type ExpansionVars map[string]string
 
 // FetchVarsCommand pulls a set of vars (stored in the DB on the server side)
 // and updates the agent's expansions map using the values it gets back
@@ -58,30 +52,6 @@ func (self *FetchVarsCommand) ParseParams(params map[string]interface{}) error {
 		}
 	}
 	return nil
-}
-
-// FetchVarsHandler is an API hook for returning the project variables
-// associated with a task's project.
-func FetchVarsHandler(w http.ResponseWriter, r *http.Request) {
-	task := plugin.GetTask(r)
-	if task == nil {
-		http.Error(w, "task not found", http.StatusNotFound)
-		return
-	}
-	projectVars, err := model.FindOneProjectVars(task.Project)
-	if err != nil {
-		message := fmt.Sprintf("Failed to fetch vars for task %v: %v", task.Id, err)
-		grip.Error(message)
-		http.Error(w, message, http.StatusInternalServerError)
-		return
-	}
-	if projectVars == nil {
-		plugin.WriteJSON(w, http.StatusOK, ExpansionVars{})
-		return
-	}
-
-	plugin.WriteJSON(w, http.StatusOK, projectVars.Vars)
-	return
 }
 
 // Execute fetches the expansions from the API server
