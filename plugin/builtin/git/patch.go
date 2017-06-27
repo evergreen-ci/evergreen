@@ -10,13 +10,10 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/command"
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
-	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
@@ -234,35 +231,4 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 		pluginLogger.Flush()
 	}
 	return nil
-}
-
-// servePatch is the API hook for returning patch data as json
-func servePatch(w http.ResponseWriter, r *http.Request) {
-	task := plugin.GetTask(r)
-	patch, err := patch.FindOne(patch.ByVersion(task.Version))
-	if err != nil {
-		msg := fmt.Sprintf("error fetching patch for task %v from db: %v", task.Id, err)
-		grip.Error(msg)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return
-	}
-	if patch == nil {
-		msg := fmt.Sprintf("no patch found for task %v", task.Id)
-		grip.Error(msg)
-		http.Error(w, msg, http.StatusNotFound)
-		return
-	}
-	plugin.WriteJSON(w, http.StatusOK, patch)
-}
-
-// servePatchFile is the API hook for returning raw patch contents
-func servePatchFile(w http.ResponseWriter, r *http.Request) {
-	fileId := mux.Vars(r)["patchfile_id"]
-	data, err := db.GetGridFile(patch.GridFSPrefix, fileId)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error reading file from db: %v", err), http.StatusInternalServerError)
-		return
-	}
-	defer data.Close()
-	_, _ = io.Copy(w, data)
 }

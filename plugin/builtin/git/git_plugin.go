@@ -1,11 +1,6 @@
 package git
 
-import (
-	"net/http"
-
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/gorilla/mux"
-)
+import "github.com/evergreen-ci/evergreen/plugin"
 
 func init() {
 	plugin.Publish(&GitPlugin{})
@@ -27,14 +22,6 @@ type GitPlugin struct{}
 // Name implements Plugin Interface.
 func (self *GitPlugin) Name() string {
 	return GitPluginName
-}
-
-func (self *GitPlugin) GetAPIHandler() http.Handler {
-	r := mux.NewRouter()
-	r.Path("/" + GitPatchFilePath + "/{patchfile_id}").Methods("GET").HandlerFunc(servePatchFile)
-	r.HandleFunc("/"+GitPatchPath, servePatch) // GET
-	r.HandleFunc("/", http.NotFound)
-	return r
 }
 
 func (self *GitPlugin) Configure(map[string]interface{}) error {
