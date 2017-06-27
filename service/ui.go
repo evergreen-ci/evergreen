@@ -236,9 +236,10 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.PathPrefix("/clients").Handler(http.StripPrefix("/clients", http.FileServer(http.Dir(filepath.Join(uis.Home, evergreen.ClientDirectory)))))
 
 	// Plugin routes
-	rootPluginRouter := r.PathPrefix("/plugin/").Subrouter()
-	for _, pl := range plugin.UIPlugins {
+	rootPluginRouter := r.PathPrefix("/plugin").Subrouter()
+	rootPluginRouter.HandleFunc("/manifest/get/{project_id}/{revision}", makeGetManifestHandler(uis)).Methods("GET")
 
+	for _, pl := range plugin.UIPlugins {
 		// get the settings
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
 		err := pl.Configure(pluginSettings)
@@ -251,6 +252,7 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			// register the app level pa}rt of the plugin
 			appFunction := uis.GetPluginHandler(appPlugin.GetAppPluginInfo(), pl.Name())
 			rootPluginRouter.HandleFunc(fmt.Sprintf("/%v/app", pl.Name()), uis.loadCtx(appFunction))
+
 		}
 
 		// check if there are any errors getting the panel config
@@ -274,7 +276,12 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 			http.StripPrefix(fmt.Sprintf("/plugin/%v/static/", pl.Name()),
 				http.FileServer(http.Dir(pluginStaticPath))),
 		)
+
 		pluginUIhandler := pl.GetUIHandler()
+		if pluginUIhandler == nil {
+			continue
+		}
+
 		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
 	}
 

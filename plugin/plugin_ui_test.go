@@ -24,9 +24,7 @@ type MockUIPlugin struct {
 func (self *MockUIPlugin) Name() string {
 	return self.NickName
 }
-func (self *MockUIPlugin) GetAPIHandler() http.Handler {
-	return nil
-}
+
 func (self *MockUIPlugin) GetUIHandler() http.Handler {
 	return nil
 }
