@@ -58,7 +58,20 @@ func flagUnreachableHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host
 	if err != nil {
 		return nil, errors.Wrapf(err, "error finding hosts unreachable since before %v", threshold)
 	}
-	return hosts, nil
+
+	unreachables := []host.Host{}
+	for _, host := range hosts {
+		canTerminate, err := hostCanBeTerminated(host, s)
+		if err != nil {
+			return nil, errors.Wrapf(err, "error checking if host %v can be terminated", freeHost.Id)
+		}
+
+		if canTerminate {
+			unreachables = append(unreachables, host)
+		}
+	}
+
+	return unreachables, nil
 }
 
 // flagIdleHosts is a hostFlaggingFunc to get all hosts which have spent too
