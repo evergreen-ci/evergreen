@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -58,10 +59,12 @@ func getVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetTasksForVersion sends back the list of TaskJSON documents associated with a version id.
-func GetTasksForVersion(versionId, name string) ([]TaskJSON, error) {
-	var jsonForTasks []TaskJSON
-	err := db.FindAllQ(collection, db.Query(bson.M{VersionIdKey: versionId,
-		NameKey: name}).WithFields(DataKey, TaskIdKey, TaskNameKey), &jsonForTasks)
+func GetTasksForVersion(versionId, name string) ([]model.TaskJSON, error) {
+	var jsonForTasks []model.TaskJSON
+	err := db.FindAllQ(model.TaskJSONCollection,
+		db.Query(bson.M{
+			model.TaskJSONVersionIdKey: versionId,
+			model.TaskJSONNameKey:      name}).WithFields(model.TaskJSONDataKey, model.TaskJSONTaskIdKey, model.TaskJSONTaskNameKey), &jsonForTasks)
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return nil, err
@@ -117,27 +120,27 @@ func GetTasksForLatestVersion(project, name string, skip int) (*VersionData, err
 	pipeline := []bson.M{
 		// match on name and project
 		{"$match": bson.M{
-			NameKey:      name,
-			ProjectIdKey: project,
+			model.TaskJSONNameKey:      name,
+			model.TaskJSONProjectIdKey: project,
 		}},
 
 		// sort on the revision number
 		{"$sort": bson.M{
-			RevisionOrderNumberKey: -1,
+			model.TaskJSONRevisionOrderNumberKey: -1,
 		}},
 
 		// group by version id
 		{"$group": bson.M{
 			"_id": bson.M{
-				"r":   "$" + RevisionOrderNumberKey,
-				"vid": "$" + VersionIdKey,
+				"r":   "$" + model.TaskJSONRevisionOrderNumberKey,
+				"vid": "$" + model.TaskJSONVersionIdKey,
 			},
 			"t": bson.M{
 				"$push": bson.M{
-					"d":    "$" + DataKey,
-					"t_id": "$" + TaskIdKey,
-					"tn":   "$" + TaskNameKey,
-					"var":  "$" + VariantKey,
+					"d":    "$" + model.TaskJSONDataKey,
+					"t_id": "$" + model.TaskJSONTaskIdKey,
+					"tn":   "$" + model.TaskJSONTaskNameKey,
+					"var":  "$" + model.TaskJSONVariantKey,
 				},
 			},
 		}},
@@ -152,7 +155,7 @@ func GetTasksForLatestVersion(project, name string, skip int) (*VersionData, err
 	}
 
 	tasksForVersions := []TasksForVersion{}
-	err := db.Aggregate(collection, pipeline, &tasksForVersions)
+	err := db.Aggregate(model.TaskJSONCollection, pipeline, &tasksForVersions)
 	if err != nil {
 		return nil, err
 	}

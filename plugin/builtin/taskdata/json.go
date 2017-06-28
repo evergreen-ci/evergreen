@@ -8,16 +8,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
@@ -40,18 +37,6 @@ func (jsp *TaskJSONPlugin) Name() string {
 	return TaskJSONPluginName
 }
 
-// GetRoutes returns an API route for serving patch data.
-func (jsp *TaskJSONPlugin) GetAPIHandler() http.Handler {
-	r := mux.NewRouter()
-	r.HandleFunc("/tags/{task_name}/{name}", apiGetTagsForTask)
-	r.HandleFunc("/history/{task_name}/{name}", apiGetTaskHistory)
-
-	r.HandleFunc("/data/{name}", apiInsertTask)
-	r.HandleFunc("/data/{task_name}/{name}", apiGetTaskByName)
-	r.HandleFunc("/data/{task_name}/{name}/{variant}", apiGetTaskForVariant)
-	return r
-}
-
 func (hwp *TaskJSONPlugin) GetUIHandler() http.Handler {
 	r := mux.NewRouter()
 
@@ -69,34 +54,6 @@ func (hwp *TaskJSONPlugin) GetUIHandler() http.Handler {
 	r.HandleFunc("/commit/{project_id}/{revision}/{variant}/{task_name}/{name}", uiGetCommit)
 	r.HandleFunc("/history/{task_id}/{name}", uiGetTaskHistory)
 	return r
-}
-
-func fixPatchInHistory(taskId string, base *task.Task, history []TaskJSON) ([]TaskJSON, error) {
-	var jsonForTask *TaskJSON
-	err := db.FindOneQ(collection, db.Query(bson.M{"task_id": taskId}), &jsonForTask)
-	if err != nil {
-		return nil, err
-	}
-	if base != nil {
-		jsonForTask.RevisionOrderNumber = base.RevisionOrderNumber
-	}
-	if jsonForTask == nil {
-		return history, nil
-	}
-
-	found := false
-	for i, item := range history {
-		if item.Revision == base.Revision {
-			history[i] = *jsonForTask
-			found = true
-		}
-	}
-	// if found is false, it means we don't have json on the base commit, so it was
-	// not replaced and we must add it explicitly
-	if !found {
-		history = append(history, *jsonForTask)
-	}
-	return history, nil
 }
 
 func (jsp *TaskJSONPlugin) Configure(map[string]interface{}) error {
