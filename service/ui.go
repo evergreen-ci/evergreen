@@ -237,8 +237,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 
 	// Plugin routes
 	rootPluginRouter := r.PathPrefix("/plugin").Subrouter()
-	rootPluginRouter.HandleFunc("/manifest/get/{project_id}/{revision}", makeGetManifestHandler(uis)).Methods("GET")
-
 	for _, pl := range plugin.UIPlugins {
 		// get the settings
 		pluginSettings := uis.Settings.Plugins[pl.Name()]
@@ -278,9 +276,6 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 		)
 
 		pluginUIhandler := pl.GetUIHandler()
-		if pluginUIhandler == nil {
-			continue
-		}
 
 		util.MountHandler(rootPluginRouter, fmt.Sprintf("/%v/", pl.Name()), withPluginUser(pluginUIhandler))
 	}

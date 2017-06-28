@@ -828,7 +828,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter.HandleFunc("/git/patchfile/{patchfile_id}", as.checkTask(false, as.gitServePatchFile)).Methods("GET")
 	taskRouter.HandleFunc("/git/patch", as.checkTask(false, as.gitServePatch)).Methods("GET")
 	taskRouter.HandleFunc("/keyval/inc", as.checkTask(false, as.keyValPluginInc)).Methods("POST")
-	taskRouter.HandleFunc("/manifest/load", as.checkTask(false, makeGetManifestHandler(as))).Methods("GET")
+	taskRouter.HandleFunc("/manifest/load", as.checkTask(false, as.manifestLoadHandler)).Methods("GET")
 	taskRouter.HandleFunc("/s3Copy/s3Copy", as.checkTask(false, as.s3copyPlugin)).Methods("POST")
 
 	taskRouter.HandleFunc("/json/tags/{task_name}/{name}", as.checkTask(false, as.getTaskJSONTagsForTask)).Methods("GET")

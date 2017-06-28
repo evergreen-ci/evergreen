@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
@@ -93,97 +92,4 @@ func (mfc *ManifestLoadCommand) Execute(pluginLogger plugin.Logger,
 		return nil
 	}
 
-}
-
-// ManifestLoadHandler attempts to get the manifest, if it exists it updates the expansions and returns
-// If it does not exist it performs GitHub API calls for each of the project's modules and gets
-// the head revision of the branch and inserts it into the manifest collection.
-// If there is a duplicate key error, then do a find on the manifest again.
-func (mp *ManifestPlugin) ManifestLoadHandler(w http.ResponseWriter, r *http.Request) {
-	task := plugin.GetTask(r)
-	projectRef, err := model.FindOneProjectRef(task.Project)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("projectRef not found for project %v: %v", task.Project, err), http.StatusBadRequest)
-		return
-	}
-	project, err := model.FindProject("", projectRef)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("project not found for ProjectRef %v: %v", projectRef.Identifier, err),
-			http.StatusBadRequest)
-		return
-	}
-	if project == nil {
-		http.Error(w, fmt.Sprintf("empty project not found for ProjectRef %v: %v", projectRef.Identifier, err),
-			http.StatusBadRequest)
-		return
-	}
-	// try to get the manifest
-	currentManifest, err := manifest.FindOne(manifest.ById(task.Version))
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error retrieving manifest with version id %v: %v", task.Version, err),
-			http.StatusBadRequest)
-		return
-	}
-	if currentManifest != nil {
-		plugin.WriteJSON(w, http.StatusOK, currentManifest)
-		return
-	}
-
-	if task.Version == "" {
-		http.Error(w, fmt.Sprintf("versionId is empty"), http.StatusNotFound)
-		return
-	}
-
-	// attempt to insert a manifest after making GitHub API calls
-	newManifest := &manifest.Manifest{
-		Id:          task.Version,
-		Revision:    task.Revision,
-		ProjectName: task.Project,
-		Branch:      project.Branch,
-	}
-	// populate modules
-	var gitBranch *thirdparty.BranchEvent
-	modules := make(map[string]*manifest.Module)
-	for _, module := range project.Modules {
-		owner, repo := module.GetRepoOwnerAndName()
-		gitBranch, err = thirdparty.GetBranchEvent(mp.OAuthCredentials, owner, repo, module.Branch)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error retrieving getting git branch for module %v: %v", module.Name, err),
-				http.StatusInternalServerError)
-			return
-		}
-
-		modules[module.Name] = &manifest.Module{
-			Branch:   module.Branch,
-			Revision: gitBranch.Commit.SHA,
-			Repo:     repo,
-			Owner:    owner,
-			URL:      gitBranch.Commit.Url,
-		}
-	}
-	newManifest.Modules = modules
-	duplicate, err := newManifest.TryInsert()
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error inserting manifest for %v: %v", newManifest.ProjectName, err),
-			http.StatusInternalServerError)
-		return
-	}
-	// if it is a duplicate, load the manifest again`
-	if duplicate {
-		// try to get the manifest
-		m, err := manifest.FindOne(manifest.ById(task.Version))
-		if err != nil {
-			http.Error(w, fmt.Sprintf("error getting latest manifest for %v: %v", newManifest.ProjectName, err),
-				http.StatusBadRequest)
-			return
-		}
-		if m != nil {
-			plugin.WriteJSON(w, http.StatusOK, m)
-			return
-		}
-	}
-	// no duplicate key error, use the manifest just created.
-
-	plugin.WriteJSON(w, http.StatusOK, newManifest)
-	return
 }
