@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
@@ -24,7 +23,6 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/gorilla/mux"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
@@ -35,25 +33,6 @@ type MockPlugin struct{}
 
 func init() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testutil.TestConfig()))
-}
-
-func MockPluginEcho(w http.ResponseWriter, request *http.Request) {
-	arg1 := mux.Vars(request)["param1"]
-	arg2, err := strconv.Atoi(mux.Vars(request)["param2"])
-	if err != nil {
-		http.Error(w, "bad val for param2", http.StatusBadRequest)
-		return
-	}
-
-	newTask := plugin.GetTask(request)
-	if newTask != nil {
-		//task should have been populated for us, by the API server
-		plugin.WriteJSON(w, http.StatusOK, map[string]string{
-			"echo": fmt.Sprintf("%v/%v/%v", arg1, arg2, newTask.Id),
-		})
-		return
-	}
-	http.Error(w, "couldn't get task from context", http.StatusInternalServerError)
 }
 
 func (mp *MockPlugin) Configure(conf map[string]interface{}) error {
@@ -185,7 +164,7 @@ func TestPluginFunctions(t *testing.T) {
 			err = registry.Register(&expansions.ExpansionsPlugin{})
 			testutil.HandleTestingErr(err, t, "Couldn't register plugin")
 
-			testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+			testServer, err := service.CreateTestServer(testConfig, nil)
 			testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 			defer testServer.Close()
 			pluginfile := filepath.Join(testutil.GetDirectoryOfFile(),
@@ -232,13 +211,12 @@ func TestPluginExecution(t *testing.T) {
 		registry := plugin.NewSimpleRegistry()
 
 		plugins := []plugin.CommandPlugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}, &shell.ShellPlugin{}}
-		apiPlugins := []plugin.APIPlugin{&MockPlugin{}, &expansions.ExpansionsPlugin{}}
 		for _, p := range plugins {
 			err := registry.Register(p)
 			testutil.HandleTestingErr(err, t, "failed to register plugin")
 		}
 		testConfig := testutil.TestConfig()
-		testServer, err := service.CreateTestServer(testConfig, nil, apiPlugins)
+		testServer, err := service.CreateTestServer(testConfig, nil)
 
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()
@@ -291,7 +269,7 @@ func TestAttachLargeResults(t *testing.T) {
 	testutil.HandleTestingErr(db.ClearCollections(task.Collection), t, "problem clearning collections")
 	Convey("With a test task and server", t, func() {
 		testConfig := testutil.TestConfig()
-		testServer, err := service.CreateTestServer(testConfig, nil, nil)
+		testServer, err := service.CreateTestServer(testConfig, nil)
 
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer testServer.Close()

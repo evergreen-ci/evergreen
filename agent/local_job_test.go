@@ -15,7 +15,7 @@ import (
 )
 
 func TestLocalJob(t *testing.T) {
-	testServer, err := service.CreateTestServer(tu.TestConfig(), nil, nil)
+	testServer, err := service.CreateTestServer(tu.TestConfig(), nil)
 	tu.HandleTestingErr(err, t, "failed to start server")
 	defer testServer.Close()
 

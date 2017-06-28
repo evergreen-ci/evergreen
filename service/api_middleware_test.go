@@ -39,7 +39,8 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("clearing db: %v", err)
 		}
 		var ctx map[interface{}]interface{}
-		as, err := NewAPIServer(testutil.TestConfig(), nil)
+
+		as, err := NewAPIServer(testutil.TestConfig())
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -154,7 +155,7 @@ func TestCheckHostWrapper(t *testing.T) {
 			t.Fatalf("clearing db: %v", err)
 		}
 		var ctx map[interface{}]interface{}
-		as, err := NewAPIServer(testutil.TestConfig(), nil)
+		as, err := NewAPIServer(testutil.TestConfig())
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

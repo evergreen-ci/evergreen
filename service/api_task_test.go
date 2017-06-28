@@ -241,7 +241,7 @@ func TestNextTask(t *testing.T) {
 			t.Fatalf("adding test indexes %v", err)
 		}
 
-		as, err := NewAPIServer(testutil.TestConfig(), nil)
+		as, err := NewAPIServer(testutil.TestConfig())
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
@@ -466,7 +466,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 			build.Collection, model.ProjectRefCollection, version.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		as, err := NewAPIServer(testutil.TestConfig(), nil)
+		as, err := NewAPIServer(testutil.TestConfig())
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}

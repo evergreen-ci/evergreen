@@ -40,7 +40,7 @@ func TestAttachResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 
@@ -100,7 +100,7 @@ func TestAttachRawResults(t *testing.T) {
 		err := registry.Register(attachPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

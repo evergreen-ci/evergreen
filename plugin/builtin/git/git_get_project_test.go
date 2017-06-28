@@ -58,7 +58,7 @@ func (s *GitGetProjectSuite) SetupSuite() {
 	err = plugintest.SetupPatchData(s.modelData1, patchPath, s.T())
 	s.NoError(err)
 	s.logger = agentutil.NewTestLogger(slogger.StdOutAppender())
-	s.server, err = service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	s.server, err = service.CreateTestServer(testConfig, nil)
 	s.NoError(err)
 	s.httpCom = plugintest.TestAgentCommunicator(s.modelData1, s.server.URL)
 }

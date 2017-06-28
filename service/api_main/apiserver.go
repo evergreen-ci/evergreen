@@ -10,7 +10,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/plugin"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
@@ -69,7 +68,7 @@ func main() {
 
 	// Start SSL and non-SSL servers in independent goroutines, but exit
 	// the process if either one fails
-	as, err := service.NewAPIServer(settings, plugin.APIPlugins)
+	as, err := service.NewAPIServer(settings)
 	if err != nil {
 		grip.EmergencyFatalf("Failed to create API server: %+v", err)
 	}

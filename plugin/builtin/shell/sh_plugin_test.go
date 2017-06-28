@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -22,7 +21,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	defer close(stopper)
 
 	testConfig := testutil.TestConfig()
-	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	server, err := service.CreateTestServer(testConfig, nil)
 	if err != nil {
 		t.Fatalf("failed to create test server %+v", err)
 	}

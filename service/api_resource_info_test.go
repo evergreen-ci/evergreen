@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -21,7 +20,7 @@ import (
 
 func TestResourceInfoEndPoints(t *testing.T) {
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	testApiServer, err := CreateTestServer(testConfig, nil)
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()
 

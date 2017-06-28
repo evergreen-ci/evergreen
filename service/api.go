@@ -21,7 +21,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -56,12 +55,11 @@ type APIServer struct {
 	*render.Render
 	UserManager  auth.UserManager
 	Settings     evergreen.Settings
-	plugins      []plugin.APIPlugin
 	clientConfig *evergreen.ClientConfig
 }
 
 // NewAPIServer returns an APIServer initialized with the given settings and plugins.
-func NewAPIServer(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*APIServer, error) {
+func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
 	authManager, err := auth.LoadUserManager(settings.AuthConfig)
 	if err != nil {
 		return nil, errors.WithStack(err)
@@ -76,7 +74,6 @@ func NewAPIServer(settings *evergreen.Settings, plugins []plugin.APIPlugin) (*AP
 		Render:       render.New(render.Options{}),
 		UserManager:  authManager,
 		Settings:     *settings,
-		plugins:      plugins,
 		clientConfig: clientConfig,
 	}
 
@@ -164,8 +161,6 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 		}
 
 		context.Set(r, apiTaskKey, t)
-		// also set the task in the context visible to plugins
-		plugin.SetTask(r, t)
 		next(w, r)
 	}
 }
@@ -841,25 +836,6 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	taskRouter.HandleFunc("/json/data/{name}", as.checkTask(false, as.insertTaskJSON)).Methods("POST")
 	taskRouter.HandleFunc("/json/data/{task_name}/{name}", as.checkTask(false, as.getTaskJSONByName)).Methods("GET")
 	taskRouter.HandleFunc("/json/data/{task_name}/{name}/{variant}", as.checkTask(false, as.getTaskJSONForVariant)).Methods("GET")
-
-	// Install plugin routes
-	for _, pl := range as.plugins {
-		if pl == nil {
-			continue
-		}
-		pluginSettings := as.Settings.Plugins[pl.Name()]
-		err := pl.Configure(pluginSettings)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to configure plugin %s", pl.Name())
-		}
-		handler := pl.GetAPIHandler()
-		if handler == nil {
-			grip.Warningf("no API handlers to install for %s plugin", pl.Name())
-			continue
-		}
-		grip.Debugf("Installing API handlers for %s plugin", pl.Name())
-		util.MountHandler(taskRouter, fmt.Sprintf("/%s/", pl.Name()), as.checkTask(false, handler.ServeHTTP))
-	}
 
 	n := negroni.New()
 	n.Use(NewLogger())

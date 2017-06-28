@@ -38,7 +38,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
@@ -101,7 +101,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 		err := registry.Register(testPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
 
-		server, err := service.CreateTestServer(testutil.TestConfig(), nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testutil.TestConfig(), nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

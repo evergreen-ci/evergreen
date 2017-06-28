@@ -16,7 +16,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
@@ -219,7 +218,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 				"content_type": "text/plain",
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins)
+			server, err := service.CreateTestServer(conf, nil)
 			testutil.HandleTestingErr(err, t, "problem setting up server")
 			defer server.Close()
 
@@ -245,7 +244,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 				"content_type": "text/plain",
 			}
 			So(putCmd.ParseParams(putParams), ShouldBeNil)
-			server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins)
+			server, err := service.CreateTestServer(conf, nil)
 			testutil.HandleTestingErr(err, t, "problem setting up server")
 			defer server.Close()
 			httpCom := plugintest.TestAgentCommunicator(&modelutil.TestModelData{}, server.URL)
@@ -378,7 +377,7 @@ func TestAttachResults(t *testing.T) {
 
 		conf := testutil.TestConfig()
 		testutil.ConfigureIntegrationTest(t, conf, "TestAttachResults")
-		server, err := service.CreateTestServer(conf, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(conf, nil)
 		testutil.HandleTestingErr(err, t, "problem setting up server")
 		defer server.Close()
 

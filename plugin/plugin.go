@@ -27,7 +27,6 @@ var (
 	// This list is then used by Agent, API, and UI Server code to register
 	// the published plugins.
 	CommandPlugins []CommandPlugin
-	APIPlugins     []APIPlugin
 	UIPlugins      []UIPlugin
 )
 
@@ -138,7 +137,7 @@ type PluginCommunicator interface {
 
 // Plugin defines the interface that all evergreen plugins must implement in order
 // to register themselves with Evergreen. A plugin must also implement one of the
-// PluginCommand, APIPlugin, or UIPlugin interfaces in order to do useful work.
+// PluginCommand or UIPlugin interfaces in order to do useful work.
 type Plugin interface {
 	// Returns the name to identify this plugin when registered.
 	Name() string
@@ -151,19 +150,6 @@ type CommandPlugin interface {
 
 	// Returns an ErrUnknownCommand if no such command exists
 	NewCommand(commandName string) (Command, error)
-}
-
-// APIPlugin is implemented by plugins that need to add new API hooks for
-// new task commands.
-// TODO: should this also require PluginCommand be implemented?
-type APIPlugin interface {
-	Plugin
-
-	// Configure reads in a settings map from the Evergreen config file.
-	Configure(conf map[string]interface{}) error
-
-	// Install any server-side handlers needed by this plugin in the API server
-	GetAPIHandler() http.Handler
 }
 
 type UIPlugin interface {
@@ -199,7 +185,7 @@ type AppUIPlugin interface {
 //
 // Packages implementing the Plugin interface MUST call Publish in their
 // init code in order for Evergreen to detect and use them. A plugin must
-// also implement one of CommandPlugin, APIPlugin, or UIPlugin in order to
+// also implement one of CommandPlugin or UIPlugin in order to
 // be useable.
 //
 // See the documentation of the 10gen.com/mci/plugin/config package for more
@@ -209,16 +195,13 @@ func Publish(plugin Plugin) {
 		CommandPlugins = append(CommandPlugins, asCommand)
 		published = true
 	}
-	if asAPI, ok := plugin.(APIPlugin); ok {
-		APIPlugins = append(APIPlugins, asAPI)
-		published = true
-	}
+
 	if asUI, ok := plugin.(UIPlugin); ok {
 		UIPlugins = append(UIPlugins, asUI)
 		published = true
 	}
 	if !published {
-		panic(fmt.Sprintf("Plugin '%v' does not implement any of CommandPlugin, APIPlugin, or UIPlugin", plugin.Name()))
+		panic(fmt.Sprintf("Plugin '%v' does not implement any of CommandPlugin, or UIPlugin", plugin.Name()))
 	}
 }
 

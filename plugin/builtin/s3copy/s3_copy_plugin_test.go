@@ -38,7 +38,7 @@ func TestS3CopyPluginExecution(t *testing.T) {
 			Id: "versionId",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

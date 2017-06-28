@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -59,7 +58,7 @@ type cliTestHarness struct {
 
 func setupCLITestHarness() cliTestHarness {
 	// create a test API server
-	testServer, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	testServer, err := service.CreateTestServer(testConfig, nil)
 	So(err, ShouldBeNil)
 	So(
 		db.ClearCollections(

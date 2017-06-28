@@ -28,7 +28,7 @@ func TestPatchPluginAPI(t *testing.T) {
 		gitPlugin := &GitPlugin{}
 		err := registry.Register(gitPlugin)
 		testutil.HandleTestingErr(err, t, "Couldn't register patch plugin")
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		configPath := filepath.Join(cwd, "testdata", "plugin_patch.yml")
 		patchFile := filepath.Join(cwd, "testdata", "test.patch")
@@ -101,7 +101,7 @@ func TestPatchPlugin(t *testing.T) {
 			Id: "",
 		}
 		So(version.Insert(), ShouldBeNil)
-		server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 		defer server.Close()
 

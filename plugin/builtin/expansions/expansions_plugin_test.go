@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
@@ -52,7 +51,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	defer close(stopper)
 
 	testConfig := testutil.TestConfig()
-	server, err := service.CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	server, err := service.CreateTestServer(testConfig, nil)
 	testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
 	defer server.Close()
 

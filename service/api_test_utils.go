@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/service/testutil"
 	"github.com/mongodb/grip"
 )
@@ -29,13 +28,13 @@ func (s *TestServer) Close() {
 	s.ts.Close()
 }
 
-func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config, plugins []plugin.APIPlugin) (*TestServer, error) {
+func CreateTestServer(settings *evergreen.Settings, tlsConfig *tls.Config) (*TestServer, error) {
 	port := testutil.NextPort()
 	if err := os.MkdirAll(filepath.Join(evergreen.FindEvergreenHome(), evergreen.ClientDirectory), 0644); err != nil {
 		return nil, err
 	}
 
-	apiServer, err := NewAPIServer(settings, plugins)
+	apiServer, err := NewAPIServer(settings)
 	apiServer.UserManager = testutil.MockUserManager{}
 	if err != nil {
 		return nil, err

@@ -33,7 +33,7 @@ func TestIncKey(t *testing.T) {
 
 		testConfig := testutil.TestConfig()
 
-		server, err := service.CreateTestServer(testConfig, nil, []plugin.APIPlugin{})
+		server, err := service.CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "couldn't create test server")
 
 		configPath := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "plugin_keyval.yml")

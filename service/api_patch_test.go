@@ -9,7 +9,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	modelUtil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -18,7 +17,7 @@ import (
 func TestPatchListModulesEndPoints(t *testing.T) {
 	testDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
-	testApiServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	testApiServer, err := CreateTestServer(testConfig, nil)
 	testutil.HandleTestingErr(err, t, "failed to create new API server")
 	defer testApiServer.Close()
 

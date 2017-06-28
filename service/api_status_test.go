@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -27,7 +26,7 @@ func getCTAEndpoint(t *testing.T) *httptest.ResponseRecorder {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	as, err := NewAPIServer(testutil.TestConfig(), nil)
+	as, err := NewAPIServer(testutil.TestConfig())
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
@@ -52,7 +51,7 @@ func getStuckHostEndpoint(t *testing.T) *httptest.ResponseRecorder {
 		t.Fatal("could not create client directory required to start the API server:", err.Error())
 	}
 
-	as, err := NewAPIServer(testutil.TestConfig(), nil)
+	as, err := NewAPIServer(testutil.TestConfig())
 	if err != nil {
 		t.Fatalf("creating test API server: %v", err)
 	}
@@ -144,7 +143,7 @@ func TestConsistentTaskAssignment(t *testing.T) {
 
 func TestServiceStatusEndPoints(t *testing.T) {
 	testConfig := testutil.TestConfig()
-	testServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
+	testServer, err := CreateTestServer(testConfig, nil)
 	testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 	defer testServer.Close()
 
@@ -190,7 +189,7 @@ func TestServiceStatusEndPoints(t *testing.T) {
 func TestStuckHostEndpoints(t *testing.T) {
 	Convey("With a test server and test config", t, func() {
 		testConfig := testutil.TestConfig()
-		testServer, err := CreateTestServer(testConfig, nil, plugin.APIPlugins)
+		testServer, err := CreateTestServer(testConfig, nil)
 		testutil.HandleTestingErr(err, t, "Couldn't create apiserver: %v", err)
 		defer testServer.Close()
 
