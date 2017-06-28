@@ -18,21 +18,21 @@ type MockEvergreenREST struct {
 	maxAttempts  int
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
-	hostID       string
-	hostSecret   string
-	httpsCert    string
 	httpClient   *http.Client
+
+	// these fields have setters
+	hostID     string
+	hostSecret string
+	apiUser    string
+	apiKey     string
 }
 
 // NewMockEvergreenREST returns a Communicator for testing.
-func NewMockEvergreenREST(serverURL, hostID, hostSecret, cert string) (Communicator, error) {
+func NewMockEvergreenREST(serverURL string) (Communicator, error) {
 	evergreen := &MockEvergreenREST{
-		hostID:       hostID,
-		hostSecret:   hostSecret,
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
-		httpsCert:    cert,
 		serverURL:    serverURL,
 		httpClient:   &http.Client{},
 	}
@@ -85,6 +85,251 @@ func (c *MockEvergreenREST) GetNextTask(ctx context.Context, taskID, taskSecret 
 
 }
 
+// GetAllHosts ...
+func (*MockEvergreenREST) GetAllHosts() {
+	return
+}
+
+// GetHostByID ...
+func (*MockEvergreenREST) GetHostByID() {
+	return
+}
+
+// SetHostStatus ...
+func (*MockEvergreenREST) SetHostStatus() {
+	return
+}
+
+// SetHostStatuses ...
+func (*MockEvergreenREST) SetHostStatuses() {
+	return
+}
+
+// CreateSpawnHost ...
+func (*MockEvergreenREST) CreateSpawnHost() {
+	return
+}
+
+// GetSpawnHosts ...
+func (*MockEvergreenREST) GetSpawnHosts() {
+	return
+}
+
+// GetTaskByID ...
+func (*MockEvergreenREST) GetTaskByID() {
+	return
+}
+
+// GetTasksByBuild ...
+func (*MockEvergreenREST) GetTasksByBuild() {
+	return
+}
+
+// GetTasksByProjectAndCommit ...
+func (*MockEvergreenREST) GetTasksByProjectAndCommit() {
+	return
+}
+
+// SetTaskStatus ...
+func (*MockEvergreenREST) SetTaskStatus() {
+	return
+}
+
+// AbortTask ...
+func (*MockEvergreenREST) AbortTask() {
+	return
+}
+
+// RestartTask ...
+func (*MockEvergreenREST) RestartTask() {
+	return
+}
+
+// GetKeys ...
+func (*MockEvergreenREST) GetKeys() {
+	return
+}
+
+// AddKey ...
+func (*MockEvergreenREST) AddKey() {
+	return
+}
+
+// RemoveKey ...
+func (*MockEvergreenREST) RemoveKey() {
+	return
+}
+
+// GetProjectByID ...
+func (*MockEvergreenREST) GetProjectByID() {
+	return
+}
+
+// EditProject ...
+func (*MockEvergreenREST) EditProject() {
+	return
+}
+
+// CreateProject ...
+func (*MockEvergreenREST) CreateProject() {
+	return
+}
+
+// GetAllProjects ...
+func (*MockEvergreenREST) GetAllProjects() {
+	return
+}
+
+// GetBuildByID ...
+func (*MockEvergreenREST) GetBuildByID() {
+	return
+}
+
+// GetBuildByProjectAndHashAndVariant ...
+func (*MockEvergreenREST) GetBuildByProjectAndHashAndVariant() {
+	return
+}
+
+// GetBuildsByVersion ...
+func (*MockEvergreenREST) GetBuildsByVersion() {
+	return
+}
+
+// SetBuildStatus ...
+func (*MockEvergreenREST) SetBuildStatus() {
+	return
+}
+
+// AbortBuild ...
+func (*MockEvergreenREST) AbortBuild() {
+	return
+}
+
+// RestartBuild ...
+func (*MockEvergreenREST) RestartBuild() {
+	return
+}
+
+// GetTestsByTaskID ...
+func (*MockEvergreenREST) GetTestsByTaskID() {
+	return
+}
+
+// GetTestsByBuild ...
+func (*MockEvergreenREST) GetTestsByBuild() {
+	return
+}
+
+// GetTestsByTestName ...
+func (*MockEvergreenREST) GetTestsByTestName() {
+	return
+}
+
+// GetVersionByID ...
+func (*MockEvergreenREST) GetVersionByID() {
+	return
+}
+
+// GetVersions ...
+func (*MockEvergreenREST) GetVersions() {
+	return
+}
+
+// GetVersionByProjectAndCommit ...
+func (*MockEvergreenREST) GetVersionByProjectAndCommit() {
+	return
+}
+
+// GetVersionsByProject ...
+func (*MockEvergreenREST) GetVersionsByProject() {
+	return
+}
+
+// SetVersionStatus ...
+func (*MockEvergreenREST) SetVersionStatus() {
+	return
+}
+
+// AbortVersion ...
+func (*MockEvergreenREST) AbortVersion() {
+	return
+}
+
+// RestartVersion ...
+func (*MockEvergreenREST) RestartVersion() {
+	return
+}
+
+// GetAllDistros ...
+func (*MockEvergreenREST) GetAllDistros() {
+	return
+}
+
+// GetDistroByID ...
+func (*MockEvergreenREST) GetDistroByID() {
+	return
+}
+
+// CreateDistro ...
+func (*MockEvergreenREST) CreateDistro() {
+	return
+}
+
+// EditDistro ...
+func (*MockEvergreenREST) EditDistro() {
+	return
+}
+
+// DeleteDistro ...
+func (*MockEvergreenREST) DeleteDistro() {
+	return
+}
+
+// GetDistroSetupScriptByID ...
+func (*MockEvergreenREST) GetDistroSetupScriptByID() {
+	return
+}
+
+// GetDistroTeardownScriptByID ...
+func (*MockEvergreenREST) GetDistroTeardownScriptByID() {
+	return
+}
+
+// EditDistroSetupScript ...
+func (*MockEvergreenREST) EditDistroSetupScript() {
+	return
+}
+
+// EditDistroTeardownScript ...
+func (*MockEvergreenREST) EditDistroTeardownScript() {
+	return
+}
+
+// GetPatchByID ...
+func (*MockEvergreenREST) GetPatchByID() {
+	return
+}
+
+// GetPatchesByProject ...
+func (*MockEvergreenREST) GetPatchesByProject() {
+	return
+}
+
+// SetPatchStatus ...
+func (*MockEvergreenREST) SetPatchStatus() {
+	return
+}
+
+// AbortPatch ...
+func (*MockEvergreenREST) AbortPatch() {
+	return
+}
+
+// RestartPatch ...
+func (*MockEvergreenREST) RestartPatch() {
+	return
+}
+
 // SetTimeoutStart sets the initial timeout for a request.
 func (c *MockEvergreenREST) SetTimeoutStart(timeoutStart time.Duration) {
 	c.timeoutStart = timeoutStart
@@ -98,4 +343,24 @@ func (c *MockEvergreenREST) SetTimeoutMax(timeoutMax time.Duration) {
 // SetMaxAttempts sets the number of attempts a request will be made.
 func (c *MockEvergreenREST) SetMaxAttempts(attempts int) {
 	c.maxAttempts = attempts
+}
+
+// SetHostID sets the host ID.
+func (c *MockEvergreenREST) SetHostID(hostID string) {
+	c.hostID = hostID
+}
+
+// SetHostSecret sets the host secret.
+func (c *MockEvergreenREST) SetHostSecret(hostSecret string) {
+	c.hostSecret = hostSecret
+}
+
+// SetAPIUser sets the API user.
+func (c *MockEvergreenREST) SetAPIUser(apiUser string) {
+	c.apiUser = apiUser
+}
+
+// SetAPIKey sets the API key.
+func (c *MockEvergreenREST) SetAPIKey(apiKey string) {
+	c.apiKey = apiKey
 }

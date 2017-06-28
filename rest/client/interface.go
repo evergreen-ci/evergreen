@@ -13,6 +13,10 @@ import (
 
 // Communicator is an interface for communicating with the API server.
 type Communicator interface {
+	// ---------------------------------------------------------------------
+	// Begin legacy API methods
+	// ---------------------------------------------------------------------
+	//
 	// StartTask marks the task as started.
 	StartTask(context.Context, string, string) error
 	// EndTask marks the task as finished with the given status
@@ -38,4 +42,103 @@ type Communicator interface {
 	SetTimeoutMax(timeoutMax time.Duration)
 	// SetMaxAttempts sets the number of attempts a request will be made.
 	SetMaxAttempts(attempts int)
+	// SetHostID sets the host ID.
+	SetHostID(hostID string)
+	// SetHostSecret sets the host secret.
+	SetHostSecret(hostSecret string)
+	// ---------------------------------------------------------------------
+	// End legacy API methods
+	// ---------------------------------------------------------------------
+
+	// ---------------------------------------------------------------------
+	// Begin REST API V2 methods
+	// ---------------------------------------------------------------------
+	// Setters
+	//
+	// SetAPIUser sets the API user.
+	SetAPIUser(user string)
+	// SetAPIKey sets the API key.
+	SetAPIKey(apiKey string)
+
+	// Host methods
+	//
+	GetAllHosts()
+	GetHostByID()
+	SetHostStatus()
+	SetHostStatuses()
+
+	// Spawnhost methods
+	//
+	CreateSpawnHost()
+	GetSpawnHosts()
+
+	// Task methods
+	//
+	GetTaskByID()
+	GetTasksByBuild()
+	GetTasksByProjectAndCommit()
+	SetTaskStatus()
+	AbortTask()
+	RestartTask()
+
+	// SSH keys methods
+	//
+	GetKeys()
+	AddKey()
+	RemoveKey()
+
+	// Project methods
+	//
+	GetProjectByID()
+	EditProject()
+	CreateProject()
+	GetAllProjects()
+
+	// Build methods
+	//
+	GetBuildByID()
+	GetBuildByProjectAndHashAndVariant()
+	GetBuildsByVersion()
+	SetBuildStatus()
+	AbortBuild()
+	RestartBuild()
+
+	// Test methods
+	//
+	GetTestsByTaskID()
+	GetTestsByBuild()
+	GetTestsByTestName()
+
+	// Version methods
+	//
+	GetVersionByID()
+	GetVersions()
+	GetVersionByProjectAndCommit()
+	GetVersionsByProject()
+	SetVersionStatus()
+	AbortVersion()
+	RestartVersion()
+
+	// Distro methods
+	//
+	GetAllDistros()
+	GetDistroByID()
+	CreateDistro()
+	EditDistro()
+	DeleteDistro()
+	GetDistroSetupScriptByID()
+	GetDistroTeardownScriptByID()
+	EditDistroSetupScript()
+	EditDistroTeardownScript()
+
+	// Patch methods
+	//
+	GetPatchByID()
+	GetPatchesByProject()
+	SetPatchStatus()
+	AbortPatch()
+	RestartPatch()
+	// ---------------------------------------------------------------------
+	// End REST API V2 methods
+	// ---------------------------------------------------------------------
 }

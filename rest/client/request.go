@@ -107,9 +107,21 @@ func (c *evergreenREST) newRequest(method, path, taskSecret, version string, dat
 	if err != nil {
 		return nil, errors.New("Error building request")
 	}
-	r.Header.Add(evergreen.TaskSecretHeader, taskSecret)
-	r.Header.Add(evergreen.HostHeader, c.hostID)
-	r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
+	if taskSecret != "" {
+		r.Header.Add(evergreen.TaskSecretHeader, taskSecret)
+	}
+	if c.hostID != "" {
+		r.Header.Add(evergreen.HostHeader, c.hostID)
+	}
+	if c.apiUser != "" {
+		r.Header.Add(evergreen.APIUserHeader, c.apiUser)
+	}
+	if c.apiUser != "" {
+		r.Header.Add(evergreen.APIKeyHeader, c.apiKey)
+	}
+	if c.hostSecret != "" {
+		r.Header.Add(evergreen.HostSecretHeader, c.hostSecret)
+	}
 	r.Header.Add(evergreen.ContentTypeHeader, evergreen.ContentTypeValue)
 	return r, nil
 }
