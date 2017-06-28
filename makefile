@@ -1,7 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent  agent-comm db cli archive remote command taskrunner util plugin hostinit
+packages := $(name) agent agent-comm db cli archive remote command taskrunner util plugin hostinit
 packages += plugin-builtin-keyval plugin-builtin-git
 packages += plugin-builtin-gotest plugin-builtin-attach plugin-builtin-manifest plugin-builtin-archive
 packages += plugin-builtin-shell plugin-builtin-s3copy plugin-builtin-expansions plugin-builtin-s3
@@ -70,11 +70,11 @@ lintArgs += --exclude="file is not goimported" # test files aren't imported
 #  golint doesn't handle splitting package comments between multiple files.
 # lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
-lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused)\)$$"
-lintArgs += --exclude=".*(procInfo|sysInfo|metricsCollector\).start|testSorter).*is unused.*\(unused|deadcode\)$$"
+lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
+lintArgs += --exclude=".*(procInfo|sysInfo|metricsCollector\).start|testSorter).*is unused.*\(unused|deadcode|megacheck\)$$"
 lintArgs += --exclude="error return value not checked \(defer.* \(errcheck\)$$"
-lintArgs += --exclude="defers in this range loop.* \(staticcheck\)$$"
-lintArgs += --exclude=".*should use time.Until instead of t.Sub\(time.Now\(\)\).* \(gosimple\)$$"
+lintArgs += --exclude="defers in this range loop.* \(staticcheck|megacheck\)$$"
+lintArgs += --exclude=".*should use time.Until instead of t.Sub\(time.Now\(\)\).* \(gosimple|megacheck\)$$"
 lintArgs += --exclude="suspect or:.*\(vet\)$$"
 # end lint configuration
 

@@ -586,8 +586,6 @@ func setNumDeps(tasks []*task.Task) {
 		// Recursively find all tasks that task depends on and increments their NumDependents field
 		setNumDepsRec(task, idToTask, make(map[string]bool))
 	}
-
-	return
 }
 
 // setNumDepsRec recursively finds all tasks that task depends on and increments their NumDependents field.

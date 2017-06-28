@@ -160,10 +160,5 @@ func (*MockCommunicator) FetchExpansionVars() (*apimodels.ExpansionVars, error) 
 	return &apimodels.ExpansionVars{}, nil
 }
 
-func (m *MockCommunicator) SetSignalChan(chan Signal) {
-	return
-}
-
-func (m *MockCommunicator) SetLogger(*slogger.Logger) {
-	return
-}
+func (m *MockCommunicator) SetSignalChan(chan Signal) {}
+func (m *MockCommunicator) SetLogger(*slogger.Logger) {}
