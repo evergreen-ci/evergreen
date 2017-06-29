@@ -245,34 +245,44 @@ func (sh *SignalHandler) awaitSignal() comm.Signal {
 // HandleSignals listens on its signal channel and properly handles any signal received.
 func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	var err error
-	receivedSignal := sh.awaitSignal()
-	detail := agt.getTaskEndDetail()
+	var detail *apimodels.TaskEndDetail
 
 	defer func() { grip.CatchEmergencyFatal(err) }()
-	defer agt.removeTaskDirectory()
-	defer agt.cleanup(agt.GetCurrentTaskId())
 
-	switch receivedSignal {
+	switch sh.awaitSignal() {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
+		agt.cleanup(agt.GetCurrentTaskId())
+		agt.removeTaskDirectory()
 		// everything went according to plan, so we just exit the signal handler routine
 		return
 	case comm.IncorrectSecret:
 		err = errors.New("Secret doesn't match - exiting.")
+		agt.cleanup(agt.GetCurrentTaskId())
+		agt.removeTaskDirectory()
 		// we want to exit here, but want to make sure the other defers run
 		return
 	case comm.HeartbeatMaxFailed:
 		err = errors.New("Max heartbeats failed - exiting.")
+		agt.cleanup(agt.GetCurrentTaskId())
+		agt.removeTaskDirectory()
 		// we want to exit here, but want to make sure the other defers run
 		return
 	case comm.AbortedByUser:
+		detail = agt.getTaskEndDetail()
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
+		agt.cleanup(agt.GetCurrentTaskId())
+		agt.removeTaskDirectory()
 	case comm.DirectoryFailure:
+		detail = agt.getTaskEndDetail()
 		detail.Status = evergreen.TaskFailed
 		detail.Type = model.SystemCommandType
 		agt.logger.LogTask(slogger.ERROR, "Directory creation failure - stopping.")
+		agt.cleanup(agt.GetCurrentTaskId())
+		agt.removeTaskDirectory()
 	case comm.IdleTimeout:
+		detail = agt.getTaskEndDetail()
 		agt.logger.LogTask(slogger.ERROR, "Task timed out: '%v'", detail.Description)
 		detail.TimedOut = true
 		if agt.taskConfig.Project.Timeout != nil {
@@ -284,7 +294,6 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 			}
 			agt.logger.LogTask(slogger.INFO, "Finished running task-timeout commands in %v.", time.Since(start).String())
 		}
-
 	}
 
 	// buffer the end details so that we can pick them up once the running command finishes
