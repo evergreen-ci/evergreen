@@ -18,7 +18,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2017-06-12"
+	ClientVersion = "2017-06-29"
 )
 
 const (
@@ -183,14 +183,14 @@ type DigitalOceanConfig struct {
 type OpenStackConfig struct {
 	IdentityEndpoint string `yaml:"identity_endpoint"`
 
-	Username         string `yaml:"username"`
-	Password         string `yaml:"password"`
-	DomainName       string `yaml:"domain_name"`
+	Username   string `yaml:"username"`
+	Password   string `yaml:"password"`
+	DomainName string `yaml:"domain_name"`
 
-	ProjectName      string `yaml:"project_name"`
-	ProjectID        string `yaml:"project_id"`
+	ProjectName string `yaml:"project_name"`
+	ProjectID   string `yaml:"project_id"`
 
-	Region           string `yaml:"region"`
+	Region string `yaml:"region"`
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.
