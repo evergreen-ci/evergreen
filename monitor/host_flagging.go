@@ -63,7 +63,7 @@ func flagUnreachableHosts(d []distro.Distro, s *evergreen.Settings) ([]host.Host
 	for _, host := range hosts {
 		canTerminate, err := hostCanBeTerminated(host, s)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error checking if host %v can be terminated", freeHost.Id)
+			return nil, errors.Wrapf(err, "error checking if host %v can be terminated", host.Id)
 		}
 
 		if canTerminate {
