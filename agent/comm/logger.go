@@ -10,7 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/send"
@@ -165,17 +165,17 @@ func NewStreamLogger(timeoutWatcher *TimeoutWatcher, apiLgr *APILogger) (*Stream
 		},
 
 		System: &slogger.Logger{
-			Name:      model.SystemLogPrefix,
+			Name:      apimodels.SystemLogPrefix,
 			Appenders: defaultLoggers,
 		},
 
 		Task: &slogger.Logger{
-			Name:      model.TaskLogPrefix,
+			Name:      apimodels.TaskLogPrefix,
 			Appenders: []send.Sender{timeoutLogger, grip.GetSender()},
 		},
 
 		Execution: &slogger.Logger{
-			Name:      model.AgentLogPrefix,
+			Name:      apimodels.AgentLogPrefix,
 			Appenders: defaultLoggers,
 		},
 	}, nil
@@ -200,7 +200,7 @@ func (trLgr *TimeoutResetLogger) Append(log *slogger.Log) error {
 // received (or if set, after SendAfterDuration time has passed with no flush).
 type APILogger struct {
 	// An internal buffer of messages to send.
-	messages []model.LogMessage
+	messages []apimodels.LogMessage
 
 	// a mutex to ensure only one flush attempt is in progress at a time.
 	flushLock sync.Mutex
@@ -231,7 +231,7 @@ type APILogger struct {
 func NewAPILogger(tc TaskCommunicator) *APILogger {
 	sendAfterDuration := 5 * time.Second
 	return &APILogger{
-		messages:          make([]model.LogMessage, 0, 100),
+		messages:          make([]apimodels.LogMessage, 0, 100),
 		flushLock:         sync.Mutex{},
 		appendLock:        sync.Mutex{},
 		SendAfterLines:    100,
@@ -253,7 +253,7 @@ func (apiLgr *APILogger) Append(log *slogger.Log) error {
 		message = strconv.QuoteToASCII(message)
 	}
 
-	logMessage := &model.LogMessage{
+	logMessage := &apimodels.LogMessage{
 		Timestamp: log.Timestamp,
 		Severity:  levelToString(log.Level),
 		Type:      log.Prefix,
@@ -275,7 +275,7 @@ func (apiLgr *APILogger) Append(log *slogger.Log) error {
 	return nil
 }
 
-func (apiLgr *APILogger) sendLogs(flushMsgs []model.LogMessage) int {
+func (apiLgr *APILogger) sendLogs(flushMsgs []apimodels.LogMessage) int {
 	start := time.Now()
 	apiLgr.flushLock.Lock()
 	defer apiLgr.flushLock.Unlock()
@@ -299,7 +299,7 @@ func (apiLgr *APILogger) FlushAndWait() int {
 	}
 
 	numMessages := apiLgr.sendLogs(apiLgr.messages)
-	apiLgr.messages = make([]model.LogMessage, 0, apiLgr.SendAfterLines)
+	apiLgr.messages = make([]apimodels.LogMessage, 0, apiLgr.SendAfterLines)
 
 	return numMessages
 }
@@ -308,9 +308,9 @@ func (apiLgr *APILogger) FlushAndWait() int {
 func (apiLgr *APILogger) flushInternal() {
 	apiLgr.lastFlush = time.Now()
 
-	messagesToSend := make([]model.LogMessage, len(apiLgr.messages))
+	messagesToSend := make([]apimodels.LogMessage, len(apiLgr.messages))
 	copy(messagesToSend, apiLgr.messages)
-	apiLgr.messages = make([]model.LogMessage, 0, apiLgr.SendAfterLines)
+	apiLgr.messages = make([]apimodels.LogMessage, 0, apiLgr.SendAfterLines)
 
 	go apiLgr.sendLogs(messagesToSend)
 }
@@ -326,13 +326,13 @@ func (apiLgr *APILogger) Flush() {
 func levelToString(level slogger.Level) string {
 	switch level {
 	case slogger.DEBUG:
-		return model.LogDebugPrefix
+		return apimodels.LogDebugPrefix
 	case slogger.INFO:
-		return model.LogInfoPrefix
+		return apimodels.LogInfoPrefix
 	case slogger.WARN:
-		return model.LogWarnPrefix
+		return apimodels.LogWarnPrefix
 	case slogger.ERROR:
-		return model.LogErrorPrefix
+		return apimodels.LogErrorPrefix
 	}
 	return "UNKNOWN"
 }

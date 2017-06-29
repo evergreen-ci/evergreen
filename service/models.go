@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -109,7 +108,7 @@ type uiTask struct {
 	Task            task.Task
 	Gitspec         string
 	BuildDisplay    string
-	TaskLog         []model.LogMessage
+	TaskLog         []apimodels.LogMessage
 	NextTasks       []task.Task
 	PreviousTasks   []task.Task
 	Elapsed         time.Duration

@@ -21,7 +21,7 @@ type MockCommunicator struct {
 	abort               bool
 	TaskId              string
 	TaskSecret          string
-	LogChan             chan []model.LogMessage
+	LogChan             chan []apimodels.LogMessage
 	Posts               map[string][]interface{}
 	sync.RWMutex
 }
@@ -128,7 +128,7 @@ func (mc *MockCommunicator) setShouldFail(b bool) {
 	mc.shouldFailHeartbeat = b
 }
 
-func (mc *MockCommunicator) Log(logMessages []model.LogMessage) error {
+func (mc *MockCommunicator) Log(logMessages []apimodels.LogMessage) error {
 	mc.RLock()
 	defer mc.RUnlock()
 

@@ -20,7 +20,7 @@ type TaskCommunicator interface {
 	GetProjectRef() (*model.ProjectRef, error)
 	GetDistro() (*distro.Distro, error)
 	GetVersion() (*version.Version, error)
-	Log([]model.LogMessage) error
+	Log([]apimodels.LogMessage) error
 	Heartbeat() (bool, error)
 	FetchExpansionVars() (*apimodels.ExpansionVars, error)
 	GetNextTask() (*apimodels.NextTaskResponse, error)

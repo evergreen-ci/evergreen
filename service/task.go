@@ -294,7 +294,7 @@ const DefaultLogMessages = 100 // passed as a limit, so 0 means don't limit
 const AllLogsType = "ALL"
 
 func getTaskLogs(taskId string, execution int, limit int, logType string,
-	loggedIn bool) ([]model.LogMessage, error) {
+	loggedIn bool) ([]apimodels.LogMessage, error) {
 
 	logTypeFilter := []string{}
 	if logType != AllLogsType {
@@ -304,10 +304,10 @@ func getTaskLogs(taskId string, execution int, limit int, logType string,
 	// auth stuff
 	if !loggedIn {
 		if logType == AllLogsType {
-			logTypeFilter = []string{model.TaskLogPrefix}
+			logTypeFilter = []string{apimodels.TaskLogPrefix}
 		}
-		if logType == model.AgentLogPrefix || logType == model.SystemLogPrefix {
-			return []model.LogMessage{}, nil
+		if logType == apimodels.AgentLogPrefix || logType == apimodels.SystemLogPrefix {
+			return []apimodels.LogMessage{}, nil
 		}
 	}
 
@@ -459,7 +459,7 @@ func setBlockedOrPending(t task.Task, tasks map[string]task.Task, uiDeps map[str
 
 // async handler for polling the task log
 type taskLogsWrapper struct {
-	LogMessages []model.LogMessage
+	LogMessages []apimodels.LogMessage
 }
 
 func (uis *UIServer) taskLog(w http.ResponseWriter, r *http.Request) {
@@ -521,9 +521,9 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	// restrict access if the user is not logged in
 	if GetUser(r) == nil {
 		if logType == AllLogsType {
-			logTypeFilter = []string{model.TaskLogPrefix}
+			logTypeFilter = []string{apimodels.TaskLogPrefix}
 		}
-		if logType == model.AgentLogPrefix || logType == model.SystemLogPrefix {
+		if logType == apimodels.AgentLogPrefix || logType == apimodels.SystemLogPrefix {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -536,7 +536,7 @@ func (uis *UIServer) taskLogRaw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type logTemplateData struct {
-		Data chan model.LogMessage
+		Data chan apimodels.LogMessage
 		User *user.DBUser
 	}
 
@@ -688,12 +688,12 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	displayLogs := make(chan model.LogMessage)
+	displayLogs := make(chan apimodels.LogMessage)
 	go func() {
 		for _, line := range testLog.Lines {
-			displayLogs <- model.LogMessage{
-				Type:     model.TaskLogPrefix,
-				Severity: model.LogInfoPrefix,
+			displayLogs <- apimodels.LogMessage{
+				Type:     apimodels.TaskLogPrefix,
+				Severity: apimodels.LogInfoPrefix,
 				Version:  evergreen.LogmessageCurrentVersion,
 				Message:  line,
 			}
@@ -709,7 +709,7 @@ func (uis *UIServer) testLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Data chan model.LogMessage
+		Data chan apimodels.LogMessage
 		User *user.DBUser
 	}{displayLogs, GetUser(r)}, "base", template)
 }

@@ -153,7 +153,7 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndT
 }
 
 // Log sends a batch of log messages for the task's logs to the API server.
-func (h *HTTPCommunicator) Log(messages []model.LogMessage) error {
+func (h *HTTPCommunicator) Log(messages []apimodels.LogMessage) error {
 
 	outgoingData := model.TaskLog{
 		TaskId:       h.TaskId,

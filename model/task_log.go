@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -16,34 +17,14 @@ const (
 	MessagesPerLog    = 10
 )
 
-// for the different types of remote logging
-const (
-	SystemLogPrefix = "S"
-	AgentLogPrefix  = "E"
-	TaskLogPrefix   = "T"
-
-	LogErrorPrefix = "E"
-	LogWarnPrefix  = "W"
-	LogDebugPrefix = "D"
-	LogInfoPrefix  = "I"
-)
-
-type LogMessage struct {
-	Type      string    `bson:"t" json:"t"`
-	Severity  string    `bson:"s" json:"s"`
-	Message   string    `bson:"m" json:"m"`
-	Timestamp time.Time `bson:"ts" json:"ts"`
-	Version   int       `bson:"v" json:"v"`
-}
-
 // a single chunk of a task log
 type TaskLog struct {
-	Id           bson.ObjectId `bson:"_id,omitempty" json:"_id,omitempty"`
-	TaskId       string        `bson:"t_id" json:"t_id"`
-	Execution    int           `bson:"e" json:"e"`
-	Timestamp    time.Time     `bson:"ts" json:"ts"`
-	MessageCount int           `bson:"c" json:"c"`
-	Messages     []LogMessage  `bson:"m" json:"m"`
+	Id           bson.ObjectId          `bson:"_id,omitempty" json:"_id,omitempty"`
+	TaskId       string                 `bson:"t_id" json:"t_id"`
+	Execution    int                    `bson:"e" json:"e"`
+	Timestamp    time.Time              `bson:"ts" json:"ts"`
+	MessageCount int                    `bson:"c" json:"c"`
+	Messages     []apimodels.LogMessage `bson:"m" json:"m"`
 }
 
 var (
@@ -56,10 +37,10 @@ var (
 	TaskLogMessagesKey     = bsonutil.MustHaveTag(TaskLog{}, "Messages")
 
 	// bson fields for the log message struct
-	LogMessageTypeKey      = bsonutil.MustHaveTag(LogMessage{}, "Type")
-	LogMessageSeverityKey  = bsonutil.MustHaveTag(LogMessage{}, "Severity")
-	LogMessageMessageKey   = bsonutil.MustHaveTag(LogMessage{}, "Message")
-	LogMessageTimestampKey = bsonutil.MustHaveTag(LogMessage{}, "Timestamp")
+	LogMessageTypeKey      = bsonutil.MustHaveTag(apimodels.LogMessage{}, "Type")
+	LogMessageSeverityKey  = bsonutil.MustHaveTag(apimodels.LogMessage{}, "Severity")
+	LogMessageMessageKey   = bsonutil.MustHaveTag(apimodels.LogMessage{}, "Message")
+	LogMessageTimestampKey = bsonutil.MustHaveTag(apimodels.LogMessage{}, "Timestamp")
 )
 
 // helper for getting the correct db
@@ -84,7 +65,7 @@ func (self *TaskLog) Insert() error {
 	return db.C(TaskLogCollection).Insert(self)
 }
 
-func (self *TaskLog) AddLogMessage(msg LogMessage) error {
+func (self *TaskLog) AddLogMessage(msg apimodels.LogMessage) error {
 	session, db, err := getSessionAndDB()
 	if err != nil {
 		return err
@@ -174,7 +155,7 @@ func FindTaskLogsBeforeTime(taskId string, execution int, ts time.Time, limit in
 }
 
 func GetRawTaskLogChannel(taskId string, execution int, severities []string,
-	msgTypes []string) (chan LogMessage, error) {
+	msgTypes []string) (chan apimodels.LogMessage, error) {
 	session, db, err := getSessionAndDB()
 	if err != nil {
 		return nil, err
@@ -184,7 +165,7 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 
 	// 100 is an arbitrary magic number. Unbuffered channel would be bad for
 	// performance, so just picked a buffer size out of thin air.
-	channel := make(chan LogMessage, 100)
+	channel := make(chan apimodels.LogMessage, 100)
 
 	// TODO(EVG-227)
 	var query bson.M
@@ -206,11 +187,11 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 	oldMsgTypes := []string{}
 	for _, msgType := range msgTypes {
 		switch msgType {
-		case SystemLogPrefix:
+		case apimodels.SystemLogPrefix:
 			oldMsgTypes = append(oldMsgTypes, "system")
-		case AgentLogPrefix:
+		case apimodels.AgentLogPrefix:
 			oldMsgTypes = append(oldMsgTypes, "agent")
-		case TaskLogPrefix:
+		case apimodels.TaskLogPrefix:
 			oldMsgTypes = append(oldMsgTypes, "task")
 		}
 	}
@@ -244,44 +225,21 @@ func GetRawTaskLogChannel(taskId string, execution int, severities []string,
 Functions that operate on individual log messages
 ******************************************************/
 
-func (self *LogMessage) Insert(taskId string, execution int) error {
-	// get the most recent task log document
-	mostRecent, err := FindMostRecentTaskLogs(taskId, execution, 1)
-	if err != nil {
-		return err
-	}
-
-	if len(mostRecent) == 0 || mostRecent[0].MessageCount >= MessagesPerLog {
-		// create a new task log document
-		taskLog := &TaskLog{}
-		taskLog.TaskId = taskId
-		taskLog.Execution = execution
-		taskLog.Timestamp = self.Timestamp
-		taskLog.MessageCount = 1
-		taskLog.Messages = []LogMessage{*self}
-
-		return taskLog.Insert()
-	}
-
-	// update the existing task log document
-	return mostRecent[0].AddLogMessage(*self)
-}
-
 // note: to ignore severity or type filtering, pass in empty slices
 func FindMostRecentLogMessages(taskId string, execution int, numMsgs int,
-	severities []string, msgTypes []string) ([]LogMessage, error) {
-	logMsgs := []LogMessage{}
+	severities []string, msgTypes []string) ([]apimodels.LogMessage, error) {
+	logMsgs := []apimodels.LogMessage{}
 	numMsgsNeeded := numMsgs
 	lastTimeStamp := time.Date(2020, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	oldMsgTypes := []string{}
 	for _, msgType := range msgTypes {
 		switch msgType {
-		case SystemLogPrefix:
+		case apimodels.SystemLogPrefix:
 			oldMsgTypes = append(oldMsgTypes, "system")
-		case AgentLogPrefix:
+		case apimodels.AgentLogPrefix:
 			oldMsgTypes = append(oldMsgTypes, "agent")
-		case TaskLogPrefix:
+		case apimodels.TaskLogPrefix:
 			oldMsgTypes = append(oldMsgTypes, "task")
 		}
 	}
@@ -303,7 +261,7 @@ func FindMostRecentLogMessages(taskId string, execution int, numMsgs int,
 		// log documents
 		for _, taskLog := range taskLogs {
 			// reverse
-			messages := make([]LogMessage, len(taskLog.Messages))
+			messages := make([]apimodels.LogMessage, len(taskLog.Messages))
 			for idx, msg := range taskLog.Messages {
 				messages[len(taskLog.Messages)-1-idx] = msg
 			}
