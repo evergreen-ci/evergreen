@@ -15,11 +15,11 @@ Evergreen - Distros
   <div ng-show="distros.length == 0">
     <h2>No Distros</h2>
     <div class="row">
-      <button type="button" ng-hide="readOnly" class="btn btn-primary" style="margin-left: 15px" ng-click="newDistro()" ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button> 
+      <button type="button" ng-hide="readOnly" class="btn btn-primary" style="margin-left: 15px" ng-click="newDistro()" ng-disabled="activeDistro.new"><i class="fa fa-plus"></i>New Distro</button>
     </div>
   </div>
   <div ng-form="form" class="row">
-    <div id="nav-container" class="col-md-2" ng-show="distros.length != 0">
+    <div id="nav-container" class="col-md-2" ng-show="distros.length != 0" style="left:10%; max-width:350px">
       <div>
         <div>
           <h2 style="text-align: center;">Distros<span ng-show="distros.length != 0">([[distros.length]])</span></h2>
@@ -43,7 +43,7 @@ Evergreen - Distros
         <div ng-show="activeDistro">
           <h2 style="display:inline-block; padding-right:15px">Configure
           </h2>
-            <a class="pointer" ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a> / 
+            <a class="pointer" ng-click="copyDistro()" ng-hide="hasNew||readOnly"> make a copy </a> /
             <a ng-href="/event_log/distro/[[activeDistro._id]]"> view event log </a>
         </div>
         <div style="padding-top: -25px;" class="panel-body panel-default">
@@ -285,7 +285,7 @@ Evergreen - Distros
                     <td style="padding-left: 10px;"><input required ng-readonly="readOnly" name="opt" type="text" ng-model="activeDistro.ssh_options[$index]"
                       class="form-control" placeholder="e.g. BatchMode=yes">
                     </td>
-                    <td ng-hide="readOnly"> 
+                    <td ng-hide="readOnly">
                       <a ng-click="form.$setDirty();removeSSHOption(opt)">
                         <i class="fa fa-trash distro-trash-icon"></i>
                       </a>
