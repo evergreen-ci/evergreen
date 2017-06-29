@@ -12,7 +12,8 @@ const (
 	heartbeatTimeout    = time.Minute * 1
 
 	v1 = "/api/2"
-	v2 = "/rest/v2"
+	// this variable is commented out because it is not yet used
+	// v2 = "/rest/v2"
 )
 
 // evergreenREST implements Communicator and makes requests to API endpoints for the agent.

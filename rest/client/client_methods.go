@@ -27,7 +27,7 @@ func (c *evergreenREST) StartTask(ctx context.Context, taskID, taskSecret string
 		grip.Error(err)
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 	return nil
 }
 

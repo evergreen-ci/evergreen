@@ -21,15 +21,17 @@ func (c *evergreenREST) get(ctx context.Context, path, taskSecret, version strin
 	return response, errors.Wrap(err, "Error performing HTTP GET request")
 }
 
-func (c *evergreenREST) delete(ctx context.Context, path string, taskSecret, version string) (*http.Response, error) {
-	response, err := c.request(ctx, "DELETE", path, taskSecret, version, nil)
-	return response, errors.Wrap(err, "Error performing HTTP DELETE request")
-}
+// this function is commented out because it is not yet used
+// func (c *evergreenREST) delete(ctx context.Context, path string, taskSecret, version string) (*http.Response, error) {
+// 	response, err := c.request(ctx, "DELETE", path, taskSecret, version, nil)
+// 	return response, errors.Wrap(err, "Error performing HTTP DELETE request")
+// }
 
-func (c *evergreenREST) put(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
-	response, err := c.request(ctx, "PUT", path, taskSecret, version, nil)
-	return response, errors.Wrap(err, "Error performing HTTP PUT request")
-}
+// this function is commented out because it is not yet used
+// func (c *evergreenREST) put(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
+// 	response, err := c.request(ctx, "PUT", path, taskSecret, version, data)
+// 	return response, errors.Wrap(err, "Error performing HTTP PUT request")
+// }
 
 func (c *evergreenREST) post(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
 	response, err := c.request(ctx, "POST", path, taskSecret, version, data)
@@ -98,7 +100,7 @@ func (c *evergreenREST) newRequest(method, path, taskSecret, version string, dat
 	r, err := http.NewRequest(method, url, nil)
 	if data != nil {
 		var out []byte
-		out, err := json.Marshal(*data)
+		out, err = json.Marshal(*data)
 		if err != nil {
 			return nil, err
 		}
