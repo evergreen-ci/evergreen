@@ -748,9 +748,9 @@ func loadGitData(branch string, extraArgs ...string) (*localDiff, error) {
 // resulting githash as string
 func gitMergeBase(branch1, branch2 string) (string, error) {
 	cmd := exec.Command("git", "merge-base", branch1, branch2)
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", errors.Errorf("'git merge-base %v %v' failed: %v", branch1, branch2, err)
+		return "", errors.Wrapf(err, "'git merge-base %s %s' failed: %s (%s)", branch1, branch2, out, err)
 	}
 	return strings.TrimSpace(string(out)), err
 }
