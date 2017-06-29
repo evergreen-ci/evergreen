@@ -63,7 +63,7 @@ func (c *evergreenREST) retryPost(ctx context.Context, path, taskSecret, version
 		}
 
 	}
-	return nil, errors.Errorf("Failed to post JSON to API V1 after %d attempts", c.maxAttempts)
+	return nil, errors.Errorf("Failed to post JSON after %d attempts", c.maxAttempts)
 }
 
 // GetTask returns the active task.
@@ -90,7 +90,7 @@ func (c *evergreenREST) retryGet(ctx context.Context, path, taskSecret, version 
 			}
 		}
 	}
-	return nil, errors.Errorf("Failed to get from API V1 after %d attempts", c.maxAttempts)
+	return nil, errors.Errorf("Failed to get after %d attempts", c.maxAttempts)
 }
 
 func (c *evergreenREST) newRequest(method, path, taskSecret, version string, data *interface{}) (*http.Request, error) {

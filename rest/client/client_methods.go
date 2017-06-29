@@ -21,7 +21,7 @@ import (
 func (c *evergreenREST) StartTask(ctx context.Context, taskID, taskSecret string) error {
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
-	resp, err := c.retryPost(ctx, "start", taskSecret, v1, taskStartRequest)
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("start", taskID), taskSecret, v1, taskStartRequest)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to start task %s", taskID)
 		grip.Error(err)
@@ -34,7 +34,7 @@ func (c *evergreenREST) StartTask(ctx context.Context, taskID, taskSecret string
 // EndTask marks the task as finished with the given status
 func (c *evergreenREST) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskID, taskSecret string) (*apimodels.EndTaskResponse, error) {
 	taskEndResp := &apimodels.EndTaskResponse{}
-	resp, err := c.retryPost(ctx, "end", taskSecret, v1, detail)
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("end", taskID), taskSecret, v1, detail)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to end task %s", taskID)
 		grip.Error(err)
