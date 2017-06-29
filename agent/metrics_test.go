@@ -36,7 +36,11 @@ func TestMetricsCollectors(t *testing.T) {
 			time.Sleep(time.Second)
 			stopper <- true
 			firstLen := len(comm.Posts["process_info"])
-			So(firstLen, ShouldBeGreaterThanOrEqualTo, 2)
+			if runtime.GOOS == "windows" {
+				So(firstLen, ShouldBeGreaterThanOrEqualTo, 1)
+			} else {
+				So(firstLen, ShouldBeGreaterThanOrEqualTo, 2)
+			}
 			// after stopping it shouldn't continue to collect stats
 			time.Sleep(time.Second)
 			So(firstLen, ShouldEqual, len(comm.Posts["process_info"]))
@@ -66,7 +70,11 @@ func TestMetricsCollectors(t *testing.T) {
 			stopper <- true
 			So(cmd.Process.Kill(), ShouldBeNil)
 
-			So(len(comm.Posts["process_info"]), ShouldEqual, 2)
+			if runtime.GOOS == "windows" {
+				So(len(comm.Posts["process_info"]), ShouldEqual, 1)
+			} else {
+				So(len(comm.Posts["process_info"]), ShouldEqual, 2)
+			}
 			for _, post := range comm.Posts["process_info"] {
 				out, ok := post.([]message.Composer)
 				So(ok, ShouldBeTrue)
