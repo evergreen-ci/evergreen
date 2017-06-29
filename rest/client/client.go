@@ -3,6 +3,11 @@ package client
 import (
 	"net/http"
 	"time"
+
+	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/logging"
+	"github.com/mongodb/grip/send"
 )
 
 const (
@@ -78,4 +83,46 @@ func (c *evergreenREST) SetAPIUser(apiUser string) {
 // SetAPIKey sets the API key.
 func (c *evergreenREST) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
+}
+
+// GetLogProducer
+func (c *evergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProducer {
+	const (
+		bufferTime  = 15 * time.Second
+		bufferCount = 100
+	)
+
+	local := grip.GetSender()
+
+	exec := newLogSender(c, apimodels.AgentLogPrefix, taskID, taskSecret)
+	exec.SetFormatter(send.MakeDefaultForamtter())
+	exec = send.NewBufferedSender(exec, bufferTime, bufferCount)
+	exec = send.NewConfiguredMultiSender(local, exec)
+
+	task := newLogSender(c, apimodels.TaskLogPrefix, taskID, taskSecret)
+	task.SetFormatter(send.MakeDefaultForamtter())
+	task = send.NewBufferedSender(task, bufferTime, bufferCount)
+	task = send.NewConfiguredMultiSender(local, task)
+
+	system := newLogSender(c, apimodels.SystemLogPrefix, taskID, taskSecret)
+	system.SetFormatter(send.MakeDefaultForamtter())
+	system = send.NewBufferedSender(system, bufferTime, bufferCount)
+	system = send.NewConfiguredMultiSender(local, system)
+
+	taskWriter := newLogSender(c, apimodels.TaskLogPrefix, taskID, taskSecret)
+	taskWriter = send.NewBufferedSender(taskWriter, bufferTime, bufferCount)
+	taskWriter = send.NewConfiguredMultiSender(local, taskWriter)
+
+	systemWriter := newLogSender(c, apimodels.SystemLogPrefix, taskID, taskSecret)
+	systemWriter = send.NewBufferedSender(systemWriter, bufferTime, bufferCount)
+	systemWriter = send.NewConfiguredMultiSender(local, systemWriter)
+
+	return &logHarness{
+		local:            &logging.Grip{grip.GetSender()},
+		execution:        &logging.Grip{exec},
+		task:             &logging.Grip{task},
+		system:           &logging.Grip{system},
+		taskWriterBase:   taskWriter,
+		systemWriterBase: systemWriter,
+	}
 }

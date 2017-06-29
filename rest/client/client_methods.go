@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
@@ -210,5 +211,22 @@ func (c *evergreenREST) GetNextTask(ctx context.Context, taskID, taskSecret stri
 		return nil, err
 	}
 	return taskResponse, nil
+}
 
+// SendTaskLogMessages posts a group of log messages for a task.
+func (c *evergreenREST) SendTaskLogMessages(ctx context.Context, taskID, taskSecret string, msgs []apimodels.LogMessage) error {
+	payload := apimodels.TaskLog{
+		TaskId:       taskID,
+		Timestamp:    time.Now(),
+		MessageCount: len(msgs),
+		Messages:     msgs,
+	}
+
+	if _, err := c.retryPost(ctx, c.getTaskPathSuffix("log", taskID), taskSecret, v1, &payload); err != nil {
+		err = errors.Wrapf(err, "problem sending %s log messages for task %s", len(msgs), taskID)
+		grip.Error(err)
+		return err
+	}
+
+	return nil
 }

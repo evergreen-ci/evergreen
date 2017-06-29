@@ -1,7 +1,7 @@
 package client
 
 import (
-	"net/http"
+	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -14,29 +14,31 @@ import (
 
 // MockEvergreenREST mocks EvergreenREST for testing.
 type MockEvergreenREST struct {
-	serverURL    string
 	maxAttempts  int
 	timeoutStart time.Duration
 	timeoutMax   time.Duration
-	httpClient   *http.Client
 
 	// these fields have setters
 	hostID     string
 	hostSecret string
 	apiUser    string
 	apiKey     string
+
+	// mock behavior flags
+	loggingShouldFail bool
+
+	// data collected by mocked methods
+	logMessages map[string][]apimodels.LogMessage
 }
 
 // NewMockEvergreenREST returns a Communicator for testing.
-func NewMockEvergreenREST(serverURL string) (Communicator, error) {
-	evergreen := &MockEvergreenREST{
+func NewMockEvergreenREST() Communicator {
+	return &MockEvergreenREST{
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
-		serverURL:    serverURL,
-		httpClient:   &http.Client{},
+		logMessages:  make(map[string][]apimodels.LogMessage),
 	}
-	return evergreen, nil
 }
 
 // StartTask returns nil.
@@ -83,6 +85,22 @@ func (c *MockEvergreenREST) FetchExpansionVars(ctx context.Context, taskID, task
 func (c *MockEvergreenREST) GetNextTask(ctx context.Context, taskID, taskSecret string) (*apimodels.NextTaskResponse, error) {
 	return &apimodels.NextTaskResponse{}, nil
 
+}
+
+// SendTaskLogMessages posts tasks messages to the api server
+func (c *MockEvergreenREST) SendTaskLogMessages(ctx context.Context, taskID, taskSecret string, msgs []apimodels.LogMessage) error {
+	if c.loggingShouldFail {
+		return errors.New("logging failed")
+	}
+
+	c.logMessages[taskID] = append(c.logMessages[taskID], msgs...)
+
+	return nil
+}
+
+// GetLoggerProducer constructs a single channel log producer.
+func (c *MockEvergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProducer {
+	return NewSingleChannelLogHarness(taskID, newLogSender(c, apimodels.AgentLogPrefix, taskID, taskSecret))
 }
 
 // GetAllHosts ...

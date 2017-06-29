@@ -155,7 +155,7 @@ func (h *HTTPCommunicator) End(detail *apimodels.TaskEndDetail) (*apimodels.EndT
 // Log sends a batch of log messages for the task's logs to the API server.
 func (h *HTTPCommunicator) Log(messages []apimodels.LogMessage) error {
 
-	outgoingData := model.TaskLog{
+	outgoingData := apimodels.TaskLog{
 		TaskId:       h.TaskId,
 		Timestamp:    time.Now(),
 		MessageCount: len(messages),

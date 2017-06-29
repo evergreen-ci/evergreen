@@ -17,6 +17,21 @@ type Communicator interface {
 	// Begin legacy API methods
 	// ---------------------------------------------------------------------
 	//
+	// Setters
+	//
+	// SetTimeoutStart sets the initial timeout for a request.
+	SetTimeoutStart(time.Duration)
+	// SetTimeoutMax sets the maximum timeout for a request.
+	SetTimeoutMax(time.Duration)
+	// SetMaxAttempts sets the number of attempts a request will be made.
+	SetMaxAttempts(int)
+	// SetHostID sets the host ID.
+	SetHostID(string)
+	// SetHostSecret sets the host secret.
+	SetHostSecret(string)
+
+	// Agent Operations
+	//
 	// StartTask marks the task as started.
 	StartTask(context.Context, string, string) error
 	// EndTask marks the task as finished with the given status
@@ -36,16 +51,12 @@ type Communicator interface {
 	FetchExpansionVars(context.Context, string, string) (*apimodels.ExpansionVars, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
 	GetNextTask(context.Context, string, string) (*apimodels.NextTaskResponse, error)
-	// SetTimeoutStart sets the initial timeout for a request.
-	SetTimeoutStart(timeoutStart time.Duration)
-	// SetTimeoutMax sets the maximum timeout for a request.
-	SetTimeoutMax(timeoutMax time.Duration)
-	// SetMaxAttempts sets the number of attempts a request will be made.
-	SetMaxAttempts(attempts int)
-	// SetHostID sets the host ID.
-	SetHostID(hostID string)
-	// SetHostSecret sets the host secret.
-	SetHostSecret(hostSecret string)
+
+	// Sends a group of log messages to the API Server
+	SendTaskLogMessages(context.Context, string, string, []apimodels.LogMessage) error
+	// Constructs a new LogProducer instance for use by tasks.
+	GetLoggerProducer(string, string) LoggerProducer
+
 	// ---------------------------------------------------------------------
 	// End legacy API methods
 	// ---------------------------------------------------------------------

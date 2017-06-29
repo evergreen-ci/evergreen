@@ -161,5 +161,5 @@ func (c *evergreenREST) getPath(path string, version string) string {
 }
 
 func (c *evergreenREST) getTaskPathSuffix(path, taskID string) string {
-	return fmt.Sprintf("task/%v/%v", taskID, path)
+	return fmt.Sprintf("task/%s/%s", taskID, path)
 }

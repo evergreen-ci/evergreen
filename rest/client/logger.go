@@ -1,7 +1,4 @@
-package plugin
-
-// NOTE: it might make sense to put these implementations in a
-//       different package at some point.
+package client
 
 import (
 	"io"
@@ -13,39 +10,48 @@ import (
 	"github.com/pkg/errors"
 )
 
+// LoggerProducer provides a mechanism for agents (and command pluings) to access the
+// process' logging facilities. The interfaces are all based on grip
+// interfaces and abstractions, and the behavior of the interfaces is
+// dependent on the configuration and implementation of the
+// LoggerProducer instance.
+type LoggerProducer interface {
+	// Provides access to the local logger. In most implementations
+	// this is roughly equivalent to using the standard "grip" logger.
+	Local() grip.Journaler
+
+	// The Execution/Task/System loggers provide a grip-like
+	// logging interface for the distinct logging channels that the
+	// Evergreen agent provides to tasks
+	Execution() grip.Journaler
+	Task() grip.Journaler
+	System() grip.Journaler
+
+	// The writer functions return an io.Writer for use with
+	// exec.Cmd operations for capturing standard output and standard
+	// error from sbprocesses.
+	TaskWriter() io.Writer
+	SystemWriter() io.Writer
+
+	// Close releases all resources by calling Close on all underlying senders.
+	Close() error
+}
+
 ////////////////////////////////////////////////////////////////////////
 //
 // Standard/Default Production  LoggerProducer
 
-// LogHarness provides a straightforward implementation of the
+// logHarness provides a straightforward implementation of the
 // plugin.LoggerProducer interface.
 type logHarness struct {
-	local     grip.Journaler
-	execution grip.Journaler
-	task      grip.Journaler
-	system    grip.Journaler
-
-	mu      sync.Mutex
-	writers []io.WriteCloser
-}
-
-// NewLogHanress takes a name, presumably of a task, and three
-// senders for execution, task, and system logging channels. The
-// "local" logging channel uses the same as the standard "grip"
-// logging instance.
-func NewLogHarness(name string, execution, task, system send.Sender) LoggerProducer {
-	for _, s := range []send.Sender{execution, task, system} {
-		s.SetName(name)
-	}
-
-	l := &logHarness{
-		local:     &logging.Grip{Sender: grip.GetSender()},
-		execution: &logging.Grip{Sender: execution},
-		task:      &logging.Grip{Sender: task},
-		system:    &logging.Grip{Sender: system},
-	}
-
-	return l
+	local            grip.Journaler
+	execution        grip.Journaler
+	task             grip.Journaler
+	system           grip.Journaler
+	taskWriterBase   send.Sender
+	systemWriterBase send.Sender
+	mu               sync.Mutex
+	writers          []io.WriteCloser
 }
 
 func (l *logHarness) Local() grip.Journaler     { return l.local }
@@ -57,7 +63,7 @@ func (l *logHarness) TaskWriter() io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.NewWriterSender(l.task.GetSender())
+	w := send.NewWriterSender(l.taskWriterBase)
 	l.writers = append(l.writers, w)
 	return w
 }
@@ -66,7 +72,7 @@ func (l *logHarness) SystemWriter() io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.NewWriterSender(l.system.GetSender())
+	w := send.NewWriterSender(l.systemWriterBase)
 	l.writers = append(l.writers, w)
 	return w
 }
