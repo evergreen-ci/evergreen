@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/archive"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
@@ -90,7 +89,7 @@ func (self *TarGzPackCommand) Execute(pluginLogger plugin.Logger,
 	filesArchived := -1
 	go func() {
 		var err error
-		filesArchived, err = self.BuildArchive(pluginLogger)
+		filesArchived, err = self.MakeArchive(pluginLogger)
 		errChan <- errors.WithStack(err)
 	}()
 
@@ -127,7 +126,7 @@ func (self *agentAppender) Append(log *slogger.Log) error {
 
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
-func (self *TarGzPackCommand) BuildArchive(pluginLogger plugin.Logger) (int, error) {
+func (self *TarGzPackCommand) MakeArchive(pluginLogger plugin.Logger) (int, error) {
 	// create a logger to pass into the BuildArchive command
 	appender := &agentAppender{
 		pluginLogger: pluginLogger,
@@ -139,7 +138,7 @@ func (self *TarGzPackCommand) BuildArchive(pluginLogger plugin.Logger) (int, err
 	}
 
 	// create a targz writer for the target file
-	f, gz, tarWriter, err := archive.TarGzWriter(self.Target)
+	f, gz, tarWriter, err := TarGzWriter(self.Target)
 	if err != nil {
 		return -1, errors.Wrapf(err, "error opening target archive file %s", self.Target)
 	}
@@ -150,7 +149,7 @@ func (self *TarGzPackCommand) BuildArchive(pluginLogger plugin.Logger) (int, err
 	}()
 
 	// Build the archive
-	out, err := archive.BuildArchive(tarWriter, self.SourceDir, self.Include,
+	out, err := BuildArchive(tarWriter, self.SourceDir, self.Include,
 		self.ExcludeFiles, log)
 	return out, errors.WithStack(err)
 }

@@ -74,7 +74,7 @@ func TestTarGzPackParseParams(t *testing.T) {
 	})
 }
 
-func TestTarGzCommandBuildArchive(t *testing.T) {
+func TestTarGzCommandMakeArchive(t *testing.T) {
 
 	Convey("With a targz pack command", t, func() {
 		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
@@ -100,7 +100,7 @@ func TestTarGzCommandBuildArchive(t *testing.T) {
 				}
 
 				So(cmd.ParseParams(params), ShouldBeNil)
-				numFound, err := cmd.BuildArchive(&plugintest.MockLogger{})
+				numFound, err := cmd.MakeArchive(&plugintest.MockLogger{})
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 1)
 

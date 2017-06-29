@@ -307,9 +307,6 @@ tasks:
     tags: ["db", "test", "agent"]
     name: test-util
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-archive
-  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-validator
   - <<: *run-go-test-suite-with-mongodb
@@ -432,9 +429,6 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-util
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-archive
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-validator

@@ -1,7 +1,7 @@
 # start project configuration
 name := evergreen
 buildDir := bin
-packages := $(name) agent agent-comm db cli archive remote command taskrunner util plugin hostinit
+packages := $(name) agent agent-comm db cli remote command taskrunner util plugin hostinit
 packages += plugin-builtin-keyval plugin-builtin-git
 packages += plugin-builtin-gotest plugin-builtin-attach plugin-builtin-manifest plugin-builtin-archive
 packages += plugin-builtin-shell plugin-builtin-s3copy plugin-builtin-expansions plugin-builtin-s3

@@ -89,7 +89,7 @@ func TestTarGzCommandUnpackArchive(t *testing.T) {
 				}
 
 				So(tarPackCmd.ParseParams(tarPackParams), ShouldBeNil)
-				numFound, err := tarPackCmd.BuildArchive(&plugintest.MockLogger{})
+				numFound, err := tarPackCmd.MakeArchive(&plugintest.MockLogger{})
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 2)
 

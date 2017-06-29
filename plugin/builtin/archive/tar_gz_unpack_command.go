@@ -3,7 +3,6 @@ package archive
 import (
 	"os"
 
-	"github.com/evergreen-ci/evergreen/archive"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mitchellh/mapstructure"
@@ -81,7 +80,7 @@ func (self *TarGzUnpackCommand) Execute(pluginLogger plugin.Logger,
 func (self *TarGzUnpackCommand) UnpackArchive() error {
 
 	// get a reader for the source file
-	f, _, tarReader, err := archive.TarGzReader(self.Source)
+	f, _, tarReader, err := TarGzReader(self.Source)
 	if err != nil {
 		return errors.Wrapf(err, "error opening tar file %v for reading", self.Source)
 	}
@@ -92,5 +91,5 @@ func (self *TarGzUnpackCommand) UnpackArchive() error {
 		return errors.Wrapf(err, "error creating destination dir %v", self.DestDir)
 	}
 
-	return errors.WithStack(archive.Extract(tarReader, self.DestDir))
+	return errors.WithStack(Extract(tarReader, self.DestDir))
 }
