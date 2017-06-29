@@ -8,7 +8,7 @@ packages += plugin-builtin-shell plugin-builtin-s3copy plugin-builtin-expansions
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
 packages += model-patch model-artifact model-host model-build model-event model-task db-bsonutil
 packages += plugin-builtin-attach-xunit cloud-providers cloud-providers-ec2 cloud-providers-openstack
-packages += rest-data rest-route rest-model rest-client
+packages += rest-client rest-data rest-route rest-model
 orgPath := github.com/evergreen-ci
 projectPath := $(orgPath)/$(name)
 # end project configuration

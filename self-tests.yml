@@ -381,6 +381,15 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
     name: race-agent-comm
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-rest-route
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-rest-model
+  - <<: *run-go-test-suite
+    tags: ["nodb", "race"]
+    name: race-rest-client
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
     name: race-cli
@@ -453,6 +462,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-model-task
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-rest-data
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-plugin
