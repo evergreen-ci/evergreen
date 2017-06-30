@@ -108,7 +108,7 @@ type uiTask struct {
 	Task             task.Task
 	Gitspec          string
 	BuildDisplay     string
-	TaskLog          []model.LogMessage
+	TaskLog          []apimodels.LogMessage
 	NextTasks        []task.Task
 	PreviousTasks    []task.Task
 	Elapsed          time.Duration
