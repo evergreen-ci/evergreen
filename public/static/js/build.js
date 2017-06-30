@@ -61,7 +61,7 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
         $scope.setBuilds(data);
       })
       .error(function(data) {
-        console.log("Error getting build history: " + data);
+        console.log("Error getting build history: " + JSON.stringify(data));
       });
   };
 });
@@ -159,7 +159,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     }else {
       $scope.makeSpanMS = taskEndTimes[taskEndTimes.length-1] - taskStartTimes[0]
     }
-    
+
     var finishedOnly = _.filter(build.Tasks,
       function(x){
         return new Date(x.Task.start_time) > new Date(0) && new Date(x.Task.finish_time) > new Date(0)
@@ -167,7 +167,7 @@ mciModule.controller('BuildViewController', function($scope, $http, $timeout, $r
     )
     $scope.totalTimeMS = _.reduce(
       _.map(finishedOnly,
-            function(x){return new Date(x.Task.finish_time) - new Date(x.Task.start_time)}), 
+            function(x){return new Date(x.Task.finish_time) - new Date(x.Task.start_time)}),
             function(sum, el){return sum+el},
             0)
   };

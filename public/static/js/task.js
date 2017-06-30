@@ -65,7 +65,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
           }, 500)
       },
       error: function(data) {
-        console.log('error fetching history: ' + data);
+        console.log('error fetching history: ' + JSON.stringify(data));
       }
     });
 
@@ -101,7 +101,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
         },
         error: function(data) {
-          console.log('error fetching later revisions: ' + data);
+          console.log('error fetching later revisions: ' + JSON.stringify(data));
         }
       })
     }, 500, true);
@@ -141,7 +141,7 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
 
           },
           error: function(data) {
-            console.log('error fetching earlier revisions: ' + data);
+            console.log('error fetching earlier revisions: ' + JSON.stringify(data));
           }
         }
       )

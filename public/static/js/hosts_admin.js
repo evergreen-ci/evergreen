@@ -18,7 +18,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$filter', 'mciHostsRestServ
           window.location.reload();
         },
         error: function(jqXHR, status, errorThrown) {
-          notifier.pushNotification('Error updating host status: ' + jqXHR, 'errorModal');
+          notifier.pushNotification('Error updating host status: ' + jqXHR.error, 'errorModal');
         }
       }
     );
@@ -62,4 +62,3 @@ mciModule.directive('adminUpdateStatus', function() {
     templateUrl: '/static/partials/hosts_status_update.html'
   };
 });
-

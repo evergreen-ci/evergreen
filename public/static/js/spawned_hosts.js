@@ -88,7 +88,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           error: function(jqXHR, status, errorThrown) {
             // Avoid errors when leaving the page because of a background refresh
             if ($scope.hosts == null && !$scope.errorFetchingHosts) {
-                notificationService.pushNotification('Error fetching spawned hosts: ' + jqXHR, 'errorHeader');
+                notificationService.pushNotification('Error fetching spawned hosts: ' + jqXHR.error, 'errorHeader');
                 $scope.errorFetchingHosts = true;
             }
           }
@@ -114,14 +114,14 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         'distros', {}, {
           success: function(distros, status) {
             $scope.setSpawnableDistros(distros, selectDistro);
-            // If there is a callback to run after the distros were fetched, 
+            // If there is a callback to run after the distros were fetched,
             // execute it.
             if(cb){
               cb();
             }
           },
           error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error fetching spawnable distros: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error fetching spawnable distros: ' + jqXHR.error,'errorHeader');
           }
         }
       );
@@ -134,7 +134,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             $scope.setUserKeys(keys);
           },
           error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error fetching user keys: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error fetching user keys: ' + jqXHR.error,'errorHeader');
           }
         }
       );
@@ -155,7 +155,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           },
           error: function(jqXHR, status, errorThrown) {
             $scope.spawnReqSent = false;
-            notificationService.pushNotification('Error spawning host: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error spawning host: ' + jqXHR.error,'errorHeader');
           }
         }
       );
@@ -170,7 +170,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.href = "/spawn";
           },
           error: function (jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error setting host RDP password: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error setting host RDP password: ' + jqXHR.error,'errorHeader');
           }
         }
       );
@@ -185,7 +185,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.href = "/spawn";
           },
           error: function (jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error extending host expiration: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error extending host expiration: ' + jqXHR.error,'errorHeader');
           }
         }
       );
@@ -199,7 +199,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
             window.location.href = "/spawn";
           },
           error: function(jqXHR, status, errorThrown) {
-            notificationService.pushNotification('Error terminating host: ' + jqXHR,'errorHeader');
+            notificationService.pushNotification('Error terminating host: ' + jqXHR.error,'errorHeader');
           }
         }
       );
@@ -227,7 +227,7 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
           'spawnKey': $scope.newKey,
         };
         if(selectDistroId){
-          var selectedIndex = _.findIndex($scope.spawnableDistros, 
+          var selectedIndex = _.findIndex($scope.spawnableDistros,
             function(x){return x.distro.name == selectDistroId}
           )
           if(selectedIndex>=0){
@@ -407,9 +407,9 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
     });
 
     if($scope.spawnTask && $scope.spawnDistro){
-      // find the spawn distro in the spawnable distros list, if it's there, 
+      // find the spawn distro in the spawnable distros list, if it's there,
       // pre-select it in the modal.
-      $scope.spawnTaskChecked = true 
+      $scope.spawnTaskChecked = true
       setTimeout(function(){
         $scope.fetchSpawnableDistros($scope.spawnDistro._id, function(){
           $scope.openSpawnModal('spawnHost')

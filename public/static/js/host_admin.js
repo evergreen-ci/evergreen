@@ -10,7 +10,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
   $scope.validHostStatuses = ["running", "decommissioned", "quarantined"].filter($scope.filterCurrentHostStatus);
   $scope.newStatus = $scope.validHostStatuses[0];
   $scope.modalTitle = 'Modify Host';
-  
+
   $scope.updateStatus = function() {
     hostRestService.updateStatus(
       $scope.host.id,
@@ -21,7 +21,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', 'mciHostRestService', 'notif
           window.location.reload();
         },
         error: function(jqXHR, status, errorThrown) {
-          notifier.pushNotification('Error updating host status: ' + jqXHR, 'errorModal');
+          notifier.pushNotification('Error updating host status: ' + jqXHR.error, 'errorModal');
         }
       }
     );
@@ -64,4 +64,3 @@ mciModule.directive('adminUpdateStatus', function() {
     templateUrl: '/static/partials/host_status_update.html'
   };
 });
-

@@ -49,7 +49,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
                     notifier.pushNotification("Build aborted.", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error aborting build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error aborting build: ' + jqXHR.error,'errorModal');
                 }
             }
         );
@@ -69,7 +69,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
                     notifier.pushNotification("Build scheduled to restart.", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error restarting build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error restarting build: ' + jqXHR.error,'errorModal');
                 }
             }
         );
@@ -88,7 +88,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
                     $scope.adminOptionVals.priority + ".", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting build priority: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error setting build priority: ' + jqXHR.error,'errorModal');
                 }
             }
         );
@@ -107,7 +107,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciBuildsRest
                     notifier.pushNotification(notifyString, 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error scheduling build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error scheduling build: ' + jqXHR.error,'errorModal');
                 }
             }
         );

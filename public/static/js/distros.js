@@ -203,14 +203,14 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
           },
           error: function(jqXHR, status, errorThrown) {
             $window.location.reload(true);
-            console.log(jqXHR);
+            console.log(jqXHR.error);
           }
         }
       );
     } else {
       mciDistroRestService.modifyDistro(
         $scope.activeDistro._id,
-        $scope.activeDistro, 
+        $scope.activeDistro,
         $scope.shouldDeco,
         {
           success: function(distros, status) {
@@ -218,7 +218,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
           },
           error: function(jqXHR, status, errorThrown) {
             $window.location.reload(true);
-            console.log(jqXHR);
+            console.log(jqXHR.error);
           }
         }
       );
@@ -229,15 +229,15 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
 
   $scope.removeConfiguration = function() {
     mciDistroRestService.removeDistro(
-      $scope.activeDistro._id, 
-      $scope.shouldDeco, 
+      $scope.activeDistro._id,
+      $scope.shouldDeco,
       {
         success: function(distros, status) {
           $window.location.reload(true);
         },
         error: function(jqXHR, status, errorThrown) {
           $window.location.reload(true);
-          console.log(jqXHR);
+          console.log(jqXHR.error);
         }
       }
     );
@@ -266,10 +266,10 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   $scope.copyDistro = function(){
     if (!$scope.hasNew) {
       var newDistro = {
-        'arch': $scope.activeDistro.arch, 
+        'arch': $scope.activeDistro.arch,
         'work_dir': $scope.activeDistro.work_dir,
-        'provider': $scope.activeDistro.provider, 
-        'new': true, 
+        'provider': $scope.activeDistro.provider,
+        'new': true,
         'user': $scope.activeDistro.user,
         'ssh_key': $scope.activeDistro.ssh_key,
         'ssh_options': $scope.activeDistro.ssh_options,
@@ -288,7 +288,7 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
       $anchorScroll();
       }
     }
-  
+
 
   $scope.openConfirmationModal = function(option) {
     $scope.confirmationOption = option;
@@ -401,4 +401,3 @@ mciModule.directive('unique', function() {
     }
   };
 });
-

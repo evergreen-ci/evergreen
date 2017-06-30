@@ -5,7 +5,7 @@ mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginR
   $scope.redirect = $location.search().redirect;
   $scope.authenticate = function() {
     mciLoginRestService.authenticate(
-        $scope.credentials.username, 
+        $scope.credentials.username,
         $scope.credentials.password,
         {},
         {
@@ -14,7 +14,7 @@ mciModule.controller('LoginCtrl', function($scope, $window, $location, mciLoginR
             $window.location.href = decodeURIComponent(redirect);
           },
           error: function(jqXHR, status, errorThrown) {
-            $scope.errorMessage = jqXHR;
+            $scope.errorMessage = jqXHR.error;
           }
         }
     );

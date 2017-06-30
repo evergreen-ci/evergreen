@@ -56,7 +56,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
         versionRestService.takeActionOnVersion(
             $scope.version.Version.id,
             'restart',
-            { 
+            {
               abort: $scope.adminOptionVals.abort,
               task_ids: $scope.checkedForRestartIds()
             },
@@ -67,7 +67,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                     notifier.pushNotification( "Selected tasks are restarted.", 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error restarting build: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error restarting build: ' + jqXHR.error,'errorModal');
                 }
             }
         );
@@ -83,12 +83,12 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                     $scope.closeAdminModal()
                     $rootScope.$broadcast("version_updated", data)
                     notifier.pushNotification(
-                      "Version " + (active ? "scheduled." : "unscheduled.") + 
+                      "Version " + (active ? "scheduled." : "unscheduled.") +
                       (abort ? "\n In progress tasks will be aborted." : ""),
                       'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting version activation: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error setting version activation: ' + jqXHR.error,'errorModal');
                 }
             }
         );
@@ -106,7 +106,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciVersionsRe
                     notifier.pushNotification(msg, 'notifyHeader', 'success');
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error changing priority: ' + jqXHR,'errorModal');
+                    notifier.pushNotification('Error changing priority: ' + jqXHR.error,'errorModal');
                 }
             }
         );
@@ -229,4 +229,3 @@ mciModule.directive('adminSetPriority', function() {
     '</div>'
   }
 });
-

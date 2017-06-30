@@ -126,7 +126,7 @@ mciModule.controller('VersionController', function($scope, $rootScope, $location
     var availableTasks = _.filter(tasks, function(t){
       return +new Date(t.start_time) != +new Date(0);
     })
-    
+
     $scope.totalTimeMS = _.reduce(_.pluck(availableTasks, "time_taken"), function(x, y){return x+y}, 0) / nsPerMs;
   };
 
@@ -248,7 +248,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
           }, 500)
       },
       error: function(data) {
-        console.log('error fetching history: ' + data);
+        console.log('error fetching history: ' + JSON.stringify(data));
       }
     });
 
@@ -266,7 +266,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
         return;
       }
 
-      // get a version id from it 
+      // get a version id from it
       var anchorId = mostRecentRevision.version_id;
 
       historyDrawerService.fetchVersionHistory(anchorId, 'after', 20, {
@@ -284,7 +284,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
 
         },
         error: function(data) {
-          console.log('error fetching later revisions: ' + data);
+          console.log('error fetching later revisions: ' + JSON.stringify(data));
         }
       })
     }, 500, true);
@@ -294,7 +294,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
   var fetchEarlierRevisions = _.debounce(
 
     function() {
-      // get the least recent revision in the history  
+      // get the least recent revision in the history
       var leastRecentRevision = ($scope.revisions &&
         $scope.revisions[$scope.revisions.length - 1]);
 
@@ -316,15 +316,15 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
               return;
             }
 
-            // place on the end of the stored revisions  
+            // place on the end of the stored revisions
             $scope.revisions = $scope.revisions.concat(data.revisions);
 
-            // regroup 
+            // regroup
             $scope.groupedRevisions = groupHistory($scope.revisions);
 
           },
           error: function(data) {
-            console.log('error fetching earlier revisions: ' + data);
+            console.log('error fetching earlier revisions: ' + JSON.stringify(data));
           }
         }
       )
@@ -381,7 +381,7 @@ mciModule.controller('VersionHistoryDrawerCtrl', function($scope, $window, $filt
 
   drawerContentsEl.on('mousewheel DOMMouseScroll onmousewheel', smallScrollFunc);
 
-  // scrolling function to fire if the element is scrollable (it overflows 
+  // scrolling function to fire if the element is scrollable (it overflows
   // its div)
   var bigScrollFunc = function() {
     if (drawerContentsEl.scrollTop() === 0) {

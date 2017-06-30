@@ -68,7 +68,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
         window.location.reload()
       })
       .error(function(jqXHR, status, errorThrown) {
-        notifier.pushNotification("Failed to save changes: " + jqXHR,'errorHeader');
+        notifier.pushNotification("Failed to save changes: " + jqXHR.error,'errorHeader');
       });
    };
 }]);

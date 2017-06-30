@@ -514,7 +514,7 @@ $scope.loadMore = function(before) {
         },
 
         error: function(jqXHR, status, errorThrown) {
-          notificationService.pushNotification('Error getting task history: ' + jqXHR,'errorNearButton');
+          notificationService.pushNotification('Error getting task history: ' + jqXHR.error,'errorNearButton');
         }
       }
       );
