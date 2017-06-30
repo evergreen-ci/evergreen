@@ -114,6 +114,7 @@ func (uis *UIServer) userSettingsModify(w http.ResponseWriter, r *http.Request) 
 	userSettings := user.UserSettings{}
 
 	if err := util.ReadJSONInto(util.NewRequestReader(r), &userSettings); err != nil {
+		err = errors.Wrap(err, "JSON is invalid")
 		uis.LoggedError(w, r, http.StatusBadRequest, err)
 		return
 	}
