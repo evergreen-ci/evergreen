@@ -358,8 +358,16 @@ function Task({task, currentTime}) {
   var Tooltip = ReactBootstrap.Tooltip;
   var eta;
   if (task.status == 'started') {
-    var timeRemaining = task.expected_duration - (currentTime - task.start_time);
+    // If currentTime is not set, we're using the angular/react shim in
+    // directives.visualization.js. We therefore need to set currentTime and
+    // convert start_time to what react expects.  This is ugly, and long-term
+    // our strategy should be to rewrite the version page in pure react.
+    if (currentTime === undefined) {
+      currentTime = new Date().getTime() * Math.pow(1000, 2);
+      task.start_time = Date.parse(task.start_time) * Math.pow(1000, 2);
+    }
 
+    var timeRemaining = task.expected_duration - (currentTime - task.start_time);
     var clock = new CountdownClock(timeRemaining);
     var eta = (<ETADisplay countdownClock={clock} />);
   }

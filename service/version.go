@@ -93,12 +93,24 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 
 		uiTasks := make([]uiTask, 0, len(build.Tasks))
 		for _, t := range build.Tasks {
-			uiTasks = append(uiTasks,
-				uiTask{
-					Task: task.Task{
-						Id: t.Id, Activated: t.Activated, StartTime: t.StartTime, TimeTaken: t.TimeTaken,
-						Status: t.Status, Details: t.StatusDetails, DisplayName: t.DisplayName,
-					}})
+			uiT := uiTask{
+				Task: task.Task{
+					Id:          t.Id,
+					Activated:   t.Activated,
+					StartTime:   t.StartTime,
+					TimeTaken:   t.TimeTaken,
+					Status:      t.Status,
+					Details:     t.StatusDetails,
+					DisplayName: t.DisplayName,
+				}}
+			if t.Status == evergreen.TaskStarted {
+				taskFromDb, err := task.FindOne(task.ById(t.Id))
+				if err != nil {
+					uis.LoggedError(w, r, http.StatusInternalServerError, err)
+				}
+				uiT.ExpectedDuration = taskFromDb.ExpectedDuration
+			}
+			uiTasks = append(uiTasks, uiT)
 			buildAsUI.TaskStatusCount.incrementStatus(t.Status, t.StatusDetails)
 			if t.Status == evergreen.TaskFailed {
 				failedTaskIds = append(failedTaskIds, t.Id)

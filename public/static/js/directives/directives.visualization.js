@@ -99,6 +99,7 @@ directives.visualization.directive('progressBar', function($filter) {
      var tasks = _.map(scope.build.Tasks, function (task) {
         var t = task.Task;
         t.failed_test_names = task.failed_test_names;
+        t.expected_duration = task.expected_duration;
         return t;
      });
      // bind the angular $destroy to a function that removes the react element

@@ -105,15 +105,16 @@ func (tsc *taskStatusCount) incrementStatus(status string, statusDetails apimode
 }
 
 type uiTask struct {
-	Task            task.Task
-	Gitspec         string
-	BuildDisplay    string
-	TaskLog         []apimodels.LogMessage
-	NextTasks       []task.Task
-	PreviousTasks   []task.Task
-	Elapsed         time.Duration
-	StartTime       int64
-	FailedTestNames []string `json:"failed_test_names"`
+	Task             task.Task
+	Gitspec          string
+	BuildDisplay     string
+	TaskLog          []model.LogMessage
+	NextTasks        []task.Task
+	PreviousTasks    []task.Task
+	Elapsed          time.Duration
+	StartTime        int64
+	FailedTestNames  []string      `json:"failed_test_names"`
+	ExpectedDuration time.Duration `json:"expected_duration"`
 }
 
 func PopulateUIVersion(version *version.Version) (*uiVersion, error) {
