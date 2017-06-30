@@ -2,7 +2,7 @@ package testutil
 
 import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/slogger"
 )
@@ -17,17 +17,17 @@ func NewTestLogger(sender send.Sender) *comm.StreamLogger {
 		},
 
 		System: &slogger.Logger{
-			Name:      model.SystemLogPrefix,
+			Name:      apimodels.SystemLogPrefix,
 			Appenders: []send.Sender{sender},
 		},
 
 		Task: &slogger.Logger{
-			Name:      model.TaskLogPrefix,
+			Name:      apimodels.TaskLogPrefix,
 			Appenders: []send.Sender{sender},
 		},
 
 		Execution: &slogger.Logger{
-			Name:      model.AgentLogPrefix,
+			Name:      apimodels.AgentLogPrefix,
 			Appenders: []send.Sender{sender},
 		},
 	}

@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip/message"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func newTestCommunicator() *comm.MockCommunicator {
 	return &comm.MockCommunicator{
-		LogChan: make(chan []model.LogMessage, 100),
+		LogChan: make(chan []apimodels.LogMessage, 100),
 		Posts:   map[string][]interface{}{},
 	}
 }

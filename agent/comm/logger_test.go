@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip/send"
 	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
@@ -16,7 +16,7 @@ func TestLogging(t *testing.T) {
 	var testLogger slogger.Logger
 	Convey("With a remote logging appender", t, func() {
 		taskCommunicator = &MockCommunicator{
-			LogChan: make(chan []model.LogMessage, 100),
+			LogChan: make(chan []apimodels.LogMessage, 100),
 		}
 		apiLogger = NewAPILogger(taskCommunicator)
 

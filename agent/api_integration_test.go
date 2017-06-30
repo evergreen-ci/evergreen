@@ -494,7 +494,7 @@ func TestTaskSuccess(t *testing.T) {
 
 							So(scanLogsForTask(modelData.Task.Id, "", "starting normal_task!"), ShouldBeTrue)
 							So(scanLogsForTask(modelData.Task.Id, "", "done with normal_task!"), ShouldBeTrue)
-							So(scanLogsForTask(modelData.Task.Id, model.SystemLogPrefix, "this output should go to the system logs."), ShouldBeTrue)
+							So(scanLogsForTask(modelData.Task.Id, apimodels.SystemLogPrefix, "this output should go to the system logs."), ShouldBeTrue)
 
 							var testTask *task.Task
 							testTask, err = task.FindOne(task.ById(modelData.Task.Id))
@@ -884,7 +884,7 @@ func printLogsForTask(taskId string) {
 		panic(err)
 	}
 	for i := len(logMessages) - 1; i >= 0; i-- {
-		if logMessages[i].Type == model.SystemLogPrefix {
+		if logMessages[i].Type == apimodels.SystemLogPrefix {
 			continue
 		}
 		fmt.Println(logMessages[i].Message)

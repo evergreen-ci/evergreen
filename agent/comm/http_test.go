@@ -240,7 +240,7 @@ func TestCommunicatorServerUp(t *testing.T) {
 		})
 
 		Convey("Calling Log() should serialize/deserialize correctly", func() {
-			outgoingMessages := []model.LogMessage{
+			outgoingMessages := []apimodels.LogMessage{
 				{"S", "E", "message1", time.Now(), evergreen.LogmessageCurrentVersion},
 				{"S", "E", "message2", time.Now(), evergreen.LogmessageCurrentVersion},
 				{"S", "E", "message3", time.Now(), evergreen.LogmessageCurrentVersion},

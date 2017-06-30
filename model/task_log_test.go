@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
@@ -42,7 +43,7 @@ func TestFindMostRecentTaskLogs(t *testing.T) {
 				taskLog := &TaskLog{}
 				taskLog.TaskId = "task_id"
 				taskLog.MessageCount = i + 1
-				taskLog.Messages = []LogMessage{}
+				taskLog.Messages = []apimodels.LogMessage{}
 				taskLog.Timestamp = startTime.Add(
 					time.Second * time.Duration(i))
 				So(taskLog.Insert(), ShouldBeNil)
@@ -81,7 +82,7 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 				taskLog := &TaskLog{}
 				taskLog.TaskId = "task_id"
 				taskLog.MessageCount = 1 // to differentiate these
-				taskLog.Messages = []LogMessage{}
+				taskLog.Messages = []apimodels.LogMessage{}
 				taskLog.Timestamp = startTime.Add(
 					time.Second * time.Duration(-i))
 				So(taskLog.Insert(), ShouldBeNil)
@@ -91,7 +92,7 @@ func TestFindTaskLogsBeforeTime(t *testing.T) {
 				taskLog := &TaskLog{}
 				taskLog.TaskId = "task_id"
 				taskLog.MessageCount = 0
-				taskLog.Messages = []LogMessage{}
+				taskLog.Messages = []apimodels.LogMessage{}
 				taskLog.Timestamp = startTime.Add(
 					time.Second * time.Duration(i))
 				So(taskLog.Insert(), ShouldBeNil)
@@ -124,7 +125,7 @@ func TestAddLogMessage(t *testing.T) {
 			taskLog.TaskId = "task_id"
 			taskLog.MessageCount = 0
 
-			taskLog.Messages = []LogMessage{}
+			taskLog.Messages = []apimodels.LogMessage{}
 			taskLog.Timestamp = time.Now()
 
 			So(taskLog.Insert(), ShouldBeNil)
@@ -136,11 +137,11 @@ func TestAddLogMessage(t *testing.T) {
 			taskLog = &(taskLogs[0])
 
 			for i := 0; i < 5; i++ {
-				logMsg := &LogMessage{}
+				logMsg := &apimodels.LogMessage{}
 				logMsg.Message = "Hello"
-				logMsg.Severity = LogDebugPrefix
+				logMsg.Severity = apimodels.LogDebugPrefix
 				logMsg.Timestamp = time.Now()
-				logMsg.Type = SystemLogPrefix
+				logMsg.Type = apimodels.SystemLogPrefix
 				So(taskLog.AddLogMessage(*logMsg), ShouldBeNil)
 			}
 			So(taskLog.MessageCount, ShouldEqual, 5)
@@ -171,23 +172,31 @@ func TestInsertLogMessage(t *testing.T) {
 			" document for the task", func() {
 
 			startTime := time.Now()
-			for i := 0; i < MessagesPerLog*2; i++ {
-				logMsg := &LogMessage{}
-				logMsg.Severity = LogDebugPrefix
-				logMsg.Timestamp = startTime.Add(time.Second * time.Duration(i))
-				logMsg.Type = SystemLogPrefix
-				So(logMsg.Insert("task_id", 0), ShouldBeNil)
+			taskLog := &TaskLog{
+				TaskId:    "task_id",
+				Execution: 0,
 			}
+			for i := 0; i < MessagesPerLog*2; i++ {
+				logMsg := apimodels.LogMessage{}
+				logMsg.Severity = apimodels.LogDebugPrefix
+				logMsg.Timestamp = startTime.Add(time.Second * time.Duration(i))
+				logMsg.Type = apimodels.SystemLogPrefix
+
+				taskLog.MessageCount++
+				taskLog.Messages = append(taskLog.Messages, logMsg)
+			}
+
+			So(taskLog.Insert(), ShouldBeNil)
 
 			fromDB, err := FindMostRecentTaskLogs("task_id", 0, 2)
 			So(err, ShouldBeNil)
-			So(len(fromDB), ShouldEqual, 2)
+			So(len(fromDB), ShouldEqual, 1)
 
 			// since log saving happens as fire-and-forget, we're not entirely
 			// guaranteed that there will be the full number of messages in
 			// each task log document. however, there have to be enough in the
 			// first one (but there could be more)
-			So(fromDB[0].MessageCount >= MessagesPerLog, ShouldBeTrue)
+			So(fromDB[0].MessageCount, ShouldBeGreaterThanOrEqualTo, MessagesPerLog)
 			So(len(fromDB[0].Messages), ShouldEqual, fromDB[0].MessageCount)
 
 		})
@@ -209,35 +218,43 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 			getRandomSeverity := func(i int) string {
 				switch i % 3 {
 				case 0:
-					return LogDebugPrefix
+					return apimodels.LogDebugPrefix
 				case 1:
-					return LogInfoPrefix
+					return apimodels.LogInfoPrefix
 				case 2:
-					return LogWarnPrefix
+					return apimodels.LogWarnPrefix
 				}
-				return LogErrorPrefix
+				return apimodels.LogErrorPrefix
 			}
 
 			getRandomMsgType := func(i int) string {
 				switch i % 2 {
 				case 0:
-					return SystemLogPrefix
+					return apimodels.SystemLogPrefix
 				case 1:
-					return TaskLogPrefix
+					return apimodels.TaskLogPrefix
 				}
-				return LogErrorPrefix
+				return apimodels.LogErrorPrefix
 			}
 
 			startTime := time.Now().Add(time.Second * time.Duration(-1000))
 			// insert a lot of log messages
+			taskLog := &TaskLog{
+				TaskId:    "task_id",
+				Execution: 0,
+			}
 			for i := 0; i < 150; i++ {
-				logMsg := &LogMessage{}
+				logMsg := apimodels.LogMessage{}
 				logMsg.Severity = getRandomSeverity(i)
 				logMsg.Type = getRandomMsgType(i)
 				logMsg.Message = "Hello"
 				logMsg.Timestamp = startTime.Add(time.Second * time.Duration(i))
-				So(logMsg.Insert("task_id", 0), ShouldBeNil)
+
+				taskLog.MessageCount++
+				taskLog.Messages = append(taskLog.Messages, logMsg)
 			}
+
+			So(taskLog.Insert(), ShouldBeNil)
 
 			// now get the last 10 messages, unfiltered
 			fromDB, err := FindMostRecentLogMessages("task_id", 0, 10, []string{},
@@ -247,21 +264,22 @@ func TestFindMostRecentLogMessages(t *testing.T) {
 
 			// filter by severity and log type
 			fromDB, err = FindMostRecentLogMessages("task_id", 0, 10,
-				[]string{LogDebugPrefix}, []string{SystemLogPrefix})
+				[]string{apimodels.LogDebugPrefix},
+				[]string{apimodels.SystemLogPrefix})
 			So(err, ShouldBeNil)
 			So(len(fromDB), ShouldEqual, 10)
 			for _, msgFromDB := range fromDB {
-				So(msgFromDB.Severity, ShouldEqual, LogDebugPrefix)
-				So(msgFromDB.Type, ShouldEqual, SystemLogPrefix)
+				So(msgFromDB.Severity, ShouldEqual, apimodels.LogDebugPrefix)
+				So(msgFromDB.Type, ShouldEqual, apimodels.SystemLogPrefix)
 			}
 
 			// filter on multiple severities
 			fromDB, err = FindMostRecentLogMessages("task_id", 0, 10,
-				[]string{LogDebugPrefix, LogInfoPrefix}, []string{})
+				[]string{apimodels.LogDebugPrefix, apimodels.LogInfoPrefix}, []string{})
 			So(err, ShouldBeNil)
 			So(len(fromDB), ShouldEqual, 10)
 			for _, logMsg := range fromDB {
-				So(logMsg.Severity != LogDebugPrefix || logMsg.Severity != LogInfoPrefix,
+				So(logMsg.Severity != apimodels.LogDebugPrefix || logMsg.Severity != apimodels.LogInfoPrefix,
 					ShouldBeTrue)
 			}
 
