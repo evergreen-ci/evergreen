@@ -255,6 +255,7 @@ vendor-sync:$(vendorDeps)
 vendor-clean:
 	rm -rf vendor/github.com/stretchr/testify/vendor/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/net/
+	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1

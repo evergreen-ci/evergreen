@@ -99,3 +99,11 @@ imports:
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
   - name: github.com/jpillora/backoff
     version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d
+
+  - name: google.golang.org/api/compute
+    version: e6586c9293b9d514c7f5d5076731ec977cff1be6
+    subpackages:
+  - name: github.com/vmware/govmomi
+    version: 2eadc60de1af9cf30d3c8ca9193813b1f0497f01
+  - name: golang.org/x/oauth2
+    version: f047394b6d14284165300fd82dad67edb3a4d7f6
