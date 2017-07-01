@@ -297,21 +297,33 @@ func GetSettingsOrExit() *Settings {
 }
 
 func (s *Settings) GetSender(fileName string) (send.Sender, error) {
+	var (
+		sender  send.Sender
+		err     error
+		senders []send.Sender
+	)
+
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
-		sender, err := send.NewSumo("", endpoint)
-		if err != nil {
-			return nil, errors.WithStack(err)
+		sender, err = send.NewSumo("", endpoint)
+		if err == nil {
+			senders = append(senders,
+				send.NewBufferedSender(sender,
+					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
+					s.LogBuffering.BufferCount))
 		}
-
-		return send.NewBufferedSender(sender,
-			time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
-			s.LogBuffering.BufferCount), nil
-
-	} else if fileName != "" {
-		return send.MakeFileLogger(fileName)
-	} else {
-		return send.MakeNative(), nil
 	}
+
+	if fileName != "" {
+		sender, err = send.MakeFileLogger(fileName)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not configure file logger")
+		}
+		senders = append(senders, sender)
+	} else {
+		senders = append(senders, send.MakeNative())
+	}
+
+	return send.NewConfiguredMultiSender(senders...)
 }
 
 // GetSettings returns Evergreen Settings or an error.

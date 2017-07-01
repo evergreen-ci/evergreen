@@ -39,7 +39,7 @@ func init() {
 
 func main() {
 	settings := evergreen.GetSettingsOrExit()
-	sender, err := settings.GetSender(settings.Runner.LogFile)
+	sender, err := settings.GetSender(settings.Ui.LogFile)
 	grip.CatchEmergencyFatal(err)
 	defer sender.Close()
 	grip.CatchEmergencyFatal(grip.SetSender(sender))
