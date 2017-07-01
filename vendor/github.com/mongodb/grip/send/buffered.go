@@ -1,6 +1,7 @@
 package send
 
 import (
+	"errors"
 	"time"
 
 	"github.com/mongodb/grip/message"
@@ -15,6 +16,7 @@ type bufferedSender struct {
 	number   int
 	pipe     chan message.Composer
 	signal   chan struct{}
+	errs     chan error
 }
 
 // NewBufferedSender provides a Sender implementation that wraps an
@@ -46,57 +48,70 @@ func NewBufferedSender(sender Sender, duration time.Duration, number int) Sender
 		number:   number,
 		pipe:     make(chan message.Composer, number),
 		signal:   make(chan struct{}),
+		errs:     make(chan error),
 	}
 
-	go s.backgroundWorker()
+	go s.backgroundDispatcher()
 
 	return s
 }
 
-func (s *bufferedSender) backgroundWorker() {
+func (s *bufferedSender) backgroundDispatcher() {
 	buffer := []message.Composer{}
 	timer := time.NewTimer(s.duration)
-	complete := make(chan struct{}, 2)
+	work := make(chan []message.Composer, 2)
+	complete := make(chan struct{})
+
+	go s.backgroundWorker(work, complete)
 
 daemon:
 	for {
 		select {
 		case msg := <-s.pipe:
+			buffer = append(buffer, msg)
+
 			if len(buffer) < s.number {
-				buffer = append(buffer, msg)
 				continue daemon
 			}
 
-			go s.backgroundSender(buffer, complete)
+			work <- buffer
 			buffer = []message.Composer{}
 			timer.Reset(s.duration)
 		case <-timer.C:
-			go s.backgroundSender(buffer, complete)
+			work <- buffer
 			buffer = []message.Composer{}
 			timer.Reset(s.duration)
 		case <-s.signal:
-			if len(buffer) != 0 {
-				s.backgroundSender(buffer, complete)
+			close(s.signal)
+			close(s.pipe)
+
+			for m := range s.pipe {
+				buffer = append(buffer, m)
 			}
+
+			if len(buffer) != 0 {
+				work <- buffer
+			}
+
+			close(work)
 
 			break daemon
 		}
 
-		<-complete
 	}
 
 	<-complete
-
-	close(s.pipe)
-	close(s.signal)
-	_ = s.Sender.Close()
+	s.errs <- s.Sender.Close()
+	close(s.errs)
 }
 
-func (s *bufferedSender) backgroundSender(msgs []message.Composer, complete chan struct{}) {
-	if len(msgs) == 1 {
-		s.Sender.Send(msgs[0])
-	} else if len(msgs) > 1 {
-		s.Sender.Send(message.NewGroupComposer(msgs))
+func (s *bufferedSender) backgroundWorker(work <-chan []message.Composer, complete chan<- struct{}) {
+	for msgs := range work {
+		if len(msgs) == 1 {
+			s.Sender.Send(msgs[0])
+		} else if len(msgs) > 1 {
+			s.Sender.Send(message.NewGroupComposer(msgs))
+		}
 	}
 
 	complete <- struct{}{}
@@ -113,13 +128,20 @@ func (s *bufferedSender) Send(msg message.Composer) {
 	}
 }
 
-func (s *bufferedSender) Close() error {
-	// do a non-blocking send on the signal thread to close the
-	// background worker
-	select {
-	case s.signal <- struct{}{}:
-	default:
+func (s *bufferedSender) Close() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New("cannot close alreday closed buffered sender")
+		}
+	}()
+
+	s.signal <- struct{}{}
+
+	if err != nil {
+		return
 	}
 
-	return nil
+	err = <-s.errs
+
+	return
 }

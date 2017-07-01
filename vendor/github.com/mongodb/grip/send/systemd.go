@@ -43,8 +43,6 @@ func MakeSystemdLogger() Sender {
 	return s
 }
 
-func (s *systemdJournal) Close() error { return nil }
-
 func (s *systemdJournal) Send(m message.Composer) {
 	if s.level.ShouldLog(m) {
 		err := journal.Send(m.String(), s.level.convertPrioritySystemd(m.Priority()), s.options)

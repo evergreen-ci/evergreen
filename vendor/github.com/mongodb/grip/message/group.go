@@ -36,8 +36,9 @@ func MakeGroupComposer(msgs ...Composer) Composer {
 // String satisfies the fmt.Stringer interface, and returns a string
 // of the string form of all constituent composers joined with a newline.
 func (g *GroupComposer) String() string {
-	if len(g.messages) == 1 {
+	if len(g.messages) == 1 && g.messages[0].Loggable() {
 		return g.messages[0].String()
+
 	}
 
 	out := []string{}
@@ -53,7 +54,7 @@ func (g *GroupComposer) String() string {
 // Raw returns a slice of interfaces containing the raw form of all
 // the constituent composers.
 func (g *GroupComposer) Raw() interface{} {
-	if len(g.messages) == 1 {
+	if len(g.messages) == 1 && g.messages[0].Loggable() {
 		return g.messages[0].Raw()
 	}
 

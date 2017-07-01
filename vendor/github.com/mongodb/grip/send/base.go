@@ -80,6 +80,19 @@ func (b *Base) SetFormatter(mf MessageFormatter) error {
 	return nil
 }
 
+// Formatter returns the formatter, defaulting to using the string
+// form of the message if no formatter is configured.
+func (b *Base) Formatter(m message.Composer) (string, error) {
+	b.mutex.RLock()
+	defer b.mutex.RUnlock()
+
+	if b.formatter == nil {
+		return m.String(), nil
+	}
+
+	return b.formatter(m)
+}
+
 // SetErrorHandler configures the error handling function for this Sender.
 func (b *Base) SetErrorHandler(eh ErrorHandler) error {
 	if eh == nil {

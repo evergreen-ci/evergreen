@@ -94,7 +94,7 @@ imports:
   - name: github.com/aws/aws-sdk-go
     version: 87a2cff6c2601f69429f336067d1deb7f713d1c6
   - name: github.com/mongodb/grip
-    version: 1def258f631f824077cea5400e0ea019d2f483d1
+    version: c683440051444b203445df487e60697dbfaa6e54
   - name: github.com/pkg/errors
     version: ff09b135c25aae272398c51a07235b90a75aa4f0
   - name: github.com/jpillora/backoff
