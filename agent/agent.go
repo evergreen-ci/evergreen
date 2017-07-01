@@ -253,19 +253,19 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 	case comm.Completed:
 		agt.logger.LogLocal(slogger.INFO, "Task executed correctly - cleaning up")
 		agt.cleanup(agt.GetCurrentTaskId())
-		agt.removeTaskDirectory()
+		grip.CatchWarning(agt.removeTaskDirectory())
 		// everything went according to plan, so we just exit the signal handler routine
 		return
 	case comm.IncorrectSecret:
 		err = errors.New("Secret doesn't match - exiting.")
 		agt.cleanup(agt.GetCurrentTaskId())
-		agt.removeTaskDirectory()
+		grip.CatchWarning(agt.removeTaskDirectory())
 		// we want to exit here, but want to make sure the other defers run
 		return
 	case comm.HeartbeatMaxFailed:
 		err = errors.New("Max heartbeats failed - exiting.")
 		agt.cleanup(agt.GetCurrentTaskId())
-		agt.removeTaskDirectory()
+		grip.CatchWarning(agt.removeTaskDirectory())
 		// we want to exit here, but want to make sure the other defers run
 		return
 	case comm.AbortedByUser:
@@ -273,14 +273,14 @@ func (sh *SignalHandler) HandleSignals(agt *Agent) {
 		detail.Status = evergreen.TaskUndispatched
 		agt.logger.LogTask(slogger.WARN, "Received abort signal - stopping.")
 		agt.cleanup(agt.GetCurrentTaskId())
-		agt.removeTaskDirectory()
+		grip.CatchWarning(agt.removeTaskDirectory())
 	case comm.DirectoryFailure:
 		detail = agt.getTaskEndDetail()
 		detail.Status = evergreen.TaskFailed
 		detail.Type = model.SystemCommandType
 		agt.logger.LogTask(slogger.ERROR, "Directory creation failure - stopping.")
 		agt.cleanup(agt.GetCurrentTaskId())
-		agt.removeTaskDirectory()
+		grip.CatchWarning(agt.removeTaskDirectory())
 	case comm.IdleTimeout:
 		detail = agt.getTaskEndDetail()
 		agt.logger.LogTask(slogger.ERROR, "Task timed out: '%v'", detail.Description)

@@ -104,7 +104,8 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 					DisplayName: t.DisplayName,
 				}}
 			if t.Status == evergreen.TaskStarted {
-				taskFromDb, err := task.FindOne(task.ById(t.Id))
+				var taskFromDb *task.Task
+				taskFromDb, err = task.FindOne(task.ById(t.Id))
 				if err != nil {
 					uis.LoggedError(w, r, http.StatusInternalServerError, err)
 				}
