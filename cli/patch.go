@@ -130,7 +130,8 @@ type PatchCommandParams struct {
 	SkipConfirm bool     `short:"y" long:"yes" description:"skip confirmation text"`
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
-	Large       bool     `long:"large" description:"enable submitting larger patches (>16MB)"`
+	Large       bool     `short:"l" long:"large" description:"enable submitting larger patches (>16MB)"`
+	ShowSummary bool     `long:"show-summary" description:"hide patch summary"`
 }
 
 // LastGreenCommand contains parameters for the finding a project's most recent passing version.
@@ -687,7 +688,7 @@ func createPatch(params PatchCommandParams, ac *APIClient, settings *model.CLISe
 	if err != nil {
 		return err
 	}
-	patchDisp, err := getPatchDisplay(newPatch, true, settings.UIServerHost)
+	patchDisp, err := getPatchDisplay(newPatch, params.ShowSummary, settings.UIServerHost)
 	if err != nil {
 		return err
 	}
