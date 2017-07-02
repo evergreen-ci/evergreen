@@ -164,7 +164,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 	if t.Requester != evergreen.PatchVersionRequester {
 		grip.Infoln("Processing alert triggers for task", t.Id)
 
-		grip.Error(errors.Wrapf(alerts.RunTaskFailureTriggers(t.Id),
+		grip.Error(errors.Wrapf(alerts.t(RunTaskFailureTriggers.Id),
 			"processing alert triggers for task %s", t.Id))
 	}
 	// TODO(EVG-223) process patch-specific triggers

@@ -154,11 +154,11 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 
 	err := spawner.CreateHost(opts, authedUser)
 	if err != nil {
-		grip.Errorln("error spawning host:", err)
+		grip.Errorf("error spawning host: %+v", err)
 		mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
 			err.Error(), notify.ConstructMailer(uis.Settings.Notify))
 		if mailErr != nil {
-			grip.Errorln("Failed to send notification:", mailErr)
+			grip.Errorf("Failed to send notification: %+v")
 		}
 	}
 

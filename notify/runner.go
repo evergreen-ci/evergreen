@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -36,8 +37,19 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	runtime := time.Since(startTime)
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		grip.Errorln("error updating process status:", err.Error())
+		grip.Error(message.Fields{
+			"runner":    r.Name(),
+			"runtime":   runtime,
+			"operation": "error",
+			"error":     err,
+		})
+	} else {
+		grip.Info(message.Fields{
+			"runner":    r.Name(),
+			"runtime":   runtime,
+			"operation": "success",
+		})
 	}
-	grip.Infof("Notify took %s to run", runtime)
+
 	return nil
 }

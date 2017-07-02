@@ -141,7 +141,7 @@ func runnerBackgroundWorker(r ProcessRunner, s *evergreen.Settings, terminateCha
 				subject := fmt.Sprintf("%s failure", r.Name())
 				grip.Error(err)
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {
-					grip.Errorln("sending email: %+v", err)
+					grip.Errorf("sending email: %+v", err)
 				}
 			}
 

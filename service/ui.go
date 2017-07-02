@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -286,8 +287,14 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	stack := debug.Stack()
-	grip.Errorln(r.Method, r.URL, err.Error(), string(stack))
+	grip.Error(message.Fields{
+		"method": r.Method,
+		"url":    r.URL,
+		"error":  err,
+		"code":   code,
+		"stack":  string(debug.Stack()),
+	})
+
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
 		uis.WriteJSON(w, code, struct {

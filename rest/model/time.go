@@ -28,6 +28,7 @@ func NewTime(t time.Time) APITime {
 		utcT.Nanosecond(),
 		time.FixedZone("", 0),
 	))
+
 }
 
 // UnmarshalJSON implements the custom unmarshalling of this type so that it can

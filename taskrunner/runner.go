@@ -36,7 +36,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	runtime := time.Since(startTime)
 	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		grip.Errorln("error updating process status:", err)
+		grip.Errorf("error updating process status: %+v", err)
 	}
 
 	grip.Infof("Taskrunner took %s to run", runtime)

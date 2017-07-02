@@ -144,7 +144,7 @@ func (self *DurationBasedHostAllocator) NewHostsNeeded(
 			numNewHostsForDistro(&hostAllocatorData, d, tasksAccountedFor,
 				distroScheduleData, settings)
 		if err != nil {
-			grip.Errorln("Error getting num hosts for distro:", err)
+			grip.Errorf("Error getting num hosts for distro: %+v", err)
 			return nil, err
 		}
 	}

@@ -14,6 +14,7 @@ import (
 	"github.com/goamz/goamz/ec2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -294,9 +295,14 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 		if err != nil {
 			instanceInfoRetryCount++
 			if instanceInfoRetryCount == instanceInfoMaxRetries {
-				grip.Errorln("There was an error querying for the instance's ",
-					"information and retries are exhausted. The instance may be up.")
-				return nil, resp, errors.WithStack(err)
+				err = errors.WithStack(err)
+				grip.Error(message.Fields{
+					"message": "There was an error querying for the instance's " +
+						"information and retries are exhausted. The instance may be up.",
+					"error":    err,
+					"instance": instance.InstanceId,
+				})
+				return nil, resp, err
 			}
 			grip.Debugf("There was an error querying for the instance's information. "+
 				"Retrying in 30 seconds. Error: %v", err)

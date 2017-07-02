@@ -81,7 +81,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	defer func() {
 		if err = db.ReleaseGlobalLock(RunnerName); err != nil {
-			grip.Errorln("Error releasing global lock:", err)
+			grip.Error(errors.Wrap(err, "Error releasing global lock"))
 		}
 	}()
 
@@ -147,7 +147,13 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 		grip.Debugln("running repotracker for:", project.Identifier)
 
 		if err := tracker.FetchRevisions(num); err != nil {
-			grip.Errorln("problem fetching revisions for %s: %+v", project.Identifier, err)
+			grip.Error(message.Field{
+				"project": project.Identifier,
+				"error":   err,
+				"message": "problem fetching revisions",
+				"runner":  "repotracker",
+				"worker":  id,
+			})
 			done++
 			continue
 		}

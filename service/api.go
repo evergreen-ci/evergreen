@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/codegangsta/negroni"
@@ -709,7 +710,14 @@ func (as *APIServer) validateProjectConfig(w http.ResponseWriter, r *http.Reques
 // LoggedError logs the given error and writes an HTTP response with its details formatted
 // as JSON if the request headers indicate that it's acceptable (or plaintext otherwise).
 func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code int, err error) {
-	grip.Errorln(r.Method, r.URL, err)
+	grip.Error(message.Fields{
+		"method": r.Method,
+		"url":    r.URL,
+		"err":    err,
+		"code":   int,
+		"stack":  string(debug.Stack()),
+	})
+
 	// if JSON is the preferred content type for the request, reply with a json message
 	if strings.HasPrefix(r.Header.Get("accept"), "application/json") {
 		as.WriteJSON(w, code, struct {

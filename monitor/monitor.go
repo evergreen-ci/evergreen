@@ -173,7 +173,7 @@ func withGlobalLock(name string, f func() []error) (errs []error) {
 			grip.Debugln("Released global lock for monitor:", name)
 		}
 	}()
-	grip.Debugln("Acquired global lock for monitor", name)
+	grip.Debugln("Acquired global lock for monitor:", name)
 	errs = f()
 	return errs
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -450,12 +451,29 @@ func NewLogger() *Logger {
 
 func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	start := time.Now()
-	reqId := <-l.ids
+	reqID := <-l.ids
 
-	grip.Infof("Started (%v) %s %s %s", reqId, r.Method, r.URL.Path, r.RemoteAddr)
+	grip.Info(message.Fields{
+		"action":  "started",
+		"method":  r.Method,
+		"remote":  r.RemoteAddr,
+		"request": reqID,
+		"path":    r.URL.Path,
+	})
 
 	next(rw, r)
 
 	res := rw.(negroni.ResponseWriter)
-	grip.Infof("Completed (%v) %v %s in %v", reqId, res.Status(), http.StatusText(res.Status()), time.Since(start))
+	// "Completed (%v) %v %s in %v", reqId, res.Status(), http.StatusText(res.Status()), time.Since(start)
+
+	grip.Infof(message.Fields{
+		"method":   r.Method,
+		"remote":   r.RemoteAddr,
+		"request":  reqID,
+		"path":     r.URL.Path,
+		"duration": time.Since(start),
+		"action":   "completed",
+		"status":   res.Status(),
+		"outcome":  http.StatusText(res.Status()),
+	})
 }

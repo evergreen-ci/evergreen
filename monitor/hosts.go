@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -138,7 +139,11 @@ func terminateHost(h *host.Host, settings *evergreen.Settings) error {
 
 	// run teardown script if we have one, sending notifications if things go awry
 	if h.Distro.Teardown != "" && h.Provisioned {
-		grip.Errorln("Running teardown script for host:", h.Id)
+		grip.Error(message.Fields{
+			"message": "running teardown script for host",
+			"host":    h.Id,
+		})
+
 		if err := runHostTeardown(h, cloudHost); err != nil {
 			grip.Error(errors.Wrapf(err, "Error running teardown script for %s", h.Id))
 
@@ -147,7 +152,6 @@ func terminateHost(h *host.Host, settings *evergreen.Settings) error {
 
 			grip.Error(errors.Wrap(notify.NotifyAdmins(subj, err.Error(), settings),
 				"Error sending email"))
-
 		}
 	}
 

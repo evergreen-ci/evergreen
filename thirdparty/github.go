@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -192,32 +193,46 @@ func GetGitHubMergeBaseRevision(oauthToken, repoOwner, repo, baseRevision string
 	return compareResponse.MergeBaseCommit.SHA, nil
 }
 
-func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent,
-	error) {
-	commitURL := fmt.Sprintf("%v/repos/%v/%v/commits/%v",
-		GithubAPIBase,
-		repoOwner,
-		repo,
-		githash,
-	)
+func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent, error) {
+	repoID := fmt.Sprintf("%s/%s", repoOwner, repo)
+	commitURL := fmt.Sprintf("%s/repos/%s/commits/%s",
+		GithubAPIBase, repoID, githash)
 
-	grip.Errorln("requesting github commit from url:", commitURL)
+	grip.Info(message.Fields{
+		"message": "requesting commit from github",
+		"commit":  githash,
+		"repo":    repoID,
+		"url":     commitURL,
+	})
 
 	resp, err := tryGithubGet(oauthToken, commitURL)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
 	if err != nil {
-		errMsg := fmt.Sprintf("error querying '%v': %v", commitURL, err)
-		grip.Error(errMsg)
-		return nil, APIResponseError{errMsg}
+		err = errors.Wrapf(err, "problem querying repo %s for %s", repoID, githash)
+		grip.Error(message.Fields{
+			"commit":  githash,
+			"repo":    repoID,
+			"url":     commitURL,
+			"error":   err.Cause(),
+			"message": "problem querying repo",
+		})
+		return nil, APIResponseError{err}
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, ResponseReadError{err.Error()}
 	}
-	grip.Debugf("Github API response: %s. %d bytes", resp.Status, len(respBody))
+	grip.Debug(message.Fields{
+		"operation": "github api query",
+		"size":      len(respBody),
+		"status":    resp.Status,
+		"commit":    githash,
+		"repo":      repoID,
+		"url":       commitURL,
+	})
 
 	if resp.StatusCode != http.StatusOK {
 		requestError := APIRequestError{}
