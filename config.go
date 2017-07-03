@@ -323,7 +323,7 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 		senders = append(senders, send.MakeNative())
 	}
 
-	return send.NewConfiguredMultiSender(senders...)
+	return send.NewConfiguredMultiSender(senders...), nil
 }
 
 // GetSettings returns Evergreen Settings or an error.
