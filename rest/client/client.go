@@ -95,17 +95,17 @@ func (c *evergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProdu
 	local := grip.GetSender()
 
 	exec := newLogSender(c, apimodels.AgentLogPrefix, taskID, taskSecret)
-	exec.SetFormatter(send.MakeDefaultForamtter())
+	exec.SetFormatter(send.MakeDefaultFormatter())
 	exec = send.NewBufferedSender(exec, bufferTime, bufferCount)
 	exec = send.NewConfiguredMultiSender(local, exec)
 
 	task := newLogSender(c, apimodels.TaskLogPrefix, taskID, taskSecret)
-	task.SetFormatter(send.MakeDefaultForamtter())
+	task.SetFormatter(send.MakeDefaultFormatter())
 	task = send.NewBufferedSender(task, bufferTime, bufferCount)
 	task = send.NewConfiguredMultiSender(local, task)
 
 	system := newLogSender(c, apimodels.SystemLogPrefix, taskID, taskSecret)
-	system.SetFormatter(send.MakeDefaultForamtter())
+	system.SetFormatter(send.MakeDefaultFormatter())
 	system = send.NewBufferedSender(system, bufferTime, bufferCount)
 	system = send.NewConfiguredMultiSender(local, system)
 
