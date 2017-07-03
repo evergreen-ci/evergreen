@@ -95,17 +95,17 @@ func (c *evergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProdu
 	local := grip.GetSender()
 
 	exec := newLogSender(c, apimodels.AgentLogPrefix, taskID, taskSecret)
-	exec.SetFormatter(send.MakeDefaultFormatter())
+	grip.CatchWarning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewBufferedSender(exec, bufferTime, bufferCount)
 	exec = send.NewConfiguredMultiSender(local, exec)
 
 	task := newLogSender(c, apimodels.TaskLogPrefix, taskID, taskSecret)
-	task.SetFormatter(send.MakeDefaultFormatter())
+	grip.CatchWarning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewBufferedSender(task, bufferTime, bufferCount)
 	task = send.NewConfiguredMultiSender(local, task)
 
 	system := newLogSender(c, apimodels.SystemLogPrefix, taskID, taskSecret)
-	system.SetFormatter(send.MakeDefaultFormatter())
+	grip.CatchWarning(system.SetFormatter(send.MakeDefaultFormatter()))
 	system = send.NewBufferedSender(system, bufferTime, bufferCount)
 	system = send.NewConfiguredMultiSender(local, system)
 
@@ -118,10 +118,10 @@ func (c *evergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProdu
 	systemWriter = send.NewConfiguredMultiSender(local, systemWriter)
 
 	return &logHarness{
-		local:            &logging.Grip{grip.GetSender()},
-		execution:        &logging.Grip{exec},
-		task:             &logging.Grip{task},
-		system:           &logging.Grip{system},
+		local:            &logging.Grip{Sender: grip.GetSender()},
+		execution:        &logging.Grip{Sender: exec},
+		task:             &logging.Grip{Sender: task},
+		system:           &logging.Grip{Sender: system},
 		taskWriterBase:   taskWriter,
 		systemWriterBase: systemWriter,
 	}
