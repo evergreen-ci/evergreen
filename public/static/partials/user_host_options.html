@@ -55,6 +55,9 @@
     <span class="semi-muted invalid" ng-show="form.userdata.$dirty && (form.userdata.$error.required || form.userdata.$error.userDataValid)">
       User Data is required to be valid [[selectedDistro.userDataValidate]].<br />
     </span>
+    <span class="semi-muted invalid" ng-show="!spawnableDistros || spawnableDistros.length === 0">
+      You cannot spawn a host because there are no spawnable distros.<br />
+    </span>
     <div ng-show="currKeyName == newKey.name">
       <p class="textarea">
         <textarea id="input-key-val" name="pubkey" placeholder="Enter public key here..." required key-base-valid ng-model="selectedKey.key"></textarea>
