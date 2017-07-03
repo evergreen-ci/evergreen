@@ -17,7 +17,6 @@ type Base struct {
 	Hostname string         `bson:"hostname,omitempty" json:"hostname,omitempty" yaml:"hostname,omitempty"`
 	Time     time.Time      `bson:"time,omitempty" json:"time,omitempty" yaml:"time,omitempty"`
 	Process  string         `bson:"process,omitempty" json:"process,omitempty" yaml:"process,omitempty"`
-	Logger   string         `bson:"logger,omitempty" json:"logger,omitempty" yaml:"logger,omitempty"`
 }
 
 // Collect records the time, process name, and hostname. Useful in the

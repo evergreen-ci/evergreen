@@ -13,7 +13,7 @@ type slackClientMock struct {
 	numSent            int
 }
 
-func (c *slackClientMock) Create(_ string) { return }
+func (c *slackClientMock) Create(_ string) {}
 func (c *slackClientMock) AuthTest() (*slack.AuthTestApiResponse, error) {
 	if c.failAuthTest {
 		return nil, errors.New("mock failed auth test")

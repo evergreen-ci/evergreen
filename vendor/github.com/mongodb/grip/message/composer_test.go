@@ -26,10 +26,6 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		NewErrorMessage(level.Error, errors.New(testMsg)):                      testMsg,
 		NewErrorWrap(errors.New(testMsg), ""):                                  testMsg,
 		NewErrorWrapMessage(level.Error, errors.New(testMsg), ""):              testMsg,
-		NewFieldsMessage(level.Error, testMsg, Fields{}):                       fmt.Sprintf("[msg='%s']", testMsg),
-		NewFields(level.Error, Fields{"test": testMsg}):                        fmt.Sprintf("[test='%s']", testMsg),
-		MakeFieldsMessage(testMsg, Fields{}):                                   fmt.Sprintf("[msg='%s']", testMsg),
-		MakeFields(Fields{"test": testMsg}):                                    fmt.Sprintf("[test='%s']", testMsg),
 		NewFormatted(string(testMsg[0])+"%s", testMsg[1:]):                     testMsg,
 		NewFormattedMessage(level.Error, string(testMsg[0])+"%s", testMsg[1:]): testMsg,
 		NewLine(testMsg, ""):                                                   testMsg,
@@ -40,6 +36,10 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		NewGroupComposer([]Composer{NewString(testMsg)}):                       testMsg,
 		MakeJiraMessage(JiraIssue{Summary: testMsg}):                           testMsg,
 		NewJiraMessage("", testMsg):                                            testMsg,
+		NewFieldsMessage(level.Error, testMsg, Fields{}):                       fmt.Sprintf("[message='%s']", testMsg),
+		NewFields(level.Error, Fields{"test": testMsg}):                        fmt.Sprintf("[test='%s']", testMsg),
+		MakeFieldsMessage(testMsg, Fields{}):                                   fmt.Sprintf("[message='%s']", testMsg),
+		MakeFields(Fields{"test": testMsg}):                                    fmt.Sprintf("[test='%s']", testMsg),
 	}
 
 	for msg, output := range cases {
@@ -49,9 +49,15 @@ func TestPopulatedMessageComposerConstructors(t *testing.T) {
 		assert.True(msg.Loggable())
 		assert.NotNil(msg.Raw())
 
-		// run the string test to make sure it doesn't change:
-		assert.Equal(msg.String(), output)
-		assert.Equal(msg.String(), output)
+		if strings.HasPrefix(output, "[") {
+			output = strings.Trim(output, "[]")
+			assert.True(strings.Contains(msg.String(), output))
+
+		} else {
+			// run the string test to make sure it doesn't change:
+			assert.Equal(msg.String(), output)
+			assert.Equal(msg.String(), output)
+		}
 
 		if msg.Priority() != level.Invalid {
 			assert.Equal(msg.Priority(), level.Error)
@@ -203,10 +209,10 @@ func TestComposerConverter(t *testing.T) {
 	}
 
 	outputCases := map[string]interface{}{
-		"1":         1,
-		"2":         int32(2),
-		"[msg='3']": Fields{"msg": 3},
-		"[msg='4']": map[string]interface{}{"msg": "4"},
+		"1":             1,
+		"2":             int32(2),
+		"[message='3']": Fields{"message": 3},
+		"[message='4']": map[string]interface{}{"message": "4"},
 	}
 
 	for out, in := range outputCases {

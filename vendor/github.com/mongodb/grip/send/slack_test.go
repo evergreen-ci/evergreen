@@ -166,9 +166,9 @@ func (s *SlackSuite) TestFieldsMessageTypeIntegration() {
 	s.True(opts.Fields)
 	s.False(opts.BasicMetadata)
 	opts.FieldsSet = map[string]struct{}{
-		"msg":   struct{}{},
-		"other": struct{}{},
-		"foo":   struct{}{},
+		"message": struct{}{},
+		"other":   struct{}{},
+		"foo":     struct{}{},
 	}
 
 	params := opts.getParams(message.NewDefaultMessage(level.Alert, "foo"))

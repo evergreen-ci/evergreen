@@ -13,7 +13,6 @@ func (g *Grip) conditionalSend(conditional bool, m message.Composer) {
 	}
 
 	g.Send(m)
-	return
 }
 
 /////////////

@@ -9,7 +9,7 @@ import (
 
 // FieldsMsgName is the name of the default "message" field in the
 // fields structure.
-const FieldsMsgName = "msg"
+const FieldsMsgName = "message"
 
 type fieldMessage struct {
 	message      string
@@ -68,7 +68,7 @@ func (m *fieldMessage) String() string {
 		}
 
 		for k, v := range m.fields {
-			if k == "msg" && v == m.message {
+			if k == FieldsMsgName && v == m.message {
 				continue
 			}
 			if k == "time" {
@@ -86,11 +86,13 @@ func (m *fieldMessage) String() string {
 
 func (m *fieldMessage) Raw() interface{} {
 	_ = m.Collect()
-	if _, ok := m.fields["msg"]; !ok {
-		m.fields["msg"] = m.message
+
+	if _, ok := m.fields[FieldsMsgName]; !ok && m.message != "" {
+		m.fields[FieldsMsgName] = m.message
 	}
-	if _, ok := m.fields["time"]; !ok {
-		m.fields["time"] = m.Time
+
+	if _, ok := m.fields["metadata"]; !ok {
+		m.fields["metadata"] = &m.Base
 	}
 
 	return m.fields

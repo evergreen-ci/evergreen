@@ -56,10 +56,12 @@ func (s *BufferedSenderSuite) TestConstructor() {
 func (s *BufferedSenderSuite) TestSendingSingleMessage() {
 	m, ok := s.sender.GetMessageSafe()
 	s.False(ok)
+	s.Nil(m)
 
 	s.buffs.Send(message.NewDefaultMessage(level.Warning, "hello"))
 	m, ok = s.sender.GetMessageSafe()
 	s.False(ok)
+	s.Nil(m)
 
 	time.Sleep(s.dur)
 	m = s.sender.GetMessage()
