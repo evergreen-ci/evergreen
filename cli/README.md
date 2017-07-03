@@ -1,14 +1,14 @@
 How to set up and use the new patch tool
 ==
 
-###Client
+### Client
 
 Basic Usage
 --
 
 * To submit a patch, run this from your local copy of the mongodb/mongo repo:
 
-      `evergreen patch -p <project-id>`
+      evergreen patch -p <project-id>
     
 NOTE: The first time you run this, you'll be asked if you want to set these as your default project and variants.
 After setting defaults, you can omit the flags and the default values will be used, so that just running `evergreen patch` will work.
@@ -33,24 +33,22 @@ Operating on existing patches
 
 * To list patches you've created:
 
-      `evergreen list-patches`
+      evergreen list-patches
 
 
 * To cancel a patch:
  
-	  `evergreen cancel-patch -i <patch_id>`
+      evergreen cancel-patch -i <patch_id>
     
 * To finalize a patch:
  
-      `evergreen finalize-patch -i <patch_id>`
+      evergreen finalize-patch -i <patch_id>
 
 
 * To add changes to a module on top of an existing  patch:
 
-     ```
       cd ~/projects/module-project-directory
       evergreen set-module -i <patch_id> -m <module-name>
-      ```
 
 ### Server Side (for evergreen admins)
 
