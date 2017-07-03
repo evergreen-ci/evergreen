@@ -477,6 +477,8 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 	expansions.Put("branch_name", v.Branch)
 	expansions.Put("author", v.Author)
 	expansions.Put("distro_id", d.Id)
+	expansions.Put("created_at", v.CreateTime.Format(build.IdTimeLayout))
+
 	if t.Requester == evergreen.PatchVersionRequester {
 		expansions.Put("is_patch", "true")
 	}
