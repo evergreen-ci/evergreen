@@ -193,11 +193,11 @@ func (c *evergreenREST) FetchExpansionVars(ctx context.Context, taskID, taskSecr
 }
 
 // GetNextTask returns a next task response by getting the next task for a given host.
-func (c *evergreenREST) GetNextTask(ctx context.Context, taskID, taskSecret string) (*apimodels.NextTaskResponse, error) {
+func (c *evergreenREST) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
 	taskResponse := &apimodels.NextTaskResponse{}
-	resp, err := c.retryGet(ctx, "agent/next_task", taskSecret, v1)
+	resp, err := c.retryGet(ctx, "agent/next_task", "", v1)
 	if err != nil {
-		err = errors.Wrapf(err, "failed to get task for task %s", taskID)
+		err = errors.Wrap(err, "failed to get task")
 		grip.Error(err)
 		return nil, err
 	}
@@ -206,11 +206,12 @@ func (c *evergreenREST) GetNextTask(ctx context.Context, taskID, taskSecret stri
 		return nil, errors.New("conflict - wrong secret")
 	}
 	if err = util.ReadJSONInto(resp.Body, taskResponse); err != nil {
-		err = errors.Wrapf(err, "failed to read next task from response for task %s", taskID)
+		err = errors.Wrap(err, "failed to read next task from response")
 		grip.Error(err)
 		return nil, err
 	}
 	return taskResponse, nil
+
 }
 
 // SendTaskLogMessages posts a group of log messages for a task.

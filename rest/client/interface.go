@@ -50,7 +50,7 @@ type Communicator interface {
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
 	FetchExpansionVars(context.Context, string, string) (*apimodels.ExpansionVars, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
-	GetNextTask(context.Context, string, string) (*apimodels.NextTaskResponse, error)
+	GetNextTask(context.Context) (*apimodels.NextTaskResponse, error)
 
 	// Sends a group of log messages to the API Server
 	SendTaskLogMessages(context.Context, string, string, []apimodels.LogMessage) error

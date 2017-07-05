@@ -82,7 +82,7 @@ func (c *MockEvergreenREST) FetchExpansionVars(ctx context.Context, taskID, task
 }
 
 // GetNextTask returns an empty NextTaskResponse.
-func (c *MockEvergreenREST) GetNextTask(ctx context.Context, taskID, taskSecret string) (*apimodels.NextTaskResponse, error) {
+func (c *MockEvergreenREST) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
 	return &apimodels.NextTaskResponse{}, nil
 
 }
