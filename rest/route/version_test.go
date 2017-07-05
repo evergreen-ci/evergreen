@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -12,8 +13,10 @@ import (
 
 // VersionSuite enables testing for version related routes.
 type VersionSuite struct {
-	sc   *data.MockConnector
-	data data.MockVersionConnector
+	sc          *data.MockConnector
+	versionData data.MockVersionConnector
+	buildData   data.MockBuildConnector
+	bv, bi      []string // build variants and build indices for testing
 
 	suite.Suite
 }
@@ -25,7 +28,6 @@ func TestVersionSuite(t *testing.T) {
 // Declare field variables to use across routes related to version.
 var timeField time.Time
 var versionId, revision, author, authorEmail, msg, status, repo, branch string
-var bv1, bv2, bi1, bi2 string
 
 // SetupSuite sets up the test suite for routes related to version.
 // More version-related routes will be implemented later.
@@ -41,20 +43,18 @@ func (s *VersionSuite) SetupSuite() {
 	repo = "repo"
 	branch = "branch"
 
-	bv1 = "buildvariant1"
-	bv2 = "buildvariant2"
-	bi1 = "buildId1"
-	bi2 = "buildId2"
+	s.bv = append(s.bv, "buildvariant1", "buildvariant2")
+	s.bi = append(s.bi, "buildId1", "buildId2")
 
 	// Initialize fields for a test version.Version
 	buildVariants := []version.BuildStatus{
 		{
-			BuildVariant: bv1,
-			BuildId:      bi1,
+			BuildVariant: s.bv[0],
+			BuildId:      s.bi[0],
 		},
 		{
-			BuildVariant: bv2,
-			BuildId:      bi2,
+			BuildVariant: s.bv[1],
+			BuildId:      s.bi[1],
 		},
 	}
 	testVersion1 := version.Version{
@@ -72,11 +72,34 @@ func (s *VersionSuite) SetupSuite() {
 		BuildVariants: buildVariants,
 	}
 
-	s.data = data.MockVersionConnector{
+	testBuild1 := build.Build{
+		Id:           s.bi[0],
+		CreateTime:   timeField,
+		StartTime:    timeField,
+		FinishTime:   timeField,
+		PushTime:     timeField,
+		Version:      versionId,
+		BuildVariant: s.bv[0],
+	}
+	testBuild2 := build.Build{
+		Id:           s.bi[1],
+		CreateTime:   timeField,
+		StartTime:    timeField,
+		FinishTime:   timeField,
+		PushTime:     timeField,
+		Version:      versionId,
+		BuildVariant: s.bv[1],
+	}
+
+	s.versionData = data.MockVersionConnector{
 		CachedVersions: []version.Version{testVersion1},
 	}
+	s.buildData = data.MockBuildConnector{
+		CachedBuilds: []build.Build{testBuild1, testBuild2},
+	}
 	s.sc = &data.MockConnector{
-		MockVersionConnector: s.data,
+		MockVersionConnector: s.versionData,
+		MockBuildConnector:   s.buildData,
 	}
 }
 
@@ -101,4 +124,25 @@ func (s *VersionSuite) TestFindByVersionId() {
 	s.Equal(model.APIString(status), h.Status)
 	s.Equal(model.APIString(repo), h.Repo)
 	s.Equal(model.APIString(branch), h.Branch)
+}
+
+// TestFindAllBuildsForVersion tests the route for finding all builds for a version.
+func (s *VersionSuite) TestFindAllBuildsForVersion() {
+	handler := &buildsForVersionHandler{versionId: "versionId"}
+	res, err := handler.Execute(nil, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(2, len(res.Result))
+
+	for idx, build := range res.Result {
+		b, ok := (build).(*model.APIBuild)
+		s.True(ok)
+		s.Equal(model.APIString(s.bi[idx]), b.Id)
+		s.Equal(model.APITime(timeField), b.CreateTime)
+		s.Equal(model.APITime(timeField), b.StartTime)
+		s.Equal(model.APITime(timeField), b.FinishTime)
+		s.Equal(model.APITime(timeField), b.PushTime)
+		s.Equal(model.APIString(versionId), b.Version)
+		s.Equal(model.APIString(s.bv[idx]), b.BuildVariant)
+	}
 }

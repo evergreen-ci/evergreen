@@ -39,6 +39,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/cost/version/{version_id}":                           getCostByVersionIdRouteManager,
 		"/cost/distro/{distro_id}":                             getCostByDistroIdRouteManager,
 		"/versions/{version_id}":                               getVersionIdRouteManager,
+		"/versions/{version_id}/builds":                        getBuildsForVersionRouteManager,
 	}
 
 	for path, getManager := range routes {
