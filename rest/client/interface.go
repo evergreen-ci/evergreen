@@ -33,29 +33,29 @@ type Communicator interface {
 	// Agent Operations
 	//
 	// StartTask marks the task as started.
-	StartTask(context.Context, string, string) error
+	StartTask(context.Context, TaskData) error
 	// EndTask marks the task as finished with the given status
-	EndTask(context.Context, *apimodels.TaskEndDetail, string, string) (*apimodels.EndTaskResponse, error)
+	EndTask(context.Context, *apimodels.TaskEndDetail, TaskData) (*apimodels.EndTaskResponse, error)
 	// GetTask returns the active task.
-	GetTask(context.Context, string, string) (*task.Task, error)
+	GetTask(context.Context, TaskData) (*task.Task, error)
 	// GetProjectRef loads the task's project.
-	GetProjectRef(context.Context, string, string) (*model.ProjectRef, error)
+	GetProjectRef(context.Context, TaskData) (*model.ProjectRef, error)
 	// GetDistro returns the distro for the task.
-	GetDistro(context.Context, string, string) (*distro.Distro, error)
+	GetDistro(context.Context, TaskData) (*distro.Distro, error)
 	// GetVersion loads the task's version.
-	GetVersion(context.Context, string, string) (*version.Version, error)
+	GetVersion(context.Context, TaskData) (*version.Version, error)
 	// Heartbeat sends a heartbeat to the API server. The server can respond with
 	// an "abort" response. This function returns true if the agent should abort.
-	Heartbeat(context.Context, string, string) (bool, error)
+	Heartbeat(context.Context, TaskData) (bool, error)
 	// FetchExpansionVars loads expansions for a communicator's task from the API server.
-	FetchExpansionVars(context.Context, string, string) (*apimodels.ExpansionVars, error)
+	FetchExpansionVars(context.Context, TaskData) (*apimodels.ExpansionVars, error)
 	// GetNextTask returns a next task response by getting the next task for a given host.
 	GetNextTask(context.Context) (*apimodels.NextTaskResponse, error)
 
 	// Sends a group of log messages to the API Server
-	SendTaskLogMessages(context.Context, string, string, []apimodels.LogMessage) error
+	SendTaskLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 	// Constructs a new LogProducer instance for use by tasks.
-	GetLoggerProducer(string, string) LoggerProducer
+	GetLoggerProducer(TaskData) LoggerProducer
 
 	// ---------------------------------------------------------------------
 	// End legacy API methods

@@ -13,7 +13,8 @@ func TestRestClientLogSnder(t *testing.T) {
 	assert := assert.New(t)
 
 	comm := NewMockEvergreenREST().(*MockEvergreenREST)
-	s := newLogSender(comm, "testStream", "task", "secret")
+	td := TaskData{"task", "secret"}
+	s := newLogSender(comm, "testStream", td)
 
 	assert.Len(comm.logMessages, 0)
 	assert.Len(comm.logMessages["task"], 0)

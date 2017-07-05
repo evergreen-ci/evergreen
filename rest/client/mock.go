@@ -42,42 +42,42 @@ func NewMockEvergreenREST() Communicator {
 }
 
 // StartTask returns nil.
-func (c *MockEvergreenREST) StartTask(ctx context.Context, taskID, taskSecret string) error {
+func (c *MockEvergreenREST) StartTask(ctx context.Context, taskData TaskData) error {
 	return nil
 }
 
 // EndTask returns an empty EndTaskResponse.
-func (c *MockEvergreenREST) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskID, taskSecret string) (*apimodels.EndTaskResponse, error) {
+func (c *MockEvergreenREST) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	return &apimodels.EndTaskResponse{}, nil
 }
 
 // GetTask returns an empty Task.
-func (c *MockEvergreenREST) GetTask(ctx context.Context, taskID, taskSecret string) (*task.Task, error) {
+func (c *MockEvergreenREST) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
 	return &task.Task{}, nil
 }
 
 // GetProjectRef returns an empty ProjectRef.
-func (c *MockEvergreenREST) GetProjectRef(ctx context.Context, taskID, taskSecret string) (*model.ProjectRef, error) {
+func (c *MockEvergreenREST) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
 	return &model.ProjectRef{}, nil
 }
 
 // GetDistro returns an empty Distro.
-func (c *MockEvergreenREST) GetDistro(ctx context.Context, taskID, taskSecret string) (*distro.Distro, error) {
+func (c *MockEvergreenREST) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
 	return &distro.Distro{}, nil
 }
 
 // GetVersion return an empty Version.
-func (c *MockEvergreenREST) GetVersion(ctx context.Context, taskID, taskSecret string) (*version.Version, error) {
+func (c *MockEvergreenREST) GetVersion(ctx context.Context, taskData TaskData) (*version.Version, error) {
 	return &version.Version{}, nil
 }
 
 // Heartbeat returns false, which indicates the heartbeat has succeeded.
-func (c *MockEvergreenREST) Heartbeat(ctx context.Context, taskID, taskSecret string) (bool, error) {
+func (c *MockEvergreenREST) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
 	return false, nil
 }
 
 // FetchExpansionVars returns an empty ExpansionVars.
-func (c *MockEvergreenREST) FetchExpansionVars(ctx context.Context, taskID, taskSecret string) (*apimodels.ExpansionVars, error) {
+func (c *MockEvergreenREST) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
 	return &apimodels.ExpansionVars{}, nil
 }
 
@@ -88,19 +88,19 @@ func (c *MockEvergreenREST) GetNextTask(ctx context.Context) (*apimodels.NextTas
 }
 
 // SendTaskLogMessages posts tasks messages to the api server
-func (c *MockEvergreenREST) SendTaskLogMessages(ctx context.Context, taskID, taskSecret string, msgs []apimodels.LogMessage) error {
+func (c *MockEvergreenREST) SendTaskLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
 	if c.loggingShouldFail {
 		return errors.New("logging failed")
 	}
 
-	c.logMessages[taskID] = append(c.logMessages[taskID], msgs...)
+	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
 
 	return nil
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *MockEvergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProducer {
-	return NewSingleChannelLogHarness(taskID, newLogSender(c, apimodels.AgentLogPrefix, taskID, taskSecret))
+func (c *MockEvergreenREST) GetLoggerProducer(taskData TaskData) LoggerProducer {
+	return NewSingleChannelLogHarness(taskData.ID, newLogSender(c, apimodels.AgentLogPrefix, taskData))
 }
 
 // GetAllHosts ...

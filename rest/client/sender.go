@@ -13,20 +13,18 @@ import (
 )
 
 type logSender struct {
-	taskID     string
-	taskSecret string
-	logChannel string
-	comm       Communicator
+	logTaskData TaskData
+	logChannel  string
+	comm        Communicator
 	*send.Base
 }
 
-func newLogSender(comm Communicator, channel, taskID, taskSecret string) send.Sender {
+func newLogSender(comm Communicator, channel string, taskData TaskData) send.Sender {
 	s := &logSender{
-		comm:       comm,
-		logChannel: channel,
-		taskID:     taskID,
-		taskSecret: taskSecret,
-		Base:       send.NewBase(taskID),
+		comm:        comm,
+		logChannel:  channel,
+		logTaskData: taskData,
+		Base:        send.NewBase(taskData.ID),
 	}
 
 	_ = s.Base.SetErrorHandler(send.ErrorHandlerFromSender(grip.GetSender()))
@@ -38,8 +36,7 @@ func (s *logSender) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
 		err := s.comm.SendTaskLogMessages(
 			context.TODO(),
-			s.taskID,
-			s.taskSecret,
+			s.logTaskData,
 			s.convertMessages(m))
 
 		if err != nil {

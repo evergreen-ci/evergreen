@@ -36,6 +36,12 @@ type evergreenREST struct {
 	apiKey     string
 }
 
+// TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
+type TaskData struct {
+	ID     string
+	Secret string
+}
+
 // NewEvergreenREST returns a Communicator capable of making HTTP REST requests against
 // the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
 // and SetMaxAttempts methods.
@@ -86,7 +92,7 @@ func (c *evergreenREST) SetAPIKey(apiKey string) {
 }
 
 // GetLogProducer
-func (c *evergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProducer {
+func (c *evergreenREST) GetLoggerProducer(taskData TaskData) LoggerProducer {
 	const (
 		bufferTime  = 15 * time.Second
 		bufferCount = 100
@@ -94,26 +100,26 @@ func (c *evergreenREST) GetLoggerProducer(taskID, taskSecret string) LoggerProdu
 
 	local := grip.GetSender()
 
-	exec := newLogSender(c, apimodels.AgentLogPrefix, taskID, taskSecret)
+	exec := newLogSender(c, apimodels.AgentLogPrefix, taskData)
 	grip.CatchWarning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewBufferedSender(exec, bufferTime, bufferCount)
 	exec = send.NewConfiguredMultiSender(local, exec)
 
-	task := newLogSender(c, apimodels.TaskLogPrefix, taskID, taskSecret)
+	task := newLogSender(c, apimodels.TaskLogPrefix, taskData)
 	grip.CatchWarning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewBufferedSender(task, bufferTime, bufferCount)
 	task = send.NewConfiguredMultiSender(local, task)
 
-	system := newLogSender(c, apimodels.SystemLogPrefix, taskID, taskSecret)
+	system := newLogSender(c, apimodels.SystemLogPrefix, taskData)
 	grip.CatchWarning(system.SetFormatter(send.MakeDefaultFormatter()))
 	system = send.NewBufferedSender(system, bufferTime, bufferCount)
 	system = send.NewConfiguredMultiSender(local, system)
 
-	taskWriter := newLogSender(c, apimodels.TaskLogPrefix, taskID, taskSecret)
+	taskWriter := newLogSender(c, apimodels.TaskLogPrefix, taskData)
 	taskWriter = send.NewBufferedSender(taskWriter, bufferTime, bufferCount)
 	taskWriter = send.NewConfiguredMultiSender(local, taskWriter)
 
-	systemWriter := newLogSender(c, apimodels.SystemLogPrefix, taskID, taskSecret)
+	systemWriter := newLogSender(c, apimodels.SystemLogPrefix, taskData)
 	systemWriter = send.NewBufferedSender(systemWriter, bufferTime, bufferCount)
 	systemWriter = send.NewConfiguredMultiSender(local, systemWriter)
 
