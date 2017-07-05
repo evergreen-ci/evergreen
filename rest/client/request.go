@@ -82,7 +82,10 @@ func (c *evergreenREST) retryGet(ctx context.Context, path, taskSecret, version 
 			if err != nil {
 				grip.Error(err)
 			} else if resp == nil {
-				grip.Error("empty response")
+				// return immediately if response is nil
+				err = errors.New("empty response from API server")
+				grip.Error(err)
+				return nil, err
 			} else {
 				return resp, nil
 			}

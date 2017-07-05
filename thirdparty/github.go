@@ -215,10 +215,10 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent, 
 			"commit":  githash,
 			"repo":    repoID,
 			"url":     commitURL,
-			"error":   err.Cause(),
+			"error":   err.Error(),
 			"message": "problem querying repo",
 		})
-		return nil, APIResponseError{err}
+		return nil, APIResponseError{err.Error()}
 	}
 
 	respBody, err := ioutil.ReadAll(resp.Body)
