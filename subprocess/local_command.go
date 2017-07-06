@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type LocalCommand struct {
@@ -24,7 +25,7 @@ type LocalCommand struct {
 	mutex            sync.RWMutex
 }
 
-func (lc *LocalCommand) Run() error {
+func (lc *LocalCommand) Run(ctx context.Context) error {
 	err := lc.Start()
 	if err != nil {
 		return err
@@ -33,7 +34,20 @@ func (lc *LocalCommand) Run() error {
 	lc.mutex.RLock()
 	defer lc.mutex.RUnlock()
 
-	return lc.Cmd.Wait()
+	errChan := make(chan error)
+	go func() {
+		errChan <- lc.Cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		err = lc.Cmd.Process.Kill()
+		return errors.Wrapf(err,
+			"operation '%s' was canceled and terminated.",
+			lc.CmdString)
+	case err = <-errChan:
+		return errors.WithStack(err)
+	}
 }
 
 func (lc *LocalCommand) GetPid() int {

@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestTarGzPackParseParams(t *testing.T) {
@@ -116,7 +117,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 					Stdout:           ioutil.Discard,
 					Stderr:           ioutil.Discard,
 				}
-				So(untarCmd.Run(), ShouldBeNil)
+				So(untarCmd.Run(context.TODO()), ShouldBeNil)
 
 				// make sure that the correct files were included
 				exists, err = util.FileExists(

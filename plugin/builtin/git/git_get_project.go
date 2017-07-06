@@ -13,6 +13,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // GitGetProjectCommand is a command that fetches source code from git for the project
@@ -92,10 +93,11 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 		ScriptMode:       true,
 	}
 
+	ctx, cancel := context.WithCancel(context.TODO())
 	errChan := make(chan error)
 	go func() {
 		pluginLogger.LogExecution(slogger.INFO, "Fetching source from git...")
-		errChan <- fetchSourceCmd.Run()
+		errChan <- fetchSourceCmd.Run(ctx)
 		pluginLogger.Flush()
 	}()
 
@@ -106,6 +108,7 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 			return errors.WithStack(err)
 		}
 	case <-stop:
+		cancel()
 		pluginLogger.LogExecution(slogger.INFO, "Got kill signal")
 		if fetchSourceCmd.Cmd != nil {
 			pluginLogger.LogExecution(slogger.INFO, "Stopping process: %v", fetchSourceCmd.Cmd.Process.Pid)
@@ -168,8 +171,9 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 			ScriptMode:       true,
 		}
 
+		ctx, cancel := context.WithCancel(context.TODO())
 		go func() {
-			errChan <- moduleFetchCmd.Run()
+			errChan <- moduleFetchCmd.Run(ctx)
 			pluginLogger.Flush()
 		}()
 
@@ -180,6 +184,7 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 				return err
 			}
 		case <-stop:
+			cancel()
 			pluginLogger.LogExecution(slogger.INFO, "Got kill signal")
 			if moduleFetchCmd.Cmd != nil {
 				pluginLogger.LogExecution(slogger.INFO, "Stopping process: %v", moduleFetchCmd.Cmd.Process.Pid)

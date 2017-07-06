@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/yaml.v2"
 )
@@ -236,7 +237,8 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 			ScriptMode:       true,
 		}
 
-		if err = patchCmd.Run(); err != nil {
+		ctx := context.TODO()
+		if err = patchCmd.Run(ctx); err != nil {
 			return nil, errors.Errorf("could not run patch command: %v", err)
 		}
 		// read in the patched config file

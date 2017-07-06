@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // GitApplyPatchCommand is deprecated. Its functionality is now a part of GitGetProjectCommand.
@@ -225,7 +226,7 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 			ScriptMode:       true,
 		}
 
-		if err = patchCmd.Run(); err != nil {
+		if err = patchCmd.Run(context.TODO()); err != nil {
 			return errors.WithStack(err)
 		}
 		pluginLogger.Flush()

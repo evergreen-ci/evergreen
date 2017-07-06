@@ -11,6 +11,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // AgentCommand encapsulates a running local command and streams logs
@@ -57,9 +58,10 @@ func (ac *AgentCommand) Run(workingDir string) error {
 
 	ac.LogTask(slogger.INFO, "Running command (expanded): %v", cmd.CmdString)
 
+	ctx, cancel := context.WithCancel(context.TODO())
 	doneStatus := make(chan error)
 	go func() {
-		doneStatus <- cmd.Run()
+		doneStatus <- cmd.Run(ctx)
 	}()
 
 	select {
@@ -72,6 +74,7 @@ func (ac *AgentCommand) Run(workingDir string) error {
 	case <-ac.KillChan:
 		// try and kill the process
 		ac.LogExecution(slogger.INFO, "Got kill signal, stopping process: %v", cmd.GetPid())
+		cancel()
 		if err := cmd.Stop(); err != nil {
 			ac.LogExecution(slogger.ERROR, "Error occurred stopping process: %v", err)
 		}

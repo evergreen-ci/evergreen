@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
+	"golang.org/x/net/context"
 )
 
 // StatsCollector samples machine statistics and logs them
@@ -60,6 +61,8 @@ func (sc *StatsCollector) LogStats(exp *util.Expansions) {
 	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(sc.logger)
 
 	go func() {
+		ctx, cancel := context.WithCancel(context.TODO())
+		defer cancel()
 		for {
 			select {
 			case <-sc.stop:
@@ -73,7 +76,7 @@ func (sc *StatsCollector) LogStats(exp *util.Expansions) {
 						Stdout:    sysloggerInfoWriter,
 						Stderr:    sysloggerErrWriter,
 					}
-					if err := command.Run(); err != nil {
+					if err := command.Run(ctx); err != nil {
 						sc.logger.Logf(slogger.ERROR, "error running '%v': %v", cmd, err)
 					}
 				}
