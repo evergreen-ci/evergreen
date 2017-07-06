@@ -245,7 +245,7 @@ tasks:
     name: test-rest-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
-    name: test-command
+    name: test-subprocess
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-db-bsonutil
@@ -374,7 +374,7 @@ tasks:
     name: race-auth
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
-    name: race-command
+    name: race-subprocess
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-db-bsonutil

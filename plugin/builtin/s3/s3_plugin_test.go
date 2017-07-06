@@ -2,6 +2,7 @@ package s3
 
 import (
 	"fmt"
+	"golang.org/x/net/context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -9,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
@@ -18,6 +18,7 @@ import (
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -101,13 +102,14 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 		So(ioutil.WriteFile(localFileToTar, []byte(randStr), 0755), ShouldBeNil)
 
 		// tar it
-		tarCmd := &command.LocalCommand{
+		tarCmd := &subprocess.LocalCommand{
 			CmdString:        "tar czf put_test.tgz put_test",
 			WorkingDirectory: testDataDir,
 			Stdout:           ioutil.Discard,
 			Stderr:           ioutil.Discard,
 		}
-		testutil.HandleTestingErr(tarCmd.Run(), t, "Error tarring directories")
+		ctx := context.TODO()
+		testutil.HandleTestingErr(tarCmd.Run(ctx), t, "Error tarring directories")
 		tarballSource := filepath.Join(testDataDir, "put_test.tgz")
 
 		// remove the untarred version
@@ -228,7 +230,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			err = putCmd.Execute(&plugintest.MockLogger{}, pluginCom,
-				&model.TaskConfig{nil, nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
+				&model.TaskConfig{nil, nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &util.Expansions{}, "."}, make(chan bool))
 			So(err, ShouldBeNil)
 		})
 		Convey("put cmd without 'optional' and missing file should throw an error", func() {
@@ -253,7 +255,7 @@ func TestS3PutAndGetSingleFile(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			err = putCmd.Execute(&plugintest.MockLogger{}, pluginCom,
-				&model.TaskConfig{nil, nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &command.Expansions{}, "."}, make(chan bool))
+				&model.TaskConfig{nil, nil, nil, nil, nil, &model.BuildVariant{Name: "linux"}, &util.Expansions{}, "."}, make(chan bool))
 			So(err, ShouldNotBeNil)
 		})
 	})

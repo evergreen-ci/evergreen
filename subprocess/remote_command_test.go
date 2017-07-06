@@ -6,10 +6,12 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestRemoteCommand(t *testing.T) {
 	t.Skip("skipping because local testing ssh configuration is not implemented")
+	ctx := context.Background()
 
 	Convey("With a remote command", t, func() {
 
@@ -22,7 +24,7 @@ func TestRemoteCommand(t *testing.T) {
 				User:           TestRemoteUser,
 				Options:        []string{"-i", TestRemoteKey},
 			}
-			So(failCmd.Run(), ShouldNotBeNil)
+			So(failCmd.Run(ctx), ShouldNotBeNil)
 
 			trueCmd := &RemoteCommand{
 				CmdString:      "true",
@@ -32,7 +34,7 @@ func TestRemoteCommand(t *testing.T) {
 				User:           TestRemoteUser,
 				Options:        []string{"-i", TestRemoteKey},
 			}
-			So(trueCmd.Run(), ShouldBeNil)
+			So(trueCmd.Run(ctx), ShouldBeNil)
 		})
 
 		Convey("output should be passed appropriately to the stdout and stderr"+
@@ -51,7 +53,7 @@ func TestRemoteCommand(t *testing.T) {
 			}
 
 			// run the command, make sure the output was given to stdout
-			So(command.Run(), ShouldBeNil)
+			So(command.Run(ctx), ShouldBeNil)
 			So(stdout.LastWritten, ShouldResemble, []byte("hi stdout\n"))
 			So(stderr.LastWritten, ShouldResemble, []byte("hi stderr\n"))
 
@@ -73,7 +75,7 @@ func TestRemoteCommand(t *testing.T) {
 			}
 
 			// run the command, it should finish rather than sleeping forever
-			So(command.Run(), ShouldBeNil)
+			So(command.Run(ctx), ShouldBeNil)
 
 			// clean up the sleeping process
 			cleanupCmd := &RemoteCommand{
@@ -84,7 +86,7 @@ func TestRemoteCommand(t *testing.T) {
 				User:           TestRemoteUser,
 				Options:        []string{"-i", TestRemoteKey},
 			}
-			So(cleanupCmd.Run(), ShouldBeNil)
+			So(cleanupCmd.Run(ctx), ShouldBeNil)
 
 		})
 

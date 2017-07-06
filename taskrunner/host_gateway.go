@@ -17,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -153,7 +154,10 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	grip.Infof("Directories command: '%#v'", makeShellCmd)
 
 	// run the make shell command with a timeout
-	err = util.RunFunctionWithTimeout(makeShellCmd.Run, MakeShellTimeout)
+	ctx, cancel := context.WithTimeout(context.TODO(), MakeShellTimeout)
+	defer cancel()
+	err = makeShellCmd.Run(ctx)
+
 	grip.Notice(makeShellCmd.Stop())
 	if err != nil {
 		// if it timed out, kill the command
@@ -188,7 +192,9 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	grip.Error(errors.Wrap(err, "Error getting pre scp agent revision"))
 
 	// run the command to scp the agent with a timeout
-	err = util.RunFunctionWithTimeout(scpAgentCmd.Run, SCPTimeout)
+	ctx, cancel = context.WithTimeout(context.TODO(), SCPTimeout)
+	defer cancel()
+	err = scpAgentCmd.Run(ctx)
 	grip.Notice(scpAgentCmd.Stop())
 	if err != nil {
 		if err == util.ErrTimedOut {
@@ -244,11 +250,9 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		Background:     true,
 	}
 
-	// run the command to start the agent with a timeout
-	err = util.RunFunctionWithTimeout(
-		startAgentCmd.Run,
-		StartAgentTimeout,
-	)
+	ctx, cancel := context.WithTimeout(context.TODO(), StartAgentTimeout)
+	defer cancel()
+	err = startAgentCmd.Run(ctx)
 
 	// run cleanup regardless of what happens.
 	grip.Notice(startAgentCmd.Stop())

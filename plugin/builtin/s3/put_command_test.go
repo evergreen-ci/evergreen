@@ -3,9 +3,9 @@ package s3
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -234,7 +234,7 @@ func TestExpandS3PutParams(t *testing.T) {
 
 			cmd = &S3PutCommand{}
 			conf = &model.TaskConfig{
-				Expansions: command.NewExpansions(map[string]string{}),
+				Expansions: util.NewExpansions(map[string]string{}),
 			}
 
 			Convey("all appropriate values should be expanded, if they"+

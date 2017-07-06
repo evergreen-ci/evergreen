@@ -2,8 +2,8 @@ package distro
 
 import (
 	"fmt"
-	"time"
 	"math/rand"
+	"time"
 )
 
 // UserData validation formats
@@ -12,7 +12,7 @@ const (
 	UserDataFormatJSON           = "json"
 	UserDataFormatYAML           = "yaml"
 	// NameTimeFormat is the format in which to log times like instance start time.
-	NameTimeFormat               = "20060102150405"
+	NameTimeFormat = "20060102150405"
 )
 
 type Distro struct {

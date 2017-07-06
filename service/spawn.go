@@ -19,6 +19,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -215,8 +216,9 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error constructing host RDP password"))
 			return
 		}
+
 		// update RDP and sshd password
-		if err = pwdUpdateCmd.Run(); err != nil {
+		if err = pwdUpdateCmd.Run(context.TODO()); err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host RDP password"))
 			return
 		}

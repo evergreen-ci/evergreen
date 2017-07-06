@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2"
 )
 
@@ -302,8 +303,11 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 		User:           user,
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
 	}
-	err = util.RunFunctionWithTimeout(scpCmd.Run, SCPTimeout)
-	if err != nil {
+	// run the command to scp the agent with a timeout
+	ctx, cancel := context.WithTimeout(context.TODO(), SCPTimeout)
+	defer cancel()
+
+	if err = scpCmd.Run(ctx); err != nil {
 		if err == util.ErrTimedOut {
 			grip.Warning(scpCmd.Stop())
 			return errors.Wrap(err, "scp-ing script timed out")
@@ -471,12 +475,15 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	}
 
 	scpOut := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
+
 	// run the make shell command with a timeout
-	err = util.RunFunctionWithTimeout(makeShellCmd.Run, 30*time.Second)
-	if err != nil {
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+	if err = makeShellCmd.Run(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error running setup command for cli, %v",
 			mkdirOutput.Buffer.String())
 	}
+
 	// place the binary into the directory
 	scpSetupCmd := &subprocess.ScpCommand{
 		Source:         cliBinaryPath,
@@ -489,8 +496,9 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	}
 
 	// run the command to scp the setup script with a timeout
-	err = util.RunFunctionWithTimeout(scpSetupCmd.Run, 3*time.Minute)
-	if err != nil {
+	ctx, cancel = context.WithTimeout(context.TODO(), 3*time.Minute)
+	defer cancel()
+	if err = scpSetupCmd.Run(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error running SCP command for cli, %v: '%v'", scpOut.Buffer.String())
 	}
 
@@ -521,8 +529,10 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 		User:           target.User,
 		Options:        append([]string{"-P", hostSSHInfo.Port}, sshOptions...),
 	}
-	err = util.RunFunctionWithTimeout(scpYmlCommand.Run, 30*time.Second)
-	if err != nil {
+	ctx, cancel = context.WithTimeout(context.TODO(), 30*time.Second)
+	defer cancel()
+
+	if err = scpYmlCommand.Run(ctx); err != nil {
 		return nil, errors.Wrapf(err, "error running SCP command for evergreen.yml, %v", scpOut.Buffer.String())
 	}
 
@@ -567,5 +577,7 @@ func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, targ
 	}
 
 	// run the make shell command with a timeout
-	return errors.WithStack(util.RunFunctionWithTimeout(makeShellCmd.Run, 15*time.Minute))
+	ctx, cancel := context.WithTimeout(context.TODO(), 15*time.Minute)
+	defer cancel()
+	return errors.WithStack(makeShellCmd.Run(ctx))
 }

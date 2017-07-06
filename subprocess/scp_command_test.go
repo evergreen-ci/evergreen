@@ -15,11 +15,13 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestScpCommand(t *testing.T) {
 	t.Skip("skipping because local testing ssh configuration is not implemented")
 
+	ctx := context.TODO()
 	Convey("With files to scp", t, func() {
 
 		// the local files and target directory for scping
@@ -65,7 +67,7 @@ func TestScpCommand(t *testing.T) {
 					Options:        []string{"-i", TestRemoteKey},
 					SourceIsRemote: false,
 				}
-				So(scpCommand.Run(), ShouldBeNil)
+				So(scpCommand.Run(ctx), ShouldBeNil)
 
 				// make sure the file was scp-ed over
 				newFileContents, err := ioutil.ReadFile(
@@ -88,7 +90,7 @@ func TestScpCommand(t *testing.T) {
 					Options:        []string{"-i", TestRemoteKey},
 					SourceIsRemote: true,
 				}
-				So(scpCommand.Run(), ShouldBeNil)
+				So(scpCommand.Run(ctx), ShouldBeNil)
 
 				// make sure the file was scp-ed over
 				newFileContents, err = ioutil.ReadFile(
@@ -112,7 +114,7 @@ func TestScpCommand(t *testing.T) {
 					Options:        []string{"-i", TestRemoteKey, "-r"},
 					SourceIsRemote: false,
 				}
-				So(scpCommand.Run(), ShouldBeNil)
+				So(scpCommand.Run(ctx), ShouldBeNil)
 
 				// make sure the entire directory was scp-ed over
 				nestedFileContents, err := ioutil.ReadFile(

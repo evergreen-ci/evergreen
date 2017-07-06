@@ -6,6 +6,8 @@ import (
 	"os/exec"
 
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type ScpCommand struct {
@@ -28,7 +30,7 @@ type ScpCommand struct {
 	Cmd *exec.Cmd
 }
 
-func (self *ScpCommand) Run() error {
+func (self *ScpCommand) Run(ctx context.Context) error {
 	grip.Debugf("SCPCommand(%s) beginning Run()", self.Id)
 
 	if err := self.Start(); err != nil {
@@ -38,10 +40,23 @@ func (self *ScpCommand) Run() error {
 	if self.Cmd != nil && self.Cmd.Process != nil {
 		grip.Debugf("SCPCommand(%s) started process %d", self.Id, self.Cmd.Process.Pid)
 	} else {
-		grip.Debugf("SCPCommand(%s) has nil Cmd or Cmd.Process in Run()", self.Id)
+		grip.Warningf("SCPCommand(%s) has nil Cmd or Cmd.Process in Run()", self.Id)
 	}
 
-	return self.Cmd.Wait()
+	errChan := make(chan error)
+	go func() {
+		errChan <- self.Cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		err := self.Cmd.Process.Kill()
+		return errors.Wrapf(err,
+			"scp operation '%s=>%s' was canceled and terminated.",
+			self.Source, self.Dest)
+	case err := <-errChan:
+		return errors.WithStack(err)
+	}
 }
 
 func (self *ScpCommand) Start() error {

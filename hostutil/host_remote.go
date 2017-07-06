@@ -2,11 +2,13 @@ package hostutil
 
 import (
 	"bytes"
+	"golang.org/x/net/context"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 )
 
 const SSHTimeout = time.Minute * 10
@@ -50,9 +52,9 @@ func RunRemoteScript(h *host.Host, script string, sshOptions []string) (string, 
 	cmd.Options = append(cmd.Options, sshOptions...)
 
 	// run the ssh command with given timeout
-	err = util.RunFunctionWithTimeout(
-		cmd.Run,
-		SSHTimeout,
-	)
-	return sshCmdStd.String(), err
+	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
+	defer cancel()
+	err = cmd.Run(ctx)
+
+	return sshCmdStd.String(), errors.WithStack(err)
 }

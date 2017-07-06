@@ -8,6 +8,7 @@ import (
 
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type RemoteCommand struct {
@@ -30,18 +31,33 @@ type RemoteCommand struct {
 	Cmd *exec.Cmd
 }
 
-func (rc *RemoteCommand) Run() error {
+func (rc *RemoteCommand) Run(ctx context.Context) error {
 	grip.Debugf("RemoteCommand(%s) beginning Run()", rc.Id)
 	err := rc.Start()
 	if err != nil {
 		return err
 	}
+
 	if rc.Cmd != nil && rc.Cmd.Process != nil {
 		grip.Debugf("RemoteCommand(%s) started process %d", rc.Id, rc.Cmd.Process.Pid)
 	} else {
-		grip.Debugf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
+		grip.Warningf("RemoteCommand(%s) has nil Cmd or Cmd.Process in Run()", rc.Id)
 	}
-	return rc.Cmd.Wait()
+
+	errChan := make(chan error)
+	go func() {
+		errChan <- rc.Cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		err = rc.Cmd.Process.Kill()
+		return errors.Wrapf(err,
+			"operation '%s' was canceled and terminated.",
+			rc.CmdString)
+	case err = <-errChan:
+		return errors.WithStack(err)
+	}
 }
 
 func (rc *RemoteCommand) Wait() error {
