@@ -15,7 +15,6 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/command"
 	dbutil "github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -28,6 +27,7 @@ import (
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/slogger"
@@ -104,7 +104,7 @@ func createAgent(testServer *service.TestServer, testHost *host.Host) (*Agent, e
 	}
 
 	testAgent.heartbeater.Interval = 10 * time.Second
-	testAgent.taskConfig = &model.TaskConfig{Expansions: &command.Expansions{}}
+	testAgent.taskConfig = &model.TaskConfig{Expansions: &util.Expansions{}}
 
 	if err := testAgent.Setup(); err != nil {
 		return nil, err

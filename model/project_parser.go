@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"reflect"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -212,17 +211,17 @@ func (ts *taskSelector) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // parserBV is a helper type storing intermediary variant definitions.
 type parserBV struct {
-	Name        string             `yaml:"name"`
-	DisplayName string             `yaml:"display_name"`
-	Expansions  command.Expansions `yaml:"expansions"`
-	Tags        parserStringSlice  `yaml:"tags"`
-	Modules     parserStringSlice  `yaml:"modules"`
-	Disabled    bool               `yaml:"disabled"`
-	Push        bool               `yaml:"push"`
-	BatchTime   *int               `yaml:"batchtime"`
-	Stepback    *bool              `yaml:"stepback"`
-	RunOn       parserStringSlice  `yaml:"run_on"`
-	Tasks       parserBVTasks      `yaml:"tasks"`
+	Name        string            `yaml:"name"`
+	DisplayName string            `yaml:"display_name"`
+	Expansions  util.Expansions   `yaml:"expansions"`
+	Tags        parserStringSlice `yaml:"tags"`
+	Modules     parserStringSlice `yaml:"modules"`
+	Disabled    bool              `yaml:"disabled"`
+	Push        bool              `yaml:"push"`
+	BatchTime   *int              `yaml:"batchtime"`
+	Stepback    *bool             `yaml:"stepback"`
+	RunOn       parserStringSlice `yaml:"run_on"`
+	Tasks       parserBVTasks     `yaml:"tasks"`
 
 	// internal matrix stuff
 	matrixId  string

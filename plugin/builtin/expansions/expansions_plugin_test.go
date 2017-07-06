@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -30,7 +30,7 @@ func TestExpansionsPlugin(t *testing.T) {
 			},
 		}
 
-		expansions := command.Expansions{}
+		expansions := util.Expansions{}
 		expansions.Put("base", "not eggs")
 		expansions.Put("topping", "bacon")
 
@@ -58,18 +58,18 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	httpCom := plugintest.TestAgentCommunicator(&modelutil.TestModelData{}, server.URL)
 	jsonCom := &comm.TaskJSONCommunicator{"shell", httpCom}
 
-	conf := &model.TaskConfig{Expansions: &command.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 
 	Convey("When running Update commands", t, func() {
 		Convey("if there is no expansion, the file name is not changed", func() {
-			So(conf.Expansions, ShouldResemble, &command.Expansions{})
+			So(conf.Expansions, ShouldResemble, &util.Expansions{})
 			cmd := &UpdateCommand{YamlFile: "foo"}
 			So(cmd.Execute(&plugintest.MockLogger{}, jsonCom, conf, stopper), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "foo")
 		})
 
 		Convey("With an Expansion, the file name is expanded", func() {
-			conf.Expansions = command.NewExpansions(map[string]string{"foo": "bar"})
+			conf.Expansions = util.NewExpansions(map[string]string{"foo": "bar"})
 			cmd := &UpdateCommand{YamlFile: "${foo}"}
 			So(cmd.Execute(&plugintest.MockLogger{}, jsonCom, conf, stopper), ShouldNotBeNil)
 			So(cmd.YamlFile, ShouldEqual, "bar")

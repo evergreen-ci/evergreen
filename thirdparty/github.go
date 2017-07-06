@@ -215,7 +215,7 @@ func GetCommitEvent(oauthToken, repoOwner, repo, githash string) (*CommitEvent, 
 			"commit":  githash,
 			"repo":    repoID,
 			"url":     commitURL,
-			"error":   err.Error(),
+			"error":   errors.Cause(err),
 			"message": "problem querying repo",
 		})
 		return nil, APIResponseError{err.Error()}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -64,14 +63,14 @@ func (ma matrixAxis) find(id string) (axisValue, error) {
 // axisValues make up the "points" along a matrix axis. Values are
 // combined during matrix evaluation to produce new variants.
 type axisValue struct {
-	Id          string             `yaml:"id"`
-	DisplayName string             `yaml:"display_name"`
-	Variables   command.Expansions `yaml:"variables"`
-	RunOn       parserStringSlice  `yaml:"run_on"`
-	Tags        parserStringSlice  `yaml:"tags"`
-	Modules     parserStringSlice  `yaml:"modules"`
-	BatchTime   *int               `yaml:"batchtime"`
-	Stepback    *bool              `yaml:"stepback"`
+	Id          string            `yaml:"id"`
+	DisplayName string            `yaml:"display_name"`
+	Variables   util.Expansions   `yaml:"variables"`
+	RunOn       parserStringSlice `yaml:"run_on"`
+	Tags        parserStringSlice `yaml:"tags"`
+	Modules     parserStringSlice `yaml:"modules"`
+	BatchTime   *int              `yaml:"batchtime"`
+	Stepback    *bool             `yaml:"stepback"`
 }
 
 // helper methods for tag selectors
@@ -302,10 +301,10 @@ func buildMatrixVariant(axes []matrixAxis, mv matrixValue, m *matrix, ase *axisS
 		BatchTime:  m.BatchTime,
 		Modules:    m.Modules,
 		RunOn:      m.RunOn,
-		Expansions: *command.NewExpansions(mv),
+		Expansions: *util.NewExpansions(mv),
 	}
 	// we declare a separate expansion map for evaluating the display name
-	displayNameExp := command.Expansions{}
+	displayNameExp := util.Expansions{}
 
 	// build up the variant id while iterating through axis values
 	idBuf := bytes.Buffer{}
@@ -452,7 +451,7 @@ func (pbv *parserBV) mergeAxisValue(av axisValue) error {
 }
 
 // expandStrings expands a slice of strings.
-func expandStrings(strings []string, exp command.Expansions) ([]string, error) {
+func expandStrings(strings []string, exp util.Expansions) ([]string, error) {
 	var expanded []string
 	for _, s := range strings {
 		newS, err := exp.ExpandString(s)
@@ -465,8 +464,8 @@ func expandStrings(strings []string, exp command.Expansions) ([]string, error) {
 }
 
 // expandExpansions expands expansion maps.
-func expandExpansions(in, exp command.Expansions) (command.Expansions, error) {
-	newExp := command.Expansions{}
+func expandExpansions(in, exp util.Expansions) (util.Expansions, error) {
+	newExp := util.Expansions{}
 	for k, v := range in {
 		newK, err := exp.ExpandString(k)
 		if err != nil {
@@ -482,7 +481,7 @@ func expandExpansions(in, exp command.Expansions) (command.Expansions, error) {
 }
 
 // expandParserBVTask expands strings inside parserBVTs.
-func expandParserBVTask(pbvt parserBVTask, exp command.Expansions) (parserBVTask, error) {
+func expandParserBVTask(pbvt parserBVTask, exp util.Expansions) (parserBVTask, error) {
 	var err error
 	newTask := pbvt
 	newTask.Name, err = exp.ExpandString(pbvt.Name)
@@ -524,7 +523,7 @@ func expandParserBVTask(pbvt parserBVTask, exp command.Expansions) (parserBVTask
 }
 
 // expandTaskSelector expands strings inside task selectors.
-func expandTaskSelector(ts taskSelector, exp command.Expansions) (taskSelector, error) {
+func expandTaskSelector(ts taskSelector, exp util.Expansions) (taskSelector, error) {
 	newTS := taskSelector{}
 	newName, err := exp.ExpandString(ts.Name)
 	if err != nil {
@@ -554,7 +553,7 @@ func expandTaskSelector(ts taskSelector, exp command.Expansions) (taskSelector, 
 }
 
 // expandMatrixDefinition expands strings inside matrix definitions.
-func expandMatrixDefinition(md matrixDefinition, exp command.Expansions) (matrixDefinition, error) {
+func expandMatrixDefinition(md matrixDefinition, exp util.Expansions) (matrixDefinition, error) {
 	var err error
 	newMS := matrixDefinition{}
 	for axis, vals := range md {
@@ -567,7 +566,7 @@ func expandMatrixDefinition(md matrixDefinition, exp command.Expansions) (matrix
 }
 
 // expandRules expands strings inside of rules.
-func expandRule(r matrixRule, exp command.Expansions) (matrixRule, error) {
+func expandRule(r matrixRule, exp util.Expansions) (matrixRule, error) {
 	newR := matrixRule{}
 	for _, md := range r.If {
 		newIf, err := expandMatrixDefinition(md, exp)

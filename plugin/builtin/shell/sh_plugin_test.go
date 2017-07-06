@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -30,7 +30,7 @@ func TestShellExecuteCommand(t *testing.T) {
 	httpCom := plugintest.TestAgentCommunicator(&modelutil.TestModelData{}, server.URL)
 	jsonCom := &comm.TaskJSONCommunicator{"shell", httpCom}
 
-	conf := &model.TaskConfig{Expansions: &command.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
 
 	Convey("With a shell command", t, func() {
 

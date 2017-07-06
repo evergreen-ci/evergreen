@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/agent/testutil"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/service"
 	tu "github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/send"
 	. "github.com/smartystreets/goconvey/convey"
@@ -27,7 +27,7 @@ func TestLocalJob(t *testing.T) {
 				ScriptLine:   "echo 'hi stdout!'; echo 'hi stderr!' >&2;",
 				StreamLogger: testutil.NewTestLogger(sender),
 				KillChan:     killChan,
-				Expansions:   command.NewExpansions(map[string]string{}),
+				Expansions:   util.NewExpansions(map[string]string{}),
 			}
 			err := testCmd.Run("")
 			So(err, ShouldBeNil)
@@ -55,7 +55,7 @@ func TestLocalJob(t *testing.T) {
 			ScriptLine:   "echo 'hi'; sleep 5; echo 'i should not get run'",
 			StreamLogger: testutil.NewTestLogger(sender),
 			KillChan:     killChan,
-			Expansions:   command.NewExpansions(map[string]string{}),
+			Expansions:   util.NewExpansions(map[string]string{}),
 		}
 
 		Convey("using kill channel should abort command right away", func() {

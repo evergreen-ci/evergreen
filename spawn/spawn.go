@@ -12,10 +12,10 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -150,7 +150,7 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
 	// replace expansions in the script
-	exp := command.NewExpansions(sm.settings.Expansions)
+	exp := util.NewExpansions(sm.settings.Expansions)
 	d.Setup, err = exp.ExpandString(d.Setup)
 	if err != nil {
 		return errors.Wrap(err, "expansions error")

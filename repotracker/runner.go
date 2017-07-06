@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -147,7 +148,7 @@ func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.
 		grip.Debugln("running repotracker for:", project.Identifier)
 
 		if err := tracker.FetchRevisions(num); err != nil {
-			grip.Error(message.Field{
+			grip.Error(message.Fields{
 				"project": project.Identifier,
 				"error":   err,
 				"message": "problem fetching revisions",

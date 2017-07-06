@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -520,7 +520,7 @@ func TestMergeAxisValue(t *testing.T) {
 			So(pbv.Tags, ShouldContain, "enterprise")
 			So(pbv.Stepback, ShouldNotBeNil)
 			So(pbv.BatchTime, ShouldNotBeNil)
-			So(pbv.Expansions, ShouldResemble, command.Expansions{
+			So(pbv.Expansions, ShouldResemble, util.Expansions{
 				"v1": "test",
 				"v2": "new",
 			})
@@ -539,7 +539,7 @@ func TestMergeAxisValue(t *testing.T) {
 			So(pbv.Modules, ShouldResemble, parserStringSlice{"test__"})
 			So(pbv.Tags, ShouldContain, "basic")
 			So(pbv.Tags, ShouldContain, "fattest!")
-			So(pbv.Expansions, ShouldResemble, command.Expansions{
+			So(pbv.Expansions, ShouldResemble, util.Expansions{
 				"v1": "test",
 				"v2": "test!",
 			})

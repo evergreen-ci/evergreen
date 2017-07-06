@@ -8,7 +8,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/notify"
 	"github.com/evergreen-ci/evergreen/spawn"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -257,7 +257,7 @@ func (uis *UIServer) modifySpawnHost(w http.ResponseWriter, r *http.Request) {
 // constructPwdUpdateCommand returns a RemoteCommand struct used to
 // set the RDP password on a remote windows machine.
 func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
-	password string) (*command.RemoteCommand, error) {
+	password string) (*subprocess.RemoteCommand, error) {
 
 	cloudHost, err := providers.GetCloudHost(hostObj, settings)
 	if err != nil {
@@ -282,7 +282,7 @@ func constructPwdUpdateCommand(settings *evergreen.Settings, hostObj *host.Host,
 		hostObj.User, password)
 
 	// construct the required termination command
-	remoteCommand := &command.RemoteCommand{
+	remoteCommand := &subprocess.RemoteCommand{
 		CmdString:       updatePwdCmd,
 		Stdout:          outputLineHandler,
 		Stderr:          errorLineHandler,

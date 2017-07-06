@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 )
 
@@ -34,7 +34,7 @@ func RunRemoteScript(h *host.Host, script string, sshOptions []string) (string, 
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1MB
 	}
-	cmd := &command.RemoteCommand{
+	cmd := &subprocess.RemoteCommand{
 		CmdString:      sudoStr + "sh " + script,
 		Stdout:         sshCmdStd,
 		Stderr:         sshCmdStd,

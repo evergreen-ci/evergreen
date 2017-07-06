@@ -5,7 +5,8 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
 )
 
@@ -32,7 +33,7 @@ func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration,
 	}
 }
 
-func (sc *StatsCollector) expandCommands(exp *command.Expansions) {
+func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 	expandedCmds := []string{}
 	for _, cmd := range sc.Cmds {
 		expanded, err := exp.ExpandString(cmd)
@@ -45,7 +46,7 @@ func (sc *StatsCollector) expandCommands(exp *command.Expansions) {
 	sc.Cmds = expandedCmds
 }
 
-func (sc *StatsCollector) LogStats(exp *command.Expansions) {
+func (sc *StatsCollector) LogStats(exp *util.Expansions) {
 	sc.expandCommands(exp)
 
 	if sc.Interval < 0 {
@@ -67,7 +68,7 @@ func (sc *StatsCollector) LogStats(exp *command.Expansions) {
 			default:
 				for _, cmd := range sc.Cmds {
 					sc.logger.Logf(slogger.INFO, "Running %v", cmd)
-					command := &command.LocalCommand{
+					command := &subprocess.LocalCommand{
 						CmdString: cmd,
 						Stdout:    sysloggerInfoWriter,
 						Stderr:    sysloggerErrWriter,

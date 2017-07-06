@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
@@ -155,7 +155,7 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 		logWriterErr = pluginLogger.GetSystemLogWriter(slogger.ERROR)
 	}
 
-	localCmd := &command.LocalCommand{
+	localCmd := &subprocess.LocalCommand{
 		CmdString:  sec.Script,
 		Stdout:     logWriterInfo,
 		Stderr:     logWriterErr,

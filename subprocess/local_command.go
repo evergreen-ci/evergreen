@@ -1,4 +1,4 @@
-package command
+package subprocess
 
 import (
 	"io"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -91,7 +92,7 @@ func (lc *LocalCommand) Stop() error {
 	return nil
 }
 
-func (lc *LocalCommand) PrepToRun(expansions *Expansions) error {
+func (lc *LocalCommand) PrepToRun(expansions *util.Expansions) error {
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
@@ -104,18 +105,4 @@ func (lc *LocalCommand) PrepToRun(expansions *Expansions) error {
 
 	lc.WorkingDirectory, err = expansions.ExpandString(lc.WorkingDirectory)
 	return errors.WithStack(err)
-}
-
-type LocalCommandGroup struct {
-	Commands   []*LocalCommand
-	Expansions *Expansions
-}
-
-func (lc *LocalCommandGroup) PrepToRun() error {
-	for _, cmd := range lc.Commands {
-		if err := cmd.PrepToRun(lc.Expansions); err != nil {
-			return err
-		}
-	}
-	return nil
 }

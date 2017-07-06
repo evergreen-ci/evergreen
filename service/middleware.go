@@ -464,9 +464,8 @@ func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Ha
 	next(rw, r)
 
 	res := rw.(negroni.ResponseWriter)
-	// "Completed (%v) %v %s in %v", reqId, res.Status(), http.StatusText(res.Status()), time.Since(start)
 
-	grip.Infof(message.Fields{
+	grip.Info(message.Fields{
 		"method":   r.Method,
 		"remote":   r.RemoteAddr,
 		"request":  reqID,

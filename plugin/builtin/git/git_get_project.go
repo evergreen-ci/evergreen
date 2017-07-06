@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
@@ -84,7 +84,7 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
 
-	fetchSourceCmd := &command.LocalCommand{
+	fetchSourceCmd := &subprocess.LocalCommand{
 		CmdString:        cmdsJoined,
 		WorkingDirectory: conf.WorkDir,
 		Stdout:           pluginLogger.GetTaskLogWriter(slogger.INFO),
@@ -160,7 +160,7 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 			fmt.Sprintf("cd %v; git checkout '%v'", filepath.ToSlash(moduleBase), revision),
 		}
 
-		moduleFetchCmd := &command.LocalCommand{
+		moduleFetchCmd := &subprocess.LocalCommand{
 			CmdString:        strings.Join(moduleCmds, "\n"),
 			WorkingDirectory: filepath.ToSlash(filepath.Join(conf.WorkDir, ggpc.Directory)),
 			Stdout:           pluginLogger.GetTaskLogWriter(slogger.INFO),

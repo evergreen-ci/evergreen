@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -19,7 +18,7 @@ const (
 // Taking in the input and expansions map, apply the expansions to any
 // appropriate fields in the input.  The input must be a pointer to a struct
 // so that the underlying struct can be modified.
-func ExpandValues(input interface{}, expansions *command.Expansions) error {
+func ExpandValues(input interface{}, expansions *util.Expansions) error {
 
 	// make sure the input is a pointer to a map or struct
 	if reflect.ValueOf(input).Type().Kind() != reflect.Ptr {
@@ -46,7 +45,7 @@ func ExpandValues(input interface{}, expansions *command.Expansions) error {
 
 // Helper function to expand a map. Returns expanded version with
 // both keys and values expanded
-func expandMap(inputMap reflect.Value, expansions *command.Expansions) error {
+func expandMap(inputMap reflect.Value, expansions *util.Expansions) error {
 
 	if inputMap.Type().Key().Kind() != reflect.String {
 		return errors.New("input map to expand must have keys of string type")
@@ -90,7 +89,7 @@ func expandMap(inputMap reflect.Value, expansions *command.Expansions) error {
 
 // Helper function to expand a single struct.  Returns the expanded version
 // of the struct.
-func expandStruct(inputVal reflect.Value, expansions *command.Expansions) error {
+func expandStruct(inputVal reflect.Value, expansions *util.Expansions) error {
 
 	// find any values with an expandable tag
 	numFields := inputVal.NumField()
@@ -173,7 +172,7 @@ func expandStruct(inputVal reflect.Value, expansions *command.Expansions) error 
 	return nil
 }
 
-func expandString(inputVal reflect.Value, expansions *command.Expansions) error {
+func expandString(inputVal reflect.Value, expansions *util.Expansions) error {
 	expanded, err := expansions.ExpandString(inputVal.String())
 	if err != nil {
 		return errors.WithStack(err)

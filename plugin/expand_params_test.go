@@ -3,7 +3,7 @@ package plugin
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -28,7 +28,7 @@ func TestExpandValues(t *testing.T) {
 
 	Convey("When expanding struct values", t, func() {
 
-		expansions := command.NewExpansions(
+		expansions := util.NewExpansions(
 			map[string]string{
 				"exp1": "val1",
 			},
@@ -230,7 +230,7 @@ func TestExpandValues(t *testing.T) {
 	})
 
 	Convey("When expanding map values", t, func() {
-		expansions := command.NewExpansions(
+		expansions := util.NewExpansions(
 			map[string]string{
 				"a": "A",
 				"b": "B",

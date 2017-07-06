@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
@@ -228,7 +228,7 @@ func MakePatchedConfig(p *patch.Patch, remoteConfigPath, projectConfig string) (
 				remoteConfigPath, patchFilePath),
 		}
 
-		patchCmd := &command.LocalCommand{
+		patchCmd := &subprocess.LocalCommand{
 			CmdString:        strings.Join(patchCommandStrings, "\n"),
 			WorkingDirectory: workingDirectory,
 			Stdout:           evergreen.NewInfoLoggingWriter(&evergreen.Logger),

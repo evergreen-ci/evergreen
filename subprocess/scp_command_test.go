@@ -3,7 +3,7 @@
 // the syscall.Umask call in this test is unix only. This test has
 // never run on non-linux platforms, but perhaps it should, in the future
 
-package command
+package subprocess
 
 import (
 	"io/ioutil"

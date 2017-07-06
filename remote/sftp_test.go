@@ -3,7 +3,7 @@ package remote
 import (
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -12,9 +12,9 @@ func TestSFTPGateway(t *testing.T) {
 
 	Convey("When using an SFTPGateway", t, func() {
 		gateway := &SFTPGateway{
-			Host:    command.TestRemote + ":22",
-			User:    command.TestRemoteUser,
-			Keyfile: command.TestRemoteKey,
+			Host:    subprocess.TestRemote + ":22",
+			User:    subprocess.TestRemoteUser,
+			Keyfile: subprocess.TestRemoteKey,
 		}
 
 		Convey("the encapsualted client should be usable after the Init() call", func() {

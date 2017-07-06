@@ -6,7 +6,8 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/agent/comm"
-	"github.com/evergreen-ci/evergreen/command"
+	"github.com/evergreen-ci/evergreen/subprocess"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ import (
 type AgentCommand struct {
 	*comm.StreamLogger
 	ScriptLine string
-	Expansions *command.Expansions
+	Expansions *util.Expansions
 	KillChan   chan bool
 }
 
@@ -42,7 +43,7 @@ func (ac *AgentCommand) Run(workingDir string) error {
 		ignoreErrors = true
 	}
 
-	cmd := &command.LocalCommand{
+	cmd := &subprocess.LocalCommand{
 		CmdString:        ac.ScriptLine,
 		WorkingDirectory: workingDir,
 		Stdout:           logWriterInfo,

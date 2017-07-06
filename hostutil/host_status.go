@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 )
@@ -26,7 +26,7 @@ func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) 
 	}
 
 	// construct a command to check reachability
-	remoteCommand := &command.RemoteCommand{
+	remoteCommand := &subprocess.RemoteCommand{
 		CmdString:       "echo hi",
 		Stdout:          ioutil.Discard,
 		Stderr:          ioutil.Discard,

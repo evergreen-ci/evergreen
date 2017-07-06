@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/command"
 	. "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -110,7 +110,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 
 				// untar the file
 				So(os.MkdirAll(outputDir, 0755), ShouldBeNil)
-				untarCmd := &command.LocalCommand{
+				untarCmd := &subprocess.LocalCommand{
 					CmdString:        "tar xvf ../target.tgz",
 					WorkingDirectory: outputDir,
 					Stdout:           ioutil.Discard,

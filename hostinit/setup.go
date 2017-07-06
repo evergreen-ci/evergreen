@@ -16,13 +16,13 @@ import (
 	"github.com/evergreen-ci/evergreen/alerts"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/hostutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -293,7 +293,7 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 	}
 
 	var scpCmdStderr bytes.Buffer
-	scpCmd := &command.ScpCommand{
+	scpCmd := &subprocess.ScpCommand{
 		Source:         file.Name(),
 		Dest:           name,
 		Stdout:         &scpCmdStderr,
@@ -317,7 +317,7 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 // Build the setup script that will need to be run on the specified host.
 func (init *HostInit) expandScript(s string) (string, error) {
 	// replace expansions in the script
-	exp := command.NewExpansions(init.Settings.Expansions)
+	exp := util.NewExpansions(init.Settings.Expansions)
 	script, err := exp.ExpandString(s)
 	if err != nil {
 		return "", errors.Wrap(err, "expansions error")
@@ -461,7 +461,7 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	// Also, make a best effort to add the binary's location to $PATH upon login. If we can't do
 	// this successfully, the command will still succeed, it just means that the user will have to
 	// use an absolute path (or manually set $PATH in their shell) to execute it.
-	makeShellCmd := &command.RemoteCommand{
+	makeShellCmd := &subprocess.RemoteCommand{
 		CmdString:      fmt.Sprintf("mkdir -m 777 -p ~/%s && (echo 'PATH=$PATH:~/%s' >> ~/.profile || true; echo 'PATH=$PATH:~/%s' >> ~/.bash_profile || true)", targetDir, targetDir, targetDir),
 		Stdout:         mkdirOutput,
 		Stderr:         mkdirOutput,
@@ -478,7 +478,7 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 			mkdirOutput.Buffer.String())
 	}
 	// place the binary into the directory
-	scpSetupCmd := &command.ScpCommand{
+	scpSetupCmd := &subprocess.ScpCommand{
 		Source:         cliBinaryPath,
 		Dest:           fmt.Sprintf("~/%s/evergreen", targetDir),
 		Stdout:         scpOut,
@@ -512,7 +512,7 @@ func (init *HostInit) LoadClient(target *host.Host) (*LoadClientResult, error) {
 	}
 	defer os.Remove(tempFileName)
 
-	scpYmlCommand := &command.ScpCommand{
+	scpYmlCommand := &subprocess.ScpCommand{
 		Source:         tempFileName,
 		Dest:           fmt.Sprintf("~/%s/.evergreen.yml", targetDir),
 		Stdout:         scpOut,
@@ -557,7 +557,7 @@ func (init *HostInit) fetchRemoteTaskData(taskId, cliPath, confPath string, targ
 	//cmdOutput := io.MultiWriter(&util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}, os.Stdout)
 
 	cmdOutput := &util.CappedWriter{&bytes.Buffer{}, 1024 * 1024}
-	makeShellCmd := &command.RemoteCommand{
+	makeShellCmd := &subprocess.RemoteCommand{
 		CmdString:      fmt.Sprintf("%s -c '%s' fetch -t %s --source --artifacts --dir='%s'", cliPath, confPath, taskId, target.Distro.WorkDir),
 		Stdout:         cmdOutput,
 		Stderr:         cmdOutput,

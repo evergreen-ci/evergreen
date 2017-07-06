@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/plugin"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
@@ -217,7 +217,7 @@ func (ggpc *GitGetProjectCommand) applyPatch(conf *model.TaskConfig,
 		// this applies the patch using the patch files in the temp directory
 		patchCommandStrings := GetPatchCommands(patchPart, dir, tempAbsPath)
 		cmdsJoined := strings.Join(patchCommandStrings, "\n")
-		patchCmd := &command.LocalCommand{
+		patchCmd := &subprocess.LocalCommand{
 			CmdString:        cmdsJoined,
 			WorkingDirectory: conf.WorkDir,
 			Stdout:           pluginLogger.GetTaskLogWriter(slogger.INFO),

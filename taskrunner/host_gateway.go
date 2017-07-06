@@ -11,9 +11,9 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -140,7 +140,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	// first, create the necessary sandbox of directories on the remote machine
 	mkdirOutput := newCappedOutputLog()
-	makeShellCmd := &command.RemoteCommand{
+	makeShellCmd := &subprocess.RemoteCommand{
 		Id:             fmt.Sprintf("agent_mkdir-%v", rand.Int()),
 		CmdString:      fmt.Sprintf("mkdir -m 777 -p %v", hostObj.Distro.WorkDir),
 		Stdout:         mkdirOutput,
@@ -172,7 +172,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	}
 
 	scpAgentOutput := newCappedOutputLog()
-	scpAgentCmd := &command.ScpCommand{
+	scpAgentCmd := &subprocess.ScpCommand{
 		Id:             fmt.Sprintf("scp%v", rand.Int()),
 		Source:         filepath.Join(agbh.ExecutablesDir, execSubPath),
 		Dest:           hostObj.Distro.WorkDir,
@@ -233,7 +233,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 
 	// run the command to kick off the agent remotely
 	var startAgentLog bytes.Buffer
-	startAgentCmd := &command.RemoteCommand{
+	startAgentCmd := &subprocess.RemoteCommand{
 		Id:             fmt.Sprintf("startagent-%s-%d", hostObj.Id, rand.Int()),
 		CmdString:      remoteCmd,
 		Stdout:         &startAgentLog,

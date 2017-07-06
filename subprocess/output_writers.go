@@ -1,4 +1,4 @@
-package command
+package subprocess
 
 // generic implementations of io.Writer
 

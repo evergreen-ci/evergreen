@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
-	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -291,7 +290,7 @@ type TaskConfig struct {
 	Project      *Project
 	Task         *task.Task
 	BuildVariant *BuildVariant
-	Expansions   *command.Expansions
+	Expansions   *util.Expansions
 	WorkDir      string
 }
 
@@ -463,8 +462,8 @@ func NewTaskConfig(d *distro.Distro, v *version.Version, p *Project, t *task.Tas
 	return &TaskConfig{d, v, r, p, t, bv, e, d.WorkDir}, nil
 }
 
-func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *command.Expansions {
-	expansions := command.NewExpansions(map[string]string{})
+func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, t *task.Task) *util.Expansions {
+	expansions := util.NewExpansions(map[string]string{})
 	expansions.Put("execution", fmt.Sprintf("%v", t.Execution))
 	expansions.Put("version_id", t.Version)
 	expansions.Put("task_id", t.Id)

@@ -1,4 +1,4 @@
-package command
+package subprocess
 
 import (
 	"io/ioutil"
@@ -172,79 +172,6 @@ func TestLocalCommands(t *testing.T) {
 		})
 
 	})
-}
-
-func TestLocalCommandGroups(t *testing.T) {
-
-	Convey("With a group of local commands", t, func() {
-
-		Convey("the global preparation step should invoke all of the prep"+
-			" steps for the group", func() {
-
-			// the three commands for the group, whose preparation steps will
-			// yield different results for expanding the command string
-			firstCommand := &LocalCommand{
-				CmdString: "one\\ ${two} \\three",
-			}
-			secondCommand := &LocalCommand{
-				CmdString: "${four|five}",
-			}
-			thirdCommand := &LocalCommand{
-				CmdString: "six seven",
-			}
-
-			expansions := NewExpansions(map[string]string{
-				"two": "TWO",
-				"six": "SIX",
-			})
-
-			cmdGroup := &LocalCommandGroup{
-				Commands: []*LocalCommand{firstCommand, secondCommand,
-					thirdCommand},
-				Expansions: expansions,
-			}
-
-			// run the preparation step for the command group, make sure it is
-			// run for each command individually
-			So(cmdGroup.PrepToRun(), ShouldBeNil)
-			So(firstCommand.CmdString, ShouldEqual, "one\\ TWO \\three")
-			So(secondCommand.CmdString, ShouldEqual, "five")
-			So(thirdCommand.CmdString, ShouldEqual, "six seven")
-
-		})
-
-		Convey("The global preparation step should fail if any of the"+
-			" individual group members' prep steps fail", func() {
-
-			// the three commands for the group. only the second will error
-			firstCommand := &LocalCommand{
-				CmdString: "one\\ ${two} \\three",
-			}
-			secondCommand := &LocalCommand{
-				CmdString: "${four|five}${",
-			}
-			thirdCommand := &LocalCommand{
-				CmdString: "six seven",
-			}
-
-			expansions := NewExpansions(map[string]string{
-				"two": "TWO",
-				"six": "SIX",
-			})
-
-			cmdGroup := &LocalCommandGroup{
-				Commands: []*LocalCommand{firstCommand, secondCommand,
-					thirdCommand},
-				Expansions: expansions,
-			}
-
-			// the preparation step should fail
-			So(cmdGroup.PrepToRun(), ShouldNotBeNil)
-
-		})
-
-	})
-
 }
 
 func TestLocalScript(t *testing.T) {

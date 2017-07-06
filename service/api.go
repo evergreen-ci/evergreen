@@ -714,7 +714,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"method": r.Method,
 		"url":    r.URL,
 		"err":    err,
-		"code":   int,
+		"code":   code,
 		"stack":  string(debug.Stack()),
 	})
 
