@@ -159,7 +159,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
 			err.Error(), notify.ConstructMailer(uis.Settings.Notify))
 		if mailErr != nil {
-			grip.Errorf("Failed to send notification: %+v")
+			grip.Errorf("Failed to send notification: %+v", mailErr)
 		}
 	}
 
