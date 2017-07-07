@@ -297,7 +297,7 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 	var scpCmdStderr bytes.Buffer
 	scpCmd := &subprocess.ScpCommand{
 		Source:         file.Name(),
-		Dest:           name,
+		Dest:           filepath.Join(target.Distro.WorkDir, name),
 		Stdout:         &scpCmdStderr,
 		Stderr:         &scpCmdStderr,
 		RemoteHostName: hostInfo.Hostname,

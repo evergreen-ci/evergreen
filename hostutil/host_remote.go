@@ -2,8 +2,11 @@ package hostutil
 
 import (
 	"bytes"
-	"golang.org/x/net/context"
+	"fmt"
+	"strings"
 	"time"
+
+	"golang.org/x/net/context"
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/subprocess"
@@ -26,30 +29,32 @@ func RunRemoteScript(h *host.Host, script string, sshOptions []string) (string, 
 		user = hostInfo.User
 	}
 
-	// run the remote script as sudo, if appropriate
-	sudoStr := ""
-	if h.Distro.SetupAsSudo {
-		sudoStr = "sudo "
+	cmdArgs := []string{
+		fmt.Sprintf("cd %s;", h.Distro.WorkDir),
 	}
+
+	// run the remote script as sudo, if appropriate
+	if h.Distro.SetupAsSudo {
+		cmdArgs = append(cmdArgs, "sudo")
+	}
+
+	cmdArgs = append(cmdArgs, "sh", script)
+
 	// run command to ssh into remote machine and execute script
 	sshCmdStd := &util.CappedWriter{
 		Buffer:   &bytes.Buffer{},
 		MaxBytes: 1024 * 1024, // 1MB
 	}
+
 	cmd := &subprocess.RemoteCommand{
-		CmdString:      sudoStr + "sh " + script,
+		CmdString:      strings.Join(cmdArgs, " "),
 		Stdout:         sshCmdStd,
 		Stderr:         sshCmdStd,
 		RemoteHostName: hostInfo.Hostname,
 		User:           user,
-		Options:        []string{"-p", hostInfo.Port},
+		Options:        []string{"-t", "-t", "-p", hostInfo.Port},
 		Background:     false,
 	}
-	// force creation of a tty if sudo
-	if h.Distro.SetupAsSudo {
-		cmd.Options = []string{"-t", "-t", "-p", hostInfo.Port}
-	}
-	cmd.Options = append(cmd.Options, sshOptions...)
 
 	// run the ssh command with given timeout
 	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
