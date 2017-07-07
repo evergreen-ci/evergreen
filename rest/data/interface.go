@@ -98,4 +98,7 @@ type Connector interface {
 
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*patch.Patch, error)
+
+	// AbortVersion aborts all tasks of a version given its ID.
+	AbortVersion(string) error
 }

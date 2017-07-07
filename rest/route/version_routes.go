@@ -12,6 +12,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+// getVersionIdFromRequest is a helpfer function that fetches versionId from
+// request.
+func getVersionIdFromRequest(r *http.Request) string {
+	return mux.Vars(r)["version_id"]
+}
+
 type versionHandler struct {
 	versionId string
 }
@@ -37,7 +43,7 @@ func (vh *versionHandler) Handler() RequestHandler {
 
 // ParseAndValidate fetches the versionId from the http request.
 func (vh *versionHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vh.versionId = mux.Vars(r)["version_id"]
+	vh.versionId = getVersionIdFromRequest(r)
 
 	if vh.versionId == "" {
 		return errors.New("request data incomplete")
@@ -96,7 +102,7 @@ func (h *buildsForVersionHandler) Handler() RequestHandler {
 
 // ParseAndValidate fetches the versionId from the http request.
 func (h *buildsForVersionHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	h.versionId = mux.Vars(r)["version_id"]
+	h.versionId = getVersionIdFromRequest(r)
 
 	if h.versionId == "" {
 		return errors.New("request data incomplete")
@@ -141,4 +147,72 @@ func (h *buildsForVersionHandler) Execute(ctx context.Context, sc data.Connector
 	return ResponseData{
 		Result: buildModels,
 	}, nil
+}
+
+// versionAbortHandler is a RequestHandler for aborting all tasks of a version.
+type versionAbortHandler struct {
+	versionId string
+}
+
+func getAbortVersionRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &versionAbortHandler{},
+				MethodType:        evergreen.MethodPost,
+			},
+		},
+		Version: version,
+	}
+}
+
+// Handler returns a pointer to a new versionAbortHandler.
+func (h *versionAbortHandler) Handler() RequestHandler {
+	return &versionAbortHandler{}
+}
+
+// ParseAndValidate fetches the versionId from the http request.
+func (h *versionAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	h.versionId = getVersionIdFromRequest(r)
+
+	if h.versionId == "" {
+		return errors.New("request data incomplete")
+	}
+
+	return nil
+}
+
+// Execute calls the data AbortVersion function to abort all tasks of a version.
+func (h *versionAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	err := sc.AbortVersion(h.versionId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error in aborting version:")
+		}
+		return ResponseData{}, err
+	}
+
+	foundVersion, err := sc.FindVersionById(h.versionId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error in finding version:")
+		}
+		return ResponseData{}, err
+	}
+
+	versionModel := &model.APIVersion{}
+	err = versionModel.BuildFromService(foundVersion)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{versionModel},
+	}, err
 }

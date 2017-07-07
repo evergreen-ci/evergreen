@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -93,6 +95,10 @@ func (s *VersionSuite) SetupSuite() {
 
 	s.versionData = data.MockVersionConnector{
 		CachedVersions: []version.Version{testVersion1},
+		CachedTasks: []task.Task{
+			{Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
+			{Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
+		},
 	}
 	s.buildData = data.MockBuildConnector{
 		CachedBuilds: []build.Build{testBuild1, testBuild2},
@@ -144,5 +150,24 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 		s.Equal(model.APITime(timeField), b.PushTime)
 		s.Equal(model.APIString(versionId), b.Version)
 		s.Equal(model.APIString(s.bv[idx]), b.BuildVariant)
+	}
+}
+
+func (s *VersionSuite) TestAbort() {
+	handler := &versionAbortHandler{versionId: "versionId"}
+
+	// Check that Execute runs without error and returns
+	// the correct Version.
+	res, err := handler.Execute(nil, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(1, len(res.Result))
+	version := res.Result[0]
+	h, _ := (version).(*model.APIVersion)
+	s.Equal(model.APIString(versionId), h.Id)
+
+	// Check that all tasks have been aborted.
+	for _, t := range s.versionData.CachedTasks {
+		s.Equal(t.Aborted, true)
 	}
 }

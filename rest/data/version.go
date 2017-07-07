@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -52,6 +54,12 @@ func (vc *DBVersionConnector) FindVersionById(versionId string) (*version.Versio
 	return v, nil
 }
 
+// AbortVersion aborts all tasks of a version given its ID.
+// It wraps the service level AbortVersion.
+func (vc *DBVersionConnector) AbortVersion(versionId string) error {
+	return model.AbortVersion(versionId)
+}
+
 // MockVersionConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Version related functions.
 type MockVersionConnector struct {
@@ -96,4 +104,18 @@ func (mvc *MockVersionConnector) FindVersionById(versionId string) (*version.Ver
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("build with id %s not found", versionId),
 	}
+}
+
+// AbortVersion aborts all tasks of a version given its ID. Specifically, it sets the
+// Aborted key of the tasks to true if they are currently in abortable statuses.
+func (mvc *MockVersionConnector) AbortVersion(versionId string) error {
+	for idx, t := range mvc.CachedTasks {
+		if t.Version == versionId && (t.Status == evergreen.TaskStarted || t.Status == evergreen.TaskDispatched) {
+			if t.Aborted == false {
+				pt := &mvc.CachedTasks[idx]
+				pt.Aborted = true
+			}
+		}
+	}
+	return nil
 }
