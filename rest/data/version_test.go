@@ -76,8 +76,8 @@ func TestVersionConnectorSuite(t *testing.T) {
 	version1 := &version.Version{Id: "version1"}
 	version2 := &version.Version{Id: "version2"}
 
-	version1.Insert()
-	version2.Insert()
+	assert.NoError(version1.Insert())
+	assert.NoError(version2.Insert())
 
 	suite.Run(t, s)
 }
@@ -104,7 +104,7 @@ func (s *VersionConnectorSuite) TestFindVersionByIdSuccess() {
 }
 
 func (s *VersionConnectorSuite) TestFindVersionByIdFail() {
-	// Finding a non-existant version should fail
+	// Finding a non-existent version should fail
 	v, err := s.ctx.FindVersionById("build3")
 	s.Error(err)
 	s.Nil(v)
