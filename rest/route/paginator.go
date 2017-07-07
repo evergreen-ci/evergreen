@@ -63,7 +63,7 @@ type Page struct {
 	Limit    int
 }
 
-// PageResult is a type that holds the two pages that pagintion handlers create
+// PageResult is a type that holds the two pages that pagination handlers create
 type PageResult struct {
 	Next *Page
 	Prev *Page

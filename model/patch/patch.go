@@ -292,3 +292,25 @@ func (p *Patch) RemoveModulePatch(moduleName string) error {
 	}
 	return UpdateOne(query, update)
 }
+
+// PatchesByProject builds a query for patches that match the given
+// project's id.
+//
+// If the sort value is less than 0, the query will return all
+// matching patches that occur before the specified time, and otherwise
+// will return all matching patches that occur after the specified time.
+func PatchesByProject(projectId string, ts time.Time, limit, sort int) db.Q {
+	filter := bson.M{
+		ProjectKey: projectId,
+	}
+
+	sortSpec := CreateTimeKey
+
+	if sort < 0 {
+		sortSpec = "-" + sortSpec
+		filter[CreateTimeKey] = bson.M{"$lte": ts}
+	} else {
+		filter[CreateTimeKey] = bson.M{"$gte": ts}
+	}
+	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+}

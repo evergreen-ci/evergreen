@@ -30,6 +30,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/distros":                                             getDistroRouteManager,
 		"/hosts":                                               getHostRouteManager,
 		"/hosts/{host_id}":                                     getHostIDRouteManager,
+		"/projects/{project_id}/patches":                       getPatchesByProjectManager,
 		"/projects/{project_id}/revisions/{commit_hash}/tasks": getTasksByProjectAndCommitRouteManager,
 		"/tasks/{task_id}":                                     getTaskRouteManager,
 		"/tasks/{task_id}/metrics/process":                     getTaskProcessMetricsManager,

@@ -57,7 +57,7 @@ func (bigh *buildIdGetHandler) Execute(ctx context.Context, sc data.Connector) (
 		return ResponseData{}, err
 	}
 	var proj string
-        if ref != nil {
+	if ref != nil {
 		proj = ref.Repo
 	}
 	buildModel.ProjectId = model.APIString(proj)

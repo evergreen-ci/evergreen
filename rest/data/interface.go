@@ -8,6 +8,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip/message"
@@ -87,4 +88,7 @@ type Connector interface {
 
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)
+	// FindPatchesByProject provides access to the patches corresponding to the input project ID
+	// as ordered by creation time.
+	FindPatchesByProject(string, time.Time, int, int) ([]patch.Patch, error)
 }
