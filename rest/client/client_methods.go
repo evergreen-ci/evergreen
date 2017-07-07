@@ -22,7 +22,7 @@ import (
 func (c *evergreenREST) StartTask(ctx context.Context, taskData TaskData) error {
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
-	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("start", taskData.ID), taskData.Secret, v1, taskStartRequest)
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("start", taskData.ID), taskData, v1, taskStartRequest)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to start task %s", taskData.ID)
 		grip.Error(err)
@@ -35,7 +35,7 @@ func (c *evergreenREST) StartTask(ctx context.Context, taskData TaskData) error 
 // EndTask marks the task as finished with the given status
 func (c *evergreenREST) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	taskEndResp := &apimodels.EndTaskResponse{}
-	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("end", taskData.ID), taskData.Secret, v1, detail)
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("end", taskData.ID), taskData, v1, detail)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to end task %s", taskData.ID)
 		grip.Error(err)
@@ -54,7 +54,7 @@ func (c *evergreenREST) EndTask(ctx context.Context, detail *apimodels.TaskEndDe
 // GetTask returns the active task.
 func (c *evergreenREST) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
 	task := &task.Task{}
-	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("", taskData.ID), taskData.Secret, v1)
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("", taskData.ID), taskData, v1)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get task %s", taskData.ID)
 		grip.Error(err)
@@ -75,7 +75,7 @@ func (c *evergreenREST) GetTask(ctx context.Context, taskData TaskData) (*task.T
 // GetProjectRef loads the task's project.
 func (c *evergreenREST) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
 	projectRef := &model.ProjectRef{}
-	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("project_ref", taskData.ID), taskData.Secret, v1)
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("project_ref", taskData.ID), taskData, v1)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get project ref for task %s", taskData.ID)
 		grip.Error(err)
@@ -96,7 +96,7 @@ func (c *evergreenREST) GetProjectRef(ctx context.Context, taskData TaskData) (*
 // GetDistro returns the distro for the task.
 func (c *evergreenREST) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
 	d := &distro.Distro{}
-	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("distro", taskData.ID), taskData.Secret, v1)
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("distro", taskData.ID), taskData, v1)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get distro for task %s", taskData.ID)
 		grip.Error(err)
@@ -117,7 +117,7 @@ func (c *evergreenREST) GetDistro(ctx context.Context, taskData TaskData) (*dist
 // GetVersion loads the task's version.
 func (c *evergreenREST) GetVersion(ctx context.Context, taskData TaskData) (*version.Version, error) {
 	v := &version.Version{}
-	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("version", taskData.ID), taskData.Secret, v1)
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("version", taskData.ID), taskData, v1)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get version for task %s", taskData.ID)
 		grip.Error(err)
@@ -144,7 +144,7 @@ func (c *evergreenREST) Heartbeat(ctx context.Context, taskData TaskData) (bool,
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
-	resp, err := c.post(ctx, c.getTaskPathSuffix("heartbeat", taskData.ID), taskData.Secret, v1, &data)
+	resp, err := c.post(ctx, c.getTaskPathSuffix("heartbeat", taskData.ID), taskData, v1, &data)
 	if err != nil {
 		err = errors.Wrapf(err, "error sending heartbeat for task %s", taskData.ID)
 		grip.Error(err)
@@ -172,7 +172,7 @@ func (c *evergreenREST) Heartbeat(ctx context.Context, taskData TaskData) (bool,
 // FetchExpansionVars loads expansions for a communicator's task from the API server.
 func (c *evergreenREST) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
 	resultVars := &apimodels.ExpansionVars{}
-	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("fetch_vars", taskData.ID), taskData.Secret, v1)
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("fetch_vars", taskData.ID), taskData, v1)
 	if err != nil {
 		err = errors.Wrapf(err, "failed to get task for task %s", taskData.ID)
 		grip.Error(err)
@@ -195,7 +195,8 @@ func (c *evergreenREST) FetchExpansionVars(ctx context.Context, taskData TaskDat
 // GetNextTask returns a next task response by getting the next task for a given host.
 func (c *evergreenREST) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
 	taskResponse := &apimodels.NextTaskResponse{}
-	resp, err := c.retryGet(ctx, "agent/next_task", "", v1)
+	taskData := TaskData{OverrideValidation: true}
+	resp, err := c.retryGet(ctx, "agent/next_task", taskData, v1)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get task")
 		grip.Error(err)
@@ -223,7 +224,7 @@ func (c *evergreenREST) SendTaskLogMessages(ctx context.Context, taskData TaskDa
 		Messages:     msgs,
 	}
 
-	if _, err := c.retryPost(ctx, c.getTaskPathSuffix("log", taskData.ID), taskData.Secret, v1, &payload); err != nil {
+	if _, err := c.retryPost(ctx, c.getTaskPathSuffix("log", taskData.ID), taskData, v1, &payload); err != nil {
 		err = errors.Wrapf(err, "problem sending %s log messages for task %s", len(msgs), taskData.ID)
 		grip.Error(err)
 		return err

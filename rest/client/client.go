@@ -38,8 +38,9 @@ type evergreenREST struct {
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
 type TaskData struct {
-	ID     string
-	Secret string
+	ID                 string
+	Secret             string
+	OverrideValidation bool
 }
 
 // NewEvergreenREST returns a Communicator capable of making HTTP REST requests against

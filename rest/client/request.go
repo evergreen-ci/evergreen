@@ -16,8 +16,8 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
-func (c *evergreenREST) get(ctx context.Context, path, taskSecret, version string) (*http.Response, error) {
-	response, err := c.request(ctx, "GET", path, taskSecret, version, nil)
+func (c *evergreenREST) get(ctx context.Context, path string, taskData TaskData, version string) (*http.Response, error) {
+	response, err := c.request(ctx, "GET", path, taskData.Secret, version, nil)
 	return response, errors.Wrap(err, "Error performing HTTP GET request")
 }
 
@@ -33,12 +33,18 @@ func (c *evergreenREST) get(ctx context.Context, path, taskSecret, version strin
 // 	return response, errors.Wrap(err, "Error performing HTTP PUT request")
 // }
 
-func (c *evergreenREST) post(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
-	response, err := c.request(ctx, "POST", path, taskSecret, version, data)
+func (c *evergreenREST) post(ctx context.Context, path string, taskData TaskData, version string, data *interface{}) (*http.Response, error) {
+	response, err := c.request(ctx, "POST", path, taskData.Secret, version, data)
 	return response, errors.Wrap(err, "Error performing HTTP POST request")
 }
 
-func (c *evergreenREST) retryPost(ctx context.Context, path, taskSecret, version string, data interface{}) (resp *http.Response, err error) {
+func (c *evergreenREST) retryPost(ctx context.Context, path string, taskData TaskData, version string, data interface{}) (resp *http.Response, err error) {
+	if !taskData.OverrideValidation && taskData.Secret == "" {
+		err := errors.New("no task secret provided")
+		grip.Error(err)
+		return nil, err
+	}
+
 	var dur time.Duration
 	timer := time.NewTimer(0)
 	defer timer.Stop()
@@ -48,7 +54,7 @@ func (c *evergreenREST) retryPost(ctx context.Context, path, taskSecret, version
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			resp, err = c.post(ctx, path, taskSecret, version, &data)
+			resp, err = c.post(ctx, path, taskData, version, &data)
 			if resp == nil {
 				grip.Error("HTTP Post response is nil")
 			} else if err != nil {
@@ -68,8 +74,13 @@ func (c *evergreenREST) retryPost(ctx context.Context, path, taskSecret, version
 	return nil, errors.Errorf("Failed to post JSON after %d attempts", c.maxAttempts)
 }
 
-// GetTask returns the active task.
-func (c *evergreenREST) retryGet(ctx context.Context, path, taskSecret, version string) (resp *http.Response, err error) {
+func (c *evergreenREST) retryGet(ctx context.Context, path string, taskData TaskData, version string) (resp *http.Response, err error) {
+	if !taskData.OverrideValidation && taskData.Secret == "" {
+		err := errors.New("no task secret provided")
+		grip.Error(err)
+		return nil, err
+	}
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	backoff := c.getBackoff()
@@ -78,7 +89,7 @@ func (c *evergreenREST) retryGet(ctx context.Context, path, taskSecret, version 
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			resp, err := c.get(ctx, path, taskSecret, version)
+			resp, err := c.get(ctx, path, taskData, version)
 			if err != nil {
 				grip.Error(err)
 			} else if resp == nil {
