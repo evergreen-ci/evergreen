@@ -12,6 +12,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+// I'm not sure if this refactoring actually makes the code easier to understand
+func getBuildIdFromRequest(r *http.Request) string {
+	vars := mux.Vars(r)
+	return vars["build_id"]
+}
+
 type buildIdGetHandler struct {
 	buildId string
 }
@@ -37,8 +43,7 @@ func (bigh *buildIdGetHandler) Handler() RequestHandler {
 }
 
 func (bigh *buildIdGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	vars := mux.Vars(r)
-	bigh.buildId = vars["build_id"]
+	bigh.buildId = getBuildIdFromRequest(r)
 	return nil
 }
 
@@ -72,4 +77,61 @@ func (bigh *buildIdGetHandler) Execute(ctx context.Context, sc data.Connector) (
 	return ResponseData{
 		Result: []model.Model{buildModel},
 	}, nil
+}
+
+type buildIdAbortGetHandler struct {
+	buildId string
+}
+
+func getBuildIdAbortRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				Authenticator:  &RequireUserAuthenticator{},
+				RequestHandler: (&buildIdAbortGetHandler{}).Handler(),
+				MethodType:     evergreen.MethodPost,
+			},
+		},
+	}
+}
+
+func (b *buildIdAbortGetHandler) Handler() RequestHandler {
+	return &buildIdAbortGetHandler{}
+}
+
+func (b *buildIdAbortGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	b.buildId = getBuildIdFromRequest(r)
+	return nil
+}
+
+func (b *buildIdAbortGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	err := sc.AbortBuild(b.buildId, GetUser(ctx).Id)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Abort error")
+		}
+		return ResponseData{}, err
+	}
+
+	foundBuild, err := sc.FindBuildById(b.buildId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	buildModel := &model.APIBuild{}
+	err = buildModel.BuildFromService(*foundBuild)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{buildModel},
+	}, err
 }

@@ -36,11 +36,17 @@ func (bc *DBBuildConnector) FindProjectByBranch(branch string) (*model.ProjectRe
 	return model.FindOneProjectRef(branch)
 }
 
+// AbortBuild wraps the service level AbortBuild
+func (bc *DBBuildConnector) AbortBuild(id string, user string) error {
+	return model.AbortBuild(id, user)
+}
+
 // MockBuildConnector is a struct that implements the Build related methods
 // from the Connector through interactions with the backing database.
 type MockBuildConnector struct {
 	CachedBuilds   []build.Build
 	CachedProjects map[string]*model.ProjectRef
+	CachedAborted  map[string]string
 }
 
 // FindBuildById iterates through the CachedBuilds slice to find the build
@@ -65,4 +71,10 @@ func (bc *MockBuildConnector) FindProjectByBranch(branch string) (*model.Project
 		return nil, nil
 	}
 	return proj, nil
+}
+
+// AbortBuild sets the value of the input build Id in CachedAborted to true.
+func (bc *MockBuildConnector) AbortBuild(id string, user string) error {
+	bc.CachedAborted[id] = user
+	return nil
 }

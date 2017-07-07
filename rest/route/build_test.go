@@ -5,9 +5,11 @@ import (
 
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 type BuildSuite struct {
@@ -28,6 +30,7 @@ func (s *BuildSuite) SetupSuite() {
 			{Id: "build2", Project: "notbranch"},
 		},
 		CachedProjects: make(map[string]*serviceModel.ProjectRef),
+		CachedAborted:  make(map[string]string),
 	}
 	s.data.CachedProjects["branch"] = &serviceModel.ProjectRef{Repo: "project", Identifier: "branch"}
 	s.sc = &data.MockConnector{
@@ -36,7 +39,7 @@ func (s *BuildSuite) SetupSuite() {
 }
 
 func (s *BuildSuite) TestFindByIdProjFound() {
-	rm := getBuildIdRouteManager("build1", 2)
+	rm := getBuildIdRouteManager("/builds/{build_id}", 2)
 	(rm.Methods[0].RequestHandler).(*buildIdGetHandler).buildId = "build1"
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
@@ -50,7 +53,7 @@ func (s *BuildSuite) TestFindByIdProjFound() {
 }
 
 func (s *BuildSuite) TestFindByIdProjNotFound() {
-	rm := getBuildIdRouteManager("build2", 2)
+	rm := getBuildIdRouteManager("/builds/{build_id}", 2)
 	(rm.Methods[0].RequestHandler).(*buildIdGetHandler).buildId = "build2"
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
@@ -64,8 +67,34 @@ func (s *BuildSuite) TestFindByIdProjNotFound() {
 }
 
 func (s *BuildSuite) TestFindByIdFail() {
-	rm := getBuildIdRouteManager("build3", 2)
+	rm := getBuildIdRouteManager("/builds/{build_id}", 2)
 	(rm.Methods[0].RequestHandler).(*buildIdGetHandler).buildId = "build3"
 	_, err := rm.Methods[0].Execute(nil, s.sc)
 	s.Error(err)
+}
+
+func (s *BuildSuite) TestAbort() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildIdAbortRouteManager("/builds/{build_id}/abort", 2)
+	(rm.Methods[0].RequestHandler).(*buildIdAbortGetHandler).buildId = "build1"
+	res, err := rm.Methods[0].Execute(ctx, s.sc)
+
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal("user1", s.data.CachedAborted["build1"])
+	s.Equal("", s.data.CachedAborted["build2"])
+	b, ok := (res.Result[0]).(*model.APIBuild)
+	s.True(ok)
+	s.Equal(model.APIString("build1"), b.Id)
+
+	res, err = rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal("user1", s.data.CachedAborted["build1"])
+	s.Equal("", s.data.CachedAborted["build2"])
+	b, ok = (res.Result[0]).(*model.APIBuild)
+	s.True(ok)
+	s.Equal(model.APIString("build1"), b.Id)
 }

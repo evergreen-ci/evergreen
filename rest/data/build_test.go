@@ -12,13 +12,15 @@ import (
 )
 
 type BuildConnectorSuite struct {
-	ctx Connector
+	ctx  Connector
+	mock bool
 	suite.Suite
 }
 
 func TestBuildConnectorSuite(t *testing.T) {
 	s := new(BuildConnectorSuite)
 	s.ctx = &DBConnector{}
+	s.mock = false
 
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestBuildConnectorSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
@@ -39,7 +41,9 @@ func TestMockBuildConnectorSuite(t *testing.T) {
 	s.ctx = &MockConnector{MockBuildConnector: MockBuildConnector{
 		CachedBuilds:   []build.Build{{Id: "build1"}, {Id: "build2"}},
 		CachedProjects: make(map[string]*model.ProjectRef),
+		CachedAborted:  make(map[string]string),
 	}}
+	s.mock = true
 	s.ctx.(*MockConnector).CachedProjects["branch"] = &model.ProjectRef{Repo: "project", Identifier: "branch"}
 	suite.Run(t, s)
 }
@@ -73,4 +77,16 @@ func (s *BuildConnectorSuite) TestFindProjByBranchFail() {
 	r, err := s.ctx.FindProjectByBranch("notbranch")
 	s.NoError(err)
 	s.Nil(r)
+}
+
+func (s *BuildConnectorSuite) TestAbort() {
+	err := s.ctx.AbortBuild("build1", "user1")
+	s.NoError(err)
+	if s.mock {
+		s.Equal("user1", s.ctx.(*MockConnector).CachedAborted["build1"])
+	} else {
+		b, err := build.FindOne(build.ById("build1"))
+		s.NoError(err)
+		s.Equal("user1", b.ActivatedBy)
+	}
 }

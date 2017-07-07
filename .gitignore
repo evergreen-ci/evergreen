@@ -67,3 +67,4 @@ vendor/github.com/evergreen-ci/keyval/
 fabfile.py
 *.pyc
 Plugins
+.idea

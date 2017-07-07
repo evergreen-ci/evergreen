@@ -48,6 +48,9 @@ type Connector interface {
 	// FindBuildById is a method to find the build matching the same BuildId.
 	FindBuildById(string) (*build.Build, error)
 
+	// AbortBuild is a method to abort the build matching the same BuildId.
+	AbortBuild(string, string) error
+
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 
