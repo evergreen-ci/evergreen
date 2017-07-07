@@ -191,12 +191,12 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	tags := makeTags(intentHost)
 
 	// attach the tags to this instance
-	err = errors.Wrapf(attachTags(ec2Handle, tags, instance.InstanceId),
-		"unable to attach tags for $s", instance.InstanceId)
-
-	grip.Error(err)
-	grip.DebugWhenf(err == nil, "attached tag name '%s' for '%s'",
-		instanceName, instance.InstanceId)
+	if err = attachTags(ec2Handle, tags, instance.InstanceId); err != nil {
+		err = errors.Wrapf(err, "unable to attach tags for %s", instance.InstanceId)
+		grip.Error(err)
+		return nil, err
+	}
+	grip.Debugf("attached tags for '%s'", instance.InstanceId)
 
 	return newHost, nil
 }

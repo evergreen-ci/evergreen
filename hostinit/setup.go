@@ -217,8 +217,9 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 	// run the function scheduled for when the host is up
 	err = cloudMgr.OnUp(targetHost)
 	if err != nil {
-		// if this fails it is probably due to an API hiccup, so we keep going.
-		grip.Warningf("OnUp callback failed for host '%v': '%+v'", targetHost.Id, err)
+		err = errors.Wrapf(err, "OnUp callback failed for host %s", targetHost.Id)
+		grip.Error(err)
+		return "", err
 	}
 	cloudHost, err := providers.GetCloudHost(targetHost, init.Settings)
 	if err != nil {
@@ -332,14 +333,10 @@ func (init *HostInit) expandScript(s string) (string, error) {
 // Provision the host, and update the database accordingly.
 func (init *HostInit) ProvisionHost(h *host.Host) error {
 
-	// run the setup script
 	grip.Infoln("Setting up host", h.Id)
 	output, err := init.setupHost(h)
 
-	// deal with any errors that occurred while running the setup
 	if err != nil {
-		grip.Errorf("Error running setup script: %+v", err)
-
 		// another hostinit process beat us there
 		if err == ErrHostAlreadyInitializing {
 			grip.Debugln("Attempted to initialize already initializing host %s", h.Id)
@@ -349,7 +346,7 @@ func (init *HostInit) ProvisionHost(h *host.Host) error {
 		grip.Warning(alerts.RunHostProvisionFailTriggers(h))
 		event.LogProvisionFailed(h.Id, output)
 
-		// setup script failed, mark the host's provisioning as failed
+		// mark the host's provisioning as failed
 		if err := h.SetUnprovisioned(); err != nil {
 			grip.Errorf("unprovisioning host %s failed: %+v", h.Id, err)
 		}
