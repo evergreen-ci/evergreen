@@ -33,7 +33,7 @@ type variantTask struct {
 
 // BuildFromService converts from service level structs to an APIPatch
 func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
-	v, ok := h.(*patch.Patch)
+	v, ok := h.(patch.Patch)
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting patch type")
 	}
