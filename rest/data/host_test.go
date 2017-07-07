@@ -4,7 +4,9 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -55,4 +57,41 @@ func (s *HostConnectorSuite) TestFindByIdFail() {
 	h, ok := s.ctx.FindHostById("host3")
 	s.Error(ok)
 	s.Nil(h)
+}
+
+func (s *HostConnectorSuite) TestSpawnHost() {
+	const testDistroID = "TestSpawnHostDistro"
+	const testPublicKey = "ssh-rsa 1234567890abcdef"
+	const testPublicKeyName = "testPubKey"
+	const testUserId = "TestSpawnHostUser"
+	const testUserApiKey = "testApiKey"
+
+	testutil.ConfigureIntegrationTest(s.T(), testConfig, "TestSpawnHost")
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	s.NotNil(session)
+	s.NoError(session.DB(testConfig.Database.DB).DropDatabase())
+	distro := &distro.Distro{
+		Id:           testDistroID,
+		SpawnAllowed: true,
+	}
+	s.NoError(distro.Insert())
+	testUser := &user.DBUser{
+		Id:     testUserId,
+		APIKey: testUserApiKey,
+	}
+	testUser.PubKeys = append(testUser.PubKeys, user.PubKey{
+		Name: testPublicKeyName,
+		Key:  testPublicKey,
+	})
+	s.NoError(testUser.Insert())
+
+	//note this is the real DB host connector, not the mock
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, testUser)
+	s.NotNil(intentHost)
+	s.NoError(err)
+	foundHost, err := host.FindOne(host.All)
+	s.NotNil(foundHost)
+	s.NoError(err)
+	s.True(foundHost.UserHost)
+	s.Equal(testUserId, foundHost.StartedBy)
 }

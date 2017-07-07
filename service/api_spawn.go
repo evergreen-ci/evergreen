@@ -70,8 +70,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		UserData:  hostRequest.UserData,
 	}
 
-	spawner := spawn.New(&as.Settings)
-	err = spawner.Validate(opts)
+	err = spawn.Validate(opts)
 	if err != nil {
 		errCode := http.StatusBadRequest
 		if _, ok := err.(spawn.BadOptionsErr); !ok {
@@ -81,7 +80,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = spawner.CreateHost(opts, user)
+	_, err = spawn.CreateHost(opts, user)
 	if err != nil {
 		grip.Error(err)
 		mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed",

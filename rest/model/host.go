@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -17,6 +18,23 @@ type APIHost struct {
 	User        APIString  `json:"user"`
 	Status      APIString  `json:"status"`
 	RunningTask taskInfo   `json:"running_task"`
+}
+
+// SpawnHost is many fields from the host.Host object that is returned in the response
+// to POST /hosts
+type SpawnHost struct {
+	HostID         APIString `json:"host_id"`
+	DistroID       APIString `json:"distro_id"`
+	Type           APIString `json:"host_type"`
+	ExpirationTime APITime   `json:"expiration_time"`
+	CreationTime   APITime   `json:"creation_time"`
+	Status         APIString `json:"status"`
+	StartedBy      APIString `json:"started_by"`
+	Tag            APIString `json:"tag"`
+	Project        APIString `json:"project"`
+	Zone           APIString `json:"zone"`
+	UserHost       bool      `json:"user_host"`
+	Provisioned    bool      `json:"provisioned"`
 }
 
 type distroInfo struct {
@@ -76,4 +94,29 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Status:       string(apiHost.Status),
 	}
 	return interface{}(h), nil
+}
+
+// BuildFromService takes the intent host passed in by the service and creates a spawnHost struct
+func (spawnHost *SpawnHost) BuildFromService(h interface{}) error {
+	host := h.(*host.Host)
+
+	spawnHost.HostID = APIString(host.Id)
+	spawnHost.DistroID = APIString(host.Distro.Id)
+	spawnHost.Type = APIString(host.Provider)
+	spawnHost.ExpirationTime = APITime(host.ExpirationTime)
+	spawnHost.CreationTime = APITime(host.CreationTime)
+	spawnHost.Status = APIString(host.Status)
+	spawnHost.StartedBy = APIString(host.StartedBy)
+	spawnHost.Tag = APIString(host.Tag)
+	spawnHost.Project = APIString(host.Project)
+	spawnHost.Zone = APIString(host.Zone)
+	spawnHost.UserHost = host.UserHost
+	spawnHost.Provisioned = host.Provisioned
+
+	return nil
+}
+
+// ToService extracts the intent host part of a spawn host
+func (spawnHost *SpawnHost) ToService() (interface{}, error) {
+	return nil, errors.New("ToService not implemented for /hosts")
 }

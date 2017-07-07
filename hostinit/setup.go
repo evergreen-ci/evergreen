@@ -230,6 +230,15 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 		return "", errors.Wrapf(err, "error getting ssh options for host %s", targetHost.Id)
 	}
 
+	// get expansions mapping using settings
+	if targetHost.Distro.Setup == "" {
+		exp := util.NewExpansions(init.Settings.Expansions)
+		targetHost.Distro.Setup, err = exp.ExpandString(targetHost.Distro.Setup)
+		if err != nil {
+			return "", errors.Wrap(err, "expansions error")
+		}
+	}
+
 	if targetHost.Distro.Teardown != "" {
 		err = init.copyScript(targetHost, teardownScriptName, targetHost.Distro.Teardown)
 		if err != nil {

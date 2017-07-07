@@ -127,9 +127,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData:  putParams.UserData,
 	}
 
-	spawner := spawn.New(&uis.Settings)
-
-	if err := spawner.Validate(opts); err != nil {
+	if err := spawn.Validate(opts); err != nil {
 		errCode := http.StatusBadRequest
 		if _, ok := err.(spawn.BadOptionsErr); !ok {
 			errCode = http.StatusInternalServerError
@@ -153,7 +151,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 
-	err := spawner.CreateHost(opts, authedUser)
+	_, err := spawn.CreateHost(opts, authedUser)
 	if err != nil {
 		grip.Errorf("error spawning host: %+v", err)
 		mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
