@@ -11,9 +11,10 @@ import (
 )
 
 type PatchConnectorSuite struct {
-	ctx   Connector
-	time  time.Time
-	setup func() error
+	ctx      Connector
+	time     time.Time
+	setup    func() error
+	teardown func() error
 	suite.Suite
 }
 
@@ -44,6 +45,10 @@ func TestPatchConnectorSuite(t *testing.T) {
 		return nil
 	}
 
+	s.teardown = func() error {
+		return db.Clear(patch.Collection)
+	}
+
 	suite.Run(t, s)
 }
 
@@ -65,13 +70,15 @@ func TestMockPatchConnectorSuite(t *testing.T) {
 		return nil
 	}
 
+	s.teardown = func() error { return nil }
+
 	suite.Run(t, s)
 }
 
 func (s *PatchConnectorSuite) SetupSuite() { s.Require().NoError(s.setup()) }
 
 func (s *PatchConnectorSuite) TearDownSuite() {
-	db.Clear(patch.Collection)
+	s.Require().NoError(s.teardown())
 }
 
 func (s *PatchConnectorSuite) TestFetchTooManyAsc() {
