@@ -9,21 +9,21 @@ import (
 
 // APIPatch is the model to be returned by the API whenever patches are fetched.
 type APIPatch struct {
-	Id            APIString     `json:”patch_id”`
-	Description   APIString     `json:”description”`
-	ProjectId     APIString     `json:”project_id”`
-	Branch        APIString     `json:”branch”`
-	Githash       APIString     `json:”git_hash”`
-	PatchNumber   int           `json:”patch_number”`
-	Author        APIString     `json:”author”`
-	Status        APIString     `json:”status”`
-	CreateTime    APITime       `json:”create_time”`
-	StartTime     APITime       `json:”start_time”`
-	FinishTime    APITime       `json:”finish_time”`
-	BuildVariants []APIString   `json:”build_variants”`
-	Tasks         []APIString   `json:”tasks”`
-	VariantsTasks []variantTask `json:”variants_tasks”`
-	Activated     bool          `json:”activated”`
+	Id            APIString     `json:"patch_id"`
+	Description   APIString     `json:"description"`
+	ProjectId     APIString     `json:"project_id"`
+	Branch        APIString     `json:"branch"`
+	Githash       APIString     `json:"git_hash"`
+	PatchNumber   int           `json:"patch_number"`
+	Author        APIString     `json:"author"`
+	Status        APIString     `json:"status"`
+	CreateTime    APITime       `json:"create_time"`
+	StartTime     APITime       `json:"start_time"`
+	FinishTime    APITime       `json:"finish_time"`
+	BuildVariants []APIString   `json:"build_variants"`
+	Tasks         []APIString   `json:"tasks"`
+	VariantsTasks []variantTask `json:"variants_tasks"`
+	Activated     bool          `json:"activated"`
 }
 
 type variantTask struct {
