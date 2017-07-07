@@ -271,7 +271,7 @@ tasks:
     tags: ["db", "test"]
     name: test-cloud-providers-ec2
   - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
+    tags: ["db", "test", "gccgo"]
     name: test-cloud-providers-gce
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -570,7 +570,7 @@ buildvariants:
       mongodb_url: https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel62-3.2.9.tgz
       build_env: "PATH=/opt/mongodbtoolchain/v2/bin:$PATH DISABLE_COVERAGE=yes"
     tasks:
-      - name: ".test"
+      - name: ".test !.gccgo"
   - name: rhel71-power
     display_name: "RHEL7.1 POWER8"
     run_on:
