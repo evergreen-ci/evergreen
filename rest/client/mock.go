@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"golang.org/x/net/context"
@@ -101,6 +102,22 @@ func (c *MockEvergreenREST) SendTaskLogMessages(ctx context.Context, taskData Ta
 // GetLoggerProducer constructs a single channel log producer.
 func (c *MockEvergreenREST) GetLoggerProducer(taskData TaskData) LoggerProducer {
 	return NewSingleChannelLogHarness(taskData.ID, newLogSender(c, apimodels.AgentLogPrefix, taskData))
+}
+
+func (c *MockEvergreenREST) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
+	return "", nil
+}
+
+func (c *MockEvergreenREST) GetTaskPatch(ctx context.Context, td TaskData) (*patch.Patch, error) {
+	return nil, nil
+}
+
+func (c *MockEvergreenREST) SendTaskResults(ctx context.Context, td TaskData, r *task.TestResults) error {
+	return nil
+}
+
+func (c *MockEvergreenREST) SendTestLog(ctx context.Context, td TaskData, l *model.TestLog) (string, error) {
+	return "", nil
 }
 
 // GetAllHosts ...

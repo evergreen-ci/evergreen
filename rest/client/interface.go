@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"golang.org/x/net/context"
@@ -56,6 +57,13 @@ type Communicator interface {
 	SendTaskLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(TaskData) LoggerProducer
+
+	// The following operations use the legacy API server and are
+	// used by task commands.
+	SendTaskResults(context.Context, TaskData, *task.TestResults) error
+	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
+	GetTaskPatch(context.Context, TaskData) (*patch.Patch, error)
+	GetPatchFile(context.Context, TaskData, string) (string, error)
 
 	// ---------------------------------------------------------------------
 	// End legacy API methods
