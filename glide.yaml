@@ -52,5 +52,7 @@ import:
   - package: github.com/pkg/errors
   - package: github.com/jpillora/backoff
   - package: google.golang.org/api/compute
+    subpackages:
+      - compute
   - package: github.com/vmware/govmomi
   - package: golang.org/x/oauth2
