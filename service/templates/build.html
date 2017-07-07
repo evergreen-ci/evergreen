@@ -5,6 +5,7 @@
 <script type="text/javascript">
   window.build = {{ .Build }};
   window.plugins = null
+  window.jiraHost= {{.JiraHost}}
 </script>
 <script type="text/javascript" src="{{Static "js" "build.js"}}?hash={{ StaticsMD5 }}"></script>
 {{if .User }}

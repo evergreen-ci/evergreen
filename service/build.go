@@ -101,7 +101,8 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		Flashes       []interface{}
 		Build         *uiBuild
 		PluginContent pluginData
-	}{projCtx, GetUser(r), flashes, buildAsUI, pluginContent}, "base", "build.html", "base_angular.html", "menu.html")
+		JiraHost      string
+	}{projCtx, GetUser(r), flashes, buildAsUI, pluginContent, uis.Settings.Jira.Host}, "base", "build.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {

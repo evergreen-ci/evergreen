@@ -269,7 +269,8 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
-	}{projCtx, GetUser(r), flashes, task, taskHost, pluginContent}, "base",
+		JiraHost      string
+	}{projCtx, GetUser(r), flashes, task, taskHost, pluginContent, uis.Settings.Jira.Host}, "base",
 		"task.html", "base_angular.html", "menu.html")
 }
 

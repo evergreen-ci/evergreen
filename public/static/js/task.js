@@ -1,4 +1,5 @@
 mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $location, $filter, $timeout, historyDrawerService) {
+  $scope.jiraHost = $window.jiraHost;
 
   // cache the task being displayed on the page
   $scope.task = $window.task_data;

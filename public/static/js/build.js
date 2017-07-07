@@ -3,6 +3,7 @@ mciModule.controller('BuildVariantHistoryController', function($scope, $http, $f
   $scope.builds = [];
   $scope.buildId = "";
   $scope.buildResults = {};
+  $scope.jiraHost = $window.jiraHost;
 
   $scope.setBuildId = function(buildId) {
     $scope.buildId = buildId;

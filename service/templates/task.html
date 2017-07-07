@@ -3,7 +3,8 @@
   body{ background: #f5f6f7; }
 </style>
 <script type="text/javascript">
-window.plugins = {{.PluginContent.Data}}
+  window.plugins = {{.PluginContent.Data}}
+  window.jiraHost= {{.JiraHost}}
 </script>
 <script type="text/javascript" src="{{Static "js" "task.js"}}?hash={{ StaticsMD5 }}"></script>
 {{if .User}}
