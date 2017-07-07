@@ -15,8 +15,9 @@ var newLine = []byte{'\n'}
 // io.WriteCloser.
 type WriterSender struct {
 	Sender
-	buffer []byte
-	mu     sync.Mutex
+	buffer   []byte
+	priority level.Priority
+	mu       sync.Mutex
 }
 
 // NewWriterSender wraps another sender and also provides an io.Writer.
@@ -34,7 +35,15 @@ type WriterSender struct {
 //
 // If there are any bytes in the buffer when the Close method is
 // called, this sender flushes the buffer before closing the underlying sender.
-func NewWriterSender(s Sender) *WriterSender { return &WriterSender{Sender: s} }
+func NewWriterSender(s Sender) *WriterSender {
+	return &WriterSender{Sender: s, priority: s.Level().Default}
+}
+
+// MakeWriterSender returns an sender interface that also implements
+// io.Writer. Specify a priority used as the level for messages sent.
+func MakeWriterSender(s Sender, p level.Priority) *WriterSender {
+	return &WriterSender{Sender: s, priority: p}
+}
 
 // Write captures a sequence of bytes to the send interface. It never errors.
 func (s *WriterSender) Write(p []byte) (int, error) {
@@ -61,7 +70,7 @@ func (s *WriterSender) Write(p []byte) (int, error) {
 	}
 
 	// Now send each log message:
-	s.doSend(s.Level().Default, p)
+	s.doSend(s.priority, p)
 	return n, nil
 }
 

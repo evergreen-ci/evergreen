@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/logging"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -30,8 +31,8 @@ type LoggerProducer interface {
 	// The writer functions return an io.Writer for use with
 	// exec.Cmd operations for capturing standard output and standard
 	// error from sbprocesses.
-	TaskWriter() io.Writer
-	SystemWriter() io.Writer
+	TaskWriter(level.Priority) io.Writer
+	SystemWriter(level.Priority) io.Writer
 
 	// Close releases all resources by calling Close on all underlying senders.
 	Close() error
@@ -59,20 +60,20 @@ func (l *logHarness) Execution() grip.Journaler { return l.execution }
 func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
 
-func (l *logHarness) TaskWriter() io.Writer {
+func (l *logHarness) TaskWriter(p level.Priority) io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.NewWriterSender(l.taskWriterBase)
+	w := send.MakeWriterSender(l.taskWriterBase, p)
 	l.writers = append(l.writers, w)
 	return w
 }
 
-func (l *logHarness) SystemWriter() io.Writer {
+func (l *logHarness) SystemWriter(p level.Priority) io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.NewWriterSender(l.systemWriterBase)
+	w := send.MakeWriterSender(l.systemWriterBase, p)
 	l.writers = append(l.writers, w)
 	return w
 }
@@ -129,20 +130,20 @@ func (l *singleChannelLogHarness) Execution() grip.Journaler { return l.logger }
 func (l *singleChannelLogHarness) Task() grip.Journaler      { return l.logger }
 func (l *singleChannelLogHarness) System() grip.Journaler    { return l.logger }
 
-func (l *singleChannelLogHarness) TaskWriter() io.Writer {
+func (l *singleChannelLogHarness) TaskWriter(p level.Priority) io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.NewWriterSender(l.logger.GetSender())
+	w := send.MakeWriterSender(l.logger.GetSender(), p)
 	l.writers = append(l.writers, w)
 	return w
 }
 
-func (l *singleChannelLogHarness) SystemWriter() io.Writer {
+func (l *singleChannelLogHarness) SystemWriter(p level.Priority) io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.NewWriterSender(l.logger.GetSender())
+	w := send.MakeWriterSender(l.logger.GetSender(), p)
 	l.writers = append(l.writers, w)
 	return w
 }
