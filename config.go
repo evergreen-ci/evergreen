@@ -162,6 +162,7 @@ type TaskRunnerConfig struct {
 type CloudProviders struct {
 	AWS          AWSConfig          `yaml:"aws"`
 	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
+	GCE          GCEConfig          `yaml:"gce"`
 	OpenStack    OpenStackConfig    `yaml:"openstack"`
 }
 
@@ -191,6 +192,15 @@ type OpenStackConfig struct {
 	ProjectID   string `yaml:"project_id"`
 
 	Region string `yaml:"region"`
+}
+
+// GCEConfig stores auth info for Google Compute Engine. Can be retrieved from:
+// https://developers.google.com/identity/protocols/application-default-credentials
+type GCEConfig struct {
+	ClientEmail  string `yaml:"client_email"`
+	PrivateKey   string `yaml:"private_key"`
+	PrivateKeyID string `yaml:"private_key_id"`
+	TokenURI     string `yaml:"token_uri"`
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.

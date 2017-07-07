@@ -47,8 +47,12 @@ type Expansion struct {
 	Value string `bson:"value,omitempty" json:"value,omitempty"`
 }
 
+// Seed the random number generator for creating distro names
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 // GenerateName generates a unique instance name for a distro.
 func (d *Distro) GenerateName() string {
-	return "evg_" + d.Id + "_" + time.Now().Format(NameTimeFormat) +
-		fmt.Sprintf("_%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+	return fmt.Sprintf("evg-%s-%s-%d", d.Id, time.Now().Format(NameTimeFormat), rand.Int())
 }

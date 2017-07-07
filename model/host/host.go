@@ -24,6 +24,10 @@ type Host struct {
 	Distro   distro.Distro `bson:"distro" json:"distro"`
 	Provider string        `bson:"host_type" json:"host_type"`
 
+	// physical location of host
+	Project string `bson:"project" json:"project"`
+	Zone    string `bson:"zone" json:"zone"`
+
 	// true if the host has been set up properly
 	Provisioned bool `bson:"provisioned" json:"provisioned"`
 

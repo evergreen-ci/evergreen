@@ -272,6 +272,9 @@ tasks:
     name: test-cloud-providers-ec2
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
+    name: test-cloud-providers-gce
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
     name: test-cloud-providers-openstack
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
@@ -405,6 +408,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-cloud-providers-ec2
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-cloud-providers-gce
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-cloud-providers-openstack
