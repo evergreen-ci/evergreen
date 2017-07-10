@@ -130,10 +130,10 @@ func TrackProcess(taskId string, pid int, logger grip.Journaler) error {
 		return errors.WithStack(err)
 	}
 
-	logger.Info("tracking process with pid %v", pid)
+	logger.Infof("tracking process with pid %d", pid)
 
 	if err = job.AssignProcess(uint(pid)); err != nil {
-		logger.Error("failed assigning process %d to job object: %v", pid, err)
+		logger.Errorf("failed assigning process %d to job object: %v", pid, err)
 	}
 
 	return err
@@ -149,7 +149,7 @@ func cleanup(key string, logger grip.Journaler) error {
 	}
 
 	if err := job.Terminate(0); err != nil {
-		logger.Error("terminating job object [%s] failed: %v", key, err)
+		logger.Errorf("terminating job object [%s] failed: %v", key, err)
 		return errors.WithStack(err)
 	}
 
