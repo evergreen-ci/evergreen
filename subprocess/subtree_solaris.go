@@ -7,9 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/slogger"
 )
 
 // This is a regex used to extract environment variables from the output of pargs -e
@@ -48,7 +46,7 @@ func getEnv(pid int) ([]string, error) {
 	return results, nil
 }
 
-func cleanup(key string, log plugin.Logger) error {
+func cleanup(key string, logger grip.Journaler) error {
 	pids, err := listProc()
 	if err != nil {
 		return err
@@ -63,10 +61,11 @@ func cleanup(key string, log plugin.Logger) error {
 		if envHasMarkers(env, pidMarker, taskMarker) {
 			p := os.Process{}
 			p.Pid = pid
+
 			if err := p.Kill(); err != nil {
-				log.LogSystem(slogger.INFO, "Cleanup killing %v failed: %v", pid, err)
+				logger.Infof("killing %d failed: %v", pid, err)
 			} else {
-				log.LogTask(slogger.INFO, "Cleanup killed process %v", pid)
+				logger.Infof("Killed process %d", pid)
 			}
 		}
 	}
