@@ -26,6 +26,7 @@ type RemoteCommand struct {
 
 	// optional flag for hiding sensitive commands from log output
 	LoggingDisabled bool
+	EnvVars         []string
 
 	// set after the command is started
 	Cmd *exec.Cmd
@@ -75,11 +76,16 @@ func (rc *RemoteCommand) Start() error {
 	// build the command
 	cmdArray := append(rc.Options, remote)
 
+	if len(rc.EnvVars) > 0 {
+		cmdArray = append(cmdArray, strings.Join(rc.EnvVars, " "))
+	}
+
 	// set to the background, if necessary
 	cmdString := rc.CmdString
 	if rc.Background {
-		cmdString = fmt.Sprintf("nohup %v > /tmp/start 2>&1 &", cmdString)
+		cmdString = fmt.Sprintf("nohup %s > /tmp/start 2>&1 &", cmdString)
 	}
+
 	cmdArray = append(cmdArray, cmdString)
 
 	grip.InfoWhenf(!rc.LoggingDisabled, "Remote command executing: '%s'",

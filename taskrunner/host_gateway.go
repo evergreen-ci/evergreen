@@ -227,10 +227,6 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		filepath.Join(hostObj.Distro.WorkDir, agentFile), "")
 	grip.Info(remoteCmd)
 
-	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
-		remoteCmd = fmt.Sprintf("GRIP_SUMO_ENDPOINT='%s' %s", sumoEndpoint, remoteCmd)
-	}
-
 	// compute any info necessary to ssh into the host
 	hostInfo, err := util.ParseSSHInfo(hostObj.Host)
 	if err != nil {
@@ -248,6 +244,10 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		User:           hostObj.User,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 		Background:     true,
+	}
+
+	if sumoEndpoint, ok := settings.Credentials["sumologic"]; ok {
+		startAgentCmd.EnvVars = []string{fmt.Sprintf("GRIP_SUMO_ENDPOINT='%s'", sumoEndpoint)}
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), StartAgentTimeout)
