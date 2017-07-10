@@ -26,7 +26,7 @@ func TestPatchSuite(t *testing.T) {
 }
 
 func (s *PatchSuite) SetupSuite() {
-	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
 			{Id: "patch1", Project: "project1", CreateTime: s.now},
