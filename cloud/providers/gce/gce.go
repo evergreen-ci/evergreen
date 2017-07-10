@@ -125,7 +125,7 @@ func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*
 
 	// Proactively record all information about the host we want to create. This way, if we are
 	// unable to start it or record its instance ID, we have a way of knowing what went wrong.
-	name := d.GenerateName()
+	name := generateName(d)
 	intentHost := cloud.NewIntent(*d, name, ProviderName, hostOpts)
 	intentHost.Zone = s.Zone
 	intentHost.Project = s.Project

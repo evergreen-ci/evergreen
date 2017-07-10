@@ -4,6 +4,7 @@ package gce
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -341,6 +342,25 @@ func (s *GCESuite) TestUtilSSHKeyFormatters() {
 		sshKey{Username: "user2", PublicKey: "key2"},
 	}
 	s.Equal("user:key\nuser1:key1\nuser2:key2", keys.String())
+}
+
+func (s *GCESuite) TestUtilGenerateName() {
+	r, _ := regexp.Compile("(?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)")
+	d := &distro.Distro{Id: "name"}
+
+	nameA := generateName(d)
+	nameB := generateName(d)
+	s.True(r.Match([]byte(nameA)))
+	s.True(r.Match([]byte(nameB)))
+	s.NotEqual(nameA, nameB)
+
+	d.Id = "!nv@lid N@m3*"
+	invalidChars := generateName(d)
+	s.True(r.Match([]byte(invalidChars)))
+
+	d.Id = strings.Repeat("abc", 10)
+	tooManyChars := generateName(d)
+	s.True(r.Match([]byte(tooManyChars)))
 }
 
 func (s *GCESuite) TestUtilMakeTags() {
