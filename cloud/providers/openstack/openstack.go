@@ -165,7 +165,18 @@ func (m *Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) 
 
 // TerminateInstance requests a server previously provisioned to be removed.
 func (m *Manager) TerminateInstance(host *host.Host) error {
-	return m.client.DeleteInstance(host.Id)
+	if host.Status == evergreen.HostTerminated {
+		err := errors.Errorf("Can not terminate %s - already marked as terminated!", host.Id)
+		grip.Error(err)
+		return err
+	}
+
+	if err := m.client.DeleteInstance(host.Id); err != nil {
+		return errors.Wrap(err, "API call to delete instance failed")
+	}
+
+	// Set the host status as terminated and update its termination time
+	return host.Terminate()
 }
 
 // IsUp checks whether the provisioned host is running.

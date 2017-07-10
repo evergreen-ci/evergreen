@@ -18,9 +18,10 @@ import (
 )
 
 type GCESuite struct {
-	client  client
-	keyname string
-	manager *Manager
+	client       client
+	manager      *Manager
+	distro       *distro.Distro
+	hostOpts     cloud.HostOptions
 	suite.Suite
 }
 
@@ -37,11 +38,20 @@ func (s *GCESuite) SetupTest() {
 		isActive:        true,
 		hasAccessConfig: true,
 	}
-	s.keyname = "key"
-
 	s.manager = &Manager{
 		client: s.client,
 	}
+	s.distro = &distro.Distro{
+		Id:       "host",
+		Provider: "gce",
+		ProviderSettings: &map[string]interface{}{
+			"machine_type": "machine",
+			"image_name":   "image",
+			"disk_type":    "pd-standard",
+			"disk_size_gb": 10,
+		},
+	}
+	s.hostOpts = cloud.HostOptions{}
 }
 
 func (s *GCESuite) TestValidateSettings() {
@@ -155,15 +165,43 @@ func (s *GCESuite) TestIsUpStatuses() {
 }
 
 func (s *GCESuite) TestTerminateInstanceAPICall() {
+	hostA, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	s.NotNil(hostA)
+	s.NoError(err)
+
+	hostB, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	s.NotNil(hostB)
+	s.NoError(err)
+
 	mock, ok := s.client.(*clientMock)
 	s.True(ok)
 	s.False(mock.failDelete)
 
-	host := &host.Host{Id: "hostID"}
-	s.NoError(s.manager.TerminateInstance(host))
+	s.NoError(s.manager.TerminateInstance(hostA))
 
 	mock.failDelete = true
-	s.Error(s.manager.TerminateInstance(host))
+	s.Error(s.manager.TerminateInstance(hostB))
+}
+
+func (s *GCESuite) TestTerminateInstanceDB() {
+	// Spawn the instance - check the host is not terminated in DB.
+	myHost, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	s.NotNil(myHost)
+	s.NoError(err)
+
+	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
+
+	// Terminate the instance - check the host is terminated in DB.
+	err = s.manager.TerminateInstance(myHost)
+	s.NoError(err)
+
+	dbHost, err = host.FindOne(host.ById(myHost.Id))
+	s.Equal(dbHost.Status, evergreen.HostTerminated)
+
+	// Terminate again - check we cannot remove twice.
+	err = s.manager.TerminateInstance(myHost)
+	s.Error(err)
 }
 
 func (s *GCESuite) TestGetDNSNameAPICall() {
@@ -198,6 +236,7 @@ func (s *GCESuite) TestGetDNSNameNetwork() {
 
 func (s *GCESuite) TestGetSSHOptions() {
 	opt := "Option"
+	keyname := "key"
 	host := &host.Host{
 		Distro: distro.Distro{
 			SSHOptions: []string{opt},
@@ -212,21 +251,19 @@ func (s *GCESuite) TestGetSSHOptions() {
 	s.Error(err)
 	s.False(ok)
 
-	opts, err = s.manager.GetSSHOptions(host, s.keyname)
+	opts, err = s.manager.GetSSHOptions(host, keyname)
 	s.NoError(err)
-	s.Equal([]string{"-i", s.keyname, "-o", opt}, opts)
+	s.Equal([]string{"-i", keyname, "-o", opt}, opts)
 }
 
 func (s *GCESuite) TestSpawnInvalidSettings() {
-	hostOpts := cloud.HostOptions{}
-
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host, err := s.manager.SpawnInstance(dProviderName, hostOpts)
+	host, err := s.manager.SpawnInstance(dProviderName, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "gce"}
-	host, err = s.manager.SpawnInstance(dSettingsNone, hostOpts)
+	host, err = s.manager.SpawnInstance(dSettingsNone, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
 
@@ -234,31 +271,19 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 		Provider:         "gce",
 		ProviderSettings: &map[string]interface{}{"machine_type": ""},
 	}
-	host, err = s.manager.SpawnInstance(dSettingsInvalid, hostOpts)
+	host, err = s.manager.SpawnInstance(dSettingsInvalid, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
 }
 
 func (s *GCESuite) TestSpawnDuplicateHostID() {
-	dist := &distro.Distro{
-		Id:       "host",
-		Provider: "gce",
-		ProviderSettings: &map[string]interface{}{
-			"machine_type": "machine",
-			"image_name":   "image",
-			"disk_type":    "pd-standard",
-			"disk_size_gb": 10,
-		},
-	}
-	opts := cloud.HostOptions{}
-
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne, err := s.manager.SpawnInstance(dist, opts)
+	hostOne, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo, err := s.manager.SpawnInstance(dist, opts)
+	hostTwo, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
 	s.NoError(err)
 	s.NotNil(hostTwo)
 }

@@ -4,12 +4,8 @@ package gce
 
 import (
 	"errors"
-	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/evergreen-ci/evergreen/model/host"
-
 	"golang.org/x/oauth2/jwt"
 	compute "google.golang.org/api/compute/v1"
 )
@@ -35,12 +31,12 @@ func (c *clientMock) Init(_ *jwt.Config) error {
 }
 
 // CreateInstance returns a unique identifier for the mock instance.
-func (c *clientMock) CreateInstance(_ *host.Host, _ *ProviderSettings) (string, error) {
+func (c *clientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
 	if c.failCreate {
 		return "", errors.New("failed to create instance")
 	}
 
-	return fmt.Sprintf("_%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int()), nil
+	return h.Id, nil
 }
 
 func (c *clientMock) GetInstance(_ *host.Host) (*compute.Instance, error) {

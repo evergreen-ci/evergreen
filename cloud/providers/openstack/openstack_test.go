@@ -17,6 +17,8 @@ type OpenStackSuite struct {
 	client       client
 	keyname      string
 	manager      *Manager
+	distro       *distro.Distro
+	hostOpts     cloud.HostOptions
 	suite.Suite
 }
 
@@ -35,6 +37,18 @@ func (s *OpenStackSuite) SetupTest() {
 	s.manager = &Manager{
 		client: s.client,
 	}
+
+	s.distro = &distro.Distro{
+		Id:       "host",
+		Provider: "openstack",
+		ProviderSettings: &map[string]interface{}{
+			"image_name":     "image",
+			"flavor_name":    "flavor",
+			"key_name":       "key",
+			"security_group": "group",
+		},
+	}
+	s.hostOpts = cloud.HostOptions{}
 }
 
 func (s *OpenStackSuite) TestValidateSettings() {
@@ -117,15 +131,43 @@ func (s *OpenStackSuite) TestIsUpStatuses() {
 }
 
 func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
+	hostA, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	s.NotNil(hostA)
+	s.NoError(err)
+
+	hostB, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	s.NotNil(hostB)
+	s.NoError(err)
+
 	mock, ok := s.client.(*clientMock)
 	s.True(ok)
 	s.False(mock.failDelete)
 
-	host := &host.Host{Id: "hostID"}
-	s.NoError(s.manager.TerminateInstance(host))
+	s.NoError(s.manager.TerminateInstance(hostA))
 
 	mock.failDelete = true
-	s.Error(s.manager.TerminateInstance(host))
+	s.Error(s.manager.TerminateInstance(hostB))
+}
+
+func (s *OpenStackSuite) TestTerminateInstanceDB() {
+	// Spawn the instance - check the host is not terminated in DB.
+	myHost, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	s.NotNil(myHost)
+	s.NoError(err)
+
+	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
+
+	// Terminate the instance - check the host is terminated in DB.
+	err = s.manager.TerminateInstance(myHost)
+	s.NoError(err)
+
+	dbHost, err = host.FindOne(host.ById(myHost.Id))
+	s.Equal(dbHost.Status, evergreen.HostTerminated)
+
+	// Terminate again - check we cannot remove twice.
+	err = s.manager.TerminateInstance(myHost)
+	s.Error(err)
 }
 
 func (s *OpenStackSuite) TestGetDNSNameAPICall() {
@@ -165,15 +207,13 @@ func (s *OpenStackSuite) TestGetSSHOptions() {
 }
 
 func (s *OpenStackSuite) TestSpawnInvalidSettings() {
-	hostOpts := cloud.HostOptions{}
-
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host, err := s.manager.SpawnInstance(dProviderName, hostOpts)
+	host, err := s.manager.SpawnInstance(dProviderName, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "openstack"}
-	host, err = s.manager.SpawnInstance(dSettingsNone, hostOpts)
+	host, err = s.manager.SpawnInstance(dSettingsNone, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
 
@@ -181,31 +221,19 @@ func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 		Provider: "openstack",
 		ProviderSettings: &map[string]interface{}{"image_name": ""},
 	}
-	host, err = s.manager.SpawnInstance(dSettingsInvalid, hostOpts)
+	host, err = s.manager.SpawnInstance(dSettingsInvalid, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
 }
 
 func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
-	dist := &distro.Distro{
-		Id:       "host",
-		Provider: "openstack",
-		ProviderSettings: &map[string]interface{}{
-			"image_name":     "image",
-			"flavor_name":    "flavor",
-			"key_name":       "key",
-			"security_group": "group",
-		},
-	}
-	opts := cloud.HostOptions{}
-
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne, err := s.manager.SpawnInstance(dist, opts)
+	hostOne, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo, err := s.manager.SpawnInstance(dist, opts)
+	hostTwo, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
 	s.NoError(err)
 	s.NotNil(hostTwo)
 }
@@ -221,18 +249,25 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 			"security_group": "group",
 		},
 	}
-	opts := cloud.HostOptions{}
 
 	mock, ok := s.client.(*clientMock)
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host, err := s.manager.SpawnInstance(dist, opts)
+	host, err := s.manager.SpawnInstance(dist, s.hostOpts)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
-	host, err = s.manager.SpawnInstance(dist, opts)
+	host, err = s.manager.SpawnInstance(dist, s.hostOpts)
 	s.Error(err)
 	s.Nil(host)
+}
+
+func (s *OpenStackSuite) TestUtilToEvgStatus() {
+	s.Equal(cloud.StatusRunning, osStatusToEvgStatus("ACTIVE"))
+	s.Equal(cloud.StatusRunning, osStatusToEvgStatus("IN_PROGRESS"))
+	s.Equal(cloud.StatusStopped, osStatusToEvgStatus("SHUTOFF"))
+	s.Equal(cloud.StatusInitializing, osStatusToEvgStatus("BUILD"))
+	s.Equal(cloud.StatusUnknown, osStatusToEvgStatus("???"))
 }
