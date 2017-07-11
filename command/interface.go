@@ -1,10 +1,9 @@
 package command
 
 import (
-	"context"
-
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
+	"golang.org/x/net/context"
 )
 
 // Command is an interface that defines a command
