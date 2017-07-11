@@ -56,6 +56,10 @@ func RunRemoteScript(h *host.Host, script string, sshOptions []string) (string, 
 		Background:     false,
 	}
 
+	if len(sshOptions) > 0 {
+		cmd.Options = append(cmd.Options, sshOptions...)
+	}
+
 	// run the ssh command with given timeout
 	ctx, cancel := context.WithTimeout(context.TODO(), SSHTimeout)
 	defer cancel()
