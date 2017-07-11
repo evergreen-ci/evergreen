@@ -173,6 +173,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 
 	dbHost, err := host.FindOne(host.ById(myHost.Id))
 	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
+	s.NoError(err)
 
 	// Terminate the instance - check the host is terminated in DB.
 	err = s.manager.TerminateInstance(myHost)
@@ -180,6 +181,7 @@ func (s *OpenStackSuite) TestTerminateInstanceDB() {
 
 	dbHost, err = host.FindOne(host.ById(myHost.Id))
 	s.Equal(dbHost.Status, evergreen.HostTerminated)
+	s.NoError(err)
 
 	// Terminate again - check we cannot remove twice.
 	err = s.manager.TerminateInstance(myHost)
