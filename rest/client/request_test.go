@@ -10,7 +10,7 @@ import (
 
 type RequestTestSuite struct {
 	suite.Suite
-	evergreenREST *evergreenREST
+	evergreenREST *communicatorImpl
 }
 
 func TestRequestTestSuite(t *testing.T) {
@@ -18,7 +18,7 @@ func TestRequestTestSuite(t *testing.T) {
 }
 
 func (s *RequestTestSuite) SetupTest() {
-	s.evergreenREST = &evergreenREST{
+	s.evergreenREST = &communicatorImpl{
 		hostID:       "hostID",
 		hostSecret:   "hostSecret",
 		maxAttempts:  10,

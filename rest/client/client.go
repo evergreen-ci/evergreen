@@ -21,8 +21,8 @@ const (
 	// v2 = "/rest/v2"
 )
 
-// evergreenREST implements Communicator and makes requests to API endpoints for the agent.
-type evergreenREST struct {
+// communicatorImpl implements Communicator and makes requests to API endpoints for the agent.
+type communicatorImpl struct {
 	serverURL    string
 	maxAttempts  int
 	timeoutStart time.Duration
@@ -43,11 +43,11 @@ type TaskData struct {
 	OverrideValidation bool
 }
 
-// NewEvergreenREST returns a Communicator capable of making HTTP REST requests against
+// NewCommunicator returns a Communicator capable of making HTTP REST requests against
 // the API server. To change the default retry behavior, use the SetTimeoutStart, SetTimeoutMax,
 // and SetMaxAttempts methods.
-func NewEvergreenREST(serverURL string) Communicator {
-	evergreen := &evergreenREST{
+func NewCommunicator(serverURL string) Communicator {
+	evergreen := &communicatorImpl{
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
@@ -58,42 +58,42 @@ func NewEvergreenREST(serverURL string) Communicator {
 }
 
 // SetTimeoutStart sets the initial timeout for a request.
-func (c *evergreenREST) SetTimeoutStart(timeoutStart time.Duration) {
+func (c *communicatorImpl) SetTimeoutStart(timeoutStart time.Duration) {
 	c.timeoutStart = timeoutStart
 }
 
 // SetTimeoutMax sets the maximum timeout for a request.
-func (c *evergreenREST) SetTimeoutMax(timeoutMax time.Duration) {
+func (c *communicatorImpl) SetTimeoutMax(timeoutMax time.Duration) {
 	c.timeoutMax = timeoutMax
 }
 
 // SetMaxAttempts sets the number of attempts a request will be made.
-func (c *evergreenREST) SetMaxAttempts(attempts int) {
+func (c *communicatorImpl) SetMaxAttempts(attempts int) {
 	c.maxAttempts = attempts
 }
 
 // SetHostID sets the host ID.
-func (c *evergreenREST) SetHostID(hostID string) {
+func (c *communicatorImpl) SetHostID(hostID string) {
 	c.hostID = hostID
 }
 
 // SetHostSecret sets the host secret.
-func (c *evergreenREST) SetHostSecret(hostSecret string) {
+func (c *communicatorImpl) SetHostSecret(hostSecret string) {
 	c.hostSecret = hostSecret
 }
 
 // SetAPIUser sets the API user.
-func (c *evergreenREST) SetAPIUser(apiUser string) {
+func (c *communicatorImpl) SetAPIUser(apiUser string) {
 	c.apiUser = apiUser
 }
 
 // SetAPIKey sets the API key.
-func (c *evergreenREST) SetAPIKey(apiKey string) {
+func (c *communicatorImpl) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
 // GetLogProducer
-func (c *evergreenREST) GetLoggerProducer(taskData TaskData) LoggerProducer {
+func (c *communicatorImpl) GetLoggerProducer(taskData TaskData) LoggerProducer {
 	const (
 		bufferTime  = 15 * time.Second
 		bufferCount = 100

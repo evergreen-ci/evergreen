@@ -1,10 +1,12 @@
 package client
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -57,6 +59,18 @@ type Communicator interface {
 	SendTaskLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(TaskData) LoggerProducer
+	// PostJSON does an HTTP POST for the communicator's plugin + task.
+	PostJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string, data interface{}) (*http.Response, error)
+	// GetJSON does an HTTP GET for the communicator's plugin + task.
+	GetJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string) (*http.Response, error)
+	// SendResults posts a set of test results for the communicator's task.
+	// If results are empty or nil, this operation is a noop.
+	SendResults(ctx context.Context, taskData TaskData, results *task.TestResults) error
+	// SendFiles attaches task files.
+	SendFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error
+	// PostTestData posts a test log for a communicator's task. Is a
+	// noop if the test Log is nil.
+	PostTestData(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error)
 
 	// The following operations use the legacy API server and are
 	// used by task commands.

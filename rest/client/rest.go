@@ -1,246 +1,246 @@
 package client
 
 // GetAllHosts ...
-func (*evergreenREST) GetAllHosts() {
+func (*communicatorImpl) GetAllHosts() {
 	return
 }
 
 // GetHostByID ...
-func (*evergreenREST) GetHostByID() {
+func (*communicatorImpl) GetHostByID() {
 	return
 }
 
 // SetHostStatus ...
-func (*evergreenREST) SetHostStatus() {
+func (*communicatorImpl) SetHostStatus() {
 	return
 }
 
 // SetHostStatuses ...
-func (*evergreenREST) SetHostStatuses() {
+func (*communicatorImpl) SetHostStatuses() {
 	return
 }
 
 // CreateSpawnHost ...
-func (*evergreenREST) CreateSpawnHost() {
+func (*communicatorImpl) CreateSpawnHost() {
 	return
 }
 
 // GetSpawnHosts ...
-func (*evergreenREST) GetSpawnHosts() {
+func (*communicatorImpl) GetSpawnHosts() {
 	return
 }
 
 // GetTaskByID ...
-func (*evergreenREST) GetTaskByID() {
+func (*communicatorImpl) GetTaskByID() {
 	return
 }
 
 // GetTasksByBuild ...
-func (*evergreenREST) GetTasksByBuild() {
+func (*communicatorImpl) GetTasksByBuild() {
 	return
 }
 
 // GetTasksByProjectAndCommit ...
-func (*evergreenREST) GetTasksByProjectAndCommit() {
+func (*communicatorImpl) GetTasksByProjectAndCommit() {
 	return
 }
 
 // SetTaskStatus ...
-func (*evergreenREST) SetTaskStatus() {
+func (*communicatorImpl) SetTaskStatus() {
 	return
 }
 
 // AbortTask ...
-func (*evergreenREST) AbortTask() {
+func (*communicatorImpl) AbortTask() {
 	return
 }
 
 // RestartTask ...
-func (*evergreenREST) RestartTask() {
+func (*communicatorImpl) RestartTask() {
 	return
 }
 
 // GetKeys ...
-func (*evergreenREST) GetKeys() {
+func (*communicatorImpl) GetKeys() {
 	return
 }
 
 // AddKey ...
-func (*evergreenREST) AddKey() {
+func (*communicatorImpl) AddKey() {
 	return
 }
 
 // RemoveKey ...
-func (*evergreenREST) RemoveKey() {
+func (*communicatorImpl) RemoveKey() {
 	return
 }
 
 // GetProjectByID ...
-func (*evergreenREST) GetProjectByID() {
+func (*communicatorImpl) GetProjectByID() {
 	return
 }
 
 // EditProject ...
-func (*evergreenREST) EditProject() {
+func (*communicatorImpl) EditProject() {
 	return
 }
 
 // CreateProject ...
-func (*evergreenREST) CreateProject() {
+func (*communicatorImpl) CreateProject() {
 	return
 }
 
 // GetAllProjects ...
-func (*evergreenREST) GetAllProjects() {
+func (*communicatorImpl) GetAllProjects() {
 	return
 }
 
 // GetBuildByID ...
-func (*evergreenREST) GetBuildByID() {
+func (*communicatorImpl) GetBuildByID() {
 	return
 }
 
 // GetBuildByProjectAndHashAndVariant ...
-func (*evergreenREST) GetBuildByProjectAndHashAndVariant() {
+func (*communicatorImpl) GetBuildByProjectAndHashAndVariant() {
 	return
 }
 
 // GetBuildsByVersion ...
-func (*evergreenREST) GetBuildsByVersion() {
+func (*communicatorImpl) GetBuildsByVersion() {
 	return
 }
 
 // SetBuildStatus ...
-func (*evergreenREST) SetBuildStatus() {
+func (*communicatorImpl) SetBuildStatus() {
 	return
 }
 
 // AbortBuild ...
-func (*evergreenREST) AbortBuild() {
+func (*communicatorImpl) AbortBuild() {
 	return
 }
 
 // RestartBuild ...
-func (*evergreenREST) RestartBuild() {
+func (*communicatorImpl) RestartBuild() {
 	return
 }
 
 // GetTestsByTaskID ...
-func (*evergreenREST) GetTestsByTaskID() {
+func (*communicatorImpl) GetTestsByTaskID() {
 	return
 }
 
 // GetTestsByBuild ...
-func (*evergreenREST) GetTestsByBuild() {
+func (*communicatorImpl) GetTestsByBuild() {
 	return
 }
 
 // GetTestsByTestName ...
-func (*evergreenREST) GetTestsByTestName() {
+func (*communicatorImpl) GetTestsByTestName() {
 	return
 }
 
 // GetVersionByID ...
-func (*evergreenREST) GetVersionByID() {
+func (*communicatorImpl) GetVersionByID() {
 	return
 }
 
 // GetVersions ...
-func (*evergreenREST) GetVersions() {
+func (*communicatorImpl) GetVersions() {
 	return
 }
 
 // GetVersionByProjectAndCommit ...
-func (*evergreenREST) GetVersionByProjectAndCommit() {
+func (*communicatorImpl) GetVersionByProjectAndCommit() {
 	return
 }
 
 // GetVersionsByProject ...
-func (*evergreenREST) GetVersionsByProject() {
+func (*communicatorImpl) GetVersionsByProject() {
 	return
 }
 
 // SetVersionStatus ...
-func (*evergreenREST) SetVersionStatus() {
+func (*communicatorImpl) SetVersionStatus() {
 	return
 }
 
 // AbortVersion ...
-func (*evergreenREST) AbortVersion() {
+func (*communicatorImpl) AbortVersion() {
 	return
 }
 
 // RestartVersion ...
-func (*evergreenREST) RestartVersion() {
+func (*communicatorImpl) RestartVersion() {
 	return
 }
 
 // GetAllDistros ...
-func (*evergreenREST) GetAllDistros() {
+func (*communicatorImpl) GetAllDistros() {
 	return
 }
 
 // GetDistroByID ...
-func (*evergreenREST) GetDistroByID() {
+func (*communicatorImpl) GetDistroByID() {
 	return
 }
 
 // CreateDistro ...
-func (*evergreenREST) CreateDistro() {
+func (*communicatorImpl) CreateDistro() {
 	return
 }
 
 // EditDistro ...
-func (*evergreenREST) EditDistro() {
+func (*communicatorImpl) EditDistro() {
 	return
 }
 
 // DeleteDistro ...
-func (*evergreenREST) DeleteDistro() {
+func (*communicatorImpl) DeleteDistro() {
 	return
 }
 
 // GetDistroSetupScriptByID ...
-func (*evergreenREST) GetDistroSetupScriptByID() {
+func (*communicatorImpl) GetDistroSetupScriptByID() {
 	return
 }
 
 // GetDistroTeardownScriptByID ...
-func (*evergreenREST) GetDistroTeardownScriptByID() {
+func (*communicatorImpl) GetDistroTeardownScriptByID() {
 	return
 }
 
 // EditDistroSetupScript ...
-func (*evergreenREST) EditDistroSetupScript() {
+func (*communicatorImpl) EditDistroSetupScript() {
 	return
 }
 
 // EditDistroTeardownScript ...
-func (*evergreenREST) EditDistroTeardownScript() {
+func (*communicatorImpl) EditDistroTeardownScript() {
 	return
 }
 
 // GetPatchByID ...
-func (*evergreenREST) GetPatchByID() {
+func (*communicatorImpl) GetPatchByID() {
 	return
 }
 
 // GetPatchesByProject ...
-func (*evergreenREST) GetPatchesByProject() {
+func (*communicatorImpl) GetPatchesByProject() {
 	return
 }
 
 // SetPatchStatus ...
-func (*evergreenREST) SetPatchStatus() {
+func (*communicatorImpl) SetPatchStatus() {
 	return
 }
 
 // AbortPatch ...
-func (*evergreenREST) AbortPatch() {
+func (*communicatorImpl) AbortPatch() {
 	return
 }
 
 // RestartPatch ...
-func (*evergreenREST) RestartPatch() {
+func (*communicatorImpl) RestartPatch() {
 	return
 }

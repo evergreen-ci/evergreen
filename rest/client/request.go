@@ -16,29 +16,29 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
-func (c *evergreenREST) get(ctx context.Context, path string, taskData TaskData, version string) (*http.Response, error) {
+func (c *communicatorImpl) get(ctx context.Context, path string, taskData TaskData, version string) (*http.Response, error) {
 	response, err := c.request(ctx, "GET", path, taskData.Secret, version, nil)
 	return response, errors.Wrap(err, "Error performing HTTP GET request")
 }
 
 // this function is commented out because it is not yet used
-// func (c *evergreenREST) delete(ctx context.Context, path string, taskSecret, version string) (*http.Response, error) {
+// func (c *communicatorImpl) delete(ctx context.Context, path string, taskSecret, version string) (*http.Response, error) {
 // 	response, err := c.request(ctx, "DELETE", path, taskSecret, version, nil)
 // 	return response, errors.Wrap(err, "Error performing HTTP DELETE request")
 // }
 
 // this function is commented out because it is not yet used
-// func (c *evergreenREST) put(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
+// func (c *communicatorImpl) put(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
 // 	response, err := c.request(ctx, "PUT", path, taskSecret, version, data)
 // 	return response, errors.Wrap(err, "Error performing HTTP PUT request")
 // }
 
-func (c *evergreenREST) post(ctx context.Context, path string, taskData TaskData, version string, data *interface{}) (*http.Response, error) {
+func (c *communicatorImpl) post(ctx context.Context, path string, taskData TaskData, version string, data *interface{}) (*http.Response, error) {
 	response, err := c.request(ctx, "POST", path, taskData.Secret, version, data)
 	return response, errors.Wrap(err, "Error performing HTTP POST request")
 }
 
-func (c *evergreenREST) retryPost(ctx context.Context, path string, taskData TaskData, version string, data interface{}) (*http.Response, error) {
+func (c *communicatorImpl) retryPost(ctx context.Context, path string, taskData TaskData, version string, data interface{}) (*http.Response, error) {
 	if !taskData.OverrideValidation && taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
@@ -74,7 +74,7 @@ func (c *evergreenREST) retryPost(ctx context.Context, path string, taskData Tas
 	return nil, errors.Errorf("Failed to post JSON after %d attempts", c.maxAttempts)
 }
 
-func (c *evergreenREST) retryGet(ctx context.Context, path string, taskData TaskData, version string) (resp *http.Response, err error) {
+func (c *communicatorImpl) retryGet(ctx context.Context, path string, taskData TaskData, version string) (resp *http.Response, err error) {
 	if !taskData.OverrideValidation && taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
@@ -109,7 +109,7 @@ func (c *evergreenREST) retryGet(ctx context.Context, path string, taskData Task
 	return nil, errors.Errorf("Failed to get after %d attempts", c.maxAttempts)
 }
 
-func (c *evergreenREST) newRequest(method, path, taskSecret, version string, data *interface{}) (*http.Request, error) {
+func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, data *interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
 	if data != nil {
@@ -142,7 +142,7 @@ func (c *evergreenREST) newRequest(method, path, taskSecret, version string, dat
 	return r, nil
 }
 
-func (c *evergreenREST) request(ctx context.Context, method, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
+func (c *communicatorImpl) request(ctx context.Context, method, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
 	r, err := c.newRequest(method, path, taskSecret, version, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
@@ -161,7 +161,7 @@ func (c *evergreenREST) request(ctx context.Context, method, path, taskSecret, v
 	return response, nil
 }
 
-func (c *evergreenREST) getBackoff() *backoff.Backoff {
+func (c *communicatorImpl) getBackoff() *backoff.Backoff {
 	return &backoff.Backoff{
 		Min:    c.timeoutStart,
 		Max:    c.timeoutMax,
@@ -170,10 +170,10 @@ func (c *evergreenREST) getBackoff() *backoff.Backoff {
 	}
 }
 
-func (c *evergreenREST) getPath(path string, version string) string {
+func (c *communicatorImpl) getPath(path string, version string) string {
 	return fmt.Sprintf("%s%s/%s", c.serverURL, version, path)
 }
 
-func (c *evergreenREST) getTaskPathSuffix(path, taskID string) string {
+func (c *communicatorImpl) getTaskPathSuffix(path, taskID string) string {
 	return fmt.Sprintf("task/%s/%s", taskID, path)
 }

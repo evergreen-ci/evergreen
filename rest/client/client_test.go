@@ -6,9 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEvergreenRESTConstructor(t *testing.T) {
-	client := NewEvergreenREST("url")
-	c, ok := client.(*evergreenREST)
+func TestEvergreenCommunicatorConstructor(t *testing.T) {
+	client := NewCommunicator("url")
+	c, ok := client.(*communicatorImpl)
 	assert.True(t, ok, true)
 	assert.Empty(t, c.hostID)
 	assert.Empty(t, c.hostSecret)
