@@ -52,30 +52,46 @@ func (s *OpenStackSuite) SetupTest() {
 }
 
 func (s *OpenStackSuite) TestValidateSettings() {
+	// all required settings are provided
 	settingsOk := &ProviderSettings{
-		ImageName:  "image",
-		FlavorName: "flavor",
-		KeyName:    "key",
+		ImageName:     "image",
+		FlavorName:    "flavor",
+		KeyName:       "key",
+		SecurityGroup: "sec",
 	}
 	s.NoError(settingsOk.Validate())
 
+	// error when missing image name
 	settingsNoImage := &ProviderSettings{
-		FlavorName: "flavor",
-		KeyName:    "key",
+		FlavorName:    "flavor",
+		KeyName:       "key",
+		SecurityGroup: "sec",
 	}
 	s.Error(settingsNoImage.Validate())
 
+	// error when missing flavor name
 	settingsNoFlavor := &ProviderSettings{
-		ImageName:  "image",
-		KeyName:    "key",
+		ImageName:     "image",
+		KeyName:       "key",
+		SecurityGroup: "sec",
 	}
 	s.Error(settingsNoFlavor.Validate())
 
+	// error when missing key name
 	settingsNoKey := &ProviderSettings{
-		ImageName:  "image",
-		FlavorName: "flavor",
+		ImageName:     "image",
+		FlavorName:    "flavor",
+		SecurityGroup: "sec",
 	}
 	s.Error(settingsNoKey.Validate())
+
+	// error when missing security group
+	settingsNoSecGroup := &ProviderSettings{
+		ImageName:  "image",
+		FlavorName: "flavor",
+		KeyName:    "key",
+	}
+	s.Error(settingsNoSecGroup.Validate())
 }
 
 func (s *OpenStackSuite) TestConfigureAPICall() {

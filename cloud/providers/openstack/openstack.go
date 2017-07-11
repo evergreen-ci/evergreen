@@ -50,6 +50,10 @@ func (opts *ProviderSettings) Validate() error {
 		return errors.New("Key name must not be blank")
 	}
 
+	if opts.SecurityGroup == "" {
+		return errors.New("Security group must not be blank")
+	}
+
 	return nil
 }
 

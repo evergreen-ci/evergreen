@@ -56,6 +56,7 @@ func (s *GCESuite) SetupTest() {
 }
 
 func (s *GCESuite) TestValidateSettings() {
+	// all required settings are provided
 	settingsOk := &ProviderSettings{
 		MachineType: "machine",
 		ImageName:   "image",
@@ -64,6 +65,7 @@ func (s *GCESuite) TestValidateSettings() {
 	}
 	s.NoError(settingsOk.Validate())
 
+	// error when missing machine type
 	settingsNoMachine := &ProviderSettings{
 		ImageName:  "image",
 		DiskType:   "pd-standard",
@@ -71,6 +73,7 @@ func (s *GCESuite) TestValidateSettings() {
 	}
 	s.Error(settingsNoMachine.Validate())
 
+	// error when missing disk type
 	settingsNoDiskType := &ProviderSettings{
 		MachineType: "machine",
 		ImageName:   "image",

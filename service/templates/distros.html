@@ -233,7 +233,8 @@ Evergreen - Distros
               </div>
               <div>
                 <label class="distro-label">Security Group:</label>
-                <input type="text" ng-readonly="readOnly" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="(optional) OpenStack security group (must already exist)" class="form-control">
+                <input type="text" ng-readonly="readOnly" ng-required="activeDistro.provider == 'openstack'" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="OpenStack security group (must already exist)" class="form-control">
+                <div class="icon fa fa-warning distro-error" ng-show="form.securityGroup.$dirty && form.securityGroup.$error.required || form.securityGroup.$invalid">Security group is required</div>
               </div>
             </div>
             <div ng-show="activeDistro.provider == 'gce'">
