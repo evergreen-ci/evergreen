@@ -25,6 +25,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   }, {
     'id': 'openstack',
     'display': 'OpenStack'
+  }, {
+    'id': 'gce',
+    'display': 'Google Compute'
   }];
 
   $scope.architectures = [{
@@ -166,6 +169,22 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   $scope.removeMount = function(mount_point) {
     var index = $scope.activeDistro.settings.mount_points.indexOf(mount_point);
     $scope.activeDistro.settings.mount_points.splice(index, 1);
+  }
+
+  $scope.addInstanceSSHKey = function(ssh_key) {
+    if ($scope.activeDistro.settings == null) {
+      $scope.activeDistro.settings = {};
+    }
+    if ($scope.activeDistro.settings.ssh_keys == null) {
+      $scope.activeDistro.settings.ssh_keys = [];
+    }
+    $scope.activeDistro.settings.ssh_keys.push({});
+    $scope.scrollElement('#ssh-keys-table');
+  }
+
+  $scope.removeInstanceSSHKey = function(ssh_key) {
+    var index = $scope.activeDistro.settings.ssh_keys.indexOf(ssh_key);
+    $scope.activeDistro.settings.ssh_keys.splice(index, 1);
   }
 
   $scope.addSSHOption = function() {

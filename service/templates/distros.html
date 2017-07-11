@@ -236,6 +236,67 @@ Evergreen - Distros
                 <input type="text" ng-readonly="readOnly" name="securityGroup" ng-model="activeDistro.settings.security_group" placeholder="(optional) OpenStack security group (must already exist)" class="form-control">
               </div>
             </div>
+            <div ng-show="activeDistro.provider == 'gce'">
+              <div>
+                <label class="distro-label">Project ID:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="projectID" class="form-control" ng-model="activeDistro.settings.project_id" placeholder="Google Cloud project ID e.g. abc-abc-123" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.projectID.$dirty && form.projectID.$error.required || form.projectID.$invalid">Project ID is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Zone:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="zone" class="form-control" ng-model="activeDistro.settings.zone" placeholder="geographical zone e.g. us-east1-c" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.zone.$dirty && form.zone.$error.required || form.zone.$invalid">Zone is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Image Name:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && !activeDistro.settings.image_family" name="imageName" class="form-control" ng-model="activeDistro.settings.image_name" placeholder="the disk will use the private image of the specified name" ng-disabled="activeDistro.settings.image_family" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.imageName.$dirty && form.imageName.$error.required || form.imageName.$invalid">Exactly one of image name or image family is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Image Family:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce' && !activeDistro.settings.image_name" name="imageFamily" class="form-control" ng-model="activeDistro.settings.image_family" placeholder="the disk will use the newest image from the private image family" ng-disabled="activeDistro.settings.image_name" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.imageFamily.$dirty && form.imageFamily.$error.required || form.imageFamily.$invalid">Exactly one of image name or image family is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Machine Type:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="machineType" class="form-control" ng-model="activeDistro.settings.machine_type" placeholder="instance type e.g. n1-standard-8" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.machineType.$dirty && form.machineType.$error.required || form.machineType.$invalid">Machine type is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Disk Type:</label>
+                <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'gce'" name="diskType" class="form-control" ng-model="activeDistro.settings.disk_type" placeholder="boot disk type e.g. pd-standard" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.diskType.$dirty && form.diskType.$error.required || form.diskType.$invalid">Disk type is required</div>
+              </div>
+              <div>
+                <label class="distro-label">Disk Size (GB):</label>
+                <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce'" name="diskSizeGB" class="form-control" ng-model="activeDistro.settings.disk_size_gb" placeholder="boot disk size, in base-2 GB e.g. 10" ng-readonly="readOnly">
+                <div class="icon fa fa-warning distro-error" ng-show="form.diskSizeGB.$dirty && form.diskSizeGB.$error.required || form.diskSizeGB.$invalid">Numeric disk size is required</div>
+              </div>
+              <div id="ssh-keys-table" class="distro-table-scroll">
+                  <label class="distro-label">Instance SSH Keys:</label>
+                  <table ng-form name="sshKeys" class="table distro-table" ng-show="activeDistro.settings.ssh_keys" ng-init="form.devName=''; form.devSize=''">
+                    <thead class="muted">
+                      <tr>
+                        <th>Username</th>
+                        <th>Public Key</th>
+                      </tr>
+                    </thead>
+                    <tbody ng-repeat="ssh_key in activeDistro.settings.ssh_keys">
+                      <tr>
+                        <td><input ng-readonly="readOnly" required name="username" type="text" ng-model="ssh_key.username" class="form-control"></td>
+                        <td><input ng-readonly="readOnly" required name="public_key" type="text" ng-model="ssh_key.public_key" class="form-control"></td>
+                        <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeInstanceSSHKey(ssh_key)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div>
+                <div class="icon fa fa-warning distro-error" ng-show="sshKeys.username.$dirty && sshKeys.username.$error.required">Username is required<br /></div>
+                <div class="icon fa fa-warning distro-error" ng-show="sshKeys.public_key.$dirty && sshKeys.public_key.$error.required">Public key is required<br /></div>
+                <button ng-hide="readOnly" type="button" ng-disabled="(sshKeys.username.$dirty || sshKeys.public_key.$dirty) && sshKeys.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addInstanceSSHKey()"><i class="fa fa-plus"></i>Add SSH Key</button>
+              </div>
+            </div>
             <div ng-show="activeDistro.provider != 'static'">
               <label class="distro-label">Maximum number of hosts allowed:</label>
               <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider != 'static'" name="poolSize" class="form-control" ng-model="activeDistro.pool_size" placeholder="Max pool size e.g. 10">
