@@ -2,7 +2,6 @@ package route
 
 import (
 	"testing"
-
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
@@ -12,7 +11,50 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-type PatchSuite struct {
+type PatchByIdSuite struct {
+	sc   *data.MockConnector
+	data data.MockPatchConnector
+
+	suite.Suite
+}
+
+func TestPatchByIdSuite(t *testing.T) {
+	suite.Run(t, new(PatchesByProjectSuite))
+}
+
+func (s *PatchByIdSuite) SetupSuite() {
+	s.data = data.MockPatchConnector{
+		CachedPatches: []patch.Patch{
+			{Id: "patch1"},
+			{Id: "patch2"},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockPatchConnector: s.data,
+	}
+}
+
+func (s *PatchByIdSuite) TestFindById() {
+	rm := getBuildIdRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = "patch2"
+	res, err := rm.Methods[0].Execute(nil, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Len(res.Result, 1)
+
+	p, ok := (res.Result[0]).(*model.APIPatch)
+	s.True(ok)
+	s.Equal(model.APIString("patch2"), p.Id)
+}
+func (s *PatchByIdSuite) TestFindByIdFail() {
+	rm := getBuildIdRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = "notpatch"
+	res, err := rm.Methods[0].Execute(nil, s.sc)
+	s.Error(err)
+	s.Nil(res)
+}
+
+type PatchesByProjectSuite struct {
 	sc        *data.MockConnector
 	data      data.MockPatchConnector
 	now       time.Time
@@ -21,11 +63,11 @@ type PatchSuite struct {
 	suite.Suite
 }
 
-func TestPatchSuite(t *testing.T) {
-	suite.Run(t, new(PatchSuite))
+func TestPatchesByProjectSuite(t *testing.T) {
+	suite.Run(t, new(PatchesByProjectSuite))
 }
 
-func (s *PatchSuite) SetupSuite() {
+func (s *PatchesByProjectSuite) SetupSuite() {
 	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
@@ -43,16 +85,16 @@ func (s *PatchSuite) SetupSuite() {
 	}
 }
 
-func (s *PatchSuite) TestPaginatorShouldErrorIfNoResults() {
-	rd, err := executeRequest("project3", s.now, 1, s.sc)
+func (s *PatchesByProjectSuite) TestPaginatorShouldErrorIfNoResults() {
+	rd, err := executePatchesByProjectRequest("project3", s.now, 1, s.sc)
 	s.Error(err)
 	s.NotNil(rd)
 	s.Len(rd.Result, 0)
 	s.Contains(err.Error(), "no patches found")
 }
 
-func (s *PatchSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	rd, err := executeRequest("project1", s.now.Add(time.Second*7), 2, s.sc)
+func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
+	rd, err := executePatchesByProjectRequest("project1", s.now.Add(time.Second*7), 2, s.sc)
 	s.NoError(err)
 	s.NotNil(rd)
 	s.Len(rd.Result, 2)
@@ -72,8 +114,8 @@ func (s *PatchSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.Equal(prevTime, pageData.Prev.Key)
 }
 
-func (s *PatchSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	rd, err := executeRequest("project2", s.now.Add(time.Hour), 100, s.sc)
+func (s *PatchesByProjectSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
+	rd, err := executePatchesByProjectRequest("project2", s.now.Add(time.Hour), 100, s.sc)
 	s.NoError(err)
 	s.NotNil(rd)
 	s.Len(rd.Result, 2)
@@ -85,7 +127,7 @@ func (s *PatchSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
 	s.Nil(pageData.Next)
 }
 
-func (s *PatchSuite) TestInvalidTimesAsKeyShouldError() {
+func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 	inputs := []string{
 		"200096-01-02T15:04:05.000Z",
 		"15:04:05.000Z",
@@ -105,7 +147,7 @@ func (s *PatchSuite) TestInvalidTimesAsKeyShouldError() {
 	}
 }
 
-func executeRequest(projectId string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
+func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
 	rm := getPatchesByProjectManager("", 2)
 	pe := (rm.Methods[0].RequestHandler).(*patchesByProjectHandler)
 	pe.Args = patchesByProjectArgs{projectId: projectId}

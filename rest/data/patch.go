@@ -1,10 +1,14 @@
 package data
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/pkg/errors"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // DBPatchConnector is a struct that implements the Patch related methods
@@ -20,6 +24,21 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 	}
 
 	return patches, nil
+}
+
+// FindPatchById queries the backing database for the patch matching patchId.
+func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
+	p, err := patch.FindOne(patch.ById(bson.ObjectId(patchId)))
+	if err != nil {
+		return nil, err
+	}
+	if p == nil {
+		return nil, &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
+		}
+	}
+	return p, nil
 }
 
 // MockPatchConnector is a struct that implements the Patch related methods
@@ -57,4 +76,17 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 		}
 	}
 	return patchesToReturn, nil
+}
+
+// FindPatchById iterates through the slice of CachedPatches to find the matching patch.
+func (pc *MockPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
+	for _, p := range pc.CachedPatches {
+		if string(p.Id) == patchId {
+			return &p, nil
+		}
+	}
+	return nil, &rest.APIError{
+		StatusCode: http.StatusNotFound,
+		Message:    fmt.Sprintf("patch with id %s not found", patchId),
+	}
 }

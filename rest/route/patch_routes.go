@@ -15,6 +15,64 @@ import (
 	"golang.org/x/net/context"
 )
 
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for fetching patches by id
+//
+//    /patches/{patch_id}
+
+func getPatchByIdManager(route string, version int) *RouteManager {
+	p := &patchByIdHandler{}
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				MethodType:     evergreen.MethodGet,
+				Authenticator:  &NoAuthAuthenticator{},
+				RequestHandler: p.Handler(),
+			},
+		},
+	}
+}
+
+type patchByIdHandler struct {
+	patchId string
+}
+
+func (p *patchByIdHandler) Handler() RequestHandler {
+	return &patchByIdHandler{}
+}
+
+func (p *patchByIdHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	p.patchId = vars["patch_id"]
+	return nil
+}
+
+func (p *patchByIdHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	foundPatch, err := sc.FindPatchById(p.patchId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+
+	patchModel := &model.APIPatch{}
+	err = patchModel.BuildFromService(foundPatch)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{patchModel},
+	}, nil
+}
+
 type patchesByProjectArgs struct {
 	projectId string
 }

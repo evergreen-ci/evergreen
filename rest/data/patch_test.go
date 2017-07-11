@@ -1,6 +1,7 @@
 package data
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -8,10 +9,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type PatchConnectorSuite struct {
 	ctx      Connector
+	obj_ids  []bson.ObjectId
 	time     time.Time
 	setup    func() error
 	teardown func() error
@@ -27,13 +30,17 @@ func TestPatchConnectorSuite(t *testing.T) {
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorSuite")
 		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
+		for i := 0; i < 6; i++ {
+			s.obj_ids = append(s.obj_ids, bson.NewObjectId())
+		}
+
 		patches := []*patch.Patch{
-			{Project: "project1", CreateTime: s.time},
-			{Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
-			{Project: "project1", CreateTime: s.time.Add(time.Second * 4)},
-			{Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
-			{Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
-			{Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
+			{Id: s.obj_ids[0], Project: "project1", CreateTime: s.time},
+			{Id: s.obj_ids[1], Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
+			{Id: s.obj_ids[2], Project: "project1", CreateTime: s.time.Add(time.Second * 4)},
+			{Id: s.obj_ids[3], Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
+			{Id: s.obj_ids[4], Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
+			{Id: s.obj_ids[5], Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
 		}
 
 		for _, p := range patches {
@@ -56,14 +63,20 @@ func TestMockPatchConnectorSuite(t *testing.T) {
 	s := new(PatchConnectorSuite)
 	s.setup = func() error {
 		s.time = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.Local)
+
+		s.obj_ids = []bson.ObjectId{}
+		for i := 0; i < 6; i++ {
+			s.obj_ids = append(s.obj_ids, bson.NewObjectId())
+		}
+
 		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
 			CachedPatches: []patch.Patch{
-				{Project: "project1", CreateTime: s.time},
-				{Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
-				{Project: "project1", CreateTime: s.time.Add(time.Second * 4)},
-				{Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
-				{Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
-				{Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
+				{Id: s.obj_ids[0], Project: "project1", CreateTime: s.time},
+				{Id: s.obj_ids[1], Project: "project2", CreateTime: s.time.Add(time.Second * 2)},
+				{Id: s.obj_ids[2], Project: "project1", CreateTime: s.time.Add(time.Second * 4)},
+				{Id: s.obj_ids[3], Project: "project1", CreateTime: s.time.Add(time.Second * 6)},
+				{Id: s.obj_ids[4], Project: "project2", CreateTime: s.time.Add(time.Second * 8)},
+				{Id: s.obj_ids[5], Project: "project1", CreateTime: s.time.Add(time.Second * 10)},
 			},
 		}}
 
@@ -158,4 +171,22 @@ func (s *PatchConnectorSuite) TestFetchKeyOutOfBoundDesc() {
 	patches, err := s.ctx.FindPatchesByProject("project3", s.time, 1, -1)
 	s.NoError(err)
 	s.Len(patches, 0)
+}
+
+func (s *PatchConnectorSuite) TestFetchById() {
+	p, err := s.ctx.FindPatchById(string(s.obj_ids[0]))
+	s.NoError(err)
+	s.NotNil(p)
+	fmt.Println()
+	s.Equal(string(s.obj_ids[0]), string(p.Id))
+}
+
+func (s *PatchConnectorSuite) TestFetchByIdFail() {
+	new_id := bson.NewObjectId()
+	for _, i := range s.obj_ids {
+		s.NotEqual(new_id, i)
+	}
+	p, err := s.ctx.FindPatchById(string(new_id))
+	s.Error(err)
+	s.Nil(p)
 }

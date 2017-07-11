@@ -91,7 +91,11 @@ type Connector interface {
 
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)
+
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
 	FindPatchesByProject(string, time.Time, int, int) ([]patch.Patch, error)
+
+	// FindPatchById fetches the patch corresponding to the input patch ID.
+	FindPatchById(string) (*patch.Patch, error)
 }
