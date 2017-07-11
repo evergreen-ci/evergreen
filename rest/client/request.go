@@ -38,7 +38,7 @@ func (c *evergreenREST) post(ctx context.Context, path string, taskData TaskData
 	return response, errors.Wrap(err, "Error performing HTTP POST request")
 }
 
-func (c *evergreenREST) retryPost(ctx context.Context, path string, taskData TaskData, version string, data interface{}) (resp *http.Response, err error) {
+func (c *evergreenREST) retryPost(ctx context.Context, path string, taskData TaskData, version string, data interface{}) (*http.Response, error) {
 	if !taskData.OverrideValidation && taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
@@ -54,7 +54,7 @@ func (c *evergreenREST) retryPost(ctx context.Context, path string, taskData Tas
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			resp, err = c.post(ctx, path, taskData, version, &data)
+			resp, err := c.post(ctx, path, taskData, version, &data)
 			if resp == nil {
 				grip.Error("HTTP Post response is nil")
 			} else if err != nil {
