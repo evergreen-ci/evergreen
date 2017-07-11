@@ -45,6 +45,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/versions/{version_id}":                               getVersionIdRouteManager,
 		"/versions/{version_id}/builds":                        getBuildsForVersionRouteManager,
 		"/versions/{version_id}/abort":                         getAbortVersionRouteManager,
+		"/versions/{version_id}/restart":                       getRestartVersionRouteManager,
 	}
 
 	for path, getManager := range routes {

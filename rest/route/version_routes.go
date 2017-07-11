@@ -216,3 +216,74 @@ func (h *versionAbortHandler) Execute(ctx context.Context, sc data.Connector) (R
 		Result: []model.Model{versionModel},
 	}, err
 }
+
+// versionRestartHandler is a RequestHandler for restarting all completed tasks
+// of a version.
+type versionRestartHandler struct {
+	versionId string
+}
+
+func getRestartVersionRouteManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route: route,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &versionRestartHandler{},
+				MethodType:        evergreen.MethodPost,
+			},
+		},
+		Version: version,
+	}
+}
+
+// Handler returns a pointer to a new versionRestartHandler.
+func (h *versionRestartHandler) Handler() RequestHandler {
+	return &versionRestartHandler{}
+}
+
+// ParseAndValidate fetches the versionId from the http request.
+func (h *versionRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	h.versionId = getVersionIdFromRequest(r)
+
+	if h.versionId == "" {
+		return errors.New("request data incomplete")
+	}
+
+	return nil
+}
+
+// Execute calls the data RestartVersion function to restart completed tasks of a version.
+func (h *versionRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	// Restart the version
+	err := sc.RestartVersion(h.versionId, GetUser(ctx).Id)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error in restarting version:")
+		}
+		return ResponseData{}, err
+	}
+
+	// Find the version to return updated status.
+	foundVersion, err := sc.FindVersionById(h.versionId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error in finding version:")
+		}
+		return ResponseData{}, err
+	}
+
+	versionModel := &model.APIVersion{}
+	err = versionModel.BuildFromService(foundVersion)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{versionModel},
+	}, err
+}

@@ -60,11 +60,35 @@ func (vc *DBVersionConnector) AbortVersion(versionId string) error {
 	return model.AbortVersion(versionId)
 }
 
+// RestartVersion wraps the service level RestartVersion, which restarts
+// completed tasks associated with a given versionId. If abortInProgress is
+// true, it also sets the abort flag on any in-progress tasks. In addition, it
+// updates all builds containing the tasks affected.
+func (vc *DBVersionConnector) RestartVersion(versionId string, caller string) error {
+	// Get a list of all tasks of the given versionId
+	tasks, err := task.Find(task.ByVersion(versionId))
+	if err != nil {
+		return err
+	}
+	if tasks == nil {
+		return &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("version with id %s not found", versionId),
+		}
+	}
+	var taskIds []string
+	for _, task := range tasks {
+		taskIds = append(taskIds, task.Id)
+	}
+	return model.RestartVersion(versionId, taskIds, true, caller)
+}
+
 // MockVersionConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Version related functions.
 type MockVersionConnector struct {
-	CachedTasks    []task.Task
-	CachedVersions []version.Version
+	CachedTasks             []task.Task
+	CachedVersions          []version.Version
+	CachedRestartedVersions map[string]string
 }
 
 // FindCostByVersionId is the mock implementation of the function for the Connector interface
@@ -117,5 +141,13 @@ func (mvc *MockVersionConnector) AbortVersion(versionId string) error {
 			}
 		}
 	}
+	return nil
+}
+
+// The main function of the RestartVersion() for the MockVersionConnector is to
+// test connectivity. It sets the value of versionId in CachedRestartedVersions
+// to the caller.
+func (mvc *MockVersionConnector) RestartVersion(versionId string, caller string) error {
+	mvc.CachedRestartedVersions[versionId] = caller
 	return nil
 }

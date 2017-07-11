@@ -25,6 +25,8 @@ func TestBuildConnectorSuite(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestBuildConnectorSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
+	assert.NoError(t, db.Clear(build.Collection))
+
 	build1 := &build.Build{Id: "build1"}
 	build2 := &build.Build{Id: "build2"}
 	pr := &model.ProjectRef{Repo: "project", Identifier: "branch"}

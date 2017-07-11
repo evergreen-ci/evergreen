@@ -7,10 +7,12 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 // VersionSuite enables testing for version related routes.
@@ -99,6 +101,7 @@ func (s *VersionSuite) SetupSuite() {
 			{Version: versionId, Aborted: false, Status: evergreen.TaskStarted},
 			{Version: versionId, Aborted: false, Status: evergreen.TaskDispatched},
 		},
+		CachedRestartedVersions: make(map[string]string),
 	}
 	s.buildData = data.MockBuildConnector{
 		CachedBuilds: []build.Build{testBuild1, testBuild2},
@@ -153,7 +156,8 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 	}
 }
 
-func (s *VersionSuite) TestAbort() {
+// TestAbortVersion tests the route for aborting a version.
+func (s *VersionSuite) TestAbortVersion() {
 	handler := &versionAbortHandler{versionId: "versionId"}
 
 	// Check that Execute runs without error and returns
@@ -170,4 +174,23 @@ func (s *VersionSuite) TestAbort() {
 	for _, t := range s.versionData.CachedTasks {
 		s.Equal(t.Aborted, true)
 	}
+}
+
+// TestRestartVersion tests the route for restarting a version.
+func (s *VersionSuite) TestRestartVersion() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "caller1"})
+
+	handler := &versionRestartHandler{versionId: "versionId"}
+
+	// Check that Execute runs without error and returns
+	// the correct Version.
+	res, err := handler.Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(1, len(res.Result))
+	version := res.Result[0]
+	h, _ := (version).(*model.APIVersion)
+	s.Equal(model.APIString(versionId), h.Id)
+	s.Equal("caller1", s.versionData.CachedRestartedVersions["versionId"])
 }

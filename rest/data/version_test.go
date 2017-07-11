@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -15,57 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
-
-type VersionConnectorSuite struct {
-	ctx    Connector
-	isMock bool
-
-	suite.Suite
-}
-
-func TestVersionConnectorSuite(t *testing.T) {
-	s := new(VersionConnectorSuite)
-	s.ctx = &DBConnector{}
-
-	assert := assert.New(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestVersionConnectorSuite")
-	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	assert.Nil(db.Clear(task.Collection))
-
-	version1 := &version.Version{Id: "version1"}
-	version2 := &version.Version{Id: "version2"}
-	task1 := &task.Task{Id: "t1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted}
-	task2 := &task.Task{Id: "t2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched}
-	task3 := &task.Task{Id: "t3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive}
-	task4 := &task.Task{Id: "t4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted}
-
-	assert.NoError(version1.Insert())
-	assert.NoError(version2.Insert())
-	assert.NoError(task1.Insert())
-	assert.NoError(task2.Insert())
-	assert.NoError(task3.Insert())
-	assert.NoError(task4.Insert())
-
-	s.isMock = false
-	suite.Run(t, s)
-}
-
-func TestMockVersionConnectorSuite(t *testing.T) {
-	s := new(VersionConnectorSuite)
-	s.ctx = &MockConnector{
-		MockVersionConnector: MockVersionConnector{
-			CachedVersions: []version.Version{{Id: "version1"}, {Id: "version2"}},
-			CachedTasks: []task.Task{
-				{Id: "t1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
-				{Id: "t2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
-				{Id: "t3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
-				{Id: "t4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
-			},
-		},
-	}
-	s.isMock = true
-	suite.Run(t, s)
-}
 
 func TestFindCostByVersionId(t *testing.T) {
 	assert := assert.New(t)
@@ -111,6 +61,88 @@ func TestFindCostByVersionId(t *testing.T) {
 	assert.Equal(apiErr.StatusCode, http.StatusNotFound)
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+type VersionConnectorSuite struct {
+	ctx    Connector
+	isMock bool
+
+	suite.Suite
+}
+
+//----------------------------------------------------------------------------//
+//   Initialize the ConnectorSuites                                           //
+//----------------------------------------------------------------------------//
+func TestVersionConnectorSuite(t *testing.T) {
+	assert := assert.New(t)
+
+	// Set up
+	s := new(VersionConnectorSuite)
+	s.ctx = &DBConnector{}
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestVersionConnectorSuite")
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+
+	// Tear down
+	assert.Nil(db.Clear(task.Collection))
+	assert.Nil(db.Clear(version.Collection))
+	assert.Nil(db.Clear(build.Collection))
+
+	s.isMock = false
+
+	// Insert data for the test paths
+	versions := []*version.Version{
+		{Id: "version1"},
+		{Id: "version2"},
+	}
+
+	tasks := []*task.Task{
+		{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
+		{Id: "task3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
+		{Id: "task4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
+		{Id: "task5", Version: "version3", Aborted: false, Status: evergreen.TaskSucceeded, BuildId: "build1"},
+	}
+
+	builds := []*build.Build{
+		{Id: "build1", Tasks: []build.TaskCache{{Id: "task5"}}},
+	}
+
+	for _, item := range versions {
+		assert.NoError(item.Insert())
+	}
+	for _, item := range tasks {
+		assert.NoError(item.Insert())
+	}
+	for _, item := range builds {
+		assert.NoError(item.Insert())
+	}
+
+	// Run the suite
+	suite.Run(t, s)
+}
+
+func TestMockVersionConnectorSuite(t *testing.T) {
+	s := new(VersionConnectorSuite)
+	s.ctx = &MockConnector{
+		MockVersionConnector: MockVersionConnector{
+			CachedVersions: []version.Version{{Id: "version1"}, {Id: "version2"}},
+			CachedTasks: []task.Task{
+				{Id: "task1", Version: "version1", Aborted: false, Status: evergreen.TaskStarted},
+				{Id: "task2", Version: "version1", Aborted: false, Status: evergreen.TaskDispatched},
+				{Id: "task3", Version: "version1", Aborted: true, Status: evergreen.TaskInactive},
+				{Id: "task4", Version: "version2", Aborted: false, Status: evergreen.TaskStarted},
+			},
+			CachedRestartedVersions: make(map[string]string),
+		},
+	}
+	s.isMock = true
+	suite.Run(t, s)
+}
+
+//----------------------------------------------------------------------------//
+//   Test cases                                                               //
+//----------------------------------------------------------------------------//
+
 func (s *VersionConnectorSuite) TestFindVersionByIdSuccess() {
 	// Finding existing versions should succeed
 	v, err := s.ctx.FindVersionById("version1")
@@ -131,7 +163,7 @@ func (s *VersionConnectorSuite) TestFindVersionByIdFail() {
 	s.Nil(v)
 }
 
-func (s *VersionConnectorSuite) TestAbort() {
+func (s *VersionConnectorSuite) TestAbortVersion() {
 	versionId := "version1"
 	err := s.ctx.AbortVersion(versionId)
 	s.NoError(err)
@@ -152,19 +184,49 @@ func (s *VersionConnectorSuite) TestAbort() {
 		s.Equal(true, cachedTasks[2].Aborted)
 		s.Equal(false, cachedTasks[3].Aborted)
 	} else {
-		t1, _ := s.ctx.FindTaskById("t1")
+		t1, _ := s.ctx.FindTaskById("task1")
 		s.Equal(versionId, t1.Version)
 		s.Equal(true, t1.Aborted)
 
-		t2, _ := s.ctx.FindTaskById("t2")
+		t2, _ := s.ctx.FindTaskById("task2")
 		s.Equal(versionId, t2.Version)
 		s.Equal(true, t2.Aborted)
 
-		t3, _ := s.ctx.FindTaskById("t3")
+		t3, _ := s.ctx.FindTaskById("task3")
 		s.Equal(versionId, t3.Version)
 		s.Equal(true, t3.Aborted)
 
-		t4, _ := s.ctx.FindTaskById("t4")
+		t4, _ := s.ctx.FindTaskById("task4")
 		s.NotEqual(true, t4.Aborted)
+	}
+}
+
+func (s *VersionConnectorSuite) TestRestartVersion() {
+	if s.isMock {
+		// Testing with versions that have tasks under them should succeed.
+		err := s.ctx.RestartVersion("version1", "caller1")
+		s.NoError(err)
+		s.Equal(s.ctx.(*MockConnector).CachedRestartedVersions["version1"], "caller1")
+
+		err = s.ctx.RestartVersion("version2", "caller2")
+		s.NoError(err)
+		s.Equal(s.ctx.(*MockConnector).CachedRestartedVersions["version2"], "caller2")
+
+	} else {
+		versionId := "version3"
+		err := s.ctx.RestartVersion(versionId, "caller3")
+		s.NoError(err)
+
+		// When a version is restarted, all of its completed tasks should be reset.
+		// (task.Status should be undispatched)
+		t5, _ := s.ctx.FindTaskById("task5")
+		s.Equal(versionId, t5.Version)
+		s.Equal(evergreen.TaskUndispatched, t5.Status)
+
+		// Build status for all builds containing the tasks that we touched
+		// should be updated.
+		b1, _ := s.ctx.FindBuildById("build1")
+		s.Equal(evergreen.BuildStarted, b1.Status)
+		s.Equal("caller3", b1.ActivatedBy)
 	}
 }
