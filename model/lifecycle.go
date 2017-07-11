@@ -388,17 +388,21 @@ func CreateBuildFromVersion(project *Project, v *version.Version, tt TaskIdTable
 		return "", errors.Errorf("could not find build %v in %v project file", buildName, project.Identifier)
 	}
 
+	rev := v.Revision
+	if v.Requester == evergreen.PatchVersionRequester {
+		rev = fmt.Sprintf("patch_%s_%s", v.Revision, v.Id)
+	}
+
 	// create a new build id
-	buildId := util.CleanName(
-		fmt.Sprintf("%v_%v_%v_%v",
-			project.Identifier,
-			buildName,
-			v.Revision,
-			v.CreateTime.Format(build.IdTimeLayout)))
+	buildId := fmt.Sprintf("%s_%s_%s_%s",
+		project.Identifier,
+		buildName,
+		rev,
+		v.CreateTime.Format(build.IdTimeLayout))
 
 	// create the build itself
 	b := &build.Build{
-		Id:                  buildId,
+		Id:                  util.CleanName(buildId),
 		CreateTime:          v.CreateTime,
 		PushTime:            v.CreateTime,
 		Activated:           activated,
