@@ -28,7 +28,7 @@ func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time,
 
 // FindPatchById queries the backing database for the patch matching patchId.
 func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
-	p, err := patch.FindOne(patch.ById(bson.ObjectId(patchId)))
+	p, err := patch.FindOne(patch.ById(bson.ObjectIdHex(patchId)))
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 // FindPatchById iterates through the slice of CachedPatches to find the matching patch.
 func (pc *MockPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
 	for _, p := range pc.CachedPatches {
-		if string(p.Id) == patchId {
+		if p.Id.Hex() == patchId {
 			return &p, nil
 		}
 	}

@@ -60,7 +60,7 @@ func (p *patchByIdHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}
 
 	patchModel := &model.APIPatch{}
-	err = patchModel.BuildFromService(foundPatch)
+	err = patchModel.BuildFromService(*foundPatch)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")

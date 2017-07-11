@@ -174,7 +174,7 @@ func (s *PatchConnectorSuite) TestFetchKeyOutOfBoundDesc() {
 }
 
 func (s *PatchConnectorSuite) TestFetchById() {
-	p, err := s.ctx.FindPatchById(string(s.obj_ids[0]))
+	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
 	s.NoError(err)
 	s.NotNil(p)
 	fmt.Println()
@@ -186,7 +186,7 @@ func (s *PatchConnectorSuite) TestFetchByIdFail() {
 	for _, i := range s.obj_ids {
 		s.NotEqual(new_id, i)
 	}
-	p, err := s.ctx.FindPatchById(string(new_id))
+	p, err := s.ctx.FindPatchById(new_id.Hex())
 	s.Error(err)
 	s.Nil(p)
 }
