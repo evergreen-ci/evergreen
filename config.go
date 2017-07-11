@@ -164,6 +164,7 @@ type CloudProviders struct {
 	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
 	GCE          GCEConfig          `yaml:"gce"`
 	OpenStack    OpenStackConfig    `yaml:"openstack"`
+	VSphere      VSphereConfig      `yaml:"vsphere"`
 }
 
 // AWSConfig stores auth info for Amazon Web Services.
@@ -201,6 +202,14 @@ type GCEConfig struct {
 	PrivateKey   string `yaml:"private_key"`
 	PrivateKeyID string `yaml:"private_key_id"`
 	TokenURI     string `yaml:"token_uri"`
+}
+
+// VSphereConfig stores auth info for VMware vSphere. The config fields refer
+// to your vCenter server, a centralized management tool for the vSphere suite.
+type VSphereConfig struct {
+	Host     string `yaml:"host"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 // JiraConfig stores auth info for interacting with Atlassian Jira.

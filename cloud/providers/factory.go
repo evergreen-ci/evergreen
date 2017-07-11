@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/cloud/providers/openstack"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
+	"github.com/evergreen-ci/evergreen/cloud/providers/vsphere"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/pkg/errors"
 )
@@ -36,6 +37,8 @@ func GetCloudManager(providerName string, settings *evergreen.Settings) (cloud.C
 		provider = &openstack.Manager{}
 	case gce.ProviderName:
 		provider = &gce.Manager{}
+	case vsphere.ProviderName:
+		provider = &vsphere.Manager{}
 	default:
 		return nil, errors.Errorf("No known provider for '%v'", providerName)
 	}

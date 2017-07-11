@@ -280,6 +280,9 @@ tasks:
     tags: ["db", "test"]
     name: test-cloud-providers-openstack
   - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test", "gccgo"]
+    name: test-cloud-providers-vsphere
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
     name: test-hostinit
   - <<: *run-go-test-suite-with-mongodb
@@ -420,6 +423,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-cloud-providers-openstack
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race"]
+    name: race-cloud-providers-vsphere
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race"]
     name: race-repotracker
