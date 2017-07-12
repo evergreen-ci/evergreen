@@ -69,7 +69,12 @@ func (m *Manager) CanSpawn() (bool, error) {
 
 // GetInstanceStatus gets the current operational status of the provisioned host,
 func (m *Manager) GetInstanceStatus(host *host.Host) (cloud.CloudStatus, error) {
-	return cloud.StatusUnknown, nil //TODO
+	state, err := m.client.GetPowerState(host)
+	if err != nil {
+		return cloud.StatusUnknown, errors.Wrap(err, "client failed to get power state")
+	}
+
+	return toEvgStatus(state), nil
 }
 
 // TerminateInstance requests a server previously provisioned to be removed.
@@ -79,7 +84,12 @@ func (m *Manager) TerminateInstance(host *host.Host) error {
 
 // IsUp checks whether the provisioned host is running.
 func (m *Manager) IsUp(host *host.Host) (bool, error) {
-	return true, nil //TODO
+	status, err := m.GetInstanceStatus(host)
+	if err != nil {
+		return false, errors.Wrap(err, "manager failed to get instance status")
+	}
+
+	return status == cloud.StatusRunning, nil
 }
 
 // OnUp does nothing since tags are attached in SpawnInstance.
@@ -99,7 +109,12 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 
 // GetDNSName returns the IPv4 address of the host.
 func (m *Manager) GetDNSName(host *host.Host) (string, error) {
-	return "", nil //TODO
+	ip, err := m.client.GetIP(host)
+	if err != nil {
+		return "", errors.Wrap(err, "client failed to get IP")
+	}
+
+	return ip, nil
 }
 
 // GetSSHOptions generates the command line args to be

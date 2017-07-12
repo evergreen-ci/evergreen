@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 
 	"github.com/stretchr/testify/suite"
+	"github.com/vmware/govmomi/vim25/types"
 )
 
 type VSphereSuite struct {
@@ -29,7 +31,7 @@ func (s *VSphereSuite) SetupSuite() {
 }
 
 func (s *VSphereSuite) SetupTest() {
-	s.client = &clientMock{}
+	s.client = &clientMock{isActive: true}
 	s.manager = &Manager{
 		client: s.client,
 	}
@@ -45,6 +47,61 @@ func (s *VSphereSuite) TestConfigureAPICall() {
 
 	mock.failInit = true
 	s.Error(s.manager.Configure(settings))
+}
+
+func (s *VSphereSuite) TestIsUpFailAPICall() {
+	mock, ok := s.client.(*clientMock)
+	s.True(ok)
+
+	host := &host.Host{}
+
+	mock.failPowerState = true
+	_, err := s.manager.GetInstanceStatus(host)
+	s.Error(err)
+
+	active, err := s.manager.IsUp(host)
+	s.Error(err)
+	s.False(active)
+}
+
+func (s *VSphereSuite) TestIsUpStatuses() {
+	mock, ok := s.client.(*clientMock)
+	s.True(ok)
+	s.True(mock.isActive)
+
+	host := &host.Host{}
+
+	status, err := s.manager.GetInstanceStatus(host)
+	s.NoError(err)
+	s.Equal(cloud.StatusRunning, status)
+
+	active, err := s.manager.IsUp(host)
+	s.NoError(err)
+	s.True(active)
+
+	mock.isActive = false
+	status, err = s.manager.GetInstanceStatus(host)
+	s.NoError(err)
+	s.NotEqual(cloud.StatusRunning, status)
+
+	active, err = s.manager.IsUp(host)
+	s.NoError(err)
+	s.False(active)
+}
+
+func (s *VSphereSuite) TestGetDNSNameAPICall() {
+	mock, ok := s.client.(*clientMock)
+	s.True(ok)
+	s.False(mock.failIP)
+
+	host := &host.Host{Id: "hostID"}
+	_, err := s.manager.GetDNSName(host)
+	s.NoError(err)
+
+	mock.failIP = true
+	dns, err := s.manager.GetDNSName(host)
+	s.Error(err)
+	s.Empty(dns)
 }
 
 func (s *VSphereSuite) TestGetSSHOptions() {
@@ -67,4 +124,18 @@ func (s *VSphereSuite) TestGetSSHOptions() {
 	opts, err = s.manager.GetSSHOptions(host, keyname)
 	s.NoError(err)
 	s.Equal([]string{"-i", keyname, "-o", opt}, opts)
+}
+
+func (s *VSphereSuite) TestUtilToEvgStatus() {
+	poweredOn := toEvgStatus(types.VirtualMachinePowerStatePoweredOn)
+	s.Equal(cloud.StatusRunning, poweredOn)
+
+	poweredOff := toEvgStatus(types.VirtualMachinePowerStatePoweredOff)
+	s.Equal(cloud.StatusStopped, poweredOff)
+
+	suspended := toEvgStatus(types.VirtualMachinePowerStateSuspended)
+	s.Equal(cloud.StatusStopped, suspended)
+
+	unknown := toEvgStatus(types.VirtualMachinePowerState("???"))
+	s.Equal(cloud.StatusUnknown, unknown)
 }
