@@ -141,7 +141,6 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 		}
 		return []model.Model{}, nil, err
 	}
-
 	if len(patches) <= 0 {
 		err = rest.APIError{
 			Message:    "no patches found",
@@ -163,15 +162,17 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	if len(patches) > limit {
 		pages.Next = &Page{
 			Relation: "next",
-			Key:      model.NewTime(patches[limit].CreateTime).String(),
-			Limit:    len(patches) - limit,
+			Key:      patches[limit].CreateTime.In(time.UTC).Format(model.APITimeFormat),
+			//Key:   model.NewTime(patches[limit].CreateTime).String(),
+			Limit: len(patches) - limit,
 		}
 	}
 	if len(prevPatches) >= 1 {
 		pages.Prev = &Page{
 			Relation: "prev",
-			Key:      model.NewTime(prevPatches[0].CreateTime).String(),
-			Limit:    len(prevPatches),
+			Key:      prevPatches[0].CreateTime.In(time.UTC).Format(model.APITimeFormat),
+			//Key:   model.NewTime(prevPatches[0].CreateTime).String(),
+			Limit: len(prevPatches),
 		}
 	}
 

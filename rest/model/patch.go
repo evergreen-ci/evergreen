@@ -37,7 +37,7 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	if !ok {
 		return fmt.Errorf("incorrect type when fetching converting patch type")
 	}
-	apiPatch.Id = APIString(v.Id)
+	apiPatch.Id = APIString(v.Id.Hex())
 	apiPatch.Description = APIString(v.Description)
 	apiPatch.ProjectId = APIString(v.Project)
 	apiPatch.Branch = APIString(v.Project)
@@ -45,9 +45,9 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.PatchNumber = v.PatchNumber
 	apiPatch.Author = APIString(v.Author)
 	apiPatch.Status = APIString(v.Status)
-	apiPatch.CreateTime = APITime(v.CreateTime)
-	apiPatch.StartTime = APITime(v.CreateTime)
-	apiPatch.FinishTime = APITime(v.CreateTime)
+	apiPatch.CreateTime = NewTime(v.CreateTime)
+	apiPatch.StartTime = NewTime(v.CreateTime)
+	apiPatch.FinishTime = NewTime(v.CreateTime)
 	buildVariants := make([]APIString, 0)
 	for _, b := range v.BuildVariants {
 		buildVariants = append(buildVariants, APIString(b))
