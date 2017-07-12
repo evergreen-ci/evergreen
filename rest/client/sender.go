@@ -34,7 +34,7 @@ func newLogSender(comm Communicator, channel string, taskData TaskData) send.Sen
 
 func (s *logSender) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
-		err := s.comm.SendTaskLogMessages(
+		err := s.comm.SendLogMessages(
 			context.TODO(),
 			s.logTaskData,
 			s.convertMessages(m))

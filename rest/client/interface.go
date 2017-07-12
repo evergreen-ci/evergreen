@@ -1,13 +1,13 @@
 package client
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -55,29 +55,29 @@ type Communicator interface {
 	// GetNextTask returns a next task response by getting the next task for a given host.
 	GetNextTask(context.Context) (*apimodels.NextTaskResponse, error)
 
-	// Sends a group of log messages to the API Server
-	SendTaskLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 	// Constructs a new LogProducer instance for use by tasks.
 	GetLoggerProducer(TaskData) LoggerProducer
-	// PostJSON does an HTTP POST for the communicator's plugin + task.
-	PostJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string, data interface{}) (*http.Response, error)
-	// GetJSON does an HTTP GET for the communicator's plugin + task.
-	GetJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string) (*http.Response, error)
-	// SendResults posts a set of test results for the communicator's task.
-	// If results are empty or nil, this operation is a noop.
-	SendResults(ctx context.Context, taskData TaskData, results *task.TestResults) error
-	// SendFiles attaches task files.
-	SendFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error
-	// PostTestData posts a test log for a communicator's task. Is a
-	// noop if the test Log is nil.
-	PostTestData(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error)
+
+	// Sends a group of log messages to the API Server
+	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
 
 	// The following operations use the legacy API server and are
 	// used by task commands.
-	SendTaskResults(context.Context, TaskData, *task.TestResults) error
+	SendTestResults(context.Context, TaskData, *task.TestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
 	GetTaskPatch(context.Context, TaskData) (*patch.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
+
+	// The following operations are used by
+	AttachFiles(context.Context, TaskData, []*artifact.File) error
+	GetManifest(context.Context, TaskData) (*manifest.Manifest, error)
+	S3Copy(context.Context, TaskData, *apimodels.S3CopyRequest) error
+	KeyValInc(context.Context, TaskData, *model.KeyVal) error
+
+	// these are for the taskdata/json plugin that saves perf data
+	PostJSONData(context.Context, TaskData, string, interface{}) error
+	GetJSONData(context.Context, TaskData, string, string, string) ([]byte, error)
+	GetJSONHistory(context.Context, TaskData, bool, string, string) ([]byte, error)
 
 	// ---------------------------------------------------------------------
 	// End legacy API methods

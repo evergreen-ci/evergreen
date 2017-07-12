@@ -17,10 +17,6 @@ import (
 // dependent on the configuration and implementation of the
 // LoggerProducer instance.
 type LoggerProducer interface {
-	// Provides access to the local logger. In most implementations
-	// this is roughly equivalent to using the standard "grip" logger.
-	Local() grip.Journaler
-
 	// The Execution/Task/System loggers provide a grip-like
 	// logging interface for the distinct logging channels that the
 	// Evergreen agent provides to tasks
@@ -45,7 +41,6 @@ type LoggerProducer interface {
 // logHarness provides a straightforward implementation of the
 // plugin.LoggerProducer interface.
 type logHarness struct {
-	local            grip.Journaler
 	execution        grip.Journaler
 	task             grip.Journaler
 	system           grip.Journaler
@@ -55,7 +50,6 @@ type logHarness struct {
 	writers          []io.WriteCloser
 }
 
-func (l *logHarness) Local() grip.Journaler     { return l.local }
 func (l *logHarness) Execution() grip.Journaler { return l.execution }
 func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
@@ -88,7 +82,6 @@ func (l *logHarness) Close() error {
 		catcher.Add(w.Close())
 	}
 
-	catcher.Add(l.local.GetSender().Close())
 	catcher.Add(l.execution.GetSender().Close())
 	catcher.Add(l.task.GetSender().Close())
 	catcher.Add(l.system.GetSender().Close())
@@ -101,7 +94,6 @@ func (l *logHarness) Close() error {
 // Single Channel LoggerProducer
 
 type singleChannelLogHarness struct {
-	local   grip.Journaler
 	logger  grip.Journaler
 	mu      sync.Mutex
 	writers []io.WriteCloser
@@ -118,14 +110,12 @@ func NewSingleChannelLogHarness(name string, sender send.Sender) LoggerProducer 
 	sender.SetName(name)
 
 	l := &singleChannelLogHarness{
-		local:  &logging.Grip{Sender: grip.GetSender()},
 		logger: &logging.Grip{Sender: sender},
 	}
 
 	return l
 }
 
-func (l *singleChannelLogHarness) Local() grip.Journaler     { return l.local }
 func (l *singleChannelLogHarness) Execution() grip.Journaler { return l.logger }
 func (l *singleChannelLogHarness) Task() grip.Journaler      { return l.logger }
 func (l *singleChannelLogHarness) System() grip.Journaler    { return l.logger }

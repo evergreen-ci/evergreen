@@ -125,7 +125,6 @@ func (c *communicatorImpl) GetLoggerProducer(taskData TaskData) LoggerProducer {
 	systemWriter = send.NewConfiguredMultiSender(local, systemWriter)
 
 	return &logHarness{
-		local:            &logging.Grip{Sender: grip.GetSender()},
 		execution:        &logging.Grip{Sender: exec},
 		task:             &logging.Grip{Sender: task},
 		system:           &logging.Grip{Sender: system},

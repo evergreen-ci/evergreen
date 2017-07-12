@@ -6,17 +6,20 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -199,8 +202,8 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTask
 
 }
 
-// SendTaskLogMessages posts a group of log messages for a task.
-func (c *communicatorImpl) SendTaskLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
+// SendLogMessages posts a group of log messages for a task.
+func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
 	payload := apimodels.TaskLog{
 		TaskId:       taskData.ID,
 		Timestamp:    time.Now(),
@@ -269,72 +272,16 @@ func (c *communicatorImpl) GetPatchFile(ctx context.Context, td TaskData, patchF
 // SendTestLog is used by the attach plugin to add to the test_logs
 // collection for log data associated with a test.
 func (c *communicatorImpl) SendTestLog(ctx context.Context, td TaskData, log *model.TestLog) (string, error) {
+	if log == nil {
+		return "", nil
+	}
+
 	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("test_logs", td.ID), td, v1, log)
 	if err != nil {
 		return "", errors.Wrapf(err, "problem sending task log for %s", td.ID)
 	}
 	defer resp.Body.Close()
 
-	var result []byte
-	result, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", errors.Wrapf(err, "problem log id after posting test log for %s", td.ID)
-	}
-
-	return string(result), nil
-}
-
-// PostJSON does an HTTP POST for the communicator's plugin + task.
-func (c *communicatorImpl) PostJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string, data interface{}) (*http.Response, error) {
-	path := c.getTaskPathSuffix(fmt.Sprintf("%s/%s", pluginName, endpoint), taskData.ID)
-	return c.retryPost(ctx, path, taskData, v1, data)
-}
-
-// GetJSON does an HTTP GET for the communicator's plugin + task.
-func (c *communicatorImpl) GetJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string) (*http.Response, error) {
-	path := c.getTaskPathSuffix(fmt.Sprintf("%s/%s", pluginName, endpoint), taskData.ID)
-	return c.retryGet(ctx, path, taskData, v1)
-}
-
-// SendResults posts a set of test results for the communicator's task.
-// If results are empty or nil, this operation is a noop.
-func (c *communicatorImpl) SendResults(ctx context.Context, taskData TaskData, results *task.TestResults) error {
-	if results == nil || len(results.Results) == 0 {
-		return nil
-	}
-	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("results", taskData.ID), taskData, v1, results)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to post results for task %s", taskData.ID)
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-// SendFiles attaches task files.
-func (c *communicatorImpl) SendFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
-	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("files", taskData.ID), taskData, v1, taskFiles)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to post task files for task %s", taskData.ID)
-		return err
-	}
-	defer resp.Body.Close()
-	return nil
-}
-
-// PostTestData posts a test log for a communicator's task. Is a
-// noop if the test Log is nil.
-func (c *communicatorImpl) PostTestData(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
-	if log == nil {
-		return "", nil
-	}
-
-	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("test_logs", taskData.ID), taskData, v1, log)
-	if err != nil {
-		err = errors.Wrapf(err, "failed to post test logs for task %s", taskData.ID)
-		return "", err
-	}
-	defer resp.Body.Close()
 	logReply := struct {
 		ID string `json:"_id"`
 	}{}
@@ -344,4 +291,121 @@ func (c *communicatorImpl) PostTestData(ctx context.Context, taskData TaskData, 
 	}
 	logID := logReply.ID
 	return logID, nil
+}
+
+// SendResults posts a set of test results for the communicator's task.
+// If results are empty or nil, this operation is a noop.
+func (c *communicatorImpl) SendTestResults(ctx context.Context, taskData TaskData, results *task.TestResults) error {
+	if results == nil || len(results.Results) == 0 {
+		return nil
+	}
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("results", taskData.ID), taskData, v1, results)
+	if err != nil {
+		return errors.Wrapf(err, "failed to post results for task %s", taskData.ID)
+	}
+	defer resp.Body.Close()
+	return nil
+}
+
+// AttachFiles attaches task files.
+func (c *communicatorImpl) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("files", taskData.ID), taskData, v1, taskFiles)
+	if err != nil {
+		return errors.Wrapf(err, "failed to post task files for task %s", taskData.ID)
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("manifest/load", td.ID), td, v1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem loading manifest for %s", td.ID)
+	}
+	defer resp.Body.Close()
+
+	manifest := manifest.Manifest{}
+	if err = util.ReadJSONInto(resp.Body, &manifest); err != nil {
+		return nil, errors.Wrapf(err, "problem parsing manifest response for %s", td.ID)
+	}
+
+	return &manifest, nil
+}
+
+func (c *communicatorImpl) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) error {
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("s3copy/s3copy", td.ID), td, v1, req)
+	if err != nil {
+		grip.Debug(message.Fields{"operation": "s3copy", "error": err.Error(), "request": req})
+		return errors.Wrapf(err, "problem with s3copy for %s", td.ID)
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) KeyValInc(ctx context.Context, td TaskData, kv *model.KeyVal) error {
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix("keyval/inc", td.ID), td, v1, kv)
+	if err != nil {
+		return errors.Wrapf(err, "problem with keyval increment operation for %s", td.ID)
+	}
+	defer resp.Body.Close()
+
+	if err = util.ReadJSONInto(resp.Body, kv); err != nil {
+		return errors.Wrapf(err, "problem parsing keyval inc response %s", td.ID)
+	}
+
+	return nil
+}
+
+func (c *communicatorImpl) PostJSONData(ctx context.Context, td TaskData, path string, data interface{}) error {
+	resp, err := c.retryPost(ctx, c.getTaskPathSuffix(fmt.Sprintf("data/%s", path), td.ID), td, v1, data)
+	if err != nil {
+		return errors.Wrapf(err, "problem with keyval increment operation for %s", td.ID)
+	}
+	defer resp.Body.Close()
+
+	return nil
+}
+
+func (c *communicatorImpl) GetJSONData(ctx context.Context, td TaskData, taskName, dataName, variantName string) ([]byte, error) {
+	pathParts := []string{"data", taskName, dataName}
+	if variantName != "" {
+		pathParts = append(pathParts, variantName)
+	}
+
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix(strings.Join(pathParts, "/"), td.ID), td, v1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem with keyval increment operation for %s", td.ID)
+	}
+	defer resp.Body.Close()
+
+	out, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem reading results from body for %s", td.ID)
+	}
+
+	return out, nil
+}
+
+func (c *communicatorImpl) GetJSONHistory(ctx context.Context, td TaskData, tags bool, taskName, dataName string) ([]byte, error) {
+	path := "history/"
+	if tags {
+		path = "tags/"
+	}
+
+	path += fmt.Sprintf("%s/%s", taskName, dataName)
+
+	resp, err := c.retryGet(ctx, c.getTaskPathSuffix(path, td.ID), td, v1)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem json history document for %s at %s", td.ID, path)
+	}
+	defer resp.Body.Close()
+
+	out, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem reading results from body for %s", td.ID)
+	}
+
+	return out, nil
 }

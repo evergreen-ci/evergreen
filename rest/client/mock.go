@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/manifest"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -109,7 +110,7 @@ func (c *Mock) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, er
 }
 
 // SendTaskLogMessages posts tasks messages to the api server
-func (c *Mock) SendTaskLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
+func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
 	if c.loggingShouldFail {
 		return errors.New("logging failed")
 	}
@@ -130,14 +131,6 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patch.Patch, error) {
 	return nil, nil
-}
-
-func (c *Mock) SendTaskResults(ctx context.Context, td TaskData, r *task.TestResults) error {
-	return nil
-}
-
-func (c *Mock) SendTestLog(ctx context.Context, td TaskData, l *model.TestLog) (string, error) {
-	return "", nil
 }
 
 // GetAllHosts ...
@@ -420,29 +413,41 @@ func (c *Mock) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
-// PostJSON does an HTTP POST for the communicator's plugin + task.
-func (c *Mock) PostJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string, data interface{}) (*http.Response, error) {
-	return nil, nil
-}
-
-// GetJSON does an HTTP GET for the communicator's plugin + task.
-func (c *Mock) GetJSON(ctx context.Context, taskData TaskData, pluginName, endpoint string) (*http.Response, error) {
-	return nil, nil
-}
-
 // SendResults posts a set of test results for the communicator's task.
 // If results are empty or nil, this operation is a noop.
-func (c *Mock) SendResults(ctx context.Context, taskData TaskData, results *task.TestResults) error {
+func (c *Mock) SendTestResults(ctx context.Context, taskData TaskData, results *task.TestResults) error {
 	return nil
 }
 
 // SendFiles attaches task files.
-func (c *Mock) SendFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
+func (c *Mock) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*artifact.File) error {
 	return nil
 }
 
-// PostTestData posts a test log for a communicator's task. Is a
+// SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
-func (c *Mock) PostTestData(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
+func (c *Mock) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
 	return "", nil
+}
+
+func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
+	return nil, nil
+}
+
+func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) error {
+	return nil
+}
+
+func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *model.KeyVal) error {
+	return nil
+}
+
+func (c *Mock) PostJSONData(ctx context.Context, td TaskData, path string, data interface{}) error {
+	return nil
+}
+func (c *Mock) GetJSONData(ctx context.Context, td TaskData, tn, dn, vn string) ([]byte, error) {
+	return nil, nil
+}
+func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, dn string) ([]byte, error) {
+	return nil, nil
 }
