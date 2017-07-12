@@ -480,7 +480,11 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 
 	if t.Requester == evergreen.PatchVersionRequester {
 		expansions.Put("is_patch", "true")
+		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
+	} else {
+		expansions.Put("revision_order_id", v.RevisionOrderNumber)
 	}
+
 	for _, e := range d.Expansions {
 		expansions.Put(e.Key, e.Value)
 	}

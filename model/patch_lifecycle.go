@@ -286,18 +286,19 @@ func FinalizePatch(p *patch.Patch, settings *evergreen.Settings) (*version.Versi
 	}
 
 	patchVersion := &version.Version{
-		Id:            p.Id.Hex(),
-		CreateTime:    time.Now(),
-		Identifier:    p.Project,
-		Revision:      p.Githash,
-		Author:        p.Author,
-		Message:       p.Description,
-		BuildIds:      []string{},
-		BuildVariants: []version.BuildStatus{},
-		Config:        p.PatchedConfig,
-		Status:        evergreen.PatchCreated,
-		Requester:     evergreen.PatchVersionRequester,
-		Branch:        projectRef.Branch,
+		Id:                  p.Id.Hex(),
+		CreateTime:          time.Now(),
+		Identifier:          p.Project,
+		Revision:            p.Githash,
+		Author:              p.Author,
+		Message:             p.Description,
+		BuildIds:            []string{},
+		BuildVariants:       []version.BuildStatus{},
+		Config:              p.PatchedConfig,
+		Status:              evergreen.PatchCreated,
+		Requester:           evergreen.PatchVersionRequester,
+		Branch:              projectRef.Branch,
+		RevisionOrderNumber: p.PatchNumber,
 	}
 
 	var pairs []TVPair
