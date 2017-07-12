@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
@@ -482,7 +483,7 @@ func populateExpansions(d *distro.Distro, v *version.Version, bv *BuildVariant, 
 		expansions.Put("is_patch", "true")
 		expansions.Put("revision_order_id", fmt.Sprintf("%s_%d", v.Author, v.RevisionOrderNumber))
 	} else {
-		expansions.Put("revision_order_id", v.RevisionOrderNumber)
+		expansions.Put("revision_order_id", strconv.Itoa(v.RevisionOrderNumber))
 	}
 
 	for _, e := range d.Expansions {
