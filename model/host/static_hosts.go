@@ -6,10 +6,15 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// DecommissionInactiveStaticHosts decommissions static hosts
-// in the database provided their ids aren't contained in the
-// passed in activeStaticHosts slice
-func DecommissionInactiveStaticHosts(activeStaticHosts []string) error {
+// DecommissionInactiveStaticHosts marks static hosts
+// in the database as terminated provided their ids aren't contained in the
+// passed in activeStaticHosts slice. This is called in the scheduler,
+// and marks any static host in the system that was removed from the
+// distro as "terminated".
+//
+// Previously this oepration marked these hosts as "decommissioned,"
+// which is not a state that makes sense for static hosts.
+func MarkInactiveStaticHosts(activeStaticHosts []string) error {
 	if activeStaticHosts == nil {
 		return nil
 	}
@@ -22,7 +27,7 @@ func DecommissionInactiveStaticHosts(activeStaticHosts []string) error {
 		},
 		bson.M{
 			"$set": bson.M{
-				StatusKey: evergreen.HostDecommissioned,
+				StatusKey: evergreen.HostTerminated,
 			},
 		},
 	)

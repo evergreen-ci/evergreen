@@ -36,7 +36,7 @@ func NextTaskForHost(h *host.Host) (*task.Task, error) {
 	return fullTask, nil
 }
 
-func UpdateStaticHosts(e *evergreen.Settings) error {
+func UpdateStaticHosts() error {
 	distros, err := distro.Find(distro.ByProvider(static.ProviderName))
 	if err != nil {
 		return err
@@ -78,5 +78,5 @@ func UpdateStaticHosts(e *evergreen.Settings) error {
 			activeStaticHosts = append(activeStaticHosts, h.Name)
 		}
 	}
-	return host.DecommissionInactiveStaticHosts(activeStaticHosts)
+	return host.MarkInactiveStaticHosts(activeStaticHosts)
 }

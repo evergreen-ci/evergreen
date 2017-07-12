@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -135,6 +136,12 @@ func (uis *UIServer) modifyHost(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, fmt.Sprintf("'%v' is not a valid status", newStatus), http.StatusBadRequest)
 			return
 		}
+
+		if host.Provider == static.ProviderName && newStatus == evergreen.HostDecommissioned {
+			http.Error(w, "cannot decommission static hosts", http.StatusBadRequest)
+			return
+		}
+
 		err := host.SetStatus(newStatus)
 		if err != nil {
 			uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error updating host"))

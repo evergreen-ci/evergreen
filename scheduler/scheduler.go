@@ -44,8 +44,7 @@ func (s *Scheduler) Schedule() error {
 	// make sure the correct static hosts are in the database
 	grip.Info("Updating static hosts...")
 
-	err := model.UpdateStaticHosts(s.Settings)
-	if err != nil {
+	if err := model.UpdateStaticHosts(); err != nil {
 		return errors.Wrap(err, "error updating static hosts")
 	}
 

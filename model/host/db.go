@@ -169,6 +169,14 @@ var IsDecommissioned = db.Query(
 		StatusKey:      evergreen.HostDecommissioned},
 )
 
+// IsTerminated is a query that returns all hosts that are terminated
+// (and not running a task).
+var IsTerminated = db.Query(
+	bson.M{
+		RunningTaskKey: bson.M{"$exists": false},
+		StatusKey:      evergreen.HostTerminated},
+)
+
 // ByDistroId produces a query that returns all working hosts (not terminated and
 // not quarantined) of the given distro.
 func ByDistroId(distroId string) db.Q {
