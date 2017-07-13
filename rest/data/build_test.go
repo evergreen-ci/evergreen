@@ -83,7 +83,7 @@ func (s *BuildConnectorSuite) TestAbort() {
 	err := s.ctx.AbortBuild("build1", "user1")
 	s.NoError(err)
 	if s.mock {
-		s.Equal("user1", s.ctx.(*MockConnector).CachedAborted["build1"])
+		s.Equal("user1", s.ctx.(*MockConnector).MockBuildConnector.CachedAborted["build1"])
 	} else {
 		b, err := build.FindOne(build.ById("build1"))
 		s.NoError(err)

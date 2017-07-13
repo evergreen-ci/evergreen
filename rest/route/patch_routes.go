@@ -73,15 +73,15 @@ func (p *patchByIdHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 	}, nil
 }
 
-type patchesByProjectArgs struct {
-	projectId string
-}
-
 ////////////////////////////////////////////////////////////////////////
 //
 // Handler for the patches for a project
 //
 //    /projects/{project_id}/patches
+
+type patchesByProjectArgs struct {
+	projectId string
+}
 
 func getPatchesByProjectManager(route string, version int) *RouteManager {
 	p := &patchesByProjectHandler{}
@@ -163,7 +163,6 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 		pages.Next = &Page{
 			Relation: "next",
 			Key:      patches[limit].CreateTime.In(time.UTC).Format(model.APITimeFormat),
-			//Key:   model.NewTime(patches[limit].CreateTime).String(),
 			Limit: len(patches) - limit,
 		}
 	}
@@ -171,7 +170,6 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 		pages.Prev = &Page{
 			Relation: "prev",
 			Key:      prevPatches[0].CreateTime.In(time.UTC).Format(model.APITimeFormat),
-			//Key:   model.NewTime(prevPatches[0].CreateTime).String(),
 			Limit: len(prevPatches),
 		}
 	}
@@ -194,4 +192,72 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	}
 
 	return models, pages, nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for fetching patches by id
+//
+//    /patches/{patch_id}/abort
+
+func getPatchAbortManager(route string, version int) *RouteManager {
+	p := &patchAbortHandler{}
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        evergreen.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    p.Handler(),
+			},
+		},
+	}
+}
+
+type patchAbortHandler struct {
+	patchId string
+}
+
+func (p *patchAbortHandler) Handler() RequestHandler {
+	return &patchAbortHandler{}
+}
+
+func (p *patchAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	p.patchId = vars["patch_id"]
+	return nil
+}
+
+func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	err := sc.AbortPatch(p.patchId, GetUser(ctx).Id)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Abort error")
+		}
+		return ResponseData{}, err
+	}
+
+	// Patch may be deleted by abort (eg not finalized) and not found here
+	foundPatch, err := sc.FindPatchById(p.patchId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, nil
+	}
+	patchModel := &model.APIPatch{}
+	err = patchModel.BuildFromService(*foundPatch)
+
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{patchModel},
+	}, nil
 }

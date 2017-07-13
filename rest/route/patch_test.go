@@ -1,32 +1,42 @@
 package route
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/patch"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/suite"
+	"gopkg.in/mgo.v2/bson"
 )
 
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for fetch patch by id route
+
 type PatchByIdSuite struct {
-	sc   *data.MockConnector
-	data data.MockPatchConnector
+	sc      *data.MockConnector
+	obj_ids []bson.ObjectId
+	data    data.MockPatchConnector
 
 	suite.Suite
 }
 
 func TestPatchByIdSuite(t *testing.T) {
-	suite.Run(t, new(PatchesByProjectSuite))
+	suite.Run(t, new(PatchByIdSuite))
 }
 
 func (s *PatchByIdSuite) SetupSuite() {
+	s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
-			{Id: "patch1"},
-			{Id: "patch2"},
+			{Id: s.obj_ids[0]},
+			{Id: s.obj_ids[1]},
 		},
 	}
 	s.sc = &data.MockConnector{
@@ -35,8 +45,8 @@ func (s *PatchByIdSuite) SetupSuite() {
 }
 
 func (s *PatchByIdSuite) TestFindById() {
-	rm := getBuildIdRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = "patch2"
+	rm := getPatchByIdManager("", 2)
+	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = s.obj_ids[0].Hex()
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -44,15 +54,23 @@ func (s *PatchByIdSuite) TestFindById() {
 
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString("patch2"), p.Id)
+	s.Equal(model.APIString(s.obj_ids[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
-	rm := getBuildIdRouteManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = "notpatch"
+	rm := getPatchByIdManager("", 2)
+	new_id := bson.NewObjectId()
+	for _, i := range s.obj_ids {
+		s.NotEqual(new_id, i)
+	}
+	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = new_id.Hex()
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.Error(err)
-	s.Nil(res)
+	s.Len(res.Result, 0)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for fetch patch by project route
 
 type PatchesByProjectSuite struct {
 	sc        *data.MockConnector
@@ -68,15 +86,15 @@ func TestPatchesByProjectSuite(t *testing.T) {
 }
 
 func (s *PatchesByProjectSuite) SetupSuite() {
-	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC)
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
-			{Id: "patch1", Project: "project1", CreateTime: s.now},
-			{Id: "patch2", Project: "project2", CreateTime: s.now.Add(time.Second * 2)},
-			{Id: "patch3", Project: "project1", CreateTime: s.now.Add(time.Second * 4)},
-			{Id: "patch4", Project: "project1", CreateTime: s.now.Add(time.Second * 6)},
-			{Id: "patch5", Project: "project2", CreateTime: s.now.Add(time.Second * 8)},
-			{Id: "patch6", Project: "project1", CreateTime: s.now.Add(time.Second * 10)},
+			{Project: "project1", CreateTime: s.now},
+			{Project: "project2", CreateTime: s.now.Add(time.Second * 2)},
+			{Project: "project1", CreateTime: s.now.Add(time.Second * 4)},
+			{Project: "project1", CreateTime: s.now.Add(time.Second * 6)},
+			{Project: "project2", CreateTime: s.now.Add(time.Second * 8)},
+			{Project: "project1", CreateTime: s.now.Add(time.Second * 10)},
 		},
 	}
 	s.paginator = patchesByProjectPaginator
@@ -108,9 +126,11 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NotNil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
-	nextTime := model.NewTime(s.now).String()
+	//nextTime := model.NewTime(s.now).String()
+	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)
-	prevTime := model.NewTime(s.now.Add(time.Second * 10)).String()
+	//prevTime := model.NewTime(s.now.Add(time.Second * 10)).String()
+	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
 	s.Equal(prevTime, pageData.Prev.Key)
 }
 
@@ -155,4 +175,87 @@ func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, s
 	pe.limit = limit
 
 	return pe.Execute(nil, sc)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for abort patch by id route
+
+type PatchesAbortByIdSuite struct {
+	sc      *data.MockConnector
+	obj_ids []bson.ObjectId
+	data    data.MockPatchConnector
+
+	suite.Suite
+}
+
+func TestPatchesAbortByIdSuite(t *testing.T) {
+	suite.Run(t, new(PatchesAbortByIdSuite))
+}
+
+func (s *PatchesAbortByIdSuite) SetupSuite() {
+	s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+
+	s.data = data.MockPatchConnector{
+		CachedPatches: []patch.Patch{
+			{Id: s.obj_ids[0], Version: "version1"},
+			{Id: s.obj_ids[1]},
+		},
+		CachedAborted: make(map[string]string),
+	}
+	s.sc = &data.MockConnector{
+		MockPatchConnector: s.data,
+	}
+}
+
+func (s *PatchesAbortByIdSuite) TestAbort() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getPatchAbortManager("", 2)
+	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.obj_ids[0].Hex()
+	res, err := rm.Methods[0].Execute(ctx, s.sc)
+
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal("user1", s.data.CachedAborted[s.obj_ids[0].Hex()])
+	s.Equal("", s.data.CachedAborted[s.obj_ids[1].Hex()])
+	p, ok := (res.Result[0]).(*model.APIPatch)
+	s.True(ok)
+	s.Equal(model.APIString(s.obj_ids[0].Hex()), p.Id)
+
+	res, err = rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal("user1", s.data.CachedAborted[s.obj_ids[0].Hex()])
+	s.Equal("", s.data.CachedAborted[s.obj_ids[1].Hex()])
+	p, ok = (res.Result[0]).(*model.APIPatch)
+	s.True(ok)
+	s.Equal(model.APIString(s.obj_ids[0].Hex()), p.Id)
+
+	rm = getPatchAbortManager("", 2)
+	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.obj_ids[1].Hex()
+	res, err = rm.Methods[0].Execute(ctx, s.sc)
+
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal("user1", s.data.CachedAborted[s.obj_ids[0].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.obj_ids[1].Hex()])
+	s.Len(res.Result, 0)
+}
+
+func (s *PatchesAbortByIdSuite) TestAbortFail() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getPatchAbortManager("", 2)
+	new_id := bson.NewObjectId()
+	for _, i := range s.obj_ids {
+		s.NotEqual(new_id, i)
+	}
+	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = new_id.Hex()
+	res, err := rm.Methods[0].Execute(ctx, s.sc)
+	s.Error(err)
+	s.NotNil(res)
+	s.Len(res.Result, 0)
 }

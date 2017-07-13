@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/pkg/errors"
@@ -41,10 +42,27 @@ func (pc *DBPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) 
 	return p, nil
 }
 
+// AbortPatch uses the service level CancelPatch method to abort a single patch
+// with matching Id.
+func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
+	p, err := patch.FindOne(patch.ById(bson.ObjectIdHex(patchId)))
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		return &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
+		}
+	}
+	return model.CancelPatch(p, user)
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
 	CachedPatches []patch.Patch
+	CachedAborted map[string]string
 }
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
@@ -89,4 +107,29 @@ func (pc *MockPatchConnector) FindPatchById(patchId string) (*patch.Patch, error
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("patch with id %s not found", patchId),
 	}
+}
+
+// AbortPatch sets the value of patchId in CachedAborted to user.
+func (pc *MockPatchConnector) AbortPatch(patchId string, user string) error {
+	var foundPatch *patch.Patch
+	var foundIdx int
+	for idx, p := range pc.CachedPatches {
+		if p.Id.Hex() == patchId {
+			foundPatch = &p
+			foundIdx = idx
+			break
+			// for some reason if I don't break this code the value of foundPatch is not persisted
+		}
+	}
+	if foundPatch == nil {
+		return &rest.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    fmt.Sprintf("patch with id %s not found", patchId),
+		}
+	}
+	pc.CachedAborted[patchId] = user
+	if foundPatch.Version == "" {
+		pc.CachedPatches = append(pc.CachedPatches[:foundIdx], pc.CachedPatches[foundIdx+1:]...)
+	}
+	return nil
 }

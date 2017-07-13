@@ -101,4 +101,7 @@ type Connector interface {
 
 	// AbortVersion aborts all tasks of a version given its ID.
 	AbortVersion(string) error
+
+	// AbortPatch aborts the patch corresponding to the input patch ID and deletes if not finalized.
+	AbortPatch(string, string) error
 }
