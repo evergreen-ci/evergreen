@@ -91,7 +91,12 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	if err := info.validateRequestInfo(); err != nil {
 		return nil, err
 	}
-	r, err := c.newRequest(string(info.method), info.path, info.taskData.Secret, string(info.version), data)
+
+	secret := ""
+	if info.taskData != nil {
+		secret = info.taskData.Secret
+	}
+	r, err := c.newRequest(string(info.method), info.path, secret, string(info.version), data)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}

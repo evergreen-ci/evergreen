@@ -27,6 +27,12 @@ func main() {
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: &opts})
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: &opts})
 	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
+	hosts := &cli.HostCommand{}
+	cmd, _ := parser.AddCommand("host", "host-related commands", "", hosts)
+	cmd.AddCommand("create", "spawn a host", "", hosts.GetSubCommand("create", &opts))
+	cmd.AddCommand("list", "list hosts", "", hosts.GetSubCommand("list", &opts))
+	cmd.AddCommand("terminate", "terminate a host", "", hosts.GetSubCommand("terminate", &opts))
+	cmd.AddCommand("status", "return the status of a host", "", hosts.GetSubCommand("status", &opts))
 
 	_, err := parser.Parse()
 	grip.CatchEmergencyFatal(err)

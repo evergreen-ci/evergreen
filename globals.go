@@ -100,8 +100,8 @@ const (
 	HostSecretHeader  = "Host-Secret"
 	ContentTypeHeader = "Content-Type"
 	ContentTypeValue  = "application/json"
-	APIUserHeader     = "Api-Key"
-	APIKeyHeader      = "Api-User"
+	APIUserHeader     = "Api-User"
+	APIKeyHeader      = "Api-Key"
 )
 
 // HTTP constants. Added after Go1.4. Here for compatibility with GCCGO

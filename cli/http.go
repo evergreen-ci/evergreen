@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
@@ -82,6 +83,18 @@ func getAPIClients(o *Options) (*APIClient, *APIClient, *model.CLISettings, erro
 	}
 
 	return ac, rc, settings, nil
+}
+
+// returns a client and settings for the REST V2 APIs
+func getAPIV2Client(o *Options) (client.Communicator, *model.CLISettings, error) {
+	settings, err := LoadSettings(o)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	client := client.NewCommunicator(settings.APIServerHost)
+
+	return client, settings, nil
 }
 
 // doReq performs a request of the given method type against path.
