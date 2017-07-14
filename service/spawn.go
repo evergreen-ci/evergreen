@@ -161,6 +161,8 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		if mailErr != nil {
 			grip.Errorf("Failed to send notification: %+v", mailErr)
 		}
+		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		return
 	}
 
 	PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Host spawned"))
