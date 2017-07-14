@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -82,7 +83,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdFail() {
 
 type DistroCostSuite struct {
 	sc   *data.MockConnector
-	data data.MockDistroCostConnector
+	data data.MockDistroConnector
 
 	suite.Suite
 }
@@ -95,11 +96,27 @@ func (s *DistroCostSuite) SetupSuite() {
 	testTask1 := task.Task{Id: "task1", DistroId: "distro1", TimeTaken: time.Duration(1)}
 	testTask2 := task.Task{Id: "task2", DistroId: "distro2", TimeTaken: time.Duration(1)}
 	testTask3 := task.Task{Id: "task3", DistroId: "distro2", TimeTaken: time.Duration(1)}
-	s.data = data.MockDistroCostConnector{
-		CachedTasks: []task.Task{testTask1, testTask2, testTask3},
+
+	var settings1 = make(map[string]interface{})
+	var settings2 = make(map[string]interface{})
+	settings1["instance_type"] = "type"
+	testDistro1 := distro.Distro{
+		Id:               "distro1",
+		Provider:         "ec2",
+		ProviderSettings: &settings1,
+	}
+	testDistro2 := distro.Distro{
+		Id:               "distro2",
+		Provider:         "gce",
+		ProviderSettings: &settings2,
+	}
+
+	s.data = data.MockDistroConnector{
+		CachedTasks:   []task.Task{testTask1, testTask2, testTask3},
+		CachedDistros: []distro.Distro{testDistro1, testDistro2},
 	}
 	s.sc = &data.MockConnector{
-		MockDistroCostConnector: s.data,
+		MockDistroConnector: s.data,
 	}
 }
 
@@ -120,6 +137,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	s.True(ok)
 	s.Equal(model.APIString("distro1"), h.DistroId)
 	s.Equal(time.Duration(1), h.SumTimeTaken)
+	s.Equal(model.APIString("type"), h.InstanceType)
 }
 
 // TestFindCostByDistroIdMany tests the handler where information is aggregated on
@@ -139,6 +157,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	s.True(ok)
 	s.Equal(model.APIString("distro2"), h.DistroId)
 	s.Equal(time.Duration(2), h.SumTimeTaken)
+	s.Equal(model.APIString(""), h.InstanceType)
 }
 
 // TestFindCostByDistroFail tests that the handler correctly returns error when

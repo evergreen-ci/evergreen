@@ -13,9 +13,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
-
-var numDistros = 10
 
 func TestFindAllDistros(t *testing.T) {
 	assert := assert.New(t)
@@ -27,6 +26,7 @@ func TestFindAllDistros(t *testing.T) {
 	sc := &DBConnector{}
 
 	var distros []*distro.Distro
+	numDistros := 10
 	for i := 0; i < numDistros; i++ {
 		d := &distro.Distro{
 			Id: fmt.Sprintf("distro_%d", rand.Int()),
@@ -40,45 +40,113 @@ func TestFindAllDistros(t *testing.T) {
 	assert.Len(found, numDistros)
 }
 
-func TestFindCostByDistroId(t *testing.T) {
+////////////////////////////////////////////////////////////////////////////////
+type DistroCostConnectorSuite struct {
+	ctx     Connector
+	isMock  bool
+	numLoop int
+
+	suite.Suite
+}
+
+// Initialize the ConnectorSuites
+func TestDistroCostConnectorSuite(t *testing.T) {
 	assert := assert.New(t)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindCostByDistroId")
+
+	// Set up
+	s := new(DistroCostConnectorSuite)
+	s.ctx = &DBConnector{}
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestDistroCostConnectorSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	assert.Nil(db.Clear(task.Collection))
 
-	sc := &DBConnector{}
-	numTaskSet := 10
+	// Tear down
+	assert.NoError(db.Clear(task.Collection))
+	assert.NoError(db.Clear(distro.Collection))
 
-	// Add task documents in the database
-	for i := 0; i < numTaskSet; i++ {
+	s.isMock = false
+	s.numLoop = 10
+
+	// Insert data
+	for i := 0; i < s.numLoop; i++ {
 		testTask1 := &task.Task{
 			Id:        fmt.Sprintf("task_%d", i*2),
 			DistroId:  fmt.Sprintf("%d", i),
 			TimeTaken: time.Duration(i),
 		}
-		assert.Nil(testTask1.Insert())
+		assert.NoError(testTask1.Insert())
 
 		testTask2 := &task.Task{
 			Id:        fmt.Sprintf("task_%d", i*2+1),
 			DistroId:  fmt.Sprintf("%d", i),
 			TimeTaken: time.Duration(i),
 		}
-		assert.Nil(testTask2.Insert())
-	}
+		assert.NoError(testTask2.Insert())
 
-	// Finding each distro's sum of time taken should succeed
-	for i := 0; i < numTaskSet; i++ {
-		found, err := sc.FindCostByDistroId(fmt.Sprintf("%d", i))
-		assert.Nil(err)
-		assert.Equal(found.SumTimeTaken, time.Duration(i)*2)
+		var settings = make(map[string]interface{})
+		settings["instance_type"] = fmt.Sprintf("value_%d", i)
+		testDistro := &distro.Distro{
+			Id:               fmt.Sprintf("%d", i),
+			Provider:         "provider",
+			ProviderSettings: &settings,
+		}
+		assert.NoError(testDistro.Insert())
 	}
+}
 
-	// Searching for a distro that doesn't exist should fail with an APIError
-	found, err := sc.FindCostByDistroId("fake_distro")
-	assert.NotNil(err)
-	assert.Nil(found)
-	assert.IsType(err, &rest.APIError{})
-	apiErr, ok := err.(*rest.APIError)
-	assert.Equal(ok, true)
-	assert.Equal(apiErr.StatusCode, http.StatusNotFound)
+func TestMockDistroConnectorSuite(t *testing.T) {
+	s := new(DistroCostConnectorSuite)
+
+	var settings = make(map[string]interface{})
+	settings["instance_type"] = "type"
+
+	s.ctx = &MockConnector{
+		MockDistroConnector: MockDistroConnector{
+			CachedTasks: []task.Task{
+				{Id: "task1", DistroId: "distro1", TimeTaken: time.Duration(1)},
+				{Id: "task2", DistroId: "distro2", TimeTaken: time.Duration(1)},
+				{Id: "task3", DistroId: "distro2", TimeTaken: time.Duration(1)},
+			},
+			CachedDistros: []distro.Distro{
+				{Id: "distro1", Provider: "ec2", ProviderSettings: &settings},
+				{Id: "distro2", Provider: "gce", ProviderSettings: &settings},
+			},
+		},
+	}
+	s.isMock = true
+	suite.Run(t, s)
+}
+
+func (s *DistroCostConnectorSuite) TestFindCostByDistroId() {
+	if s.isMock {
+		found, err := s.ctx.FindCostByDistroId("distro1")
+		s.NoError(err)
+		s.Equal(found.SumTimeTaken, time.Duration(1))
+		s.Equal(found.Provider, "ec2")
+		s.Equal(found.ProviderSettings["instance_type"], "type")
+
+		found, err = s.ctx.FindCostByDistroId("distro2")
+		s.NoError(err)
+		s.Equal(found.SumTimeTaken, time.Duration(1)*2)
+		s.Equal(found.Provider, "gce")
+		s.Equal(found.ProviderSettings["instance_type"], "type")
+
+	} else {
+		// Finding each distro's sum of time taken should succeed
+		for i := 0; i < s.numLoop; i++ {
+			found, err := s.ctx.FindCostByDistroId(fmt.Sprintf("%d", i))
+			s.NoError(err)
+			s.Equal(found.SumTimeTaken, time.Duration(i)*2)
+			s.Equal(found.Provider, "provider")
+			s.Equal(found.ProviderSettings["instance_type"], fmt.Sprintf("value_%d", i))
+		}
+
+		// Searching for a distro that doesn't exist should fail with an APIError
+		found, err := s.ctx.FindCostByDistroId("fake_distro")
+		s.NoError(err)
+		s.Nil(found)
+		s.IsType(err, &rest.APIError{})
+		apiErr, ok := err.(*rest.APIError)
+		s.Equal(ok, true)
+		s.Equal(apiErr.StatusCode, http.StatusNotFound)
+	}
 }

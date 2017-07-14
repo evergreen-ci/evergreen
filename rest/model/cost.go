@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
 )
@@ -35,6 +36,8 @@ func (apiVersionCost *APIVersionCost) ToService() (interface{}, error) {
 type APIDistroCost struct {
 	DistroId     APIString     `json:"distro_id"`
 	SumTimeTaken time.Duration `json:"sum_time_taken"`
+	Provider     APIString     `json:"provider"`
+	InstanceType APIString     `json:"instance_type,omitempty"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -44,6 +47,20 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 	case *task.DistroCost:
 		apiDistroCost.DistroId = APIString(v.DistroId)
 		apiDistroCost.SumTimeTaken = v.SumTimeTaken
+		apiDistroCost.Provider = APIString(v.Provider)
+
+		// InstanceType field is only set if the provider is ec2 or ec2-spot.
+		// It will default to an empty string for other providers.
+		if v.Provider == evergreen.ProviderNameEc2OnDemand || v.Provider == evergreen.ProviderNameEc2Spot {
+			instanceTypeStr, ok := v.ProviderSettings["instance_type"].(string)
+			if !ok {
+				return errors.Errorf("ec2 instance type in provider settings does not have a string value")
+			}
+			if instanceTypeStr == "" {
+				return errors.Errorf("ec2 missing instance type in provider settings")
+			}
+			apiDistroCost.InstanceType = APIString(instanceTypeStr)
+		}
 	default:
 		return errors.Errorf("incorrect type when fetching converting distro cost type")
 	}

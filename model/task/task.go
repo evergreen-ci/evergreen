@@ -111,8 +111,10 @@ type VersionCost struct {
 // DistroCost is service level model for representing cost data related to a distro.
 // SumTimeTaken is the aggregation of time taken by all tasks associated with a distro.
 type DistroCost struct {
-	DistroId     string        `bson:"distro_id"`
-	SumTimeTaken time.Duration `bson:"sum_time_taken"`
+	DistroId         string                 `bson:"distro_id"`
+	SumTimeTaken     time.Duration          `bson:"sum_time_taken"`
+	Provider         string                 `json:"provider"`
+	ProviderSettings map[string]interface{} `json:"provider_settings"`
 }
 
 // SetBSON allows us to use dependency representation of both

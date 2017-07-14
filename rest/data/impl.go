@@ -42,7 +42,6 @@ type MockConnector struct {
 	MockMetricsConnector
 	MockBuildConnector
 	MockVersionConnector
-	MockDistroCostConnector
 	MockPatchConnector
 }
 

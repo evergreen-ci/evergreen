@@ -117,6 +117,17 @@ const (
 	MethodTrace   = "TRACE"
 )
 
+// cloud provider related constants
+const (
+	ProviderNameEc2OnDemand  = "ec2"
+	ProviderNameEc2Spot      = "ec2-spot"
+	ProviderNameDigitalOcean = "digitalocean"
+	ProviderNameDocker       = "docker"
+	ProviderNameGce          = "gce"
+	ProviderNameStatic       = "static"
+	ProviderNameOpenstack    = "openstack"
+)
+
 var (
 	// UphostStatus is a list of all host statuses that are considered "up."
 	// This is used for query building.
