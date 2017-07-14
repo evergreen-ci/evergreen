@@ -318,6 +318,10 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 		User:           user,
 		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
 	}
+	if target.Distro.SetupAsSudo {
+		makeDirectoryCmd.CmdString = fmt.Sprintf("sudo %s", makeDirectoryCmd.CmdString)
+	}
+
 	grip.Infof("Directories command: '%#v'", makeDirectoryCmd)
 
 	// run the make shell command with a timeout
