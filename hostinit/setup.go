@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -303,6 +304,36 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 		return errors.Wrapf(err, "error getting ssh options for host %v", target.Id)
 	}
 
+	cappedMakeDirectoryLog := util.CappedWriter{
+		Buffer:   &bytes.Buffer{},
+		MaxBytes: 1024 * 1024, // 1MB
+	}
+
+	makeDirectoryCmd := &subprocess.RemoteCommand{
+		Id:             fmt.Sprintf("create-workdir-%d", rand.Int()),
+		CmdString:      fmt.Sprintf("mkdir -m 777 -p %s", target.Distro.WorkDir),
+		Stdout:         &cappedMakeDirectoryLog,
+		Stderr:         &cappedMakeDirectoryLog,
+		RemoteHostName: hostInfo.Hostname,
+		User:           user,
+		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
+	}
+	grip.Infof("Directories command: '%#v'", makeDirectoryCmd)
+
+	// run the make shell command with a timeout
+	ctx, cancel := context.WithTimeout(context.TODO(), SCPTimeout)
+	defer cancel()
+
+	if err = makeDirectoryCmd.Run(ctx); err != nil {
+		if err == util.ErrTimedOut {
+			grip.Notice(makeDirectoryCmd.Stop())
+			return errors.Errorf("creating remote directories timed out: %s",
+				cappedMakeDirectoryLog.String())
+		}
+		return errors.Wrapf(err, "error creating directories on remote machine: %s",
+			cappedMakeDirectoryLog.String())
+	}
+
 	var scpCmdStderr bytes.Buffer
 	scpCmd := &subprocess.ScpCommand{
 		Source:         file.Name(),
@@ -314,9 +345,8 @@ func (init *HostInit) copyScript(target *host.Host, name, script string) error {
 		Options:        append([]string{"-P", hostInfo.Port}, sshOptions...),
 	}
 	// run the command to scp the agent with a timeout
-	ctx, cancel := context.WithTimeout(context.TODO(), SCPTimeout)
+	ctx, cancel = context.WithTimeout(context.TODO(), SCPTimeout)
 	defer cancel()
-
 	if err = scpCmd.Run(ctx); err != nil {
 		if err == util.ErrTimedOut {
 			grip.Warning(scpCmd.Stop())

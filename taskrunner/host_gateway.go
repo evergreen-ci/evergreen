@@ -160,12 +160,11 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 	grip.Notice(makeShellCmd.Stop())
 	if err != nil {
-		// if it timed out, kill the command
 		if err == util.ErrTimedOut {
-			return "", errors.Errorf("creating remote directories timed out: %v",
+			return "", errors.Errorf("creating remote directories timed out: %s",
 				mkdirOutput.String())
 		}
-		return "", errors.Wrapf(err, "error creating directories on remote machine (%s)",
+		return "", errors.Wrapf(err, "error creating directories on remote machine: %s",
 			mkdirOutput.String())
 	}
 
