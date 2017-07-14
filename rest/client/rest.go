@@ -1,5 +1,14 @@
 package client
 
+import (
+	"fmt"
+
+	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
+	"golang.org/x/net/context"
+)
+
 // GetAllHosts ...
 func (*communicatorImpl) GetAllHosts() {
 	return
@@ -20,9 +29,29 @@ func (*communicatorImpl) SetHostStatuses() {
 	return
 }
 
-// CreateSpawnHost ...
-func (*communicatorImpl) CreateSpawnHost() {
-	return
+// CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
+func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.SpawnHost, error) {
+	spawnRequest := &model.HostPostRequest{
+		DistroID: distroID,
+		KeyName:  keyName,
+	}
+	info := requestInfo{
+		method:  post,
+		path:    "hosts",
+		version: apiVersion2,
+	}
+	resp, err := c.request(ctx, info, spawnRequest)
+	if err != nil {
+		err = errors.Wrapf(err, "error sending request to spawn host")
+		return nil, err
+	}
+
+	spawnHostResp := model.SpawnHost{}
+	defer resp.Body.Close()
+	if err = util.ReadJSONInto(resp.Body, &spawnHostResp); err != nil {
+		return nil, fmt.Errorf("Error forming response body response: %v", err)
+	}
+	return &spawnHostResp, nil
 }
 
 // GetSpawnHosts ...

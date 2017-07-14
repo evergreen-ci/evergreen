@@ -8,9 +8,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
+	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	restmodel "github.com/evergreen-ci/evergreen/rest/model"
 	"golang.org/x/net/context"
 )
 
@@ -65,7 +66,7 @@ type Communicator interface {
 	// used by task commands.
 	SendTestResults(context.Context, TaskData, *task.TestResults) error
 	SendTestLog(context.Context, TaskData, *model.TestLog) (string, error)
-	GetTaskPatch(context.Context, TaskData) (*patch.Patch, error)
+	GetTaskPatch(context.Context, TaskData) (*patchmodel.Patch, error)
 	GetPatchFile(context.Context, TaskData, string) (string, error)
 
 	// The following operations are used by
@@ -102,7 +103,7 @@ type Communicator interface {
 
 	// Spawnhost methods
 	//
-	CreateSpawnHost()
+	CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*restmodel.SpawnHost, error)
 	GetSpawnHosts()
 
 	// Task methods

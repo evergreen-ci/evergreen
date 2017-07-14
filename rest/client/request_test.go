@@ -38,8 +38,13 @@ func (s *RequestTestSuite) TestNewRequest() {
 }
 
 func (s *RequestTestSuite) TestGetPathReturnsCorrectPath() {
+	// V1 path
 	path := s.evergreenREST.getPath("foo", v1)
 	s.Equal("url/api/2/foo", path)
+
+	// V2 path
+	path = s.evergreenREST.getPath("foo", apiVersion2)
+	s.Equal("url/rest/v2/foo", path)
 }
 
 func (s *RequestTestSuite) TestGetPathSuffix() {

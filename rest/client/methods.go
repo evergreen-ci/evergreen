@@ -14,7 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
+	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
@@ -236,8 +236,8 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, td TaskData, r *
 // GetPatch tries to get the patch data from the server in json format,
 // and unmarhals it into a patch struct. The GET request is attempted
 // multiple times upon failure.
-func (c *communicatorImpl) GetTaskPatch(ctx context.Context, td TaskData) (*patch.Patch, error) {
-	patch := patch.Patch{}
+func (c *communicatorImpl) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
+	patch := patchmodel.Patch{}
 	resp, err := c.retryGet(ctx, c.getTaskPathSuffix("patch", td.ID), td, v1)
 
 	if err != nil {

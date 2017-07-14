@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
-	"github.com/evergreen-ci/evergreen/model"
+	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/manifest"
-	"github.com/evergreen-ci/evergreen/model/patch"
+	patchmodel "github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"golang.org/x/net/context"
 )
 
@@ -69,8 +70,8 @@ func (c *Mock) GetTask(ctx context.Context, taskData TaskData) (*task.Task, erro
 }
 
 // GetProjectRef returns an empty ProjectRef.
-func (c *Mock) GetProjectRef(ctx context.Context, taskData TaskData) (*model.ProjectRef, error) {
-	return &model.ProjectRef{}, nil
+func (c *Mock) GetProjectRef(ctx context.Context, taskData TaskData) (*serviceModel.ProjectRef, error) {
+	return &serviceModel.ProjectRef{}, nil
 }
 
 // GetDistro returns an empty Distro.
@@ -129,7 +130,7 @@ func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string
 	return "", nil
 }
 
-func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patch.Patch, error) {
+func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
 	return nil, nil
 }
 
@@ -153,9 +154,23 @@ func (*Mock) SetHostStatuses() {
 	return
 }
 
-// CreateSpawnHost ...
-func (*Mock) CreateSpawnHost() {
-	return
+// CreateSpawnHost will return a mock host that would have been intended
+func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.SpawnHost, error) {
+	mockHost := &model.SpawnHost{
+		HostID:         model.APIString("mock_host_id"),
+		DistroID:       model.APIString("mock_distro_id"),
+		Type:           model.APIString("mock_type"),
+		ExpirationTime: model.APITime(time.Now()),
+		CreationTime:   model.APITime(time.Now()),
+		Status:         model.APIString("starting"),
+		StartedBy:      model.APIString("mock_user"),
+		Tag:            model.APIString("mock_tag"),
+		Project:        model.APIString("mock_project"),
+		Zone:           model.APIString("mock_zone"),
+		UserHost:       true,
+		Provisioned:    true,
+	}
+	return mockHost, nil
 }
 
 // GetSpawnHosts ...
@@ -426,7 +441,7 @@ func (c *Mock) AttachFiles(ctx context.Context, taskData TaskData, taskFiles []*
 
 // SendTestLog posts a test log for a communicator's task. Is a
 // noop if the test Log is nil.
-func (c *Mock) SendTestLog(ctx context.Context, taskData TaskData, log *model.TestLog) (string, error) {
+func (c *Mock) SendTestLog(ctx context.Context, taskData TaskData, log *serviceModel.TestLog) (string, error) {
 	return "", nil
 }
 
@@ -438,7 +453,7 @@ func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyReq
 	return nil
 }
 
-func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *model.KeyVal) error {
+func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyVal) error {
 	return nil
 }
 
