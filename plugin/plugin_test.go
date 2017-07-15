@@ -2,6 +2,7 @@ package plugin_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
@@ -85,9 +87,12 @@ func (mc *MockCommand) ParseParams(params map[string]interface{}) error {
 	return nil
 }
 
-func (mc *MockCommand) Execute(logger plugin.Logger,
-	pluginCom plugin.PluginCommunicator, conf *model.TaskConfig, stop chan bool) error {
-	resp, err := pluginCom.TaskGetJSON(fmt.Sprintf("blah/%s/%d", mc.Param1, mc.Param2))
+func (mc *MockCommand) Execute(ctx context.Context,
+	comm client.Communicator, logger client.LoggerProducer, conf *model.TaskConfig) error {
+
+	var resp *http.Response
+	var err error
+
 	if err != nil {
 		return err
 	}
