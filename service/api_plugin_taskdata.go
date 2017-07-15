@@ -85,11 +85,12 @@ func (as *APIServer) getTaskJSONByName(w http.ResponseWriter, r *http.Request) {
 // apiGetTaskForVariant finds a task by name and variant and finds
 // the document in the json collection associated with that task's id.
 func (as *APIServer) getTaskJSONForVariant(w http.ResponseWriter, r *http.Request) {
-	t := plugin.GetTask(r)
+	t := GetTask(r)
 	if t == nil {
 		http.Error(w, "task not found", http.StatusNotFound)
 		return
 	}
+
 	name := mux.Vars(r)["name"]
 	taskName := mux.Vars(r)["task_name"]
 	variantId := mux.Vars(r)["variant"]

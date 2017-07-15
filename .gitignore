@@ -51,7 +51,7 @@ plugin/builtin/s3Plugin/testdata/
 npm-debug.log
 clients
 testdata/target.tgz
-
+!command/testdata/archive/artifacts.tar.gz
 
 plugin/config/build_baron.go
 plugin/config/keyval.go

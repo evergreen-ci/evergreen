@@ -1,0 +1,15 @@
+START: rsfull_test.go:1020: MyTestName.Tester
+START: rsfull_test.go:288: MyTestName.SetUpTest
+woo
+PASS: rsfull_test.go:288: MyTestName.SetUpTest	0.576s
+wow fun test stuff
+look at this!
+START: rsfull_test.go:291: MyTestName.TearDownTest
+PASS: rsfull_test.go:291: MyTestName.TearDownTest	0.499s
+
+oh no a bad thing!
+
+FAIL: rsfull_test.go:1020: MyTestName.Tester	47.499s
+
+PASS
+ok  	tests/cm/fulltest	48.599s

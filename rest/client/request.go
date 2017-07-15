@@ -56,14 +56,14 @@ func (c *communicatorImpl) get(ctx context.Context, path string, taskData TaskDa
 
 // this function is commented out because it is not yet used
 // func (c *communicatorImpl) delete(ctx context.Context, path string, taskSecret, version string) (*http.Response, error) {
-// 	response, err := c.request(ctx, "DELETE", path, taskSecret, version, nil)
-// 	return response, errors.Wrap(err, "Error performing HTTP DELETE request")
+//	response, err := c.request(ctx, "DELETE", path, taskSecret, version, nil)
+//	return response, errors.Wrap(err, "Error performing HTTP DELETE request")
 // }
 
 // this function is commented out because it is not yet used
 // func (c *communicatorImpl) put(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
-// 	response, err := c.request(ctx, "PUT", path, taskSecret, version, data)
-// 	return response, errors.Wrap(err, "Error performing HTTP PUT request")
+//	response, err := c.request(ctx, "PUT", path, taskSecret, version, data)
+//	return response, errors.Wrap(err, "Error performing HTTP PUT request")
 // }
 
 func (c *communicatorImpl) post(ctx context.Context, path string, taskData TaskData, version apiVersion, data interface{}) (*http.Response, error) {
@@ -87,7 +87,7 @@ func (c *communicatorImpl) retryPost(ctx context.Context, path string, taskData 
 	return c.retryRequest(ctx, info, data)
 }
 
-func (c *communicatorImpl) retryGet(ctx context.Context, path string, taskData TaskData, version apiVersion) (resp *http.Response, err error) {
+func (c *communicatorImpl) retryGet(ctx context.Context, path string, taskData TaskData, version apiVersion) (*http.Response, error) {
 	info := requestInfo{
 		method:   get,
 		path:     path,

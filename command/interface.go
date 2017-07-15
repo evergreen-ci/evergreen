@@ -22,4 +22,5 @@ type Command interface {
 
 	// A string name for the command
 	Name() string
+	Plugin() string
 }

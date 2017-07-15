@@ -76,7 +76,7 @@ func GetTasksForVersion(versionId, name string) ([]model.TaskJSON, error) {
 }
 
 func uiGetTasksForVersion(w http.ResponseWriter, r *http.Request) {
-	jsonForTasks, err := GetTasksForVersion(mux.Vars(r)["version_id"], mux.Vars(r)["name"])
+	jsonForTasks, err := getTasksForVersion(mux.Vars(r)["version_id"], mux.Vars(r)["name"])
 	if jsonForTasks == nil {
 		http.Error(w, "{}", http.StatusNotFound)
 		return

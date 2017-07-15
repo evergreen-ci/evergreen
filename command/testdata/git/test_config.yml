@@ -1,0 +1,29 @@
+owner: evergreen-ci
+repo: sample
+repokind: github
+branch: master
+enabled: true
+batch_time: 180
+
+tasks:
+    - name: testtask1
+      commands:
+        - command: git.get_project
+          params:
+            directory: src
+
+modules:
+- name: sample
+  repo: git@github.com:evergreen-ci/sample.git
+  ref: cf46076567e4949f9fc68e0634139d4ac495c89b
+  prefix: module
+
+buildvariants:
+- name: linux-64
+  display_name: Linux 64-bit
+  modules:
+    - sample
+  test_flags: --continue-on-failure
+  expansions:
+    blah: "blah"
+  push: true

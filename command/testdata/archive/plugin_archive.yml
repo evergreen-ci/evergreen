@@ -1,0 +1,15 @@
+tasks:
+    - name: archivetask
+      commands:
+        - command: archive.build
+          params: 
+            - target: "target.tgz"
+              source_dir: "jstests"
+              include: 
+              - "**"
+              exclude_files: []
+        - command: archive.unpack
+          params:
+            - source: "target.tgz"
+              dest_dir: "/tmp"
+

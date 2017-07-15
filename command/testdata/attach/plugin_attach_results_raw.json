@@ -1,0 +1,33 @@
+{"results": [{
+
+  "test_file": "test1",
+  "status":"pass",
+  "exit_code":0,
+  "elapsed":0.32200002670288086,
+  "start":1398782500.359,
+  "end":1398782500.681,
+  "log_raw": "this is a raw log with log data"
+},
+{
+
+  "test_file": "test2",
+  "status":"pass",
+  "exit_code":0,
+  "elapsed":0.16000008583068848,
+  "start":1398782500.681,
+  "end":1398782500.841,
+  "log_raw": "this is another result with log data"
+
+},
+{
+
+  "status":"pass",
+  "exit_code":0,
+  "elapsed":0.1679999828338623,
+  "start":1398782500.841,
+  "end":1398782501.009, 
+  "test_file":"build\\win32\\64\\dbg_on\\opt_on\\win-version-min_ws08r2\\mongo\\base\\initializer_dependency_graph_test.exe",
+  "url":"http://buildlogs.mongodb.org/build/535fba25d2a60f3135000ae7/test/535fba25d2a60f32300000b7/",
+  "log_raw" : "more data"
+}
+]}
