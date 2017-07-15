@@ -22,8 +22,8 @@ type APIHost struct {
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
 type HostPostRequest struct {
-	DistroID string
-	KeyName  string
+	DistroID string `json:"distro"`
+	KeyName  string `json:"keyname"`
 }
 
 // SpawnHost is many fields from the host.Host object that is returned in the response
