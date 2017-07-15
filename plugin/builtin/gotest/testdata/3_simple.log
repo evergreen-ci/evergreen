@@ -1,4 +1,0 @@
-=== RUN TestFailures
-FAIL
-exit status 1
-FAIL	10gen.com/mci/plugin/builtin/gotest	0.008s

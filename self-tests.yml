@@ -240,7 +240,7 @@ tasks:
     tags: ["nodb", "test"]
     name: test-rest-model
   - <<: *run-go-test-suite
-    tags: ["nodb", "test"]
+    tags: ["nodb", "test", "agent"]
     name: test-rest-client
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
@@ -248,9 +248,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-db-bsonutil
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
-    name: test-agent-comm
   - <<: *run-go-test-suite-with-mongodb
     tags: ["test", "agent"]
     name: test-command
@@ -346,37 +343,13 @@ tasks:
     name: test-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test"]
-    name: test-plugin-builtin-keyval
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test"]
     name: test-plugin-builtin-buildbaron
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-git
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-gotest
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-attach
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-attach-xunit
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-plugin-builtin-manifest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-shell
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-s3copy
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-expansions
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "test", "agent"]
-    name: test-plugin-builtin-s3
+    name: test-plugin-builtin-attach
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-hostutil
@@ -392,9 +365,6 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
     name: race-db-bsonutil
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race", "agent"]
-    name: race-agent-comm
   - <<: *run-go-test-suite-with-mongodb
     tags: ["race", "agent"]
     name: race-command
@@ -405,7 +375,7 @@ tasks:
     tags: ["nodb", "race"]
     name: race-rest-model
   - <<: *run-go-test-suite
-    tags: ["nodb", "race"]
+    tags: ["nodb", "race", "agent"]
     name: race-rest-client
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "cli"]
@@ -496,37 +466,13 @@ tasks:
     name: race-plugin
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-git
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-keyval
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-buildbaron
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-gotest
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-plugin-builtin-attach
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-attach-xunit
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
     name: race-plugin-builtin-manifest
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-shell
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-s3copy
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-expansions
-  - <<: *run-go-test-suite-with-mongodb
-    tags: ["db", "race", "agent"]
-    name: race-plugin-builtin-s3
 
 
 buildvariants:

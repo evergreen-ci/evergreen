@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.mongodb.operation.InsertOperationSpecification" tests="18" skipped="0" failures="0" errors="0" timestamp="2016-05-16T15:55:01" hostname="jeff.fios-router.home" time="1.112">
-  <properties/>
-  <testcase name="should return correct result" classname="com.mongodb.operation.InsertOperationSpecification" time="0.051"/>
-  <system-out><![CDATA[out message]]></system-out>
-  <system-err><![CDATA[error message]]></system-err>
-</testsuite>

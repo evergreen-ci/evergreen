@@ -16,16 +16,7 @@
 package config
 
 // ===== PLUGINS INCLUDED WITH MCI =====
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/archive"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/attach"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/expansions"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/git"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/helloworld"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/gotest"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/s3"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/s3copy"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/shell"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/manifest"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/taskdata"
-import _ "github.com/evergreen-ci/evergreen/plugin/builtin/keyval"
 import _ "github.com/evergreen-ci/evergreen/plugin/builtin/buildbaron"

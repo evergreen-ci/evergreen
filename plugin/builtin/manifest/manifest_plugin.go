@@ -96,16 +96,6 @@ func (m *ManifestPlugin) GetUIHandler() http.Handler {
 	return r
 }
 
-// NewCommand returns requested commands by name. Fulfills the Plugin interface.
-func (m *ManifestPlugin) NewCommand(cmdName string) (plugin.Command, error) {
-	switch cmdName {
-	case ManifestLoadCmd:
-		return &ManifestLoadCommand{}, nil
-	default:
-		return nil, errors.Errorf("No such %v command: %v", m.Name(), cmdName)
-	}
-}
-
 func (m *ManifestPlugin) GetManifest(w http.ResponseWriter, r *http.Request) {
 	project := mux.Vars(r)["project_id"]
 	revision := mux.Vars(r)["revision"]

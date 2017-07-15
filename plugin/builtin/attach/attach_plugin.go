@@ -4,11 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
 )
 
@@ -108,31 +106,4 @@ func (self *AttachPlugin) GetPanelConfig() (*plugin.PanelConfig, error) {
 			},
 		},
 	}, nil
-}
-
-// NewCommand returns the AttachPlugin - this is to satisfy the
-// 'Plugin' interface
-func (self *AttachPlugin) NewCommand(cmdName string) (plugin.Command,
-	error) {
-	switch cmdName {
-	case AttachResultsCmd:
-		return &AttachResultsCommand{}, nil
-	case AttachXunitResultsCmd:
-		return &AttachXUnitResultsCommand{}, nil
-	default:
-		return nil, errors.Errorf("No such %v command: %v", AttachPluginName, cmdName)
-	}
-}
-
-// SendJSONLogs is responsible for sending the specified logs
-// to the API Server. If successful, it returns a log ID that can be used
-// to refer to the log object in test results.
-func SendJSONLogs(pluginLogger plugin.Logger, pluginCom plugin.PluginCommunicator, logs *model.TestLog) (string, error) {
-	pluginLogger.LogExecution(slogger.INFO, "Attaching test logs for %v", logs.Name)
-	logId, err := pluginCom.TaskPostTestLog(logs)
-	if err != nil {
-		return "", err
-	}
-	pluginLogger.LogTask(slogger.INFO, "Attach test logs succeeded")
-	return logId, nil
 }
