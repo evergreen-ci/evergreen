@@ -183,7 +183,7 @@ func (c *communicatorImpl) FetchExpansionVars(ctx context.Context, taskData Task
 
 // GetNextTask returns a next task response by getting the next task for a given host.
 func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
-	taskResponse := &apimodels.NextTaskResponse{}
+	nextTask := &apimodels.NextTaskResponse{}
 	taskData := TaskData{OverrideValidation: true}
 	resp, err := c.retryGet(ctx, "agent/next_task", taskData, v1)
 	if err != nil {
@@ -194,11 +194,16 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTask
 	if resp.StatusCode == http.StatusConflict {
 		return nil, errors.New("conflict - wrong secret")
 	}
-	if err = util.ReadJSONInto(resp.Body, taskResponse); err != nil {
+	if err = util.ReadJSONInto(resp.Body, nextTask); err != nil {
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
 	}
-	return taskResponse, nil
+	if nextTask.ShouldExit == true {
+		err = errors.Errorf("agent should exit: %s", nextTask.Message)
+		grip.Error(err)
+		return nil, err
+	}
+	return nextTask, nil
 
 }
 

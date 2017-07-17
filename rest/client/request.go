@@ -167,6 +167,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			resp, err := c.request(ctx, info, &data)
 			if resp == nil {
 				grip.Error("HTTP response is nil")
+				return nil, errors.New("HTTP response is nil")
 			} else if err != nil {
 				grip.Error(err)
 			} else if resp.StatusCode == http.StatusConflict {
