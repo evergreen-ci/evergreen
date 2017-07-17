@@ -1,7 +1,6 @@
 package data
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -241,7 +240,6 @@ func (s *PatchConnectorFetchByIdSuite) TestFetchById() {
 	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
 	s.NoError(err)
 	s.NotNil(p)
-	fmt.Println()
 	s.Equal(s.obj_ids[0], p.Id)
 }
 
@@ -356,4 +354,103 @@ func (s *PatchConnectorAbortByIdSuite) TestAbortFail() {
 	}
 	err := s.ctx.AbortPatch(new_id.Hex(), "user")
 	s.Error(err)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for change patch status route
+
+type PatchConnectorChangeStatusSuite struct {
+	ctx      Connector
+	obj_ids  []bson.ObjectId
+	mock     bool
+	setup    func() error
+	teardown func() error
+	suite.Suite
+}
+
+func TestPatchConnectorChangeStatusSuite(t *testing.T) {
+	s := new(PatchConnectorChangeStatusSuite)
+	s.setup = func() error {
+		s.ctx = &DBConnector{}
+
+		testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
+		db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+
+		patches := []*patch.Patch{
+			{Id: s.obj_ids[0]},
+			{Id: s.obj_ids[1]},
+		}
+
+		for _, p := range patches {
+			if err := p.Insert(); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	s.teardown = func() error {
+		return db.Clear(patch.Collection)
+	}
+
+	s.mock = false
+	suite.Run(t, s)
+}
+
+func TestMockPatchConnectorChangeStatusSuite(t *testing.T) {
+	s := new(PatchConnectorChangeStatusSuite)
+	s.setup = func() error {
+
+		s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+
+		s.ctx = &MockConnector{MockPatchConnector: MockPatchConnector{
+			CachedPatches: []patch.Patch{
+				{Id: s.obj_ids[0]},
+				{Id: s.obj_ids[1]},
+			},
+			CachedAborted:  make(map[string]string),
+			CachedPriority: make(map[string]int64),
+		}}
+
+		return nil
+	}
+
+	s.teardown = func() error { return nil }
+
+	s.mock = true
+	suite.Run(t, s)
+}
+
+func (s *PatchConnectorChangeStatusSuite) SetupSuite() {
+	s.Require().NoError(s.setup())
+}
+
+func (s *PatchConnectorChangeStatusSuite) TearDownSuite() {
+	s.Require().NoError(s.teardown())
+}
+
+func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
+	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	s.NoError(err)
+	err = s.ctx.SetPatchPriority(s.obj_ids[0].Hex(), 7)
+	s.NoError(err)
+	if s.mock {
+		s.Equal(int64(7), s.ctx.(*MockConnector).MockPatchConnector.CachedPriority[p.Id.Hex()])
+	}
+}
+
+func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
+	err := s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", true)
+	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	s.NoError(err)
+	s.True(p.Activated)
+
+	err = s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", false)
+	p, err = s.ctx.FindPatchById(s.obj_ids[0].Hex())
+	s.NoError(err)
+	s.False(p.Activated)
 }

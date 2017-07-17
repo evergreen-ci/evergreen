@@ -58,11 +58,32 @@ func (pc *DBPatchConnector) AbortPatch(patchId string, user string) error {
 	return model.CancelPatch(p, user)
 }
 
+// SetPatchPriority attempts to set the priority on the corresponding version.
+// Will not error if no version exists.
+func (pc *DBPatchConnector) SetPatchPriority(patchId string, priority int64) error {
+	return model.SetVersionPriority(patchId, priority)
+}
+
+// SetPatchActivated attempts to set the priority on the patch and the corresponding
+// version. Will not error if no version exists.
+func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activated bool) error {
+	p, err := pc.FindPatchById(patchId)
+	if err != nil {
+		return err
+	}
+	err = p.SetActivation(activated)
+	if err != nil {
+		return err
+	}
+	return model.SetVersionActivation(patchId, activated, user)
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
-	CachedPatches []patch.Patch
-	CachedAborted map[string]string
+	CachedPatches  []patch.Patch
+	CachedAborted  map[string]string
+	CachedPriority map[string]int64
 }
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
@@ -98,9 +119,9 @@ func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Tim
 
 // FindPatchById iterates through the slice of CachedPatches to find the matching patch.
 func (pc *MockPatchConnector) FindPatchById(patchId string) (*patch.Patch, error) {
-	for _, p := range pc.CachedPatches {
-		if p.Id.Hex() == patchId {
-			return &p, nil
+	for idx := range pc.CachedPatches {
+		if pc.CachedPatches[idx].Id.Hex() == patchId {
+			return &pc.CachedPatches[idx], nil
 		}
 	}
 	return nil, &rest.APIError{
@@ -131,5 +152,21 @@ func (pc *MockPatchConnector) AbortPatch(patchId string, user string) error {
 	if foundPatch.Version == "" {
 		pc.CachedPatches = append(pc.CachedPatches[:foundIdx], pc.CachedPatches[foundIdx+1:]...)
 	}
+	return nil
+}
+
+// SetPatchPriority sets the patch priority in the CachedPriority map.
+func (pc *MockPatchConnector) SetPatchPriority(patchId string, priority int64) error {
+	pc.CachedPriority[patchId] = priority
+	return nil
+}
+
+// SetPatchActivated sets the boolean activated field on the input patch.
+func (pc *MockPatchConnector) SetPatchActivated(patchId string, user string, activated bool) error {
+	p, err := pc.FindPatchById(patchId)
+	if err != nil {
+		return err
+	}
+	p.Activated = activated
 	return nil
 }

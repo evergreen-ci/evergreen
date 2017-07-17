@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -17,12 +19,11 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Handler for fetching patches by id
+// Handler for fetching patches by id and changing patch status
 //
 //    /patches/{patch_id}
 
 func getPatchByIdManager(route string, version int) *RouteManager {
-	p := &patchByIdHandler{}
 	return &RouteManager{
 		Route:   route,
 		Version: version,
@@ -30,10 +31,84 @@ func getPatchByIdManager(route string, version int) *RouteManager {
 			{
 				MethodType:     evergreen.MethodGet,
 				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: p.Handler(),
+				RequestHandler: &patchByIdHandler{},
+			},
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        evergreen.MethodPatch,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &patchChangeStatusHandler{},
 			},
 		},
 	}
+}
+
+type patchChangeStatusHandler struct {
+	Activated *bool  `json:"activated"`
+	Priority  *int64 `json:"priority"`
+
+	patchId string
+}
+
+func (p *patchChangeStatusHandler) Handler() RequestHandler {
+	return &patchChangeStatusHandler{}
+}
+
+func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	p.patchId = mux.Vars(r)["patch_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, p); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	if p.Activated == nil && p.Priority == nil {
+		return rest.APIError{
+			Message:    "Must set 'activated' or 'priority'",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	return nil
+}
+
+func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	user := GetUser(ctx)
+	if p.Priority != nil {
+		priority := *p.Priority
+		if priority > evergreen.MaxTaskPriority &&
+			!auth.IsSuperUser(sc.GetSuperUsers(), user) {
+			return ResponseData{}, rest.APIError{
+				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
+					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+				StatusCode: http.StatusForbidden,
+			}
+		}
+		if err := sc.SetPatchPriority(p.patchId, priority); err != nil {
+			return ResponseData{}, errors.Wrap(err, "Database error")
+		}
+	}
+	if p.Activated != nil {
+		if err := sc.SetPatchActivated(p.patchId, user.Username(), *p.Activated); err != nil {
+			return ResponseData{}, errors.Wrap(err, "Database error")
+		}
+	}
+	foundPatch, err := sc.FindPatchById(p.patchId)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Database error")
+	}
+
+	patchModel := &model.APIPatch{}
+	err = patchModel.BuildFromService(*foundPatch)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{
+		Result: []model.Model{patchModel},
+	}, nil
 }
 
 type patchByIdHandler struct {

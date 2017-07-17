@@ -251,6 +251,20 @@ func (p *Patch) SetActivated(versionId string) error {
 
 }
 
+// SetActivation sets the patch to the desired activation state without
+// modifying the activation status of the possibly corresponding version.
+func (p *Patch) SetActivation(activated bool) error {
+	p.Activated = activated
+	return UpdateOne(
+		bson.M{IdKey: p.Id},
+		bson.M{
+			"$set": bson.M{
+				ActivatedKey: activated,
+			},
+		},
+	)
+}
+
 // Add or update a module within a patch.
 func (p *Patch) UpdateModulePatch(modulePatch ModulePatch) error {
 	// check that a patch for this module exists

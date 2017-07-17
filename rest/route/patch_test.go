@@ -1,7 +1,6 @@
 package route
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -20,9 +19,9 @@ import (
 // Tests for fetch patch by id route
 
 type PatchByIdSuite struct {
-	sc      *data.MockConnector
-	obj_ids []bson.ObjectId
-	data    data.MockPatchConnector
+	sc     *data.MockConnector
+	objIds []bson.ObjectId
+	data   data.MockPatchConnector
 
 	suite.Suite
 }
@@ -32,12 +31,12 @@ func TestPatchByIdSuite(t *testing.T) {
 }
 
 func (s *PatchByIdSuite) SetupSuite() {
-	s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
-			{Id: s.obj_ids[0]},
-			{Id: s.obj_ids[1]},
+			{Id: s.objIds[0]},
+			{Id: s.objIds[1]},
 		},
 	}
 	s.sc = &data.MockConnector{
@@ -47,7 +46,7 @@ func (s *PatchByIdSuite) SetupSuite() {
 
 func (s *PatchByIdSuite) TestFindById() {
 	rm := getPatchByIdManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = s.obj_ids[0].Hex()
+	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = s.objIds[0].Hex()
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -55,12 +54,12 @@ func (s *PatchByIdSuite) TestFindById() {
 
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.obj_ids[0].Hex()), p.Id)
+	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
 }
 func (s *PatchByIdSuite) TestFindByIdFail() {
 	rm := getPatchByIdManager("", 2)
 	new_id := bson.NewObjectId()
-	for _, i := range s.obj_ids {
+	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
 	(rm.Methods[0].RequestHandler).(*patchByIdHandler).patchId = new_id.Hex()
@@ -183,9 +182,9 @@ func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, s
 // Tests for abort patch by id route
 
 type PatchesAbortByIdSuite struct {
-	sc      *data.MockConnector
-	obj_ids []bson.ObjectId
-	data    data.MockPatchConnector
+	sc     *data.MockConnector
+	objIds []bson.ObjectId
+	data   data.MockPatchConnector
 
 	suite.Suite
 }
@@ -195,12 +194,12 @@ func TestPatchesAbortByIdSuite(t *testing.T) {
 }
 
 func (s *PatchesAbortByIdSuite) SetupSuite() {
-	s.obj_ids = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 	s.data = data.MockPatchConnector{
 		CachedPatches: []patch.Patch{
-			{Id: s.obj_ids[0], Version: "version1"},
-			{Id: s.obj_ids[1]},
+			{Id: s.objIds[0], Version: "version1"},
+			{Id: s.objIds[1]},
 		},
 		CachedAborted: make(map[string]string),
 	}
@@ -214,34 +213,34 @@ func (s *PatchesAbortByIdSuite) TestAbort() {
 	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getPatchAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.obj_ids[0].Hex()
+	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[0].Hex()
 	res, err := rm.Methods[0].Execute(ctx, s.sc)
 
 	s.NoError(err)
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.obj_ids[0].Hex()])
-	s.Equal("", s.data.CachedAborted[s.obj_ids[1].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
+	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.obj_ids[0].Hex()), p.Id)
+	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
 
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.obj_ids[0].Hex()])
-	s.Equal("", s.data.CachedAborted[s.obj_ids[1].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
+	s.Equal("", s.data.CachedAborted[s.objIds[1].Hex()])
 	p, ok = (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
-	s.Equal(model.APIString(s.obj_ids[0].Hex()), p.Id)
+	s.Equal(model.APIString(s.objIds[0].Hex()), p.Id)
 
 	rm = getPatchAbortManager("", 2)
-	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.obj_ids[1].Hex()
+	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[1].Hex()
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 
 	s.NoError(err)
 	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.obj_ids[0].Hex()])
-	s.Equal("user1", s.data.CachedAborted[s.obj_ids[1].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
+	s.Equal("user1", s.data.CachedAborted[s.objIds[1].Hex()])
 	s.Len(res.Result, 0)
 }
 
@@ -251,7 +250,7 @@ func (s *PatchesAbortByIdSuite) TestAbortFail() {
 
 	rm := getPatchAbortManager("", 2)
 	new_id := bson.NewObjectId()
-	for _, i := range s.obj_ids {
+	for _, i := range s.objIds {
 		s.NotEqual(new_id, i)
 	}
 	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = new_id.Hex()
@@ -259,4 +258,57 @@ func (s *PatchesAbortByIdSuite) TestAbortFail() {
 	s.Error(err)
 	s.NotNil(res)
 	s.Len(res.Result, 0)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for change patch status route
+
+type PatchesChangeStatusSuite struct {
+	sc     *data.MockConnector
+	objIds []bson.ObjectId
+	data   data.MockPatchConnector
+
+	suite.Suite
+}
+
+func TestPatchesChangeStatusSuite(t *testing.T) {
+	suite.Run(t, new(PatchesChangeStatusSuite))
+}
+
+func (s *PatchesChangeStatusSuite) SetupSuite() {
+	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+
+	s.data = data.MockPatchConnector{
+		CachedPatches: []patch.Patch{
+			{Id: s.objIds[0]},
+			{Id: s.objIds[1]},
+		},
+		CachedAborted:  make(map[string]string),
+		CachedPriority: make(map[string]int64),
+	}
+	s.sc = &data.MockConnector{
+		MockPatchConnector: s.data,
+	}
+}
+
+func (s *PatchesChangeStatusSuite) TestChangeStatus() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getPatchByIdManager("", 2)
+	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).patchId = s.objIds[0].Hex()
+	var tmp_true = true
+	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).Activated = &tmp_true
+	var tmp_seven = int64(7)
+	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).Priority = &tmp_seven
+	res, err := rm.Methods[1].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(int64(7), s.data.CachedPriority[s.objIds[0].Hex()])
+	s.Equal(int64(0), s.data.CachedPriority[s.objIds[1].Hex()])
+	s.Len(res.Result, 1)
+	p, ok := (res.Result[0]).(*model.APIPatch)
+	s.True(ok)
+	s.True(p.Activated)
 }
