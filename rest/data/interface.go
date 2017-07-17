@@ -10,7 +10,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/mongodb/grip/message"
 )
@@ -72,9 +71,6 @@ type Connector interface {
 	// start from.
 	FindHostsById(string, string, int, int) ([]host.Host, error)
 	FindHostById(string) (*host.Host, error)
-
-	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-	NewIntentHost(string, string, *user.DBUser) (*host.Host, error)
 
 	// FetchContext is a method to fetch a context given a series of identifiers.
 	FetchContext(string, string, string, string, string) (model.Context, error)

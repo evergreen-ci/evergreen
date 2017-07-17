@@ -6,9 +6,7 @@ import (
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
-	"github.com/evergreen-ci/evergreen/spawn"
 )
 
 // DBHostConnector is a struct that implements the Host related methods
@@ -44,35 +42,6 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 		}
 	}
 	return h, nil
-}
-
-// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key
-func (hc *DBHostConnector) NewIntentHost(distroID string, keyName string, user *user.DBUser) (*host.Host, error) {
-	keyVal, err := user.GetPublicKey(keyName)
-	if err != nil {
-		return nil, err
-	}
-
-	spawnOptions := spawn.Options{
-		Distro:    distroID,
-		UserName:  user.Username(),
-		PublicKey: keyVal,
-	}
-
-	if err = spawn.Validate(spawnOptions); err != nil {
-		return nil, err
-	}
-
-	intentHost, err := spawn.CreateHost(spawnOptions, user)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := intentHost.Insert(); err != nil {
-		return nil, err
-	}
-
-	return intentHost, nil
 }
 
 // MockHostConnector is a struct that implements the Host related methods
@@ -119,31 +88,4 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 		StatusCode: http.StatusNotFound,
 		Message:    fmt.Sprintf("host with id %s not found", id),
 	}
-}
-
-// NewIntentHost is a method to mock "insert" an intent host given a distro and the name of a saved public key
-func (hc *MockHostConnector) NewIntentHost(distroID string, keyName string, user *user.DBUser) (*host.Host, error) {
-	keyVal, err := user.GetPublicKey(keyName)
-	if err != nil {
-		return nil, err
-	}
-
-	spawnOptions := spawn.Options{
-		Distro:    distroID,
-		UserName:  user.Username(),
-		PublicKey: keyVal,
-	}
-
-	if err = spawn.Validate(spawnOptions); err != nil {
-		return nil, err
-	}
-
-	intentHost, err := spawn.CreateHost(spawnOptions, user)
-	if err != nil {
-		return nil, err
-	}
-
-	hc.CachedHosts = append(hc.CachedHosts, *intentHost)
-
-	return intentHost, nil
 }

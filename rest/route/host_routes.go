@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -17,12 +16,6 @@ import (
 
 type hostGetHandler struct {
 	*PaginationExecutor
-}
-
-// struct that holds the format of a POST request to /hosts
-type hostPostHandler struct {
-	Distro  string `json:"distro"`
-	KeyName string `json:"keyname"`
 }
 
 func getHostRouteManager(route string, version int) *RouteManager {
@@ -33,16 +26,9 @@ func getHostRouteManager(route string, version int) *RouteManager {
 		MethodType:     evergreen.MethodGet,
 	}
 
-	hostPost := MethodHandler{
-		PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-		Authenticator:     &RequireUserAuthenticator{},
-		RequestHandler:    &hostPostHandler{},
-		MethodType:        evergreen.MethodPost,
-	}
-
 	hostRoute := RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{hostGet, hostPost},
+		Methods: []MethodHandler{hostGet},
 		Version: version,
 	}
 	return &hostRoute
@@ -245,41 +231,4 @@ func makePrevHostsPage(hosts []host.Host) *Page {
 		}
 	}
 	return prevPage
-}
-
-func (hph *hostPostHandler) Handler() RequestHandler {
-	return &hostPostHandler{}
-}
-
-func (hph *hostPostHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	if err := util.ReadJSONInto(r.Body, hph); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	hostModel := &model.SpawnHost{}
-	user := MustHaveUser(ctx)
-
-	intentHost, err := sc.NewIntentHost(hph.Distro, hph.KeyName, user)
-	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "error spawning host")
-		}
-		return ResponseData{}, err
-	}
-
-	err = hostModel.BuildFromService(intentHost)
-	if err != nil {
-		if _, ok := err.(*rest.APIError); !ok {
-			err = errors.Wrap(err, "API model error")
-		}
-		return ResponseData{}, err
-	}
-
-	return ResponseData{
-		Result: []model.Model{hostModel},
-	}, nil
 }
