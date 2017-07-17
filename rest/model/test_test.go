@@ -31,8 +31,8 @@ func TestTestBuildFromService(t *testing.T) {
 						LogId:   "",
 					},
 					ExitCode:  1,
-					StartTime: APITime(sTime),
-					EndTime:   APITime(eTime),
+					StartTime: NewTime(sTime),
+					EndTime:   NewTime(eTime),
 				},
 				st: task.TestResult{
 					Status:    "testStatus",
@@ -48,8 +48,8 @@ func TestTestBuildFromService(t *testing.T) {
 			},
 			{
 				at: APITest{
-					StartTime: APITime(time.Unix(0, 0)),
-					EndTime:   APITime(time.Unix(0, 0)),
+					StartTime: NewTime(time.Unix(0, 0)),
+					EndTime:   NewTime(time.Unix(0, 0)),
 				},
 				st: task.TestResult{},
 			},

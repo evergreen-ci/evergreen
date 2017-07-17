@@ -64,12 +64,12 @@ func (at *APITask) BuildFromService(t interface{}) error {
 	case *task.Task:
 		(*at) = APITask{
 			Id:            APIString(v.Id),
-			CreateTime:    APITime(v.CreateTime),
-			DispatchTime:  APITime(v.DispatchTime),
-			PushTime:      APITime(v.PushTime),
-			ScheduledTime: APITime(v.ScheduledTime),
-			StartTime:     APITime(v.StartTime),
-			FinishTime:    APITime(v.FinishTime),
+			CreateTime:    NewTime(v.CreateTime),
+			DispatchTime:  NewTime(v.DispatchTime),
+			PushTime:      NewTime(v.PushTime),
+			ScheduledTime: NewTime(v.ScheduledTime),
+			StartTime:     NewTime(v.StartTime),
+			FinishTime:    NewTime(v.FinishTime),
 			Version:       APIString(v.Version),
 			Branch:        APIString(v.Project),
 			Revision:      APIString(v.Revision),

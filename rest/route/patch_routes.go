@@ -200,7 +200,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	if key == "" {
 		ts = time.Now()
 	} else {
-		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
+		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
 		if err != nil {
 			return []model.Model{}, nil, rest.APIError{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
@@ -237,14 +237,14 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	if len(patches) > limit {
 		pages.Next = &Page{
 			Relation: "next",
-			Key:      patches[limit].CreateTime.In(time.UTC).Format(model.APITimeFormat),
+			Key:      model.NewTime(patches[limit].CreateTime).String(),
 			Limit:    len(patches) - limit,
 		}
 	}
 	if len(prevPatches) >= 1 {
 		pages.Prev = &Page{
 			Relation: "prev",
-			Key:      prevPatches[0].CreateTime.In(time.UTC).Format(model.APITimeFormat),
+			Key:      model.NewTime(prevPatches[0].CreateTime).String(),
 			Limit:    len(prevPatches),
 		}
 	}

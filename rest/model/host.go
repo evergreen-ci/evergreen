@@ -77,7 +77,7 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 		rt := taskInfo{
 			Id:           APIString(v.Id),
 			Name:         APIString(v.DisplayName),
-			DispatchTime: APITime(v.DispatchTime),
+			DispatchTime: NewTime(v.DispatchTime),
 			VersionId:    APIString(v.Version),
 			BuildId:      APIString(v.BuildId),
 		}

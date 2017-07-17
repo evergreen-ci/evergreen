@@ -35,9 +35,9 @@ func (apiVersion *APIVersion) BuildFromService(h interface{}) error {
 	}
 
 	apiVersion.Id = APIString(v.Id)
-	apiVersion.CreateTime = APITime(v.CreateTime)
-	apiVersion.StartTime = APITime(v.StartTime)
-	apiVersion.FinishTime = APITime(v.FinishTime)
+	apiVersion.CreateTime = NewTime(v.CreateTime)
+	apiVersion.StartTime = NewTime(v.StartTime)
+	apiVersion.FinishTime = NewTime(v.FinishTime)
 	apiVersion.Revision = APIString(v.Revision)
 	apiVersion.Author = APIString(v.Author)
 	apiVersion.AuthorEmail = APIString(v.AuthorEmail)

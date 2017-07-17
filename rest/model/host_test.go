@@ -37,7 +37,7 @@ func TestHostBuildFromService(t *testing.T) {
 					RunningTask: taskInfo{
 						Id:           APIString("testRunningTaskId"),
 						Name:         APIString("testRTName"),
-						DispatchTime: APITime(timeNow),
+						DispatchTime: NewTime(timeNow),
 						VersionId:    APIString("testVersionId"),
 						BuildId:      APIString("testBuildId"),
 					},

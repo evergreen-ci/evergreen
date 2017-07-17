@@ -14,21 +14,12 @@ const (
 
 type APITime time.Time
 
+var APIZeroTime APITime = APITime(util.ZeroTime.UTC())
+
 // NewTime creates a new APITime from an existing time.Time. It handles changing
 // converting from the times time zone to UTC.
 func NewTime(t time.Time) APITime {
-	utcT := t.In(time.UTC)
-	return APITime(time.Date(
-		utcT.Year(),
-		utcT.Month(),
-		utcT.Day(),
-		utcT.Hour(),
-		utcT.Minute(),
-		utcT.Second(),
-		utcT.Nanosecond(),
-		time.FixedZone("", 0),
-	))
-
+	return APITime(t.In(time.UTC))
 }
 
 // UnmarshalJSON implements the custom unmarshalling of this type so that it can
@@ -38,7 +29,7 @@ func (at *APITime) UnmarshalJSON(b []byte) error {
 	t := time.Time{}
 	var err error
 	if str != "null" {
-		t, err = time.ParseInLocation(APITimeFormat, str, time.FixedZone("", 0))
+		t, err = time.ParseInLocation(APITimeFormat, str, time.UTC)
 		if err != nil {
 			return err
 		}
@@ -59,5 +50,5 @@ func (at APITime) MarshalJSON() ([]byte, error) {
 }
 
 func (at APITime) String() string {
-	return time.Time(at).String()
+	return time.Time(at).Format(APITimeFormat)
 }

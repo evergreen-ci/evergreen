@@ -117,8 +117,8 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NoError(err)
 	s.NotNil(rd)
 	s.Len(rd.Result, 2)
-	s.Equal(model.APITime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
-	s.Equal(model.APITime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
 
 	metadata, ok := rd.Metadata.(*PaginationMetadata)
 	s.True(ok)

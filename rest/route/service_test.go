@@ -17,7 +17,6 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"golang.org/x/net/context"
@@ -566,8 +565,8 @@ func TestTestPaginator(t *testing.T) {
 					}
 					nextModelTest := &model.APITest{
 						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
-						StartTime: model.APITime(time.Unix(0, 0)),
-						EndTime:   model.APITime(time.Unix(0, 0)),
+						StartTime: model.NewTime(time.Unix(0, 0)),
+						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.APIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -601,8 +600,8 @@ func TestTestPaginator(t *testing.T) {
 					}
 					nextModelTest := &model.APITest{
 						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
-						StartTime: model.APITime(time.Unix(0, 0)),
-						EndTime:   model.APITime(time.Unix(0, 0)),
+						StartTime: model.NewTime(time.Unix(0, 0)),
+						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.APIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -636,8 +635,8 @@ func TestTestPaginator(t *testing.T) {
 					}
 					nextModelTest := &model.APITest{
 						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
-						StartTime: model.APITime(time.Unix(0, 0)),
-						EndTime:   model.APITime(time.Unix(0, 0)),
+						StartTime: model.NewTime(time.Unix(0, 0)),
+						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.APIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -671,8 +670,8 @@ func TestTestPaginator(t *testing.T) {
 					}
 					nextModelTest := &model.APITest{
 						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
-						StartTime: model.APITime(time.Unix(0, 0)),
-						EndTime:   model.APITime(time.Unix(0, 0)),
+						StartTime: model.NewTime(time.Unix(0, 0)),
+						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.APIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -701,8 +700,8 @@ func TestTestPaginator(t *testing.T) {
 					}
 					nextModelTest := &model.APITest{
 						TestFile:  model.APIString(fmt.Sprintf("test%d", i)),
-						StartTime: model.APITime(time.Unix(0, 0)),
-						EndTime:   model.APITime(time.Unix(0, 0)),
+						StartTime: model.NewTime(time.Unix(0, 0)),
+						EndTime:   model.NewTime(time.Unix(0, 0)),
 						Status:    model.APIString(status),
 					}
 					expectedTests = append(expectedTests, nextModelTest)
@@ -1002,7 +1001,7 @@ func TestTaskResetExecute(t *testing.T) {
 			resTask, ok := resModel.(*model.APITask)
 			So(ok, ShouldBeTrue)
 			So(resTask.Activated, ShouldBeTrue)
-			So(time.Time(resTask.DispatchTime), ShouldResemble, util.ZeroTime)
+			So(resTask.DispatchTime, ShouldResemble, model.APIZeroTime)
 			dbTask, err := sc.FindTaskById("testTaskId")
 			So(err, ShouldBeNil)
 			So(string(dbTask.Secret), ShouldNotResemble, "initialSecret")

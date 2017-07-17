@@ -61,7 +61,7 @@ func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data
 	task := args.(*taskMetricsArgs).task
 	grip.Debugln("getting results for task:", task)
 
-	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
+	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.UTC)
 	if err != nil {
 		return []model.Model{}, nil, rest.APIError{
 			Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),

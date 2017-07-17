@@ -26,12 +26,12 @@ func TestTaskBuildFromService(t *testing.T) {
 			{
 				at: APITask{
 					Id:            APIString("testId"),
-					CreateTime:    APITime(cTime),
-					DispatchTime:  APITime(dTime),
-					PushTime:      APITime(pTime),
-					ScheduledTime: APITime(scTime),
-					StartTime:     APITime(sTime),
-					FinishTime:    APITime(fTime),
+					CreateTime:    NewTime(cTime),
+					DispatchTime:  NewTime(dTime),
+					PushTime:      NewTime(pTime),
+					ScheduledTime: NewTime(scTime),
+					StartTime:     NewTime(sTime),
+					FinishTime:    NewTime(fTime),
 					Version:       APIString("testVersion"),
 					Branch:        APIString("testProject"),
 					Revision:      APIString("testRevision"),

@@ -39,8 +39,8 @@ func (at *APITest) BuildFromService(st interface{}) error {
 		startTime := util.FromPythonTime(v.StartTime)
 		endTime := util.FromPythonTime(v.EndTime)
 
-		at.StartTime = APITime(startTime)
-		at.EndTime = APITime(endTime)
+		at.StartTime = NewTime(startTime)
+		at.EndTime = NewTime(endTime)
 
 		at.Logs = TestLogs{
 			URL:     APIString(v.URL),

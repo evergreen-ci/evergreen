@@ -59,9 +59,9 @@ func TestVersionBuildFromService(t *testing.T) {
 	assert.Nil(err)
 	// Each field should be as expected
 	assert.Equal(apiVersion.Id, APIString(versionId))
-	assert.Equal(apiVersion.CreateTime, APITime(time))
-	assert.Equal(apiVersion.StartTime, APITime(time))
-	assert.Equal(apiVersion.FinishTime, APITime(time))
+	assert.Equal(apiVersion.CreateTime, NewTime(time))
+	assert.Equal(apiVersion.StartTime, NewTime(time))
+	assert.Equal(apiVersion.FinishTime, NewTime(time))
 	assert.Equal(apiVersion.Revision, APIString(revision))
 	assert.Equal(apiVersion.Author, APIString(author))
 	assert.Equal(apiVersion.AuthorEmail, APIString(authorEmail))

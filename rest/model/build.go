@@ -42,10 +42,10 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 		return fmt.Errorf("incorrect type when fetching converting build type")
 	}
 	apiBuild.Id = APIString(v.Id)
-	apiBuild.CreateTime = APITime(v.CreateTime)
-	apiBuild.StartTime = APITime(v.StartTime)
-	apiBuild.FinishTime = APITime(v.FinishTime)
-	apiBuild.PushTime = APITime(v.PushTime)
+	apiBuild.CreateTime = NewTime(v.CreateTime)
+	apiBuild.StartTime = NewTime(v.StartTime)
+	apiBuild.FinishTime = NewTime(v.FinishTime)
+	apiBuild.PushTime = NewTime(v.PushTime)
 	apiBuild.Version = APIString(v.Version)
 	apiBuild.Branch = APIString(v.Project)
 	apiBuild.Revision = APIString(v.Revision)
@@ -54,7 +54,7 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	apiBuild.Status = APIString(v.Status)
 	apiBuild.Activated = v.Activated
 	apiBuild.ActivatedBy = APIString(v.ActivatedBy)
-	apiBuild.ActivatedTime = APITime(v.ActivatedTime)
+	apiBuild.ActivatedTime = NewTime(v.ActivatedTime)
 	apiBuild.RevisionOrderNumber = v.RevisionOrderNumber
 	for _, t := range v.Tasks {
 		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
