@@ -238,14 +238,14 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 		pages.Next = &Page{
 			Relation: "next",
 			Key:      patches[limit].CreateTime.In(time.UTC).Format(model.APITimeFormat),
-			Limit: len(patches) - limit,
+			Limit:    len(patches) - limit,
 		}
 	}
 	if len(prevPatches) >= 1 {
 		pages.Prev = &Page{
 			Relation: "prev",
 			Key:      prevPatches[0].CreateTime.In(time.UTC).Format(model.APITimeFormat),
-			Limit: len(prevPatches),
+			Limit:    len(prevPatches),
 		}
 	}
 
@@ -271,7 +271,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Handler for fetching patches by id
+// Handler for aborting patches by id
 //
 //    /patches/{patch_id}/abort
 
@@ -321,6 +321,75 @@ func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (Res
 			err = errors.Wrap(err, "Database error")
 		}
 		return ResponseData{}, nil
+	}
+	patchModel := &model.APIPatch{}
+	err = patchModel.BuildFromService(*foundPatch)
+
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{patchModel},
+	}, nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for restarting patches by id
+//
+//    /patches/{patch_id}/restart
+
+func getPatchRestartManager(route string, version int) *RouteManager {
+	p := &patchRestartHandler{}
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        evergreen.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    p.Handler(),
+			},
+		},
+	}
+}
+
+type patchRestartHandler struct {
+	patchId string
+}
+
+func (p *patchRestartHandler) Handler() RequestHandler {
+	return &patchRestartHandler{}
+}
+
+func (p *patchRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	p.patchId = vars["patch_id"]
+	return nil
+}
+
+func (p *patchRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+
+	// If the version has not been finalized, returns NotFound
+	err := sc.RestartVersion(p.patchId, GetUser(ctx).Id)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Restart error")
+		}
+		return ResponseData{}, err
+	}
+
+	foundPatch, err := sc.FindPatchById(p.patchId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
 	}
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)

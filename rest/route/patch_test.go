@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
+	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -126,10 +127,8 @@ func (s *PatchesByProjectSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 	s.NotNil(pageData.Prev)
 	s.NotNil(pageData.Next)
 
-	//nextTime := model.NewTime(s.now).String()
 	nextTime := s.now.Format(model.APITimeFormat)
 	s.Equal(nextTime, pageData.Next.Key)
-	//prevTime := model.NewTime(s.now.Add(time.Second * 10)).String()
 	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
 	s.Equal(prevTime, pageData.Prev.Key)
 }
@@ -179,9 +178,9 @@ func executePatchesByProjectRequest(projectId string, ts time.Time, limit int, s
 
 ////////////////////////////////////////////////////////////////////////
 //
-// Tests for abort patch by id route
+// Tests for abort patch route
 
-type PatchesAbortByIdSuite struct {
+type PatchAbortSuite struct {
 	sc     *data.MockConnector
 	objIds []bson.ObjectId
 	data   data.MockPatchConnector
@@ -189,11 +188,11 @@ type PatchesAbortByIdSuite struct {
 	suite.Suite
 }
 
-func TestPatchesAbortByIdSuite(t *testing.T) {
-	suite.Run(t, new(PatchesAbortByIdSuite))
+func TestPatchAbortSuite(t *testing.T) {
+	suite.Run(t, new(PatchAbortSuite))
 }
 
-func (s *PatchesAbortByIdSuite) SetupSuite() {
+func (s *PatchAbortSuite) SetupSuite() {
 	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
 
 	s.data = data.MockPatchConnector{
@@ -208,7 +207,7 @@ func (s *PatchesAbortByIdSuite) SetupSuite() {
 	}
 }
 
-func (s *PatchesAbortByIdSuite) TestAbort() {
+func (s *PatchAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
 
@@ -244,7 +243,7 @@ func (s *PatchesAbortByIdSuite) TestAbort() {
 	s.Len(res.Result, 0)
 }
 
-func (s *PatchesAbortByIdSuite) TestAbortFail() {
+func (s *PatchAbortSuite) TestAbortFail() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
 
@@ -311,4 +310,57 @@ func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	p, ok := (res.Result[0]).(*model.APIPatch)
 	s.True(ok)
 	s.True(p.Activated)
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for restart patch by id route
+
+type PatchRestartSuite struct {
+	sc          *data.MockConnector
+	objIds      []bson.ObjectId
+	patchData   data.MockPatchConnector
+	versionData data.MockVersionConnector
+
+	suite.Suite
+}
+
+func TestPatchRestartSuite(t *testing.T) {
+	suite.Run(t, new(PatchRestartSuite))
+}
+
+func (s *PatchRestartSuite) SetupSuite() {
+	s.objIds = []bson.ObjectId{bson.NewObjectId(), bson.NewObjectId()}
+
+	s.patchData = data.MockPatchConnector{
+		CachedPatches: []patch.Patch{
+			{Id: s.objIds[0], Version: "version1"},
+			{Id: s.objIds[1]},
+		},
+		CachedAborted: make(map[string]string),
+	}
+	s.versionData = data.MockVersionConnector{
+		CachedVersions: []version.Version{
+			{Id: s.objIds[0].Hex()},
+			{Id: s.objIds[1].Hex()},
+		},
+		CachedRestartedVersions: make(map[string]string),
+	}
+	s.sc = &data.MockConnector{
+		MockPatchConnector:   s.patchData,
+		MockVersionConnector: s.versionData,
+	}
+}
+
+func (s *PatchRestartSuite) TestRestart() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getPatchRestartManager("", 2)
+	(rm.Methods[0].RequestHandler).(*patchRestartHandler).patchId = s.objIds[0].Hex()
+	res, err := rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+
+	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0].Hex()])
 }
