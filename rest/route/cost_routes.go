@@ -1,7 +1,9 @@
 package route
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -69,7 +71,9 @@ func (cbvh *costByVersionHandler) Execute(ctx context.Context, sc data.Connector
 
 // types and functions for Distro Cost Route
 type costByDistroHandler struct {
-	distroId string
+	distroId  string
+	startTime time.Time
+	duration  time.Duration
 }
 
 func getCostByDistroIdRouteManager(route string, version int) *RouteManager {
@@ -92,16 +96,47 @@ func (cbvh *costByDistroHandler) Handler() RequestHandler {
 
 func (cbvh *costByDistroHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
 	cbvh.distroId = mux.Vars(r)["distro_id"]
-
 	if cbvh.distroId == "" {
 		return errors.New("request data incomplete")
 	}
+
+	// Parse start time and duration
+	startTime := r.FormValue("starttime")
+	duration := r.FormValue("duration")
+
+	// Invalid if not both starttime and duration are given.
+	if startTime == "" || duration == "" {
+		return rest.APIError{
+			Message:    "both starttime and duration must be given as form values",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	// Parse time information.
+	st, err := time.Parse(time.RFC3339, startTime)
+	if err != nil {
+		return rest.APIError{
+			Message: fmt.Sprintf("problem parsing time from '%s' (%s). Time must be given in the following format: %s",
+				startTime, err.Error(), time.RFC3339),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	d, err := time.ParseDuration(duration)
+	if err != nil {
+		return rest.APIError{
+			Message:    fmt.Sprintf("problem parsing duration from '%s' (%s). Duration must be given in the following format: 4h, 2h45m, etc.", duration, err.Error()),
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+
+	cbvh.startTime = st
+	cbvh.duration = d
 
 	return nil
 }
 
 func (cbvh *costByDistroHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundDistroCost, err := sc.FindCostByDistroId(cbvh.distroId)
+	foundDistroCost, err := sc.FindCostByDistroId(cbvh.distroId, cbvh.startTime, cbvh.duration)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")

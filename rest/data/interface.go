@@ -86,8 +86,9 @@ type Connector interface {
 	// FindCostByVersionId returns cost data of a version given its ID.
 	FindCostByVersionId(string) (*task.VersionCost, error)
 
-	// FindCostByDistroId returns cost data of a distro given its ID.
-	FindCostByDistroId(string) (*task.DistroCost, error)
+	// FindCostByDistroId returns cost data of a distro given its ID and a time range.
+	// Interested time range is given as a start time and duration.
+	FindCostByDistroId(string, time.Time, time.Duration) (*task.DistroCost, error)
 
 	// FindVersionById returns version given its ID.
 	FindVersionById(string) (*version.Version, error)

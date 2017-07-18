@@ -497,9 +497,12 @@ func CostDataByVersionIdPipeline(versionId string) []bson.M {
 
 // CostDataByDistroIdPipeline returns an aggregation pipeline for fetching
 // cost data (sum of time taken) from a distro by its Id.
-func CostDataByDistroIdPipeline(distroId string) []bson.M {
+func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration time.Duration) []bson.M {
 	pipeline := []bson.M{
-		{"$match": bson.M{DistroIdKey: distroId}},
+		{"$match": bson.M{
+			DistroIdKey:   distroId,
+			FinishTimeKey: bson.M{"$gte": starttime, "$lte": starttime.Add(duration)},
+		}},
 		{"$group": bson.M{
 			"_id":            "$" + DistroIdKey,
 			"sum_time_taken": bson.M{"$sum": "$" + TimeTakenKey},

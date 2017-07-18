@@ -3,6 +3,7 @@ package data
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -30,11 +31,19 @@ func (dc *DBDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 }
 
 // FindCostByDistroId queries the backing database for cost data associated
-// with the given distroId. This is done by aggregating TimeTaken over all tasks
-// of the given distro.
-func (tc *DBDistroConnector) FindCostByDistroId(distroId string) (*task.DistroCost, error) {
+// with the given distroId. This is done by aggregating TimeTaken over all
+// tasks of the given distro that match the time range.
+func (tc *DBDistroConnector) FindCostByDistroId(distroId string,
+	starttime time.Time, duration time.Duration) (*task.DistroCost, error) {
+	// First look for the distro with the given ID.
+	// If the find fails, return an error.
+	distro, err := distro.FindOne(distro.ById(distroId))
+	if err != nil {
+		return nil, errors.Wrapf(err, "error finding distro with id %s", distroId)
+	}
+
 	// Run aggregation with the aggregation pipeline
-	pipeline := task.CostDataByDistroIdPipeline(distroId)
+	pipeline := task.CostDataByDistroIdPipeline(distroId, starttime, duration)
 	res := []task.DistroCost{}
 	if err := task.Aggregate(pipeline, &res); err != nil {
 		return nil, err
@@ -44,22 +53,14 @@ func (tc *DBDistroConnector) FindCostByDistroId(distroId string) (*task.DistroCo
 	if len(res) > 1 {
 		return nil, errors.Errorf("aggregation query with distro_id %s returned %d results but should only return 1 result", distroId, len(res))
 	}
-
+	// Aggregation ran but no tasks of given time range was found for this distro.
 	if len(res) == 0 {
-		return nil, &rest.APIError{
-			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("distro with id %s not found", distroId),
-		}
+		return &task.DistroCost{DistroId: distroId}, nil
 	}
 
-	// Add additional information by finding the distro with the given Id.
-	// In particular, provider and provider settings are added to the
+	// Add provider and provider settings of the distro to the
 	// DistroCost model.
 	dc := res[0]
-	distro, err := distro.FindOne(distro.ById(distroId))
-	if err != nil {
-		return nil, err
-	}
 	dc.Provider = distro.Provider
 	dc.ProviderSettings = *(distro.ProviderSettings)
 
@@ -78,26 +79,20 @@ func (mdc *MockDistroConnector) FindAllDistros() ([]distro.Distro, error) {
 	return mdc.CachedDistros, nil
 }
 
-// FindCostByDistroId returns results based on the cached tasks and cached distros
-// in the MockDistroConnector.
-func (mdc *MockDistroConnector) FindCostByDistroId(distroId string) (*task.DistroCost, error) {
+// FindCostByDistroId returns results based on the cached tasks and
+// cached distros in the MockDistroConnector.
+func (mdc *MockDistroConnector) FindCostByDistroId(distroId string,
+	starttime time.Time, duration time.Duration) (*task.DistroCost, error) {
 	dc := task.DistroCost{}
+	var provider string
+	var settings map[string]interface{}
 
-	// Simulate aggregation
-	for _, t := range mdc.CachedTasks {
-		if t.DistroId == distroId {
-			if dc.DistroId == "" {
-				dc.DistroId = distroId
-			}
-			dc.SumTimeTaken += t.TimeTaken
-		}
-	}
-
-	// Find the distro and add the provider information to DistroCost.
+	// Find the distro.
 	for _, d := range mdc.CachedDistros {
 		if d.Id == distroId {
-			dc.Provider = d.Provider
-			dc.ProviderSettings = *(d.ProviderSettings)
+			dc.DistroId = distroId
+			provider = d.Provider
+			settings = *d.ProviderSettings
 		}
 	}
 
@@ -106,9 +101,18 @@ func (mdc *MockDistroConnector) FindCostByDistroId(distroId string) (*task.Distr
 		return nil, fmt.Errorf("no task with distro_id %s has been found", distroId)
 	}
 
-	// Throw an error when there is no provider information given with the distro
-	if dc.Provider == "" {
-		return nil, fmt.Errorf("no provider has been found with distro %s", distroId)
+	// Simulate aggregation
+	for _, t := range mdc.CachedTasks {
+		if t.DistroId == distroId && (t.FinishTime.Sub(starttime) >= 0) &&
+			(starttime.Add(duration).Sub(t.FinishTime) >= 0) {
+			dc.SumTimeTaken += t.TimeTaken
+		}
 	}
+
+	if dc.SumTimeTaken != time.Duration(0) {
+		dc.Provider = provider
+		dc.ProviderSettings = settings
+	}
+
 	return &dc, nil
 }

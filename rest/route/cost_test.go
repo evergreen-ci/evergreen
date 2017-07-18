@@ -1,6 +1,8 @@
 package route
 
 import (
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -82,8 +84,9 @@ func (s *VersionCostSuite) TestFindCostByVersionIdFail() {
 }
 
 type DistroCostSuite struct {
-	sc   *data.MockConnector
-	data data.MockDistroConnector
+	sc        *data.MockConnector
+	data      data.MockDistroConnector
+	starttime time.Time
 
 	suite.Suite
 }
@@ -93,9 +96,17 @@ func TestDistroCostSuite(t *testing.T) {
 }
 
 func (s *DistroCostSuite) SetupSuite() {
-	testTask1 := task.Task{Id: "task1", DistroId: "distro1", TimeTaken: time.Duration(1)}
-	testTask2 := task.Task{Id: "task2", DistroId: "distro2", TimeTaken: time.Duration(1)}
-	testTask3 := task.Task{Id: "task3", DistroId: "distro2", TimeTaken: time.Duration(1)}
+	s.starttime = time.Now()
+
+	testTask1 := task.Task{Id: "task1", DistroId: "distro1",
+		TimeTaken: time.Duration(1), StartTime: s.starttime,
+		FinishTime: s.starttime.Add(time.Duration(1))}
+	testTask2 := task.Task{Id: "task2", DistroId: "distro2",
+		TimeTaken: time.Duration(1), StartTime: s.starttime,
+		FinishTime: s.starttime.Add(time.Duration(1))}
+	testTask3 := task.Task{Id: "task3", DistroId: "distro2",
+		TimeTaken: time.Duration(1), StartTime: s.starttime,
+		FinishTime: s.starttime.Add(time.Duration(1))}
 
 	var settings1 = make(map[string]interface{})
 	var settings2 = make(map[string]interface{})
@@ -120,11 +131,40 @@ func (s *DistroCostSuite) SetupSuite() {
 	}
 }
 
+// TestParseAndValidate tests the logic of ParseAndValidate for costByDistroHandler
+// works correctly. When Mux is updated for Go 1.7, this test could be re-written
+// to test the ParseAndValidate() function directly.
+func TestParseAndValidate(t *testing.T) {
+	req := &http.Request{Method: "GET"}
+	req.URL, _ = url.Parse("http://evergreen.mongodb.com/rest/v2/cost/distro/distroid?starttime=2012-11-01T22:08:00%2B00:00&duration=4h")
+
+	st := req.FormValue("starttime")
+	if st != "2012-11-01T22:08:00+00:00" {
+		t.Errorf(`req.FormValue("starttime") = %q, want "2012-11-01T22:08:00+00:00"`, st)
+	}
+
+	d := req.FormValue("duration")
+	if d != "4h" {
+		t.Errorf(`req.FormValue("duration") = %q, want "4h"`, d)
+	}
+
+	_, err := time.Parse(time.RFC3339, st)
+	if err != nil {
+		t.Errorf("Error in parsing start time: %s", err)
+	}
+
+	_, err = time.ParseDuration(d)
+	if err != nil {
+		t.Errorf("Error in parsing duration: %s", err)
+	}
+}
+
 // TestFindCostByDistroIdSingle tests the handler where information is aggregated on
 // a single task of a distro id
 func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	// Test that the handler executes properly
-	handler := &costByDistroHandler{distroId: "distro1"}
+	handler := &costByDistroHandler{distroId: "distro1", startTime: s.starttime,
+		duration: time.Duration(1)}
 	res, err := handler.Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -137,6 +177,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	s.True(ok)
 	s.Equal(model.APIString("distro1"), h.DistroId)
 	s.Equal(time.Duration(1), h.SumTimeTaken)
+	s.Equal(model.APIString("ec2"), h.Provider)
 	s.Equal(model.APIString("type"), h.InstanceType)
 }
 
@@ -144,7 +185,8 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 // multiple tasks of the same distro id
 func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	// Test that the handler executes properly
-	handler := &costByDistroHandler{distroId: "distro2"}
+	handler := &costByDistroHandler{distroId: "distro2", startTime: s.starttime,
+		duration: time.Duration(1)}
 	res, err := handler.Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -157,13 +199,34 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	s.True(ok)
 	s.Equal(model.APIString("distro2"), h.DistroId)
 	s.Equal(time.Duration(2), h.SumTimeTaken)
+	s.Equal(model.APIString("gce"), h.Provider)
+	s.Equal(model.APIString(""), h.InstanceType)
+}
+
+// TestFindCostByDistroIdNoResult tests that the handler correct returns
+// no information when a valid distroId contains no tasks of the given time range.
+func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
+	handler := &costByDistroHandler{distroId: "distro2",
+		startTime: time.Now().AddDate(0, -1, 0), duration: time.Duration(1)}
+	res, err := handler.Execute(nil, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(1, len(res.Result))
+
+	distroCost := res.Result[0]
+	h, ok := (distroCost).(*model.APIDistroCost)
+	s.True(ok)
+	s.Equal(model.APIString("distro2"), h.DistroId)
+	s.Equal(time.Duration(0), h.SumTimeTaken)
+	s.Equal(model.APIString(""), h.Provider)
 	s.Equal(model.APIString(""), h.InstanceType)
 }
 
 // TestFindCostByDistroFail tests that the handler correctly returns error when
 // incorrect query is passed in
 func (s *DistroCostSuite) TestFindCostByDistroIdFail() {
-	handler := &costByDistroHandler{distroId: "fake_distro"}
+	handler := &costByDistroHandler{distroId: "fake_distro", startTime: s.starttime,
+		duration: time.Duration(1)}
 	res, ok := handler.Execute(nil, s.sc)
 	s.Nil(res.Result)
 	s.Error(ok)
