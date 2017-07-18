@@ -191,12 +191,26 @@ func DeactivatePreviousTasks(taskId, caller string) error {
 		return err
 	}
 	statuses := []string{evergreen.TaskUndispatched}
-	allTasks, err := task.Find(task.ByActivatedBeforeRevisionWithStatuses(t.RevisionOrderNumber, statuses, t.BuildVariant,
-		t.DisplayName, t.Project))
+	allTasks, err := task.Find(task.ByActivatedBeforeRevisionWithStatuses(
+		t.RevisionOrderNumber,
+		statuses,
+		t.BuildVariant,
+		t.DisplayName,
+		t.Project,
+	))
 	if err != nil {
 		return err
 	}
 	for _, t := range allTasks {
+		if t.Requester == evergreen.PatchVersionRequester {
+			// EVG-948, the query depends on patches not
+			// having the revision order number, which they
+			// got as part of 948. as we expect to add more
+			// requesters in the future, we're doing this
+			// filtering here rather than in the query.
+			continue
+		}
+
 		err = SetActiveState(t.Id, caller, false)
 		if err != nil {
 			return err
