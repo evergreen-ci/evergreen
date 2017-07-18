@@ -44,7 +44,11 @@ func (c *clientMock) GetInstance(_ *host.Host) (*compute.Instance, error) {
 		return nil, errors.New("failed to get instance")
 	}
 
-	instance := &compute.Instance{Status: "RUNNING"}
+	instance := &compute.Instance{
+		Status: "RUNNING",
+		Zone: "us-east1-c",
+		MachineType: "zones/us-east1-c/machineTypes/n1-standard-8",
+	}
 
 	if !c.isActive {
 		instance.Status = "STOPPING"

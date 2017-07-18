@@ -3,8 +3,6 @@
 package gce
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/hostutil"
@@ -237,10 +235,4 @@ func (m *Manager) GetSSHOptions(host *host.Host, keyPath string) ([]string, erro
 	}
 
 	return opts, nil
-}
-
-// TimeTilNextPayment ...
-// TODO: implement payment information for GCE
-func (m *Manager) TimeTilNextPayment(host *host.Host) time.Duration {
-	return time.Duration(0)
 }
