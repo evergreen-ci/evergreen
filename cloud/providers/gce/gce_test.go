@@ -46,9 +46,9 @@ func (s *GCESuite) SetupTest() {
 		Id:       "host",
 		Provider: "gce",
 		ProviderSettings: &map[string]interface{}{
-			"machine_type": "machine",
-			"image_name":   "image",
-			"disk_type":    "pd-standard",
+			"instance_type": "machine",
+			"image_name":    "image",
+			"disk_type":     "pd-standard",
 			"disk_size_gb": 10,
 		},
 	}
@@ -58,7 +58,7 @@ func (s *GCESuite) SetupTest() {
 func (s *GCESuite) TestValidateSettings() {
 	// all required settings are provided
 	settingsOk := &ProviderSettings{
-		MachineType: "machine",
+		MachineName: "machine",
 		ImageName:   "image",
 		DiskType:    "pd-standard",
 		DiskSizeGB:  10,
@@ -75,7 +75,7 @@ func (s *GCESuite) TestValidateSettings() {
 
 	// error when missing disk type
 	settingsNoDiskType := &ProviderSettings{
-		MachineType: "machine",
+		MachineName: "machine",
 		ImageName:   "image",
 		DiskSizeGB:  10,
 	}
@@ -84,7 +84,7 @@ func (s *GCESuite) TestValidateSettings() {
 
 func (s *GCESuite) TestValidateImageSettings() {
 	settingsImageName := &ProviderSettings{
-		MachineType: "machine",
+		MachineName: "machine",
 		ImageName:   "image",
 		DiskType:    "pd-standard",
 		DiskSizeGB:  10,
@@ -92,7 +92,7 @@ func (s *GCESuite) TestValidateImageSettings() {
 	s.NoError(settingsImageName.Validate())
 
 	settingsImageFamily := &ProviderSettings{
-		MachineType: "machine",
+		MachineName: "machine",
 		ImageFamily: "image",
 		DiskType:    "pd-standard",
 		DiskSizeGB:  10,
@@ -100,7 +100,7 @@ func (s *GCESuite) TestValidateImageSettings() {
 	s.NoError(settingsImageFamily.Validate())
 
 	settingsOverSpecified := &ProviderSettings{
-		MachineType: "machine",
+		MachineName: "machine",
 		ImageName:   "image",
 		ImageFamily: "image",
 		DiskType:    "pd-standard",
@@ -109,7 +109,43 @@ func (s *GCESuite) TestValidateImageSettings() {
 	s.Error(settingsOverSpecified.Validate())
 
 	settingsUnderSpecified := &ProviderSettings{
-		MachineType: "machine",
+		MachineName: "machine",
+		DiskType:    "pd-standard",
+		DiskSizeGB:  10,
+	}
+	s.Error(settingsUnderSpecified.Validate())
+}
+
+func (s *GCESuite) TestValidateMachineSettings() {
+	settingsMachineName := &ProviderSettings{
+		MachineName: "machine",
+		ImageName:   "image",
+		DiskType:    "pd-standard",
+		DiskSizeGB:  10,
+	}
+	s.NoError(settingsMachineName.Validate())
+
+	settingsCustomMachine := &ProviderSettings{
+		NumCPUs:     2,
+		MemoryMB:    1024,
+		ImageName:   "image",
+		DiskType:    "pd-standard",
+		DiskSizeGB:  10,
+	}
+	s.NoError(settingsCustomMachine.Validate())
+
+	settingsOverSpecified := &ProviderSettings{
+		MachineName: "machine",
+		NumCPUs:     2,
+		MemoryMB:    1024,
+		ImageName:   "image",
+		DiskType:    "pd-standard",
+		DiskSizeGB:  10,
+	}
+	s.Error(settingsOverSpecified.Validate())
+
+	settingsUnderSpecified := &ProviderSettings{
+		ImageName:   "image",
 		DiskType:    "pd-standard",
 		DiskSizeGB:  10,
 	}
@@ -275,7 +311,7 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 
 	dSettingsInvalid := &distro.Distro{
 		Provider:         "gce",
-		ProviderSettings: &map[string]interface{}{"machine_type": ""},
+		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
 	host, err = s.manager.SpawnInstance(dSettingsInvalid, s.hostOpts)
 	s.Error(err)
@@ -299,9 +335,9 @@ func (s *GCESuite) TestSpawnAPICall() {
 		Id:       "id",
 		Provider: "gce",
 		ProviderSettings: &map[string]interface{}{
-			"machine_type": "machine",
-			"image_name":   "image",
-			"disk_type":    "pd-standard",
+			"instance_type": "machine",
+			"image_name":    "image",
+			"disk_type":     "pd-standard",
 			"disk_size_gb": 10,
 		},
 	}
@@ -331,7 +367,8 @@ func (s *GCESuite) TestUtilToEvgStatus() {
 }
 
 func (s *GCESuite) TestUtilSourceURLGenerators() {
-	s.Equal("zones/zone/machineTypes/type", makeMachineType("zone", "type"))
+	s.Equal("zones/zone/machineTypes/type", makeMachineType("zone", "type", 0, 0))
+	s.Equal("zones/zone/machineTypes/custom-2-1024", makeMachineType("zone", "", 2, 1024))
 	s.Equal("zones/zone/diskTypes/type", makeDiskType("zone", "type"))
 	s.Equal("global/images/family/family", makeImageFromFamily("family"))
 	s.Equal("global/images/name", makeImage("name"))

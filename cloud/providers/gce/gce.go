@@ -33,7 +33,10 @@ type ProviderSettings struct {
 	ImageName   string `mapstructure:"image_name"`
 	ImageFamily string `mapstructure:"image_family"`
 
-	MachineType string `mapstructure:"machine_type"`
+	MachineName string `mapstructure:"instance_type"`
+	NumCPUs     int64  `mapstructure:"num_cpus"`
+	MemoryMB    int64  `mapstructure:"memory_mb"`
+
 	DiskType    string `mapstructure:"disk_type"`
 	DiskSizeGB  int64  `mapstructure:"disk_size_gb"`
 	SetupScript string `mapstructure:"setup_script"`
@@ -45,8 +48,12 @@ type ProviderSettings struct {
 
 // Validate verifies a set of ProviderSettings.
 func (opts *ProviderSettings) Validate() error {
-	if opts.MachineType == "" {
-		return errors.New("Machine type must not be blank")
+
+	standardMachine := opts.MachineName != ""
+	customMachine := opts.NumCPUs > 0 && opts.MemoryMB > 0
+
+	if standardMachine == customMachine {
+		return errors.New("Must specify either machine type OR num CPUs and memory")
 	}
 
 	if (opts.ImageFamily == "") == (opts.ImageName == "") {
@@ -100,7 +107,11 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //     - ImageName:   the disk will use the private image of the specified name
 //     - ImageFamily: the disk will use the newest image from a private image family
 //
-//     - MachineType: instance type i.e. n1-standard-8
+//     (Either MachineName OR both NumCPUs and MemoryMB must be specified)
+//     - MachineName: instance type i.e. n1-standard-8
+//     - NumCPUs:     number of cores i.e. 2
+//     - MemoryMB:    memory, in MB i.e. 1024
+//
 //     - DiskSizeGB:  boot disk size, in base-2 GB
 //     - DiskType:    boot disk type i.e. pd-standard
 //
@@ -120,6 +131,8 @@ func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*
 	if err := s.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid settings in distro %s", d.Id)
 	}
+
+	grip.Debugf("Settings validated for distro %s", d.Id)
 
 	// Proactively record all information about the host we want to create. This way, if we are
 	// unable to start it or record its instance ID, we have a way of knowing what went wrong.

@@ -77,8 +77,11 @@ func toEvgStatus(status string) cloud.CloudStatus {
 }
 
 // Returns a machine type URL for the given the zone
-func makeMachineType(zone, machineType string) string {
-	return fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineType)
+func makeMachineType(zone, machineName string, cpus, memory int64) string {
+	if machineName != "" {
+		return fmt.Sprintf("zones/%s/machineTypes/%s", zone, machineName)
+	}
+	return fmt.Sprintf("zones/%s/machineTypes/custom-%d-%d", zone, cpus, memory)
 }
 
 // Returns a disk type URL given the zone

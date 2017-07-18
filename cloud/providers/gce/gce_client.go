@@ -59,7 +59,7 @@ func (c *clientImpl) Init(config *jwt.Config) error {
 // and not the ID. If successful, CreateInstance returns the name of the provisioned instance.
 func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
 	// Create instance options to spawn an instance
-	machineType := makeMachineType(h.Zone, s.MachineType)
+	machineType := makeMachineType(h.Zone, s.MachineName, s.NumCPUs, s.MemoryMB)
 	instance := &compute.Instance{
 		Name:        h.Id,
 		MachineType: machineType,
