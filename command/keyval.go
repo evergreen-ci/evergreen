@@ -1,14 +1,14 @@
 package command
 
 import (
-	"context"
-	"fmt"
+	"strconv"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type keyValInc struct {
@@ -29,7 +29,7 @@ func (c *keyValInc) ParseParams(params map[string]interface{}) error {
 	}
 
 	if c.Key == "" || c.Destination == "" {
-		return fmt.Errorf("error parsing '%v' params: key and destination may not be blank",
+		return errors.Errorf("error parsing '%v' params: key and destination may not be blank",
 			c.Name())
 	}
 
@@ -46,11 +46,11 @@ func (c *keyValInc) Execute(ctx context.Context,
 
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	keyVal := model.KeyVal{Key: c.Key}
-	err := comm.IncrementKey(ctx, td, &keyVal) //.TaskPostJSON(IncRoute, c.Key)
+	err := comm.KeyValInc(ctx, td, &keyVal) //.TaskPostJSON(IncRoute, c.Key)
 	if err != nil {
 		return errors.Wrapf(err, "problem incriminating key %s", c.Key)
 	}
 
-	conf.Expansions.Put(c.Destination, fmt.Sprintf("%d", keyVal.Value))
+	conf.Expansions.Put(c.Destination, strconv.FormatInt(keyVal.Value, 10))
 	return nil
 }

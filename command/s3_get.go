@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model"
-	"github.com/evergreen-ci/evergreen/plugin/builtin/archive"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
@@ -51,7 +50,7 @@ type s3get struct {
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 }
 
-func s3GetFactory() Command     { &s3get{} }
+func s3GetFactory() Command     { return &s3get{} }
 func (c *s3get) Name() string   { return "get" }
 func (c *s3get) Plugin() string { return "s3" }
 
@@ -164,7 +163,7 @@ func (c *s3get) Execute(ctx context.Context,
 func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) error {
 	backoffCounter := &backoff.Backoff{
 		Min:    S3GetSleep,
-		Max:    MaxS3GetAttempts * S3GetSleep,
+		Max:    time.Duration(MaxS3GetAttempts) * S3GetSleep,
 		Factor: 2,
 		Jitter: true,
 	}
@@ -185,12 +184,12 @@ func (c *s3get) getWithRetry(ctx context.Context, logger client.LoggerProducer) 
 			}
 
 			logger.Execution().Errorf("problem getting %s from s3 bucket, retrying. [%v]",
-				c.remoteFile, err)
+				c.RemoteFile, err)
 			timer.Reset(backoffCounter.Duration())
 		}
 	}
 
-	return errors.Errorf("S3 get failed after $d attempts", MaxS3GetAttempts)
+	return errors.Errorf("S3 get failed after %d attempts", MaxS3GetAttempts)
 }
 
 // Fetch the specified resource from s3.
@@ -244,7 +243,7 @@ func (c *s3get) get(ctx context.Context) error {
 	}
 
 	tarReader := tar.NewReader(gzipReader)
-	err = archive.Extract(ctx, tarReader, c.ExtractTo)
+	err = util.Extract(ctx, tarReader, c.ExtractTo)
 	if err != nil {
 		return errors.Wrapf(err, "error extracting %v to %v", c.RemoteFile, c.ExtractTo)
 	}

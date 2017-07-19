@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/distro"
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
@@ -477,23 +477,23 @@ func validateBVTaskNames(project *model.Project) []ValidationError {
 }
 
 // Helper for validating a set of plugin commands given a project/registry
-func validateCommands(section string, project *model.Project, registry plugin.Registry,
+func validateCommands(section string, project *model.Project,
 	commands []model.PluginCommandConf) []ValidationError {
 	errs := []ValidationError{}
 
 	for _, cmd := range commands {
-		command := fmt.Sprintf("'%v' command", cmd.Command)
-		_, err := registry.GetCommands(cmd, project.Functions)
+		commandName := fmt.Sprintf("'%v' command", cmd.Command)
+		_, err := command.Render(cmd, project.Functions)
 		if err != nil {
 			if cmd.Function != "" {
-				command = fmt.Sprintf("'%v' function", cmd.Function)
+				commandName = fmt.Sprintf("'%v' function", cmd.Function)
 			}
-			errs = append(errs, ValidationError{Message: fmt.Sprintf("%v section in %v: %v", section, command, err)})
+			errs = append(errs, ValidationError{Message: fmt.Sprintf("%v section in %v: %v", section, commandName, err)})
 		}
 		if cmd.Type != "" {
 			if cmd.Type != model.SystemCommandType &&
 				cmd.Type != model.TestCommandType {
-				msg := fmt.Sprintf("%v section in '%v': invalid command type: '%v'", section, command, cmd.Type)
+				msg := fmt.Sprintf("%v section in '%v': invalid command type: '%v'", section, commandName, cmd.Type)
 				errs = append(errs, ValidationError{Message: msg})
 			}
 		}
@@ -505,24 +505,11 @@ func validateCommands(section string, project *model.Project, registry plugin.Re
 // are specified in a valid format
 func validatePluginCommands(project *model.Project) []ValidationError {
 	errs := []ValidationError{}
-	pluginRegistry := plugin.NewSimpleRegistry()
-
-	// register the published plugins
-	for _, pl := range plugin.CommandPlugins {
-		if err := pluginRegistry.Register(pl); err != nil {
-			errs = append(errs,
-				ValidationError{
-					Message: fmt.Sprintf("failed to register plugin %v: %v", pl.Name(), err),
-				},
-			)
-		}
-	}
-
 	seen := make(map[string]bool)
 
 	// validate each function definition
 	for funcName, commands := range project.Functions {
-		valErrs := validateCommands("functions", project, pluginRegistry, commands.List())
+		valErrs := validateCommands("functions", project, commands.List())
 		for _, err := range valErrs {
 			errs = append(errs,
 				ValidationError{
@@ -558,22 +545,22 @@ func validatePluginCommands(project *model.Project) []ValidationError {
 
 	if project.Pre != nil {
 		// validate project pre section
-		errs = append(errs, validateCommands("pre", project, pluginRegistry, project.Pre.List())...)
+		errs = append(errs, validateCommands("pre", project, project.Pre.List())...)
 	}
 
 	if project.Post != nil {
 		// validate project post section
-		errs = append(errs, validateCommands("post", project, pluginRegistry, project.Post.List())...)
+		errs = append(errs, validateCommands("post", project, project.Post.List())...)
 	}
 
 	if project.Timeout != nil {
 		// validate project timeout section
-		errs = append(errs, validateCommands("timeout", project, pluginRegistry, project.Timeout.List())...)
+		errs = append(errs, validateCommands("timeout", project, project.Timeout.List())...)
 	}
 
 	// validate project tasks section
 	for _, task := range project.Tasks {
-		errs = append(errs, validateCommands("tasks", project, pluginRegistry, task.Commands)...)
+		errs = append(errs, validateCommands("tasks", project, task.Commands)...)
 	}
 	return errs
 }

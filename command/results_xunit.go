@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/plugin/builtin/attach/xunit"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
@@ -118,7 +117,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
 
-		testSuites, err := xunit.ParseXMLResults(file)
+		testSuites, err := ParseXMLResults(file)
 		if err != nil {
 			return errors.Wrap(err, "error parsing xunit file")
 		}

@@ -1,7 +1,6 @@
-package taskdata
+package command
 
 import (
-	"context"
 	"io/ioutil"
 	"path/filepath"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type taskDataGet struct {
@@ -19,7 +19,7 @@ type taskDataGet struct {
 	Variant  string `mapstructure:"variant" plugin:"expand"`
 }
 
-func taskDataGetFactory() Command     { retun }
+func taskDataGetFactory() Command     { return &taskDataGet{} }
 func (c *taskDataGet) Name() string   { return "get" }
 func (c *taskDataGet) Plugin() string { return "json" }
 func (c *taskDataGet) ParseParams(params map[string]interface{}) error {

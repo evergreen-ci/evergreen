@@ -45,7 +45,7 @@ func sendJSONResults(ctx context.Context, conf *model.TaskConfig,
 	}
 	logger.Execution().Info("attaching test results")
 
-	err := comm.SendTaskResults(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, results)
+	err := comm.SendTestResults(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}, results)
 	if err != nil {
 		return errors.WithStack(err)
 	}

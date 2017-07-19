@@ -107,7 +107,7 @@ func (c *tarballCreate) Execute(ctx context.Context,
 // Build the archive.
 // Returns the number of files included in the archive (0 means empty archive).
 func (c *tarballCreate) makeArchive(ctx context.Context, logger grip.Journaler) (int, error) {
-	f, gz, tarWriter, err := TarGzWriter(c.Target)
+	f, gz, tarWriter, err := util.TarGzWriter(c.Target)
 	if err != nil {
 		return -1, errors.Wrapf(err, "error opening target archive file %s", c.Target)
 	}

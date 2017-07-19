@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,20 +13,13 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/goamz/goamz/aws"
 	"github.com/jpillora/backoff"
-	"github.com/mitchellh/goamz/aws"
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
-
-const (
-	maxs3putAttempts = 5
-	s3PutSleep       = 5 * time.Second
-	s3baseURL        = "https://s3.amazonaws.com/"
-)
-
-var errSkippedFile = errors.New("missing optional file was skipped")
 
 // A plugin command to put a resource to an s3 bucket and download it to
 // the local machine.
@@ -81,6 +73,8 @@ type s3put struct {
 	// the path specified in local_file does not exist. Defaults to false, which triggers errors
 	// for missing files.
 	Optional bool `mapstructure:"optional"`
+
+	taskdata client.TaskData
 }
 
 func s3PutFactory() Command        { return &s3put{} }
@@ -94,10 +88,6 @@ func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
 	}
 
 	// make sure the command params are valid
-	if err := s3pc.validateParams(); err != nil {
-		return errors.Wrapf(err, "error validating %s params", s3pc.Name())
-	}
-
 	if s3pc.AwsKey == "" {
 		return errors.New("aws_key cannot be blank")
 	}
@@ -167,11 +157,7 @@ func (s3pc *s3put) Execute(ctx context.Context,
 	if err := s3pc.expandParams(conf); err != nil {
 		return errors.WithStack(err)
 	}
-
-	// validate the params
-	if err := s3pc.validateParams(); err != nil {
-		return errors.Wrap(err, "expanded params are not valid")
-	}
+	s3pc.taskdata = client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 
 	if !s3pc.shouldRunForVariant(conf.BuildVariant.Name) {
 		logger.Task().Infof("Skipping S3 put of local file %v for variant %v",
@@ -214,6 +200,7 @@ func (s3pc *s3put) putWithRetry(ctx context.Context,
 		Factor: 2,
 		Jitter: true,
 	}
+	var err error
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -233,10 +220,10 @@ retryLoop:
 				filesList, err = util.BuildFileList(".", s3pc.LocalFilesIncludeFilter...)
 				if err != nil {
 					grip.Error(err)
-					return errors.Errorf("could not parse includes filter %s", strings.Join(spc.LocalFilesIncludeFilter, " "))
+					return errors.Errorf("could not parse includes filter %s",
+						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 			}
-		fileUploadLoop:
 			for _, fpath := range filesList {
 				if ctx.Err() != nil {
 					return errors.New("s3 put operation canceled")
@@ -272,17 +259,10 @@ retryLoop:
 					continue retryLoop
 				}
 
-				err = s3pc.attachFiles(ctx, comm, logger, file, s3pc.RemoteFile)
+				err = s3pc.attachFiles(ctx, comm, logger, fpath, s3pc.RemoteFile)
 				if err != nil {
-					return true, errors.Wrapf(err, "problem attaching file: %s to %s", fpath, s3pc.RemoteFile)
+					return errors.Wrapf(err, "problem attaching file: %s to %s", fpath, s3pc.RemoteFile)
 				}
-			}
-
-			if !shouldRetry {
-				if err != nil {
-					return errors.Wrap(err, "encountered error during s3put. Not retrying.")
-				}
-				return nil
 			}
 
 			logger.Execution().Errorf("retrying after error during putting to s3 bucket: %v", err)
@@ -316,7 +296,7 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator,
 		Visibility: s3pc.Visibility,
 	}
 
-	err := comm.AttachFiles([]*artifact.File{file})
+	err := comm.AttachFiles(ctx, s3pc.taskdata, []*artifact.File{file})
 	if err != nil {
 		return errors.Wrap(err, "Attach files failed")
 	}

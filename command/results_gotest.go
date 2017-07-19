@@ -1,16 +1,17 @@
 package command
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // goTestResults is a struct implementing plugin.Command. It is used to parse a file or
@@ -75,7 +76,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	// ship all of the test logs off to the server
 	logger.Task().Info("Sending test logs to server...")
-	allResults := []*TestResult{}
+	allResults := task.TestResults{}
 	for idx, log := range logs {
 		if ctx.Err() != nil {
 			return errors.New("operation canceled")
@@ -93,21 +94,21 @@ func (c *goTestResults) Execute(ctx context.Context,
 		// full list of results
 		for _, result := range results[idx] {
 			result.LogId = logId
-			allResults = append(allResults, result)
+
+			allResults.Results = append(allResults.Results, result)
 		}
 
 	}
 	logger.Task().Info("Finished posting logs to server")
 
-	// convert everything
-	resultsAsModel := ToModelTestResults(conf.Task, allResults)
-
 	// ship the parsed results off to the server
 	logger.Task().Info("Sending parsed results to server...")
 
-	if err := comm.SendTaskResults(ctx, td, &resultsAsModel); err != nil {
-		return errors.Wrap(err, "error posting parsed results to server")
+	if err := comm.SendTestResults(ctx, td, &allResults); err != nil {
+		logger.Task().Errorf("problem posting parsed results to the server: %+v", err)
+		return errors.Wrap(err, "problem sending test results")
 	}
+
 	logger.Task().Info("Successfully sent parsed results to server")
 
 	return nil
@@ -146,9 +147,9 @@ func (c *goTestResults) AllOutputFiles() ([]string, error) {
 // ParseTestOutputFiles parses all of the files that are passed in, and returns the
 // test logs and test results found within.
 func ParseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
-	conf *model.TaskConfig, outputFiles []string) ([]model.TestLog, [][]*TestResult, error) {
+	conf *model.TaskConfig, outputFiles []string) ([]model.TestLog, [][]task.TestResult, error) {
 
-	var results [][]*TestResult
+	var results [][]task.TestResult
 	var logs []model.TestLog
 
 	// now, open all the files, and parse the test results
@@ -173,7 +174,7 @@ func ParseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 		defer fileReader.Close()
 
 		// parse the output logs
-		parser := &VanillaParser{Suite: suiteName}
+		parser := &goTestParser{Suite: suiteName}
 		if err := parser.Parse(fileReader); err != nil {
 			// continue on error
 			logger.Task().Errorf("Error parsing file '%s': %v", outputFile, err)
@@ -189,7 +190,7 @@ func ParseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 			Lines:         logLines,
 		}
 		// save the results
-		results = append(results, parser.Results())
+		results = append(results, ToModelTestResults(parser.Results()).Results)
 		logs = append(logs, testLog)
 
 	}

@@ -1,11 +1,14 @@
 package command
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/plugin/plugintest"
+	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
@@ -15,11 +18,11 @@ func TestTarGzUnpackParseParams(t *testing.T) {
 
 	Convey("With a targz unpack command", t, func() {
 
-		var cmd *TarGzUnpackCommand
+		var cmd *tarballExtract
 
 		Convey("when parsing params into the command", func() {
 
-			cmd = &TarGzUnpackCommand{}
+			cmd = &tarballExtract{}
 
 			Convey("a missing source should cause an error", func() {
 
@@ -58,9 +61,14 @@ func TestTarGzUnpackParseParams(t *testing.T) {
 }
 
 func TestTarGzCommandUnpackArchive(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
+	logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 	Convey("With a targz unpack command", t, func() {
-		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata")
+		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "archive")
 
 		Convey("when unpacking an archive", func() {
 			Convey("the archive's contents should be expanded into the"+
@@ -79,7 +87,7 @@ func TestTarGzCommandUnpackArchive(t *testing.T) {
 					"Error creating output directory")
 
 				// use the tar gz pack command to create a tarball
-				tarPackCmd := &TarGzPackCommand{}
+				tarPackCmd := &tarballCreate{}
 				tarPackParams := map[string]interface{}{
 					"target":        target,
 					"source_dir":    testDataDir,
@@ -88,7 +96,7 @@ func TestTarGzCommandUnpackArchive(t *testing.T) {
 				}
 
 				So(tarPackCmd.ParseParams(tarPackParams), ShouldBeNil)
-				numFound, err := tarPackCmd.MakeArchive(&plugintest.MockLogger{})
+				numFound, err := tarPackCmd.makeArchive(ctx, logger.Task())
 				So(err, ShouldBeNil)
 				So(numFound, ShouldEqual, 2)
 
@@ -99,14 +107,14 @@ func TestTarGzCommandUnpackArchive(t *testing.T) {
 				So(exists, ShouldBeTrue)
 
 				// now, use a tar gz unpacking command to untar the tarball
-				tarUnpackCmd := &TarGzUnpackCommand{}
+				tarUnpackCmd := &tarballExtract{}
 				tarUnpackParams := map[string]interface{}{
 					"source":   target,
 					"dest_dir": output,
 				}
 
 				So(tarUnpackCmd.ParseParams(tarUnpackParams), ShouldBeNil)
-				So(tarUnpackCmd.UnpackArchive(), ShouldBeNil)
+				So(tarUnpackCmd.unpackArchive(ctx), ShouldBeNil)
 
 				// make sure the tarball was unpacked successfully
 				exists, err = util.FileExists(

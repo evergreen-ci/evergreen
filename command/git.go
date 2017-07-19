@@ -231,6 +231,10 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 func (c gitFetchProject) getPatchContents(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig, patch *patch.Patch) error {
 
+	if patch == nil {
+		return errors.New("cannot get patch contents for nil patch")
+	}
+
 	td := client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret}
 	for i, patchPart := range patch.Patches {
 		// If the patch isn't stored externally, no need to do anything.
@@ -250,7 +254,7 @@ func (c gitFetchProject) getPatchContents(ctx context.Context, comm client.Commu
 			return errors.Wrapf(err, "problem getting patch file")
 		}
 
-		patch.Patches[i].PatchSet.Patch = string(result)
+		patch.Patches[i].PatchSet.Patch = result
 	}
 	return nil
 }

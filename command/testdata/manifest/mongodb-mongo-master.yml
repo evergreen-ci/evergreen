@@ -1,0 +1,25 @@
+display_name: mongodb-mongo-master
+owner: mongodb
+repo: mongo
+repokind: github
+branch: master
+enabled: true
+batch_time: 180
+
+tasks:
+- name: load_modules
+  commands:
+  - command: manifest.load
+modules: 
+- name: sample
+  repo: git@github.com:evergreen-ci/sample.git
+  branch: master
+
+buildvariants:
+- name: linux-64
+  display_name: Linux 64-bit
+  modules: ~
+  test_flags: --continue-on-failure
+  tasks: 
+  - name: load_modules
+

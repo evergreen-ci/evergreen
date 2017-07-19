@@ -163,7 +163,7 @@ func (vp *goTestParser) handleEnd(line string, rgx *regexp.Regexp) error {
 	t := vp.tests[name]
 	if t == nil || t.Name == "" {
 		// if there's no existing test, just stub one out
-		t = vp.newgoTestResult(name)
+		t = vp.newTestResult(name)
 		vp.order = append(vp.order, name)
 		vp.tests[name] = t
 	}
@@ -180,7 +180,7 @@ func (vp *goTestParser) handleStart(line string, rgx *regexp.Regexp, defaultFail
 	if err != nil {
 		return errors.Wrapf(err, "error parsing start line '%s'", line)
 	}
-	t := vp.newgoTestResult(name)
+	t := vp.newTestResult(name)
 
 	// tasks should start out failed unless they're marked
 	// passing/skipped, although gocheck can't support this

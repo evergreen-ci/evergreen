@@ -1,4 +1,4 @@
-package gotest
+package command
 
 import (
 	"bytes"
@@ -59,13 +59,12 @@ func TestParserRegex(t *testing.T) {
 }
 
 func TestParserFunctionality(t *testing.T) {
-	var parser Parser
 	cwd := testutil.GetDirectoryOfFile()
 
 	Convey("With a simple log file and parser", t, func() {
-		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "1_simple.log"))
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "1_simple.log"))
 		testutil.HandleTestingErr(err, t, "couldn't open log file")
-		parser = &VanillaParser{Suite: "test"}
+		parser := &goTestParser{Suite: "test"}
 
 		Convey("running parse on the given log file should succeed", func() {
 			err = parser.Parse(bytes.NewBuffer(logdata))
@@ -100,9 +99,9 @@ func TestParserFunctionality(t *testing.T) {
 		})
 	})
 	Convey("With a gocheck log file and parser", t, func() {
-		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "2_simple.log"))
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "2_simple.log"))
 		testutil.HandleTestingErr(err, t, "couldn't open log file")
-		parser = &VanillaParser{Suite: "gocheck_test"}
+		parser := &goTestParser{Suite: "gocheck_test"}
 
 		Convey("running parse on the given log file should succeed", func() {
 			err = parser.Parse(bytes.NewBuffer(logdata))
@@ -130,9 +129,9 @@ func TestParserFunctionality(t *testing.T) {
 		})
 	})
 	Convey("un-terminated tests are failures", t, func() {
-		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "3_simple.log"))
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "3_simple.log"))
 		testutil.HandleTestingErr(err, t, "couldn't open log file")
-		parser = &VanillaParser{Suite: "gocheck_test"}
+		parser := &goTestParser{Suite: "gocheck_test"}
 		err = parser.Parse(bytes.NewBuffer(logdata))
 		So(err, ShouldBeNil)
 
@@ -144,7 +143,7 @@ func TestParserFunctionality(t *testing.T) {
 
 }
 
-func matchResultWithLog(tr *TestResult, logs []string) {
+func matchResultWithLog(tr *goTestResult, logs []string) {
 	startLine := logs[tr.StartLine-1]
 	endLine := logs[tr.EndLine-1]
 	So(startLine, ShouldContainSubstring, tr.Name)
@@ -156,10 +155,8 @@ func TestParserOnRealTests(t *testing.T) {
 	// there are some issues with gccgo:
 	testutil.SkipTestUnlessAll(t, "TestParserOnRealTests")
 
-	var parser Parser
-
 	Convey("With a parser", t, func() {
-		parser = &VanillaParser{}
+		parser := &goTestParser{}
 		Convey("and some real test output", func() {
 			cmd := exec.Command("go", "test", "-v", "./.")
 			stdout, err := cmd.StdoutPipe()

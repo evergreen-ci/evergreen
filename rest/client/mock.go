@@ -1,8 +1,8 @@
 package client
 
 import (
-	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -38,20 +39,24 @@ type Mock struct {
 
 	// data collected by mocked methods
 	logMessages map[string][]apimodels.LogMessage
+	PatchFiles  map[string]string
+	keyVal      map[string]*serviceModel.KeyVal
+	mu          sync.Mutex
 }
 
 // NewMock returns a Communicator for testing.
-func NewMock(serverURL string) Communicator {
-	evergreen := &Mock{
+func NewMock(serverURL string) *Mock {
+	return &Mock{
 		maxAttempts:  defaultMaxAttempts,
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
 		logMessages:  make(map[string][]apimodels.LogMessage),
+		PatchFiles:   make(map[string]string),
+		keyVal:       make(map[string]*serviceModel.KeyVal),
 		serverURL:    serverURL,
 		httpClient:   &http.Client{},
 		ShouldFail:   false,
 	}
-	return evergreen
 }
 
 // StartTask returns nil.
@@ -116,6 +121,8 @@ func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []ap
 		return errors.New("logging failed")
 	}
 
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
 
 	return nil
@@ -127,11 +134,21 @@ func (c *Mock) GetLoggerProducer(taskData TaskData) LoggerProducer {
 }
 
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
-	return "", nil
+	if c.ShouldFail {
+		return "", errors.New("operation run in fail mode.")
+	}
+
+	out, ok := c.PatchFiles[patchFileID]
+
+	if !ok {
+		return "", errors.Errorf("patch file %s not found", patchFileID)
+	}
+
+	return out, nil
 }
 
 func (c *Mock) GetTaskPatch(ctx context.Context, td TaskData) (*patchmodel.Patch, error) {
-	return nil, nil
+	return &patchmodel.Patch{}, nil
 }
 
 // GetAllHosts ...
@@ -446,7 +463,7 @@ func (c *Mock) SendTestLog(ctx context.Context, taskData TaskData, log *serviceM
 }
 
 func (c *Mock) GetManifest(ctx context.Context, td TaskData) (*manifest.Manifest, error) {
-	return nil, nil
+	return &manifest.Manifest{}, nil
 }
 
 func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyRequest) error {
@@ -454,6 +471,12 @@ func (c *Mock) S3Copy(ctx context.Context, td TaskData, req *apimodels.S3CopyReq
 }
 
 func (c *Mock) KeyValInc(ctx context.Context, td TaskData, kv *serviceModel.KeyVal) error {
+	if cached, ok := c.keyVal[kv.Key]; ok {
+		*kv = *cached
+	} else {
+		c.keyVal[kv.Key] = kv
+	}
+	kv.Value++
 	return nil
 }
 

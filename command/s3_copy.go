@@ -13,13 +13,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-const (
-	s3CopyCmd         = "copy"
-	s3CopyPluginName  = "s3Copy"
-	s3CopyAPIEndpoint = "s3Copy"
-	s3baseURL         = "https://s3.amazonaws.com/"
-)
-
 // The S3CopyPlugin consists of zero or more files that are to be copied
 // from one location in S3 to the other.
 type s3copy struct {
@@ -69,7 +62,7 @@ type s3Loc struct {
 
 func s3CopyFactory() Command     { return &s3copy{} }
 func (c *s3copy) Name() string   { return "copy" }
-func (c *s3copy) Plugin() string { return "s3copy" }
+func (c *s3copy) Plugin() string { return "s3Copy" }
 
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an S3CopyPlugin command; this is required
@@ -133,11 +126,6 @@ func (c *s3copy) Execute(ctx context.Context,
 		return errors.WithStack(err)
 	}
 
-	// validate the S3 copy parameters before running the task
-	if err := c.validateS3CopyParams(); err != nil {
-		return errors.WithStack(err)
-	}
-
 	errChan := make(chan error)
 	go func() {
 		errChan <- errors.WithStack(c.s3Copy(ctx, comm, logger, conf))
@@ -185,7 +173,7 @@ func (c *s3copy) s3Copy(ctx context.Context,
 			S3DisplayName:       s3CopyFile.DisplayName,
 		}
 
-		err := comm.S3CopyOperation(ctx, td, &s3CopyReq)
+		err := comm.S3Copy(ctx, td, &s3CopyReq)
 		if err != nil {
 			err = errors.Wrap(err, "s3 push copy failed")
 			logger.Execution().Error(err)
@@ -229,7 +217,7 @@ func (c *s3copy) attachFiles(ctx context.Context, comm client.Communicator,
 
 	files := []*artifact.File{&file}
 
-	if err := comm.AttachTaskFiles(ctx, td, files); err != nil {
+	if err := comm.AttachFiles(ctx, td, files); err != nil {
 		return errors.Wrap(err, "Attach files failed")
 	}
 

@@ -5,18 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/agent/comm"
-	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/plugin/plugintest"
-	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func reset(t *testing.T) {
@@ -29,38 +25,32 @@ func reset(t *testing.T) {
 func TestGotestPluginOnFailingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
 	testConfig := testutil.TestConfig()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
+
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 
-		registry := plugin.NewSimpleRegistry()
-		testPlugin := &GotestPlugin{}
-		err := registry.Register(testPlugin)
-		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
-
-		server, err := service.CreateTestServer(testConfig, nil)
-		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		defer server.Close()
-		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
+		configPath := filepath.Join(currentDirectory, "testdata", "gotest", "bad.yml")
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
-		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
-		taskConfig := modelData.TaskConfig
-		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
+		conf := modelData.TaskConfig
+		logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig.WorkDir = curWD
+			conf.WorkDir = curWD
 
-			for _, testTask := range taskConfig.Project.Tasks {
+			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
-					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := Render(command, conf.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
-					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
+					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldNotBeNil)
 					So(err.Error(), ShouldEqual, "test failures")
 				}
@@ -91,41 +81,37 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 
 func TestGotestPluginOnPassingTests(t *testing.T) {
 	currentDirectory := testutil.GetDirectoryOfFile()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	SkipConvey("With gotest plugin installed into plugin registry", t, func() {
 		reset(t)
 		testConfig := testutil.TestConfig()
 		testutil.ConfigureIntegrationTest(t, testConfig, "TestGotestPluginOnPassingTests")
-		registry := plugin.NewSimpleRegistry()
-		testPlugin := &GotestPlugin{}
-		err := registry.Register(testPlugin)
-		testutil.HandleTestingErr(err, t, "Couldn't register plugin %v")
-
-		server, err := service.CreateTestServer(testutil.TestConfig(), nil)
-		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		defer server.Close()
 
 		configPath := filepath.Join(currentDirectory, "testdata", "bad.yml")
 
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
-		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
-		taskConfig := modelData.TaskConfig
-		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
+
+		conf := modelData.TaskConfig
+		comm := client.NewMock("http://localhost.com")
+		logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
 			testutil.HandleTestingErr(err, t, "Couldn't get working directory: %v")
-			taskConfig.WorkDir = curWD
+			conf.WorkDir = curWD
 
-			for _, testTask := range taskConfig.Project.Tasks {
+			for _, testTask := range conf.Project.Tasks {
 				So(len(testTask.Commands), ShouldNotEqual, 0)
 				for _, command := range testTask.Commands {
-					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := Render(command, conf.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
-					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
+
+					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 
 					So(err, ShouldBeNil)
 				}

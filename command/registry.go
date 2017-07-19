@@ -16,24 +16,31 @@ var evgRegistry *commandRegistry
 func init() {
 	evgRegistry = newCommandRegistry()
 
-	RegisterCommand("git.apply_patch", gitApplyPatchFactory)
-	RegisterCommand("expansions.fetch_vars", fetchVarsFactory)
-	RegisterCommand("shell.cleanup", shellCleanupFactory)
-	RegisterCommand("shell.track", shellTrackFactory)
-	RegisterCommand("expansions.update", updateExpansionsFactory)
-	RegisterCommand("keyval.inc", keyValIncFactory)
-	RegisterCommand("s3.get", s3GetFactory)
-	RegisterCommand("s3.put", s3PutFactory)
-	RegisterCommand("s3copy.copy", s3CopyFactory)
-	RegisterCommand("gotest.parse_files", goTestFactory)
-	RegisterCommand("attach.results", attachResultsFactory)
-	RegisterCommand("attach.xunit_results", xunitResultsFactory)
-	RegisterCommand("json.send", taskDataSendFactory)
-	RegisterCommand("json.get", taskDataGetFactory)
-	RegisterCommand("json.history", taskDataHistoryFactory)
-	RegisterCommand("archive.targz_pack", tarballCreateFactory)
-	RegisterCommand("archive.targz_unpack", tarballExtractFactory)
-	RegisterCommand("git.get_project", gitFetchProjectFactory)
+	cmds := map[string]CommandFactory{
+		"archive.targz_pack":    tarballCreateFactory,
+		"archive.targz_unpack":  tarballExtractFactory,
+		"attach.results":        attachResultsFactory,
+		"attach.xunit_results":  xunitResultsFactory,
+		"expansions.fetch_vars": fetchVarsFactory,
+		"expansions.update":     updateExpansionsFactory,
+		"git.apply_patch":       gitApplyPatchFactory,
+		"git.get_project":       gitFetchProjectFactory,
+		"gotest.parse_files":    goTestFactory,
+		"json.get":              taskDataGetFactory,
+		"json.history":          taskDataHistoryFactory,
+		"json.send":             taskDataSendFactory,
+		"keyval.inc":            keyValIncFactory,
+		"manifest.load":         manifestLoadFactory,
+		"s3.get":                s3GetFactory,
+		"s3.put":                s3PutFactory,
+		"s3Copy.copy":           s3CopyFactory,
+		"shell.cleanup":         shellCleanupFactory,
+		"shell.track":           shellTrackFactory,
+	}
+
+	for name, factory := range cmds {
+		grip.EmergencyPanic(RegisterCommand(name, factory))
+	}
 }
 
 func RegisterCommand(name string, factory CommandFactory) error {
@@ -109,27 +116,26 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 	if name := cmd.Function; name != "" {
 		cmds, ok := funcs[name]
 		if !ok {
-			errs = append(errs, fmt.Spritnf("function '%s' not found in project functions", name))
-			continue
-		}
+			errs = append(errs, fmt.Sprintf("function '%s' not found in project functions", name))
+		} else {
+			for _, c := range cmds.List() {
+				if c.Function != "" {
+					errs = append(errs, fmt.Sprintf("can not reference a function within a "+
+						"function: '%s' referenced within '%s'", c.Function, name))
+					continue
+				}
 
-		for _, c := range cmds.List() {
-			if c.Function != "" {
-				errs = append(errs, fmt.Sprintf("can not reference a function within a "+
-					"function: '%s' referenced within '%s'", c.Function, name))
-				continue
+				// if no command specific type, use the function's command type
+				if c.Type == "" {
+					c.Type = cmd.Type
+				}
+
+				if c.DisplayName == "" {
+					c.DisplayName = fmt.Sprintf(`'%v' in "%v"`, c.Command, name)
+				}
+
+				parsed = append(parsed, c)
 			}
-
-			// if no command specific type, use the function's command type
-			if c.Type == "" {
-				c.Type = cmd.Type
-			}
-
-			if c.DisplayName == "" {
-				c.DisplayName = fmt.Sprintf(`'%v' in "%v"`, c.Command, funcName)
-			}
-
-			parsed = append(parsed, c)
 		}
 	} else {
 		parsed = append(parsed, cmd)

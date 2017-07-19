@@ -16,7 +16,7 @@ func TestCommandRegistry(t *testing.T) {
 
 	assert.Len(r.cmds, 0)
 
-	factory := CommandFactory(func() (Command, bool) { return nil, true })
+	factory := CommandFactory(func() Command { return nil })
 	assert.NotNil(factory)
 	assert.Error(r.registerCommand("", factory))
 	assert.Len(r.cmds, 0)

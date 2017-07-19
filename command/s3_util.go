@@ -4,10 +4,16 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+	"time"
 
-	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mitchellh/goamz/s3"
+	"github.com/goamz/goamz/s3"
+)
+
+const (
+	maxs3putAttempts = 5
+	s3PutSleep       = 5 * time.Second
+	s3baseURL        = "https://s3.amazonaws.com/"
 )
 
 var (
@@ -19,7 +25,7 @@ func validateS3BucketName(bucket string) error {
 	// if it's an expandable string, we can't expand yet since we don't have
 	// access to the task config expansions. So, we defer till during runtime
 	// to do the validation
-	if plugin.IsExpandable(bucket) {
+	if util.IsExpandable(bucket) {
 		return nil
 	}
 	if len(bucket) < 3 {

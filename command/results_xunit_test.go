@@ -1,19 +1,15 @@
 package command
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
-	"github.com/evergreen-ci/evergreen/agent/comm"
-	agentutil "github.com/evergreen-ci/evergreen/agent/testutil"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	modelutil "github.com/evergreen-ci/evergreen/model/testutil"
-	"github.com/evergreen-ci/evergreen/plugin"
-	"github.com/evergreen-ci/evergreen/plugin/plugintest"
-	"github.com/evergreen-ci/evergreen/service"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/mongodb/grip/slogger"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -21,8 +17,8 @@ const TotalResultCount = 677
 
 var (
 	workingDirectory = testutil.GetDirectoryOfFile()
-	SingleFileConfig = filepath.Join(workingDirectory, "testdata", "plugin_attach_xunit.yml")
-	WildcardConfig   = filepath.Join(workingDirectory, "testdata", "plugin_attach_xunit_wildcard.yml")
+	SingleFileConfig = filepath.Join(workingDirectory, "testdata", "attach", "plugin_attach_xunit.yml")
+	WildcardConfig   = filepath.Join(workingDirectory, "testdata", "attach", "plugin_attach_xunit_wildcard.yml")
 )
 
 // runTest abstracts away common tests and setup between all attach xunit tests.
@@ -30,37 +26,30 @@ var (
 func runTest(t *testing.T, configPath string, customTests func(string)) {
 	resetTasks(t)
 	testConfig := testutil.TestConfig()
-	Convey("With attachResults plugin installed into plugin registry", t, func() {
-		registry := plugin.NewSimpleRegistry()
-		attachPlugin := &AttachPlugin{}
-		err := registry.Register(attachPlugin)
-		testutil.HandleTestingErr(err, t, "Couldn't register plugin: %v")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	comm := client.NewMock("http://localhost.com")
 
-		server, err := service.CreateTestServer(testConfig, nil)
-		testutil.HandleTestingErr(err, t, "Couldn't set up testing server")
-		defer server.Close()
-
+	SkipConvey("With attachResults plugin installed into plugin registry", t, func() {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
 
-		httpCom := plugintest.TestAgentCommunicator(modelData, server.URL)
-
-		taskConfig := modelData.TaskConfig
-		taskConfig.WorkDir = "."
-		logger := agentutil.NewTestLogger(slogger.StdOutAppender())
+		conf := modelData.TaskConfig
+		conf.WorkDir = "."
+		logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		Convey("all commands in test project should execute successfully", func() {
-			for _, projTask := range taskConfig.Project.Tasks {
+			for _, projTask := range conf.Project.Tasks {
 				So(len(projTask.Commands), ShouldNotEqual, 0)
 				for _, command := range projTask.Commands {
-					pluginCmds, err := registry.GetCommands(command, taskConfig.Project.Functions)
+					pluginCmds, err := Render(command, conf.Project.Functions)
 					testutil.HandleTestingErr(err, t, "Couldn't get plugin command: %v")
 					So(pluginCmds, ShouldNotBeNil)
 					So(err, ShouldBeNil)
-					pluginCom := &comm.TaskJSONCommunicator{pluginCmds[0].Plugin(), httpCom}
-					err = pluginCmds[0].Execute(logger, pluginCom, taskConfig, make(chan bool))
+
+					err = pluginCmds[0].Execute(ctx, comm, logger, conf)
 					So(err, ShouldBeNil)
-					testTask, err := task.FindOne(task.ById(httpCom.TaskId))
+					testTask, err := task.FindOne(task.ById(conf.Task.Id))
 					testutil.HandleTestingErr(err, t, "Couldn't find task")
 					So(testTask, ShouldNotBeNil)
 				}

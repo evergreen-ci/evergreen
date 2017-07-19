@@ -1,4 +1,4 @@
-package attach
+package command
 
 import (
 	"os"

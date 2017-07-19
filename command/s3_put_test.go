@@ -13,11 +13,11 @@ func TestS3PutValidateParams(t *testing.T) {
 
 	Convey("With an s3 put command", t, func() {
 
-		var cmd *S3PutCommand
+		var cmd *s3put
 
 		Convey("when validating command params", func() {
 
-			cmd = &S3PutCommand{}
+			cmd = &s3put{}
 
 			Convey("a missing aws key should cause an error", func() {
 
@@ -31,7 +31,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
 			})
 			Convey("a defined local file and inclusion filter should cause an error", func() {
 
@@ -46,7 +45,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name":               "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
 			})
 			Convey("a defined inclusion filter with optional upload should cause an error", func() {
 
@@ -61,7 +59,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name":               "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
 			})
 
 			Convey("a missing aws secret should cause an error", func() {
@@ -76,8 +73,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("a missing local file should cause an error", func() {
@@ -92,8 +87,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("a missing remote file should cause an error", func() {
@@ -108,8 +101,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("a missing bucket should cause an error", func() {
@@ -124,8 +115,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("a missing s3 permission should cause an error", func() {
@@ -140,8 +129,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("an invalid s3 permission should cause an error", func() {
@@ -157,8 +144,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("a missing content type should cause an error", func() {
@@ -173,8 +158,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("an invalid visibility type should cause an error", func() {
@@ -191,8 +174,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"visibility":   "ARGHGHGHGHGH",
 				}
 				So(cmd.ParseParams(params), ShouldNotBeNil)
-				So(cmd.validateParams(), ShouldNotBeNil)
-
 			})
 
 			Convey("a valid set of params should not cause an error", func() {
@@ -208,7 +189,6 @@ func TestS3PutValidateParams(t *testing.T) {
 					"display_name": "test_file",
 				}
 				So(cmd.ParseParams(params), ShouldBeNil)
-				So(cmd.validateParams(), ShouldBeNil)
 				So(cmd.AwsKey, ShouldEqual, params["aws_key"])
 				So(cmd.AwsSecret, ShouldEqual, params["aws_secret"])
 				So(cmd.LocalFile, ShouldEqual, params["local_file"])
@@ -227,12 +207,12 @@ func TestExpandS3PutParams(t *testing.T) {
 
 	Convey("With an s3 put command and a task config", t, func() {
 
-		var cmd *S3PutCommand
+		var cmd *s3put
 		var conf *model.TaskConfig
 
 		Convey("when expanding the command's params", func() {
 
-			cmd = &S3PutCommand{}
+			cmd = &s3put{}
 			conf = &model.TaskConfig{
 				Expansions: util.NewExpansions(map[string]string{}),
 			}

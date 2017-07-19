@@ -19,7 +19,7 @@ type taskDataHistory struct {
 	TaskName string `mapstructure:"task" plugin:"expand"`
 }
 
-func taskDataHistoryFactory() Command     { return &taskDataHistoryFactory{} }
+func taskDataHistoryFactory() Command     { return &taskDataHistory{} }
 func (c *taskDataHistory) Name() string   { return "history" }
 func (c *taskDataHistory) Plugin() string { return "json" }
 

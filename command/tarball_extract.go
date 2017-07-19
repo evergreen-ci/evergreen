@@ -74,7 +74,7 @@ func (c *tarballExtract) Execute(ctx context.Context,
 func (c *tarballExtract) unpackArchive(ctx context.Context) error {
 
 	// get a reader for the source file
-	f, _, tarReader, err := TarGzReader(c.Source)
+	f, _, tarReader, err := util.TarGzReader(c.Source)
 	if err != nil {
 		return errors.Wrapf(err, "error opening tar file %v for reading", c.Source)
 	}

@@ -12,11 +12,11 @@ func TestS3GetValidateParams(t *testing.T) {
 
 	Convey("With an s3 get command", t, func() {
 
-		var cmd *S3GetCommand
+		var cmd *s3get
 
 		Convey("when validating params", func() {
 
-			cmd = &S3GetCommand{}
+			cmd = &s3get{}
 
 			Convey("a missing aws key should cause an error", func() {
 
@@ -122,12 +122,12 @@ func TestExpandS3GetParams(t *testing.T) {
 
 	Convey("With an s3 get command and a task config", t, func() {
 
-		var cmd *S3GetCommand
+		var cmd *s3get
 		var conf *model.TaskConfig
 
 		Convey("when expanding the command's params", func() {
 
-			cmd = &S3GetCommand{}
+			cmd = &s3get{}
 			conf = &model.TaskConfig{
 				Expansions: util.NewExpansions(map[string]string{}),
 			}
