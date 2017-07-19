@@ -26,7 +26,6 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/evergreen-ci/render"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -161,7 +160,8 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 			}
 		}
 
-		context.Set(r, apiTaskKey, t)
+		setAPITaskContext(r, t)
+
 		next(w, r)
 	}
 }
@@ -197,8 +197,9 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		context.Set(r, apiProjectRefKey, projectRef)
-		context.Set(r, apiProjectKey, p)
+		setProjectReftContext(r, projectRef)
+		setProjectContext(r, p)
+
 		next(w, r)
 	}
 }
@@ -237,21 +238,19 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// if the task is attached to the context, check host-task relationship
-		if ctxTask := context.Get(r, apiTaskKey); ctxTask != nil {
-			if t, ok := ctxTask.(*task.Task); ok {
-				if h.RunningTask != t.Id {
-					as.LoggedError(w, r, http.StatusConflict,
-						errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
-					return
-				}
-			}
+		t := GetTask(r)
+		if t != nil && h.RunningTask != t.Id {
+			as.LoggedError(w, r, http.StatusConflict,
+				errors.Errorf("Host %v should be running %v, not %v", h.Id, h.RunningTask, t.Id))
+			return
 		}
+
 		// update host access time
 		if err := h.UpdateLastCommunicated(); err != nil {
 			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 		}
 
-		context.Set(r, apiHostKey, h) // TODO is this worth doing?
+		setAPIHostContext(r, h) // TODO is this worth doing?
 		next(w, r)
 	}
 }
@@ -479,38 +478,6 @@ func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request)
 	}
 
 	as.WriteJSON(w, http.StatusOK, &out)
-}
-
-// GetTask loads the task attached to a request.
-func GetTask(r *http.Request) *task.Task {
-	if rv := context.Get(r, apiTaskKey); rv != nil {
-		return rv.(*task.Task)
-	}
-	return nil
-}
-
-// GetHost loads the host attached to a request
-func GetHost(r *http.Request) *host.Host {
-	if rv := context.Get(r, apiHostKey); rv != nil {
-		return rv.(*host.Host)
-	}
-	return nil
-}
-
-// GetProject loads the project attached to a request into request
-// context.
-func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
-	pref := context.Get(r, apiProjectRefKey)
-	if pref == nil {
-		return nil, nil
-	}
-
-	p := context.Get(r, apiProjectKey)
-	if p == nil {
-		return nil, nil
-	}
-
-	return pref.(*model.ProjectRef), p.(*model.Project)
 }
 
 func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {

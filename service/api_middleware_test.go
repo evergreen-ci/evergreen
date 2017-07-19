@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/testutil"
-	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/smartystreets/goconvey/convey/reporting"
@@ -47,7 +46,8 @@ func TestCheckHostWrapper(t *testing.T) {
 		root := mux.NewRouter()
 		root.HandleFunc("/{taskId}/", as.checkTask(true, as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx = context.GetAll(r)
+				ctx[apiTaskKey] = GetTask(r)
+				ctx[apiHostKey] = GetHost(r)
 				as.WriteJSON(w, http.StatusOK, nil)
 			}),
 		)))
@@ -162,7 +162,8 @@ func TestCheckHostWrapper(t *testing.T) {
 		root := mux.NewRouter()
 		root.HandleFunc("/{taskId}/{hostId}", as.checkTask(true, as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx = context.GetAll(r)
+				ctx[apiTaskKey] = GetTask(r)
+				ctx[apiHostKey] = GetHost(r)
 				as.WriteJSON(w, http.StatusOK, nil)
 			}),
 		)))
