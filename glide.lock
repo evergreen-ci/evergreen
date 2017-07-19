@@ -30,7 +30,7 @@ imports:
   - name: github.com/gorilla/context
     version: 50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
   - name: github.com/gorilla/mux
-    version: 0ef595e787efa95d68151570ead5c85dc2e05f91
+    version: ac112f7d75a0714af1bd86ab17749b31f7809640
   - name: github.com/gorilla/securecookie
     version: 1b0c7f6e9ab3d7f500fd7d50c7ad835ff428139b
   - name: github.com/gorilla/sessions
