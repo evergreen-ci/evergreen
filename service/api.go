@@ -160,7 +160,7 @@ func (as *APIServer) checkTask(checkSecret bool, next http.HandlerFunc) http.Han
 			}
 		}
 
-		setAPITaskContext(r, t)
+		r = setAPITaskContext(r, t)
 
 		next(w, r)
 	}
@@ -197,8 +197,8 @@ func (as *APIServer) checkProject(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		setProjectReftContext(r, projectRef)
-		setProjectContext(r, p)
+		r = setProjectReftContext(r, projectRef)
+		r = setProjectContext(r, p)
 
 		next(w, r)
 	}
@@ -250,7 +250,7 @@ func (as *APIServer) checkHost(next http.HandlerFunc) http.HandlerFunc {
 			grip.Warningf("Could not update host last communication time for %s: %+v", h.Id, err)
 		}
 
-		setAPIHostContext(r, h) // TODO is this worth doing?
+		r = setAPIHostContext(r, h)
 		next(w, r)
 	}
 }

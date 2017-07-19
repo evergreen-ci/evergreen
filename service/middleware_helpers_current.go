@@ -14,26 +14,26 @@ import (
 	"golang.org/x/net/context"
 )
 
-func setAPIHostContext(r *http.Request, h *host.Host) {
-	r.WithContext(context.WithValue(r.Context(), apiHostKey, h))
+func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), apiHostKey, h))
 }
-func setAPITaskContext(r *http.Request, t *task.Task) {
-	r.WithContext(context.WithValue(r.Context(), apiTaskKey, t))
+func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), apiTaskKey, t))
 }
-func setProjectReftContext(r *http.Request, p *model.ProjectRef) {
-	r.WithContext(context.WithValue(r.Context(), apiProjectRefKey, p))
+func setProjectReftContext(r *http.Request, p *model.ProjectRef) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), apiProjectRefKey, p))
 }
-func setProjectContext(r *http.Request, p *model.Project) {
-	r.WithContext(context.WithValue(r.Context(), apiProjectKey, p))
+func setProjectContext(r *http.Request, p *model.Project) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), apiProjectKey, p))
 }
-func setUIRequestContext(r *http.Request, p projectContext) {
-	r.WithContext(context.WithValue(r.Context(), RequestProjectContext, p))
+func setUIRequestContext(r *http.Request, p projectContext) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), RequestProjectContext, p))
 }
-func setRestContext(r *http.Request, c *model.Context) {
-	r.WithContext(context.WithValue(r.Context(), RestContext, c))
+func setRestContext(r *http.Request, c *model.Context) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), RestContext, c))
 }
-func setRequestUser(r *http.Request, u auth.User) {
-	r.WithContext(context.WithValue(r.Context(), RequestUser, u))
+func setRequestUser(r *http.Request, u auth.User) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), RequestUser, u))
 }
 
 // GetTask loads the task attached to a request.

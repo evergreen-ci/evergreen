@@ -390,7 +390,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				if err != nil {
 					grip.Infof("Error looking up user %s: %+v", dbUser.Username(), err)
 				} else {
-					setRequestUser(r, dbUser)
+					r = setRequestUser(r, dbUser)
 				}
 			}
 		} else if len(authDataAPIKey) > 0 {
@@ -400,7 +400,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 					http.Error(rw, "Unauthorized - invalid API key", http.StatusUnauthorized)
 					return
 				}
-				setRequestUser(r, dbUser)
+				r = setRequestUser(r, dbUser)
 			} else {
 				grip.Errorln("Error getting user:", err)
 			}

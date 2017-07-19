@@ -37,17 +37,21 @@ func TestCheckHostWrapper(t *testing.T) {
 		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		var ctx map[interface{}]interface{}
 
 		as, err := NewAPIServer(testutil.TestConfig())
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
+		var (
+			retreivedTask *task.Task
+			retreivedHost *host.Host
+		)
+
 		root := mux.NewRouter()
 		root.HandleFunc("/{taskId}/", as.checkTask(true, as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx[apiTaskKey] = GetTask(r)
-				ctx[apiHostKey] = GetHost(r)
+				retreivedTask = GetTask(r)
+				retreivedHost = GetHost(r)
 				as.WriteJSON(w, http.StatusOK, nil)
 			}),
 		)))
@@ -67,8 +71,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusConflict)
 
 				Convey("and attach nothing to the context", func() {
-					So(ctx[apiTaskKey], ShouldBeNil)
-					So(ctx[apiHostKey], ShouldBeNil)
+					So(retreivedTask, ShouldBeNil)
+					So(retreivedHost, ShouldBeNil)
 				})
 			})
 			Convey("a request with proper task fields but no host fields should not pass", func() {
@@ -77,8 +81,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusBadRequest)
 
 				Convey("and attach nothing to the context", func() {
-					So(ctx[apiTaskKey], ShouldBeNil)
-					So(ctx[apiHostKey], ShouldBeNil)
+					So(retreivedTask, ShouldBeNil)
+					So(retreivedHost, ShouldBeNil)
 				})
 			})
 			Convey("a request with proper task fields and host fields should pass", func() {
@@ -89,13 +93,11 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusOK)
 
 				Convey("and attach the and host to the context", func() {
-					So(ctx[apiTaskKey], ShouldNotBeNil)
-					So(ctx[apiHostKey], ShouldNotBeNil)
-					asHost, ok := ctx[apiHostKey].(*host.Host)
-					So(ok, ShouldBeTrue)
-					So(asHost.Id, ShouldEqual, h1.Id)
+					So(retreivedTask, ShouldNotBeNil)
+					So(retreivedHost, ShouldNotBeNil)
+					So(retreivedHost.Id, ShouldEqual, h1.Id)
 					Convey("with an updated LastCommunicationTime", func() {
-						So(asHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
+						So(retreivedHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
 					})
 				})
 			})
@@ -109,8 +111,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(string(msg), ShouldContainSubstring, "secret")
 
 				Convey("and attach nothing to the context", func() {
-					So(ctx[apiTaskKey], ShouldBeNil)
-					So(ctx[apiHostKey], ShouldBeNil)
+					So(retreivedTask, ShouldBeNil)
+					So(retreivedHost, ShouldBeNil)
 				})
 			})
 		})
@@ -144,8 +146,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(string(msg), ShouldContainSubstring, "should be running")
 
 				Convey("and attach the and host to the context", func() {
-					So(ctx[apiTaskKey], ShouldBeNil)
-					So(ctx[apiHostKey], ShouldBeNil)
+					So(retreivedTask, ShouldBeNil)
+					So(retreivedHost, ShouldBeNil)
 				})
 			})
 		})
@@ -154,16 +156,23 @@ func TestCheckHostWrapper(t *testing.T) {
 		if err := db.ClearCollections(host.Collection, task.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
-		var ctx map[interface{}]interface{}
+
 		as, err := NewAPIServer(testutil.TestConfig())
 		if err != nil {
 			t.Fatalf("creating test API server: %v", err)
 		}
+
+		var (
+			retreivedTask *task.Task
+			retreivedHost *host.Host
+		)
+
 		root := mux.NewRouter()
 		root.HandleFunc("/{taskId}/{hostId}", as.checkTask(true, as.checkHost(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ctx[apiTaskKey] = GetTask(r)
-				ctx[apiHostKey] = GetHost(r)
+				retreivedTask = GetTask(r)
+				retreivedHost = GetHost(r)
+
 				as.WriteJSON(w, http.StatusOK, nil)
 			}),
 		)))
@@ -186,13 +195,11 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(w.Code, ShouldEqual, http.StatusOK)
 
 				Convey("and attach the and host to the context", func() {
-					So(ctx[apiTaskKey], ShouldNotBeNil)
-					So(ctx[apiHostKey], ShouldNotBeNil)
-					asHost, ok := ctx[apiHostKey].(*host.Host)
-					So(ok, ShouldBeTrue)
-					So(asHost.Id, ShouldEqual, h1.Id)
+					So(retreivedTask, ShouldNotBeNil)
+					So(retreivedHost, ShouldNotBeNil)
+					So(retreivedHost.Id, ShouldEqual, h1.Id)
 					Convey("with an updated LastCommunicationTime", func() {
-						So(asHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
+						So(retreivedHost.LastCommunicationTime, ShouldHappenWithin, time.Second, time.Now())
 					})
 				})
 			})
@@ -205,8 +212,8 @@ func TestCheckHostWrapper(t *testing.T) {
 				So(string(msg), ShouldContainSubstring, "secret")
 
 				Convey("and attach nothing to the context", func() {
-					So(ctx[apiTaskKey], ShouldBeNil)
-					So(ctx[apiHostKey], ShouldBeNil)
+					So(retreivedTask, ShouldBeNil)
+					So(retreivedHost, ShouldBeNil)
 				})
 			})
 		})

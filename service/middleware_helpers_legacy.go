@@ -14,26 +14,33 @@ import (
 	"github.com/gorilla/context"
 )
 
-func setAPIHostContext(r *http.Request, h *host.Host) {
+func setAPIHostContext(r *http.Request, h *host.Host) *http.Request {
 	context.Set(r, apiHostKey, h)
+	return r
 }
-func setAPITaskContext(r *http.Request, t *task.Task) {
+func setAPITaskContext(r *http.Request, t *task.Task) *http.Request {
 	context.Set(r, apiTaskKey, t)
+	return r
 }
-func setProjectReftContext(r *http.Request, p *model.ProjectRef) {
+func setProjectReftContext(r *http.Request, p *model.ProjectRef) *http.Request {
 	context.Set(r, apiProjectRefKey, p)
+	return r
 }
-func setProjectContext(r *http.Request, p *model.Project) {
+func setProjectContext(r *http.Request, p *model.Project) *http.Request {
 	context.Set(r, apiProjectKey, p)
+	return r
 }
-func setUIRequestContext(r *http.Request, p projectContext) {
+func setUIRequestContext(r *http.Request, p projectContext) *http.Request {
 	context.Set(r, RequestProjectContext, projCtx)
+	return r
 }
-func setRestContext(r *http.Request, c *model.Context) {
+func setRestContext(r *http.Request, c *model.Context) *http.Request {
 	context.Set(r, RestContext, c)
+	return r
 }
-func setRequestUser(r *http.Request, u auth.User) {
+func setRequestUser(r *http.Request, u auth.User) *http.Request {
 	context.Set(r, RequestUser, u)
+	return r
 }
 
 // GetTask loads the task attached to a request.

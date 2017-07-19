@@ -52,7 +52,7 @@ func (ra *restAPI) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		setRestContext(r, &ctx)
+		r = setRestContext(r, &ctx)
 		next(w, r)
 	}
 }
