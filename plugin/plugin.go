@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/task"
+	"github.com/gorilla/context"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
@@ -243,6 +244,21 @@ func WriteJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 type pluginTaskContext int
 
 const pluginTaskContextKey pluginTaskContext = 0
+
+// SetTask puts the task for an API request into the context of a request.
+// This task can be retrieved in a handler function by using "GetTask()"
+func SetTask(request *http.Request, task *task.Task) {
+	context.Set(request, pluginTaskContextKey, task)
+}
+
+// GetTask returns the task object for a plugin API request at runtime,
+// it is a valuable helper function for API PluginRoute handlers.
+func GetTask(request *http.Request) *task.Task {
+	if rv := context.Get(request, pluginTaskContextKey); rv != nil {
+		return rv.(*task.Task)
+	}
+	return nil
+}
 
 // SimpleRegistry is a simple, local, map-based implementation
 // of a plugin registry.

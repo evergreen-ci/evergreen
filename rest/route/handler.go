@@ -63,7 +63,7 @@ type RequestHandler interface {
 func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var err error
-		ctx := getBaseContext(r)
+		ctx := context.Background()
 
 		for _, pf := range methodHandler.PrefetchFunctions {
 			if ctx, err = pf(ctx, sc, r); err != nil {

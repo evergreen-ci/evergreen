@@ -30,7 +30,7 @@
 	From mux Context
 
 	Data gathered before the main request by the PrefetchFunc's are attached to the
-	mux Context for that request and can be fetched from request's context
+	mux Context for that request and can be fetched using the context.Get function
 	and providing it with the correct key for the desired data.
 
 	From the Route Variables

@@ -14,6 +14,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -60,6 +61,24 @@ const (
 	RequestTask           reqTaskKey           = 0
 	RequestProjectContext reqProjectContextKey = 0
 )
+
+// GetUser returns a user if one is attached to the request. Returns nil if the user is not logged
+// in, assuming that the middleware to lookup user information is enabled on the request handler.
+func GetUser(r *http.Request) *user.DBUser {
+	if rv := context.Get(r, RequestUser); rv != nil {
+		return rv.(*user.DBUser)
+	}
+	return nil
+}
+
+// GetProjectContext fetches the projectContext associated with the request. Returns an error
+// if no projectContext has been loaded and attached to the request.
+func GetProjectContext(r *http.Request) (projectContext, error) {
+	if rv := context.Get(r, RequestProjectContext); rv != nil {
+		return rv.(projectContext), nil
+	}
+	return projectContext{}, errors.New("No context loaded")
+}
 
 // MustHaveProjectContext gets the projectContext from the request,
 // or panics if it does not exist.
@@ -234,6 +253,7 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		context.Set(r, RequestProjectContext, projCtx)
 		next(w, r)
 	}
 }
@@ -390,7 +410,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 				if err != nil {
 					grip.Infof("Error looking up user %s: %+v", dbUser.Username(), err)
 				} else {
-					setRequestUser(r, dbUser)
+					context.Set(r, RequestUser, dbUser)
 				}
 			}
 		} else if len(authDataAPIKey) > 0 {
@@ -400,7 +420,7 @@ func UserMiddleware(um auth.UserManager) func(rw http.ResponseWriter, r *http.Re
 					http.Error(rw, "Unauthorized - invalid API key", http.StatusUnauthorized)
 					return
 				}
-				setRequestUser(r, dbUser)
+				context.Set(r, RequestUser, dbUser)
 			} else {
 				grip.Errorln("Error getting user:", err)
 			}

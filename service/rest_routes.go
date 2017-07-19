@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 )
@@ -52,9 +53,17 @@ func (ra *restAPI) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		setRestContext(r, &ctx)
+		context.Set(r, RestContext, &ctx)
 		next(w, r)
 	}
+}
+
+// GetRESTContext fetches the context associated with the request.
+func GetRESTContext(r *http.Request) (*model.Context, error) {
+	if rv := context.Get(r, RestContext); rv != nil {
+		return rv.(*model.Context), nil
+	}
+	return nil, errors.New("No context loaded")
 }
 
 // MustHaveRESTContext fetches the model.Context stored with the request, and panics if the key
