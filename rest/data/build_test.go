@@ -46,7 +46,7 @@ func TestMockBuildConnectorSuite(t *testing.T) {
 		CachedAborted:  make(map[string]string),
 	}}
 	s.mock = true
-	s.ctx.(*MockConnector).CachedProjects["branch"] = &model.ProjectRef{Repo: "project", Identifier: "branch"}
+	s.ctx.(*MockConnector).MockBuildConnector.CachedProjects["branch"] = &model.ProjectRef{Repo: "project", Identifier: "branch"}
 	suite.Run(t, s)
 }
 

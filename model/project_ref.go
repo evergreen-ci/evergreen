@@ -56,6 +56,14 @@ type AlertConfig struct {
 	Settings bson.M `bson:"settings" json:"settings"`
 }
 
+func (a AlertConfig) GetSettingsMap() map[string]string {
+	ret := make(map[string]string)
+	for k, v := range a.Settings {
+		ret[k] = fmt.Sprintf("%v", v)
+	}
+	return ret
+}
+
 type EmailAlertData struct {
 	Recipients []string `bson:"recipients"`
 }
@@ -134,6 +142,35 @@ func FindAllProjectRefs() ([]ProjectRef, error) {
 		db.NoSort,
 		db.NoSkip,
 		db.NoLimit,
+		&projectRefs,
+	)
+	return projectRefs, err
+}
+
+// FindProjectRefs returns limit refs starting at project identifier key
+// in the sortDir direction
+func FindProjectRefs(key string, limit int, sortDir int, isAuthenticated bool) ([]ProjectRef, error) {
+	projectRefs := []ProjectRef{}
+	filter := bson.M{}
+	if !isAuthenticated {
+		filter[ProjectRefPrivateKey] = false
+	}
+	sortSpec := ProjectIdentifierKey
+
+	if sortDir < 0 {
+		sortSpec = "-" + sortSpec
+		filter[ProjectIdentifierKey] = bson.M{"$lt": key}
+	} else {
+		filter[ProjectIdentifierKey] = bson.M{"$gte": key}
+	}
+
+	err := db.FindAll(
+		ProjectRefCollection,
+		filter,
+		db.NoProjection,
+		[]string{sortSpec},
+		db.NoSkip,
+		limit,
 		&projectRefs,
 	)
 	return projectRefs, err

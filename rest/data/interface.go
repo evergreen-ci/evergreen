@@ -51,6 +51,10 @@ type Connector interface {
 	// AbortBuild is a method to abort the build matching the same BuildId.
 	AbortBuild(string, string) error
 
+	// FindProjects is a method to find projects as ordered by name
+	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
+	// FindProjectVars is a method to fetch the vars for a given project
+	FindProjectVars(string) (*model.ProjectVars, error)
 	// FindProjectByBranch is a method to find the projectref given a branch name.
 	FindProjectByBranch(string) (*model.ProjectRef, error)
 
@@ -59,7 +63,7 @@ type Connector interface {
 	// for paginating through the results.
 	FindTasksByProjectAndCommit(string, string, string, string, int, int) ([]task.Task, error)
 
-	// FindTestsByTaskId is a methodd to find a set of tests that correspond to
+	// FindTestsByTaskId is a method to find a set of tests that correspond to
 	// a given task. It takes a taskId, testName to start from, test status to filter,
 	// limit, and sort to provide additional control over the results.
 	FindTestsByTaskId(string, string, string, int, int) ([]task.TestResult, error)

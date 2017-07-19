@@ -19,6 +19,7 @@ type DBConnector struct {
 	DBBuildConnector
 	DBVersionConnector
 	DBPatchConnector
+	DBProjectConnector
 }
 
 func (ctx *DBConnector) GetSuperUsers() []string   { return ctx.superUsers }
@@ -43,6 +44,7 @@ type MockConnector struct {
 	MockBuildConnector
 	MockVersionConnector
 	MockPatchConnector
+	MockProjectConnector
 }
 
 func (ctx *MockConnector) GetSuperUsers() []string   { return ctx.superUsers }
