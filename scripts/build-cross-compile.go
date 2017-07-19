@@ -67,6 +67,8 @@ func main() {
 
 	if ldFlags != "" {
 		cmd.Args = append(cmd.Args, "-ldflags=\""+ldFlags+"\"")
+		cmd.Args = append(cmd.Args, "-ldflags='-w'")
+		cmd.Args = append(cmd.Args, "-ldflags='-s'")
 	}
 	cmd.Args = append(cmd.Args, source)
 	cmd.Stdout = os.Stdout

@@ -26,7 +26,7 @@ func NewTaskRunner(settings *evergreen.Settings) *TaskRunner {
 	return &TaskRunner{
 		settings,
 		&AgentHostGateway{
-			ExecutablesDir: filepath.Join(evgHome, settings.AgentExecutablesDir),
+			ExecutablesDir: filepath.Join(evgHome, settings.ClientBinariesDir),
 		},
 	}
 }

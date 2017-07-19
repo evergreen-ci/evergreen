@@ -59,6 +59,12 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 		return errors.Wrapf(err, "Error getting ssh options for host %s", hostObj.Id)
 	}
 
+	d, err := distro.FindOne(distro.ById(hostObj.Distro.Id))
+	if err != nil {
+		return errors.Wrapf(err, "error finding distro %s", hostObj.Distro.Id)
+	}
+	hostObj.Distro = *d
+
 	// prep the remote host
 	grip.Infof("Prepping remote host %v...", hostObj.Id)
 	agentRevision, err := agbh.prepRemoteHost(hostObj, sshOptions)
@@ -92,7 +98,6 @@ func (agbh *AgentHostGateway) StartAgentOnHost(settings *evergreen.Settings, hos
 
 // Gets the git revision of the currently built agent
 func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
-
 	versionFile := filepath.Join(agbh.ExecutablesDir, "version")
 	hashBytes, err := ioutil.ReadFile(versionFile)
 	if err != nil {
@@ -103,20 +108,20 @@ func (agbh *AgentHostGateway) GetAgentRevision() (string, error) {
 }
 
 // executableSubPath returns the directory containing the compiled agents.
-func executableSubPath(id string) (string, error) {
-
-	// get the full distro info, so we can figure out the architecture
-	d, err := distro.FindOne(distro.ById(id))
-	if err != nil {
-		return "", errors.Wrapf(err, "error finding distro %v", id)
+func executableSubPath(d *distro.Distro) string {
+	mainName := "evergreen"
+	if isWindows(d) {
+		mainName += ".exe"
 	}
 
-	mainName := "main"
+	return filepath.Join(d.Arch, mainName)
+}
+
+func isWindows(d *distro.Distro) bool {
 	if strings.HasPrefix(d.Arch, "windows") {
-		mainName = "main.exe"
+		return true
 	}
-
-	return filepath.Join(d.Arch, mainName), nil
+	return false
 }
 
 func newCappedOutputLog() *util.CappedWriter {
@@ -169,15 +174,10 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	}
 
 	// third, copy over the correct agent binary to the remote machine
-	execSubPath, err := executableSubPath(hostObj.Distro.Id)
-	if err != nil {
-		return "", errors.Wrap(err, "error computing subpath to executable")
-	}
-
 	scpAgentOutput := newCappedOutputLog()
 	scpAgentCmd := &subprocess.ScpCommand{
 		Id:             fmt.Sprintf("scp%v", rand.Int()),
-		Source:         filepath.Join(agbh.ExecutablesDir, execSubPath),
+		Source:         filepath.Join(agbh.ExecutablesDir, executableSubPath(&hostObj.Distro)),
 		Dest:           hostObj.Distro.WorkDir,
 		Stdout:         scpAgentOutput,
 		Stderr:         scpAgentOutput,
@@ -215,15 +215,22 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 // Start the agent process on the specified remote host, and have it run the specified task.
 func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
-	apiURL := settings.ApiUrl
 	// the path to the agent binary on the remote machine
-	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "main")
+	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "evergreen")
+	if isWindows(&hostObj.Distro) {
+		pathToExecutable += ".exe"
+	}
+
+	agentCmdParts := []string{
+		pathToExecutable,
+		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
+		fmt.Sprintf("--host_id='%s'", hostObj.Id),
+		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
+		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
+	}
 
 	// build the command to run on the remote machine
-	remoteCmd := fmt.Sprintf(
-		`%v -api_server "%v" -host_id "%v" -host_secret "%v" -log_prefix "%v" -https_cert "%v"`,
-		pathToExecutable, apiURL, hostObj.Id, hostObj.Secret,
-		filepath.Join(hostObj.Distro.WorkDir, agentFile), "")
+	remoteCmd := strings.Join(agentCmdParts, " ")
 	grip.Info(remoteCmd)
 
 	// compute any info necessary to ssh into the host

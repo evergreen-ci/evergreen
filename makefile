@@ -20,28 +20,22 @@ windowsPlatforms := windows_amd64 windows_386
 goos := $(shell go env GOOS)
 goarch := $(shell go env GOARCH)
 
-agentBuildDir := executables
 clientBuildDir := clients
 
-agentBinaries := $(foreach platform,$(unixPlatforms),$(agentBuildDir)/$(platform)/main)
-agentBinaries += $(foreach platform,$(windowsPlatforms),$(agentBuildDir)/$(platform)/main.exe)
 clientBinaries := $(foreach platform,$(unixPlatforms) freebsd_amd64,$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
 raceBinaries := $(foreach bin,$(binaries),$(bin).race)
 
-agentSource := agent/main/agent.go
 clientSource := cli/main/cli.go
 
 distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates ./notify/templates
-distContents := $(agentBuildDir) $(clientBuildDir) $(distArtifacts)
+distContents := $(clientBuildDir) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" )
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*")
-
-projectCleanFiles := $(agentBuildDir) $(clientBuildDir)
 # static rules for rule for building artifacts
 define crossCompile
 	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags="-X=github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`" -goBinary="`which go`" -output=$@
@@ -86,7 +80,7 @@ lintArgs += --exclude="suspect or:.*\(vet\)$$"
 ######################################################################
 
 
-# start rules for binding agents
+# start rules for services and clients
 #   build the server binaries:
 plugins:$(buildDir)/.plugins
 $(buildDir)/.plugins:Plugins install_plugins.sh
@@ -112,25 +106,20 @@ phony += $(binaries) $(raceBinaries)
 # end rules for building server binaries
 
 
-# start rules for building agents and clis
+# start rules for building services and clients
 ifeq ($(OS),Windows_NT)
-agent:$(agentBuildDir)/$(goos)_$(goarch)/main.exe
 cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
 else
-agent:$(agentBuildDir)/$(goos)_$(goarch)/main
 cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
-agents:$(agentBinaries)
 clis:$(clientBinaries)
-$(agentBuildDir)/%/main $(agentBuildDir)/%/main.exe:$(buildDir)/build-cross-compile $(agentBuildDir)/version $(srcFiles)
-	$(crossCompile) -directory=$(agentBuildDir) -source=$(agentSource)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	$(crossCompile) -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
-$(agentBuildDir)/version:
+$(clientBuildDir)/version:
 	@mkdir -p $(dir $@)
 	git rev-parse HEAD >| $@
-phony += agents agent $(agentBuildDir)/version cli clis
-# end agent build directives
+phony += $(clientBuildDir)/version cli clis
+# end client build directives
 
 
 ######################################################################
@@ -184,9 +173,9 @@ dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-race: $(buildDir)/dist-race.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins agents clis $(binaries)
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries)
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
-$(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(agentBinaries) $(clientBinaries)
+$(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(clientBinaries)
 	./$< -name $@ --prefix $(name)-race $(foreach item,$(raceBinaries) $(distContents),--item $(item))
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(distTestContents) # $(binaries) #(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
@@ -196,7 +185,7 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 
 # userfacing targets for basic build and development operations
-build:$(binaries) cli agent
+build:$(binaries) cli
 build-race:$(raceBinaries)
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
@@ -329,7 +318,7 @@ $(buildDir)/output.%.coverage.html:$(buildDir)/output.%.coverage
 
 # clean and other utility targets
 clean:
-	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/coverage.* $(buildDir)/race.* $(projectCleanFiles)
+	rm -rf $(lintDeps) $(buildDir)/test.* $(buildDir)/coverage.* $(buildDir)/race.* $(clientBuildDir)
 phony += clean
 # end dependency targets
 

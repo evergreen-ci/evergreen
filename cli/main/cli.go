@@ -1,22 +1,20 @@
 package main
 
 import (
-	"os"
-
 	"github.com/evergreen-ci/evergreen/cli"
-	"github.com/jessevdk/go-flags"
+	flags "github.com/jessevdk/go-flags"
+	"github.com/mongodb/grip"
 )
 
 func main() {
 	opts := cli.Options{}
-	var parser = flags.NewParser(&opts, flags.Default)
+	parser := flags.NewParser(&opts, flags.Default)
+
 	parser.AddCommand("get-update", "fetch the latest version of this binary", "", &cli.GetUpdateCommand{GlobalOpts: &opts})
 	parser.AddCommand("version", "display version information", "", &cli.VersionCommand{})
 	parser.AddCommand("set-module", "update or add module to an existing patch", "", &cli.SetModuleCommand{GlobalOpts: &opts})
-	parser.AddCommand("patch", "submit a patch", "",
-		&cli.PatchCommand{PatchCommandParams: cli.PatchCommandParams{GlobalOpts: &opts}})
-	parser.AddCommand("patch-file", "submit a patch using a diff file", "",
-		&cli.PatchFileCommand{PatchCommandParams: cli.PatchCommandParams{GlobalOpts: &opts}})
+	parser.AddCommand("patch", "submit a patch", "", &cli.PatchCommand{PatchCommandParams: cli.PatchCommandParams{GlobalOpts: &opts}})
+	parser.AddCommand("patch-file", "submit a patch using a diff file", "", &cli.PatchFileCommand{PatchCommandParams: cli.PatchCommandParams{GlobalOpts: &opts}})
 	parser.AddCommand("list-patches", "show existing patches", "", &cli.ListPatchesCommand{GlobalOpts: &opts})
 	parser.AddCommand("rm-module", "remove a module from an existing patch", "", &cli.RemoveModuleCommand{GlobalOpts: &opts})
 	parser.AddCommand("cancel-patch", "cancel an existing patch", "", &cli.CancelPatchCommand{GlobalOpts: &opts})
@@ -28,9 +26,8 @@ func main() {
 	parser.AddCommand("fetch", "fetch data associated with a task", "", &cli.FetchCommand{GlobalOpts: &opts})
 	parser.AddCommand("export", "export statistics as csv or json for given options", "", &cli.ExportCommand{GlobalOpts: &opts})
 	parser.AddCommand("test-history", "retrieve test history for a given project", "", &cli.TestHistoryCommand{GlobalOpts: &opts})
+	parser.AddCommand("agent", "runs an evergreen agent", "", &cli.AgentCommand{})
 
 	_, err := parser.Parse()
-	if err != nil {
-		os.Exit(1)
-	}
+	grip.CatchEmergencyFatal(err)
 }
