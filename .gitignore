@@ -52,6 +52,7 @@ npm-debug.log
 clients
 testdata/target.tgz
 !command/testdata/archive/artifacts.tar.gz
+!util/testdata/artifacts.tar.gz
 command/testdata/archive/output/
 command/testdata/archive/target.tgz
 command/testdata/target.tgz
