@@ -19,6 +19,7 @@ func (agt *Agent) startStatusServer(port int) {
 	go func() {
 		r := mux.NewRouter().StrictSlash(false)
 		r.HandleFunc("/status", agt.statusHandler()).Methods("GET")
+		r.HandleFunc("/terminate", terminateAgentHandler).Methods("DELETE")
 
 		n := negroni.New()
 		n.Use(negroni.NewRecovery())
@@ -65,6 +66,30 @@ func (agt *Agent) statusHandler() http.HandlerFunc {
 		_, err = w.Write(out)
 		grip.CatchError(err)
 	}
+}
+
+func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		grip.GetSender().Close()
+	}()
+
+	msg := map[string]interface{}{
+		"message": "terminating agent triggered ",
+		"host":    r.Host,
+	}
+	grip.Info(msg)
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	out, err := json.MarshalIndent(msg, " ", " ")
+	if err != nil {
+		grip.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	_, err = w.Write(out)
+	grip.CatchError(err)
+
+	panic("agent terminated by request.")
 }
 
 // buildResponse produces the response document for the current
