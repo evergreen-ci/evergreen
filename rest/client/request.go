@@ -43,60 +43,6 @@ const (
 	patch         = "PATCH"
 )
 
-func (c *communicatorImpl) get(ctx context.Context, path string, taskData TaskData, version apiVersion) (*http.Response, error) {
-	info := requestInfo{
-		method:   get,
-		path:     path,
-		version:  version,
-		taskData: taskData,
-	}
-	response, err := c.request(ctx, info, nil)
-	return response, errors.Wrap(err, "Error performing HTTP GET request")
-}
-
-// this function is commented out because it is not yet used
-// func (c *communicatorImpl) delete(ctx context.Context, path string, taskSecret, version string) (*http.Response, error) {
-//	response, err := c.request(ctx, "DELETE", path, taskSecret, version, nil)
-//	return response, errors.Wrap(err, "Error performing HTTP DELETE request")
-// }
-
-// this function is commented out because it is not yet used
-// func (c *communicatorImpl) put(ctx context.Context, path, taskSecret, version string, data *interface{}) (*http.Response, error) {
-//	response, err := c.request(ctx, "PUT", path, taskSecret, version, data)
-//	return response, errors.Wrap(err, "Error performing HTTP PUT request")
-// }
-
-func (c *communicatorImpl) post(ctx context.Context, path string, taskData TaskData, version apiVersion, data interface{}) (*http.Response, error) {
-	info := requestInfo{
-		method:   post,
-		path:     path,
-		version:  version,
-		taskData: taskData,
-	}
-	response, err := c.request(ctx, info, data)
-	return response, errors.Wrap(err, "Error performing HTTP POST request")
-}
-
-func (c *communicatorImpl) retryPost(ctx context.Context, path string, taskData TaskData, version apiVersion, data interface{}) (*http.Response, error) {
-	info := requestInfo{
-		method:   post,
-		path:     path,
-		taskData: taskData,
-		version:  version,
-	}
-	return c.retryRequest(ctx, info, data)
-}
-
-func (c *communicatorImpl) retryGet(ctx context.Context, path string, taskData TaskData, version apiVersion) (*http.Response, error) {
-	info := requestInfo{
-		method:   get,
-		path:     path,
-		taskData: taskData,
-		version:  version,
-	}
-	return c.retryRequest(ctx, info, nil)
-}
-
 func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, data interface{}) (*http.Request, error) {
 	url := c.getPath(path, version)
 	r, err := http.NewRequest(method, url, nil)
@@ -131,6 +77,14 @@ func (c *communicatorImpl) newRequest(method, path, taskSecret, version string, 
 }
 
 func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+	r, err := c.createRequest(info, data)
+	if err != nil {
+		return nil, err
+	}
+	return c.doRequest(ctx, c.httpClient, r)
+}
+
+func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*http.Request, error) {
 	if info.method == post && data == nil {
 		return nil, errors.New("Attempting to post a nil body")
 	}
@@ -141,9 +95,16 @@ func (c *communicatorImpl) request(ctx context.Context, info requestInfo, data i
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating request")
 	}
+	return r, nil
+}
+
+func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *http.Request) (*http.Response, error) {
 	response, err := ctxhttp.Do(ctx, c.httpClient, r)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error performing http request")
+		return nil, err
+	}
+	if response == nil {
+		return nil, errors.New("received nil response")
 	}
 	return response, nil
 }
@@ -152,6 +113,10 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 	if !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
+		return nil, err
+	}
+	r, err := c.createRequest(info, data)
+	if err != nil {
 		return nil, err
 	}
 
@@ -164,18 +129,14 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 		case <-ctx.Done():
 			return nil, errors.New("request canceled")
 		case <-timer.C:
-			resp, err := c.request(ctx, info, &data)
-			if resp == nil {
-				grip.Error("HTTP response is nil")
-				return nil, errors.New("HTTP response is nil")
-			} else if err != nil {
-				grip.Error(err)
-			} else if resp.StatusCode == http.StatusConflict {
-				grip.Error("HTTP conflict error")
+			resp, err := c.doRequest(ctx, &data, r)
+			if err != nil {
+				// for an error, don't return, just retry
+				grip.Errorf("error response from api server: %v (attempt %d of %d)", err, i, c.maxAttempts)
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
 			} else {
-				grip.Errorf("unexpected status code: %d", resp.StatusCode)
+				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			}
 			dur = backoff.Duration()
 			timer.Reset(dur)
