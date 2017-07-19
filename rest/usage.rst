@@ -55,8 +55,6 @@ queried endpoint.
 Task
 ----
 
-``Base URL``: http://evergreen.mongodb.com/rest/v2/
-
  The task is a basic unit of work understood by evergreen. They usually comprise 
 a suite of tests or generation of a set of artifacts. 
 
@@ -142,13 +140,13 @@ Objects
    * - ``status_details``        
      - status_object  
      - Object containing additional information about the status
-   * - logs                  
+   * - ``logs``
      - logs_object    
      - Object containing additional information about the logs for this task
-   * - time_taken_ms         
+   * - ``time_taken_ms``
      - int            
      - Number of milliseconds this task took during execution
-   * - expected_duration_ms  
+   * - ``expected_duration_ms``
      - int            
      - Number of milliseconds expected for this task to execute
 
@@ -302,8 +300,6 @@ task status to be set.
 Test
 ----
 
-``Base URL``: http://evergreen.mongodb.com/rest/v2/
-
  A test is a sub-operation of a task performed by Evergreen. 
 
 Objects
@@ -389,8 +385,6 @@ Get Tests From A Task
 
 Host
 ----
-
-``Base URL``: http://evergreen.mongodb.com/rest/v2/
 
  The hosts resource defines the a running machine instance in Evergreen.
 
@@ -492,3 +486,260 @@ Fetch All Hosts
    * - status       
      - string   
      - Optional. A status of host to limit the results to
+
+Fetch Host By ID
+````````````````
+
+::
+
+ GET /hosts/<host_id>
+
+ Fetches a single host using its ID   
+
+Patch
+-----
+
+ A patch is a manually initiated version submitted to test local changes.
+
+Objects
+~~~~~~~
+
+.. list-table:: **Patch**
+   :widths: 25 10 55
+   :header-rows: 1
+
+      * - Name
+        - Type
+        - Description
+      * - patch_id
+        - string
+        - Unique identifier of a specific patch
+      * - description
+        - string
+        - Description of the patch
+      * - project_id
+        - string
+        - Name of the project 
+      * - branch
+        - string
+        - The branch on which the patch was initiated
+      * - git_hash
+        - string
+        - Hash of commit off which the patch was initiated
+      * - patch_number
+        - int
+        - Incrementing counter of user's patches
+      * - author
+        - string
+        - Author of the patch
+      * - status
+        - string
+        - Status of patch
+      * - create_time
+        - time
+        - Time patch was created
+      * - start_time
+        - time
+        - Time patch started to run
+      * - finish_time
+        - time
+        - Time at patch completion
+      * - build_variants
+        - string[]
+        - List of identifiers of builds to run for this patch
+      * - tasks
+        - string[]
+        - List of identifiers of tasks used in this patch
+      * - variants_tasks
+        - variant_task[]
+        - List of documents of available tasks and associated build variant
+      * - activated
+        - bool
+        - Whether the patch has been finalized and activated
+
+.. list-table:: **Variant Task**
+   :widths: 25 10 55
+   :header-rows: 1
+
+      * - Name
+        - Type
+        - Description
+      * - name
+        - string
+        - Name of build variant
+      * - tasks
+        - string[]
+        - All tasks available to run on this build variant
+
+Endpoints
+~~~~~~~~~
+
+Fetch Patches By Project
+````````````````````````
+
+::
+
+ GET /projects/<project_id>/patches
+
+ Returns a paginated list of all patches associated with a specific project
+
+.. list-table:: **Parameters**
+   :widths: 25 10 55
+   :header-rows: 1
+
+      * - Name
+        - Type
+        - Description
+      * - start_at
+        - string
+        - Optional. The create_time of the patch to start at in the pagination. Defaults to now
+      * - limit
+        - int
+        - Optional. The number of patches to be returned per page of pagination. Defaults to 100
+
+Fetch Patch By Id
+`````````````````
+
+::
+
+ GET /projects/<project_id>/patches
+
+ Fetch a single patch using its ID
+
+Abort a Patch
+`````````````
+
+::
+
+ POST /patches/<patch_id>/abort
+
+ Aborts a single patch using its ID and returns the patch
+
+Restart a Patch
+```````````````
+
+::
+
+ POST /patches/<patch_id>/restart
+
+ Restarts a single patch using its ID then returns the patch
+
+Change Patch Status
+```````````````````
+
+::
+
+ POST /patches/<patch_id>
+
+ Sets the priority and status of a single patch to the input values
+
+.. list-table:: **Parameters**
+   :widths: 25 10 55
+   :header-rows: 1
+
+      * - Name
+        - Type
+        - Description
+      * - priority
+        - int
+        - Optional. The priority to set the patch to
+      * - status
+        - string
+        - Optional. The status to set the patch to
+
+Build
+-----
+
+ The build resource represents the combination of a version and a buildvariant.
+
+Objects
+~~~~~~~
+
+.. list-table:: **Build**
+   :widths: 25 10 55
+   :header-rows: 1
+
+   * - Name        
+     - Type           
+     - Description
+   * - project_id     
+     - string  
+     - The identifier of the project this build represents
+   * - create_time   
+     - time  
+     - Time at which build was created
+   * - start_time       
+     - time  
+     - Time at which build started running tasks
+   * - finish_time  
+     - time  
+     - Time at which build finished running all tasks
+   * - push_time
+     - time
+     - If build was triggered by git commit, when the commit was pushed
+   * - version  
+     - string
+     - The version this build is running tasks for
+   * - branch
+     - string
+     - The branch of project the build is running
+   * - gitspec
+     - string
+     - Hash of the revision on which this build is running
+   * - build_variant
+     - string
+     - Build distro and architecture information
+   * - status
+     - string
+     - The status of the build
+   * - activated
+     - bool
+     - Whether this build was manually initiated
+   * - activated_by
+     - string
+     - Who initiated the build
+   * - activated_time
+     - time
+     - When the build was initiated
+   * - order
+     - int
+     - Incrementing counter of project's builds
+   * - tasks
+     - string[]
+     - The tasks to be run on this build
+   * - time_taken_ms
+     - int
+     - How long the build took to complete all tasks
+   * - display_name
+     - string
+     - Displayed title of the build showing version and variant running
+   * - predicted_makespan_ms
+     - int
+     - Predicted makespan by the scheduler prior to execution
+   * - actual_makespan_ms
+     - int
+     - Actual makespan measured during execution
+   * - origin
+     - string
+     - The source of the patch, a commit or a patch
+
+Endpoints
+~~~~~~~~~
+
+Fetch Build By Id
+`````````````````
+
+::
+
+ GET /builds/<build_id>
+
+ Fetches a single build using its ID
+
+Abort a Build
+`````````````
+
+::
+
+ POST /builds/<build_id>/abort
+
+ Aborts a single build using its ID then returns the build

@@ -3,7 +3,7 @@ REST V2 Use Case Guide
 ======================
 
  This guide presents users with information on how to perform some commonly 
-desired actions in the Evergreen API.
+ desired actions in the Evergreen API.
 
 Find all failures of a given build
 ----------------------------------
