@@ -12,7 +12,7 @@ import (
 func TestRestClientLogSnder(t *testing.T) {
 	assert := assert.New(t)
 
-	comm := NewMock("url").(*Mock)
+	comm := NewMock("url")
 	td := TaskData{ID: "task", Secret: "secret"}
 	s := newLogSender(comm, "testStream", td)
 
