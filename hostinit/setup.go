@@ -231,14 +231,6 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 		return "", errors.Wrapf(err, "error getting ssh options for host %s", targetHost.Id)
 	}
 
-	if targetHost.Distro.Teardown != "" {
-		err = init.copyScript(targetHost, teardownScriptName, targetHost.Distro.Teardown)
-		if err != nil {
-			return "", errors.Wrapf(err, "error copying script %v to host %v",
-				teardownScriptName, targetHost.Id)
-		}
-	}
-
 	if targetHost.Distro.Setup != "" {
 		err = init.copyScript(targetHost, setupScriptName, targetHost.Distro.Setup)
 		if err != nil {
@@ -251,6 +243,15 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 		}
 		return logs, nil
 	}
+
+	if targetHost.Distro.Teardown != "" {
+		err = init.copyScript(targetHost, teardownScriptName, targetHost.Distro.Teardown)
+		if err != nil {
+			return "", errors.Wrapf(err, "error copying script %v to host %v",
+				teardownScriptName, targetHost.Id)
+		}
+	}
+
 	return "", nil
 }
 
