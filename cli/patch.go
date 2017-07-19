@@ -131,7 +131,7 @@ type PatchCommandParams struct {
 	Description string   `short:"d" long:"description" description:"description of patch (optional)"`
 	Finalize    bool     `short:"f" long:"finalize" description:"schedule tasks immediately"`
 	Large       bool     `short:"l" long:"large" description:"enable submitting larger patches (>16MB)"`
-	ShowSummary bool     `long:"show-summary" description:"hide patch summary"`
+	ShowSummary bool     `long:"verbose" description:"hide patch summary"`
 }
 
 // LastGreenCommand contains parameters for the finding a project's most recent passing version.
