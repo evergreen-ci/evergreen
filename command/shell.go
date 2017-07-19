@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // shellExec is responsible for running the shell code.
@@ -48,6 +48,7 @@ type shellExec struct {
 	ContinueOnError bool `mapstructure:"continue_on_err"`
 }
 
+func shellExecFactory() Command   { return &shellExec{} }
 func (*shellExec) Name() string   { return "exec" }
 func (*shellExec) Plugin() string { return "shell" }
 
