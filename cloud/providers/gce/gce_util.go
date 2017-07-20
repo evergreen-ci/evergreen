@@ -118,7 +118,7 @@ func generateName(d *distro.Distro) string {
 
 // Makes labels to attach to the VM instance. Only hyphens (-),
 // underscores (_), lowercase characters, and numbers are allowed.
-func makeTags(intent *host.Host) map[string]string {
+func makeLabels(intent *host.Host) map[string]string {
 	// Get requester host name
 	hostname, err := os.Hostname()
 	if err != nil {

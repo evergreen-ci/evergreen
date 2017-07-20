@@ -318,6 +318,21 @@ Evergreen - Distros
                 <input ng-readonly="readOnly" type="number" ng-required="activeDistro.provider == 'gce'" name="diskSizeGB" class="form-control" ng-model="activeDistro.settings.disk_size_gb" placeholder="boot disk size, in base-2 GB e.g. 10">
                 <div class="icon fa fa-warning distro-error" ng-show="form.diskSizeGB.$dirty && form.diskSizeGB.$error.required || form.diskSizeGB.$invalid">Numeric disk size is required</div>
               </div>
+              <div id="network-tags-table" class="distro-table-scroll">
+                <label class="distro-label">Network Tags:</label>
+                <table ng-form name="networkTags" class="table distro-table" ng-show="activeDistro.settings.network_tags" ng-init="form.devName=''; form.devSize=''">
+                  <tbody ng-repeat="tag in activeDistro.settings.network_tags track by $index">
+                    <tr>
+                      <td><input ng-readonly="readOnly" required name="tag" type="text" ng-model="activeDistro.settings.network_tags[$index]" class="form-control"></td>
+                      <td ng-hide="readOnly"><a ng-click="form.$setDirty();removeNetworkTag(tag)"><i style="margin-top:9px" class="fa fa-trash distro-trash-icon"></i></a></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <div class="icon fa fa-warning distro-error" ng-show="networkTags.tag.$dirty && networkTags.tag.$error.required">Tag is required<br /></div>
+                <button ng-hide="readOnly" type="button" ng-disabled="(networkTags.tag.$dirty) && networkTags.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addNetworkTag()"><i class="fa fa-plus"></i>Add Tag</button>
+              </div>
               <div id="ssh-keys-table" class="distro-table-scroll">
                   <label class="distro-label">Instance SSH Keys:</label>
                   <table ng-form name="sshKeys" class="table distro-table" ng-show="activeDistro.settings.ssh_keys" ng-init="form.devName=''; form.devSize=''">

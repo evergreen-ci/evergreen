@@ -187,6 +187,22 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
     $scope.activeDistro.settings.ssh_keys.splice(index, 1);
   }
 
+  $scope.addNetworkTag = function(tag) {
+    if ($scope.activeDistro.settings == null) {
+      $scope.activeDistro.settings = {};
+    }
+    if ($scope.activeDistro.settings.network_tags == null) {
+      $scope.activeDistro.settings.network_tags = [];
+    }
+    $scope.activeDistro.settings.network_tags.push('');
+    $scope.scrollElement('#network-tags-table');
+  }
+
+  $scope.removeNetworkTag = function(tag) {
+    var index = $scope.activeDistro.settings.network_tags.indexOf(tag);
+    $scope.activeDistro.settings.network_tags.splice(index, 1);
+  }
+
   $scope.addSSHOption = function() {
     if ($scope.activeDistro.ssh_options == null) {
       $scope.activeDistro.ssh_options = [];

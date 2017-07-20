@@ -49,7 +49,8 @@ func (s *GCESuite) SetupTest() {
 			"instance_type": "machine",
 			"image_name":    "image",
 			"disk_type":     "pd-standard",
-			"disk_size_gb": 10,
+			"disk_size_gb":  10,
+			"network_tags":  []string{"abc", "def", "ghi"},
 		},
 	}
 	s.hostOpts = cloud.HostOptions{}
@@ -405,7 +406,7 @@ func (s *GCESuite) TestUtilGenerateName() {
 	s.True(r.Match([]byte(tooManyChars)))
 }
 
-func (s *GCESuite) TestUtilMakeTags() {
+func (s *GCESuite) TestUtilMakeLabels() {
 	str := "!nv@lid N@m3*"
 	host := &host.Host{
 		Distro: distro.Distro{
@@ -415,7 +416,7 @@ func (s *GCESuite) TestUtilMakeTags() {
 		CreationTime: time.Now(),
 	}
 
-	tags := makeTags(host)
+	tags := makeLabels(host)
 	r, _ := regexp.Compile("^[a-z0-9_-]*$")
 	for _, v := range tags {
 		s.True(r.Match([]byte(v)))

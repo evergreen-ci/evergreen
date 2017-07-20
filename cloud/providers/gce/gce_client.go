@@ -63,7 +63,8 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	instance := &compute.Instance{
 		Name:        h.Id,
 		MachineType: machineType,
-		Labels:      makeTags(h),
+		Labels:      makeLabels(h),
+		Tags:        &compute.Tags{Items: s.NetworkTags},
 	}
 
 	grip.Debug(message.Fields{

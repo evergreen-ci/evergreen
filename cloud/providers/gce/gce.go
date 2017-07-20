@@ -40,6 +40,9 @@ type ProviderSettings struct {
 	DiskType    string `mapstructure:"disk_type"`
 	DiskSizeGB  int64  `mapstructure:"disk_size_gb"`
 
+	// Network tags are used to configure network firewalls.
+	NetworkTags []string `mapstructure:"network_tags"`
+
 	// By default, GCE uses project-wide SSH keys. Project-wide keys should be manually
 	// added to the project metadata. These SSH keys are optional instance-wide keys.
 	SSHKeys sshKeyGroup `mapstructure:"ssh_keys"`
@@ -114,6 +117,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //     - DiskSizeGB:  boot disk size, in base-2 GB
 //     - DiskType:    boot disk type i.e. pd-standard
 //
+//     - NetworkTags: (optional) security groups
 //     - SSHKeys:     username-key pairs
 func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
 	if d.Provider != ProviderName {
