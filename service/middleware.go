@@ -234,6 +234,8 @@ func (uis *UIServer) loadCtx(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		r = setUIRequestContext(r, projCtx)
+
 		next(w, r)
 	}
 }
