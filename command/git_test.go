@@ -2,7 +2,6 @@ package command
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/smartystreets/goconvey/convey/reporting"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 type GitGetProjectSuite struct {

@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"fmt"
 	"runtime"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/util"
 	. "github.com/smartystreets/goconvey/convey"
+	"golang.org/x/net/context"
 )
 
 func TestShellExecuteCommand(t *testing.T) {
