@@ -88,7 +88,7 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	if info.method == post && data == nil {
 		return nil, errors.New("Attempting to post a nil body")
 	}
-	if err := validateRequestInfo(info); err != nil {
+	if err := info.validateRequestInfo(); err != nil {
 		return nil, err
 	}
 	r, err := c.newRequest(string(info.method), info.path, info.taskData.Secret, string(info.version), data)
@@ -146,18 +146,6 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 	return nil, errors.Errorf("Failed to make request after %d attempts", c.maxAttempts)
 }
 
-func validateRequestInfo(info requestInfo) error {
-	if info.method != get && info.method != post && info.method != put && info.method != delete && info.method != patch {
-		return errors.New("invalid HTTP method")
-	}
-
-	if info.version != apiVersion1 && info.version != apiVersion2 {
-		return errors.New("invalid API version")
-	}
-
-	return nil
-}
-
 func (c *communicatorImpl) getBackoff() *backoff.Backoff {
 	return &backoff.Backoff{
 		Min:    c.timeoutStart,
@@ -171,6 +159,18 @@ func (c *communicatorImpl) getPath(path string, version string) string {
 	return fmt.Sprintf("%s%s/%s", c.serverURL, version, path)
 }
 
-func (c *communicatorImpl) getTaskPathSuffix(path, taskID string) string {
-	return fmt.Sprintf("task/%s/%s", taskID, path)
+func (r *requestInfo) validateRequestInfo() error {
+	if r.method != get && r.method != post && r.method != put && r.method != delete && r.method != patch {
+		return errors.New("invalid HTTP method")
+	}
+
+	if r.version != apiVersion1 && r.version != apiVersion2 {
+		return errors.New("invalid API version")
+	}
+
+	return nil
+}
+
+func (r *requestInfo) setTaskPathSuffix(path, taskID string) {
+	r.path = fmt.Sprintf("task/%s/%s", taskID, path)
 }

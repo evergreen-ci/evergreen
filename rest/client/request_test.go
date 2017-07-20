@@ -47,6 +47,33 @@ func (s *RequestTestSuite) TestGetPathReturnsCorrectPath() {
 	s.Equal("url/rest/v2/foo", path)
 }
 
-func (s *RequestTestSuite) TestGetPathSuffix() {
-	s.Equal("task/foo/bar", s.evergreenREST.getTaskPathSuffix("bar", "foo"))
+func (s *RequestTestSuite) TestValidateRequestInfo() {
+	taskData := TaskData{
+		ID:     "id",
+		Secret: "secret",
+	}
+	info := requestInfo{
+		taskData: taskData,
+		version:  v1,
+	}
+	err := info.validateRequestInfo()
+	s.Error(err)
+	validMethods := []method{get, post, put, delete, patch}
+	for _, method := range validMethods {
+		info.method = method
+		err = info.validateRequestInfo()
+		s.NoError(err)
+	}
+	invalidMethods := []method{method("foo"), method("bar")}
+	for _, method := range invalidMethods {
+		info.method = method
+		err = info.validateRequestInfo()
+		s.Error(err)
+	}
+}
+
+func (s *RequestTestSuite) TestSetTaskPathSuffix() {
+	info := requestInfo{}
+	info.setTaskPathSuffix("foo", "bar")
+	s.Equal("task/bar/foo", info.path)
 }
