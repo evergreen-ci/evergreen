@@ -126,7 +126,7 @@ func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*
 	grip.Debugf("Inserted intent host '%s' for distro '%s' to signal instance spawn intent", name, d.Id)
 
 	// Start the instance, and remove the intent host document if unsuccessful.
-	opts := getSpawnOptions(intentHost, settings, d)
+	opts := getSpawnOptions(intentHost, settings)
 	server, err := m.client.CreateInstance(opts, settings.KeyName)
 	if err != nil {
 		if rmErr := intentHost.Remove(); rmErr != nil {

@@ -39,7 +39,6 @@ type ProviderSettings struct {
 
 	DiskType    string `mapstructure:"disk_type"`
 	DiskSizeGB  int64  `mapstructure:"disk_size_gb"`
-	SetupScript string `mapstructure:"setup_script"`
 
 	// By default, GCE uses project-wide SSH keys. Project-wide keys should be manually
 	// added to the project metadata. These SSH keys are optional instance-wide keys.
@@ -127,7 +126,6 @@ func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*
 		return nil, errors.Wrapf(err, "Error decoding params for distro %s", d.Id)
 	}
 
-	s.SetupScript = d.Setup
 	if err := s.Validate(); err != nil {
 		return nil, errors.Wrapf(err, "Invalid settings in distro %s", d.Id)
 	}

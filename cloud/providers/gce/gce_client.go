@@ -105,11 +105,10 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 		AccessConfigs: []*compute.AccessConfig{&compute.AccessConfig{}},
 	}}
 
-	// Add the startup script and ssh keys
+	// Add the ssh keys
 	keys := s.SSHKeys.String()
 	instance.Metadata = &compute.Metadata{
 		Items: []*compute.MetadataItems{
-			&compute.MetadataItems{Key: "startup-script", Value: &s.SetupScript},
 			&compute.MetadataItems{Key: "ssh-keys", Value: &keys},
 		},
 	}
@@ -117,7 +116,6 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	grip.Debug(message.Fields{
 		"message": "attaching metadata items",
 		"host": h.Id,
-		"startup_script": s.SetupScript,
 		"ssh_keys": keys,
 	})
 

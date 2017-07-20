@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 )
 
@@ -40,13 +39,12 @@ func osStatusToEvgStatus(status string) cloud.CloudStatus {
 	}
 }
 
-func getSpawnOptions(h *host.Host, s *ProviderSettings, d *distro.Distro) servers.CreateOpts {
+func getSpawnOptions(h *host.Host, s *ProviderSettings) servers.CreateOpts {
 	return servers.CreateOpts{
 		Name:           h.Id,
 		ImageName:      s.ImageName,
 		FlavorName:     s.FlavorName,
 		SecurityGroups: []string{s.SecurityGroup},
-		UserData:       []byte(d.Setup),
 		Metadata:       makeTags(h),
 	}
 }
