@@ -13,6 +13,8 @@ type clientMock struct {
 	failInit       bool
 	failIP         bool
 	failPowerState bool
+	failCreate     bool
+	failDelete     bool
 
 	// Other options
 	isActive bool
@@ -45,4 +47,20 @@ func (c *clientMock) GetPowerState(_ *host.Host) (types.VirtualMachinePowerState
 	}
 
 	return types.VirtualMachinePowerStatePoweredOn, nil
+}
+
+func (c *clientMock) CreateInstance(h *host.Host, _ *ProviderSettings) (string, error) {
+	if c.failCreate {
+		return "", errors.New("failed to create instance")
+	}
+
+	return h.Id, nil
+}
+
+func (c *clientMock) DeleteInstance(_ *host.Host) error {
+	if c.failDelete {
+		return errors.New("failed to delete instance")
+	}
+
+	return nil
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 
@@ -32,11 +33,14 @@ type client interface {
 	Init(*authOptions) error
 	GetIP(*host.Host) (string, error)
 	GetPowerState(*host.Host) (types.VirtualMachinePowerState, error)
+	CreateInstance(*host.Host, *ProviderSettings) (string, error)
+	DeleteInstance(*host.Host) error
 }
 
 type clientImpl struct {
-	Client *govmomi.Client
-	Finder *find.Finder
+	Client     *govmomi.Client
+	Datacenter *object.Datacenter
+	Finder     *find.Finder
 }
 
 func (c *clientImpl) Init(ao *authOptions) error {
@@ -70,25 +74,17 @@ func (c *clientImpl) Init(ao *authOptions) error {
 		 return errors.Wrap(err, "could not find default datacenter")
 	}
 	c.Finder.SetDatacenter(dc)
-	grip.Debugf("finder will look in datacenter %v", dc)
+	c.Datacenter = dc
+	grip.Debugf("finder will look in datacenter %s", dc.Common.InventoryPath)
 
 	return nil
-}
-
-func (c *clientImpl) getInstance(ctx context.Context, h *host.Host) (*object.VirtualMachine, error) {
-	vm, err := c.Finder.VirtualMachine(ctx, h.Id)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not find vm for host %s", h.Id)
-	}
-
-	return vm, err
 }
 
 func (c *clientImpl) GetIP(h *host.Host) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	vm, err := c.getInstance(ctx, h)
+	vm, err := c.getInstance(ctx, h.Id)
 	if err != nil {
 		return "", errors.Wrap(err, "API call to get instance failed")
 	}
@@ -104,7 +100,7 @@ func (c *clientImpl) GetIP(h *host.Host) (string, error) {
 func (c *clientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePowerState, error) {
 	ctx := context.TODO()
 
-	vm, err := c.getInstance(ctx, h)
+	vm, err := c.getInstance(ctx, h.Id)
 	if err != nil {
 		err = errors.Wrap(err, "API call to get instance failed")
 		return types.VirtualMachinePowerState(""), err
@@ -117,4 +113,84 @@ func (c *clientImpl) GetPowerState(h *host.Host) (types.VirtualMachinePowerState
 	}
 
 	return state, nil
+}
+
+func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, error) {
+	ctx := context.TODO()
+
+	// Locate and organize resources for creating a virtual machine.
+	grip.Info(message.Fields{
+		"message": "locating and organizing resources for creating a vm",
+		"datacenter": c.Datacenter,
+		"template": s.Template,
+		"datastore": s.Datastore,
+		"resource_pool": s.ResourcePool,
+		"num_cpus": s.NumCPUs,
+		"memory_mb": s.MemoryMB,
+	})
+
+	t, err := c.getInstance(ctx, s.Template)
+	if err != nil {
+		return "", errors.Wrapf(err, "error finding template %s", s.Template)
+	}
+
+	folders, err := c.Datacenter.Folders(ctx)
+	if err != nil {
+		return "", errors.Wrapf(err, "error getting folders from datacenter %v", c.Datacenter)
+	}
+
+	spec, err := c.cloneSpec(s)
+	if err != nil {
+		err = errors.Wrap(err, "error making spec to clone vm")
+		grip.Error(err)
+		return "", err
+	}
+
+	// Deploy the virtual machine from a template as a virtual machine.
+	if _, err = t.Clone(ctx, folders.VmFolder, h.Id, spec); err != nil {
+		err = errors.Wrapf(err, "error making task to clone vm %s", t)
+		grip.Error(err)
+		return "", err
+	}
+
+	grip.Info(message.Fields{
+		"message": "cloning vm, may take a few minutes to start up...",
+		"template": s.Template,
+		"host_id": h.Id,
+	})
+
+	return h.Id, nil
+}
+
+func (c *clientImpl) DeleteInstance(h *host.Host) error {
+	ctx := context.TODO()
+
+	vm, err := c.getInstance(ctx, h.Id)
+	if err != nil {
+		return errors.Wrap(err, "API call to get instance failed")
+	}
+
+	// make sure the instance is powered off before removing
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "could not read power state", h.Id)
+	}
+
+	if state == types.VirtualMachinePowerStatePoweredOn {
+		task, err := vm.PowerOff(ctx)
+		if err != nil {
+			return errors.Wrap(err, "failed to create power off task")
+		}
+
+		if err = task.Wait(ctx); err != nil {
+			return errors.Wrap(err, "power off task failed to execute")
+		}
+	}
+
+	// remove the instance
+	if _, err = vm.Destroy(ctx); err != nil {
+		return errors.Wrapf(err, "error destroying vm %v", vm)
+	}
+
+	return nil
 }
