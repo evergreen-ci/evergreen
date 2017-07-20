@@ -31,7 +31,7 @@ func setProjectContext(r *http.Request, p *model.Project) *http.Request {
 	return r
 }
 func setUIRequestContext(r *http.Request, p projectContext) *http.Request {
-	context.Set(r, RequestProjectContext, projCtx)
+	context.Set(r, RequestProjectContext, p)
 	return r
 }
 func setRestContext(r *http.Request, c *model.Context) *http.Request {
