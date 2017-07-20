@@ -252,8 +252,8 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-agent-comm
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["test", "agent"]
     name: test-command
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
@@ -390,8 +390,8 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
     name: race-agent-comm
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race", "agent"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["race", "agent"]
     name: race-command
   - <<: *run-go-test-suite
     tags: ["nodb", "race"]
