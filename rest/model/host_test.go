@@ -64,7 +64,11 @@ func TestHostBuildFromService(t *testing.T) {
 			},
 			// Empty on purpose to ensure zero values are correctly converted
 			{
-				ah: APIHost{},
+				ah: APIHost{
+					RunningTask: taskInfo{
+						DispatchTime: NewTime(time.Time{}),
+					},
+				},
 				sh: host.Host{},
 				st: task.Task{},
 			},

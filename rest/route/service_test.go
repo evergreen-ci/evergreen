@@ -211,12 +211,15 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
-						Revision: model.APIString(commit),
-						Branch:   model.APIString(projectName),
+					serviceTask := &task.Task{
+						Id:       fmt.Sprintf("task_%d", i),
+						Revision: commit,
+						Project:  projectName,
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceTask)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -246,12 +249,15 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
-						Revision: model.APIString(commit),
-						Branch:   model.APIString(projectName),
+					serviceTask := &task.Task{
+						Id:       fmt.Sprintf("task_%d", i),
+						Revision: commit,
+						Project:  projectName,
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceTask)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -281,12 +287,15 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
-						Revision: model.APIString(commit),
-						Branch:   model.APIString(projectName),
+					serviceTask := &task.Task{
+						Id:       fmt.Sprintf("task_%d", i),
+						Revision: commit,
+						Project:  projectName,
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceTask)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -316,12 +325,15 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < numTasks; i++ {
-					nextModelTask := &model.APITask{
-						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
-						Revision: model.APIString(commit),
-						Branch:   model.APIString(projectName),
+					serviceTask := &task.Task{
+						Id:       fmt.Sprintf("task_%d", i),
+						Revision: commit,
+						Project:  projectName,
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceTask)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -346,12 +358,15 @@ func TestTasksByProjectAndCommitPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id:       model.APIString(fmt.Sprintf("task_%d", i)),
-						Revision: model.APIString(commit),
-						Branch:   model.APIString(projectName),
+					serviceTask := &task.Task{
+						Id:       fmt.Sprintf("task_%d", i),
+						Revision: commit,
+						Project:  projectName,
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceTask)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -402,10 +417,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id: model.APIString(fmt.Sprintf("build%d", i)),
+					serviceModel := &task.Task{
+						Id: fmt.Sprintf("build%d", i),
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceModel)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -431,10 +449,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id: model.APIString(fmt.Sprintf("build%d", i)),
+					serviceModel := &task.Task{
+						Id: fmt.Sprintf("build%d", i),
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceModel)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -460,10 +481,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id: model.APIString(fmt.Sprintf("build%d", i)),
+					serviceModel := &task.Task{
+						Id: fmt.Sprintf("build%d", i),
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceModel)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -489,10 +513,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < numTasks; i++ {
-					nextModelTask := &model.APITask{
-						Id: model.APIString(fmt.Sprintf("build%d", i)),
+					serviceModel := &task.Task{
+						Id: fmt.Sprintf("build%d", i),
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceModel)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
@@ -513,10 +540,13 @@ func TestTaskByBuildPaginator(t *testing.T) {
 				limit := 100
 				expectedTasks := []model.Model{}
 				for i := taskToStartAt; i < taskToStartAt+limit; i++ {
-					nextModelTask := &model.APITask{
-						Id: model.APIString(fmt.Sprintf("build%d", i)),
+					serviceModel := &task.Task{
+						Id: fmt.Sprintf("build%d", i),
 					}
-					err := nextModelTask.BuildFromService("")
+					nextModelTask := &model.APITask{}
+					err := nextModelTask.BuildFromService(serviceModel)
+					So(err, ShouldBeNil)
+					err = nextModelTask.BuildFromService("")
 					So(err, ShouldBeNil)
 					expectedTasks = append(expectedTasks, nextModelTask)
 				}
