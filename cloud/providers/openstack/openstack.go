@@ -208,14 +208,39 @@ func (m *Manager) IsSSHReachable(host *host.Host, keyPath string) (bool, error) 
 	return hostutil.CheckSSHResponse(host, opts)
 }
 
-// GetDNSName returns the IPv4 address of the host.
+// GetDNSName returns the private IP address of the host.
 func (m *Manager) GetDNSName(host *host.Host) (string, error) {
 	server, err := m.client.GetInstance(host.Id)
 	if err != nil {
 		return "", err
 	}
 
-	return server.AccessIPv4, nil
+	for _, subnet := range server.Addresses {
+		addresses, ok := subnet.([]interface{})
+		if !ok {
+			return "", errors.Errorf(
+				"type conversion of %+v to []interface{} for host %s", subnet, host.Id)
+		}
+
+		for _, address := range addresses {
+			keyvalues, ok := address.(map[string]interface{})
+			if !ok {
+				return "", errors.Errorf(
+					"type conversion of %+v to map[string]interface{} for host %s", address, host.Id)
+			}
+
+			if ip := keyvalues["addr"]; ip != nil {
+				ip, ok = ip.(string)
+				if ! ok {
+					return "", errors.Errorf(
+						"type conversion of %+v to string for host %s", ip, host.Id)
+				}
+				return ip.(string), nil
+			}
+		}
+	}
+
+	return "", errors.Errorf("could not find IP for host %s", host.Id)
 }
 
 // GetSSHOptions generates the command line args to be passed to SSH to allow connection

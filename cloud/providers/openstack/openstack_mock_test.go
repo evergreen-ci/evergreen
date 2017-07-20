@@ -47,7 +47,15 @@ func (c *clientMock) GetInstance(id string) (*servers.Server, error) {
 		return nil, errors.New("failed to get instance")
 	}
 
-	server := &servers.Server{Status: "ACTIVE"}
+	server := &servers.Server{
+		Status: "ACTIVE",
+		Addresses: map[string]interface{}{
+			"subnet": []interface{}{
+				map[string]interface{}{"addr": "0.0.0.0"},
+			},
+		},
+	}
+
 	if !c.isServerActive {
 		server.Status = "SHUTOFF"
 	}
