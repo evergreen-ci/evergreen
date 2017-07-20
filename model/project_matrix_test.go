@@ -28,6 +28,18 @@ axes:
     run_on:
     - rhel55
     - rhel62
+buildvariants:
+- matrix_name: tester
+  display_name: ${os}
+  matrix_spec:
+    os: "*"
+  tasks:
+  rules:
+  - if:
+      os: "*"
+    then:
+      set:
+        tags: "gotcha_boy"
 `
 			p, errs := createIntermediateProject([]byte(axes))
 			So(errs, ShouldBeNil)
@@ -48,6 +60,8 @@ axes:
 				Tags:        []string{"linux", "enterprise"},
 				RunOn:       []string{"rhel55", "rhel62"},
 			})
+			tags := p.BuildVariants[0].matrix.Rules[0].Then.Set.Tags
+			So(tags, ShouldResemble, parserStringSlice{"gotcha_boy"})
 		})
 		Convey("a barebones matrix definition should parse", func() {
 			simple := `

@@ -589,7 +589,10 @@ func expandRule(r matrixRule, exp util.Expansions) (matrixRule, error) {
 			return newR, errors.Wrap(err, "remove_tasks")
 		}
 	}
-	// r.Then.Set will be taken care of when mergeAxisValue is called
+
+	// r.Then.Set will be expanded when mergeAxisValue is called
 	// so we don't have to do it in this function
+	newR.Then.Set = r.Then.Set
+
 	return newR, nil
 }
