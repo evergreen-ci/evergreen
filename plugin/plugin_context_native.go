@@ -12,8 +12,8 @@ import (
 
 // SetTask puts the task for an API request into the context of a request.
 // This task can be retrieved in a handler function by using "GetTask()"
-func SetTask(r *http.Request, task *task.Task) {
-	r.WithContext(context.WithValue(r.Context(), pluginTaskContextKey, task))
+func SetTask(r *http.Request, task *task.Task) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), pluginTaskContextKey, task))
 }
 
 // GetTask returns the task object for a plugin API request at runtime,
@@ -29,8 +29,8 @@ func GetTask(r *http.Request) *task.Task {
 }
 
 // SetUser sets the user for the request context. This is a helper for UI middleware.
-func SetUser(u *user.DBUser, r *http.Request) {
-	r.WithContext(context.WithValue(r.Context(), pluginUserKey, u))
+func SetUser(u *user.DBUser, r *http.Request) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), pluginUserKey, u))
 }
 
 // GetUser fetches the user, if it exists, from the request context.

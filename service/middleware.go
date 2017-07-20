@@ -104,7 +104,7 @@ func (uis *UIServer) GetSettings() evergreen.Settings {
 func withPluginUser(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := GetUser(r)
-		plugin.SetUser(u, r)
+		r = plugin.SetUser(u, r)
 		next.ServeHTTP(w, r)
 	}
 }

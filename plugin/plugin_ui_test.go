@@ -453,7 +453,7 @@ func TestUserInjection(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("the user should possible to set and retrieve", func() {
-			plugin.SetUser(u, r)
+			r = plugin.SetUser(u, r)
 			So(plugin.GetUser(r), ShouldResemble, u)
 		})
 	})
