@@ -6,7 +6,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/10gen/baas/auth"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
