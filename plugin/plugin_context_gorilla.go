@@ -12,7 +12,7 @@ import (
 
 // SetTask puts the task for an API request into the context of a request.
 // This task can be retrieved in a handler function by using "GetTask()"
-func SetTask(request *http.Request, task *task.Task) {
+func SetTask(request *http.Request, task *task.Task) *http.Request {
 	context.Set(request, pluginTaskContextKey, task)
 	return request
 }
