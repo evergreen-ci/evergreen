@@ -18,8 +18,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -62,7 +60,6 @@ func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEn
 		message := fmt.Sprintf("Error unmarshalling task end response: %v", err)
 		return nil, errors.New(message)
 	}
-	grip.Infof("task's end response received: %s", taskEndResp.Message)
 	return taskEndResp, nil
 }
 
@@ -171,7 +168,6 @@ func (c *communicatorImpl) GetVersion(ctx context.Context, taskData TaskData) (*
 // Heartbeat sends a heartbeat to the API server. The server can respond with
 // an "abort" response. This function returns true if the agent should abort.
 func (c *communicatorImpl) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
-	grip.Info("Sending heartbeat")
 	data := interface{}("heartbeat")
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
 	defer cancel()
@@ -254,7 +250,6 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTask
 	}
 	if nextTask.ShouldExit == true {
 		err = errors.Errorf("agent should exit: %s", nextTask.Message)
-		grip.Error(err)
 		return nil, err
 	}
 	return nextTask, nil
@@ -449,7 +444,6 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 	}
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
-		grip.Debug(message.Fields{"operation": "s3copy", "error": err.Error(), "request": req})
 		return errors.Wrapf(err, "problem with s3copy for %s", taskData.ID)
 	}
 	defer resp.Body.Close()
