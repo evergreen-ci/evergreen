@@ -18,5 +18,10 @@ func TestConfig() *evergreen.Settings {
 	if err != nil {
 		panic(err)
 	}
+
+	if err = settings.Validate(); err != nil {
+		panic(err)
+	}
+
 	return settings
 }

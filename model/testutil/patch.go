@@ -11,10 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// the revision we'll assume is the current one for the agent. this is the
-// same as appears in testdata/executables/version
-var agentRevision = "xxx"
-
 const PatchId = "58d156352cfeb61064cf08b3"
 
 type PatchTestMode int

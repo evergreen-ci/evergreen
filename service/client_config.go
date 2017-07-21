@@ -34,7 +34,7 @@ func getClientConfig(settings *evergreen.Settings) (*evergreen.ClientConfig, err
 			return err
 		}
 
-		if info.IsDir() {
+		if info.IsDir() || info.Name() == "version" {
 			return nil
 		}
 

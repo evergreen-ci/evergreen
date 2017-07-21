@@ -70,6 +70,10 @@ func NewAPIServer(settings *evergreen.Settings) (*APIServer, error) {
 		return nil, errors.WithStack(err)
 	}
 
+	if err := settings.Validate(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	as := &APIServer{
 		Render:       render.New(render.Options{}),
 		UserManager:  authManager,

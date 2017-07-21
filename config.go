@@ -293,8 +293,8 @@ func NewSettings(filename string) (*Settings, error) {
 
 // Validate checks the settings and returns nil if the config is valid,
 // or an error with a message explaining why otherwise.
-func (settings *Settings) Validate(validators []ConfigValidator) error {
-	for _, validator := range validators {
+func (settings *Settings) Validate() error {
+	for _, validator := range configValidationRules {
 		err := validator(settings)
 		if err != nil {
 			return err
@@ -354,7 +354,7 @@ func GetSettings() (*Settings, error) {
 		return nil, err
 	}
 
-	if err = settings.Validate(ConfigValidationRules); err != nil {
+	if err = settings.Validate(); err != nil {
 		return nil, err
 	}
 	return settings, nil
@@ -362,12 +362,12 @@ func GetSettings() (*Settings, error) {
 
 // ConfigValidator is a type of function that checks the settings
 // struct for any errors or missing required fields.
-type ConfigValidator func(settings *Settings) error
+type configValidator func(settings *Settings) error
 
 const defaultLogBufferingDuration = 20
 
 // ConfigValidationRules is the set of all ConfigValidator functions.
-var ConfigValidationRules = []ConfigValidator{
+var configValidationRules = []configValidator{
 	func(settings *Settings) error {
 		if settings.Database.Url == "" || settings.Database.DB == "" {
 			return errors.New("DBUrl and DB must not be empty")
@@ -378,6 +378,13 @@ var ConfigValidationRules = []ConfigValidator{
 	func(settings *Settings) error {
 		if settings.LogBuffering.DurationSeconds == 0 {
 			settings.LogBuffering.DurationSeconds = defaultLogBufferingDuration
+		}
+		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.ClientBinariesDir == "" {
+			settings.ClientBinariesDir = ClientDirectory
 		}
 		return nil
 	},

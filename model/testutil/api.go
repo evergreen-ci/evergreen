@@ -191,7 +191,7 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 		RunningTask:   taskOne.Id,
 		Secret:        "testHostSecret",
 		StartedBy:     evergreen.User,
-		AgentRevision: agentRevision,
+		AgentRevision: evergreen.BuildRevision,
 		Status:        evergreen.HostRunning,
 	}
 	if err := testHost.Insert(); err != nil {
@@ -202,7 +202,6 @@ func SetupAPITestData(testConfig *evergreen.Settings, taskDisplayName string, va
 	session, _, err := db.GetGlobalSessionFactory().GetSession()
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get db session!")
-
 	}
 
 	config, err := model.NewTaskConfig(&testHost.Distro, v, project,

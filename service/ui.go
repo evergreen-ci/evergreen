@@ -59,6 +59,10 @@ func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
 	}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
+	if err := settings.Validate(); err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	uis.Settings = *settings
 	uis.Home = home
 
