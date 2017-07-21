@@ -126,6 +126,7 @@ functions:
 
           echo "building creds file!"
           cat > gopath/src/github.com/evergreen-ci/evergreen/creds.yml <<EOF
+          client_binaries_dir: "clients"
           credentials: {
             github: "${github_token}",
           }
