@@ -241,7 +241,6 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 		if err != nil {
 			return logs, errors.Errorf("error running setup script over ssh: %v", err)
 		}
-		return logs, nil
 	}
 
 	if targetHost.Distro.Teardown != "" {
