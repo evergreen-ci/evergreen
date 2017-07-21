@@ -85,7 +85,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 // ProviderSettings in the distro should have the following settings:
 //     - Template     (string): name of the template VM
 //     - Datastore    (string): (optional) name/path of the datastore to attach to e.g. 1TB_SSD
-//     - ResourcePool (string): (optional) name/path of a resource pool e.g. XSERVE_Cluster
+//     - ResourcePool (string): (optional) name/path of a resource pool e.g. Resources
 //     - NumCPUs      (int32):  (optional) number of CPUs e.g. 2
 //     - MemoryMB     (int64):  (optional) memory in MB e.g. 2048
 //

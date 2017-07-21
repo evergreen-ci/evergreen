@@ -351,11 +351,34 @@ Evergreen - Distros
                     </tbody>
                   </table>
                 </div>
+                <div>
+                  <div class="icon fa fa-warning distro-error" ng-show="sshKeys.username.$dirty && sshKeys.username.$error.required">Username is required<br /></div>
+                  <div class="icon fa fa-warning distro-error" ng-show="sshKeys.public_key.$dirty && sshKeys.public_key.$error.required">Public key is required<br /></div>
+                  <button ng-hide="readOnly" type="button" ng-disabled="(sshKeys.username.$dirty || sshKeys.public_key.$dirty) && sshKeys.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addInstanceSSHKey()"><i class="fa fa-plus"></i>Add SSH Key</button>
+                </div>
               </div>
-              <div>
-                <div class="icon fa fa-warning distro-error" ng-show="sshKeys.username.$dirty && sshKeys.username.$error.required">Username is required<br /></div>
-                <div class="icon fa fa-warning distro-error" ng-show="sshKeys.public_key.$dirty && sshKeys.public_key.$error.required">Public key is required<br /></div>
-                <button ng-hide="readOnly" type="button" ng-disabled="(sshKeys.username.$dirty || sshKeys.public_key.$dirty) && sshKeys.$invalid" class="btn btn-primary" ng-click="form.$setDirty();addInstanceSSHKey()"><i class="fa fa-plus"></i>Add SSH Key</button>
+              <div ng-show="activeDistro.provider == 'vsphere'">
+                <div>
+                  <label class="distro-label">Template:</label>
+                  <input ng-readonly="readOnly" type="text" ng-required="activeDistro.provider == 'vsphere'" name="template" class="form-control" ng-model="activeDistro.settings.template" placeholder="name of the template VM e.g. osx-1012-template">
+                  <div class="icon fa fa-warning distro-error" ng-show="form.template.$dirty && form.template.$error.required || form.template.$invalid">Template is required</div>
+                </div>
+                <div>
+                  <label class="distro-label">Datastore:</label>
+                  <input ng-readonly="readOnly" type="text" name="datastore" class="form-control" ng-model="activeDistro.settings.datastore" placeholder="(optional) name/path of the datastore to attach e.g. 1TB_SSD">
+                </div>
+                <div>
+                  <label class="distro-label">Resource Pool:</label>
+                  <input type="text" ng-readonly="readOnly" name="resourcePool" class="form-control" ng-model="activeDistro.settings.resource_pool" placeholder="(optional) name/path of a resource pool e.g. Resources">
+                </div>
+                <div>
+                  <label class="distro-label">Number of CPUs:</label>
+                  <input type="number" ng-readonly="readOnly" name="numCPUs" ng-model="activeDistro.settings.num_cpus" placeholder="(optional) number of CPUs e.g. 2" class="form-control">
+                </div>
+                <div>
+                  <label class="distro-label">Memory (MB):</label>
+                  <input type="number" ng-readonly="readOnly" name="memoryMB" ng-model="activeDistro.settings.memory_mb" placeholder="(optional) memory in MB e.g. 2048" class="form-control">
+                </div>
               </div>
             </div>
             <div ng-show="activeDistro.provider != 'static'">

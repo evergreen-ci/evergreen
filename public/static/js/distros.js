@@ -28,6 +28,9 @@ mciModule.controller('DistrosCtrl', function($scope, $window, $location, mciDist
   }, {
     'id': 'gce',
     'display': 'Google Compute'
+  }, {
+    'id': 'vsphere',
+    'display': 'VMware vSphere'
   }];
 
   $scope.architectures = [{
