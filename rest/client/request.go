@@ -132,7 +132,7 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 			resp, err := c.doRequest(ctx, &data, r)
 			if err != nil {
 				// for an error, don't return, just retry
-				grip.Errorf("error response from api server: %v (attempt %d of %d)", err, i, c.maxAttempts)
+				grip.Warningf("error response from api server: %v (attempt %d of %d)", err, i, c.maxAttempts)
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
 			} else {
