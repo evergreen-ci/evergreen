@@ -320,7 +320,7 @@ func (p *patchAbortHandler) Execute(ctx context.Context, sc data.Connector) (Res
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
-		return ResponseData{}, nil
+		return ResponseData{}, err
 	}
 	patchModel := &model.APIPatch{}
 	err = patchModel.BuildFromService(*foundPatch)

@@ -49,7 +49,7 @@ type fileListBuilder struct {
 	ignorer   *ignore.GitIgnore
 }
 
-func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, err error) error {
+func (fb *fileListBuilder) walkFunc(path string, info os.FileInfo, _ error) error {
 	if !info.IsDir() && fb.ignorer.MatchesPath(path) {
 		fb.fileNames = append(fb.fileNames, path)
 	}

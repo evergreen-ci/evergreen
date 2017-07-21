@@ -167,10 +167,10 @@ func TestPopulateBVT(t *testing.T) {
 				{
 					Name:            "task1",
 					ExecTimeoutSecs: 500,
-					Stepback:        new(bool),
+					Stepback:        boolPtr(false),
 					DependsOn:       []TaskDependency{{Name: "other"}},
 					Priority:        1000,
-					Patchable:       new(bool),
+					Patchable:       boolPtr(false),
 				},
 			},
 			BuildVariants: []BuildVariant{
