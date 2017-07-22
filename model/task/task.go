@@ -273,6 +273,8 @@ func (t *Task) UIStatus() string {
 			if t.Details.TimedOut {
 				if t.Details.Description == "heartbeat" {
 					status = evergreen.TaskSystemUnresponse
+				} else if t.HasFailedTests() {
+					return evergreen.TaskFailed
 				} else if t.Details.Type == "system" {
 					status = evergreen.TaskSystemTimedOut
 				} else {
@@ -282,6 +284,17 @@ func (t *Task) UIStatus() string {
 		}
 	}
 	return status
+}
+
+// HasFailedTests iterates through a tasks' tests and returns true if
+// that task had any failed tests.
+func (t *Task) HasFailedTests() bool {
+	for _, test := range t.TestResults {
+		if test.Status == evergreen.TestFailedStatus {
+			return true
+		}
+	}
+	return false
 }
 
 // FindTaskOnBaseCommit returns the task that is on the base commit.

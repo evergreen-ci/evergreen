@@ -283,11 +283,8 @@ func MarkEnd(taskId, caller string, finishTime time.Time, detail *apimodels.Task
 		return errors.Errorf("Task not found for taskId: %s", taskId)
 	}
 
-	for _, result := range t.TestResults {
-		if result.Status == evergreen.TestFailedStatus {
-			detail.Status = evergreen.TaskFailed
-			break
-		}
+	if t.HasFailedTests() {
+		detail.Status = evergreen.TaskFailed
 	}
 
 	t.Details = *detail

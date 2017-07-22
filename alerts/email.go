@@ -165,16 +165,16 @@ func taskFailureSubject(ctx AlertContext) string {
 	}
 
 	switch {
-	case ctx.Task.Details.Description == task.AgentHeartbeat:
-		subj.WriteString("Task System Failure: ")
-	case ctx.Task.Details.Type == model.SystemCommandType:
-		subj.WriteString("Task System Failure: ")
 	case ctx.Task.Details.TimedOut:
 		subj.WriteString("Task Timed Out: ")
 	case len(failed) == 1:
 		subj.WriteString("Test Failure: ")
 	case len(failed) > 1:
 		subj.WriteString("Test Failures: ")
+	case ctx.Task.Details.Description == task.AgentHeartbeat:
+		subj.WriteString("Task System Failure: ")
+	case ctx.Task.Details.Type == model.SystemCommandType:
+		subj.WriteString("Task System Failure: ")
 	default:
 		subj.WriteString("Task Failed: ")
 	}
