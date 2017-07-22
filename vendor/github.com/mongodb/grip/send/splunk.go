@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/fuyufjh/splunk-hec-go"
+	hec "github.com/fuyufjh/splunk-hec-go"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 )
@@ -14,6 +14,7 @@ import (
 const (
 	splunkServerURL   = "GRIP_SPLUNK_SERVER_URL"
 	splunkClientToken = "GRIP_SPLUNK_CLIENT_TOKEN"
+	splunkChannel     = "GRIP_SPLUNK_CHANNEL"
 )
 
 type splunkLogger struct {
@@ -25,9 +26,9 @@ type splunkLogger struct {
 // SplunkConnectionInfo stores all information needed to connect
 // to a splunk server to send log messsages.
 type SplunkConnectionInfo struct {
-	ServerURL string
-	Token     string
-	Channel   string
+	ServerURL string `bson:"url" json:"url" yaml:"url"`
+	Token     string `bson:"token" json:"token" yaml:"token"`
+	Channel   string `bson:"channel" json:"channel" yaml:"channel"`
 }
 
 // GetSplunkConnectionInfo builds a SplunkConnectionInfo structure
@@ -35,11 +36,17 @@ type SplunkConnectionInfo struct {
 //
 // 		GRIP_SPLUNK_SERVER_URL
 //		GRIP_SPLUNK_CLIENT_TOKEN
+//		GRIP_SPLUNK_CHANNEL
 func GetSplunkConnectionInfo() SplunkConnectionInfo {
 	return SplunkConnectionInfo{
 		ServerURL: os.Getenv(splunkServerURL),
 		Token:     os.Getenv(splunkClientToken),
+		Channel:   os.Getenv(splunkChannel),
 	}
+}
+
+func (info SplunkConnectionInfo) Populated() bool {
+	return info.ServerURL != "" && info.Token != "" && info.Channel != ""
 }
 
 func (s *splunkLogger) Send(m message.Composer) {
@@ -90,6 +97,7 @@ func NewSplunkLogger(name string, info SplunkConnectionInfo, l LevelInfo) (Sende
 //
 // 		GRIP_SPLUNK_SERVER_URL
 //		GRIP_SPLUNK_CLIENT_TOKEN
+//		GRIP_SPLUNK_CLIENT_CHANNEL
 func MakeSplunkLogger(name string) (Sender, error) {
 	info := GetSplunkConnectionInfo()
 	if info.ServerURL == "" {

@@ -2,6 +2,7 @@ package message
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/mongodb/grip/level"
@@ -77,6 +78,8 @@ func (m *fieldMessage) String() string {
 
 			out = append(out, fmt.Sprintf(tmpl, k, v))
 		}
+
+		sort.Sort(sort.StringSlice(out))
 
 		m.cachedOutput = fmt.Sprintf("[%s]", strings.Join(out, " "))
 	}

@@ -256,6 +256,14 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		startAgentCmd.EnvVars = []string{fmt.Sprintf("GRIP_SUMO_ENDPOINT='%s'", sumoEndpoint)}
 	}
 
+	if settings.Splunk.Populated() {
+		startAgentCmd.EnvVars = []string{
+			fmt.Sprintf("GRIP_SPLUNK_SERVER_URL='%s'", settings.Splunk.ServerURL),
+			fmt.Sprintf("GRIP_SPLUNK_CLIENT_TOKEN='%s'", settings.Splunk.Token),
+			fmt.Sprintf("GRIP_SPLUNK_CHANNEL='%s'", settings.Splunk.Channel),
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.TODO(), StartAgentTimeout)
 	defer cancel()
 	err = startAgentCmd.Run(ctx)

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
 
@@ -249,32 +250,33 @@ type LogBuffering struct {
 
 // Settings contains all configuration settings for running Evergreen.
 type Settings struct {
-	Database            DBSettings        `yaml:"database"`
-	WriteConcern        WriteConcern      `yaml:"write_concern"`
-	ConfigDir           string            `yaml:"configdir"`
-	ApiUrl              string            `yaml:"api_url"`
-	AgentExecutablesDir string            `yaml:"agentexecutablesdir"`
-	ClientBinariesDir   string            `yaml:"client_binaries_dir"`
-	SuperUsers          []string          `yaml:"superusers"`
-	Jira                JiraConfig        `yaml:"jira"`
-	Providers           CloudProviders    `yaml:"providers"`
-	Keys                map[string]string `yaml:"keys"`
-	Credentials         map[string]string `yaml:"credentials"`
-	AuthConfig          AuthConfig        `yaml:"auth"`
-	RepoTracker         RepoTrackerConfig `yaml:"repotracker"`
-	Monitor             MonitorConfig     `yaml:"monitor"`
-	Api                 APIConfig         `yaml:"api"`
-	Alerts              AlertsConfig      `yaml:"alerts"`
-	Ui                  UIConfig          `yaml:"ui"`
-	HostInit            HostInitConfig    `yaml:"hostinit"`
-	Notify              NotifyConfig      `yaml:"notify"`
-	Runner              RunnerConfig      `yaml:"runner"`
-	Scheduler           SchedulerConfig   `yaml:"scheduler"`
-	TaskRunner          TaskRunnerConfig  `yaml:"taskrunner"`
-	Expansions          map[string]string `yaml:"expansions"`
-	Plugins             PluginConfig      `yaml:"plugins"`
-	IsProd              bool              `yaml:"isprod"`
-	LogBuffering        LogBuffering      `yaml:"log_buffering"`
+	Database            DBSettings                `yaml:"database"`
+	WriteConcern        WriteConcern              `yaml:"write_concern"`
+	ConfigDir           string                    `yaml:"configdir"`
+	ApiUrl              string                    `yaml:"api_url"`
+	AgentExecutablesDir string                    `yaml:"agentexecutablesdir"`
+	ClientBinariesDir   string                    `yaml:"client_binaries_dir"`
+	SuperUsers          []string                  `yaml:"superusers"`
+	Jira                JiraConfig                `yaml:"jira"`
+	Splunk              send.SplunkConnectionInfo `yaml:"splunk"`
+	Providers           CloudProviders            `yaml:"providers"`
+	Keys                map[string]string         `yaml:"keys"`
+	Credentials         map[string]string         `yaml:"credentials"`
+	AuthConfig          AuthConfig                `yaml:"auth"`
+	RepoTracker         RepoTrackerConfig         `yaml:"repotracker"`
+	Monitor             MonitorConfig             `yaml:"monitor"`
+	Api                 APIConfig                 `yaml:"api"`
+	Alerts              AlertsConfig              `yaml:"alerts"`
+	Ui                  UIConfig                  `yaml:"ui"`
+	HostInit            HostInitConfig            `yaml:"hostinit"`
+	Notify              NotifyConfig              `yaml:"notify"`
+	Runner              RunnerConfig              `yaml:"runner"`
+	Scheduler           SchedulerConfig           `yaml:"scheduler"`
+	TaskRunner          TaskRunnerConfig          `yaml:"taskrunner"`
+	Expansions          map[string]string         `yaml:"expansions"`
+	Plugins             PluginConfig              `yaml:"plugins"`
+	IsProd              bool                      `yaml:"isprod"`
+	LogBuffering        LogBuffering              `yaml:"log_buffering"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -329,6 +331,15 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 				send.NewBufferedSender(sender,
 					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
 					s.LogBuffering.BufferCount))
+		}
+	}
+
+	if s.Splunk.Populated() {
+		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
+		if err == nil {
+			senders = append(send.NewBufferedSender(sender,
+				time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
+				s.LogBuffering.BufferCount))
 		}
 	}
 

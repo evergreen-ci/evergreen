@@ -14,6 +14,15 @@ const filenameTimestamp = "2006-01-02_15_04_05"
 
 // SetupLogging configures the agent's local logging to a file.
 func SetupLogging(prefix, taskId string) error {
+	if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
+		sender, err := send.NewSplunkLogger(taskId, splunk, grip.GetSender().Level())
+		if err != nil {
+			return errors.Wrap(err, "problem creating the splunk logger")
+		}
+
+		return errors.Wrapf(grip.SetSender(sender), "problem setting up the splunk sender")
+	}
+
 	if endpoint := os.Getenv("GRIP_SUMO_ENDPOINT"); endpoint != "" {
 		sender, err := send.NewSumo(taskId, endpoint)
 		if err != nil {
