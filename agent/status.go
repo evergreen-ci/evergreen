@@ -89,7 +89,9 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(out)
 	grip.CatchError(err)
 
-	panic("agent terminated by request.")
+	// need to use os.exit rather than a panic because the panic
+	// handler will recover.
+	os.Exit(1)
 }
 
 // buildResponse produces the response document for the current
