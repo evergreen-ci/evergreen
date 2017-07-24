@@ -34,7 +34,7 @@ type SplunkConnectionInfo struct {
 // GetSplunkConnectionInfo builds a SplunkConnectionInfo structure
 // reading default values from the following environment variables:
 //
-// 		GRIP_SPLUNK_SERVER_URL
+//		GRIP_SPLUNK_SERVER_URL
 //		GRIP_SPLUNK_CLIENT_TOKEN
 //		GRIP_SPLUNK_CHANNEL
 func GetSplunkConnectionInfo() SplunkConnectionInfo {
@@ -46,7 +46,7 @@ func GetSplunkConnectionInfo() SplunkConnectionInfo {
 }
 
 func (info SplunkConnectionInfo) Populated() bool {
-	return info.ServerURL != "" && info.Token != "" && info.Channel != ""
+	return info.ServerURL != "" && info.Token != ""
 }
 
 func (s *splunkLogger) Send(m message.Composer) {
@@ -95,7 +95,7 @@ func NewSplunkLogger(name string, info SplunkConnectionInfo, l LevelInfo) (Sende
 // MakeSplunkLogger constructs a new Sender implementation that reads
 // the hostname, username, and password from environment variables:
 //
-// 		GRIP_SPLUNK_SERVER_URL
+//		GRIP_SPLUNK_SERVER_URL
 //		GRIP_SPLUNK_CLIENT_TOKEN
 //		GRIP_SPLUNK_CLIENT_CHANNEL
 func MakeSplunkLogger(name string) (Sender, error) {
