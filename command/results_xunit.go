@@ -116,7 +116,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 			return errors.Wrap(err, "couldn't open xunit file")
 		}
 
-		testSuites, err := ParseXMLResults(file)
+		testSuites, err := parseXMLResults(file)
 		if err != nil {
 			return errors.Wrap(err, "error parsing xunit file")
 		}
@@ -129,7 +129,7 @@ func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.Ta
 		for _, suite := range testSuites {
 			for _, tc := range suite.TestCases {
 				// logs are only created when a test case does not succeed
-				test, log := tc.ToModelTestResultAndLog(conf.Task)
+				test, log := tc.toModelTestResultAndLog(conf.Task)
 				if log != nil {
 					logs = append(logs, log)
 					logIdxToTestIdx = append(logIdxToTestIdx, len(tests))

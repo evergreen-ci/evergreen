@@ -56,7 +56,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	}
 
 	// will be all files containing test results
-	outputFiles, err := c.AllOutputFiles()
+	outputFiles, err := c.allOutputFiles()
 	if err != nil {
 		return errors.Wrap(err, "error obtaining names of output files")
 	}
@@ -67,7 +67,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 	}
 
 	// parse all of the files
-	logs, results, err := ParseTestOutputFiles(ctx, logger, conf, outputFiles)
+	logs, results, err := parseTestOutputFiles(ctx, logger, conf, outputFiles)
 	if err != nil {
 		return errors.Wrap(err, "error parsing output results")
 	}
@@ -116,7 +116,7 @@ func (c *goTestResults) Execute(ctx context.Context,
 
 // AllOutputFiles creates a list of all test output files that will be parsed, by expanding
 // all of the file patterns specified to the command.
-func (c *goTestResults) AllOutputFiles() ([]string, error) {
+func (c *goTestResults) allOutputFiles() ([]string, error) {
 
 	outputFiles := []string{}
 
@@ -145,7 +145,7 @@ func (c *goTestResults) AllOutputFiles() ([]string, error) {
 
 // ParseTestOutputFiles parses all of the files that are passed in, and returns the
 // test logs and test results found within.
-func ParseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
+func parseTestOutputFiles(ctx context.Context, logger client.LoggerProducer,
 	conf *model.TaskConfig, outputFiles []string) ([]model.TestLog, [][]task.TestResult, error) {
 
 	var results [][]task.TestResult

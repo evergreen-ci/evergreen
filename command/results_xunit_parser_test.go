@@ -22,7 +22,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := ParseXMLResults(file)
+				res, err := parseXMLResults(file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -44,7 +44,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := ParseXMLResults(file)
+				res, err := parseXMLResults(file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -70,7 +70,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := ParseXMLResults(file)
+				res, err := parseXMLResults(file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -97,7 +97,7 @@ func TestXMLParsing(t *testing.T) {
 			defer file.Close()
 
 			Convey("the file should parse without error", func() {
-				res, err := ParseXMLResults(file)
+				res, err := parseXMLResults(file)
 				So(err, ShouldBeNil)
 				So(len(res), ShouldBeGreaterThan, 0)
 
@@ -119,7 +119,7 @@ func TestXMLToModelConversion(t *testing.T) {
 		file, err := os.Open(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "xunit", "junit_3.xml"))
 		testutil.HandleTestingErr(err, t, "Error reading file")
 		defer file.Close()
-		res, err := ParseXMLResults(file)
+		res, err := parseXMLResults(file)
 		So(err, ShouldBeNil)
 		So(len(res), ShouldBeGreaterThan, 0)
 		testTask := &task.Task{Id: "TEST", Execution: 5}
@@ -128,7 +128,7 @@ func TestXMLToModelConversion(t *testing.T) {
 			tests := []task.TestResult{}
 			logs := []*model.TestLog{}
 			for _, testCase := range res[0].TestCases {
-				test, log := testCase.ToModelTestResultAndLog(testTask)
+				test, log := testCase.toModelTestResultAndLog(testTask)
 				if log != nil {
 					logs = append(logs, log)
 				}

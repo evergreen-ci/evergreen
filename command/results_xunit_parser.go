@@ -13,35 +13,35 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 )
 
-type XUnitResults []TestSuite
+type xUnitResults []testSuite
 
-type TestSuite struct {
+type testSuite struct {
 	Errors    int        `xml:"errors,attr"`
 	Failures  int        `xml:"failures,attr"`
 	Skip      int        `xml:"skip,attr"`
 	Name      string     `xml:"name,attr"`
-	TestCases []TestCase `xml:"testcase"`
+	TestCases []testCase `xml:"testcase"`
 	SysOut    string     `xml:"system-out"`
 	SysErr    string     `xml:"system-err"`
 }
 
-type TestCase struct {
+type testCase struct {
 	Name      string          `xml:"name,attr"`
 	Time      float64         `xml:"time,attr"`
 	ClassName string          `xml:"classname,attr"`
-	Failure   *FailureDetails `xml:"failure"`
-	Error     *FailureDetails `xml:"error"`
-	Skipped   *FailureDetails `xml:"skipped"`
+	Failure   *failureDetails `xml:"failure"`
+	Error     *failureDetails `xml:"error"`
+	Skipped   *failureDetails `xml:"skipped"`
 }
 
-type FailureDetails struct {
+type failureDetails struct {
 	Message string `xml:"message,attr"`
 	Type    string `xml:"type,attr"`
 	Content string `xml:",chardata"`
 }
 
-func ParseXMLResults(reader io.Reader) (XUnitResults, error) {
-	results := XUnitResults{}
+func parseXMLResults(reader io.Reader) (xUnitResults, error) {
+	results := xUnitResults{}
 	if err := xml.NewDecoder(reader).Decode(&results); err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func ParseXMLResults(reader io.Reader) (XUnitResults, error) {
 // mci task.TestResult and model.TestLog. Logs are only
 // generated if the test case did not succeed (this is part of
 // the xunit xml file design)
-func (tc TestCase) ToModelTestResultAndLog(t *task.Task) (task.TestResult, *model.TestLog) {
+func (tc testCase) toModelTestResultAndLog(t *task.Task) (task.TestResult, *model.TestLog) {
 
 	res := task.TestResult{}
 	var log *model.TestLog
@@ -99,7 +99,7 @@ func (tc TestCase) ToModelTestResultAndLog(t *task.Task) (task.TestResult, *mode
 	return res, log
 }
 
-func (fd FailureDetails) toBasicTestLog(fdType string) *model.TestLog {
+func (fd failureDetails) toBasicTestLog(fdType string) *model.TestLog {
 	log := model.TestLog{
 		Lines: []string{fmt.Sprintf("%v: %v (%v)", fdType, fd.Message, fd.Type)},
 	}
