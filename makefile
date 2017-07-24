@@ -176,7 +176,7 @@ dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-race: $(buildDir)/dist-race.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
-$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries)
+$(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries) $(clientBuildDir)/version
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
 $(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(clientBinaries)
 	./$< -name $@ --prefix $(name)-race $(foreach item,$(raceBinaries) $(distContents),--item $(item))
