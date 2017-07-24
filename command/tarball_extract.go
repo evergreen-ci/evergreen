@@ -19,9 +19,8 @@ type tarballExtract struct {
 	DestDir string `mapstructure:"dest_dir" plugin:"expand"`
 }
 
-func tarballExtractFactory() Command     { return &tarballExtract{} }
-func (c *tarballExtract) Name() string   { return "targz_unpack" }
-func (c *tarballExtract) Plugin() string { return "archive" }
+func tarballExtractFactory() Command   { return &tarballExtract{} }
+func (c *tarballExtract) Name() string { return "archive.targz_unpack" }
 
 // Implementation of ParseParams.
 func (c *tarballExtract) ParseParams(params map[string]interface{}) error {

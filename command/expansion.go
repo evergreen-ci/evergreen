@@ -37,8 +37,7 @@ type updateParams struct {
 }
 
 func updateExpansionsFactory() Command { return &update{} }
-func (c *update) Name() string         { return "update" }
-func (c *update) Plugin() string       { return "expansions" }
+func (c *update) Name() string         { return "expansions.update" }
 
 // ParseParams validates the input to the update, returning and error
 // if something is incorrect. Fulfills Command interface.

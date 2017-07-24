@@ -17,9 +17,8 @@ type taskDataSend struct {
 	DataName string `mapstructure:"name" plugin:"expand"`
 }
 
-func taskDataSendFactory() Command     { return &taskDataSend{} }
-func (c *taskDataSend) Name() string   { return "send" }
-func (c *taskDataSend) Plugin() string { return "json" }
+func taskDataSendFactory() Command   { return &taskDataSend{} }
+func (c *taskDataSend) Name() string { return "json.send" }
 
 func (c *taskDataSend) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {

@@ -22,9 +22,8 @@ type goTestResults struct {
 	Files []string `mapstructure:"files" plugin:"expand"`
 }
 
-func goTestFactory() Command            { return &goTestResults{} }
-func (c *goTestResults) Name() string   { return "parse_files" }
-func (c *goTestResults) Plugin() string { return "gotest" }
+func goTestFactory() Command          { return &goTestResults{} }
+func (c *goTestResults) Name() string { return "gotest.parse_files" }
 
 // ParseParams reads the specified map of parameters into the goTestResults struct, and
 // validates that at least one file pattern is specified.

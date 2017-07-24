@@ -22,9 +22,8 @@ type xunitResults struct {
 	Files []string `mapstructure:"files" plugin:"expand"`
 }
 
-func xunitResultsFactory() Command     { return &xunitResults{} }
-func (c *xunitResults) Name() string   { return "xunit_results" }
-func (c *xunitResults) Plugin() string { return "attach" }
+func xunitResultsFactory() Command   { return &xunitResults{} }
+func (c *xunitResults) Name() string { return "attach.xunit_results" }
 
 // ParseParams reads and validates the command parameters. This is required
 // to satisfy the 'Command' interface

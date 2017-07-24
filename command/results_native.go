@@ -21,9 +21,8 @@ type attachResults struct {
 	FileLoc string `mapstructure:"file_location" plugin:"expand"`
 }
 
-func attachResultsFactory() Command     { return &attachResults{} }
-func (c *attachResults) Name() string   { return "results" }
-func (c *attachResults) Plugin() string { return "attach" }
+func attachResultsFactory() Command   { return &attachResults{} }
+func (c *attachResults) Name() string { return "attach.results" }
 
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an AttachPlugin command; this is required

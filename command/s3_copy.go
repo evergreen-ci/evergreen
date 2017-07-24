@@ -60,9 +60,8 @@ type s3Loc struct {
 	Path string `mapstructure:"path" plugin:"expand"`
 }
 
-func s3CopyFactory() Command     { return &s3copy{} }
-func (c *s3copy) Name() string   { return "copy" }
-func (c *s3copy) Plugin() string { return "s3Copy" }
+func s3CopyFactory() Command   { return &s3copy{} }
+func (c *s3copy) Name() string { return "s3Copy.copy" }
 
 // ParseParams decodes the S3 push command parameters that are
 // specified as part of an S3CopyPlugin command; this is required

@@ -12,9 +12,8 @@ import (
 // manifestLoad
 type manifestLoad struct{}
 
-func manifestLoadFactory() Command     { return &manifestLoad{} }
-func (c *manifestLoad) Name() string   { return "load" }
-func (c *manifestLoad) Plugin() string { return "manifest" }
+func manifestLoadFactory() Command   { return &manifestLoad{} }
+func (c *manifestLoad) Name() string { return "manifest.load" }
 
 // manifestLoad-specific implementation of ParseParams.
 func (c *manifestLoad) ParseParams(params map[string]interface{}) error {

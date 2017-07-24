@@ -32,9 +32,8 @@ type gitFetchProject struct {
 	Revisions map[string]string `plugin:"expand"`
 }
 
-func gitFetchProjectFactory() Command     { return &gitFetchProject{} }
-func (c *gitFetchProject) Name() string   { return "get_project" }
-func (c *gitFetchProject) Plugin() string { return "git" }
+func gitFetchProjectFactory() Command   { return &gitFetchProject{} }
+func (c *gitFetchProject) Name() string { return "git.get_project" }
 
 // ParseParams parses the command's configuration.
 // Fulfills the Command interface.

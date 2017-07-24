@@ -31,9 +31,8 @@ type tarballCreate struct {
 	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
 }
 
-func tarballCreateFactory() Command     { return &tarballCreate{} }
-func (c *tarballCreate) Name() string   { return "targz_pack" }
-func (c *tarballCreate) Plugin() string { return "archive" }
+func tarballCreateFactory() Command   { return &tarballCreate{} }
+func (c *tarballCreate) Name() string { return "archive.targz_pack" }
 
 // ParseParams reads in the given parameters for the command.
 func (c *tarballCreate) ParseParams(params map[string]interface{}) error {

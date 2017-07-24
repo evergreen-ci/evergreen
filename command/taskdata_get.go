@@ -19,9 +19,9 @@ type taskDataGet struct {
 	Variant  string `mapstructure:"variant" plugin:"expand"`
 }
 
-func taskDataGetFactory() Command     { return &taskDataGet{} }
-func (c *taskDataGet) Name() string   { return "get" }
-func (c *taskDataGet) Plugin() string { return "json" }
+func taskDataGetFactory() Command   { return &taskDataGet{} }
+func (c *taskDataGet) Name() string { return "json.get" }
+
 func (c *taskDataGet) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
 		return errors.Wrapf(err, "error decoding '%v' params", c.Name())

@@ -32,3 +32,14 @@ func TestCommandRegistry(t *testing.T) {
 	assert.True(ok)
 	assert.NotNil(retFactory)
 }
+
+func TestGlobalCommandRegistryNamesMatchExpectedValues(t *testing.T) {
+	assert := assert.New(t)
+
+	evgRegistry.mul.Lock()
+	defer evgRegistry.mul.Unlock()
+	for name, factory := range evgRegistry.cmds {
+		cmd := factory()
+		assert.Equal(name, cmd.Name())
+	}
+}

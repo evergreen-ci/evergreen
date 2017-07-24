@@ -48,9 +48,8 @@ type shellExec struct {
 	ContinueOnError bool `mapstructure:"continue_on_err"`
 }
 
-func shellExecFactory() Command   { return &shellExec{} }
-func (*shellExec) Name() string   { return "exec" }
-func (*shellExec) Plugin() string { return "shell" }
+func shellExecFactory() Command { return &shellExec{} }
+func (*shellExec) Name() string { return "shell.exec" }
 
 // ParseParams reads in the command's parameters.
 func (c *shellExec) ParseParams(params map[string]interface{}) error {

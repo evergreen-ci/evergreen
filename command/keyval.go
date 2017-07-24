@@ -16,9 +16,8 @@ type keyValInc struct {
 	Destination string `mapstructure:"destination"`
 }
 
-func keyValIncFactory() Command     { return &keyValInc{} }
-func (c *keyValInc) Name() string   { return "inc" }
-func (c *keyValInc) Plugin() string { return "keyval" }
+func keyValIncFactory() Command   { return &keyValInc{} }
+func (c *keyValInc) Name() string { return "keyval.inc" }
 
 // ParseParams validates the input to the keyValInc, returning an error
 // if something is incorrect. Fulfills Command interface.

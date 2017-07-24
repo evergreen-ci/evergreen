@@ -50,9 +50,8 @@ type s3get struct {
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
 }
 
-func s3GetFactory() Command     { return &s3get{} }
-func (c *s3get) Name() string   { return "get" }
-func (c *s3get) Plugin() string { return "s3" }
+func s3GetFactory() Command   { return &s3get{} }
+func (c *s3get) Name() string { return "s3.get" }
 
 // s3get-specific implementation of ParseParams.
 func (c *s3get) ParseParams(params map[string]interface{}) error {

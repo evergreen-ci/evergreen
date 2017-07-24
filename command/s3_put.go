@@ -77,9 +77,8 @@ type s3put struct {
 	taskdata client.TaskData
 }
 
-func s3PutFactory() Command        { return &s3put{} }
-func (s3pc *s3put) Name() string   { return "put" }
-func (s3pc *s3put) Plugin() string { return "s3" }
+func s3PutFactory() Command      { return &s3put{} }
+func (s3pc *s3put) Name() string { return "s3.put" }
 
 // s3put-specific implementation of ParseParams.
 func (s3pc *s3put) ParseParams(params map[string]interface{}) error {
