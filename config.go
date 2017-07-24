@@ -337,9 +337,10 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	if s.Splunk.Populated() {
 		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
 		if err == nil {
-			senders = append(send.NewBufferedSender(sender,
-				time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
-				s.LogBuffering.BufferCount))
+			senders = append(senders,
+				send.NewBufferedSender(sender,
+					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
+					s.LogBuffering.BufferCount))
 		}
 	}
 
