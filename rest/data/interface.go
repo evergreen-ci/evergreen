@@ -115,4 +115,5 @@ type Connector interface {
 	// SetPatchPriority and SetPatchActivated change the status of the input patch
 	SetPatchPriority(string, int64) error
 	SetPatchActivated(string, string, bool) error
+	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 }

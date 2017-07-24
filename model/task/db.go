@@ -517,6 +517,44 @@ func CostDataByDistroIdPipeline(distroId string, starttime time.Time, duration t
 	return pipeline
 }
 
+// FindCostTaskByProject fetches all tasks of a project matching the
+// given time range, starting at task's IdKey in sortDir direction.
+func FindCostTaskByProject(project, taskId string, starttime,
+	endtime time.Time, limit, sortDir int) ([]Task, error) {
+	sortSpec := IdKey // Sort on IdKey
+	filter := bson.M{}
+	filter[ProjectKey] = project
+	filter[FinishTimeKey] = bson.M{"$gte": starttime, "$lte": endtime}
+	if sortDir < 0 {
+		sortSpec = "-" + sortSpec
+		filter[IdKey] = bson.M{"$lt": taskId}
+	} else {
+		filter[IdKey] = bson.M{"$gte": taskId}
+	}
+
+	// Only project the fields relevant for the cost route
+	projection := bson.M{
+		DisplayNameKey:  1,
+		DistroIdKey:     1,
+		BuildVariantKey: 1,
+		FinishTimeKey:   1,
+		TimeTakenKey:    1,
+		RevisionKey:     1,
+	}
+
+	tasks := []Task{} // Tasks to be returned
+	err := db.FindAll(
+		Collection,
+		filter,
+		projection,
+		[]string{sortSpec},
+		db.NoSkip,
+		limit,
+		&tasks,
+	)
+	return tasks, err
+}
+
 // DB Boilerplate
 
 // FindOne returns one task that satisfies the query.

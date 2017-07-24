@@ -44,6 +44,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/tasks/{task_id}/tests":                               getTestRouteManager,
 		"/cost/version/{version_id}":                           getCostByVersionIdRouteManager,
 		"/cost/distro/{distro_id}":                             getCostByDistroIdRouteManager,
+		"/cost/project/{project_id}/tasks":                     getCostTaskByProjectRouteManager,
 		"/versions/{version_id}":                               getVersionIdRouteManager,
 		"/versions/{version_id}/builds":                        getBuildsForVersionRouteManager,
 		"/versions/{version_id}/abort":                         getAbortVersionRouteManager,

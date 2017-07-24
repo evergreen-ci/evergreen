@@ -11,11 +11,13 @@ import (
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFindTestsByTaskId(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestFindTestsByTaskId")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	assert.NoError(t, db.Clear(task.Collection))
 
 	serviceContext := &DBConnector{}
 	numTests := 10

@@ -160,3 +160,37 @@ func (ad *APITask) ToService() (interface{}, error) {
 	st.DependsOn = dependsOn
 	return interface{}(st), nil
 }
+
+// APITaskCost is the model to be returned by the API whenever tasks
+// for the cost route are fetched.
+type APITaskCost struct {
+	Id           APIString     `json:"task_id"`
+	DisplayName  APIString     `json:"display_name"`
+	DistroId     APIString     `json:"distro"`
+	BuildVariant APIString     `json:"build_variant"`
+	TimeTaken    time.Duration `json:"time_taken"`
+	Githash      APIString     `json:"githash"`
+}
+
+// BuildFromService converts from a service level task by loading the data
+// into the appropriate fields of the APITaskCost. (It leaves out fields
+// unnecessary for the route.)
+func (atc *APITaskCost) BuildFromService(t interface{}) error {
+	switch v := t.(type) {
+	case task.Task:
+		atc.Id = APIString(v.Id)
+		atc.DisplayName = APIString(v.DisplayName)
+		atc.DistroId = APIString(v.DistroId)
+		atc.BuildVariant = APIString(v.BuildVariant)
+		atc.TimeTaken = v.TimeTaken
+		atc.Githash = APIString(v.Revision)
+	default:
+		return errors.New("Incorrect type when unmarshalling task")
+	}
+	return nil
+}
+
+// ToService returns a service layer version cost using the data from APIVersionCost.
+func (atc *APITaskCost) ToService() (interface{}, error) {
+	return nil, errors.Errorf("ToService() is not implemented for APITaskCost")
+}

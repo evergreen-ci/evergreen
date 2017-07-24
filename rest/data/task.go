@@ -3,6 +3,7 @@ package data
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
@@ -153,6 +154,19 @@ func (tc *DBTaskConnector) ResetTask(taskId, username string, proj *serviceModel
 		"Reset task error")
 }
 
+// FindCostTaskByProject queries the backing database for tasks of a project
+// that finishes in the given time range.
+func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, starttime,
+	endtime time.Time, limit, sortDir int) ([]task.Task, error) {
+	tasks, err := task.FindCostTaskByProject(project, taskId, starttime,
+		endtime, limit, sortDir)
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching tasks starting at id %s",
+			taskId)
+	}
+	return tasks, nil
+}
+
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Task related functions.
 type MockTaskConnector struct {
@@ -209,20 +223,20 @@ func (mtc *MockTaskConnector) FindTasksByProjectAndCommit(projectId, commitHash,
 	}
 	return nil, nil
 }
-func (mdf *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
-	return mdf.CachedTasks, mdf.StoredError
+func (mtc *MockTaskConnector) FindTasksByIds(taskIds []string) ([]task.Task, error) {
+	return mtc.CachedTasks, mtc.StoredError
 }
 
 // FindTaskByBuildId provides a mock implementation of the function for the
 // Connector interface without needing to use a database. It returns results
 // based on the cached tasks in the MockTaskConnector.
-func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit,
+func (mtc *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status string, limit,
 	sortDir int) ([]task.Task, error) {
-	if mdf.StoredError != nil {
-		return []task.Task{}, mdf.StoredError
+	if mtc.StoredError != nil {
+		return []task.Task{}, mtc.StoredError
 	}
 	ofBuildIdAndStatus := []task.Task{}
-	for _, t := range mdf.CachedTasks {
+	for _, t := range mtc.CachedTasks {
 		if t.BuildId == buildId {
 			if status == "" || t.Status == status {
 				ofBuildIdAndStatus = append(ofBuildIdAndStatus, t)
@@ -237,15 +251,15 @@ func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status st
 			var tasksToReturn []task.Task
 			if sortDir < 0 {
 				if ix-limit > 0 {
-					tasksToReturn = mdf.CachedTasks[ix-(limit) : ix]
+					tasksToReturn = mtc.CachedTasks[ix-(limit) : ix]
 				} else {
-					tasksToReturn = mdf.CachedTasks[:ix]
+					tasksToReturn = mtc.CachedTasks[:ix]
 				}
 			} else {
-				if ix+limit > len(mdf.CachedTasks) {
-					tasksToReturn = mdf.CachedTasks[ix:]
+				if ix+limit > len(mtc.CachedTasks) {
+					tasksToReturn = mtc.CachedTasks[ix:]
 				} else {
-					tasksToReturn = mdf.CachedTasks[ix : ix+limit]
+					tasksToReturn = mtc.CachedTasks[ix : ix+limit]
 				}
 			}
 			return tasksToReturn, nil
@@ -256,31 +270,31 @@ func (mdf *MockTaskConnector) FindTasksByBuildId(buildId, startTaskId, status st
 
 // SetTaskPriority changes the priority value of a task using a call to the
 // service layer function.
-func (mdf *MockTaskConnector) SetTaskPriority(it *task.Task, priority int64) error {
-	for ix, t := range mdf.CachedTasks {
+func (mtc *MockTaskConnector) SetTaskPriority(it *task.Task, priority int64) error {
+	for ix, t := range mtc.CachedTasks {
 		if t.Id == it.Id {
-			mdf.CachedTasks[ix].Priority = priority
-			return mdf.StoredError
+			mtc.CachedTasks[ix].Priority = priority
+			return mtc.StoredError
 		}
 	}
-	return mdf.StoredError
+	return mtc.StoredError
 }
 
 // SetTaskActivated changes the activation value of a task using a call to the
 // service layer function.
-func (mdf *MockTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
-	for ix, t := range mdf.CachedTasks {
+func (mtc *MockTaskConnector) SetTaskActivated(taskId, user string, activated bool) error {
+	for ix, t := range mtc.CachedTasks {
 		if t.Id == taskId {
-			mdf.CachedTasks[ix].Activated = activated
-			mdf.CachedTasks[ix].ActivatedBy = user
-			return mdf.StoredError
+			mtc.CachedTasks[ix].Activated = activated
+			mtc.CachedTasks[ix].ActivatedBy = user
+			return mtc.StoredError
 		}
 	}
-	return mdf.StoredError
+	return mtc.StoredError
 }
 
-func (mdf *MockTaskConnector) ResetTask(taskId, username string, proj *serviceModel.Project) error {
-	for ix, t := range mdf.CachedTasks {
+func (mtc *MockTaskConnector) ResetTask(taskId, username string, proj *serviceModel.Project) error {
+	for ix, t := range mtc.CachedTasks {
 		if t.Id == taskId {
 			t.Activated = true
 			t.Secret = "new secret"
@@ -290,8 +304,37 @@ func (mdf *MockTaskConnector) ResetTask(taskId, username string, proj *serviceMo
 			t.ScheduledTime = util.ZeroTime
 			t.FinishTime = util.ZeroTime
 			t.TestResults = []task.TestResult{}
-			mdf.CachedTasks[ix] = t
+			mtc.CachedTasks[ix] = t
 		}
 	}
-	return mdf.StoredError
+	return mtc.StoredError
+}
+
+func (mtc *MockTaskConnector) FindCostTaskByProject(project, taskId string,
+	starttime, endtime time.Time, limit, sortDir int) ([]task.Task, error) {
+	tasks := []task.Task{}
+
+	if sortDir > 0 {
+		for _, t := range mtc.CachedTasks {
+			if t.Project == project && (t.FinishTime.Sub(starttime) >= 0) &&
+				(endtime.Sub(t.FinishTime) >= 0) && t.Id >= taskId {
+				tasks = append(tasks, t)
+				if len(tasks) == limit {
+					break
+				}
+			}
+		}
+	} else {
+		for i := len(mtc.CachedTasks) - 1; i >= 0; i-- {
+			t := mtc.CachedTasks[i]
+			if t.Project == project && (t.FinishTime.Sub(starttime) >= 0) &&
+				(endtime.Sub(t.FinishTime) >= 0) && t.Id < taskId {
+				tasks = append(tasks, t)
+				if len(tasks) == limit {
+					break
+				}
+			}
+		}
+	}
+	return tasks, nil
 }
