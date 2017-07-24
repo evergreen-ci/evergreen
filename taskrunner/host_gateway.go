@@ -223,6 +223,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 
 	agentCmdParts := []string{
 		pathToExecutable,
+		"agent",
 		fmt.Sprintf("--api_server='%s'", settings.ApiUrl),
 		fmt.Sprintf("--host_id='%s'", hostObj.Id),
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),

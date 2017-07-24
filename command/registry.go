@@ -87,7 +87,7 @@ func (r *commandRegistry) registerCommand(name string, factory CommandFactory) e
 		return errors.Errorf("cannot register a nil factory for command '%s'", name)
 	}
 
-	grip.Info(message.Fields{
+	grip.Debug(message.Fields{
 		"message": "registering command",
 		"command": name,
 	})
