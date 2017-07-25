@@ -36,10 +36,11 @@ distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" )
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*")
-ldFlags := -ldflags="-X=github.com/evergreen-ci/evergreen.BuildRevision=`git rev-parse HEAD`"
+currentHash := $(shell git rev-parse HEAD)
+ldFlags := "-w -s -X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
 # static rules for rule for building artifacts
 define crossCompile
-	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* $(ldFlags) -goBinary="`which go`" -output=$@
+	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="`which go`" -output=$@
 endef
 # end evergreen specific configuration
 

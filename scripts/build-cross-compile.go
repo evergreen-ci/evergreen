@@ -58,18 +58,15 @@ func main() {
 	}
 
 	cmd := exec.Command(goBin, "build")
-
-	cmd.Args = append(cmd.Args, "-o", output)
+	ldf := fmt.Sprintf("-ldflags=%s", ldFlags)
+	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
+	cmd.Args = append(cmd.Args, ldf)
 
 	if race {
 		cmd.Args = append(cmd.Args, "-race")
 	}
 
-	if ldFlags != "" {
-		cmd.Args = append(cmd.Args, "-ldflags=\""+ldFlags+"\"")
-		cmd.Args = append(cmd.Args, "-ldflags='-w'")
-		cmd.Args = append(cmd.Args, "-ldflags='-s'")
-	}
+	cmd.Args = append(cmd.Args, "-o", output)
 	cmd.Args = append(cmd.Args, source)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -85,7 +82,8 @@ func main() {
 			"GOARCH="+arch)
 	}
 
-	fmt.Println(strings.Join(cmd.Env[1:], " "), strings.Join(cmd.Args, " "))
+	cmdString := strings.Join(cmd.Args, " ")
+	fmt.Println(strings.Join(cmd.Env[1:], " "), strings.Replace(cmdString, ldf, ldfQuoted, -1))
 	if err := cmd.Run(); err != nil {
 		fmt.Printf("problem building %s: %v\n", output, err)
 		os.Exit(1)
