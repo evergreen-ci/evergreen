@@ -36,8 +36,8 @@ func TestCommandRegistry(t *testing.T) {
 func TestGlobalCommandRegistryNamesMatchExpectedValues(t *testing.T) {
 	assert := assert.New(t)
 
-	evgRegistry.mul.Lock()
-	defer evgRegistry.mul.Unlock()
+	evgRegistry.mu.Lock()
+	defer evgRegistry.mu.Unlock()
 	for name, factory := range evgRegistry.cmds {
 		cmd := factory()
 		assert.Equal(name, cmd.Name())
