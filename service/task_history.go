@@ -495,7 +495,7 @@ func makeVersionsQuery(anchorOrderNum int, projectId string, versionsToFetch int
 		db.Query(bson.M{
 			version.IdentifierKey:          projectId,
 			version.RevisionOrderNumberKey: ronQuery,
-			version.RequesterKey:           RepotrackerVersionRequester,
+			version.RequesterKey:           evergreen.RepotrackerVersionRequester,
 		}).WithFields(
 			version.RevisionOrderNumberKey,
 			version.RevisionKey,
