@@ -223,3 +223,67 @@ func (s *BuildConnectorAbortSuite) TestAbortFail() {
 		s.Error(err)
 	}
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for restart build route
+
+type BuildConnectorRestartSuite struct {
+	ctx  Connector
+	mock bool
+
+	suite.Suite
+}
+
+func TestBuildConnectorRestartSuite(t *testing.T) {
+	s := new(BuildConnectorRestartSuite)
+
+	s.ctx = &DBConnector{}
+
+	testutil.ConfigureIntegrationTest(t, testConfig, "TestPatchConnectorAbortByIdSuite")
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+
+	assert.NoError(t, db.Clear(build.Collection))
+
+	build1 := &build.Build{Id: "build1"}
+	build2 := &build.Build{Id: "build2"}
+
+	assert.NoError(t, build1.Insert())
+	assert.NoError(t, build2.Insert())
+
+	s.mock = false
+	suite.Run(t, s)
+}
+
+func TestMockBuildConnectorRestartSuite(t *testing.T) {
+	s := new(BuildConnectorRestartSuite)
+
+	s.ctx = &MockConnector{MockBuildConnector: MockBuildConnector{
+		CachedBuilds: []build.Build{
+			{Id: "build1"},
+			{Id: "build2"},
+		},
+	}}
+
+	s.mock = true
+	suite.Run(t, s)
+}
+
+func (s *BuildConnectorRestartSuite) TestRestart() {
+	err := s.ctx.RestartBuild("build1", "user1")
+	s.NoError(err)
+
+	err = s.ctx.RestartBuild("build1", "user1")
+	s.NoError(err)
+}
+
+func (s *BuildConnectorRestartSuite) TestRestartFail() {
+	if s.mock {
+		s.ctx.(*MockConnector).FailOnRestart = true
+		err := s.ctx.RestartBuild("build1", "user1")
+		s.Error(err)
+
+		err = s.ctx.RestartBuild("build1", "user1")
+		s.Error(err)
+	}
+}

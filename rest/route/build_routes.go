@@ -15,6 +15,12 @@ import (
 	"golang.org/x/net/context"
 )
 
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for fetching build by id
+//
+//    /builds/{build_id}
+
 type buildGetHandler struct {
 	buildId string
 }
@@ -114,8 +120,7 @@ func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 	user := GetUser(ctx)
 	if b.Priority != nil {
 		priority := *b.Priority
-		if priority > evergreen.MaxTaskPriority &&
-			!auth.IsSuperUser(sc.GetSuperUsers(), user) {
+		if ok := validPriority(priority, user, sc); !ok {
 			return ResponseData{}, &rest.APIError{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
@@ -148,6 +153,12 @@ func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 		Result: []model.Model{buildModel},
 	}, nil
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for aborting build by id
+//
+//    /builds/{build_id}/abort
 
 type buildAbortHandler struct {
 	buildId string
@@ -191,6 +202,71 @@ func (b *buildAbortHandler) Execute(ctx context.Context, sc data.Connector) (Res
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	buildModel := &model.APIBuild{}
+	err = buildModel.BuildFromService(*foundBuild)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{buildModel},
+	}, err
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Handler for restarting build by id
+//
+//    /builds/{build_id}/restart
+
+type buildRestartHandler struct {
+	buildId string
+}
+
+func getBuildRestartManager(route string, version int) *RouteManager {
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    (&buildRestartHandler{}).Handler(),
+				MethodType:        evergreen.MethodPost,
+			},
+		},
+	}
+}
+
+func (b *buildRestartHandler) Handler() RequestHandler {
+	return &buildRestartHandler{}
+}
+
+func (b *buildRestartHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	b.buildId = vars["build_id"]
+	return nil
+}
+
+func (b *buildRestartHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	err := sc.RestartBuild(b.buildId, GetUser(ctx).Id)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Restart error")
+		}
+		return ResponseData{}, err
+	}
+
+	foundBuild, err := sc.FindBuildById(b.buildId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
 		}
 		return ResponseData{}, err
 	}

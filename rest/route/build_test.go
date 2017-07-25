@@ -254,3 +254,64 @@ func (s *BuildAbortSuite) TestAbortFail() {
 
 	s.Error(err)
 }
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for restart build route
+
+type BuildRestartSuite struct {
+	sc   *data.MockConnector
+	data data.MockBuildConnector
+
+	suite.Suite
+}
+
+func TestBuildRestartSuite(t *testing.T) {
+	suite.Run(t, new(BuildRestartSuite))
+}
+
+func (s *BuildRestartSuite) SetupSuite() {
+	s.data = data.MockBuildConnector{
+		CachedBuilds: []build.Build{
+			{Id: "build1", Project: "branch"},
+			{Id: "build2", Project: "notbranch"},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockBuildConnector: s.data,
+	}
+}
+
+func (s *BuildRestartSuite) TestRestart() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildRestartManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
+
+	res, err := rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	b, ok := (res.Result[0]).(*model.APIBuild)
+	s.True(ok)
+	s.Equal(model.APIString("build1"), b.Id)
+
+	res, err = rm.Methods[0].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	b, ok = (res.Result[0]).(*model.APIBuild)
+	s.True(ok)
+	s.Equal(model.APIString("build1"), b.Id)
+}
+
+func (s *BuildRestartSuite) TestRestartFail() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildRestartManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
+	s.sc.FailOnRestart = true
+	_, err := rm.Methods[0].Execute(ctx, s.sc)
+
+	s.Error(err)
+}

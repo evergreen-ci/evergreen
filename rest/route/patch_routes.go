@@ -76,9 +76,8 @@ func (p *patchChangeStatusHandler) Execute(ctx context.Context, sc data.Connecto
 	user := GetUser(ctx)
 	if p.Priority != nil {
 		priority := *p.Priority
-		if priority > evergreen.MaxTaskPriority &&
-			!auth.IsSuperUser(sc.GetSuperUsers(), user) {
-			return ResponseData{}, rest.APIError{
+		if ok := validPriority(priority, user, sc); !ok {
+			return ResponseData{}, &rest.APIError{
 				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
 					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
 				StatusCode: http.StatusForbidden,

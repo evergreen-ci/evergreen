@@ -27,6 +27,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/":                                                    getPlaceHolderManger,
 		"/builds/{build_id}":                                   getBuildByIdRouteManager,
 		"/builds/{build_id}/abort":                             getBuildAbortRouteManager,
+		"/builds/{build_id}/restart":							getBuildRestartManager,
 		"/builds/{build_id}/tasks":                             getTasksByBuildRouteManager,
 		"/distros":                                             getDistroRouteManager,
 		"/hosts":                                               getHostRouteManager,

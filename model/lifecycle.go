@@ -320,6 +320,26 @@ func RestartBuild(buildId string, taskIds []string, abortInProgress bool, caller
 	return errors.WithStack(build.UpdateActivation(buildId, true, caller))
 }
 
+// RestartBuildTasks restarts all the tasks associated with a given build.
+func RestartBuildTasks(buildId string, caller string) error {
+	allTasks, err := task.Find(task.ByBuildId(buildId))
+	if err != nil && err != mgo.ErrNotFound {
+		return errors.WithStack(err)
+	}
+
+	for _, t := range allTasks {
+		if t.DispatchTime != util.ZeroTime {
+			err = resetTask(t.Id)
+			if err != nil {
+				return errors.Wrapf(err,
+				"Restarting build %v failed, could not task.reset on task",
+					buildId, t.Id)
+			}
+		}
+	}
+	return errors.WithStack(build.UpdateActivation(buildId, true, caller))
+}
+
 func CreateTasksCache(tasks []task.Task) []build.TaskCache {
 	tasks = sortTasks(tasks)
 	cache := make([]build.TaskCache, 0, len(tasks))

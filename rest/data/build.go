@@ -52,6 +52,11 @@ func (bc *DBBuildConnector) SetBuildActivated(buildId string, user string, activ
 	return model.SetBuildActivation(buildId, activated, user)
 }
 
+// RestartBuild wraps the service level RestartBuild
+func (bc *DBBuildConnector) RestartBuild(buildId string, user string) error {
+	return model.RestartBuildTasks(buildId, user)
+}
+
 // MockBuildConnector is a struct that implements the Build related methods
 // from the Connector through interactions with the backing database.
 type MockBuildConnector struct {
@@ -60,6 +65,7 @@ type MockBuildConnector struct {
 	CachedAborted        map[string]string
 	FailOnChangePriority bool
 	FailOnAbort          bool
+	FailOnRestart        bool
 }
 
 // FindBuildById iterates through the CachedBuilds slice to find the build
@@ -111,5 +117,13 @@ func (bc *MockBuildConnector) SetBuildActivated(buildId string, user string, act
 	}
 	b.Activated = activated
 	b.ActivatedBy = user
+	return nil
+}
+
+// RestartBuild does absolutely nothing
+func (bc *MockBuildConnector) RestartBuild(buildId string, user string) error {
+	if bc.FailOnRestart {
+		return errors.New("manufactured error")
+	}
 	return nil
 }

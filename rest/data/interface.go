@@ -54,6 +54,8 @@ type Connector interface {
 
 	// AbortBuild is a method to abort the build matching the same BuildId.
 	AbortBuild(string, string) error
+	// RestartBuild is a method to restart the build matching the same BuildId.
+	RestartBuild(string, string) error
 
 	// FindProjects is a method to find projects as ordered by name
 	FindProjects(string, int, int, bool) ([]model.ProjectRef, error)
