@@ -150,7 +150,6 @@ func (s *VersionSuite) TestFindAllBuildsForVersion() {
 		s.Equal(model.NewTime(timeField), b.CreateTime)
 		s.Equal(model.NewTime(timeField), b.StartTime)
 		s.Equal(model.NewTime(timeField), b.FinishTime)
-		s.Equal(model.NewTime(timeField), b.PushTime)
 		s.Equal(model.APIString(versionId), b.Version)
 		s.Equal(model.APIString(s.bv[idx]), b.BuildVariant)
 	}
