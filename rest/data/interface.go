@@ -48,6 +48,9 @@ type Connector interface {
 
 	// FindBuildById is a method to find the build matching the same BuildId.
 	FindBuildById(string) (*build.Build, error)
+	// SetBuildPriority and SetBuildActivated change the status of the input build
+	SetBuildPriority(string, int64) error
+	SetBuildActivated(string, string, bool) error
 
 	// AbortBuild is a method to abort the build matching the same BuildId.
 	AbortBuild(string, string) error

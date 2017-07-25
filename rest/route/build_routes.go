@@ -1,12 +1,15 @@
 package route
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -16,16 +19,21 @@ type buildGetHandler struct {
 	buildId string
 }
 
-func getBuildGetRouteManager(route string, version int) *RouteManager {
-	b := &buildGetHandler{}
+func getBuildByIdRouteManager(route string, version int) *RouteManager {
 	return &RouteManager{
 		Route:   route,
 		Version: version,
 		Methods: []MethodHandler{
 			{
 				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: b.Handler(),
+				RequestHandler: &buildGetHandler{}.Handler(),
 				MethodType:     evergreen.MethodGet,
+			},
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    &buildChangeStatusHandler{}.Handler(),
+				MethodType:        evergreen.MethodPatch,
 			},
 		},
 	}
@@ -73,6 +81,74 @@ func (b *buildGetHandler) Execute(ctx context.Context, sc data.Connector) (Respo
 	}, nil
 }
 
+type buildChangeStatusHandler struct {
+	Activated *bool  `json:"activated"`
+	Priority  *int64 `json:"priority"`
+
+	buildId string
+}
+
+func (b *buildChangeStatusHandler) Handler() RequestHandler {
+	return &buildChangeStatusHandler{}
+}
+
+func (b *buildChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	b.buildId = mux.Vars(r)["build_id"]
+	body := util.NewRequestReader(r)
+	defer body.Close()
+
+	if err := util.ReadJSONInto(body, b); err != nil {
+		return errors.Wrap(err, "Argument read error")
+	}
+
+	if b.Activated == nil && b.Priority == nil {
+		return &rest.APIError{
+			Message:    "Must set 'activated' or 'priority'",
+			StatusCode: http.StatusBadRequest,
+		}
+	}
+	return nil
+}
+
+func (b *buildChangeStatusHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	user := GetUser(ctx)
+	if b.Priority != nil {
+		priority := *b.Priority
+		if priority > evergreen.MaxTaskPriority &&
+			!auth.IsSuperUser(sc.GetSuperUsers(), user) {
+			return ResponseData{}, &rest.APIError{
+				Message: fmt.Sprintf("Insufficient privilege to set priority to %d, "+
+					"non-superusers can only set priority at or below %d", priority, evergreen.MaxTaskPriority),
+				StatusCode: http.StatusForbidden,
+			}
+		}
+		if err := sc.SetBuildPriority(b.buildId, priority); err != nil {
+			return ResponseData{}, errors.Wrap(err, "Database error")
+		}
+	}
+	if b.Activated != nil {
+		if err := sc.SetBuildActivated(b.buildId, user.Username(), *b.Activated); err != nil {
+			return ResponseData{}, errors.Wrap(err, "Database error")
+		}
+	}
+	foundBuild, err := sc.FindBuildById(b.buildId)
+	if err != nil {
+		return ResponseData{}, errors.Wrap(err, "Database error")
+	}
+
+	buildModel := &model.APIBuild{}
+	err = buildModel.BuildFromService(*foundBuild)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	return ResponseData{
+		Result: []model.Model{buildModel},
+	}, nil
+}
+
 type buildAbortHandler struct {
 	buildId string
 }
@@ -84,9 +160,9 @@ func getBuildAbortRouteManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
-				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: (&buildAbortHandler{}).Handler(),
-				MethodType:     evergreen.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    (&buildAbortHandler{}).Handler(),
+				MethodType:        evergreen.MethodPost,
 			},
 		},
 	}

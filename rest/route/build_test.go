@@ -12,7 +12,11 @@ import (
 	"golang.org/x/net/context"
 )
 
-type BuildSuite struct {
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for fetch build by id
+
+type BuildByIdSuite struct {
 	sc   *data.MockConnector
 	data data.MockBuildConnector
 
@@ -20,10 +24,10 @@ type BuildSuite struct {
 }
 
 func TestBuildSuite(t *testing.T) {
-	suite.Run(t, new(BuildSuite))
+	suite.Run(t, new(BuildByIdSuite))
 }
 
-func (s *BuildSuite) SetupSuite() {
+func (s *BuildByIdSuite) SetupSuite() {
 	s.data = data.MockBuildConnector{
 		CachedBuilds: []build.Build{
 			{Id: "build1", Project: "branch"},
@@ -39,8 +43,8 @@ func (s *BuildSuite) SetupSuite() {
 	}
 }
 
-func (s *BuildSuite) TestFindByIdProjFound() {
-	rm := getBuildGetRouteManager("", 2)
+func (s *BuildByIdSuite) TestFindByIdProjFound() {
+	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build1"
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
@@ -53,8 +57,8 @@ func (s *BuildSuite) TestFindByIdProjFound() {
 	s.Equal(model.APIString("project"), b.ProjectId)
 }
 
-func (s *BuildSuite) TestFindByIdProjNotFound() {
-	rm := getBuildGetRouteManager("", 2)
+func (s *BuildByIdSuite) TestFindByIdProjNotFound() {
+	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build2"
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
@@ -67,14 +71,153 @@ func (s *BuildSuite) TestFindByIdProjNotFound() {
 	s.Equal(model.APIString(""), b.ProjectId)
 }
 
-func (s *BuildSuite) TestFindByIdFail() {
-	rm := getBuildGetRouteManager("", 2)
+func (s *BuildByIdSuite) TestFindByIdFail() {
+	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build3"
 	_, err := rm.Methods[0].Execute(nil, s.sc)
 	s.Error(err)
 }
 
-func (s *BuildSuite) TestAbort() {
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for change build status by id
+
+type BuildChangeStatusSuite struct {
+	sc   *data.MockConnector
+	data data.MockBuildConnector
+
+	suite.Suite
+}
+
+func TestBuildChangeStatusSuite(t *testing.T) {
+	suite.Run(t, new(BuildChangeStatusSuite))
+}
+
+func (s *BuildChangeStatusSuite) SetupSuite() {
+	s.data = data.MockBuildConnector{
+		CachedBuilds: []build.Build{
+			{Id: "build1"},
+			{Id: "build2"},
+		},
+	}
+	s.sc = &data.MockConnector{
+		MockBuildConnector: s.data,
+	}
+}
+
+func (s *BuildChangeStatusSuite) TestSetActivation() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildByIdRouteManager("", 2)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
+	var tmp_true = true
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Activated = &tmp_true
+
+	res, err := rm.Methods[1].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(1, len(res.Result))
+
+	b, ok := (res.Result[0]).(*model.APIBuild)
+	s.True(ok)
+	s.True(b.Activated)
+	s.Equal(model.APIString("user1"), b.ActivatedBy)
+}
+
+func (s *BuildChangeStatusSuite) TestSetActivationFail() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildByIdRouteManager("", 2)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "zzz"
+	var tmp_true = true
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Activated = &tmp_true
+
+	_, err := rm.Methods[1].Execute(ctx, s.sc)
+	s.Error(err)
+	s.Contains(err.Error(), "not found")
+}
+
+func (s *BuildChangeStatusSuite) TestSetPriority() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildByIdRouteManager("", 2)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
+	var tmp_seven = int64(7)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Priority = &tmp_seven
+
+	res, err := rm.Methods[1].Execute(ctx, s.sc)
+	s.NoError(err)
+	s.NotNil(res)
+	s.Equal(1, len(res.Result))
+	_, ok := (res.Result[0]).(*model.APIBuild)
+	s.True(ok)
+}
+
+func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildByIdRouteManager("", 2)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
+	s.sc.FailOnChangePriority = true
+	tmp_int := int64(7)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Priority = &tmp_int
+	_, err := rm.Methods[1].Execute(ctx, s.sc)
+	s.Error(err)
+	s.sc.FailOnChangePriority = false
+}
+
+func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	s.sc.SetSuperUsers([]string{"admin"})
+
+	rm := getBuildByIdRouteManager("", 2)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
+	tmp_int := int64(1000)
+	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).Priority = &tmp_int
+	_, err := rm.Methods[1].Execute(ctx, s.sc)
+
+	s.Error(err)
+	s.Contains(err.Error(), "Insufficient privilege to set priority")
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for abort build route
+
+type BuildAbortSuite struct {
+	sc   *data.MockConnector
+	data data.MockBuildConnector
+
+	suite.Suite
+}
+
+func TestBuildAbortSuite(t *testing.T) {
+	suite.Run(t, new(BuildAbortSuite))
+}
+
+func (s *BuildAbortSuite) SetupSuite() {
+	s.data = data.MockBuildConnector{
+		CachedBuilds: []build.Build{
+			{Id: "build1", Project: "branch"},
+			{Id: "build2", Project: "notbranch"},
+		},
+		CachedProjects: map[string]*serviceModel.ProjectRef{
+			"branch": {Repo: "project", Identifier: "branch"},
+		},
+		CachedAborted: make(map[string]string),
+	}
+	s.sc = &data.MockConnector{
+		MockBuildConnector: s.data,
+	}
+}
+
+func (s *BuildAbortSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
 
@@ -98,4 +241,16 @@ func (s *BuildSuite) TestAbort() {
 	b, ok = (res.Result[0]).(*model.APIBuild)
 	s.True(ok)
 	s.Equal(model.APIString("build1"), b.Id)
+}
+
+func (s *BuildAbortSuite) TestAbortFail() {
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+
+	rm := getBuildAbortRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
+	s.sc.FailOnAbort = true
+	_, err := rm.Methods[0].Execute(ctx, s.sc)
+
+	s.Error(err)
 }
