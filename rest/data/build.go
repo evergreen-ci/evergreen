@@ -16,15 +16,15 @@ type DBBuildConnector struct{}
 
 // FindBuildById uses the service layer's build type to query the backing database for
 // a specific build.
-func (bc *DBBuildConnector) FindBuildById(id string) (*build.Build, error) {
-	b, err := build.FindOne(build.ById(id))
+func (bc *DBBuildConnector) FindBuildById(buildId string) (*build.Build, error) {
+	b, err := build.FindOne(build.ById(buildId))
 	if err != nil {
 		return nil, err
 	}
 	if b == nil {
 		return nil, &rest.APIError{
 			StatusCode: http.StatusNotFound,
-			Message:    fmt.Sprintf("build with id %s not found", id),
+			Message:    fmt.Sprintf("build with id %s not found", buildId),
 		}
 	}
 	return b, nil
@@ -37,8 +37,8 @@ func (bc *DBBuildConnector) FindProjectByBranch(branch string) (*model.ProjectRe
 }
 
 // AbortBuild wraps the service level AbortBuild
-func (bc *DBBuildConnector) AbortBuild(id string, user string) error {
-	return model.AbortBuild(id, user)
+func (bc *DBBuildConnector) AbortBuild(buildId string, user string) error {
+	return model.AbortBuild(buildId, user)
 }
 
 // MockBuildConnector is a struct that implements the Build related methods
@@ -51,15 +51,15 @@ type MockBuildConnector struct {
 
 // FindBuildById iterates through the CachedBuilds slice to find the build
 // with matching id field.
-func (bc *MockBuildConnector) FindBuildById(id string) (*build.Build, error) {
+func (bc *MockBuildConnector) FindBuildById(buildId string) (*build.Build, error) {
 	for _, b := range bc.CachedBuilds {
-		if b.Id == id {
+		if b.Id == buildId {
 			return &b, nil
 		}
 	}
 	return nil, &rest.APIError{
 		StatusCode: http.StatusNotFound,
-		Message:    fmt.Sprintf("build with id %s not found", id),
+		Message:    fmt.Sprintf("build with id %s not found", buildId),
 	}
 }
 
@@ -74,7 +74,7 @@ func (bc *MockBuildConnector) FindProjectByBranch(branch string) (*model.Project
 }
 
 // AbortBuild sets the value of the input build Id in CachedAborted to true.
-func (bc *MockBuildConnector) AbortBuild(id string, user string) error {
-	bc.CachedAborted[id] = user
+func (bc *MockBuildConnector) AbortBuild(buildId string, user string) error {
+	bc.CachedAborted[buildId] = user
 	return nil
 }

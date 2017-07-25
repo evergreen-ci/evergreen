@@ -20,7 +20,7 @@ type APIPatch struct {
 	CreateTime    APITime       `json:"create_time"`
 	StartTime     APITime       `json:"start_time"`
 	FinishTime    APITime       `json:"finish_time"`
-	BuildVariants []APIString   `json:"build_variants"`
+	Variants      []APIString   `json:"builds"`
 	Tasks         []APIString   `json:"tasks"`
 	VariantsTasks []variantTask `json:"variants_tasks"`
 	Activated     bool          `json:"activated"`
@@ -48,11 +48,11 @@ func (apiPatch *APIPatch) BuildFromService(h interface{}) error {
 	apiPatch.CreateTime = NewTime(v.CreateTime)
 	apiPatch.StartTime = NewTime(v.CreateTime)
 	apiPatch.FinishTime = NewTime(v.CreateTime)
-	buildVariants := make([]APIString, 0)
+	builds := make([]APIString, 0)
 	for _, b := range v.BuildVariants {
-		buildVariants = append(buildVariants, APIString(b))
+		builds = append(builds, APIString(b))
 	}
-	apiPatch.BuildVariants = buildVariants
+	apiPatch.Variants = builds
 	tasks := make([]APIString, 0)
 	for _, t := range v.Tasks {
 		tasks = append(tasks, APIString(t))

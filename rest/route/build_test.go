@@ -29,18 +29,19 @@ func (s *BuildSuite) SetupSuite() {
 			{Id: "build1", Project: "branch"},
 			{Id: "build2", Project: "notbranch"},
 		},
-		CachedProjects: make(map[string]*serviceModel.ProjectRef),
-		CachedAborted:  make(map[string]string),
+		CachedProjects: map[string]*serviceModel.ProjectRef{
+			"branch": {Repo: "project", Identifier: "branch"},
+		},
+		CachedAborted: make(map[string]string),
 	}
-	s.data.CachedProjects["branch"] = &serviceModel.ProjectRef{Repo: "project", Identifier: "branch"}
 	s.sc = &data.MockConnector{
 		MockBuildConnector: s.data,
 	}
 }
 
 func (s *BuildSuite) TestFindByIdProjFound() {
-	rm := getBuildIdRouteManager("/builds/{build_id}", 2)
-	(rm.Methods[0].RequestHandler).(*buildIdGetHandler).buildId = "build1"
+	rm := getBuildGetRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build1"
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -53,8 +54,8 @@ func (s *BuildSuite) TestFindByIdProjFound() {
 }
 
 func (s *BuildSuite) TestFindByIdProjNotFound() {
-	rm := getBuildIdRouteManager("/builds/{build_id}", 2)
-	(rm.Methods[0].RequestHandler).(*buildIdGetHandler).buildId = "build2"
+	rm := getBuildGetRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build2"
 	res, err := rm.Methods[0].Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -67,8 +68,8 @@ func (s *BuildSuite) TestFindByIdProjNotFound() {
 }
 
 func (s *BuildSuite) TestFindByIdFail() {
-	rm := getBuildIdRouteManager("/builds/{build_id}", 2)
-	(rm.Methods[0].RequestHandler).(*buildIdGetHandler).buildId = "build3"
+	rm := getBuildGetRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildGetHandler).buildId = "build3"
 	_, err := rm.Methods[0].Execute(nil, s.sc)
 	s.Error(err)
 }
@@ -77,8 +78,8 @@ func (s *BuildSuite) TestAbort() {
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
 
-	rm := getBuildIdAbortRouteManager("/builds/{build_id}/abort", 2)
-	(rm.Methods[0].RequestHandler).(*buildIdAbortGetHandler).buildId = "build1"
+	rm := getBuildAbortRouteManager("", 2)
+	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
 	res, err := rm.Methods[0].Execute(ctx, s.sc)
 
 	s.NoError(err)

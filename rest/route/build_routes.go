@@ -12,43 +12,37 @@ import (
 	"golang.org/x/net/context"
 )
 
-// I'm not sure if this refactoring actually makes the code easier to understand
-func getBuildIdFromRequest(r *http.Request) string {
-	vars := mux.Vars(r)
-	return vars["build_id"]
-}
-
-type buildIdGetHandler struct {
+type buildGetHandler struct {
 	buildId string
 }
 
-func getBuildIdRouteManager(route string, version int) *RouteManager {
-	bigh := &buildIdGetHandler{}
-	buildGet := MethodHandler{
-		Authenticator:  &NoAuthAuthenticator{},
-		RequestHandler: bigh.Handler(),
-		MethodType:     evergreen.MethodGet,
-	}
-
-	buildRoute := RouteManager{
+func getBuildGetRouteManager(route string, version int) *RouteManager {
+	b := &buildGetHandler{}
+	return &RouteManager{
 		Route:   route,
-		Methods: []MethodHandler{buildGet},
 		Version: version,
+		Methods: []MethodHandler{
+			{
+				Authenticator:  &NoAuthAuthenticator{},
+				RequestHandler: b.Handler(),
+				MethodType:     evergreen.MethodGet,
+			},
+		},
 	}
-	return &buildRoute
 }
 
-func (bigh *buildIdGetHandler) Handler() RequestHandler {
-	return &buildIdGetHandler{}
+func (b *buildGetHandler) Handler() RequestHandler {
+	return &buildGetHandler{}
 }
 
-func (bigh *buildIdGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	bigh.buildId = getBuildIdFromRequest(r)
+func (b *buildGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	b.buildId = vars["build_id"]
 	return nil
 }
 
-func (bigh *buildIdGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	foundBuild, err := sc.FindBuildById(bigh.buildId)
+func (b *buildGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	foundBuild, err := sc.FindBuildById(b.buildId)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -79,34 +73,36 @@ func (bigh *buildIdGetHandler) Execute(ctx context.Context, sc data.Connector) (
 	}, nil
 }
 
-type buildIdAbortGetHandler struct {
+type buildAbortHandler struct {
 	buildId string
 }
 
-func getBuildIdAbortRouteManager(route string, version int) *RouteManager {
+func getBuildAbortRouteManager(route string, version int) *RouteManager {
 	return &RouteManager{
 		Route:   route,
 		Version: version,
 		Methods: []MethodHandler{
 			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:  &RequireUserAuthenticator{},
-				RequestHandler: (&buildIdAbortGetHandler{}).Handler(),
+				RequestHandler: (&buildAbortHandler{}).Handler(),
 				MethodType:     evergreen.MethodPost,
 			},
 		},
 	}
 }
 
-func (b *buildIdAbortGetHandler) Handler() RequestHandler {
-	return &buildIdAbortGetHandler{}
+func (b *buildAbortHandler) Handler() RequestHandler {
+	return &buildAbortHandler{}
 }
 
-func (b *buildIdAbortGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
-	b.buildId = getBuildIdFromRequest(r)
+func (b *buildAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	b.buildId = vars["build_id"]
 	return nil
 }
 
-func (b *buildIdAbortGetHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+func (b *buildAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	err := sc.AbortBuild(b.buildId, GetUser(ctx).Id)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
