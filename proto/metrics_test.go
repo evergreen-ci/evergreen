@@ -9,102 +9,91 @@ import (
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip/message"
-	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/suite"
 )
 
-func newTestCommunicator() *comm.MockCommunicator {
-	return &comm.MockCommunicator{
+type MetricsTestSuite struct {
+	suite.Suite
+	stopper   chan bool
+	comm      *comm.MockCommunicator
+	collector metricsCollector
+}
+
+func TestMetricsTestSuite(t *testing.T) {
+	suite.Run(t, new(AgentTestSuite))
+}
+
+func (s *MetricsTestSuite) SetupTest() {
+	s.stopper = make(chan bool)
+	s.comm = &comm.MockCommunicator{
 		LogChan: make(chan []apimodels.LogMessage, 100),
 		Posts:   map[string][]interface{}{},
 	}
+	s.collector = metricsCollector{
+		comm: s.comm,
+		stop: s.stopper,
+	}
 }
 
-func TestMetricsCollectors(t *testing.T) {
+func (s *MetricsTestSuite) TestRunForIntervalAndSendMessages() {
+	s.Zero(len(s.comm.Posts["process_info"]))
 
-	Convey("The metrics collector should", t, func() {
-		Convey("process collector runs for interval and sends messages", func() {
-			stopper := make(chan bool)
-			comm := newTestCommunicator()
-			collector := metricsCollector{
-				comm: comm,
-				stop: stopper,
-			}
+	go s.collector.processInfoCollector(750*time.Millisecond, time.Second, 2)
+	time.Sleep(time.Second)
+	s.stopper <- true
+	firstLen := len(s.comm.Posts["process_info"])
+	if runtime.GOOS == "windows" {
+		s.True(firstLen >= 1)
+	} else {
+		s.True(firstLen >= 2)
+	}
+	// after stopping it shouldn't continue to collect stats
+	time.Sleep(time.Second)
+	s.Equal(firstLen, len(s.comm.Posts["process_info"]))
 
-			So(len(comm.Posts["process_info"]), ShouldEqual, 0)
+	for _, post := range s.comm.Posts["process_info"] {
+		out, ok := post.([]message.Composer)
+		s.True(ok)
+		s.Len(out, 1)
+	}
+}
 
-			go collector.processInfoCollector(750*time.Millisecond, time.Second, 2)
-			time.Sleep(time.Second)
-			stopper <- true
-			firstLen := len(comm.Posts["process_info"])
-			if runtime.GOOS == "windows" {
-				So(firstLen, ShouldBeGreaterThanOrEqualTo, 1)
-			} else {
-				So(firstLen, ShouldBeGreaterThanOrEqualTo, 2)
-			}
-			// after stopping it shouldn't continue to collect stats
-			time.Sleep(time.Second)
-			So(firstLen, ShouldEqual, len(comm.Posts["process_info"]))
+func (s *MetricsTestSuite) TestCollectSubProcesses() {
+	s.Zero(len(s.comm.Posts["process_info"]))
+	cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
+	s.NoError(cmd.Start())
+	go s.collector.processInfoCollector(750*time.Millisecond, time.Second, 2)
+	time.Sleep(time.Second)
+	s.stopper <- true
+	s.NoError(cmd.Process.Kill())
 
-			for _, post := range comm.Posts["process_info"] {
-				out, ok := post.([]message.Composer)
-				So(ok, ShouldBeTrue)
-				So(len(out), ShouldEqual, 1)
-			}
+	if runtime.GOOS == "windows" {
+		s.Equal(len(s.comm.Posts["process_info"]), 1)
+	} else {
+		s.Equal(len(s.comm.Posts["process_info"]), 2)
+	}
+	for _, post := range s.comm.Posts["process_info"] {
+		out, ok := post.([]message.Composer)
+		s.True(ok)
 
-		})
+		// the number of posts is different on windows,
+		if runtime.GOOS == "windows" {
+			s.True(len(out) >= 1)
+		} else {
+			s.True(len(out) >= 2)
+		}
 
-		Convey("process collector should collect sub-processes", func() {
-			stopper := make(chan bool)
-			comm := newTestCommunicator()
-			collector := metricsCollector{
-				comm: comm,
-				stop: stopper,
-			}
+	}
+}
 
-			So(len(comm.Posts["process_info"]), ShouldEqual, 0)
+func (s *MetricsTestSuite) TestPersistSystemStats() {
+	s.Zero(len(s.comm.Posts["process_info"]))
 
-			cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
-			So(cmd.Start(), ShouldBeNil)
-			go collector.processInfoCollector(750*time.Millisecond, time.Second, 2)
-			time.Sleep(time.Second)
-			stopper <- true
-			So(cmd.Process.Kill(), ShouldBeNil)
+	go s.collector.sysInfoCollector(750 * time.Millisecond)
+	time.Sleep(time.Second)
+	s.stopper <- true
 
-			if runtime.GOOS == "windows" {
-				So(len(comm.Posts["process_info"]), ShouldEqual, 1)
-			} else {
-				So(len(comm.Posts["process_info"]), ShouldEqual, 2)
-			}
-			for _, post := range comm.Posts["process_info"] {
-				out, ok := post.([]message.Composer)
-				So(ok, ShouldBeTrue)
-
-				// the number of posts is different on windows,
-				if runtime.GOOS == "windows" {
-					So(len(out), ShouldBeGreaterThanOrEqualTo, 1)
-				} else {
-					So(len(out), ShouldBeGreaterThanOrEqualTo, 2)
-				}
-
-			}
-		})
-
-		Convey("persist system stats", func() {
-			stopper := make(chan bool)
-			comm := newTestCommunicator()
-			collector := metricsCollector{
-				comm: comm,
-				stop: stopper,
-			}
-
-			So(len(comm.Posts["system_info"]), ShouldEqual, 0)
-			go collector.sysInfoCollector(750 * time.Millisecond)
-			time.Sleep(time.Second)
-			stopper <- true
-
-			So(len(comm.Posts["system_info"]), ShouldBeGreaterThanOrEqualTo, 1)
-			time.Sleep(time.Second)
-			So(len(comm.Posts["system_info"]), ShouldBeGreaterThanOrEqualTo, 1)
-		})
-	})
+	s.True(len(s.comm.Posts["system_info"]) >= 1)
+	time.Sleep(time.Second)
+	s.True(len(s.comm.Posts["system_info"]) >= 1)
 }

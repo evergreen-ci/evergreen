@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"strings"
@@ -10,55 +11,54 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
-	. "github.com/smartystreets/goconvey/convey"
-	"golang.org/x/net/context"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestAgentStatusHandler(t *testing.T) {
-	testOpts := Options{
-		APIURL: "http://evergreen.example.net",
-		HostID: "none",
-	}
-	Convey("The agent status results producer should reflect the current app", t, func() {
-		resp := buildResponse(testOpts)
-		Convey("the status document should reflect basic assumptions", func() {
-			So(resp.BuildId, ShouldEqual, evergreen.BuildRevision)
-			So(resp.AgentPid, ShouldEqual, os.Getpid())
-			So(resp.HostId, ShouldEqual, testOpts.HostID)
-		})
-
-		Convey("the system information should be populated", func() {
-			grip.Alert(strings.Join(resp.SystemInfo.Errors, ";\n"))
-			grip.Info(resp.SystemInfo)
-			So(resp.SystemInfo, ShouldNotBeNil)
-		})
-
-		Convey("the process tree information should be populated", func() {
-			So(len(resp.ProcessTree), ShouldBeGreaterThanOrEqualTo, 1)
-			for _, ps := range resp.ProcessTree {
-				So(ps, ShouldNotBeNil)
-			}
-		})
-	})
+type StatusTestSuite struct {
+	suite.Suite
+	testOpts Options
+	resp     statusResponse
 }
 
-func TestAgentConstructorStartsStatusServer(t *testing.T) {
-	testOpts := Options{
+func TestStatusTestSuite(t *testing.T) {
+	suite.Run(t, new(AgentTestSuite))
+}
+
+func (s *StatusTestSuite) SetupTest() {
+	s.testOpts = Options{
 		APIURL:     "http://evergreen.example.net",
 		HostID:     "none",
 		StatusPort: 2286,
 	}
+	s.resp = buildResponse(s.testOpts)
+}
 
-	Convey("the agent constructor", t, func() {
-		agt := New(testOpts, client.NewMock("url"))
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-		defer cancel()
-		agt.Start(ctx)
+func (s *StatusTestSuite) TestBasicAssumptions() {
+	s.Equal(s.resp.BuildId, evergreen.BuildRevision)
+	s.Equal(s.resp.AgentPid, os.Getpid())
+	s.Equal(s.resp.HostId, s.testOpts.HostID)
+}
 
-		Convey("should start a status server.", func() {
-			resp, err := http.Get("http://127.0.0.1:2286/status")
-			So(err, ShouldBeNil)
-			So(resp.StatusCode, ShouldEqual, 200)
-		})
-	})
+func (s *StatusTestSuite) TestPopulateSystemInfo() {
+	grip.Alert(strings.Join(s.resp.SystemInfo.Errors, ";\n"))
+	grip.Info(s.resp.SystemInfo)
+	s.NotNil(s.resp.SystemInfo)
+}
+
+func (s *StatusTestSuite) TestProcessTreeInfo() {
+	s.True(len(s.resp.ProcessTree) >= 1)
+	for _, ps := range s.resp.ProcessTree {
+		s.NotNil(ps)
+	}
+}
+
+func (s *StatusTestSuite) TestAgentStartsStatusServer() {
+	agt := New(s.testOpts, client.NewMock("url"))
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	agt.Start(ctx)
+
+	resp, err := http.Get("http://127.0.0.1:2286/status")
+	s.NoError(err)
+	s.Equal(200, resp.StatusCode)
 }
