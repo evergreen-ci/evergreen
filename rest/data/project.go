@@ -13,7 +13,7 @@ type DBProjectConnector struct{}
 func (pc *DBProjectConnector) FindProjects(key string, limit int, sortDir int, isAuthenticated bool) ([]model.ProjectRef, error) {
 	projects, err := model.FindProjectRefs(key, limit, sortDir, isAuthenticated)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem fetching projects starting at project %s", key)
+		return nil, errors.Wrapf(err, "problem fetching projects starting at project '%s'", key)
 	}
 
 	return projects, nil

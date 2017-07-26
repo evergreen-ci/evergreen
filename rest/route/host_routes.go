@@ -124,7 +124,7 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	}
 	hosts, err := sc.FindHostsById(key, hpArgs.status, limit*2, 1)
 	if err != nil {
-		if apiErr, ok := err.(rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -134,7 +134,7 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	// Make the previous page
 	prevHosts, err := sc.FindHostsById(key, hpArgs.status, limit, -1)
 	if err != nil {
-		if apiErr, ok := err.(rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
+		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
 	}

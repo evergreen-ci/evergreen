@@ -59,13 +59,13 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 	}
 	projects, err := sc.FindProjects(key, limit*2, 1, isAuthenticated)
 	if err != nil {
-		if _, ok := err.(rest.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
 	}
 	if len(projects) <= 0 {
-		err = rest.APIError{
+		err = &rest.APIError{
 			Message:    "no projects found",
 			StatusCode: http.StatusNotFound,
 		}
@@ -106,7 +106,7 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 	for _, p := range projects {
 		projectModel := &model.APIProject{}
 		if err = projectModel.BuildFromService(p); err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, &rest.APIError{
 				Message:    "problem converting project document",
 				StatusCode: http.StatusInternalServerError,
 			}
@@ -115,7 +115,7 @@ func projectPaginator(key string, limit int, args interface{}, sc data.Connector
 		// now set the vars field
 		vars, err := sc.FindProjectVars(string(projectModel.Identifier))
 		if err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, &rest.APIError{
 				Message:    "problem fetching project vars",
 				StatusCode: http.StatusInternalServerError,
 			}

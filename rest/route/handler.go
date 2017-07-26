@@ -8,6 +8,8 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -119,17 +121,24 @@ func makeHandler(methodHandler MethodHandler, sc data.Connector) http.HandlerFun
 // from a service layer package, in which case it is an internal server error
 // and is returned as such.
 func handleAPIError(e error, w http.ResponseWriter, r *http.Request) {
-	apiErr := rest.APIError{}
-
-	apiErr.StatusCode = http.StatusInternalServerError
-	apiErr.Message = e.Error()
-
-	if castError, ok := e.(rest.APIError); ok {
-		apiErr = castError
-		grip.Warningln("User error", r.Method, r.URL, e)
-	} else {
-		grip.Errorf("Service error %s %s %+v", r.Method, r.URL, e)
+	e = errors.Cause(e)
+	var apiErr *rest.APIError
+	if castErr, ok := e.(rest.APIError); ok {
+		grip.Warningln("passed a dereferenced APIError to error handler")
+		apiErr = &castErr
+	} else if apiErr, ok = e.(*rest.APIError); !ok {
+		apiErr = &rest.APIError{
+			StatusCode: http.StatusInternalServerError,
+			Message:    e.Error(),
+		}
 	}
+	grip.Warning(message.Fields{
+		"status": http.StatusText(apiErr.StatusCode),
+		"code":   apiErr.StatusCode,
+		"method": r.Method,
+		"path":   r.URL.Path,
+		"error":  e.Error(),
+	})
 
 	util.WriteJSON(&w, apiErr, apiErr.StatusCode)
 }

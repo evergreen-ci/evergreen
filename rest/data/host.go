@@ -21,7 +21,7 @@ func (hc *DBHostConnector) FindHostsById(id, status string, limit int, sortDir i
 		return nil, err
 	}
 	if len(hostRes) == 0 {
-		return nil, rest.APIError{
+		return nil, &rest.APIError{
 			StatusCode: http.StatusNotFound,
 			Message:    "no hosts found",
 		}
