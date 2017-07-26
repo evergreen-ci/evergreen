@@ -293,14 +293,14 @@ testArgs += -testify.m='$(RUN_CASE)'
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	$(vendorGopath) go test $(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
+	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
-	$(vendorGopath) go test $(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
+	$(vendorGopath) go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles)
-	$(vendorGopath) go test $(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
+	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
-	$(vendorGopath) go test $(ldFlags) -race -c -o $@ ./
+	$(vendorGopath) go test -ldflags=$(ldFlags) -race -c -o $@ ./
 #  targets to run the tests and report the output
 $(buildDir)/output.%.test:$(buildDir)/test.% .FORCE
 	$(testRunEnv) ./$< $(testArgs) 2>&1 | tee $@
