@@ -139,7 +139,6 @@ func (pc *MockPatchConnector) AbortPatch(patchId string, user string) error {
 			foundPatch = &p
 			foundIdx = idx
 			break
-			// for some reason if I don't break this code the value of foundPatch is not persisted
 		}
 	}
 	if foundPatch == nil {

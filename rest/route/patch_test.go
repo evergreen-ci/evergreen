@@ -236,11 +236,8 @@ func (s *PatchAbortSuite) TestAbort() {
 	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[1].Hex()
 	res, err = rm.Methods[0].Execute(ctx, s.sc)
 
-	s.NoError(err)
-	s.NotNil(res)
-	s.Equal("user1", s.data.CachedAborted[s.objIds[0].Hex()])
-	s.Equal("user1", s.data.CachedAborted[s.objIds[1].Hex()])
-	s.Len(res.Result, 0)
+	s.Error(err)
+	s.Nil(res.Result)
 }
 
 func (s *PatchAbortSuite) TestAbortFail() {
