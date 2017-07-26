@@ -49,13 +49,45 @@ func NewFields(p level.Priority, f Fields) Composer {
 // MakeFieldsMessage constructs a fields Composer from a message string and
 // Fields object, without specifying the priority of the message.
 func MakeFieldsMessage(message string, f Fields) Composer {
-	return &fieldMessage{message: message, fields: f}
+	m := &fieldMessage{message: message, fields: f}
+	m.setup()
+
+	return m
+}
+
+func (m *fieldMessage) setup() {
+	_ = m.Collect()
+
+	if _, ok := m.fields[FieldsMsgName]; !ok && m.message != "" {
+		m.fields[FieldsMsgName] = m.message
+	}
+
+	if _, ok := m.fields["metadata"]; !ok {
+		m.fields["metadata"] = &m.Base
+	}
 }
 
 // MakeFields creates a composer interface from *just* a Fields instance.
-func MakeFields(f Fields) Composer { return &fieldMessage{fields: f} }
+func MakeFields(f Fields) Composer {
+	m := &fieldMessage{fields: f}
+	m.setup()
+	return m
+}
 
-func (m *fieldMessage) Loggable() bool { return m.message != "" || len(m.fields) > 0 }
+func (m *fieldMessage) Loggable() bool {
+	if m.message == "" && len(m.fields) == 0 {
+		return false
+	}
+
+	if len(m.fields) == 1 {
+		if _, ok := m.fields["metadata"]; ok {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (m *fieldMessage) String() string {
 	if !m.Loggable() {
 		return ""
@@ -87,16 +119,4 @@ func (m *fieldMessage) String() string {
 	return m.cachedOutput
 }
 
-func (m *fieldMessage) Raw() interface{} {
-	_ = m.Collect()
-
-	if _, ok := m.fields[FieldsMsgName]; !ok && m.message != "" {
-		m.fields[FieldsMsgName] = m.message
-	}
-
-	if _, ok := m.fields["metadata"]; !ok {
-		m.fields["metadata"] = &m.Base
-	}
-
-	return m.fields
-}
+func (m *fieldMessage) Raw() interface{} { return m.fields }

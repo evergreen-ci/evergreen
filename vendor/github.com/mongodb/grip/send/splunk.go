@@ -53,7 +53,7 @@ func (s *splunkLogger) Send(m message.Composer) {
 	if s.level.ShouldLog(m) {
 		g, ok := m.(*message.GroupComposer)
 		if ok {
-			batch := make([]*hec.Event, 0)
+			batch := []*hec.Event{}
 			for _, c := range g.Messages() {
 				if s.level.ShouldLog(c) {
 					batch = append(batch, hec.NewEvent(c.Raw()))
