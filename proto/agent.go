@@ -23,11 +23,12 @@ type Agent struct {
 
 // Options contains startup options for the Agent.
 type Options struct {
-	APIURL     string
-	HostID     string
-	HostSecret string
-	StatusPort int
-	LogPrefix  string
+	APIURL            string
+	HostID            string
+	HostSecret        string
+	StatusPort        int
+	LogPrefix         string
+	HeartbeatInterval time.Duration
 }
 
 type taskContext struct {
@@ -72,7 +73,17 @@ func (a *Agent) loop(ctx context.Context) error {
 				grip.Error(err)
 				return err
 			}
+			if nextTask.ShouldExit {
+				err = errors.New("task response indicates agent should exit")
+				grip.Error(err)
+				return err
+			}
 			if nextTask.TaskId != "" {
+				if nextTask.TaskSecret == "" {
+					err = errors.New("task response missing secret")
+					grip.Error(err)
+					return err
+				}
 				tc := taskContext{
 					task: client.TaskData{
 						ID:     nextTask.TaskId,
@@ -82,6 +93,7 @@ func (a *Agent) loop(ctx context.Context) error {
 				if err := a.startNextTask(ctx, tc); err != nil {
 					return err
 				}
+				timer.Reset(0)
 				continue
 			}
 			grip.Debugf("Agent sleeping %s", agentSleepInterval)
@@ -96,7 +108,7 @@ func (a *Agent) startNextTask(ctx context.Context, tc taskContext) error {
 
 	// Defers are LIFO. We cancel any agent procs, then any OS procs, then remove the task directory.
 	defer a.removeTaskDirectory(tc)
-	defer a.cleanup(tc)
+	defer a.killProcs(tc)
 	defer cancel()
 
 	if err := setupLogging(a.opts.LogPrefix, tc.task.ID); err != nil {
@@ -162,10 +174,25 @@ func (a *Agent) startNextTask(ctx context.Context, tc taskContext) error {
 
 // finishTask sends the returned TaskEndResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
+	detail := a.endTaskResponse(tc, status, timeout)
+	a.runPostTaskCommands(ctx, tc)
+
+	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+	resp, err := a.comm.EndTask(ctx, detail, tc.task)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem marking task complete")
+	}
+
+	return resp, nil
+}
+
+func (a *Agent) endTaskResponse(tc taskContext, status string, timeout bool) *apimodels.TaskEndDetail {
 	detail := &apimodels.TaskEndDetail{
-		Type:        tc.currentCommand.GetType(tc.taskConfig.Project),
 		Description: tc.currentCommand.GetDisplayName(),
 		TimedOut:    timeout,
+	}
+	if tc.taskConfig != nil {
+		detail.Type = tc.currentCommand.GetType(tc.taskConfig.Project)
 	}
 
 	if status == evergreen.TaskSucceeded {
@@ -175,10 +202,12 @@ func (a *Agent) finishTask(ctx context.Context, tc taskContext, status string, t
 		detail.Status = evergreen.TaskFailed
 		tc.logger.Task().Info("Task completed - FAILURE.")
 	}
+	return detail
+}
 
-	// run post commands
-	if tc.taskConfig.Project.Post != nil {
-		a.cleanup(tc)
+func (a *Agent) runPostTaskCommands(ctx context.Context, tc taskContext) {
+	if tc.taskConfig != nil && tc.taskConfig.Project.Post != nil {
+		a.killProcs(tc)
 		tc.logger.Task().Info("Running post-task commands.")
 		start := time.Now()
 		ctx, cancel := a.withCallbackTimeout(ctx, tc)
@@ -189,21 +218,13 @@ func (a *Agent) finishTask(ctx context.Context, tc taskContext, status string, t
 		} else {
 			tc.logger.Task().Infof("Finished running post-task commands in %v.", time.Since(start).String())
 		}
-		a.cleanup(tc)
+		a.killProcs(tc)
 	}
-
-	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
-
-	resp, err := a.comm.EndTask(ctx, detail, tc.task)
-	if err != nil {
-		return nil, errors.Wrap(err, "problem marking task complete")
-	}
-
-	return resp, nil
 }
 
-func (a *Agent) cleanup(tc taskContext) {
+func (a *Agent) killProcs(tc taskContext) {
 	grip.Infof("cleaning up processes for task: %s", tc.task.ID)
+
 	if tc.task.ID != "" {
 		if err := subprocess.KillSpawnedProcs(tc.task.ID, tc.logger.Task()); err != nil {
 			msg := fmt.Sprintf("Error cleaning up spawned processes (agent-exit): %v", err)

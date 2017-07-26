@@ -33,9 +33,12 @@ type Mock struct {
 	apiKey     string
 
 	// mock behavior
-	ShouldFail        bool
-	loggingShouldFail bool
-	NextTask          *apimodels.NextTaskResponse
+	NextTaskShouldFail     bool
+	GetPatchFileShouldFail bool
+	loggingShouldFail      bool
+	NextTaskResponse       *apimodels.NextTaskResponse
+	EndTaskResponse        *apimodels.EndTaskResponse
+	EndTaskShouldFail      bool
 
 	// data collected by mocked methods
 	logMessages map[string][]apimodels.LogMessage
@@ -55,7 +58,6 @@ func NewMock(serverURL string) *Mock {
 		keyVal:       make(map[string]*serviceModel.KeyVal),
 		serverURL:    serverURL,
 		httpClient:   &http.Client{},
-		ShouldFail:   false,
 	}
 }
 
@@ -66,6 +68,12 @@ func (c *Mock) StartTask(ctx context.Context, taskData TaskData) error {
 
 // EndTask returns an empty EndTaskResponse.
 func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
+	if c.EndTaskShouldFail {
+		return nil, errors.New("end task should fail")
+	}
+	if c.EndTaskResponse != nil {
+		return c.EndTaskResponse, nil
+	}
 	return &apimodels.EndTaskResponse{}, nil
 }
 
@@ -101,12 +109,13 @@ func (c *Mock) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apim
 
 // GetNextTask returns a mock NextTaskResponse.
 func (c *Mock) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
-	if c.ShouldFail == true {
-		return nil, errors.New("ShouldFail is true")
+	if c.NextTaskShouldFail == true {
+		return nil, errors.New("NextTaskShouldFail is true")
 	}
-	if c.NextTask != nil {
-		return c.NextTask, nil
+	if c.NextTaskResponse != nil {
+		return c.NextTaskResponse, nil
 	}
+
 	return &apimodels.NextTaskResponse{
 		TaskId:     "mock_task_id",
 		TaskSecret: "mock_task_secret",
@@ -134,7 +143,7 @@ func (c *Mock) GetLoggerProducer(taskData TaskData) LoggerProducer {
 }
 
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
-	if c.ShouldFail {
+	if c.GetPatchFileShouldFail {
 		return "", errors.New("operation run in fail mode.")
 	}
 

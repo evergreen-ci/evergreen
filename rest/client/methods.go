@@ -248,10 +248,6 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTask
 		err = errors.Wrap(err, "failed to read next task from response")
 		return nil, err
 	}
-	if nextTask.ShouldExit == true {
-		err = errors.Errorf("agent should exit: %s", nextTask.Message)
-		return nil, err
-	}
 	return nextTask, nil
 
 }

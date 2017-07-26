@@ -8,6 +8,10 @@ import (
 )
 
 func (a *Agent) startHeartbeat(ctx context.Context, tc taskContext, heartbeat chan<- struct{}) {
+	heartbeatInterval := defaultHeartbeatInterval
+	if a.opts.HeartbeatInterval != 0 {
+		heartbeatInterval = a.opts.HeartbeatInterval
+	}
 	ticker := time.NewTicker(heartbeatInterval)
 	defer ticker.Stop()
 	failed := 0
@@ -29,7 +33,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc taskContext, heartbeat ch
 			if failed > maxHeartbeats {
 				err := errors.New("Exceeded max heartbeats")
 				tc.logger.Execution().Error(err)
-				a.cleanup(tc)
+				a.killProcs(tc)
 				heartbeat <- struct{}{}
 				return
 			}

@@ -19,10 +19,8 @@ func TestAgentStatusHandler(t *testing.T) {
 		APIURL: "http://evergreen.example.net",
 		HostID: "none",
 	}
-	testTaskIdValue := "test_task_id"
-
 	Convey("The agent status results producer should reflect the current app", t, func() {
-		resp := buildResponse(testOpts, testTaskIdValue)
+		resp := buildResponse(testOpts)
 		Convey("the status document should reflect basic assumptions", func() {
 			So(resp.BuildId, ShouldEqual, evergreen.BuildRevision)
 			So(resp.AgentPid, ShouldEqual, os.Getpid())
@@ -41,28 +39,21 @@ func TestAgentStatusHandler(t *testing.T) {
 				So(ps, ShouldNotBeNil)
 			}
 		})
-
-		Convey("the response should include task_id", func() {
-			So(resp.TaskId, ShouldEqual, testTaskIdValue)
-		})
 	})
 }
 
-func TestAgentStartStartsStatusServer(t *testing.T) {
+func TestAgentConstructorStartsStatusServer(t *testing.T) {
 	testOpts := Options{
 		APIURL:     "http://evergreen.example.net",
 		HostID:     "none",
 		StatusPort: 2286,
 	}
 
-	Convey("starting the agent", t, func() {
-		comm := client.NewMock("url")
-		agt := New(testOpts, comm)
-		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, 200*time.Millisecond)
+	Convey("the agent constructor", t, func() {
+		agt := New(testOpts, client.NewMock("url"))
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 		defer cancel()
 		agt.Start(ctx)
-		time.Sleep(100 * time.Millisecond)
 
 		Convey("should start a status server.", func() {
 			resp, err := http.Get("http://127.0.0.1:2286/status")

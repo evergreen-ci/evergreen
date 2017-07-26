@@ -114,13 +114,13 @@ func (a *Agent) getTimeout(commandInfo *model.PluginCommandConf) time.Duration {
 }
 
 func (a *Agent) getCommandName(commandInfo model.PluginCommandConf, cmd command.Command) string {
-	fullCommandName := cmd.Plugin() + "." + cmd.Name()
+	commandName := cmd.Name()
 	if commandInfo.Function != "" {
-		fullCommandName = fmt.Sprintf(`'%s' in "%s"`, fullCommandName, commandInfo.Function)
+		commandName = fmt.Sprintf(`'%s' in "%s"`, commandName, commandInfo.Function)
 	} else if commandInfo.DisplayName != "" {
-		fullCommandName = fmt.Sprintf(`("%s") %s`, commandInfo.DisplayName, fullCommandName)
+		commandName = fmt.Sprintf(`("%s") %s`, commandInfo.DisplayName, commandName)
 	} else {
-		fullCommandName = fmt.Sprintf("'%s'", fullCommandName)
+		commandName = fmt.Sprintf("'%s'", commandName)
 	}
-	return fullCommandName
+	return commandName
 }

@@ -26,7 +26,7 @@ const (
 
 	// defaultHeartbeatInterval is the interval after which agent sends a
 	// heartbeat to API server.
-	heartbeatInterval = 30 * time.Second
+	defaultHeartbeatInterval = 30 * time.Second
 
 	// defaultStatsInterval is the interval after which agent sends system stats
 	// to API server
