@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -27,7 +28,12 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
-	grip.Infoln("Starting scheduler at time:", startTime)
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"status":  "starting",
+		"time":    startTime,
+		"message": "starting runner process",
+	})
 
 	schedulerInstance := &Scheduler{
 		config,
@@ -39,16 +45,25 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	}
 
 	if err := schedulerInstance.Schedule(); err != nil {
-		err = errors.Wrap(err, "Error running scheduler")
-		grip.Error(err)
-		return err
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"error":   err.Error(),
+			"status":  "failed",
+			"runtime": time.Since(startTime),
+		})
+
+		return errors.Wrap(err, "problem running scheduler")
 	}
 
-	runtime := time.Since(startTime)
-	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		err = errors.Wrap(err, "Error updating process status")
-		grip.Error(err)
+	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
+		grip.Error(errors.Wrap(err, "problem updating process status"))
 	}
-	grip.Infof("Scheduler took %s to run", runtime)
+
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"runtime": time.Since(startTime),
+		"status":  "success",
+	})
+
 	return nil
 }

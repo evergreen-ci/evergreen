@@ -6,6 +6,7 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -26,19 +27,33 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
-	grip.Infoln("Starting taskrunner at time", startTime)
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"status":  "starting",
+		"time":    startTime,
+		"message": "starting runner process",
+	})
 
 	if err := NewTaskRunner(config).Run(); err != nil {
-		err = errors.Wrap(err, "error running taskrunner")
-		grip.Error(err)
-		return err
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"error":   err.Error(),
+			"status":  "failed",
+			"runtime": time.Since(startTime),
+		})
+
+		return errors.Wrap(err, "problem running repotracker")
 	}
 
-	runtime := time.Since(startTime)
-	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		grip.Errorf("error updating process status: %+v", err)
+	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
+		grip.Error(errors.Wrap(err, "problem updating process status"))
 	}
 
-	grip.Infof("Taskrunner took %s to run", runtime)
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"runtime": time.Since(startTime),
+		"status":  "success",
+	})
+
 	return nil
 }

@@ -27,29 +27,33 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
-	grip.Infof("Starting notifications at %s time", startTime)
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"status":  "starting",
+		"time":    startTime,
+		"message": "starting runner process",
+	})
 
 	if err := Run(config); err != nil {
-		err = errors.Wrap(err, "error running notify")
-		grip.Error(err)
-		return err
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"error":   err.Error(),
+			"status":  "failed",
+			"runtime": time.Since(startTime),
+		})
+
+		return errors.Wrap(err, "problem running notify")
 	}
 
-	runtime := time.Since(startTime)
-	if err := model.SetProcessRuntimeCompleted(RunnerName, runtime); err != nil {
-		grip.Error(message.Fields{
-			"runner":    r.Name(),
-			"runtime":   runtime,
-			"operation": "error",
-			"error":     err,
-		})
-	} else {
-		grip.Info(message.Fields{
-			"runner":    r.Name(),
-			"runtime":   runtime,
-			"operation": "success",
-		})
+	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
+		grip.Error(errors.Wrap(err, "problem updating process status"))
 	}
+
+	grip.Info(message.Fields{
+		"runner":    r.Name(),
+		"runtime":   time.Since(startTime),
+		"operation": "success",
+	})
 
 	return nil
 }

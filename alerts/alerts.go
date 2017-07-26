@@ -3,6 +3,7 @@ package alerts
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
@@ -16,6 +17,7 @@ import (
 	"github.com/evergreen-ci/evergreen/thirdparty"
 	"github.com/evergreen-ci/render"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -270,7 +272,14 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 
 // Run loops while there are any unprocessed alerts and attempts to deliver them.
 func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
-	grip.Info("Starting alert queue processor run")
+	startTime := time.Now()
+	grip.Info(message.Fields{
+		"runner":  qp.Name(),
+		"status":  "starting",
+		"time":    startTime,
+		"message": "starting runner process",
+	})
+
 	home := evergreen.FindEvergreenHome()
 	qp.config = config
 	qp.projectsCache = map[string]*model.ProjectRef{} // wipe the project cache between each run to prevent stale configs.
@@ -286,7 +295,14 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	}
 	superUsers, err := user.Find(user.ByIds(qp.config.SuperUsers...))
 	if err != nil {
-		grip.Errorf("Error getting superuser list: %+v", err)
+		err = errors.Wrap(err, "problem getting superuser list")
+		grip.Error(message.Fields{
+			"runner":  qp.Name(),
+			"error":   err.Error(),
+			"status":  "failed",
+			"runtime": time.Since(startTime),
+		})
+
 		return err
 	}
 	qp.superUsersConfigs = []model.AlertConfig{}
@@ -299,7 +315,14 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 		nextAlert, err := alert.DequeueAlertRequest()
 
 		if err != nil {
-			grip.Errorf("Failed to dequeue alert request: %+v", err)
+			err = errors.Wrap(err, "Failed to dequeue alert request")
+			grip.Error(message.Fields{
+				"runner":  qp.Name(),
+				"error":   err.Error(),
+				"status":  "failed",
+				"runtime": time.Since(startTime),
+			})
+
 			return err
 		}
 		if nextAlert == nil {
@@ -311,19 +334,29 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 
 		alertContext, err := qp.loadAlertContext(nextAlert)
 		if err != nil {
-			grip.Errorf("Failed to load alert context: %s", err)
+			err = errors.Wrap(err, "Failed to load alert context")
+			grip.Error(message.Fields{
+				"runner":  qp.Name(),
+				"error":   err.Error(),
+				"status":  "failed",
+				"runtime": time.Since(startTime),
+			})
+
 			return err
 		}
 
 		grip.Debugln("Delivering queue item", nextAlert.Id.Hex())
 
-		err = qp.Deliver(nextAlert, alertContext)
-		if err != nil {
-			grip.Errorf("Got error delivering message: %+v", err)
-		}
+		grip.Warning(errors.Wrap(qp.Deliver(nextAlert, alertContext),
+			"Got error delivering message"))
 
 	}
 
-	grip.Info("Finished alert queue processor run.")
+	grip.Info(message.Fields{
+		"runner":  qp.Name(),
+		"runtime": time.Since(startTime),
+		"status":  "success",
+	})
+
 	return nil
 }
