@@ -18,8 +18,9 @@ const (
 )
 
 type splunkLogger struct {
-	info   SplunkConnectionInfo
-	client splunkClient
+	info     SplunkConnectionInfo
+	client   splunkClient
+	hostname string
 	*Base
 }
 
@@ -56,7 +57,9 @@ func (s *splunkLogger) Send(m message.Composer) {
 			batch := []*hec.Event{}
 			for _, c := range g.Messages() {
 				if s.level.ShouldLog(c) {
-					batch = append(batch, hec.NewEvent(c.Raw()))
+					e := hec.NewEvent(c.Raw())
+					e.SetHost(s.hostname)
+					batch = append(batch, e)
 				}
 			}
 			if err := s.client.WriteBatch(batch); err != nil {
@@ -65,7 +68,10 @@ func (s *splunkLogger) Send(m message.Composer) {
 			return
 		}
 
-		if err := s.client.WriteEvent(hec.NewEvent(m.Raw())); err != nil {
+		e := hec.NewEvent(m.Raw())
+		e.SetHost(s.hostname)
+		if err := s.client.WriteEvent(e); err != nil {
+			fmt.Println(s.info.ServerURL)
 			s.errHandler(err, m)
 		}
 	}
@@ -80,6 +86,12 @@ func NewSplunkLogger(name string, info SplunkConnectionInfo, l LevelInfo) (Sende
 		client: &splunkClientImpl{},
 		Base:   NewBase(name),
 	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	s.hostname = hostname
 
 	if err := s.client.Create(info.ServerURL, info.Token, info.Channel); err != nil {
 		return nil, err
