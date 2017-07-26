@@ -21,7 +21,7 @@ type requestInfo struct {
 	method   method
 	path     string
 	version  apiVersion
-	taskData TaskData
+	taskData *TaskData
 }
 
 // Version is an "enum" for the different API versions
@@ -110,7 +110,7 @@ func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *h
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
-	if !info.taskData.OverrideValidation && info.taskData.Secret == "" {
+	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
 		return nil, err

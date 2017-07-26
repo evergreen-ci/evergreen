@@ -53,7 +53,7 @@ func (s *RequestTestSuite) TestValidateRequestInfo() {
 		Secret: "secret",
 	}
 	info := requestInfo{
-		taskData: taskData,
+		taskData: &taskData,
 		version:  v1,
 	}
 	err := info.validateRequestInfo()
