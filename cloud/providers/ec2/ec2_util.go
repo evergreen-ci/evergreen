@@ -154,9 +154,20 @@ func getEC2KeyOptions(h *host.Host, keyPath string) ([]string, error) {
 		return []string{}, errors.New("No key specified for EC2 host")
 	}
 	opts := []string{"-i", keyPath}
+	hasKnownHostsFile := false
+
 	for _, opt := range h.Distro.SSHOptions {
+		opt = strings.Trim(opt, " \t")
 		opts = append(opts, "-o", opt)
+		if strings.HasPrefix(opt, "UserKnownHostsFile") {
+			hasKnownHostsFile = true
+		}
 	}
+
+	if !hasKnownHostsFile {
+		opts = append(opts, "-o", "UserKnownHostsFile=/dev/null")
+	}
+
 	return opts, nil
 }
 

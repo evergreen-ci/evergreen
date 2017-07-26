@@ -1,6 +1,7 @@
 package hostutil
 
 import (
+	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -27,14 +28,14 @@ func CheckSSHResponse(hostObject *host.Host, sshOptions []string) (bool, error) 
 
 	// construct a command to check reachability
 	remoteCommand := &subprocess.RemoteCommand{
-		CmdString:       "echo hi",
-		Stdout:          ioutil.Discard,
-		Stderr:          ioutil.Discard,
-		RemoteHostName:  hostInfo.Hostname,
-		User:            hostInfo.User,
-		Options:         append([]string{"-p", hostInfo.Port}, sshOptions...),
-		Background:      false,
-		LoggingDisabled: true,
+		Id:             fmt.Sprintf("reachability check %s", hostObject.Id),
+		CmdString:      "echo hi",
+		Stdout:         ioutil.Discard,
+		Stderr:         ioutil.Discard,
+		RemoteHostName: hostInfo.Hostname,
+		User:           hostInfo.User,
+		Options:        append([]string{"-p", hostInfo.Port}, sshOptions...),
+		Background:     false,
 	}
 
 	done := make(chan error)

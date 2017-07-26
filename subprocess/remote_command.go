@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -88,8 +89,14 @@ func (rc *RemoteCommand) Start() error {
 
 	cmdArray = append(cmdArray, cmdString)
 
-	grip.InfoWhenf(!rc.LoggingDisabled, "Remote command executing: '%s'",
-		strings.Join(cmdArray, " "))
+	grip.InfoWhen(!rc.LoggingDisabled,
+		message.Fields{
+			"message":    rc.Id,
+			"host":       rc.RemoteHostName,
+			"user":       rc.User,
+			"cmd":        fmt.Sprintf("ssh %s", strings.Join(cmdArray, " ")),
+			"background": rc.Background,
+		})
 
 	// set up execution
 	cmd := exec.Command("ssh", cmdArray...)
