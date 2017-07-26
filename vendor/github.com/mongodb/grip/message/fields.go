@@ -107,6 +107,9 @@ func (m *fieldMessage) String() string {
 			if k == "time" {
 				continue
 			}
+			if k == "metadata" {
+				continue
+			}
 
 			out = append(out, fmt.Sprintf(tmpl, k, v))
 		}
