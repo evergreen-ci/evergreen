@@ -1,6 +1,4 @@
 mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $location, $filter, $timeout, historyDrawerService) {
-  $scope.jiraHost = $window.jiraHost;
-
   // cache the task being displayed on the page
   $scope.task = $window.task_data;
 
@@ -231,6 +229,8 @@ mciModule.controller('TaskCtrl', function($scope, $rootScope, $now, $timeout, $i
   $scope.userTz = $window.userTz;
   $scope.haveUser = $window.have_user;
   $scope.taskHost = $window.taskHost;
+  $scope.jiraHost = $window.jiraHost;
+
 
   // Returns true if 'testResult' represents a test failure, and returns false otherwise.
   $scope.hasTestFailureStatus = function hasTestFailureStatus(testResult) {
