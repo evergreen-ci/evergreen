@@ -16,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -109,6 +110,7 @@ func (s *Scheduler) Schedule() error {
 			defer wg.Done()
 			// read the inputs for scheduling this distro
 			for d := range distroInputChan {
+				distroStartTime := time.Now()
 				// schedule the distro
 				res := s.scheduleDistro(d.distroId, d.runnableTasksForDistro, taskExpectedDuration)
 				if res.err != nil {
@@ -117,7 +119,14 @@ func (s *Scheduler) Schedule() error {
 
 				// write the results out to a results channel
 				distroSchedulerResultChan <- res
-
+				grip.Info(message.Fields{
+					"runner":     "scheduler",
+					"distro":     d.distroId,
+					"operation":  "scheduling distro",
+					"queue_size": len(d.runnableTasksForDistro),
+					"span":       time.Since(distroStartTime).String(),
+					"duration":   time.Since(distroStartTime),
+				})
 			}
 		}()
 	}
@@ -161,6 +170,8 @@ func (s *Scheduler) Schedule() error {
 		distrosByName[d.Id] = d
 	}
 
+	hostPlanningStart := time.Now()
+
 	// fetch all hosts, split by distro
 	allHosts, err := host.Find(host.IsLive)
 	if err != nil {
@@ -180,6 +191,12 @@ func (s *Scheduler) Schedule() error {
 		taskQueueInfo.NumHostsRunning = len(hosts)
 		schedulerEvents[distroId] = taskQueueInfo
 	}
+	grip.Info(message.Fields{
+		"runner":    "scheduler",
+		"operation": "host query and processing",
+		"span":      time.Since(hostPlanningStart).String(),
+		"duration":  time.Since(hostPlanningStart),
+	})
 
 	// construct the data that will be needed by the host allocator
 	hostAllocatorData := HostAllocatorData{
@@ -205,14 +222,22 @@ func (s *Scheduler) Schedule() error {
 	if len(hostsSpawned) != 0 {
 		grip.Infof("Hosts spawned (%d distros total), by:", len(hostsSpawned))
 		for distro, hosts := range hostsSpawned {
-			grip.Infoln("\t", "scheduling distro:", distro)
-			for _, host := range hosts {
-				grip.Infoln("\t\t", host.Id)
-			}
-
 			taskQueueInfo := schedulerEvents[distro]
 			taskQueueInfo.NumHostsRunning += len(hosts)
 			schedulerEvents[distro] = taskQueueInfo
+
+			hostList := make([]string, len(hosts))
+			for idx, host := range hosts {
+				hostList[idx] = host.Id
+			}
+
+			grip.Info(messages.Fields{
+				"runner":        "scheduler",
+				"distro":        distro,
+				"hosts":         hostList,
+				"queue":         taskQueueInfo,
+				"expected_span": taskQueueInfo.ExpectedDuration.String(),
+			})
 		}
 	} else {
 		grip.Info("No new hosts spawned")
@@ -226,6 +251,13 @@ func (s *Scheduler) Schedule() error {
 		}
 		event.LogSchedulerEvent(eventLog)
 	}
+
+	grip.Info(message.Fields{
+		"runner":    "scheduler",
+		"operation": "total host planning",
+		"span":      time.Since(hostPlanningStart).String(),
+		"duration":  time.Since(hostPlanningStart),
+	})
 
 	return nil
 }
@@ -395,13 +427,14 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
-	map[string][]host.Host, error) {
+func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host.Host, error) {
+	startTime := time.Now()
 
 	// loop over the distros, spawning up the appropriate number of hosts
 	// for each distro
 	hostsSpawnedPerDistro := make(map[string][]host.Host)
 	for distroId, numHostsToSpawn := range newHostsNeeded {
+		distroStartTime := time.Now()
 
 		if numHostsToSpawn == 0 {
 			continue
@@ -455,6 +488,22 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (
 		if len(hostsSpawnedPerDistro[distroId]) == 0 {
 			delete(hostsSpawnedPerDistro, distroId)
 		}
+
+		grip.Info(message.Fields{
+			"runner":    "scheduler",
+			"distro":    distroId,
+			"operation": "spawning instances",
+			"span":      time.Since(distroStartTime).String(),
+			"duration":  time.Since(distroStartTime),
+		})
 	}
+
+	grip.Info(message.Fields{
+		"runner":    "scheduler",
+		"operation": "host query and processing",
+		"span":      time.Since(startTime).String(),
+		"duration":  time.Since(startTime),
+	})
+
 	return hostsSpawnedPerDistro, nil
 }

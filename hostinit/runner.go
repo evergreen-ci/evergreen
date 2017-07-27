@@ -43,6 +43,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 			"error":   err.Error(),
 			"status":  "failed",
 			"runtime": time.Since(startTime),
+			"span":    time.Since(startTime).String(),
 		})
 
 		return errors.Wrap(err, "problem running hostinit")
@@ -55,6 +56,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"runtime": time.Since(startTime),
+		"span":    time.Since(startTime).String(),
 		"status":  "success",
 	})
 

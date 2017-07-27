@@ -301,6 +301,7 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 			"error":   err.Error(),
 			"status":  "failed",
 			"runtime": time.Since(startTime),
+			"span":    time.Since(startTime).String(),
 		})
 
 		return err
@@ -321,6 +322,7 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 				"error":   err.Error(),
 				"status":  "failed",
 				"runtime": time.Since(startTime),
+				"span":    time.Since(startTime).String(),
 			})
 
 			return err
@@ -340,6 +342,7 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 				"error":   err.Error(),
 				"status":  "failed",
 				"runtime": time.Since(startTime),
+				"span":    time.Since(startTime).String(),
 			})
 
 			return err
@@ -355,6 +358,7 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"runner":  qp.Name(),
 		"runtime": time.Since(startTime),
+		"span":    time.Since(startTime).String(),
 		"status":  "success",
 	})
 

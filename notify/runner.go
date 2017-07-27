@@ -40,6 +40,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 			"error":   err.Error(),
 			"status":  "failed",
 			"runtime": time.Since(startTime),
+			"span":    time.Since(startTime).String(),
 		})
 
 		return errors.Wrap(err, "problem running notify")
@@ -53,6 +54,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		"runner":    r.Name(),
 		"runtime":   time.Since(startTime),
 		"operation": "success",
+		"span":      time.Since(startTime).String(),
 	})
 
 	return nil

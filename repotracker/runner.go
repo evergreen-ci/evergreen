@@ -47,6 +47,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 			"error":   err.Error(),
 			"status":  "failed",
 			"runtime": time.Since(startTime),
+			"span":    time.Since(startTime).String(),
 		})
 
 		return errors.Wrap(err, "problem running repotracker")
@@ -60,6 +61,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		"runner":  RunnerName,
 		"runtime": time.Since(startTime),
 		"status":  "success",
+		"span":    time.Since(startTime).String(),
 	})
 
 	return nil
