@@ -27,7 +27,7 @@ func init() {
 		"git.get_project":       gitFetchProjectFactory,
 		"gotest.parse_files":    goTestFactory,
 		"json.get":              taskDataGetFactory,
-		"json.history":          taskDataHistoryFactory,
+		"json.get_history":      taskDataHistoryFactory,
 		"json.send":             taskDataSendFactory,
 		"keyval.inc":            keyValIncFactory,
 		"manifest.load":         manifestLoadFactory,

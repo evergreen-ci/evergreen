@@ -20,7 +20,7 @@ type taskDataHistory struct {
 }
 
 func taskDataHistoryFactory() Command   { return &taskDataHistory{} }
-func (c *taskDataHistory) Name() string { return "json.history" }
+func (c *taskDataHistory) Name() string { return "json.get_history" }
 
 func (c *taskDataHistory) ParseParams(params map[string]interface{}) error {
 	if err := mapstructure.Decode(params, c); err != nil {
