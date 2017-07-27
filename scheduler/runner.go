@@ -63,7 +63,6 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"runtime": time.Since(startTime),
-		"span":    time.Since(startTime).String(),
 		"status":  "success",
 		"span":    time.Since(startTime).String(),
 	})

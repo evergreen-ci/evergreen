@@ -231,7 +231,7 @@ func (s *Scheduler) Schedule() error {
 				hostList[idx] = host.Id
 			}
 
-			grip.Info(messages.Fields{
+			grip.Info(message.Fields{
 				"runner":        "scheduler",
 				"distro":        distro,
 				"hosts":         hostList,
