@@ -11,7 +11,7 @@ import (
 
 // runTask manages the process of running a task. It returns a response
 // indicating the end result of the task.
-func (a *Agent) runTask(ctx context.Context, tc taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
+func (a *Agent) runTask(ctx context.Context, tc *taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
 	initialSetupCommand := model.PluginCommandConf{
 		DisplayName: initialSetupCommandDisplayName,
 		Type:        initialSetupCommandType,
@@ -61,12 +61,14 @@ func (a *Agent) runTask(ctx context.Context, tc taskContext, complete chan<- str
 		tc.logger.Task().Info("task canceled")
 		return
 	}
-	if err := a.createTaskDirectory(tc, taskConfig); err != nil {
+	newDir, err := a.createTaskDirectory(tc, taskConfig)
+	tc.taskDirectory = newDir
+	if err != nil {
 		tc.logger.Execution().Errorf("error creating task directory: %s", err)
 		complete <- evergreen.TaskFailed
 		return
 	}
-	taskConfig.Expansions.Put("workdir", tc.taskDirectory)
+	taskConfig.Expansions.Put("workdir", newDir)
 
 	// notify API server that the task has been started.
 	tc.logger.Execution().Info("Reporting task started.")
@@ -97,7 +99,7 @@ func (a *Agent) runTask(ctx context.Context, tc taskContext, complete chan<- str
 
 // CheckIn updates the agent's execution stage and current timeout duration,
 // and resets its timer back to zero.
-func (a *Agent) checkIn(ctx context.Context, tc taskContext, command model.PluginCommandConf, duration time.Duration, idleTimeout chan<- time.Duration) {
+func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command model.PluginCommandConf, duration time.Duration, idleTimeout chan<- time.Duration) {
 	if ctx.Err() != nil {
 		return
 	}
@@ -109,7 +111,7 @@ func (a *Agent) checkIn(ctx context.Context, tc taskContext, command model.Plugi
 }
 
 // getTaskConfig fetches task configuration data required to run the task from the API server.
-func (a *Agent) getTaskConfig(ctx context.Context, tc taskContext) (*model.TaskConfig, error) {
+func (a *Agent) getTaskConfig(ctx context.Context, tc *taskContext) (*model.TaskConfig, error) {
 	tc.logger.Execution().Info("Fetching distro configuration.")
 	confDistro, err := a.comm.GetDistro(ctx, tc.task)
 	if err != nil {

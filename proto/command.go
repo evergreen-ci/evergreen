@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) runCommands(ctx context.Context, tc taskContext, commands []model.PluginCommandConf, returnOnError bool, idleTimeout chan<- time.Duration) error {
+func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []model.PluginCommandConf, returnOnError bool, idleTimeout chan<- time.Duration) error {
 	for i, commandInfo := range commands {
 		if ctx.Err() != nil {
 			grip.Error("task canceled")
@@ -81,7 +81,7 @@ func (a *Agent) runCommands(ctx context.Context, tc taskContext, commands []mode
 
 // runTaskCommands runs all commands for the task currently assigned to the agent and
 // returns the task status
-func (a *Agent) runTaskCommands(ctx context.Context, tc taskContext, idleTimeout chan<- time.Duration) error {
+func (a *Agent) runTaskCommands(ctx context.Context, tc *taskContext, idleTimeout chan<- time.Duration) error {
 	conf := tc.taskConfig
 	task := conf.Project.FindProjectTask(conf.Task.DisplayName)
 

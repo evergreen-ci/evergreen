@@ -1,7 +1,9 @@
 package client
 
 import (
+	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -39,12 +42,19 @@ type Mock struct {
 	NextTaskResponse       *apimodels.NextTaskResponse
 	EndTaskResponse        *apimodels.EndTaskResponse
 	EndTaskShouldFail      bool
+	EndTaskResult          endTaskResult
+	ShellExecFilename      string
 
 	// data collected by mocked methods
 	logMessages map[string][]apimodels.LogMessage
 	PatchFiles  map[string]string
 	keyVal      map[string]*serviceModel.KeyVal
 	mu          sync.Mutex
+}
+
+type endTaskResult struct {
+	Detail   *apimodels.TaskEndDetail
+	TaskData TaskData
 }
 
 // NewMock returns a Communicator for testing.
@@ -66,7 +76,7 @@ func (c *Mock) StartTask(ctx context.Context, taskData TaskData) error {
 	return nil
 }
 
-// EndTask returns an empty EndTaskResponse.
+// EndTask returns a mock EndTaskResponse.
 func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
 	if c.EndTaskShouldFail {
 		return nil, errors.New("end task should fail")
@@ -74,27 +84,57 @@ func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, tas
 	if c.EndTaskResponse != nil {
 		return c.EndTaskResponse, nil
 	}
+	c.EndTaskResult.Detail = detail
+	c.EndTaskResult.TaskData = taskData
 	return &apimodels.EndTaskResponse{}, nil
 }
 
-// GetTask returns an empty Task.
+// GetTask returns a mock Task.
 func (c *Mock) GetTask(ctx context.Context, taskData TaskData) (*task.Task, error) {
-	return &task.Task{}, nil
+	return &task.Task{
+		Id:           "mock_task_id",
+		Secret:       "mock_task_secret",
+		BuildVariant: "mock_build_variant",
+		DisplayName:  "build",
+	}, nil
 }
 
-// GetProjectRef returns an empty ProjectRef.
+// GetProjectRef returns a mock ProjectRef.
 func (c *Mock) GetProjectRef(ctx context.Context, taskData TaskData) (*serviceModel.ProjectRef, error) {
-	return &serviceModel.ProjectRef{}, nil
+	return &serviceModel.ProjectRef{
+		Owner:  "mock_owner",
+		Repo:   "mock_repo",
+		Branch: "mock_branch",
+	}, nil
 }
 
-// GetDistro returns an empty Distro.
+// GetDistro returns a mock Distro.
 func (c *Mock) GetDistro(ctx context.Context, taskData TaskData) (*distro.Distro, error) {
-	return &distro.Distro{}, nil
+	return &distro.Distro{
+		Id:      "mock_distro_id",
+		WorkDir: "/tmp",
+	}, nil
 }
 
-// GetVersion return an empty Version.
+// GetVersion return a mock Version.
 func (c *Mock) GetVersion(ctx context.Context, taskData TaskData) (*version.Version, error) {
-	return &version.Version{}, nil
+	var err error
+	var data []byte
+
+	switch taskData.ID {
+	case "shellexec":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "shellexec.yaml"))
+	case "s3copy":
+		data, err = ioutil.ReadFile(filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "s3copy.yaml"))
+	}
+	if err != nil {
+		panic(err)
+	}
+	config := string(data)
+	return &version.Version{
+		Id:     "mock_version_id",
+		Config: config,
+	}, nil
 }
 
 // Heartbeat returns false, which indicates the heartbeat has succeeded.
@@ -102,9 +142,11 @@ func (c *Mock) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
 	return false, nil
 }
 
-// FetchExpansionVars returns an empty ExpansionVars.
+// FetchExpansionVars returns a mock ExpansionVars.
 func (c *Mock) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apimodels.ExpansionVars, error) {
-	return &apimodels.ExpansionVars{}, nil
+	return &apimodels.ExpansionVars{
+		"shellexec_fn": c.ShellExecFilename,
+	}, nil
 }
 
 // GetNextTask returns a mock NextTaskResponse.
@@ -135,6 +177,11 @@ func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []ap
 	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
 
 	return nil
+}
+
+// GetMockMessages returns the mock's logs.
+func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
+	return c.logMessages
 }
 
 // GetLoggerProducer constructs a single channel log producer.

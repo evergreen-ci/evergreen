@@ -158,7 +158,7 @@ func (c *shellExec) Execute(ctx context.Context,
 		logger.Execution().Info("Got kill signal")
 
 		// need to check command has started
-		if localCmd.Cmd != nil {
+		if localCmd.Cmd.Process != nil {
 			logger.Execution().Infof("Stopping process: %d", localCmd.Cmd.Process.Pid)
 
 			// try and stop the process

@@ -52,10 +52,12 @@ func New(opts Options, comm client.Communicator) *Agent {
 
 // Start starts the agent loop. The agent polls the API server for new tasks
 // at interval agentSleepInterval and runs them.
-func (a *Agent) Start(ctx context.Context) {
+func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(a.opts.StatusPort)
 	defer grip.GetSender().Close()
-	grip.CatchEmergencyFatal(a.loop(ctx))
+	err := errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
+	grip.Emergency(err)
+	return err
 }
 
 func (a *Agent) loop(ctx context.Context) error {
@@ -64,17 +66,12 @@ func (a *Agent) loop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			grip.Info("agent loop cancelled")
+			grip.Info("agent loop canceled")
 			return nil
 		case <-timer.C:
 			nextTask, err := a.comm.GetNextTask(ctx)
 			if err != nil {
 				err = errors.Wrap(err, "error getting next task")
-				grip.Error(err)
-				return err
-			}
-			if nextTask.ShouldExit {
-				err = errors.New("task response indicates agent should exit")
 				grip.Error(err)
 				return err
 			}
@@ -84,7 +81,7 @@ func (a *Agent) loop(ctx context.Context) error {
 					grip.Error(err)
 					return err
 				}
-				tc := taskContext{
+				tc := &taskContext{
 					task: client.TaskData{
 						ID:     nextTask.TaskId,
 						Secret: nextTask.TaskSecret,
@@ -102,7 +99,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
-func (a *Agent) startNextTask(ctx context.Context, tc taskContext) error {
+func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 	ctx, cancel := context.WithCancel(ctx)
 	tc.logger = a.comm.GetLoggerProducer(tc.task)
 
@@ -177,7 +174,7 @@ func (a *Agent) startNextTask(ctx context.Context, tc taskContext) error {
 }
 
 // finishTask sends the returned TaskEndResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(tc, status, timeout)
 	a.runPostTaskCommands(ctx, tc)
 
@@ -190,7 +187,7 @@ func (a *Agent) finishTask(ctx context.Context, tc taskContext, status string, t
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc taskContext, status string, timeout bool) *apimodels.TaskEndDetail {
+func (a *Agent) endTaskResponse(tc *taskContext, status string, timeout bool) *apimodels.TaskEndDetail {
 	detail := &apimodels.TaskEndDetail{
 		Description: tc.currentCommand.GetDisplayName(),
 		TimedOut:    timeout,
@@ -209,7 +206,7 @@ func (a *Agent) endTaskResponse(tc taskContext, status string, timeout bool) *ap
 	return detail
 }
 
-func (a *Agent) runPostTaskCommands(ctx context.Context, tc taskContext) {
+func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig != nil && tc.taskConfig.Project.Post != nil {
 		a.killProcs(tc)
 		tc.logger.Task().Info("Running post-task commands.")
@@ -226,7 +223,7 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc taskContext) {
 	}
 }
 
-func (a *Agent) killProcs(tc taskContext) {
+func (a *Agent) killProcs(tc *taskContext) {
 	grip.Infof("cleaning up processes for task: %s", tc.task.ID)
 
 	if tc.task.ID != "" {

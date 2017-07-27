@@ -1,0 +1,16 @@
+tasks:
+  - name: build
+    commands:
+      - command: shell.exec
+        params:
+          shell: bash
+          script: |
+            echo "shell.exec test message" > "${shellexec_fn}"
+
+
+buildvariants:
+- name: mock_build_variant
+  display_name: Mock Buildvariant
+  run_on:
+  - mock_distro_id
+  tasks: ["*"]

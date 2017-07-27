@@ -1,0 +1,38 @@
+tasks:
+- name: build
+  commands:
+  - command: s3Copy.copy
+    params:
+      aws_key: ${aws_key}
+      aws_secret: ${aws_secret}
+      s3_copy_files:
+      - source:
+          bucket: ${push_source_bucket}
+          path: ${push_path}/test.tgz
+        destination:
+          bucket: ${push_destination_bucket}
+          path: ${push_path}/${push_name}/test.tgz
+        display_name: test_copy
+        build_variants:
+        - mock_build_variant
+
+buildvariants:
+- name: mock_build_variant
+  display_name: Mock Buildvariant
+  run_on:
+  - mock_distro_id
+  tasks:
+  - name: build
+  expansions:
+    push_name: linux
+    push_source_bucket: build-push-testing
+    push_destination_bucket: mciuploads
+    push_path: s3CopyFolder
+  push: true
+
+expansions:
+  push_name: linux
+  push_source_bucket: source-bucket
+  push_destination_bucket: mciuploads
+  push_path: s3CopyFolder
+

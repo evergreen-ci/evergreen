@@ -3,7 +3,6 @@ package proto
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,14 +13,14 @@ import (
 // createTaskDirectory makes a directory for the agent to execute
 // the current task within. It changes the necessary variables
 // so that all of the agent's operations will use this folder.
-func (a *Agent) createTaskDirectory(tc taskContext, taskConfig *model.TaskConfig) error {
+func (a *Agent) createTaskDirectory(tc *taskContext, taskConfig *model.TaskConfig) (string, error) {
 	h := md5.New()
 
 	_, err := h.Write([]byte(
 		fmt.Sprintf("%s_%d_%d", taskConfig.Task.Id, taskConfig.Task.Execution, os.Getpid())))
 	if err != nil {
 		tc.logger.Execution().Errorf("Error creating task directory name: %v", err)
-		return err
+		return "", err
 	}
 
 	dirName := hex.EncodeToString(h.Sum(nil))
@@ -31,38 +30,38 @@ func (a *Agent) createTaskDirectory(tc taskContext, taskConfig *model.TaskConfig
 	err = os.Mkdir(newDir, 0777)
 	if err != nil {
 		tc.logger.Execution().Errorf("Error creating task directory: %v", err)
-		return err
+		return "", err
 	}
 
 	tc.logger.Execution().Infof("Changing into task directory: %v", newDir)
 	err = os.Chdir(newDir)
 	if err != nil {
 		tc.logger.Execution().Errorf("Error changing into task directory: %v", err)
-		return err
+		return "", err
 	}
-	tc.taskDirectory = newDir
-	return nil
+	return newDir, nil
 }
 
-// removeTaskDirectory removes the folder the agent created for the
-// task it was executing.
-func (a *Agent) removeTaskDirectory(tc taskContext) error {
+// removeTaskDirectory removes the folder the agent created for the task it
+// was executing. It does not return an error because it is executed at the end of
+// a task run, and the agent loop will start another task regardless of how this
+// exits.
+func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	if tc.taskDirectory == "" {
-		err := errors.New("Task directory is not set")
-		tc.logger.Execution().Error(err)
-		return err
+		tc.logger.Execution().Critical("Task directory is not set")
 	}
 	tc.logger.Execution().Info("Changing directory back to distro working directory.")
+	if tc.taskConfig == nil {
+		tc.logger.Execution().Critical("No taskConfig in taskContext")
+		return
+	}
 	if err := os.Chdir(tc.taskConfig.Distro.WorkDir); err != nil {
-		tc.logger.Execution().Errorf("Error changing directory out of task directory: %v", err)
-		return err
+		tc.logger.Execution().Criticalf("Error changing directory out of task directory: %v", err)
 	}
 
 	tc.logger.Execution().Info("Deleting directory for completed task.")
 
 	if err := os.RemoveAll(tc.taskDirectory); err != nil {
-		tc.logger.Execution().Errorf("Error removing working directory for the task: %v", err)
-		return err
+		tc.logger.Execution().Criticalf("Error removing working directory for the task: %v", err)
 	}
-	return nil
 }

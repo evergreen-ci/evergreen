@@ -14,7 +14,7 @@ type AgentTestSuite struct {
 	suite.Suite
 	a                Agent
 	mockCommunicator *client.Mock
-	tc               taskContext
+	tc               *taskContext
 }
 
 func TestAgentTestSuite(t *testing.T) {
@@ -34,7 +34,7 @@ func (s *AgentTestSuite) SetupTest() {
 	}
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 
-	s.tc = taskContext{}
+	s.tc = &taskContext{}
 	s.tc.task.ID = "task_id"
 	s.tc.task.Secret = "task_secret"
 	s.tc.logger = s.a.comm.GetLoggerProducer(s.tc.task)

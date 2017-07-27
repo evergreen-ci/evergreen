@@ -7,7 +7,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, tc taskContext, heartbeat chan<- struct{}) {
+func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- struct{}) {
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
@@ -44,7 +44,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc taskContext, heartbeat ch
 	}
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc taskContext, idleTimeout chan<- struct{}, resetIdleTimeout <-chan time.Duration) {
+func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idleTimeout chan<- struct{}, resetIdleTimeout <-chan time.Duration) {
 	timer := time.NewTimer(defaultIdleTimeout)
 	defer timer.Stop()
 	for {
@@ -65,7 +65,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc taskContext, idleT
 	}
 }
 
-func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc taskContext, d time.Duration, execTimeout chan<- struct{}) {
+func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d time.Duration, execTimeout chan<- struct{}) {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
 	for {
@@ -83,7 +83,7 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc taskContext, d 
 
 // withCallbackTimeout creates a context with a timeout set either to the project's
 // callback timeout if it has one or to the defaultCallbackCmdTimeout.
-func (a *Agent) withCallbackTimeout(ctx context.Context, tc taskContext) (context.Context, context.CancelFunc) {
+func (a *Agent) withCallbackTimeout(ctx context.Context, tc *taskContext) (context.Context, context.CancelFunc) {
 	timeout := defaultCallbackCmdTimeout
 	if tc.taskConfig.Project.CallbackTimeout != 0 {
 		timeout = time.Duration(tc.taskConfig.Project.CallbackTimeout) * time.Second
