@@ -103,7 +103,9 @@ type Connector interface {
 
 	// FindPatchesByProject provides access to the patches corresponding to the input project ID
 	// as ordered by creation time.
-	FindPatchesByProject(string, time.Time, int, int) ([]patch.Patch, error)
+	FindPatchesByProject(string, time.Time, int, bool) ([]patch.Patch, error)
+	// FindPatchByUser finds patches for the input user as ordered by creation time
+	FindPatchesByUser(string, time.Time, int, bool) ([]patch.Patch, error)
 
 	// FindPatchById fetches the patch corresponding to the input patch ID.
 	FindPatchById(string) (*patch.Patch, error)
@@ -119,5 +121,6 @@ type Connector interface {
 	// SetPatchPriority and SetPatchActivated change the status of the input patch
 	SetPatchPriority(string, int64) error
 	SetPatchActivated(string, string, bool) error
+
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 }

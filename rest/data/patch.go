@@ -18,8 +18,8 @@ type DBPatchConnector struct{}
 
 // FindPatchesByProject uses the service layer's patches type to query the backing database for
 // the patches.
-func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int, sortDir int) ([]patch.Patch, error) {
-	patches, err := patch.Find(patch.PatchesByProject(projectId, ts, limit, sortDir))
+func (pc *DBPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) ([]patch.Patch, error) {
+	patches, err := patch.Find(patch.PatchesByProject(projectId, ts, limit, sortAsc))
 	if err != nil {
 		return nil, errors.Wrapf(err, "problem fetching patches for project %s", projectId)
 	}
@@ -78,6 +78,15 @@ func (pc *DBPatchConnector) SetPatchActivated(patchId string, user string, activ
 	return model.SetVersionActivation(patchId, activated, user)
 }
 
+func (pc *DBPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int, sortAsc bool) ([]patch.Patch, error) {
+	patches, err := patch.Find(patch.ByUserPaginated(user, ts, limit, sortAsc))
+	if err != nil {
+		return nil, errors.Wrapf(err, "problem fetching patches for user %s", user)
+	}
+
+	return patches, nil
+}
+
 // MockPatchConnector is a struct that implements the Patch related methods
 // from the Connector through interactions with he backing database.
 type MockPatchConnector struct {
@@ -88,15 +97,15 @@ type MockPatchConnector struct {
 
 // FindPatchesByProject queries the cached patches splice for the matching patches.
 // Assumes CachedPatches is sorted by increasing creation time.
-func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int, sort int) ([]patch.Patch, error) {
+func (hp *MockPatchConnector) FindPatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) ([]patch.Patch, error) {
 	patchesToReturn := []patch.Patch{}
 	if limit <= 0 {
 		return patchesToReturn, nil
 	}
-	if sort > 0 {
+	if sortAsc {
 		for i := 0; i < len(hp.CachedPatches); i++ {
 			p := hp.CachedPatches[i]
-			if p.Project == projectId && !p.CreateTime.Before(ts) {
+			if p.Project == projectId && p.CreateTime.After(ts) {
 				patchesToReturn = append(patchesToReturn, p)
 				if len(patchesToReturn) == limit {
 					break
@@ -168,4 +177,34 @@ func (pc *MockPatchConnector) SetPatchActivated(patchId string, user string, act
 	}
 	p.Activated = activated
 	return nil
+}
+
+// FindPatchesByUser iterates through the cached patches slice to find the correct patches
+func (hp *MockPatchConnector) FindPatchesByUser(user string, ts time.Time, limit int, sortAsc bool) ([]patch.Patch, error) {
+	patchesToReturn := []patch.Patch{}
+	if limit <= 0 {
+		return patchesToReturn, nil
+	}
+	if sortAsc {
+		for i := 0; i < len(hp.CachedPatches); i++ {
+			p := hp.CachedPatches[i]
+			if p.Author == user && p.CreateTime.After(ts) {
+				patchesToReturn = append(patchesToReturn, p)
+				if len(patchesToReturn) == limit {
+					break
+				}
+			}
+		}
+	} else {
+		for i := len(hp.CachedPatches) - 1; i >= 0; i-- {
+			p := hp.CachedPatches[i]
+			if p.Author == user && !p.CreateTime.After(ts) {
+				patchesToReturn = append(patchesToReturn, p)
+				if len(patchesToReturn) == limit {
+					break
+				}
+			}
+		}
+	}
+	return patchesToReturn, nil
 }

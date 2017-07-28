@@ -159,7 +159,7 @@ func (s *PatchesByProjectSuite) TestInvalidTimesAsKeyShouldError() {
 			s.Len(a, 0)
 			s.Nil(b)
 			s.Error(err)
-			apiErr, ok := err.(rest.APIError)
+			apiErr, ok := err.(*rest.APIError)
 			s.True(ok)
 			s.Contains(apiErr.Message, i)
 		}
@@ -360,4 +360,110 @@ func (s *PatchRestartSuite) TestRestart() {
 	s.NotNil(res)
 
 	s.Equal("user1", s.sc.CachedRestartedVersions[s.objIds[0].Hex()])
+}
+
+////////////////////////////////////////////////////////////////////////
+//
+// Tests for fetch patches for current user
+
+type PatchesByUserSuite struct {
+	sc        *data.MockConnector
+	data      data.MockPatchConnector
+	now       time.Time
+	paginator PaginatorFunc
+
+	suite.Suite
+}
+
+func TestPatchesByUserSuite(t *testing.T) {
+	s := new(PatchesByUserSuite)
+	s.now = time.Date(2009, time.November, 10, 23, 0, 0, 0, time.FixedZone("", 0))
+	s.data = data.MockPatchConnector{
+		CachedPatches: []patch.Patch{
+			{Author: "user1", CreateTime: s.now},
+			{Author: "user2", CreateTime: s.now.Add(time.Second * 2)},
+			{Author: "user1", CreateTime: s.now.Add(time.Second * 4)},
+			{Author: "user1", CreateTime: s.now.Add(time.Second * 6)},
+			{Author: "user2", CreateTime: s.now.Add(time.Second * 8)},
+			{Author: "user1", CreateTime: s.now.Add(time.Second * 10)},
+		},
+	}
+	s.paginator = patchesByUserPaginator
+	s.sc = &data.MockConnector{
+		MockPatchConnector: s.data,
+	}
+
+	suite.Run(t, s)
+}
+
+func (s *PatchesByUserSuite) TestPaginatorShouldErrorIfNoResults() {
+	rd, err := executePatchesByUserRequest("zzz", s.now, 1, s.sc)
+	s.Error(err)
+	s.NotNil(rd)
+	s.Len(rd.Result, 0)
+	s.Contains(err.Error(), "no patches found")
+}
+
+func (s *PatchesByUserSuite) TestPaginatorShouldReturnResultsIfDataExists() {
+	rd, err := executePatchesByUserRequest("user1", s.now.Add(time.Second*7), 2, s.sc)
+	s.NoError(err)
+	s.NotNil(rd)
+	s.Len(rd.Result, 2)
+	s.Equal(model.NewTime(s.now.Add(time.Second*6)), (rd.Result[0]).(*model.APIPatch).CreateTime)
+	s.Equal(model.NewTime(s.now.Add(time.Second*4)), (rd.Result[1]).(*model.APIPatch).CreateTime)
+
+	metadata, ok := rd.Metadata.(*PaginationMetadata)
+	s.True(ok)
+	s.NotNil(metadata)
+	pageData := metadata.Pages
+	s.NotNil(pageData.Prev)
+	s.NotNil(pageData.Next)
+
+	nextTime := s.now.Format(model.APITimeFormat)
+	s.Equal(nextTime, pageData.Next.Key)
+	prevTime := s.now.Add(time.Second * 10).Format(model.APITimeFormat)
+	s.Equal(prevTime, pageData.Prev.Key)
+}
+
+func (s *PatchesByUserSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
+	rd, err := executePatchesByUserRequest("user2", s.now.Add(time.Hour), 100, s.sc)
+	s.NoError(err)
+	s.NotNil(rd)
+	s.Len(rd.Result, 2)
+	metadata, ok := rd.Metadata.(*PaginationMetadata)
+	s.True(ok)
+	s.NotNil(metadata)
+	pageData := metadata.Pages
+	s.Nil(pageData.Prev)
+	s.Nil(pageData.Next)
+}
+
+func (s *PatchesByUserSuite) TestInvalidTimesAsKeyShouldError() {
+	inputs := []string{
+		"200096-01-02T15:04:05.000Z",
+		"15:04:05.000Z",
+		"invalid",
+	}
+
+	for _, i := range inputs {
+		for limit := 0; limit < 3; limit++ {
+			a, b, err := s.paginator(i, limit, patchesByUserArgs{}, s.sc)
+			s.Len(a, 0)
+			s.Nil(b)
+			s.Error(err)
+			apiErr, ok := err.(*rest.APIError)
+			s.True(ok)
+			s.Contains(apiErr.Message, i)
+		}
+	}
+}
+
+func executePatchesByUserRequest(user string, ts time.Time, limit int, sc *data.MockConnector) (ResponseData, error) {
+	rm := getPatchesByUserManager("", 2)
+	pe := (rm.Methods[0].RequestHandler).(*patchesByUserHandler)
+	pe.Args = patchesByUserArgs{user: user}
+	pe.key = ts.Format(model.APITimeFormat)
+	pe.limit = limit
+
+	return pe.Execute(nil, sc)
 }

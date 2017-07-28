@@ -64,7 +64,7 @@ func (p *patchChangeStatusHandler) ParseAndValidate(ctx context.Context, r *http
 	}
 
 	if p.Activated == nil && p.Priority == nil {
-		return rest.APIError{
+		return &rest.APIError{
 			Message:    "Must set 'activated' or 'priority'",
 			StatusCode: http.StatusBadRequest,
 		}
@@ -150,6 +150,128 @@ func (p *patchByIdHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 
 ////////////////////////////////////////////////////////////////////////
 //
+// Handler for fetching current users patches
+//
+//    /patches/mine
+
+type patchesByUserHandler struct {
+	PaginationExecutor
+}
+
+type patchesByUserArgs struct {
+	user string
+}
+
+func getPatchesByUserManager(route string, version int) *RouteManager {
+	p := &patchesByUserHandler{}
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        evergreen.MethodGet,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    p.Handler(),
+			},
+		},
+	}
+}
+
+func (p *patchesByUserHandler) Handler() RequestHandler {
+	return &patchesByUserHandler{PaginationExecutor{
+		KeyQueryParam:   "start_at",
+		LimitQueryParam: "limit",
+		Paginator:       patchesByUserPaginator,
+		Args:            patchesByUserArgs{},
+	}}
+}
+
+func (p *patchesByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	p.Args = patchesByUserArgs{mux.Vars(r)["user_id"]}
+
+	return p.PaginationExecutor.ParseAndValidate(ctx, r)
+}
+
+func patchesByUserPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
+	user := args.(patchesByUserArgs).user
+	grip.Debugln("getting : ", limit, "patches for user: ", user, " starting from time: ", key)
+	var ts time.Time
+	var err error
+	if key == "" {
+		ts = time.Now()
+	} else {
+		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
+		if err != nil {
+			return []model.Model{}, nil, &rest.APIError{
+				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
+				StatusCode: http.StatusBadRequest,
+			}
+		}
+	}
+	// sortAsc set to false in order to display patches in desc chronological order
+	patches, err := sc.FindPatchesByUser(user, ts, limit*2, false)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return []model.Model{}, nil, err
+	}
+	if len(patches) <= 0 {
+		err = rest.APIError{
+			Message:    "no patches found",
+			StatusCode: http.StatusNotFound,
+		}
+		return []model.Model{}, nil, err
+	}
+
+	// Make the previous page
+	prevPatches, err := sc.FindPatchesByUser(user, ts, limit, true)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return []model.Model{}, nil, err
+	}
+	// populate the page info structure
+	pages := &PageResult{}
+	if len(patches) > limit {
+		pages.Next = &Page{
+			Relation: "next",
+			Key:      model.NewTime(patches[limit].CreateTime).String(),
+			Limit:    len(patches) - limit,
+		}
+	}
+	if len(prevPatches) >= 1 {
+		pages.Prev = &Page{
+			Relation: "prev",
+			Key:      model.NewTime(prevPatches[len(prevPatches)-1].CreateTime).String(),
+			Limit:    len(prevPatches),
+		}
+	}
+
+	// truncate results data if there's a next page.
+	if pages.Next != nil {
+		patches = patches[:limit]
+	}
+	models := []model.Model{}
+	for _, info := range patches {
+		patchModel := &model.APIPatch{}
+		if err = patchModel.BuildFromService(info); err != nil {
+			return []model.Model{}, nil, &rest.APIError{
+				Message:    "problem converting patch document",
+				StatusCode: http.StatusInternalServerError,
+			}
+		}
+
+		models = append(models, patchModel)
+	}
+
+	return models, pages, nil
+}
+
+////////////////////////////////////////////////////////////////////////
+//
 // Handler for the patches for a project
 //
 //    /projects/{project_id}/patches
@@ -202,16 +324,16 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	} else {
 		ts, err = time.ParseInLocation(model.APITimeFormat, key, time.UTC)
 		if err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, &rest.APIError{
 				Message:    fmt.Sprintf("problem parsing time from '%s' (%s)", key, err.Error()),
 				StatusCode: http.StatusBadRequest,
 			}
 		}
 	}
 	// sortDir is set to -1 in order to display patches in reverse chronological order
-	patches, err := sc.FindPatchesByProject(proj, ts, limit*2, -1)
+	patches, err := sc.FindPatchesByProject(proj, ts, limit*2, false)
 	if err != nil {
-		if _, ok := err.(rest.APIError); !ok {
+		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
 		}
 		return []model.Model{}, nil, err
@@ -225,7 +347,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	}
 
 	// Make the previous page
-	prevPatches, err := sc.FindPatchesByProject(proj, ts, limit, 1)
+	prevPatches, err := sc.FindPatchesByProject(proj, ts, limit, true)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -244,7 +366,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	if len(prevPatches) >= 1 {
 		pages.Prev = &Page{
 			Relation: "prev",
-			Key:      model.NewTime(prevPatches[0].CreateTime).String(),
+			Key:      model.NewTime(prevPatches[len(prevPatches)-1].CreateTime).String(),
 			Limit:    len(prevPatches),
 		}
 	}
@@ -257,7 +379,7 @@ func patchesByProjectPaginator(key string, limit int, args interface{}, sc data.
 	for _, info := range patches {
 		patchModel := &model.APIPatch{}
 		if err = patchModel.BuildFromService(info); err != nil {
-			return []model.Model{}, nil, rest.APIError{
+			return []model.Model{}, nil, &rest.APIError{
 				Message:    "problem converting patch document",
 				StatusCode: http.StatusInternalServerError,
 			}

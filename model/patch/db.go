@@ -1,6 +1,8 @@
 package patch
 
 import (
+	"time"
+
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"gopkg.in/mgo.v2"
@@ -76,6 +78,24 @@ func ByUser(user string) db.Q {
 	return db.Query(bson.D{{AuthorKey, user}})
 }
 
+// ByUserPaginated produces a query that returns patches by the given user
+// before/after the input time, sorted by creation time and limited
+func ByUserPaginated(user string, ts time.Time, limit int, sortAsc bool) db.Q {
+	filter := bson.M{
+		AuthorKey: user,
+	}
+
+	sortSpec := CreateTimeKey
+
+	if !sortAsc {
+		sortSpec = "-" + sortSpec
+		filter[CreateTimeKey] = bson.M{"$lte": ts}
+	} else {
+		filter[CreateTimeKey] = bson.M{"$gt": ts}
+	}
+	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
+}
+
 // ByUserProjectAndGitspec produces a query that returns patches by the given
 // patch author, project, and gitspec.
 func ByUserProjectAndGitspec(user string, project string, gitspec string) db.Q {
@@ -141,4 +161,26 @@ func UpdateAll(query interface{}, update interface{}) (info *mgo.ChangeInfo, err
 // UpdateOne runs an update on a single patch document.
 func UpdateOne(query interface{}, update interface{}) error {
 	return db.Update(Collection, query, update)
+}
+
+// PatchesByProject builds a query for patches that match the given
+// project's id.
+//
+// If the sort value is less than 0, the query will return all
+// matching patches that occur before the specified time, and otherwise
+// will return all matching patches that occur after the specified time.
+func PatchesByProject(projectId string, ts time.Time, limit int, sortAsc bool) db.Q {
+	filter := bson.M{
+		ProjectKey: projectId,
+	}
+
+	sortSpec := CreateTimeKey
+
+	if !sortAsc {
+		sortSpec = "-" + sortSpec
+		filter[CreateTimeKey] = bson.M{"$lte": ts}
+	} else {
+		filter[CreateTimeKey] = bson.M{"$gt": ts}
+	}
+	return db.Query(filter).Sort([]string{sortSpec}).Limit(limit)
 }
