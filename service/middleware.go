@@ -456,5 +456,6 @@ func (l *Logger) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.Ha
 		"action":   "completed",
 		"status":   res.Status(),
 		"outcome":  http.StatusText(res.Status()),
+		"span":     time.Since(start).String(),
 	})
 }

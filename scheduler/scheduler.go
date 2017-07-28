@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
@@ -120,7 +121,7 @@ func (s *Scheduler) Schedule() error {
 				// write the results out to a results channel
 				distroSchedulerResultChan <- res
 				grip.Info(message.Fields{
-					"runner":     "scheduler",
+					"runner":     RunnerName,
 					"distro":     d.distroId,
 					"operation":  "scheduling distro",
 					"queue_size": len(d.runnableTasksForDistro),
@@ -192,7 +193,7 @@ func (s *Scheduler) Schedule() error {
 		schedulerEvents[distroId] = taskQueueInfo
 	}
 	grip.Info(message.Fields{
-		"runner":    "scheduler",
+		"runner":    RunnerName,
 		"operation": "host query and processing",
 		"span":      time.Since(hostPlanningStart).String(),
 		"duration":  time.Since(hostPlanningStart),
@@ -232,15 +233,16 @@ func (s *Scheduler) Schedule() error {
 			}
 
 			grip.Info(message.Fields{
-				"runner":        "scheduler",
-				"distro":        distro,
-				"hosts":         hostList,
-				"queue":         taskQueueInfo,
-				"expected_span": taskQueueInfo.ExpectedDuration.String(),
+				"runner":             RunnerName,
+				"distro":             distro,
+				"new_hosts":          hostList,
+				"queue":              taskQueueInfo,
+				"total_runtime":      taskQueueInfo.ExpectedDuration.String(),
+				"predicted_makespan": fmt.Sprintf("%s", taskQueueInfo.ExpectedDuration/time.Duration(len(hostsByDistro)+len(hostsSpawned))),
 			})
 		}
 	} else {
-		grip.Info("No new hosts spawned")
+		grip.Infof("no new hosts spawned for %s", distro)
 	}
 
 	for d, t := range schedulerEvents {
@@ -253,7 +255,7 @@ func (s *Scheduler) Schedule() error {
 	}
 
 	grip.Info(message.Fields{
-		"runner":    "scheduler",
+		"runner":    RunnerName,
 		"operation": "total host planning",
 		"span":      time.Since(hostPlanningStart).String(),
 		"duration":  time.Since(hostPlanningStart),
@@ -490,8 +492,9 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host
 		}
 
 		grip.Info(message.Fields{
-			"runner":    "scheduler",
+			"runner":    RunnerName,
 			"distro":    distroId,
+			"number":    numHostsToSpawn,
 			"operation": "spawning instances",
 			"span":      time.Since(distroStartTime).String(),
 			"duration":  time.Since(distroStartTime),
@@ -499,7 +502,7 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host
 	}
 
 	grip.Info(message.Fields{
-		"runner":    "scheduler",
+		"runner":    RunnerName,
 		"operation": "host query and processing",
 		"span":      time.Since(startTime).String(),
 		"duration":  time.Since(startTime),

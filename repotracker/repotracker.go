@@ -77,6 +77,9 @@ func (repoTracker *RepoTracker) FetchRevisions(numNewRepoRevisionsToFetch int) e
 	projectIdentifier := projectRef.String()
 
 	if !projectRef.Enabled {
+		// this is somewhat belt-and-suspenders, as the
+		// repotracker runner process doesn't run for disabled
+		// proejcts.
 		grip.Infoln("Skipping disabled project:", projectRef)
 		return nil
 	}

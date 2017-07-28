@@ -170,32 +170,48 @@ func runRepoTracker(config *evergreen.Settings) error {
 
 func repoTrackerWorker(conf *evergreen.Settings, num int, projects <-chan model.ProjectRef, id int, wg *sync.WaitGroup) {
 	grip.Debugln("starting repotracker worker number:", id)
-	done := 0
 	defer wg.Done()
 
+	var (
+		disabled  []string
+		completed []string
+		errored   []string
+	)
+
 	for project := range projects {
+		if !project.Enabled {
+			disabled = append(disabled, project.String())
+			continue
+		}
+
 		tracker := &RepoTracker{
 			conf,
 			&project,
 			NewGithubRepositoryPoller(&project, conf.Credentials["github"]),
 		}
 
-		grip.Debugln("running repotracker for:", project.Identifier)
-
 		if err := tracker.FetchRevisions(num); err != nil {
-			grip.Error(message.Fields{
+			errored = append(errored, project.String())
+			grip.Warning(message.Fields{
 				"project": project.Identifier,
 				"error":   err,
 				"message": "problem fetching revisions",
 				"runner":  "repotracker",
 				"worker":  id,
 			})
-			done++
+
 			continue
 		}
 
-		done++
-		grip.Infof("fetched all revisions for '%s' without errors", project.Identifier)
+		completed = append(completed, project.String())
 	}
-	grip.Debugf("shutting down repotracker worker %d after %d jobs", id, done)
+
+	grip.Info(message.Fields{
+		"runner":    RunnerName,
+		"operation": "repotracker runner complete",
+		"worker_id": id,
+		"disabled":  disabled,
+		"errored":   errored,
+		"completed": completed,
+	})
 }
