@@ -376,9 +376,13 @@ type Options struct {
 
 // Setup initializes all the signal chans and loggers that are used during one run of the agent.
 func (agt *Agent) Setup() error {
-	if err := SetupLogging(agt.opts.LogPrefix, agt.GetCurrentTaskId()); err != nil {
+	sender, err := GetSender(agt.opts.LogPrefix, agt.GetCurrentTaskId())
+	if err != nil {
 		return errors.Wrap(err, "problem setting up logging")
 	}
+	existingSender := grip.GetSender()
+	grip.SetSender(sender)
+	existingSender.Close()
 
 	// set signal handler
 	sigHandler := &SignalHandler{}

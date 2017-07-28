@@ -111,11 +111,15 @@ func (a *Agent) startNextTask(ctx context.Context, tc taskContext) error {
 	defer a.killProcs(tc)
 	defer cancel()
 
-	if err := setupLogging(a.opts.LogPrefix, tc.task.ID); err != nil {
+	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
+	if err != nil {
 		err = errors.Wrap(err, "problem setting up logging")
 		grip.Error(err)
 		return err
 	}
+	existingSender := grip.GetSender()
+	grip.SetSender(sender)
+	existingSender.Close()
 
 	grip.Info(message.Fields{
 		"message":     "running task",

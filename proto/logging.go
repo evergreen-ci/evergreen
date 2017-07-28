@@ -10,35 +10,67 @@ import (
 	"github.com/pkg/errors"
 )
 
-const filenameTimestamp = "2006-01-02_15_04_05"
+var idSource chan int
 
-// SetupLogging configures the agent's local logging to a file.
-func setupLogging(prefix, taskId string) error {
-	if endpoint := os.Getenv("GRIP_SUMO_ENDPOINT"); endpoint != "" {
-		sender, err := send.NewSumo(taskId, endpoint)
-		if err != nil {
-			return errors.Wrap(err, "problem creating the sumo logic sender")
+func init() {
+	idSource = make(chan int, 100)
+
+	go func() {
+		id := 0
+		for {
+			idSource <- id
+			id++
 		}
-		grip.SetName(taskId)
-		return errors.Wrapf(grip.SetSender(sender), "problem setting up sumo logic sender")
+	}()
+}
+
+func getInc() int { return <-idSource }
+
+// getSender  configures the agent's local logging to a file.
+func getSender(prefix, taskId string) (send.Sender, error) {
+	var (
+		err     error
+		sender  send.Sender
+		senders []send.Sender
+	)
+
+	level := grip.GetSender().Level()
+
+	if splunk := send.GetSplunkConnectionInfo(); splunk.Populated() {
+		sender, err = send.NewSplunkLogger(taskId, splunk, level)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem creating the splunk logger")
+		}
+
+		senders = append(senders, send.NewBufferedSender(sender, 15*time.Second, 100))
+	}
+
+	if endpoint := os.Getenv("GRIP_SUMO_ENDPOINT"); endpoint != "" {
+		sender, err = send.NewSumo(taskId, endpoint)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem creating the sumo logic sender")
+		}
+		senders = append(senders, send.NewBufferedSender(sender, 15*time.Second, 100))
 	}
 
 	if prefix == "" {
-		return nil
+		// pass
+	} else if prefix == "LOCAL" || prefix == "--" {
+		sender, err = send.NewNativeLogger("evergreen-agent", level)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem creating a native console logger")
+		}
+
+		senders = append(senders, sender)
+	} else {
+		sender, err = send.NewFileLogger("evergreen-agent",
+			fmt.Sprintf("%s-%d-%d.log", prefix, os.Getpid(), getInc()), level)
+		if err != nil {
+			return nil, errors.Wrap(err, "problem creating a file logger")
+		}
+
+		senders = append(senders, sender)
 	}
 
-	if len(taskId) > 100 {
-		taskId = taskId[100:]
-	}
-
-	logFile := fmt.Sprintf("%s_%s_%s_pid_%d.log",
-		prefix, taskId, time.Now().Format(filenameTimestamp), os.Getpid())
-
-	sender, err := send.MakeFileLogger(logFile)
-	if err != nil {
-		return errors.Wrapf(err, "problem constructing log writer for file %s", logFile)
-	}
-
-	return errors.Wrapf(grip.SetSender(sender),
-		"problem setting logger to write to %s", logFile)
+	return send.NewConfiguredMultiSender(senders...), nil
 }
