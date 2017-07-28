@@ -13,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -386,33 +387,38 @@ func (repoTracker *RepoTracker) GetProjectConfig(revision string) (*model.Projec
 		return nil, err
 	}
 
+	validationStart := time.Now()
 	// check if project config is valid
 	verrs, err := validator.CheckProjectSyntax(project)
 	if err != nil {
 		return nil, err
 	}
+	validationDuration := time.Since(validationStart)
+
 	if len(verrs) != 0 {
+
 		// We have syntax errors in the project.
 		// Format them, as we need to store + display them to the user
-		var errMessage, warnMessage string
 		var projectErrors, projectWarnings []string
+
 		for _, e := range verrs {
 			if e.Level == validator.Warning {
-				warnMessage += fmt.Sprintf("\n\t=> %v", e)
 				projectWarnings = append(projectWarnings, e.Error())
 			} else {
-				errMessage += fmt.Sprintf("\n\t=> %v", e)
 				projectErrors = append(projectErrors, e.Error())
 			}
 		}
 
-		grip.ErrorWhenf(len(projectErrors) > 0, "problem validating project '%s' "+
-			"configuration at revision '%s': %+v",
-			projectRef.Identifier, revision, errMessage)
-
-		grip.ErrorWhenf(len(projectWarnings) > 0, "warning validating project '%s' "+
-			"configuration at revision '%s': %+v", projectRef.Identifier,
-			revision, warnMessage)
+		grip.Notice(message.Fields{
+			"runner":      "repotracker",
+			"operation":   "project config validation",
+			"warnings":    projectWarnings,
+			"errors":      projectErrors,
+			"hasErrors":   len(projectErrors) > 0,
+			"hasWarnings": len(projectWarnings) > 0,
+			"duration":    validationDuration,
+			"span":        validationDuration.String(),
+		})
 
 		return project, projectConfigError{projectErrors, projectWarnings}
 	}
