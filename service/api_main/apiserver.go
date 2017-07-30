@@ -16,6 +16,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
+	"golang.org/x/net/context"
 	"gopkg.in/tylerb/graceful.v1"
 )
 
@@ -48,6 +49,10 @@ func main() {
 	grip.Notice(message.Fields{"build": evergreen.BuildRevision, "process": grip.Name()})
 
 	defer util.RecoverAndLogStackTrace()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go evergreen.SystemInfoCollector(ctx)
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 

@@ -23,6 +23,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 func init() {
@@ -79,6 +80,9 @@ func main() {
 	if home == "" {
 		grip.EmergencyFatal("EVGHOME environment variable must be set to execute runner")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go evergreen.SystemInfoCollector(ctx)
 
 	defer util.RecoverAndLogStackTrace()
 
