@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	hec "github.com/fuyufjh/splunk-hec-go"
 	"github.com/mongodb/grip/level"
@@ -141,11 +142,23 @@ type splunkClientImpl struct {
 
 func (c *splunkClientImpl) Create(serverURL string, token string, channel string) error {
 	c.HEC = hec.NewClient(serverURL, token)
-	c.HEC.SetHTTPClient(&http.Client{Transport: &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}})
 	if channel != "" {
 		c.HEC.SetChannel(channel)
 	}
+
+	c.HEC.SetKeepAlive(false)
+	c.HEC.SetMaxRetry(0)
+	c.HEC.SetHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			DisableKeepAlives:   true,
+			TLSHandshakeTimeout: 5 * time.Second,
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+		Timeout: 5 * time.Second,
+	})
+
 	return nil
 }
