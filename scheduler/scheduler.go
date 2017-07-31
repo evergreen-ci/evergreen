@@ -242,7 +242,7 @@ func (s *Scheduler) Schedule() error {
 			})
 		}
 	} else {
-		grip.Infof("no new hosts spawned for %s", distro)
+		grip.Info("no new hosts spawned")
 	}
 
 	for d, t := range schedulerEvents {
