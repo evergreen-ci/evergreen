@@ -639,6 +639,9 @@ func (uis *UIServer) taskModify(w http.ResponseWriter, r *http.Request) {
 					http.StatusBadRequest)
 				return
 			}
+		} else if priority < 0 {
+			http.Error(w, "Cannot set a negative priority. If this task should not run, it should be unscheduled.", http.StatusBadRequest)
+			return
 		}
 		if err = projCtx.Task.SetPriority(priority); err != nil {
 			http.Error(w, fmt.Sprintf("Error setting task priority %v: %v", projCtx.Task.Id, err), http.StatusInternalServerError)

@@ -64,7 +64,7 @@ mciModule.controller('AdminOptionsCtrl', ['$scope', '$rootScope', 'mciTasksRestS
                     doModalSuccess("Priority for task updated to "+ data.priority +".", data);
                 },
                 error: function(jqXHR, status, errorThrown) {
-                    notifier.pushNotification('Error setting priority: ' + jqXHR.error,'errorModal');
+                    notifier.pushNotification('Error setting priority: ' + jqXHR,'errorModal');
                 }
             }
         );
