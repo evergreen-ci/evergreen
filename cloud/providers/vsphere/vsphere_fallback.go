@@ -42,6 +42,10 @@ func (m *Manager) GetInstanceStatus(_ *host.Host) (cloud.CloudStatus, error) {
 	return cloud.StatusRunning, nil
 }
 
+func (*Manager) GetInstanceName(d *distro.Distro) string {
+	return d.GenerateName()
+}
+
 func (m *Manager) TerminateInstance(_ *host.Host) error {
 	return nil
 }
