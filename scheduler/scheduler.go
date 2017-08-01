@@ -173,17 +173,10 @@ func (s *Scheduler) Schedule() error {
 
 	hostPlanningStart := time.Now()
 
-	// fetch all hosts, split by distro
-	allHosts, err := host.Find(host.IsLive)
+	// get hosts that we can use
+	hostsByDistro, err := s.findUsableHosts()
 	if err != nil {
-		return errors.Wrap(err, "Error finding live hosts")
-	}
-
-	// figure out all hosts we have up - per distro
-	hostsByDistro := make(map[string][]host.Host)
-	for _, liveHost := range allHosts {
-		hostsByDistro[liveHost.Distro.Id] = append(hostsByDistro[liveHost.Distro.Id],
-			liveHost)
+		return err
 	}
 
 	// add the length of the host lists of hosts that are running to the event log.
@@ -476,14 +469,16 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host
 				UserName: evergreen.User,
 				UserHost: false,
 			}
-			newHost, err := cloudManager.SpawnInstance(d, hostOptions)
-			if err != nil {
-				err = errors.Wrapf(err, "error spawning instance $s", distroId)
+
+			intentHost := cloud.NewIntent(*d, cloudManager.GetInstanceName(d), d.Provider, hostOptions)
+			if err := intentHost.Insert(); err != nil {
+				err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
 				grip.Error(err)
-				continue
+				return nil, err
 			}
+
 			hostsSpawnedPerDistro[distroId] =
-				append(hostsSpawnedPerDistro[distroId], *newHost)
+				append(hostsSpawnedPerDistro[distroId], *intentHost)
 
 		}
 		// if none were spawned successfully
@@ -509,4 +504,22 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host
 	})
 
 	return hostsSpawnedPerDistro, nil
+}
+
+// Finds live hosts in the DB and organizes them by distro
+func (s *Scheduler) findUsableHosts() (map[string][]host.Host, error) {
+	// fetch all hosts, split by distro
+	allHosts, err := host.Find(host.IsLive)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error finding live hosts")
+	}
+
+	// figure out all hosts we have up - per distro
+	hostsByDistro := make(map[string][]host.Host)
+	for _, liveHost := range allHosts {
+		hostsByDistro[liveHost.Distro.Id] = append(hostsByDistro[liveHost.Distro.Id],
+			liveHost)
+	}
+
+	return hostsByDistro, nil
 }

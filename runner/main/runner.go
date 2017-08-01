@@ -14,6 +14,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/hostinit"
 	"github.com/evergreen-ci/evergreen/notify"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	. "github.com/evergreen-ci/evergreen/runner"
@@ -60,6 +61,7 @@ at regular intervals.
 
 const (
 	schedulerInterval  = 20 * time.Second
+	hostinitInterval   = 20 * time.Second
 	defaultRunInterval = 60 * time.Second
 )
 
@@ -122,6 +124,8 @@ func startRunners(wg *sync.WaitGroup, s *evergreen.Settings) chan bool {
 
 		if r.Name() == scheduler.RunnerName {
 			go runnerBackgroundWorker(r, s, c, schedulerInterval, wg)
+		} else if r.Name() == hostinit.RunnerName {
+			go runnerBackgroundWorker(r, s, c, hostinitInterval, wg)
 		} else {
 			go runnerBackgroundWorker(r, s, c, duration, wg)
 		}

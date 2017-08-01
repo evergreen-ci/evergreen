@@ -37,16 +37,29 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 
 	init := &HostInit{config}
 
-	if err := init.setupReadyHosts(); err != nil {
+	if err := init.startHosts(); err != nil {
+		err = errors.Wrap(err, "Error starting hosts")
 		grip.Error(message.Fields{
 			"runner":  RunnerName,
 			"error":   err.Error(),
 			"status":  "failed",
+			"method":  "startHosts",
 			"runtime": time.Since(startTime),
 			"span":    time.Since(startTime).String(),
 		})
+		return err
+	}
 
-		return errors.Wrap(err, "problem running hostinit")
+	if err := init.setupReadyHosts(); err != nil {
+		err = errors.Wrap(err, "Error provisioning hosts")
+		grip.Error(message.Fields{
+			"runner":  RunnerName,
+			"error":   err.Error(),
+			"status":  "failed",
+			"method":  "setupReadyHosts",
+			"runtime": time.Since(startTime),
+		})
+		return err
 	}
 
 	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {

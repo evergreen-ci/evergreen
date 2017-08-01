@@ -44,7 +44,7 @@ func (opts *ProviderSettings) Validate() error {
 	}
 
 	if opts.ResourcePool == "" {
-		opts.ResourcePool = "*"  // default path
+		opts.ResourcePool = "*" // default path
 	}
 
 	if opts.NumCPUs < 0 {
@@ -56,6 +56,11 @@ func (opts *ProviderSettings) Validate() error {
 	}
 
 	return nil
+}
+
+//GetInstanceName returns a name to be used for an instance
+func (*Manager) GetInstanceName(d *distro.Distro) string {
+	return d.GenerateName()
 }
 
 // GetSettings returns an empty ProviderSettings struct
@@ -79,7 +84,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 	return nil
 }
 
-// SpawnInstance attempts to create a new host by requesting one from the vSphere API.
+// SpawnHost attempts to create a new host by requesting one from the vSphere API.
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // ProviderSettings in the distro should have the following settings:
@@ -90,53 +95,40 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //     - MemoryMB     (int64):  (optional) memory in MB e.g. 2048
 //
 // Optional fields use the default values of the template vm if not specified.
-func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	if d.Provider != ProviderName {
+//     -
+func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != ProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			ProviderName, d.Id, d.Provider)
+			ProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 
 	s := &ProviderSettings{}
-	if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %s", d.Id)
+	if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 
 	if err := s.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid settings in distro %s", d.Id)
+		return nil, errors.Wrapf(err, "Invalid settings in distro %s", h.Distro.Id)
 	}
-
-	// Proactively record all information about the host we want to create. This way, if we are
-	// unable to start it or record its instance ID, we have a way of knowing what went wrong.
-	name := d.GenerateName()
-	intentHost := cloud.NewIntent(*d, name, ProviderName, hostOpts)
-	if err := intentHost.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debug(message.Fields{
-		"message": "inserted intent host to signal instance spawn intent",
-		"intent_host": name,
-		"distro": d.Id,
-	})
 
 	// Start the instance, and remove the intent host document if unsuccessful.
-	if _, err := m.client.CreateInstance(intentHost, s); err != nil {
-		if rmErr := intentHost.Remove(); rmErr != nil {
-			grip.Errorf("Could not remove intent host '%s': %+v", intentHost.Id, rmErr)
+	if _, err := m.client.CreateInstance(h, s); err != nil {
+		if rmErr := h.Remove(); rmErr != nil {
+			grip.Errorf("Could not remove intent host '%s': %+v", h.Id, rmErr)
 		}
 		grip.Error(err)
-		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", d.Id)
+		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
 	}
 
 	grip.Debug(message.Fields{
-		"message": "spawned new instance",
-		"instance": name,
-		"object": intentHost,
+		"message":  "spawned new instance",
+		"instance": h.Id,
+		"distro":   h.Distro.Id,
+		"provider": h.Provider,
+		"object":   h,
 	})
 
-	return intentHost, nil
+	return h, nil
 }
 
 // CanSpawn always returns true.

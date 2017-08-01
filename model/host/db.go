@@ -44,6 +44,9 @@ var (
 	LastReachabilityCheckKey = bsonutil.MustHaveTag(Host{}, "LastReachabilityCheck")
 	LastCommunicationTimeKey = bsonutil.MustHaveTag(Host{}, "LastCommunicationTime")
 	UnreachableSinceKey      = bsonutil.MustHaveTag(Host{}, "UnreachableSince")
+	UserHostKey              = bsonutil.MustHaveTag(Host{}, "UserHost")
+	ZoneKey                  = bsonutil.MustHaveTag(Host{}, "Zone")
+	ProjectKey               = bsonutil.MustHaveTag(Host{}, "Project")
 )
 
 // === Queries ===
@@ -128,9 +131,14 @@ func ByUnprovisionedSince(threshold time.Time) db.Q {
 	})
 }
 
-// IsUninitialized is a query that returns all uninitialized Evergreen hosts.
+// IsUninitialized is a query that returns all unstarted + uninitialized Evergreen hosts.
 var IsUninitialized = db.Query(
 	bson.M{StatusKey: evergreen.HostUninitialized},
+)
+
+// IsStarting is a query that returns all Evergreen hosts that are starting.
+var IsStarting = db.Query(
+	bson.M{StatusKey: evergreen.HostStarting},
 )
 
 // ByUnproductiveSince produces a query that returns all hosts that

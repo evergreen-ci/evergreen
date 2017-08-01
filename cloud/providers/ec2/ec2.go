@@ -113,20 +113,27 @@ func (*EC2Manager) GetSettings() cloud.ProviderSettings {
 	return &EC2ProviderSettings{}
 }
 
-func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	if d.Provider != OnDemandProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, d.Id, d.Provider)
+//GetInstanceName returns a name to be used for an instance
+func (*EC2Manager) GetInstanceName(d *distro.Distro) string {
+	return d.GenerateName()
+}
+
+//SpawnHost will spawn an on-demand EC2 host
+func (cloudManager *EC2Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != OnDemandProviderName {
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", OnDemandProviderName, h.Distro.Id, h.Distro.Provider)
 	}
+
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2ProviderSettings{}
-	if err := mapstructure.Decode(d.ProviderSettings, ec2Settings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %v: %v", d.Id)
+	if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %v: %v", h.Distro.Id)
 	}
 
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %#v: and %#v", d, ec2Settings)
+		return nil, errors.Wrapf(err, "Invalid EC2 settings in distro %#v: and %#v", h.Distro, ec2Settings)
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
@@ -134,24 +141,8 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		return nil, errors.WithStack(err)
 	}
 
-	instanceName := d.GenerateName()
-
-	// proactively write all possible information pertaining
-	// to the host we want to create. this way, if we are unable
-	// to start it or record its instance id, we have a way of knowing
-	// something went wrong - and what
-	intentHost := cloud.NewIntent(*d, instanceName, OnDemandProviderName, hostOpts)
-	intentHost.InstanceType = ec2Settings.InstanceType
-
-	// record this 'intent host'
-	if err := intentHost.Insert(); err != nil {
-		err = errors.Wrapf(err, "could not insert intent host '%s'", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debugf("Inserted intent host '%v' for distro '%v' to signal instance spawn intent",
-		instanceName, d.Id)
+	// the document is updated later in hostinit, rather than here
+	h.InstanceType = ec2Settings.InstanceType
 
 	options := ec2.RunInstancesOptions{
 		MinCount:       1,
@@ -173,22 +164,25 @@ func (cloudManager *EC2Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 	// start the instance - starting an instance does not mean you can connect
 	// to it immediately you have to use GetInstanceStatus to ensure that
 	// it's actually running
-	newHost, resp, err := startEC2Instance(ec2Handle, &options, intentHost)
+	newHost, resp, err := startEC2Instance(ec2Handle, &options, h)
 	grip.Debugf("id=%s, intentHost=%s, starResp=%+v, newHost=%+v",
-		instanceName, intentHost.Id, resp, newHost)
+		h.Id, h.Id, resp, newHost)
 
 	if err != nil {
 		err = errors.Wrapf(err, "could not start new instance for distro '%v.'"+
-			"Accompanying host record is '%v'", d.Id, intentHost.Id)
+			"Accompanying host record is '%v'", h.Distro.Id, h.Id)
 		grip.Error(err)
 		return nil, err
 	}
 
 	instance := resp.Instances[0]
-	grip.Debugf("new instance: instance=%s, object=%s", instanceName, instance)
+	grip.Debug(message.Fields{
+		"instance": h.Id,
+		"object":   instance,
+	})
 
 	// create some tags based on user, hostname, owner, time, etc.
-	tags := makeTags(intentHost)
+	tags := makeTags(h)
 
 	// attach the tags to this instance
 	if err = attachTags(ec2Handle, tags, instance.InstanceId); err != nil {
@@ -281,11 +275,8 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 	grip.Debugln("Started", instance.InstanceId)
 	grip.Debugln("Key name:", options.KeyName)
 
-	// find old intent host
-	actualHost, err := intentHost.UpdateDocumentID(instance.InstanceId)
-	if err != nil {
-		return nil, nil, err
-	}
+	// update this host's ID
+	intentHost.Id = instance.InstanceId
 
 	var infoResp *ec2.DescribeInstancesResp
 	instanceInfoRetryCount := 0
@@ -323,7 +314,7 @@ func startEC2Instance(ec2Handle *ec2.EC2, options *ec2.RunInstancesOptions,
 		return nil, resp, errors.New("Reservation appears to have no " +
 			"associated instances")
 	}
-	return actualHost, resp, nil
+	return intentHost, resp, nil
 }
 
 // CostForDuration returns the cost of running a host between the given start and end times

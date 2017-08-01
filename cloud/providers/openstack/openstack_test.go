@@ -5,20 +5,20 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/distro"
+	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/testutil"
 
 	"github.com/stretchr/testify/suite"
 )
 
 type OpenStackSuite struct {
-	client       client
-	keyname      string
-	manager      *Manager
-	distro       *distro.Distro
-	hostOpts     cloud.HostOptions
+	client   client
+	keyname  string
+	manager  *Manager
+	distro   *distro.Distro
+	hostOpts cloud.HostOptions
 	suite.Suite
 }
 
@@ -31,7 +31,7 @@ func (s *OpenStackSuite) SetupSuite() {
 }
 
 func (s *OpenStackSuite) SetupTest() {
-	s.client  = &clientMock{isServerActive: true}
+	s.client = &clientMock{isServerActive: true}
 	s.keyname = "key"
 
 	s.manager = &Manager{
@@ -147,12 +147,18 @@ func (s *OpenStackSuite) TestIsUpStatuses() {
 }
 
 func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
-	hostA, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostA := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA, err := s.manager.SpawnHost(hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
+	_, err = hostA.Upsert()
+	s.NoError(err)
 
-	hostB, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostB := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB, err = s.manager.SpawnHost(hostB)
 	s.NotNil(hostB)
+	s.NoError(err)
+	_, err = hostB.Upsert()
 	s.NoError(err)
 
 	mock, ok := s.client.(*clientMock)
@@ -167,11 +173,15 @@ func (s *OpenStackSuite) TestTerminateInstanceAPICall() {
 
 func (s *OpenStackSuite) TestTerminateInstanceDB() {
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	myHost := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost, err := s.manager.SpawnHost(myHost)
 	s.NotNil(myHost)
+	s.NoError(err)
+	_, err = myHost.Upsert()
 	s.NoError(err)
 
 	dbHost, err := host.FindOne(host.ById(myHost.Id))
+	s.NotNil(dbHost)
 	s.NotEqual(dbHost.Status, evergreen.HostTerminated)
 	s.NoError(err)
 
@@ -206,7 +216,7 @@ func (s *OpenStackSuite) TestGetDNSNameAPICall() {
 func (s *OpenStackSuite) TestGetSSHOptions() {
 	opt := "Option"
 	host := &host.Host{
-		Distro: distro.Distro {
+		Distro: distro.Distro{
 			SSHOptions: []string{opt},
 		},
 	}
@@ -226,34 +236,41 @@ func (s *OpenStackSuite) TestGetSSHOptions() {
 
 func (s *OpenStackSuite) TestSpawnInvalidSettings() {
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host, err := s.manager.SpawnInstance(dProviderName, s.hostOpts)
+	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	host, err := s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "openstack"}
-	host, err = s.manager.SpawnInstance(dSettingsNone, s.hostOpts)
+	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 
 	dSettingsInvalid := &distro.Distro{
-		Provider: "openstack",
+		Provider:         "openstack",
 		ProviderSettings: &map[string]interface{}{"image_name": ""},
 	}
-	host, err = s.manager.SpawnInstance(dSettingsInvalid, s.hostOpts)
+	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 }
 
 func (s *OpenStackSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostOne := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+
+	hostOne, err := s.manager.SpawnHost(hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
+	_, err = hostOne.Upsert()
+	s.NoError(err)
 
-	hostTwo, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostTwo := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo, err = s.manager.SpawnHost(hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
+	_, err = hostTwo.Upsert()
+	s.NoError(err)
 }
 
 func (s *OpenStackSuite) TestSpawnAPICall() {
@@ -272,14 +289,18 @@ func (s *OpenStackSuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host, err := s.manager.SpawnInstance(dist, s.hostOpts)
+	host := cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
+	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
+	_, err = host.Upsert()
+	s.NoError(err)
 
 	mock.failCreate = true
-	host, err = s.manager.SpawnInstance(dist, s.hostOpts)
+	host = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, s.hostOpts)
+
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 }
 
 func (s *OpenStackSuite) TestUtilToEvgStatus() {

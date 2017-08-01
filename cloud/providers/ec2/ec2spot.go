@@ -222,20 +222,25 @@ func (cloudManager *EC2SpotManager) GetDNSName(host *host.Host) (string, error) 
 	return instanceInfo.DNSName, nil
 }
 
-func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	if d.Provider != SpotProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, d.Id, d.Provider)
+//GetInstanceName returns a name to be used for an instance
+func (*EC2SpotManager) GetInstanceName(d *distro.Distro) string {
+	return d.GenerateName()
+}
+
+func (cloudManager *EC2SpotManager) SpawnHost(h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != SpotProviderName {
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", SpotProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 	ec2Handle := getUSEast(*cloudManager.awsCredentials)
 
 	//Decode and validate the ProviderSettings into the ec2-specific ones.
 	ec2Settings := &EC2SpotSettings{}
-	if err := mapstructure.Decode(d.ProviderSettings, ec2Settings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %s", d.Id)
+	if err := mapstructure.Decode(h.Distro.ProviderSettings, ec2Settings); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 
 	if err := ec2Settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid EC2 spot settings in distro %s", d.Id)
+		return nil, errors.Wrapf(err, "Invalid EC2 spot settings in distro %s", h.Distro.Id)
 	}
 
 	blockDevices, err := makeBlockDeviceMappings(ec2Settings.MountPoints)
@@ -243,19 +248,7 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 		return nil, err
 	}
 
-	instanceName := d.GenerateName()
-	intentHost := cloud.NewIntent(*d, instanceName, SpotProviderName, hostOpts)
-	intentHost.InstanceType = ec2Settings.InstanceType
-
-	// record this 'intent host'
-	if err := intentHost.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert intent host '%v'", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debugf("Inserted intent host '%v' for distro '%v' to signal instance spawn intent",
-		instanceName, d.Id)
+	h.InstanceType = ec2Settings.InstanceType
 
 	spotRequest := &ec2.RequestSpotInstances{
 		SpotPrice:      fmt.Sprintf("%v", ec2Settings.BidPrice),
@@ -277,11 +270,11 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	spotResp, err := ec2Handle.RequestSpotInstances(spotRequest)
 	if err != nil {
 		//Remove the intent host if the API call failed
-		if err := intentHost.Remove(); err != nil {
-			grip.Errorf("Failed to remove intent host %s: %+v", intentHost.Id, err)
+		if err := h.Remove(); err != nil {
+			grip.Errorf("Failed to remove intent host %s: %+v", h.Id, err)
 		}
 		err = errors.Wrapf(err, "Failed starting spot instance for distro '%s' on intent host %s",
-			d.Id, intentHost.Id)
+			h.Distro.Id, h.Id)
 		grip.Error(err)
 		return nil, err
 	}
@@ -289,59 +282,25 @@ func (cloudManager *EC2SpotManager) SpawnInstance(d *distro.Distro, hostOpts clo
 	spotReqRes := spotResp.SpotRequestResults[0]
 	if spotReqRes.State != SpotStatusOpen && spotReqRes.State != SpotStatusActive {
 		err = errors.Errorf("Spot request %v was found in  state %v on intent host %v",
-			spotReqRes.SpotRequestId, spotReqRes.State, intentHost.Id)
+			spotReqRes.SpotRequestId, spotReqRes.State, h.Id)
 		grip.Error(err)
 		return nil, err
 	}
 
-	intentHost.Id = spotReqRes.SpotRequestId
-	err = intentHost.Insert()
-	if err != nil {
-		err = errors.Wrapf(err, "Could not insert updated host info with id %v for intent host %v",
-			intentHost.Id, instanceName)
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debugf("Inserting updated intent host %v with request id: %v and name %v",
-		intentHost.Id, spotReqRes.SpotRequestId, instanceName)
-	//find the old intent host and remove it, since we now have the real
-	//host doc successfully stored.
-	oldIntenthost, err := host.FindOne(host.ById(instanceName))
-	if err != nil {
-		err = errors.Wrapf(err, "Can't locate record inserted for intended host '%s' "+
-			"due to error", instanceName)
-		grip.Error(err)
-		return nil, err
-	}
-	if oldIntenthost == nil {
-		err = errors.Errorf("Can't locate record inserted for intended host '%s'",
-			instanceName)
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debugf("Removing old intent host %v with id: %v and name %v",
-		oldIntenthost.Id, spotReqRes.SpotRequestId, instanceName)
-	err = oldIntenthost.Remove()
-	if err != nil {
-		err = errors.Wrapf(err, "Could not remove intent host '%s'", oldIntenthost.Id, err)
-		grip.Error(err)
-		return nil, err
-	}
+	h.Id = spotReqRes.SpotRequestId
 
 	// create some tags based on user, hostname, owner, time, etc.
-	tags := makeTags(intentHost)
+	tags := makeTags(h)
 
 	// attach the tags to this instance
-	err = errors.Wrapf(attachTags(ec2Handle, tags, intentHost.Id),
-		"unable to attach tags for $s", intentHost.Id)
+	err = errors.Wrapf(attachTags(ec2Handle, tags, h.Id),
+		"unable to attach tags for $s", h.Id)
 
 	grip.Error(err)
 	grip.DebugWhenf(err == nil, "attached tag name '%s' for '%s'",
-		instanceName, intentHost.Id)
+		h.Id, h.Id)
 
-	return intentHost, nil
+	return h, nil
 }
 
 func (cloudManager *EC2SpotManager) TerminateInstance(host *host.Host) error {

@@ -12,7 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/notify"
-	"github.com/evergreen-ci/evergreen/spawn"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
@@ -63,33 +63,14 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts := spawn.Options{
-		Distro:    hostRequest.Distro,
-		UserName:  user.Id,
-		PublicKey: hostRequest.PublicKey,
-		UserData:  hostRequest.UserData,
-	}
-
-	spawner := spawn.New(&as.Settings)
-	err = spawner.Validate(opts)
+	hc := &data.DBHostConnector{}
+	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, user)
 	if err != nil {
-		errCode := http.StatusBadRequest
-		if _, ok := err.(spawn.BadOptionsErr); !ok {
-			errCode = http.StatusInternalServerError
-		}
-		as.LoggedError(w, r, errCode, errors.Wrap(err, "Spawn request failed validation"))
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	err = spawner.CreateHost(opts, user)
-	if err != nil {
-		grip.Error(err)
-		mailErr := notify.TrySendNotificationToUser(opts.UserName, "Spawning failed",
-			fmt.Sprintf("For distro '%s'.\n\nEncountered with error: %+v", hostRequest.Distro, err.Error()),
-			notify.ConstructMailer(as.Settings.Notify))
-		if mailErr != nil {
-			grip.Errorln("Failed to send notification:", mailErr)
-		}
+	if spawnHost == nil {
+		http.Error(w, "spawned host is nil", http.StatusBadRequest)
 		return
 	}
 

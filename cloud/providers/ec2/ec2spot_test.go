@@ -36,9 +36,11 @@ func TestSpawnSpotInstance(t *testing.T) {
 		}
 		d := fetchTestDistro()
 		for i := range hosts {
-			h, err := provider.SpawnInstance(d, hostOptions)
+			h := cloud.NewIntent(*d, provider.GetInstanceName(d), d.Provider, hostOptions)
+			h, err := provider.SpawnHost(h)
 			hosts[i] = h
 			So(err, ShouldBeNil)
+			So(h.Insert(), ShouldBeNil)
 		}
 		Convey("and terminating all of them", func() {
 			foundHosts, err := host.Find(host.IsUninitialized)
@@ -68,7 +70,7 @@ func fetchTestDistro() *distro.Distro {
 			"ami":            "ami-c7e7f2d0",
 			"instance_type":  "t1.micro",
 			"key_name":       "mci",
-			"bid_price":      .004,
+			"bid_price":      .005,
 			"security_group": "default",
 		},
 

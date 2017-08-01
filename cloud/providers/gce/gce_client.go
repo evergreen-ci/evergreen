@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 
 	"golang.org/x/net/context"
-	"golang.org/x/oauth2/jwt"
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/jwt"
 
 	compute "google.golang.org/api/compute/v1"
 )
@@ -68,8 +68,8 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	}
 
 	grip.Debug(message.Fields{
-		"message": "creating instance",
-		"host": h.Id,
+		"message":      "creating instance",
+		"host":         h.Id,
 		"machine_type": machineType,
 	})
 
@@ -94,10 +94,10 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	}}
 
 	grip.Debug(message.Fields{
-		"message": "attaching boot disk",
-		"host": h.Id,
-		"disk_size": s.DiskSizeGB,
-		"disk_type": diskType,
+		"message":      "attaching boot disk",
+		"host":         h.Id,
+		"disk_size":    s.DiskSizeGB,
+		"disk_type":    diskType,
 		"source_image": imageURL,
 	})
 
@@ -115,8 +115,8 @@ func (c *clientImpl) CreateInstance(h *host.Host, s *ProviderSettings) (string, 
 	}
 
 	grip.Debug(message.Fields{
-		"message": "attaching metadata items",
-		"host": h.Id,
+		"message":  "attaching metadata items",
+		"host":     h.Id,
 		"ssh_keys": keys,
 	})
 

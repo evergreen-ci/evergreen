@@ -215,23 +215,29 @@ func (_ *DockerManager) GetSettings() cloud.ProviderSettings {
 	return &Settings{}
 }
 
-// SpawnInstance creates and starts a new Docker container
-func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
+//GetInstanceName returns a name to be used for an instance
+func (*DockerManager) GetInstanceName(_d *distro.Distro) string {
+	return "container-" +
+		fmt.Sprintf("%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+}
+
+// SpawnHost creates and starts a new Docker container
+func (dockerMgr *DockerManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	var err error
 
-	if d.Provider != ProviderName {
-		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, d.Id, d.Provider)
+	if h.Distro.Provider != ProviderName {
+		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v", ProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 
 	// Initialize client
-	dockerClient, settings, err := generateClient(d)
+	dockerClient, settings, err := generateClient(&h.Distro)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
 	// Create HostConfig structure
 	hostConfig := &docker.HostConfig{}
-	err = populateHostConfig(hostConfig, d)
+	err = populateHostConfig(hostConfig, &h.Distro)
 	if err != nil {
 		err = errors.Wrapf(err, "Unable to populate docker host config for host '%s'", settings.HostIp)
 		grip.Error(err)
@@ -291,22 +297,10 @@ func (dockerMgr *DockerManager) SpawnInstance(d *distro.Distro, hostOpts cloud.H
 		return nil, err
 	}
 
-	hostStr := fmt.Sprintf("%s:%s", settings.BindIp, hostPort)
-	// Add host info to db
-	instanceName := "container-" +
-		fmt.Sprintf("%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+	// the document is updated later in hostinit, rather than here
+	h.Host = fmt.Sprintf("%s:%s", settings.BindIp, hostPort)
 
-	intentHost := cloud.NewIntent(*d, instanceName, ProviderName, hostOpts)
-	intentHost.Host = hostStr
-
-	err = errors.Wrapf(intentHost.Insert(), "failed to insert new host '%s'", intentHost.Id)
-	if err != nil {
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debugf("Successfully inserted new host '%s' for distro '%s'", intentHost.Id, d.Id)
-	return intentHost, nil
+	return h, nil
 }
 
 // getStatus is a helper function which returns the enum representation of the status

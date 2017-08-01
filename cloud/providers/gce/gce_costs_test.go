@@ -21,13 +21,13 @@ func (s *GCESuite) TestGetComputePrices() {
 		// standard images are parsed and have prices
 		machine := machineType{
 			Region: "us-central1",
-			Name: "n1-standard-4",
+			Name:   "n1-standard-4",
 		}
 		s.NotZero(prices.StandardMachine[machine])
 
 		machine = machineType{
 			Region: "asia-southeast",
-			Name: "n1-highcpu-64",
+			Name:   "n1-highcpu-64",
 		}
 		s.NotZero(prices.StandardMachine[machine])
 
@@ -156,7 +156,7 @@ func (s *GCESuite) TestTimeTilNextPayment() {
 	// youngHost has just been created and run a short task
 	youngHost := &host.Host{
 		LastTaskCompletedTime: now,
-		CreationTime: now.Add(smallTask),
+		CreationTime:          now.Add(smallTask),
 	}
 	dur = s.manager.TimeTilNextPayment(youngHost)
 	s.True(dur.Seconds() > BufferTime.Seconds())
@@ -166,7 +166,7 @@ func (s *GCESuite) TestTimeTilNextPayment() {
 	// that puts its uptime at just under minUptime
 	averageHost := &host.Host{
 		LastTaskCompletedTime: now,
-		CreationTime: now.Add(mediumTask),
+		CreationTime:          now.Add(mediumTask),
 	}
 	dur = s.manager.TimeTilNextPayment(averageHost)
 	s.True(dur.Seconds() > 0)
@@ -175,7 +175,7 @@ func (s *GCESuite) TestTimeTilNextPayment() {
 	// seasonedHost has run many tasks since its creation
 	seasonedHost := &host.Host{
 		LastTaskCompletedTime: now,
-		CreationTime: now.Add(largeTask),
+		CreationTime:          now.Add(largeTask),
 	}
 	dur = s.manager.TimeTilNextPayment(seasonedHost)
 	s.True(dur.Seconds() > 0)

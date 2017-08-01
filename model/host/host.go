@@ -135,11 +135,25 @@ func (h *Host) SetInitializing() error {
 	return UpdateOne(
 		bson.M{
 			IdKey:     h.Id,
-			StatusKey: evergreen.HostUninitialized,
+			StatusKey: evergreen.HostStarting,
 		},
 		bson.M{
 			"$set": bson.M{
 				StatusKey: evergreen.HostInitializing,
+			},
+		},
+	)
+}
+
+func (h *Host) SetStarting() error {
+	return UpdateOne(
+		bson.M{
+			IdKey:     h.Id,
+			StatusKey: evergreen.HostUninitialized,
+		},
+		bson.M{
+			"$set": bson.M{
+				StatusKey: evergreen.HostStarting,
 			},
 		},
 	)
@@ -468,12 +482,27 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 		},
 		bson.M{
 			"$set": bson.M{
-				DNSKey:         h.Host,
-				UserKey:        h.User,
-				DistroKey:      h.Distro,
-				ProvisionedKey: h.Provisioned,
-				StartedByKey:   h.StartedBy,
-				ProviderKey:    h.Provider,
+				DNSKey:                   h.Host,
+				UserKey:                  h.User,
+				DistroKey:                h.Distro,
+				ProvisionedKey:           h.Provisioned,
+				StartedByKey:             h.StartedBy,
+				ExpirationTimeKey:        h.ExpirationTime,
+				ProviderKey:              h.Provider,
+				SecretKey:                h.Secret,
+				TagKey:                   h.Tag,
+				PidKey:                   h.Pid,
+				TaskDispatchTimeKey:      h.TaskDispatchTime,
+				TerminationTimeKey:       h.TerminationTime,
+				AgentRevisionKey:         h.AgentRevision,
+				InstanceTypeKey:          h.InstanceType,
+				UserDataKey:              h.UserData,
+				LastReachabilityCheckKey: h.LastReachabilityCheck,
+				LastCommunicationTimeKey: h.LastCommunicationTime,
+				UnreachableSinceKey:      h.UnreachableSince,
+				UserHostKey:              h.UserHost,
+				ZoneKey:                  h.Zone,
+				ProjectKey:               h.Project,
 			},
 			"$setOnInsert": bson.M{
 				StatusKey:     h.Status,
@@ -517,7 +546,7 @@ func (h *Host) UpdateDocumentID(newID string) (*Host, error) {
 	// Find the host document in the database with the old ID.
 	host, err := FindOne(ById(oldID))
 	if host == nil {
-		err = errors.Wrapf(err, "Could not locate record inserted for host '%s'", oldID)
+		err = errors.Errorf("Could not locate record inserted for host '%s'", oldID)
 		grip.Error(err)
 		return nil, err
 	}

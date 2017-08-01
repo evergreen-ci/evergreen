@@ -72,93 +72,56 @@ func (_ *DigitalOceanManager) GetSettings() cloud.ProviderSettings {
 	return &Settings{}
 }
 
-//SpawnInstance creates a new droplet for the given distro.
-func (digoMgr *DigitalOceanManager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	if d.Provider != ProviderName {
+//GetInstanceName returns a name to be used for an instance
+func (*DigitalOceanManager) GetInstanceName(_d *distro.Distro) string {
+	return "droplet-" +
+		fmt.Sprintf("%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
+}
+
+//SpawnHost creates a new droplet for the given distro.
+func (digoMgr *DigitalOceanManager) SpawnHost(h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != ProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %v for distro %v: provider is %v",
-			ProviderName, d.Id, d.Provider)
+			ProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 
 	digoSettings := &Settings{}
-	if err := mapstructure.Decode(d.ProviderSettings, digoSettings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %v", d.Id)
+	if err := mapstructure.Decode(h.Distro.ProviderSettings, digoSettings); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %v", h.Distro.Id)
 	}
 
 	if err := digoSettings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid DigitalOcean settings in distro %v", d.Id)
+		return nil, errors.Wrapf(err, "Invalid DigitalOcean settings in distro %v", h.Distro.Id)
 	}
-
-	instanceName := "droplet-" +
-		fmt.Sprintf("%v", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
-
-	intentHost := cloud.NewIntent(*d, instanceName, ProviderName, hostOpts)
 
 	dropletReq := &digo.Droplet{
 		SizeId:   digoSettings.SizeId,
 		ImageId:  digoSettings.ImageId,
 		RegionId: digoSettings.RegionId,
-		Name:     instanceName,
+		Name:     h.Id,
 		SshKey:   digoSettings.SSHKeyId,
 	}
-
-	if err := intentHost.Insert(); err != nil {
-		// TODO use github/pkg/errors for things like this
-		err = errors.Wrapf(err, "Could not insert intent host '%v': %v", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	grip.Debugf("Successfully inserted intent host '%v' for distro '%v' to signal cloud "+
-		"instance spawn intent", instanceName, d.Id)
 
 	newDroplet, err := digoMgr.account.CreateDroplet(dropletReq)
 	if err != nil {
 		grip.Errorf("DigitalOcean create droplet API call failed for intent host '%v': %+v",
-			intentHost.Id, err)
+			h.Id, err)
 
 		// remove the intent host document
-		rmErr := intentHost.Remove()
+		rmErr := h.Remove()
 		if rmErr != nil {
 			err = errors.Errorf("Could not remove intent host '%v': %+v",
-				intentHost.Id, rmErr)
+				h.Id, rmErr)
 			grip.Error(err)
 			return nil, err
 		}
 		return nil, err
 	}
 
-	// find old intent host
-	host, err := host.FindOne(host.ById(intentHost.Id))
-	if host == nil {
-		err = errors.Errorf("Can't locate record inserted for intended host '%v'",
-			intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-	if err != nil {
-		err = errors.Wrapf(err, "Failed to look up intent host %v", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	host.Id = fmt.Sprintf("%v", newDroplet.Id)
-	host.Host = newDroplet.IpAddress
-
-	if err = host.Insert(); err != nil {
-		err = errors.Wrapf(err, "Failed to insert new host %v for intent host %v",
-			host.Id, intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-
-	// remove the intent host document
-	if err = intentHost.Remove(); err != nil {
-		err = errors.Wrapf(err, "Could not remove insert host '%v' (replaced by '%v')",
-			intentHost.Id, host.Id)
-		grip.Error(err)
-		return nil, err
-	}
-	return host, nil
+	// the document is updated later in hostinit, rather than here
+	h.Id = fmt.Sprintf("%v", newDroplet.Id)
+	h.Host = newDroplet.IpAddress
+	return h, nil
 
 }
 

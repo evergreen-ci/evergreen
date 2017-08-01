@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 )
 
@@ -15,9 +14,9 @@ const (
 	ProviderName = "vsphere"
 )
 
-type Manager struct {}
+type Manager struct{}
 
-type ProviderSettings struct {}
+type ProviderSettings struct{}
 
 func (opts *ProviderSettings) Validate() error {
 	return nil
@@ -31,7 +30,7 @@ func (m *Manager) Configure(_ *evergreen.Settings) error {
 	return nil
 }
 
-func (m *Manager) SpawnInstance(_ *distro.Distro, _ cloud.HostOptions) (*host.Host, error) {
+func (m *Manager) SpawnHost(*host.Host) (*host.Host, error) {
 	return &host.Host{}, nil
 }
 

@@ -19,10 +19,10 @@ import (
 )
 
 type GCESuite struct {
-	client       client
-	manager      *Manager
-	distro       *distro.Distro
-	hostOpts     cloud.HostOptions
+	client   client
+	manager  *Manager
+	distro   *distro.Distro
+	hostOpts cloud.HostOptions
 	suite.Suite
 }
 
@@ -127,11 +127,11 @@ func (s *GCESuite) TestValidateMachineSettings() {
 	s.NoError(settingsMachineName.Validate())
 
 	settingsCustomMachine := &ProviderSettings{
-		NumCPUs:     2,
-		MemoryMB:    1024,
-		ImageName:   "image",
-		DiskType:    "pd-standard",
-		DiskSizeGB:  10,
+		NumCPUs:    2,
+		MemoryMB:   1024,
+		ImageName:  "image",
+		DiskType:   "pd-standard",
+		DiskSizeGB: 10,
 	}
 	s.NoError(settingsCustomMachine.Validate())
 
@@ -146,9 +146,9 @@ func (s *GCESuite) TestValidateMachineSettings() {
 	s.Error(settingsOverSpecified.Validate())
 
 	settingsUnderSpecified := &ProviderSettings{
-		ImageName:   "image",
-		DiskType:    "pd-standard",
-		DiskSizeGB:  10,
+		ImageName:  "image",
+		DiskType:   "pd-standard",
+		DiskSizeGB: 10,
 	}
 	s.Error(settingsUnderSpecified.Validate())
 }
@@ -206,12 +206,18 @@ func (s *GCESuite) TestIsUpStatuses() {
 }
 
 func (s *GCESuite) TestTerminateInstanceAPICall() {
-	hostA, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostA := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA, err := s.manager.SpawnHost(hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
+	_, err = hostA.Upsert()
+	s.NoError(err)
 
-	hostB, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostB := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB, err = s.manager.SpawnHost(hostB)
 	s.NotNil(hostB)
+	s.NoError(err)
+	_, err = hostB.Upsert()
 	s.NoError(err)
 
 	mock, ok := s.client.(*clientMock)
@@ -226,8 +232,11 @@ func (s *GCESuite) TestTerminateInstanceAPICall() {
 
 func (s *GCESuite) TestTerminateInstanceDB() {
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	myHost := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	myHost, err := s.manager.SpawnHost(myHost)
 	s.NotNil(myHost)
+	s.NoError(err)
+	_, err = myHost.Upsert()
 	s.NoError(err)
 
 	dbHost, err := host.FindOne(host.ById(myHost.Id))
@@ -301,32 +310,34 @@ func (s *GCESuite) TestGetSSHOptions() {
 
 func (s *GCESuite) TestSpawnInvalidSettings() {
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host, err := s.manager.SpawnInstance(dProviderName, s.hostOpts)
+	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	host, err := s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "gce"}
-	host, err = s.manager.SpawnInstance(dSettingsNone, s.hostOpts)
+	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 
 	dSettingsInvalid := &distro.Distro{
 		Provider:         "gce",
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
-	host, err = s.manager.SpawnInstance(dSettingsInvalid, s.hostOpts)
+	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 }
 
 func (s *GCESuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostOne := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne, err := s.manager.SpawnHost(hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostTwo := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo, err = s.manager.SpawnHost(hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
 }
@@ -339,7 +350,7 @@ func (s *GCESuite) TestSpawnAPICall() {
 			"instance_type": "machine",
 			"image_name":    "image",
 			"disk_type":     "pd-standard",
-			"disk_size_gb": 10,
+			"disk_size_gb":  10,
 		},
 	}
 	opts := cloud.HostOptions{}
@@ -348,14 +359,15 @@ func (s *GCESuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host, err := s.manager.SpawnInstance(dist, opts)
+	host := cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
-	host, err = s.manager.SpawnInstance(dist, opts)
+	host = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 }
 
 func (s *GCESuite) TestUtilToEvgStatus() {
@@ -412,7 +424,7 @@ func (s *GCESuite) TestUtilMakeLabels() {
 		Distro: distro.Distro{
 			Id: str,
 		},
-		StartedBy: str,
+		StartedBy:    str,
 		CreationTime: time.Now(),
 	}
 

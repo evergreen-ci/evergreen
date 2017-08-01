@@ -67,9 +67,9 @@ type CloudManager interface {
 	//Load credentials or other settings from the config file
 	Configure(*evergreen.Settings) error
 
-	// SpawnInstance attempts to create a new host by requesting one from the
+	// SpawnHost attempts to create a new host by requesting one from the
 	// provider's API.
-	SpawnInstance(*distro.Distro, HostOptions) (*host.Host, error)
+	SpawnHost(h *host.Host) (*host.Host, error)
 
 	// CanSpawn indicates if this provider is capable of creating new instances
 	// with SpawnInstance(). If this provider doesn't support spawning new
@@ -106,6 +106,9 @@ type CloudManager interface {
 	// TimeTilNextPayment returns how long there is until the next payment
 	// is due for a particular host
 	TimeTilNextPayment(host *host.Host) time.Duration
+
+	// GetInstanceName returns the name that should be used for an instance of this provider
+	GetInstanceName(d *distro.Distro) string
 }
 
 // CloudCostCalculator is an interface for cloud managers that can estimate an

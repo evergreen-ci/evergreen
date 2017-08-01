@@ -3,6 +3,8 @@
 package gce
 
 import (
+	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
@@ -15,9 +17,9 @@ const (
 	ProviderName = "gce"
 )
 
-type Manager struct {}
+type Manager struct{}
 
-type ProviderSettings struct {}
+type ProviderSettings struct{}
 
 func (opts *ProviderSettings) Validate() error {
 	return nil
@@ -31,7 +33,7 @@ func (m *Manager) Configure(_ *evergreen.Settings) error {
 	return nil
 }
 
-func (m *Manager) SpawnInstance(_ *distro.Distro, _ cloud.HostOptions) (*host.Host, error) {
+func (m *Manager) SpawnHost(*host.Host) (*host.Host, error) {
 	return &host.Host{}, nil
 }
 
@@ -61,6 +63,11 @@ func (m *Manager) IsSSHReachable(_ *host.Host, _ string) (bool, error) {
 
 func (m *Manager) GetDNSName(_ *host.Host) (string, error) {
 	return "0.0.0.0", nil
+}
+
+func (*Manager) GetInstanceName(_d *distro.Distro) string {
+	return "gce-" +
+		fmt.Sprintf("%d", rand.New(rand.NewSource(time.Now().UnixNano())).Int())
 }
 
 func (m *Manager) GetSSHOptions(_ *host.Host, _ string) ([]string, error) {

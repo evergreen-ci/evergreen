@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
@@ -43,6 +44,8 @@ func TestSetupReadyHosts(t *testing.T) {
 			h := hostsForTest[i]
 			So(h.Status, ShouldNotEqual, evergreen.HostRunning)
 		}
+		err := hostInit.startHosts()
+		So(err, ShouldBeNil)
 		Convey("and all of the hosts have failed", func() {
 			for id := range mock.MockInstances {
 				instance := mock.MockInstances[id]
@@ -210,18 +213,34 @@ func spawnMockHost() (*host.Host, error) {
 		PoolSize: 10,
 		Provider: mock.ProviderName,
 	}
+
 	hostOptions := cloud.HostOptions{
 		UserName: evergreen.User,
 		UserHost: false,
 	}
+
 	cloudManager, err := providers.GetCloudManager(mock.ProviderName, testutil.TestConfig())
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
 
-	newHost, err := cloudManager.SpawnInstance(&mockDistro, hostOptions)
+	testUser := &user.DBUser{
+		Id:     "testuser",
+		APIKey: "testapikey",
+	}
+	testUser.PubKeys = append(testUser.PubKeys, user.PubKey{
+		Name: "keyName",
+		Key:  "ssh-rsa 1234567890abcdef",
+	})
+
+	newHost := cloud.NewIntent(mockDistro, cloudManager.GetInstanceName(&mockDistro), mock.ProviderName, hostOptions)
+	newHost, err = cloudManager.SpawnHost(newHost)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error spawning instance,")
+		return nil, errors.Wrap(err, "Error spawning instance")
+	}
+	err = newHost.Insert()
+	if err != nil {
+		return nil, errors.Wrap(err, "Error inserting host")
 	}
 
 	return newHost, nil

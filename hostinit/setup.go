@@ -26,6 +26,7 @@ import (
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"gopkg.in/mgo.v2"
@@ -52,8 +53,52 @@ type HostInit struct {
 	Settings *evergreen.Settings
 }
 
+func (init *HostInit) startHosts() error {
+
+	startTime := time.Now()
+
+	hostsToStart, err := host.Find(host.IsUninitialized)
+	if err != nil {
+		return errors.Wrap(err, "error fetching uninitialized hosts")
+	}
+
+	for _, h := range hostsToStart {
+		cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
+		if err != nil {
+			return errors.Wrap(err, "error getting cloud provider")
+		}
+
+		err = h.Remove()
+		if err != nil {
+			return errors.Wrap(err, "error removing intent host")
+		}
+
+		_, err = cloudManager.SpawnHost(&h)
+		if err != nil {
+			return errors.Wrap(err, "error spawning host")
+		}
+
+		h.Status = evergreen.HostStarting
+
+		_, err = h.Upsert()
+		if err != nil {
+			return errors.Wrap(err, "error updating host")
+		}
+	}
+
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"method":  "startHosts",
+		"runtime": time.Since(startTime),
+	})
+
+	return nil
+}
+
 // setupReadyHosts runs the distro setup script of all hosts that are up and reachable.
 func (init *HostInit) setupReadyHosts() error {
+	startTime := time.Now()
+
 	// set SSH timeout duration
 	if timeoutSecs := init.Settings.HostInit.SSHTimeoutSeconds; timeoutSecs <= 0 {
 		grip.Warningf("SSH timeout set to %vs (<= 0s) using %vs instead", timeoutSecs, SSHTimeoutSeconds)
@@ -62,9 +107,9 @@ func (init *HostInit) setupReadyHosts() error {
 	}
 
 	// find all hosts in the uninitialized state
-	uninitializedHosts, err := host.Find(host.IsUninitialized)
+	uninitializedHosts, err := host.Find(host.IsStarting)
 	if err != nil {
-		return errors.Wrap(err, "error fetching uninitialized hosts")
+		return errors.Wrap(err, "error fetching starting hosts")
 	}
 
 	grip.Debugf("There are %d uninitialized hosts", len(uninitializedHosts))
@@ -116,6 +161,12 @@ func (init *HostInit) setupReadyHosts() error {
 
 	// let all setup routines finish
 	wg.Wait()
+
+	grip.Info(message.Fields{
+		"runner":  RunnerName,
+		"method":  "setupReadyHosts",
+		"runtime": time.Since(startTime),
+	})
 
 	return nil
 }
@@ -229,6 +280,15 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 	sshOptions, err := cloudHost.GetSSHOptions()
 	if err != nil {
 		return "", errors.Wrapf(err, "error getting ssh options for host %s", targetHost.Id)
+	}
+
+	// get expansions mapping using settings
+	if targetHost.Distro.Setup == "" {
+		exp := util.NewExpansions(init.Settings.Expansions)
+		targetHost.Distro.Setup, err = exp.ExpandString(targetHost.Distro.Setup)
+		if err != nil {
+			return "", errors.Wrap(err, "expansions error")
+		}
 	}
 
 	if targetHost.Distro.Setup != "" {

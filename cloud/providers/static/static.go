@@ -43,7 +43,7 @@ func (s *Settings) Validate() error {
 	return nil
 }
 
-func (staticMgr *StaticManager) SpawnInstance(distro *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
+func (staticMgr *StaticManager) SpawnHost(*host.Host) (*host.Host, error) {
 	return nil, errors.New("cannot start new instances with static provider")
 }
 
@@ -55,6 +55,10 @@ func (staticMgr *StaticManager) GetInstanceStatus(host *host.Host) (cloud.CloudS
 // get instance DNS
 func (staticMgr *StaticManager) GetDNSName(host *host.Host) (string, error) {
 	return host.Id, nil
+}
+
+func (*StaticManager) GetInstanceName(d *distro.Distro) string {
+	return "static"
 }
 
 func (staticMgr *StaticManager) CanSpawn() (bool, error) {

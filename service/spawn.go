@@ -13,11 +13,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/notify"
+	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/spawn"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -127,9 +126,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		UserData:  putParams.UserData,
 	}
 
-	spawner := spawn.New(&uis.Settings)
-
-	if err := spawner.Validate(opts); err != nil {
+	if err := spawn.Validate(opts); err != nil {
 		errCode := http.StatusBadRequest
 		if _, ok := err.(spawn.BadOptionsErr); !ok {
 			errCode = http.StatusInternalServerError
@@ -153,15 +150,15 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 
-	err := spawner.CreateHost(opts, authedUser)
+	hc := &data.DBHostConnector{}
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.KeyName, authedUser)
+
 	if err != nil {
-		grip.Errorf("error spawning host: %+v", err)
-		mailErr := notify.TrySendNotificationToUser(authedUser.Username(), fmt.Sprintf("Spawning failed"),
-			err.Error(), notify.ConstructMailer(uis.Settings.Notify))
-		if mailErr != nil {
-			grip.Errorf("Failed to send notification: %+v", mailErr)
-		}
-		uis.LoggedError(w, r, http.StatusInternalServerError, err)
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
+		return
+	}
+	if spawnHost == nil {
+		uis.LoggedError(w, r, http.StatusInternalServerError, errors.New("Spawned host is nil"))
 		return
 	}
 

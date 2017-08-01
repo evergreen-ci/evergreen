@@ -17,10 +17,10 @@ import (
 )
 
 type VSphereSuite struct {
-	client      client
-	manager     *Manager
-	distro      *distro.Distro
-	hostOpts    cloud.HostOptions
+	client   client
+	manager  *Manager
+	distro   *distro.Distro
+	hostOpts cloud.HostOptions
 	suite.Suite
 }
 
@@ -62,21 +62,21 @@ func (s *VSphereSuite) TestValidateSettings() {
 
 	// only required settings are provided
 	settingsMinimal := &ProviderSettings{
-		Template:     "macos-1012",
+		Template: "macos-1012",
 	}
 	s.NoError(settingsMinimal.Validate())
 
 	// error when invalid NumCPUs setting
 	settingsInvalidNumCPUs := &ProviderSettings{
-		Template:     "macos-1012",
-		NumCPUs:      -1,
+		Template: "macos-1012",
+		NumCPUs:  -1,
 	}
 	s.Error(settingsInvalidNumCPUs.Validate())
 
 	// error when invalid MemoryMB setting
 	settingsInvalidMemoryMB := &ProviderSettings{
-		Template:     "macos-1012",
-		MemoryMB:     -1,
+		Template: "macos-1012",
+		MemoryMB: -1,
 	}
 	s.Error(settingsInvalidMemoryMB.Validate())
 }
@@ -134,12 +134,18 @@ func (s *VSphereSuite) TestIsUpStatuses() {
 }
 
 func (s *VSphereSuite) TestTerminateInstanceAPICall() {
-	hostA, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostA := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostA, err := s.manager.SpawnHost(hostA)
 	s.NotNil(hostA)
 	s.NoError(err)
+	err = hostA.Insert()
+	s.NoError(err)
 
-	hostB, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostB := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostB, err = s.manager.SpawnHost(hostB)
 	s.NotNil(hostB)
+	s.NoError(err)
+	err = hostB.Insert()
 	s.NoError(err)
 
 	mock, ok := s.client.(*clientMock)
@@ -154,7 +160,10 @@ func (s *VSphereSuite) TestTerminateInstanceAPICall() {
 
 func (s *VSphereSuite) TestTerminateInstanceDB() {
 	// Spawn the instance - check the host is not terminated in DB.
-	myHost, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	myHost := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	err := myHost.Insert()
+	s.NoError(err)
+	myHost, err = s.manager.SpawnHost(myHost)
 	s.NotNil(myHost)
 	s.NoError(err)
 
@@ -214,12 +223,13 @@ func (s *VSphereSuite) TestGetSSHOptions() {
 
 func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	dProviderName := &distro.Distro{Provider: "ec2"}
-	host, err := s.manager.SpawnInstance(dProviderName, s.hostOpts)
+	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	host, err := s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "vsphere"}
-	host, err = s.manager.SpawnInstance(dSettingsNone, s.hostOpts)
+	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
 
@@ -227,7 +237,8 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 		Provider:         "vsphere",
 		ProviderSettings: &map[string]interface{}{"template": ""},
 	}
-	host, err = s.manager.SpawnInstance(dSettingsInvalid, s.hostOpts)
+	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
 	s.Nil(host)
 }
@@ -235,11 +246,13 @@ func (s *VSphereSuite) TestSpawnInvalidSettings() {
 func (s *VSphereSuite) TestSpawnDuplicateHostID() {
 	// SpawnInstance should generate a unique ID for each instance, even
 	// when using the same distro. Otherwise the DB would return an error.
-	hostOne, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostOne := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostOne, err := s.manager.SpawnHost(hostOne)
 	s.NoError(err)
 	s.NotNil(hostOne)
 
-	hostTwo, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	hostTwo := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	hostTwo, err = s.manager.SpawnHost(hostTwo)
 	s.NoError(err)
 	s.NotNil(hostTwo)
 }
@@ -249,14 +262,15 @@ func (s *VSphereSuite) TestSpawnAPICall() {
 	s.True(ok)
 	s.False(mock.failCreate)
 
-	host, err := s.manager.SpawnInstance(s.distro, s.hostOpts)
+	host := cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	host, err := s.manager.SpawnHost(host)
 	s.NoError(err)
 	s.NotNil(host)
 
 	mock.failCreate = true
-	host, err = s.manager.SpawnInstance(s.distro, s.hostOpts)
+	host = cloud.NewIntent(*s.distro, s.manager.GetInstanceName(s.distro), s.distro.Provider, s.hostOpts)
+	_, err = s.manager.SpawnHost(host)
 	s.Error(err)
-	s.Nil(host)
 }
 
 func (s *VSphereSuite) TestUtilToEvgStatus() {

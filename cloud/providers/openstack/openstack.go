@@ -9,10 +9,10 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/message"
 	"github.com/gophercloud/gophercloud"
 	"github.com/mitchellh/mapstructure"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 )
 
@@ -30,10 +30,10 @@ type Manager struct {
 
 // ProviderSettings specifies the settings used to configure a host instance.
 type ProviderSettings struct {
-	ImageName      string `mapstructure:"image_name"`
-	FlavorName     string `mapstructure:"flavor_name"`
-	KeyName        string `mapstructure:"key_name"`
-	SecurityGroup  string `mapstructure:"security_group"`
+	ImageName     string `mapstructure:"image_name"`
+	FlavorName    string `mapstructure:"flavor_name"`
+	KeyName       string `mapstructure:"key_name"`
+	SecurityGroup string `mapstructure:"security_group"`
 }
 
 // Validate verifies a set of ProviderSettings.
@@ -61,6 +61,11 @@ func (opts *ProviderSettings) Validate() error {
 // instance creation.
 func (m *Manager) GetSettings() cloud.ProviderSettings {
 	return &ProviderSettings{}
+}
+
+//GetInstanceName returns a name to be used for an instance
+func (*Manager) GetInstanceName(d *distro.Distro) string {
+	return d.GenerateName()
 }
 
 // Configure loads the necessary credentials from the global config object.
@@ -91,7 +96,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 	return nil
 }
 
-// SpawnInstance attempts to create a new host by requesting one from the OpenStack API.
+// SpawnHost attempts to create a new host by requesting one from the OpenStack API.
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // ProviderSettings in the distro should have the following settings:
@@ -99,54 +104,40 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //     - FlavorName:    like an AWS instance type i.e. m1.large
 //     - KeyName:       (optional) keypair name associated with the account
 //     - SecurityGroup: (optional) security group name
-func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	if d.Provider != ProviderName {
+func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != ProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			ProviderName, d.Id, d.Provider)
+			ProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 
 	settings := &ProviderSettings{}
-	if err := mapstructure.Decode(d.ProviderSettings, settings); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %s", d.Id)
+	if err := mapstructure.Decode(h.Distro.ProviderSettings, settings); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 
 	if err := settings.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid settings in distro %s", d.Id)
+		return nil, errors.Wrapf(err, "Invalid settings in distro %s", h.Distro.Id)
 	}
-
-	// Proactively record all information about the host we want to create. This way, if we are
-	// unable to start it or record its instance ID, we have a way of knowing what went wrong.
-	name := d.GenerateName()
-	intentHost := cloud.NewIntent(*d, name, ProviderName, hostOpts)
-	if err := intentHost.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-	grip.Debugf("Inserted intent host '%s' for distro '%s' to signal instance spawn intent", name, d.Id)
 
 	// Start the instance, and remove the intent host document if unsuccessful.
-	opts := getSpawnOptions(intentHost, settings)
+	opts := getSpawnOptions(h, settings)
 	server, err := m.client.CreateInstance(opts, settings.KeyName)
 	if err != nil {
-		if rmErr := intentHost.Remove(); rmErr != nil {
-			grip.Errorf("Could not remove intent host '%s': %+v", intentHost.Id, rmErr)
+		grip.Error(err)
+		if rmErr := h.Remove(); rmErr != nil {
+			grip.Errorf("Could not remove intent host: %s", message.Fields{
+				"host":  h.Id,
+				"error": rmErr,
+			})
 		}
-		grip.Error(err)
-		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", d.Id)
+		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
 	}
 
-	// Update the record of the actual instance.
-	actualHost, err := intentHost.UpdateDocumentID(server.ID)
-	if err != nil {
-		err = errors.Wrapf(err, "Could not start new instance for distro '%s.' " +
-			"Accompanying host record is '%s'", d.Id, intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
+	// Update the ID of the host with the real one
+	h.Id = server.ID
 
-	grip.Debugf("New instance: %v", message.Fields{"instance": name, "object": actualHost})
-	return actualHost, nil
+	grip.Debugf("New instance: %v", message.Fields{"instance": h.Id, "object": h})
+	return h, nil
 }
 
 // CanSpawn always returns true for now.
@@ -231,7 +222,7 @@ func (m *Manager) GetDNSName(host *host.Host) (string, error) {
 
 			if ip := keyvalues["addr"]; ip != nil {
 				ip, ok = ip.(string)
-				if ! ok {
+				if !ok {
 					return "", errors.Errorf(
 						"type conversion of %+v to string for host %s", ip, host.Id)
 				}

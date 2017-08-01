@@ -37,8 +37,8 @@ type ProviderSettings struct {
 	NumCPUs     int64  `mapstructure:"num_cpus"`
 	MemoryMB    int64  `mapstructure:"memory_mb"`
 
-	DiskType    string `mapstructure:"disk_type"`
-	DiskSizeGB  int64  `mapstructure:"disk_size_gb"`
+	DiskType   string `mapstructure:"disk_type"`
+	DiskSizeGB int64  `mapstructure:"disk_size_gb"`
 
 	// Network tags are used to configure network firewalls.
 	NetworkTags []string `mapstructure:"network_tags"`
@@ -75,6 +75,11 @@ func (m *Manager) GetSettings() cloud.ProviderSettings {
 	return &ProviderSettings{}
 }
 
+//GetInstanceName returns a name to be used for an instance
+func (*Manager) GetInstanceName(d *distro.Distro) string {
+	return generateName(d)
+}
+
 // Configure loads the necessary credentials from the global config object.
 func (m *Manager) Configure(s *evergreen.Settings) error {
 	config := s.Providers.GCE
@@ -98,7 +103,7 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 	return nil
 }
 
-// SpawnInstance attempts to create a new host by requesting one from the Google Compute API.
+// SpawnHost attempts to create a new host by requesting one from the Google Compute API.
 // Information about the intended (and eventually created) host is recorded in a DB document.
 //
 // ProviderSettings in the distro should have the following settings:
@@ -119,47 +124,40 @@ func (m *Manager) Configure(s *evergreen.Settings) error {
 //
 //     - NetworkTags: (optional) security groups
 //     - SSHKeys:     username-key pairs
-func (m *Manager) SpawnInstance(d *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	if d.Provider != ProviderName {
+func (m *Manager) SpawnHost(h *host.Host) (*host.Host, error) {
+	if h.Distro.Provider != ProviderName {
 		return nil, errors.Errorf("Can't spawn instance of %s for distro %s: provider is %s",
-			ProviderName, d.Id, d.Provider)
+			ProviderName, h.Distro.Id, h.Distro.Provider)
 	}
 
 	s := &ProviderSettings{}
-	if err := mapstructure.Decode(d.ProviderSettings, s); err != nil {
-		return nil, errors.Wrapf(err, "Error decoding params for distro %s", d.Id)
+	if err := mapstructure.Decode(h.Distro.ProviderSettings, s); err != nil {
+		return nil, errors.Wrapf(err, "Error decoding params for distro %s", h.Distro.Id)
 	}
 
 	if err := s.Validate(); err != nil {
-		return nil, errors.Wrapf(err, "Invalid settings in distro %s", d.Id)
+		return nil, errors.Wrapf(err, "Invalid settings in distro %s", h.Distro.Id)
 	}
 
-	grip.Debugf("Settings validated for distro %s", d.Id)
+	grip.Debugf("Settings validated for distro %s", h.Distro.Id)
 
 	// Proactively record all information about the host we want to create. This way, if we are
 	// unable to start it or record its instance ID, we have a way of knowing what went wrong.
-	name := generateName(d)
-	intentHost := cloud.NewIntent(*d, name, ProviderName, hostOpts)
-	intentHost.Zone = s.Zone
-	intentHost.Project = s.Project
-	if err := intentHost.Insert(); err != nil {
-		err = errors.Wrapf(err, "Could not insert intent host '%s'", intentHost.Id)
-		grip.Error(err)
-		return nil, err
-	}
-	grip.Debugf("Inserted intent host '%s' for distro '%s' to signal instance spawn intent", name, d.Id)
+	// the document is updated later in hostinit, rather than here
+	h.Zone = s.Zone
+	h.Project = s.Project
 
 	// Start the instance, and remove the intent host document if unsuccessful.
-	if _, err := m.client.CreateInstance(intentHost, s); err != nil {
-		if rmErr := intentHost.Remove(); rmErr != nil {
-			grip.Errorf("Could not remove intent host '%s': %+v", intentHost.Id, rmErr)
+	if _, err := m.client.CreateInstance(h, s); err != nil {
+		if rmErr := h.Remove(); rmErr != nil {
+			grip.Errorf("Could not remove intent host '%s': %+v", h.Id, rmErr)
 		}
 		grip.Error(err)
-		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", d.Id)
+		return nil, errors.Wrapf(err, "Could not start new instance for distro '%s'", h.Distro.Id)
 	}
 
-	grip.Debugf("New instance: %v", message.Fields{"instance": name, "object": intentHost})
-	return intentHost, nil
+	grip.Debugf("New instance: %v", message.Fields{"instance": h.Id, "object": h})
+	return h, nil
 }
 
 // CanSpawn always returns true.

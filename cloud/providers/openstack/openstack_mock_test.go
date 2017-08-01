@@ -1,10 +1,10 @@
 package openstack
 
 import (
-	"fmt"
-	"time"
 	"errors"
+	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"

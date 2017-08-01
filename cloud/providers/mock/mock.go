@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 )
 
@@ -53,15 +51,11 @@ func FetchMockProvider() *MockCloudManager {
 	}
 }
 
-func (mockMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, hostOpts cloud.HostOptions) (*host.Host, error) {
-	intentHost := cloud.NewIntent(*distro, fmt.Sprintf("mock_%v", util.RandomString()), ProviderName, hostOpts)
-	if err := intentHost.Insert(); err != nil {
-		return nil, errors.Wrapf(err, "Could not insert intent host '%v'", intentHost.Id)
-	}
+func (mockMgr *MockCloudManager) SpawnHost(h *host.Host) (*host.Host, error) {
 	l := mockMgr.mutex
 	l.Lock()
 	defer l.Unlock()
-	mockMgr.Instances[intentHost.Id] = MockInstance{
+	mockMgr.Instances[h.Id] = MockInstance{
 		IsUp:               false,
 		IsSSHReachable:     false,
 		Status:             cloud.StatusInitializing,
@@ -69,7 +63,7 @@ func (mockMgr *MockCloudManager) SpawnInstance(distro *distro.Distro, hostOpts c
 		TimeTilNextPayment: time.Duration(0),
 		DNSName:            "",
 	}
-	return intentHost, nil
+	return h, nil
 }
 
 // get the status of an instance
@@ -107,6 +101,10 @@ func (_ *MockCloudManager) Validate() error {
 
 func (mockMgr *MockCloudManager) CanSpawn() (bool, error) {
 	return true, nil
+}
+
+func (*MockCloudManager) GetInstanceName(d *distro.Distro) string {
+	return d.GenerateName()
 }
 
 // terminate an instance

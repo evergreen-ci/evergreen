@@ -10,12 +10,10 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
-	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/cloud/providers/ec2"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
-	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -58,7 +56,7 @@ func New(settings *evergreen.Settings) Spawn {
 // Validate returns an instance of BadOptionsErr if the SpawnOptions object contains invalid
 // data, SpawnLimitErr if the user is already at the spawned host limit, or some other untyped
 // instance of Error if something fails during validation.
-func (sm Spawn) Validate(so Options) error {
+func Validate(so Options) error {
 	d, err := distro.FindOne(distro.ById(so.Distro))
 	if err != nil {
 		return BadOptionsErr{fmt.Sprintf("Invalid dist %v", so.Distro)}
@@ -126,12 +124,12 @@ func (sm Spawn) Validate(so Options) error {
 }
 
 // CreateHost spawns a host with the given options.
-func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
+func CreateHost(so Options, owner *user.DBUser) (*host.Host, error) {
 
 	// load in the appropriate distro
 	d, err := distro.FindOne(distro.ById(so.Distro))
 	if err != nil {
-		return errors.WithStack(err)
+		return nil, errors.WithStack(err)
 	}
 	// add any extra user-specified data into the setup script
 	if d.UserData.File != "" {
@@ -149,22 +147,9 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 	// modify the setup script to add the user's public key
 	d.Setup += fmt.Sprintf("\necho \"\n%v\" >> ~%v/.ssh/authorized_keys\n", so.PublicKey, d.User)
 
-	// replace expansions in the script
-	exp := util.NewExpansions(sm.settings.Expansions)
-	d.Setup, err = exp.ExpandString(d.Setup)
-	if err != nil {
-		return errors.Wrap(err, "expansions error")
-	}
-
 	// fake out replacing spot instances with on-demand equivalents
 	if d.Provider == ec2.SpotProviderName {
 		d.Provider = ec2.OnDemandProviderName
-	}
-
-	// get the appropriate cloud manager
-	cloudManager, err := providers.GetCloudManager(d.Provider, sm.settings)
-	if err != nil {
-		return errors.WithStack(err)
 	}
 
 	// spawn the host
@@ -182,6 +167,9 @@ func (sm Spawn) CreateHost(so Options, owner *user.DBUser) error {
 		UserHost:           true,
 	}
 
-	_, err = cloudManager.SpawnInstance(d, hostOptions)
-	return errors.WithStack(err)
+	intentHost := cloud.NewIntent(*d, d.GenerateName(), d.Provider, hostOptions)
+	if intentHost == nil { // theoretically this should not happen
+		return nil, errors.New("unable to intent host: NewIntent did not return a host")
+	}
+	return intentHost, errors.WithStack(err)
 }
