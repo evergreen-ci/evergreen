@@ -15,6 +15,7 @@ mciModule.controller('SettingsCtrl', ['$scope', '$http', '$window', 'notificatio
     {str: "Fernando de Noronha", value: "America/Noronha"},
     {str: "Cape Verde", value: "Atlantic/Cape_Verde"},
     {str: "Iceland", value: "Atlantic/Reykjavik"},
+    {str: "United Kingdom, Ireland", value: "Europe/London"},
     {str: "Central European Time, Nigeria", value: "Europe/Rome"},
     {str: "Egypt, Israel, Romania", value: "Europe/Bucharest"},
     {str: "Ethiopia, Iraq, Yemen", value: "Asia/Baghdad"},
