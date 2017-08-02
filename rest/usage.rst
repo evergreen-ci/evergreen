@@ -743,3 +743,245 @@ Abort a Build
  POST /builds/<build_id>/abort
 
  Aborts a single build using its ID then returns the build
+
+Version
+-------
+
+ A version is a commit in a project.
+
+Objects
+~~~~~~~
+
+.. list-table:: **Version**
+  :widths: 25 10 55
+  :header-rows: 1
+
+  * - Name
+    - Type
+    - Description
+  * - ``create_time``
+    - time
+    - Time that the version was first created
+  * - ``start_time``
+    - time
+    - Time at which tasks associated with this version started running
+  * - ``finish_time``
+    - time
+    - Time at which tasks associated with this version finished running
+  * - ``revision``
+    - string
+    - The version control identifier
+  * - ``author``
+    - string
+    - Author of the version
+  * - ``author_email``
+    - string
+    - Email of the author of the version
+  * - ``message``
+    - string
+    - Message left with the commit
+  * - ``status``
+    - string
+    - The status of the version
+  * - ``repo``
+    - string
+    - The github repository where the commit was made
+  * - ``branch``
+    - string
+    - The version control branch where the commit was made
+  * - ``build_variants_status``
+    - []buildDetail
+    - List of documents of the associated build variant and the build id
+
+Endpoints
+~~~~~~~~~
+
+Fetch Version By Id
+```````````````````
+
+::
+
+ GET /versions/<version_id>
+
+ Fetches a single version using its ID
+
+Abort a Version
+```````````````
+
+::
+
+ POST /versions/<version_id>/abort
+
+ Aborts a single version using its ID then returns the version
+
+Restart a Version
+`````````````````
+
+::
+
+ POST /versions/<version_id>/restart
+
+ Restarts a single version using its ID then returns the version
+
+Get Builds From A Version
+`````````````````````````
+
+::
+
+ GET /versions/<version_id>/builds
+
+ Fetches a list of builds associated with a version
+
+DistroCost
+----------
+
+ A distro cost represents cost data and other relevant information regarding the distro for the cost reporting project.
+
+Objects
+~~~~~~~
+
+.. list-table:: **DistroCost**
+  :widths: 25 10 55
+  :header-rows: 1
+
+  * - Name
+    - Type
+    - Description
+  * - ``distro_id``
+    - string
+    - The identifier of the distro
+  * - ``sum_time_taken``
+    - time.Duration
+    - Aggregated duration of tasks belonging to the distro
+  * - ``provider``
+    - string
+    - The cloud provider for the distro
+  * - ``instance_type``
+    - string
+    - The type of the instance on which the distro runs 
+
+Endpoints
+~~~~~~~~~
+
+Fetch Distro Cost By Distro ID
+``````````````````````````````
+
+::
+
+ GET /cost/distro/<distro_id>
+
+ Fetches distro cost associated with the specific distro filtered by time range
+
+.. list-table:: **Parameters**
+  :widths: 25 10 55
+  :header-rows: 1
+
+  * - Name
+    - Type
+    - Description
+  * - ``starttime``
+    - string
+    - Lower bound of the time range
+  * - ``duration``
+    - string
+    - Duration of the time range
+
+TaskCost
+----------
+
+ A task cost represents cost data and other relevant information regarding the task for the cost reporting project.
+
+Objects
+~~~~~~~
+
+.. list-table:: **TaskCost**
+  :widths: 25 10 55
+  :header-rows: 1
+
+  * - Name
+    - Type
+    - Description
+  * - ``task_id``
+    - string
+    - The identifier of the task
+  * - ``display_name``
+    - string
+    - Name of this task displayed in the UI
+  * - ``distro``             
+    - string         
+    - Identifier of the distro that this task runs on
+  * - ``build_variant``         
+    - string         
+    - Name of the build variant that this task runs on
+  * - ``time_taken``
+    - time.Duration
+    - Number of milliseconds this task took during execution
+  * - ``githash``
+    - string
+    - The version control identifier associated with this task
+
+Endpoints
+~~~~~~~~~
+
+Fetch Task Cost By ProjectID
+``````````````````````````````
+
+::
+
+ GET /cost/project/<project_id>/tasks
+
+ Returns a paginated list of all tasks associated with a specific project filtered by time range
+
+.. list-table:: **Parameters**
+  :widths: 25 10 55
+  :header-rows: 1
+
+  * - Name
+    - Type
+    - Description
+  * - ``starttime``
+    - string
+    - Lower bound of the time range
+  * - ``duration``
+    - string
+    - Duration of the time range
+  * - ``start_at``    
+    - string   
+    - Optional. The identifier of the task to start at in the pagination
+  * - ``limit``       
+    - int   
+    - Optional. The number of tasks to be returned per page of pagination. Defaults to 100
+
+VersionCost
+-----------
+
+ A version cost represents cost data and other relevant information regarding the version for the cost reporting project.
+
+Objects
+~~~~~~~
+
+.. list-table:: **VersionCost**
+  :widths: 25 10 55
+  :header-rows: 1
+
+  * - Name
+    - Type
+    - Description
+  * - ``version_id``
+    - string
+    - The identifier of the version
+  * - ``sum_time_taken``
+    - time.Duration
+    - Aggregated duration of tasks belonging to the version
+
+Endpoints
+~~~~~~~~~
+
+Fetch Version Cost By VersionID
+```````````````````````````````
+
+::
+
+ GET /cost/version/<version_id>
+
+ Fetches version cost associated with the specific version
