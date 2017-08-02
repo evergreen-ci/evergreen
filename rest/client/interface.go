@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	restmodel "github.com/evergreen-ci/evergreen/rest/model"
+	"github.com/mongodb/grip/message"
 	"golang.org/x/net/context"
 )
 
@@ -61,6 +62,8 @@ type Communicator interface {
 
 	// Sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error
+	SendProcessInfo(context.Context, TaskData, []*message.ProcessInfo) error
+	SendSystemInfo(context.Context, TaskData, *message.SystemInfo) error
 
 	// The following operations use the legacy API server and are
 	// used by task commands.

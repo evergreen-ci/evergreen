@@ -176,6 +176,6 @@ func (r *requestInfo) validateRequestInfo() error {
 	return nil
 }
 
-func (r *requestInfo) setTaskPathSuffix(path, taskID string) {
-	r.path = fmt.Sprintf("task/%s/%s", taskID, path)
+func (r *requestInfo) setTaskPathSuffix(path string) {
+	r.path = fmt.Sprintf("task/%s/%s", r.taskData.ID, path)
 }

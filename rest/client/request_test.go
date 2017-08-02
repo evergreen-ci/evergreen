@@ -73,7 +73,11 @@ func (s *RequestTestSuite) TestValidateRequestInfo() {
 }
 
 func (s *RequestTestSuite) TestSetTaskPathSuffix() {
-	info := requestInfo{}
-	info.setTaskPathSuffix("foo", "bar")
+	info := requestInfo{
+		taskData: &TaskData{
+			ID: "bar",
+		},
+	}
+	info.setTaskPathSuffix("foo")
 	s.Equal("task/bar/foo", info.path)
 }

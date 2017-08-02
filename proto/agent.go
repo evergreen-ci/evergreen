@@ -108,6 +108,15 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 	defer a.killProcs(tc)
 	defer cancel()
 
+	metrics := &metricsCollector{
+		comm:     a.comm,
+		taskData: tc.task,
+	}
+
+	if err := metrics.start(ctx); err != nil {
+		return errors.Wrap(err, "problem setting up metrics collection")
+	}
+
 	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
 	if err != nil {
 		err = errors.Wrap(err, "problem setting up logging")
