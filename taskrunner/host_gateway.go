@@ -118,10 +118,7 @@ func executableSubPath(d *distro.Distro) string {
 }
 
 func isWindows(d *distro.Distro) bool {
-	if strings.HasPrefix(d.Arch, "windows") {
-		return true
-	}
-	return false
+	return strings.HasPrefix(d.Arch, "windows")
 }
 
 func newCappedOutputLog() *util.CappedWriter {
@@ -213,6 +210,8 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 	return preSCPAgentRevision, nil
 }
 
+const logAggregationEnabled = false
+
 // Start the agent process on the specified remote host, and have it run the specified task.
 func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
@@ -257,7 +256,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		startAgentCmd.EnvVars = []string{fmt.Sprintf("GRIP_SUMO_ENDPOINT='%s'", sumoEndpoint)}
 	}
 
-	if settings.Splunk.Populated() {
+	if logAggregationEnabled {
 		startAgentCmd.EnvVars = []string{
 			fmt.Sprintf("GRIP_SPLUNK_SERVER_URL='%s'", settings.Splunk.ServerURL),
 			fmt.Sprintf("GRIP_SPLUNK_CLIENT_TOKEN='%s'", settings.Splunk.Token),
