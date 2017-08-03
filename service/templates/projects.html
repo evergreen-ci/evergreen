@@ -1,11 +1,11 @@
 {{define "scripts"}}
 <script>
-  window.allTrackedProjects = {{.AllProjects}}
-  window.availableTriggers = {{.AvailableTriggers}}
+  window.allTrackedProjects = {{.AllProjects}};
+  window.availableTriggers = {{.AvailableTriggers}};
   {{if .User}}
   window.isSuperUser = {{IsSuperUser .User.Id}};
   window.user = {{.User}};
-  window.isAdmin = {{.ProjectData.IsAdmin}}
+  window.isAdmin = {{.ProjectData.IsAdmin}};
   {{else}}
   window.isSuperUser = false;
   {{end}}
@@ -27,7 +27,7 @@ Evergreen Projects
 <div id="content" class="container-fluid row" ng-controller="ProjectCtrl" ng-show="isAdmin">
   <div class="col-lg-2 col-lg-offset-1">
     <h1> Projects</h1>
-    <div class="row">
+    <div class="row" ng-show="isSuperUser">
       <div class="col-lg-12">
         <button class="btn btn-primary" ng-click="openAdminModal('newProject')"> New Project </button>
         <label>[[newProjectMessage]] </label>

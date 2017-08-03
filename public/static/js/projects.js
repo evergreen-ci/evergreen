@@ -3,6 +3,7 @@ mciModule.controller('ProjectCtrl', function($scope, $window, $http, $location) 
   $scope.availableTriggers = $window.availableTriggers
   $scope.userId = $window.user.Id;
   $scope.isAdmin = $window.isSuperUser || $window.isAdmin;
+  $scope.isSuperUser = $window.isSuperUser;
 
 
   $scope.projectVars = {};
