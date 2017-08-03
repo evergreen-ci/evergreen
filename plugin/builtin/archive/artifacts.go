@@ -78,7 +78,6 @@ func BuildArchive(tarWriter *tar.Writer, rootPath string, includes []string,
 			}
 		}
 		close(outputChan)
-		return
 	}(pathsToAdd)
 
 	go func(inputChan chan TarContentsFile) {

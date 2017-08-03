@@ -24,6 +24,7 @@ const (
 	GithubSleepTimeSecs = 1
 	GithubAPIBase       = "https://api.github.com"
 	GithubStatusBase    = "https://status.github.com"
+	GithubAccessURL     = "https://github.com/login/oauth/access_token"
 
 	GithubAPIStatusMinor = "minor"
 	GithubAPIStatusMajor = "major"
@@ -479,13 +480,12 @@ func getGithubRateLimit(header http.Header) (message string, loglevel level.Prio
 // GithubAuthenticate does a POST to github with the code that it received, the ClientId, ClientSecret
 // And returns the response which contains the accessToken associated with the user.
 func GithubAuthenticate(code, clientId, clientSecret string) (githubResponse *GithubAuthResponse, err error) {
-	accessUrl := "https://github.com/login/oauth/access_token"
 	authParameters := GithubAuthParameters{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 		Code:         code,
 	}
-	resp, err := tryGithubPost(accessUrl, "", authParameters)
+	resp, err := tryGithubPost(GithubAccessURL, "", authParameters)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

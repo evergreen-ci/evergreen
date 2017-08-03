@@ -2,12 +2,13 @@ package s3
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/net/context"
 
 	"github.com/evergreen-ci/evergreen/agent/comm"
 	"github.com/evergreen-ci/evergreen/db"
@@ -420,7 +421,7 @@ func TestAttachResults(t *testing.T) {
 				file := entry.Files[0]
 
 				So(file.Link, ShouldEqual, fmt.Sprintf("%s%s/%s", s3baseURL, testBucket, remoteFname))
-				So(file.Name, ShouldEqual, fmt.Sprintf("%s", displayName))
+				So(file.Name, ShouldEqual, displayName)
 			})
 		})
 		Convey("and attach is called many times", func() {

@@ -81,7 +81,6 @@ func BuildArchive(ctx context.Context, tarWriter *tar.Writer, rootPath string, i
 			}
 		}
 		close(outputChan)
-		return
 	}(pathsToAdd)
 
 	go func(inputChan chan TarContentsFile) {

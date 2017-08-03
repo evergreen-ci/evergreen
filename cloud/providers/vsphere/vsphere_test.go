@@ -224,8 +224,10 @@ func (s *VSphereSuite) TestGetSSHOptions() {
 func (s *VSphereSuite) TestSpawnInvalidSettings() {
 	dProviderName := &distro.Distro{Provider: "ec2"}
 	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
+	s.NotNil(host)
 	host, err := s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "vsphere"}
 	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)

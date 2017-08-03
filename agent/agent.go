@@ -381,8 +381,10 @@ func (agt *Agent) Setup() error {
 		return errors.Wrap(err, "problem setting up logging")
 	}
 	existingSender := grip.GetSender()
-	grip.SetSender(sender)
-	existingSender.Close()
+	if err = grip.SetSender(sender); err != nil {
+		return errors.Wrap(err, "problem re-configuring logger")
+	}
+	grip.Alert(existingSender.Close())
 
 	// set signal handler
 	sigHandler := &SignalHandler{}

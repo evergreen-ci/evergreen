@@ -66,9 +66,7 @@ func init() {
 	grip.SetThreshold(level.Debug)
 }
 
-func (*NoopSignalHandler) HandleSignals(_ *Agent) {
-	return
-}
+func (*NoopSignalHandler) HandleSignals(_ *Agent) {}
 
 func setupTlsConfigs(t *testing.T) {
 	if tlsConfigs == nil {

@@ -60,7 +60,6 @@ func (c *taskDataSend) Execute(ctx context.Context,
 
 		errChan <- errors.Wrapf(comm.PostJSONData(ctx, td, c.DataName, jsonData),
 			"problem posting task data for %s (%s)", c.DataName, td.ID)
-		return
 	}()
 
 	select {

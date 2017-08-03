@@ -21,13 +21,17 @@ func (c *AgentCommand) Execute(_ []string) error {
 		return errors.New("cannot start agent without a service url and host ID")
 	}
 
+	existingSender := grip.GetSender()
 	sender, err := agent.GetSender("agent-startup", "init")
 	if err != nil {
 		return errors.Wrap(err, "problem configuring logging")
 	}
-	existingSender := grip.GetSender()
-	grip.SetSender(sender)
-	existingSender.Close()
+	if err = grip.SetSender(sender); err != nil {
+		return errors.Wrap(err, "problem re-configuring logger")
+	}
+	if err = existingSender.Close(); err != nil {
+		return errors.Wrap(err, "problem closing previous logger")
+	}
 
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)

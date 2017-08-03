@@ -446,11 +446,13 @@ func (s *PatchConnectorChangeStatusSuite) TestSetPriority() {
 
 func (s *PatchConnectorChangeStatusSuite) TestSetActivation() {
 	err := s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", true)
+	s.NoError(err)
 	p, err := s.ctx.FindPatchById(s.obj_ids[0].Hex())
 	s.NoError(err)
 	s.True(p.Activated)
 
 	err = s.ctx.SetPatchActivated(s.obj_ids[0].Hex(), "user1", false)
+	s.NoError(err)
 	p, err = s.ctx.FindPatchById(s.obj_ids[0].Hex())
 	s.NoError(err)
 	s.False(p.Activated)

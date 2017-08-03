@@ -297,7 +297,8 @@ func (init *HostInit) setupHost(targetHost *host.Host) (string, error) {
 			return "", errors.Errorf("error copying script %v to host %v: %v",
 				setupScriptName, targetHost.Id, err)
 		}
-		logs, err := hostutil.RunRemoteScript(targetHost, setupScriptName, sshOptions)
+		var logs string
+		logs, err = hostutil.RunRemoteScript(targetHost, setupScriptName, sshOptions)
 		if err != nil {
 			return logs, errors.Errorf("error running setup script over ssh: %v", err)
 		}

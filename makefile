@@ -51,27 +51,23 @@ endef
 #   vendorize all of these dependencies.
 lintDeps := github.com/alecthomas/gometalinter
 #   include test files and give linters 40s to run to avoid timeouts
-lintArgs := --tests --deadline=20m --vendor --aggregate --sort="line"
+lintArgs := --tests --deadline=3m --vendor --aggregate --sort=line
+lintArgs += --vendored-linters --enable-gc
 #   gotype produces false positives because it reads .a files which
 #   are rarely up to date.
 lintArgs += --disable="gotype" --disable="gas" --disable="gocyclo"
-lintArgs += --disable="aligncheck" --disable="golint" --disable="goconst"
+lintArgs += --disable="golint" --disable="goconst" --disable="dupl"
+lintArgs += --disable="varcheck" --disable="structcheck" --disable="aligncheck"
 lintArgs += --skip="$(buildDir)" --skip="scripts" --skip="$(gopath)"
 #  add and configure additional linters
-lintArgs += --enable="goimports" --enable="misspell" --enable="unused" --enable="vet" --enable="unparam"
-# lintArgs += --enable="lll" --line-length=100
-lintArgs += --dupl-threshold=175
-#  two similar functions triggered the duplicate warning, but they're not.
-lintArgs += --exclude="file is not goimported" # test files aren't imported
-#  golint doesn't handle splitting package comments between multiple files.
-# lintArgs += --exclude="package comment should be of the form \"Package .* \(golint\)"
+lintArgs += --enable="misspell" # --enable="lll" --line-length=100
 #  suppress some lint errors (logging methods could return errors, and error checking in defers.)
 lintArgs += --exclude=".*([mM]ock.*ator|modadvapi32|osSUSE) is unused \((deadcode|unused|megacheck)\)$$"
 lintArgs += --exclude=".*(procInfo|sysInfo|metricsCollector\).start|testSorter).*is unused.*\(unused|deadcode|megacheck\)$$"
-lintArgs += --exclude="error return value not checked \(defer.* \(errcheck\)$$"
-lintArgs += --exclude="defers in this range loop.* \(staticcheck|megacheck\)$$"
-lintArgs += --exclude=".*should use time.Until instead of t.Sub\(time.Now\(\)\).* \(gosimple|megacheck\)$$"
-lintArgs += --exclude="suspect or:.*\(vet\)$$"
+lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
+# lintArgs += --exclude="defers in this range loop.* \(staticcheck|megacheck\)$$"
+# lintArgs += --exclude=".*should use time.Until instead of t.Sub\(time.Now\(\)\).* \(gosimple|megacheck\)$$"
+# lintArgs += --exclude="suspect or:.*\(vet\)$$"
 # end lint configuration
 
 
@@ -160,7 +156,7 @@ $(gopath)/src/%:
 # lint setup targets
 lintDeps := $(addprefix $(gopath)/src/,$(lintDeps))
 $(buildDir)/.lintSetup:$(lintDeps)
-	@-$(gopath)/bin/gometalinter --install >/dev/null && touch $@
+	$(gopath)/bin/gometalinter --update --force --install >/dev/null && touch $@
 $(buildDir)/run-linter:scripts/run-linter.go $(buildDir)/.lintSetup
 	$(vendorGopath) go build -o $@ $<
 # end lint setup targets

@@ -49,7 +49,6 @@ const (
 type pluginContext int
 type pluginUser int
 
-const pluginContextKey pluginContext = 0
 const pluginUserKey pluginUser = 0
 
 // UIDataFunction is a function which is called to populate panels

@@ -309,14 +309,19 @@ func (s *GCESuite) TestGetSSHOptions() {
 }
 
 func (s *GCESuite) TestSpawnInvalidSettings() {
+	var err error
 	dProviderName := &distro.Distro{Provider: "ec2"}
 	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(host)
+	s.NotNil(host)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "gce"}
 	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
+	s.NotNil(host)
 	host, err = s.manager.SpawnHost(host)
+	s.Nil(host)
 	s.Error(err)
 
 	dSettingsInvalid := &distro.Distro{
@@ -324,8 +329,10 @@ func (s *GCESuite) TestSpawnInvalidSettings() {
 		ProviderSettings: &map[string]interface{}{"instance_type": ""},
 	}
 	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	s.NotNil(host)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 }
 
 func (s *GCESuite) TestSpawnDuplicateHostID() {
@@ -366,8 +373,10 @@ func (s *GCESuite) TestSpawnAPICall() {
 
 	mock.failCreate = true
 	host = cloud.NewIntent(*dist, s.manager.GetInstanceName(dist), dist.Provider, opts)
+	s.NotNil(host)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 }
 
 func (s *GCESuite) TestUtilToEvgStatus() {

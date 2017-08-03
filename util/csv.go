@@ -96,5 +96,4 @@ func WriteCSVResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	csvWriter := csv.NewWriter(w)
 	grip.Warning(errors.WithStack(csvWriter.WriteAll(csvRecords)))
-	return
 }

@@ -235,23 +235,29 @@ func (s *OpenStackSuite) TestGetSSHOptions() {
 }
 
 func (s *OpenStackSuite) TestSpawnInvalidSettings() {
+	var err error
 	dProviderName := &distro.Distro{Provider: "ec2"}
 	host := cloud.NewIntent(*dProviderName, s.manager.GetInstanceName(dProviderName), dProviderName.Provider, s.hostOpts)
-	host, err := s.manager.SpawnHost(host)
+	s.NotNil(host)
+	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 
 	dSettingsNone := &distro.Distro{Provider: "openstack"}
 	host = cloud.NewIntent(*dSettingsNone, s.manager.GetInstanceName(dSettingsNone), dSettingsNone.Provider, s.hostOpts)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 
 	dSettingsInvalid := &distro.Distro{
 		Provider:         "openstack",
 		ProviderSettings: &map[string]interface{}{"image_name": ""},
 	}
 	host = cloud.NewIntent(*dSettingsInvalid, s.manager.GetInstanceName(dSettingsInvalid), dSettingsInvalid.Provider, s.hostOpts)
+	s.NotNil(host)
 	host, err = s.manager.SpawnHost(host)
 	s.Error(err)
+	s.Nil(host)
 }
 
 func (s *OpenStackSuite) TestSpawnDuplicateHostID() {

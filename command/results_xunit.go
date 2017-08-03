@@ -91,7 +91,11 @@ func getFilePaths(workDir string, files []string) ([]string, error) {
 		out = append(out, paths...)
 	}
 
-	return nil, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
+	if catcher.HasErrors() {
+		return nil, errors.Wrapf(catcher.Resolve(), "%d incorrect file specifications", catcher.Len())
+	}
+
+	return out, nil
 }
 
 func (c *xunitResults) parseAndUploadResults(ctx context.Context, conf *model.TaskConfig,

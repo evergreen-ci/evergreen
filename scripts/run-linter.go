@@ -61,6 +61,8 @@ func main() {
 		gopath = os.Getenv("GOPATH")
 	)
 
+	gopath, _ = filepath.Abs(gopath)
+
 	flag.StringVar(&lintArgs, "lintArgs", "", "args to pass to gometalinter")
 	flag.StringVar(&lintBin, "lintBin", filepath.Join(gopath, "bin", "gometalinter"), "path to go metalinter")
 	flag.StringVar(&packageList, "packages", "", "list of space separated packages")
@@ -70,7 +72,6 @@ func main() {
 	packages = strings.Split(strings.Replace(packageList, "-", "/", -1), " ")
 	dirname, _ := os.Getwd()
 	cwd := filepath.Base(dirname)
-	gopath, _ = filepath.Abs(gopath)
 	lintArgs += fmt.Sprintf(" --concurrency=%d", runtime.NumCPU()/2)
 
 	for _, pkg := range packages {
@@ -84,7 +85,6 @@ func main() {
 		startAt := time.Now()
 		cmd := strings.Join(args, " ")
 		out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
-
 		r := &result{
 			cmd:      strings.Join(args, " "),
 			name:     "lint-" + strings.Replace(pkg, "/", "-", -1),

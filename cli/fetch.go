@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
 
@@ -129,7 +130,7 @@ type cloneOptions struct {
 	depth    uint
 }
 
-func clone(opts cloneOptions, verbose bool) error {
+func clone(opts cloneOptions) error {
 	// clone the repo first
 	cloneArgs := []string{"clone", opts.repo}
 	if opts.depth > 0 {
@@ -137,9 +138,8 @@ func clone(opts cloneOptions, verbose bool) error {
 	}
 
 	cloneArgs = append(cloneArgs, opts.rootDir)
-	if verbose {
-		fmt.Println("Executing git", strings.Join(cloneArgs, " "))
-	}
+	grip.Debug(cloneArgs)
+
 	c := exec.Command("git", cloneArgs...)
 	c.Stdout, c.Stderr = os.Stdout, os.Stderr
 	err := c.Run()
@@ -149,9 +149,8 @@ func clone(opts cloneOptions, verbose bool) error {
 
 	// try to check out the revision we want
 	checkoutArgs := []string{"checkout", opts.revision}
-	if verbose {
-		fmt.Println("Executing git", strings.Join(checkoutArgs, " "))
-	}
+	grip.Debug(checkoutArgs)
+
 	c = exec.Command("git", checkoutArgs...)
 	stdoutBuf, stderrBuf := &bytes.Buffer{}, &bytes.Buffer{}
 	c.Stdout = io.MultiWriter(os.Stdout, stdoutBuf)
@@ -165,9 +164,8 @@ func clone(opts cloneOptions, verbose bool) error {
 
 		// we have to go deeper
 		fetchArgs := []string{"fetch", "--unshallow"}
-		if verbose {
-			fmt.Println("Executing git", strings.Join(fetchArgs, " "))
-		}
+		grip.Debug(fetchArgs)
+
 		c = exec.Command("git", fetchArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		err = c.Run()
@@ -176,9 +174,8 @@ func clone(opts cloneOptions, verbose bool) error {
 		}
 		// now it's unshallow, so try again to check it out
 		checkoutRetryArgs := []string{"checkout", opts.revision}
-		if verbose {
-			fmt.Println("Executing git", strings.Join(checkoutRetryArgs, " "))
-		}
+		grip.Debug(checkoutRetryArgs)
+
 		c = exec.Command("git", checkoutRetryArgs...)
 		c.Stdout, c.Stderr, c.Dir = os.Stdout, os.Stderr, opts.rootDir
 		return c.Run()
@@ -188,15 +185,12 @@ func clone(opts cloneOptions, verbose bool) error {
 
 func cloneSource(task *service.RestTask, project *model.ProjectRef, config *model.Project, cloneDir string) error {
 	// Fetch the outermost repo for the task
-	err := clone(
-		cloneOptions{
-			repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
-			revision: task.Revision,
-			rootDir:  cloneDir,
-			depth:    defaultCloneDepth,
-		},
-		false,
-	)
+	err := clone(cloneOptions{
+		repo:     fmt.Sprintf("git@github.com:%v/%v.git", project.Owner, project.Repo),
+		revision: task.Revision,
+		rootDir:  cloneDir,
+		depth:    defaultCloneDepth,
+	})
 
 	if err != nil {
 		return err
@@ -218,7 +212,7 @@ func cloneSource(task *service.RestTask, project *model.ProjectRef, config *mode
 			repo:     module.Repo,
 			revision: module.Branch,
 			rootDir:  filepath.ToSlash(moduleBase),
-		}, false)
+		})
 		if err != nil {
 			return err
 		}
