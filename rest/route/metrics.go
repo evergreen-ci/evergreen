@@ -58,7 +58,7 @@ func (p *taskSystemMetricsHandler) ParseAndValidate(ctx context.Context, r *http
 }
 
 func taskSystemMetricsPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	task := args.(*taskMetricsArgs).task
+	task := args.(taskMetricsArgs).task
 	grip.Debugln("getting results for task:", task)
 
 	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.UTC)
@@ -163,7 +163,7 @@ func (p *taskProcessMetricsHandler) ParseAndValidate(ctx context.Context, r *htt
 }
 
 func taskProcessMetricsPaginator(key string, limit int, args interface{}, sc data.Connector) ([]model.Model, *PageResult, error) {
-	task := args.(*taskMetricsArgs).task
+	task := args.(taskMetricsArgs).task
 	grip.Debugln("getting results for task:", task)
 
 	ts, err := time.ParseInLocation(model.APITimeFormat, key, time.FixedZone("", 0))
