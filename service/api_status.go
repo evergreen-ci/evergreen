@@ -3,13 +3,17 @@ package service
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/grip/message"
 )
 
 const (
@@ -212,4 +216,37 @@ func (as *APIServer) getStuckHosts(w http.ResponseWriter, r *http.Request) {
 		HostIds: hosts,
 		TaskIds: tasks,
 	})
+}
+
+func (as *APIServer) serviceStatusWithAuth(w http.ResponseWriter, r *http.Request) {
+	out := struct {
+		BuildId    string              `json:"build_revision"`
+		SystemInfo *message.SystemInfo `json:"sys_info"`
+		Pid        int                 `json:"pid"`
+	}{
+		BuildId:    evergreen.BuildRevision,
+		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
+		Pid:        os.Getpid(),
+	}
+
+	as.WriteJSON(w, http.StatusOK, &out)
+}
+
+func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request) {
+	out := struct {
+		BuildId string `json:"build_revision"`
+	}{
+		BuildId: evergreen.BuildRevision,
+	}
+
+	as.WriteJSON(w, http.StatusOK, &out)
+}
+
+func (as *APIServer) recentTaskStatuses(w http.ResponseWriter, r *http.Request) {
+	tasks, err := task.GetRecentTasks(30 * time.Minute)
+	if err != nil {
+		as.LoggedError(w, r, http.StatusInternalServerError, err)
+	}
+
+	as.WriteJSON(w, http.StatusOK, task.GetTaskResultCounts(tasks))
 }

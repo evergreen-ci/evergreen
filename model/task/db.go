@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -553,6 +554,34 @@ func FindCostTaskByProject(project, taskId string, starttime,
 		&tasks,
 	)
 	return tasks, err
+}
+
+// GetRecentTasks runs a query, returning a very limited projection of
+// the task results used in the GetTaskResultCounts query to support
+// returning tasks. Most fields are projected out.
+func GetRecentTasks(period time.Duration) ([]Task, error) {
+	query := db.Query(
+		bson.M{
+			StatusKey: bson.M{"$exists": true},
+			FinishTimeKey: bson.M{
+				"$gt": time.Now().Add(-period),
+			},
+		},
+	).Project(
+		bson.M{
+			IdKey:          0,
+			StatusKey:      1,
+			DetailsKey:     1,
+			ActivatedKey:   1,
+			TestResultsKey: 1,
+		})
+
+	out, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "problem with stats query")
+	}
+
+	return out, nil
 }
 
 // DB Boilerplate

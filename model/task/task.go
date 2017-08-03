@@ -260,7 +260,7 @@ func (t *Task) UIStatus() string {
 		if !t.Activated {
 			status = evergreen.TaskInactive
 		} else {
-			status = "unstarted"
+			status = evergreen.TaskUnstarted
 		}
 	} else if t.Status == evergreen.TaskStarted {
 		status = evergreen.TaskStarted
@@ -274,16 +274,60 @@ func (t *Task) UIStatus() string {
 				if t.Details.Description == "heartbeat" {
 					status = evergreen.TaskSystemUnresponse
 				} else if t.HasFailedTests() {
-					return evergreen.TaskFailed
-				} else if t.Details.Type == "system" {
-					status = evergreen.TaskSystemTimedOut
+					status = evergreen.TaskFailed
 				} else {
-					status = evergreen.TaskTestTimedOut
+					status = evergreen.TaskSystemTimedOut
 				}
 			}
+		} else if t.Details.TimedOut {
+			status = evergreen.TaskTestTimedOut
 		}
 	}
 	return status
+}
+
+type TaskResultCounts struct {
+	Total              int `json:"total"`
+	Inactive           int `json:"inactive"`
+	Unstarted          int `json:"unstarted"`
+	Started            int `json:"started"`
+	Succeeded          int `json:"succeeded"`
+	Failed             int `json:"failed"`
+	SystemFailed       int `json:"system-failed"`
+	SystemUnresponsive int `json:"system-unresponsive"`
+	SystemTimedOut     int `json:"system-timed-out"`
+	TestTimedOut       int `json:"test-timed-out"`
+}
+
+// GetTaskResultCounts collects
+func GetTaskResultCounts(tasks []Task) *TaskResultCounts {
+	out := TaskResultCounts{}
+
+	for _, t := range tasks {
+		out.Total++
+		switch t.UIStatus() {
+		case evergreen.TaskInactive:
+			out.Inactive++
+		case evergreen.TaskUnstarted:
+			out.Unstarted++
+		case evergreen.TaskStarted:
+			out.Started++
+		case evergreen.TaskSucceeded:
+			out.Succeeded++
+		case evergreen.TaskFailed:
+			out.Failed++
+		case evergreen.TaskSystemFailed:
+			out.SystemFailed++
+		case evergreen.TaskSystemUnresponse:
+			out.SystemUnresponsive++
+		case evergreen.TaskSystemTimedOut:
+			out.SystemTimedOut++
+		case evergreen.TaskTestTimedOut:
+			out.TestTimedOut++
+		}
+	}
+
+	return &out
 }
 
 // HasFailedTests iterates through a tasks' tests and returns true if

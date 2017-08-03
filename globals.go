@@ -26,6 +26,7 @@ const (
 	HostStatusFailed  = "failed"
 
 	TaskStarted          = "started"
+	TaskUnstarted        = "unstarted"
 	TaskUndispatched     = "undispatched"
 	TaskDispatched       = "dispatched"
 	TaskFailed           = "failed"

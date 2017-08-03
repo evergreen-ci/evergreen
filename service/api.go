@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"runtime/debug"
 	"strings"
 
@@ -460,30 +459,6 @@ func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Welcome to the API server's home :)\n")
 }
 
-func (as *APIServer) serviceStatusWithAuth(w http.ResponseWriter, r *http.Request) {
-	out := struct {
-		BuildId    string              `json:"build_revision"`
-		SystemInfo *message.SystemInfo `json:"sys_info"`
-		Pid        int                 `json:"pid"`
-	}{
-		BuildId:    evergreen.BuildRevision,
-		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
-		Pid:        os.Getpid(),
-	}
-
-	as.WriteJSON(w, http.StatusOK, &out)
-}
-
-func (as *APIServer) serviceStatusSimple(w http.ResponseWriter, r *http.Request) {
-	out := struct {
-		BuildId string `json:"build_revision"`
-	}{
-		BuildId: evergreen.BuildRevision,
-	}
-
-	as.WriteJSON(w, http.StatusOK, &out)
-}
-
 func (as *APIServer) getUserSession(w http.ResponseWriter, r *http.Request) {
 	userCredentials := struct {
 		Username string `json:"username"`
@@ -767,6 +742,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 	status := apiRootOld.PathPrefix("/status/").Subrouter()
 	status.HandleFunc("/consistent_task_assignment", as.consistentTaskAssignment).Methods("GET")
 	status.HandleFunc("/info", requireUser(as.serviceStatusWithAuth, as.serviceStatusSimple)).Methods("GET")
+	status.HandleFunc("/recent_tasks", as.recentTaskStatuses).Methods("GET")
 	status.HandleFunc("/stuck_hosts", as.getStuckHosts).Methods("GET")
 
 	// Hosts callback
