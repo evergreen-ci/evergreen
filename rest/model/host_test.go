@@ -51,7 +51,7 @@ func TestHostBuildFromService(t *testing.T) {
 					Provisioned:  true,
 					StartedBy:    "testStarter",
 					InstanceType: "testType",
-					UserData:     "testUser",
+					User:         "testUser",
 					Status:       "testStatus",
 				},
 				st: task.Task{

@@ -11,6 +11,7 @@ import (
 // APIHost is the model to be returned by the API whenever hosts are fetched.
 type APIHost struct {
 	Id          APIString  `json:"host_id"`
+	HostURL     APIString  `json:"host_url"`
 	Distro      distroInfo `json:"distro"`
 	Provisioned bool       `json:"provisioned"`
 	StartedBy   APIString  `json:"started_by"`
@@ -63,10 +64,11 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case host.Host:
 		apiHost.Id = APIString(v.Id)
+		apiHost.HostURL = APIString(v.Host)
 		apiHost.Provisioned = v.Provisioned
 		apiHost.StartedBy = APIString(v.StartedBy)
 		apiHost.Type = APIString(v.InstanceType)
-		apiHost.User = APIString(v.UserData)
+		apiHost.User = APIString(v.User)
 		apiHost.Status = APIString(v.Status)
 
 		di := distroInfo{
