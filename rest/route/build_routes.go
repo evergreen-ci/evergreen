@@ -26,13 +26,13 @@ func getBuildByIdRouteManager(route string, version int) *RouteManager {
 		Methods: []MethodHandler{
 			{
 				Authenticator:  &NoAuthAuthenticator{},
-				RequestHandler: &buildGetHandler{}.Handler(),
+				RequestHandler: &buildGetHandler{},
 				MethodType:     evergreen.MethodGet,
 			},
 			{
 				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
 				Authenticator:     &RequireUserAuthenticator{},
-				RequestHandler:    &buildChangeStatusHandler{}.Handler(),
+				RequestHandler:    &buildChangeStatusHandler{},
 				MethodType:        evergreen.MethodPatch,
 			},
 		},
