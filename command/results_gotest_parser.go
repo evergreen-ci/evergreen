@@ -23,13 +23,13 @@ var (
 	startRegex = regexp.MustCompile(`=== RUN\s+(\S+)`)
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
-	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+[ ]*s)`)
+	endRegex = regexp.MustCompile(`--- (PASS|SKIP|FAIL): (\S+) \(([0-9\.m]+[ ]*s)`)
 
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	gocheckStartRegex = regexp.MustCompile(`START: .*.go:[0-9]+: (\S+)`)
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
-	gocheckEndRegex = regexp.MustCompile(`(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9.]+[ ]*s)?`)
+	gocheckEndRegex = regexp.MustCompile(`(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9\.m]+[ ]*s)?`)
 )
 
 // This test result implementation maps more idiomatically to Go's test output

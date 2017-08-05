@@ -38,6 +38,14 @@ func TestParserRegex(t *testing.T) {
 				So(name, ShouldEqual, "TestParserRegex")
 				So(status, ShouldEqual, PASS)
 				So(dur, ShouldEqual, time.Duration(0))
+
+				name, status, dur, err = endInfoFromLogLine("--- PASS: TestParserRegex (2m4.0s)", endRegex)
+				So(err, ShouldBeNil)
+				So(name, ShouldEqual, "TestParserRegex")
+				So(status, ShouldEqual, PASS)
+				expDur, err := time.ParseDuration("2m4s")
+				So(err, ShouldBeNil)
+				So(dur, ShouldEqual, expDur)
 			})
 			Convey("and gocheck logs", func() {
 				name, status, dur, err := endInfoFromLogLine(

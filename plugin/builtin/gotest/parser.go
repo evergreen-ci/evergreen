@@ -19,13 +19,13 @@ const (
 	StartRegexString = `=== RUN\s+(\S+)`
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
-	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9.]+[ ]*s)`
+	EndRegexString = `--- (PASS|SKIP|FAIL): (\S+) \(([0-9\.m]+[ ]*s)`
 
 	// Match the start prefix and save the group of non-space characters following the word "RUN"
 	GocheckStartRegexString = `START: .*.go:[0-9]+: (\S+)`
 
 	// Match the end prefix, save PASS/FAIL/SKIP, save the decimal value for number of seconds
-	GocheckEndRegexString = `(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9.]+[ ]*s)?`
+	GocheckEndRegexString = `(PASS|SKIP|FAIL): .*.go:[0-9]+: (\S+)\s*([0-9\.m]+[ ]*s)?`
 )
 
 var startRegex = regexp.MustCompile(StartRegexString)
