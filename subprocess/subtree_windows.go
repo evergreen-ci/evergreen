@@ -42,6 +42,19 @@ const (
 	PROCESS_SUSPEND_RESUME            = 0x0800
 	PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 	PROCESS_ALL_ACCESS                = STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF
+
+	// constants for job object limits
+	JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE          = 0x2000
+	JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION = 0x400
+	JOB_OBJECT_LIMIT_ACTIVE_PROCESS             = 8
+	JOB_OBJECT_LIMIT_JOB_MEMORY                 = 0x200
+	JOB_OBJECT_LIMIT_JOB_TIME                   = 4
+	JOB_OBJECT_LIMIT_PROCESS_MEMORY             = 0x100
+	JOB_OBJECT_LIMIT_PROCESS_TIME               = 2
+	JOB_OBJECT_LIMIT_WORKINGSET                 = 1
+	JOB_OBJECT_LIMIT_AFFINITY                   = 0x00000010
+
+	jobObjectInfoClassNameExtendedLimitInformation = 9
 )
 
 var (
@@ -53,6 +66,7 @@ var (
 	procCreateJobObjectW         = modkernel32.NewProc("CreateJobObjectW")
 	procOpenProcess              = modkernel32.NewProc("OpenProcess")
 	procTerminateJobObject       = modkernel32.NewProc("TerminateJobObject")
+	setinformationJobObject      = modkernel32.NewProc("SetInformationJobObject")
 
 	processMapping = newProcessRegistry()
 )
@@ -168,11 +182,50 @@ type Job struct {
 	handle syscall.Handle
 }
 
+type IoCounters struct {
+	ReadOperationCount  uint64
+	WriteOperationCount uint64
+	OtherOperationCount uint64
+	ReadTransferCount   uint64
+	WriteTransferCount  uint64
+	OtherTransferCount  uint64
+}
+
+type JobObjectBasicLimitInformation struct {
+	PerProcessUserTimeLimit uint64
+	PerJobUserTimeLimit     uint64
+	LimitFlags              uint32
+	MinimumWorkingSetSize   uintptr
+	MaximumWorkingSetSize   uintptr
+	ActiveProcessLimit      uint32
+	Affinity                uintptr
+	PriorityClass           uint32
+	SchedulingClass         uint32
+}
+
+type JobObjectExtendedLimitInformation struct {
+	BasicLimitInformation JobObjectBasicLimitInformation
+	IoInfo                IoCounters
+	ProcessMemoryLimit    uintptr
+	JobMemoryLimit        uintptr
+	PeakProcessMemoryUsed uintptr
+	PeakJobMemoryUsed     uintptr
+}
+
 func NewJob(name string) (*Job, error) {
 	hJob, err := CreateJobObject(syscall.StringToUTF16Ptr(name))
 	if err != nil {
 		return nil, NewWindowsError("CreateJobObject", err)
 	}
+
+	if err := SetInformationJobObjectExtended(hJob, JobObjectExtendedLimitInformation{
+		BasicLimitInformation: JobObjectBasicLimitInformation{
+			LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+		},
+	}); err != nil {
+		return nil, NewWindowsError("SetInformationJobObject", err)
+	}
+
 	return &Job{handle: hJob}, nil
 }
 
@@ -272,6 +325,20 @@ func TerminateJobObject(job syscall.Handle, exitCode uint32) error {
 
 func CloseHandle(object syscall.Handle) error {
 	r1, _, e1 := procCloseHandle.Call(uintptr(object))
+	if r1 == 0 {
+		if e1 != ERROR_SUCCESS {
+			return e1
+		} else {
+			return syscall.EINVAL
+		}
+	}
+	return nil
+}
+
+func SetInformationJobObjectExtended(job syscall.Handle, info JobObjectExtendedLimitInformation) error {
+	r1, _, e1 := setinformationJobObject.Call(uintptr(job), jobObjectInfoClassNameExtendedLimitInformation,
+		uintptr(unsafe.Pointer(&info)),
+		uintptr(uint32(unsafe.Sizeof(info))))
 	if r1 == 0 {
 		if e1 != ERROR_SUCCESS {
 			return e1
