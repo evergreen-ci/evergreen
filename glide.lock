@@ -25,8 +25,10 @@ imports:
       - v1
   - name: github.com/codegangsta/inject
     version: 37d7f8432a3e684eef9b2edece76bdfa6ac85b39
-  - name: github.com/fsouza/go-dockerclient
-    version: 933433faa3e1c0bbc825b251143f8e77affbf797
+  - name: github.com/docker/docker
+    version: f7d09a0a9bd626782e63e7295ca87690f26a1fb4
+  - name: github.com/docker/go-connections
+    version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
   - name: github.com/gorilla/context
     version: 50c25fb3b2b3b3cc724e9b6ac75fb44b3bccd0da
   - name: github.com/gorilla/mux
