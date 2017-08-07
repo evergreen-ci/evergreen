@@ -19,6 +19,7 @@ import:
   - package: github.com/codegangsta/inject
   - package: github.com/docker/docker
   - package: github.com/docker/go-connections
+  - package: github.com/Microsoft/go-winio
   - package: github.com/gorilla/context
   - package: github.com/gorilla/mux
   - package: github.com/gorilla/securecookie
