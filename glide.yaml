@@ -58,3 +58,4 @@ import:
       - compute
   - package: github.com/vmware/govmomi
   - package: golang.org/x/oauth2
+  - package: golang.org/x/sys/windows

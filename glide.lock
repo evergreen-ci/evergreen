@@ -112,3 +112,5 @@ imports:
     version: 2eadc60de1af9cf30d3c8ca9193813b1f0497f01
   - name: golang.org/x/oauth2
     version: f047394b6d14284165300fd82dad67edb3a4d7f6
+  - name: golang.org/x/sys/windows
+    version: d8f5ea21b9295e315e612b4bcf4bedea93454d4d
