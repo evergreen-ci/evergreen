@@ -164,6 +164,7 @@ type TaskRunnerConfig struct {
 type CloudProviders struct {
 	AWS          AWSConfig          `yaml:"aws"`
 	DigitalOcean DigitalOceanConfig `yaml:"digitalocean"`
+	Docker       DockerConfig       `yaml:"docker"`
 	GCE          GCEConfig          `yaml:"gce"`
 	OpenStack    OpenStackConfig    `yaml:"openstack"`
 	VSphere      VSphereConfig      `yaml:"vsphere"`
@@ -179,6 +180,11 @@ type AWSConfig struct {
 type DigitalOceanConfig struct {
 	ClientId string `yaml:"client_id"`
 	Key      string `yaml:"key"`
+}
+
+// DockerConfig stores auth info for Docker.
+type DockerConfig struct {
+	APIVersion string `yaml:"api_version"`
 }
 
 // OpenStackConfig stores auth info for Linaro using Identity V3. All fields required.
