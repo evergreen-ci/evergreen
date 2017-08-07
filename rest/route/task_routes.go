@@ -99,6 +99,22 @@ func getTasksByProjectAndCommitRouteManager(route string, version int) *RouteMan
 	return &taskRoute
 }
 
+func getTaskAbortManager(route string, version int) *RouteManager {
+	t := &taskAbortHandler{}
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        evergreen.MethodPost,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    t.Handler(),
+			},
+		},
+	}
+}
+
 // taskByProjectHandler implements the GET /projects/{project_id}/revisions/{commit_hash}/tasks.
 // It fetches the associated tasks and returns them to the user.
 type tasksByProjectHandler struct {
@@ -536,4 +552,48 @@ func (tep *TaskExecutionPatchHandler) Execute(ctx context.Context, sc data.Conne
 
 func (tep *TaskExecutionPatchHandler) Handler() RequestHandler {
 	return &TaskExecutionPatchHandler{}
+}
+
+type taskAbortHandler struct {
+	taskId string
+}
+
+func (t *taskAbortHandler) Handler() RequestHandler {
+	return &taskAbortHandler{}
+}
+
+func (t *taskAbortHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	vars := mux.Vars(r)
+	t.taskId = vars["task_id"]
+	return nil
+}
+
+func (t *taskAbortHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
+	err := sc.AbortTask(t.taskId, GetUser(ctx).Id)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Abort error")
+		}
+		return ResponseData{}, err
+	}
+
+	foundTask, err := sc.FindTaskById(t.taskId)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "Database error")
+		}
+		return ResponseData{}, err
+	}
+	taskModel := &model.APITask{}
+	err = taskModel.BuildFromService(foundTask)
+	if err != nil {
+		if _, ok := err.(*rest.APIError); !ok {
+			err = errors.Wrap(err, "API model error")
+		}
+		return ResponseData{}, err
+	}
+
+	return ResponseData{
+		Result: []model.Model{taskModel},
+	}, nil
 }

@@ -249,7 +249,7 @@ func (s *BuildAbortSuite) TestAbortFail() {
 
 	rm := getBuildAbortRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
-	s.sc.FailOnAbort = true
+	s.sc.MockBuildConnector.FailOnAbort = true
 	_, err := rm.Methods[0].Execute(ctx, s.sc)
 
 	s.Error(err)

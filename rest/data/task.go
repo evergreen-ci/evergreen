@@ -154,6 +154,10 @@ func (tc *DBTaskConnector) ResetTask(taskId, username string, proj *serviceModel
 		"Reset task error")
 }
 
+func (tc *DBTaskConnector) AbortTask(taskId string, user string) error {
+	return serviceModel.AbortTask(taskId, user)
+}
+
 // FindCostTaskByProject queries the backing database for tasks of a project
 // that finishes in the given time range.
 func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, starttime,
@@ -170,8 +174,10 @@ func (tc *DBTaskConnector) FindCostTaskByProject(project, taskId string, startti
 // MockTaskConnector stores a cached set of tasks that are queried against by the
 // implementations of the Connector interface's Task related functions.
 type MockTaskConnector struct {
-	CachedTasks []task.Task
-	StoredError error
+	CachedTasks   []task.Task
+	CachedAborted map[string]string
+	StoredError   error
+	FailOnAbort   bool
 }
 
 // FindTaskById provides a mock implementation of the functions for the
@@ -337,4 +343,12 @@ func (mtc *MockTaskConnector) FindCostTaskByProject(project, taskId string,
 		}
 	}
 	return tasks, nil
+}
+
+func (tc *MockTaskConnector) AbortTask(taskId, user string) error {
+	if tc.FailOnAbort {
+		return errors.New("manufactured fail")
+	}
+	tc.CachedAborted[taskId] = user
+	return nil
 }
