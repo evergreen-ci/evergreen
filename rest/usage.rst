@@ -32,7 +32,8 @@ query, access to them is populated in a 'Links' HTTP header. This header has the
 ::
 
  "Links" : <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="next"
-<http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="prev"
+
+ <http://<EVERGREEN_HOST>/rest/v2/path/to/resource?start_at=<pagination_key>&limit=<objects_per_page>; rel="prev"
 
 Dates
 -----
@@ -260,6 +261,15 @@ Restart A Task
 
  Restarts the task of the given ID. Can only be performed if the task is in progress.
 
+Abort A Task
+````````````
+
+::
+
+ POST /tasks/<task_id>/abort
+
+ Abort the task of the given ID. Can only be performed if the task is in progress.
+
 Change A Task's Execution Status
 ````````````````````````````````
 
@@ -267,8 +277,7 @@ Change A Task's Execution Status
 
   PATCH /tasks/<task_id> 
 
-  Change the current execution status of a task. Accepts a JSON body with the new 
-task status to be set. 
+  Change the current execution status of a task. Accepts a JSON body with the new task status to be set.
 
 .. list-table:: **Accepted Parameters**
    :widths: 25 10 55
@@ -519,7 +528,7 @@ Objects
         - Description of the patch
       * - project_id
         - string
-        - Name of the project 
+        - Name of the project
       * - branch
         - string
         - The branch on which the patch was initiated
@@ -597,6 +606,29 @@ Fetch Patches By Project
         - int
         - Optional. The number of patches to be returned per page of pagination. Defaults to 100
 
+Fetch Patches By User
+`````````````````````
+
+::
+
+ GET /users/<user_id>/patches
+
+ Returns a paginated list of all patches associated with a specific user
+
+.. list-table:: **Parameters**
+:widths: 25 10 55
+   :header-rows: 1
+
+         * - Name
+           - Type
+           - Description
+         * - start_at
+           - string
+           - Optional. The create_time of the patch to start at in the pagination. Defaults to now
+         * - limit
+           - int
+           - Optional. The number of patches to be returned per page of pagination. Defaults to 100
+
 Fetch Patch By Id
 `````````````````
 
@@ -629,9 +661,9 @@ Change Patch Status
 
 ::
 
- POST /patches/<patch_id>
+ PATCH /patches/<patch_id>
 
- Sets the priority and status of a single patch to the input values
+ Sets the priority and activation status of a single patch to the input values
 
 .. list-table:: **Parameters**
    :widths: 25 10 55
@@ -644,8 +676,8 @@ Change Patch Status
         - int
         - Optional. The priority to set the patch to
       * - status
-        - string
-        - Optional. The status to set the patch to
+        - bool
+        - Optional. The activation status to set the patch to
 
 Build
 -----
@@ -744,6 +776,38 @@ Abort a Build
 
  Aborts a single build using its ID then returns the build
 
+Restart a Build
+```````````````
+
+::
+
+ POST /builds/<build_id>/restart
+
+ Restarts a single build using its ID then returns the build
+
+Change Build Status
+```````````````````
+
+::
+
+ PATCH /builds/<build_id>
+
+ Sets the priority and activation status of a single build to the input values
+
+.. list-table:: **Parameters**
+:widths: 25 10 55
+   :header-rows: 1
+
+         * - Name
+           - Type
+           - Description
+         * - priority
+           - int
+           - Optional. The priority to set the build to
+         * - status
+           - bool
+           - Optional. The activation status to set the build to
+
 Version
 -------
 
@@ -831,6 +895,104 @@ Get Builds From A Version
  GET /versions/<version_id>/builds
 
  Fetches a list of builds associated with a version
+
+Project
+-------
+
+ A project corresponds to a single branch of a repository.
+
+Objects
+~~~~~~~
+
+.. list-table:: **Project**
+:widths: 25 10 55
+   :header-rows: 1
+
+         * - Name
+           - Type
+           - Description
+         * - batch_time
+           - int
+           - Unique identifier of a specific patch
+         * - branch_name
+           - string
+           - Name of branch
+         * - display_name
+           - string
+           - Project name displayed to users
+         * - enabled
+           - bool
+           - Whether evergreen is enabled for this project
+         * - identifier
+           - string
+           - Internal evergreen identifier for project
+         * - owner_name
+           - string
+           - Owner of project repository
+         * - private
+           - bool
+           - A user must be logged in to view private projects
+         * - remote_path
+           - string
+           - Path to config file in repo
+         * - repo_name
+           - string
+           - Repository name
+         * - tracked
+           - bool
+           - Whether the project is discoverable in the UI
+         * - alert_settings
+           - map[string][]alertConfig
+           - Map of alert triggers to list of corresponding configs
+         * - deactivate_previous
+           - bool
+           - List of identifiers of tasks used in this patch
+         * - admins
+           - []string
+           - Usernames of project admins
+         * - vars
+           - map[string][string]
+           - Map of project variables
+
+.. list-table:: **Alert Config**
+:widths: 25 10 55
+   :header-rows: 1
+
+         * - Name
+           - Type
+           - Description
+         * - provider
+           - string
+           - Name of alert provider
+         * - settings
+           - map[string]string
+           - Settings defined for this alert config
+
+Endpoints
+~~~~~~~~~
+
+Fetch all Projects
+``````````````````
+
+::
+
+ GET /projects
+
+ Returns a paginated list of all projects
+
+.. list-table:: **Parameters**
+:widths: 25 10 55
+   :header-rows: 1
+
+         * - Name
+           - Type
+           - Description
+         * - start_at
+           - string
+           - Optional. The id of the project to start at in the pagination. Defaults to empty string
+         * - limit
+           - int
+           - Optional. The number of projects to be returned per page of pagination. Defaults to 100
 
 DistroCost
 ----------

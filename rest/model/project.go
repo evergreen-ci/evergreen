@@ -16,7 +16,6 @@ type APIProject struct {
 	Owner              APIString                `json:"owner_name"`
 	Private            bool                     `json:"private"`
 	RemotePath         APIString                `json:"remote_path"`
-	RepoKind           APIString                `json:"repo_kind"`
 	Repo               APIString                `json:"repo_name"`
 	Tracked            bool                     `json:"tracked"`
 	AlertSettings      map[string][]alertConfig `json:"alert_settings"`
@@ -43,7 +42,6 @@ func (apiProject *APIProject) BuildFromService(p interface{}) error {
 	apiProject.Owner = APIString(v.Owner)
 	apiProject.Private = v.Private
 	apiProject.RemotePath = APIString(v.RemotePath)
-	apiProject.RepoKind = APIString(v.RepoKind)
 	apiProject.Repo = APIString(v.Repo)
 	apiProject.Tracked = v.Tracked
 
