@@ -245,6 +245,7 @@ vendor-clean:
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/net/
 	rm -rf vendor/github.com/mongodb/grip/vendor/golang.org/x/oauth2/
 	rm -rf vendor/github.com/docker/docker/vendor/github.com/docker/go-connections/
+	rm -rf vendor/github.com/docker/docker/vendor/github.com/Microsoft/go-winio
 change-go-version:
 	rm -rf $(buildDir)/make-vendor $(buildDir)/render-gopath
 	@$(MAKE) $(makeArgs) vendor > /dev/null 2>&1
