@@ -80,7 +80,7 @@ type Connector interface {
 
 	// FindHostsById is a method to find a sorted list of hosts given an ID to
 	// start from.
-	FindHostsById(string, string, int, int) ([]host.Host, error)
+	FindHostsById(string, string, string, int, int) ([]host.Host, error)
 	FindHostById(string) (*host.Host, error)
 
 	// NewIntentHost is a method to insert an intent host given a distro and the name of a saved public key

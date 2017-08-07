@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	defaultLimit = 100
+	defaultLimit      = 100
+	NextPageHeaderKey = "Link"
 )
 
 var linkMatcher = regexp.MustCompile(`^\<(\S+)\>; rel=\"(\S+)\"`)
@@ -230,6 +231,6 @@ func (pm *PaginationMetadata) MakeHeader(w http.ResponseWriter, apiURL, route st
 			return err
 		}
 	}
-	w.Header().Set("Link", b.String())
+	w.Header().Set(NextPageHeaderKey, b.String())
 	return nil
 }

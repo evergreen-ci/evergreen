@@ -19,6 +19,40 @@ func (*communicatorImpl) GetHostByID() {
 	return
 }
 
+// GetHostsByUser will return a slice of all hosts spawned by the given user
+// The API route is paginated, but we will add all pages to a local slice because
+// there is an application-defined limit on the number of hosts a user can have
+func (c *communicatorImpl) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
+	info := requestInfo{
+		method:  get,
+		path:    fmt.Sprintf("/users/%s/hosts", user),
+		version: apiVersion2,
+	}
+
+	p, err := newPaginatorHelper(&info, c)
+	if err != nil {
+		return nil, err
+	}
+
+	hosts := []*model.APIHost{}
+	for p.hasMore() {
+		resp, err := p.getNextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		temp := []*model.APIHost{}
+		err = util.ReadJSONInto(resp.Body, &temp)
+		if err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+
+		hosts = append(hosts, temp...)
+	}
+	return hosts, nil
+}
+
 // SetHostStatus ...
 func (*communicatorImpl) SetHostStatus() {
 	return
@@ -30,7 +64,7 @@ func (*communicatorImpl) SetHostStatuses() {
 }
 
 // CreateSpawnHost will insert an intent host into the DB that will be spawned later by the runner
-func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.SpawnHost, error) {
+func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.APIHost, error) {
 	spawnRequest := &model.HostPostRequest{
 		DistroID: distroID,
 		KeyName:  keyName,
@@ -46,17 +80,47 @@ func (c *communicatorImpl) CreateSpawnHost(ctx context.Context, distroID string,
 		return nil, err
 	}
 
-	spawnHostResp := model.SpawnHost{}
 	defer resp.Body.Close()
+	spawnHostResp := model.APIHost{}
 	if err = util.ReadJSONInto(resp.Body, &spawnHostResp); err != nil {
 		return nil, fmt.Errorf("Error forming response body response: %v", err)
 	}
 	return &spawnHostResp, nil
 }
 
-// GetSpawnHosts ...
-func (*communicatorImpl) GetSpawnHosts() {
-	return
+// GetHosts gathers all active hosts and invokes a function on them
+func (c *communicatorImpl) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
+	info := requestInfo{
+		method:  get,
+		path:    "hosts",
+		version: apiVersion2,
+	}
+
+	p, err := newPaginatorHelper(&info, c)
+	if err != nil {
+		return err
+	}
+
+	for p.hasMore() {
+		hosts := []*model.APIHost{}
+		resp, err := p.getNextPage(ctx)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		err = util.ReadJSONInto(resp.Body, &hosts)
+		if err != nil {
+			return err
+		}
+
+		err = f(hosts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // GetTaskByID ...

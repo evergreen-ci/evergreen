@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 
+	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
 	"golang.org/x/net/context"
 )
@@ -33,6 +34,7 @@ type HostCreateCommand struct {
 	PubKey     string   `short:"k" long:"key" description:"name or value of the public key to use" required:"true"`
 }
 
+// Execute will run the evergreen host create command
 func (cmd *HostCreateCommand) Execute(_ []string) error {
 
 	client, settings, err := getAPIV2Client(cmd.GlobalOpts)
@@ -51,7 +53,7 @@ func (cmd *HostCreateCommand) Execute(_ []string) error {
 	if err != nil {
 		return err
 	}
-	grip.Infof("Spawn host created with ID %s. Visit the hosts page in Evergreen to check on its status.", host.HostID)
+	grip.Infof("Spawn host created with ID %s. Visit the hosts page in Evergreen to check on its status.", host.Id)
 
 	return nil
 }
@@ -64,7 +66,44 @@ type HostListCommand struct {
 }
 
 func (cmd *HostListCommand) Execute(_ []string) error {
-	return errors.New("not implemented")
+	if cmd.All == cmd.Mine {
+		return errors.New("Must specify exactly one of --all or --mine")
+	}
+
+	client, settings, err := getAPIV2Client(cmd.GlobalOpts)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	if cmd.Mine {
+		var hosts []*model.APIHost
+		client.SetAPIUser(settings.User)
+		client.SetAPIKey(settings.APIKey)
+
+		hosts, err = client.GetHostsByUser(ctx, settings.User)
+		if err != nil {
+			return err
+		}
+
+		grip.Infof("%d hosts started by '%s':", len(hosts), settings.User)
+		printHosts(hosts)
+
+	} else if cmd.All {
+		err = client.GetHosts(ctx, printHosts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func printHosts(hosts []*model.APIHost) error {
+	for _, h := range hosts {
+		grip.Infof("ID: %s; Distro: %s; Status: %s; Host name: %s; User: %s", h.Id, h.Distro.Id, h.Status, h.HostURL, h.User)
+	}
+	return nil
 }
 
 // HostStatusCommand is the subcommand to return the status of a host
@@ -73,6 +112,7 @@ type HostStatusCommand struct {
 	HostID     string   `short:"h" long:"host" description:"terminates the specified host" required:"true"`
 }
 
+// Execute will...
 func (cmd *HostStatusCommand) Execute(_ []string) error {
 	return errors.New("not implemented")
 }
@@ -83,6 +123,7 @@ type HostTerminateCommand struct {
 	HostID     string   `short:"h" long:"host" description:"terminates the specified host" required:"true"`
 }
 
+// Execute will...
 func (cmd *HostTerminateCommand) Execute(_ []string) error {
 	return errors.New("not implemented")
 }

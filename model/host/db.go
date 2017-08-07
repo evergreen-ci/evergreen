@@ -384,8 +384,8 @@ func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
 	)
 }
 
-func GetHostsByFromIdWithStatus(id, status string, limit, sortDir int) ([]Host, error) {
-	pipeline := geHostsFromIdWithStatusPipeline(id, status, limit, sortDir)
+func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]Host, error) {
+	pipeline := geHostsFromIdWithStatusPipeline(id, status, user, limit, sortDir)
 	hostRes := []Host{}
 	err := db.Aggregate(Collection, pipeline, &hostRes)
 	if err != nil {
@@ -394,7 +394,7 @@ func GetHostsByFromIdWithStatus(id, status string, limit, sortDir int) ([]Host, 
 	return hostRes, nil
 }
 
-func geHostsFromIdWithStatusPipeline(id, status string, limit, sortDir int) []bson.M {
+func geHostsFromIdWithStatusPipeline(id, status, user string, limit, sortDir int) []bson.M {
 	sortOperator := "$gte"
 	if sortDir < 0 {
 		sortOperator = "$lte"
@@ -407,6 +407,17 @@ func geHostsFromIdWithStatusPipeline(id, status string, limit, sortDir int) []bs
 			"$match": bson.M{StatusKey: status},
 		}
 		pipeline = append(pipeline, statusMatch)
+	} else {
+		statusMatch := bson.M{
+			"$match": bson.M{StatusKey: bson.M{"$in": evergreen.UphostStatus}},
+		}
+		pipeline = append(pipeline, statusMatch)
+	}
+	if user != "" {
+		userMatch := bson.M{
+			"$match": bson.M{StartedByKey: user},
+		}
+		pipeline = append(pipeline, userMatch)
 	}
 	if limit > 0 {
 		limitStage := bson.M{

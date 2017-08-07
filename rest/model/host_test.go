@@ -25,7 +25,7 @@ func TestHostBuildFromService(t *testing.T) {
 			{
 				ah: APIHost{
 					Id: APIString("testId"),
-					Distro: distroInfo{
+					Distro: DistroInfo{
 						Id:       APIString("testDistroId"),
 						Provider: APIString("testDistroProvider"),
 					},

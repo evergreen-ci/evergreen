@@ -3,11 +3,13 @@ package data
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -17,14 +19,24 @@ type HostConnectorSuite struct {
 	suite.Suite
 }
 
+const testUser = "user1"
+
 func TestHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.ctx = &DBConnector{}
 	testutil.ConfigureIntegrationTest(t, testConfig, "TestHostConnectorSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 
-	host1 := &host.Host{Id: "host1"}
-	host2 := &host.Host{Id: "host2"}
+	host1 := &host.Host{
+		Id:        "host1",
+		StartedBy: testUser,
+		Status:    evergreen.HostRunning,
+	}
+	host2 := &host.Host{
+		Id:        "host2",
+		StartedBy: "user2",
+		Status:    evergreen.HostTerminated,
+	}
 
 	assert.NoError(t, host1.Insert())
 	assert.NoError(t, host2.Insert())
@@ -34,9 +46,18 @@ func TestHostConnectorSuite(t *testing.T) {
 func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
-		CachedHosts: []host.Host{{Id: "host1"}, {Id: "host2"}},
+		CachedHosts: []host.Host{{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning},
+			{Id: "host2", StartedBy: "user2", Status: evergreen.HostRunning}},
 	}}
 	suite.Run(t, s)
+}
+
+func (s *HostConnectorSuite) TearDownSuite() {
+	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	session, _, _ := db.GetGlobalSessionFactory().GetSession()
+	if session != nil {
+		session.DB(testConfig.Database.DB).DropDatabase()
+	}
 }
 
 func (s *HostConnectorSuite) TestFindByIdFirst() {
@@ -59,25 +80,46 @@ func (s *HostConnectorSuite) TestFindByIdFail() {
 	s.Nil(h)
 }
 
+func (s *HostConnectorSuite) TestFindByUser() {
+	hosts, err := s.ctx.FindHostsById("", "", testUser, 100, 1)
+	s.NoError(err)
+	s.NotNil(hosts)
+	for _, h := range hosts {
+		s.Equal(testUser, h.StartedBy)
+	}
+}
+
+func (s *HostConnectorSuite) TestStatusFiltering() {
+	hosts, err := s.ctx.FindHostsById("", "", "", 100, 1)
+	s.NoError(err)
+	s.NotNil(hosts)
+	for _, h := range hosts {
+		statusFound := false
+		for _, status := range evergreen.UphostStatus {
+			if h.Status == status {
+				statusFound = true
+			}
+		}
+		s.True(statusFound)
+	}
+}
+
 func (s *HostConnectorSuite) TestSpawnHost() {
-	const testDistroID = "TestSpawnHostDistro"
+	testDistroID := util.RandomString()
 	const testPublicKey = "ssh-rsa 1234567890abcdef"
 	const testPublicKeyName = "testPubKey"
-	const testUserId = "TestSpawnHostUser"
-	const testUserApiKey = "testApiKey"
+	const testUserID = "TestSpawnHostUser"
+	const testUserAPIKey = "testApiKey"
 
 	testutil.ConfigureIntegrationTest(s.T(), testConfig, "TestSpawnHost")
-	session, _, _ := db.GetGlobalSessionFactory().GetSession()
-	s.NotNil(session)
-	s.NoError(session.DB(testConfig.Database.DB).DropDatabase())
 	distro := &distro.Distro{
 		Id:           testDistroID,
 		SpawnAllowed: true,
 	}
 	s.NoError(distro.Insert())
 	testUser := &user.DBUser{
-		Id:     testUserId,
-		APIKey: testUserApiKey,
+		Id:     testUserID,
+		APIKey: testUserAPIKey,
 	}
 	testUser.PubKeys = append(testUser.PubKeys, user.PubKey{
 		Name: testPublicKeyName,
@@ -89,9 +131,9 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, testUser)
 	s.NotNil(intentHost)
 	s.NoError(err)
-	foundHost, err := host.FindOne(host.All)
+	foundHost, err := host.FindOne(host.ById(intentHost.Id))
 	s.NotNil(foundHost)
 	s.NoError(err)
 	s.True(foundHost.UserHost)
-	s.Equal(testUserId, foundHost.StartedBy)
+	s.Equal(testUserID, foundHost.StartedBy)
 }

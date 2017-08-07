@@ -101,13 +101,14 @@ type Communicator interface {
 	//
 	GetAllHosts()
 	GetHostByID()
+	GetHostsByUser(ctx context.Context, user string) ([]*restmodel.APIHost, error)
 	SetHostStatus()
 	SetHostStatuses()
 
 	// Spawnhost methods
 	//
-	CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*restmodel.SpawnHost, error)
-	GetSpawnHosts()
+	CreateSpawnHost(context.Context, string, string) (*restmodel.APIHost, error)
+	GetHosts(context.Context, func([]*restmodel.APIHost) error) error
 
 	// Task methods
 	//

@@ -34,6 +34,7 @@ func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 		"/hosts/{host_id}":                                     getHostIDRouteManager,
 		"/patches/{patch_id}":                                  getPatchByIdManager,
 		"/users/{user_id}/patches":                             getPatchesByUserManager,
+		"/users/{user_id}/hosts":                               getHostsByUserManager,
 		"/patches/{patch_id}/abort":                            getPatchAbortManager,
 		"/patches/{patch_id}/restart":                          getPatchRestartManager,
 		"/projects":                                            getProjectRouteManager,

@@ -64,8 +64,28 @@ func getHostIDRouteManager(route string, version int) *RouteManager {
 	return &hostRoute
 }
 
+func getHostsByUserManager(route string, version int) *RouteManager {
+	h := &hostsByUserHandler{}
+	return &RouteManager{
+		Route:   route,
+		Version: version,
+		Methods: []MethodHandler{
+			{
+				PrefetchFunctions: []PrefetchFunc{PrefetchUser},
+				MethodType:        evergreen.MethodGet,
+				Authenticator:     &RequireUserAuthenticator{},
+				RequestHandler:    h.Handler(),
+			},
+		},
+	}
+}
+
 type hostIDGetHandler struct {
 	hostId string
+}
+
+type hostsByUserHandler struct {
+	PaginationExecutor
 }
 
 func (high *hostIDGetHandler) Handler() RequestHandler {
@@ -116,6 +136,7 @@ func (hgh *hostGetHandler) Handler() RequestHandler {
 
 type hostGetArgs struct {
 	status string
+	user   string
 }
 
 func (hgh *hostGetHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
@@ -135,7 +156,7 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	if !ok {
 		panic("Wrong args type passed in for host paginator")
 	}
-	hosts, err := sc.FindHostsById(key, hpArgs.status, limit*2, 1)
+	hosts, err := sc.FindHostsById(key, hpArgs.status, hpArgs.user, limit*2, 1)
 	if err != nil {
 		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
@@ -145,8 +166,8 @@ func hostPaginator(key string, limit int, args interface{}, sc data.Connector) (
 	nextPage := makeNextHostsPage(hosts, limit)
 
 	// Make the previous page
-	prevHosts, err := sc.FindHostsById(key, hpArgs.status, limit, -1)
-	if err != nil {
+	prevHosts, err := sc.FindHostsById(key, hpArgs.status, hpArgs.user, limit, -1)
+	if err != nil && hosts == nil {
 		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			return []model.Model{}, nil, errors.Wrap(err, "Database error")
 		}
@@ -246,6 +267,24 @@ func makePrevHostsPage(hosts []host.Host) *Page {
 	return prevPage
 }
 
+// Handler for the GET /users/{user_id}/hosts route to return a user's hosts
+func (h *hostsByUserHandler) Handler() RequestHandler {
+	return &hostsByUserHandler{PaginationExecutor{
+		KeyQueryParam:   "host_id",
+		LimitQueryParam: "limit",
+		Paginator:       hostPaginator,
+		Args:            hostGetArgs{},
+	}}
+}
+
+func (h *hostsByUserHandler) ParseAndValidate(ctx context.Context, r *http.Request) error {
+	h.Args = hostGetArgs{
+		status: r.URL.Query().Get("status"),
+		user:   mux.Vars(r)["user_id"],
+	}
+	return h.PaginationExecutor.ParseAndValidate(ctx, r)
+}
+
 func (hph *hostPostHandler) Handler() RequestHandler {
 	return &hostPostHandler{}
 }
@@ -259,7 +298,6 @@ func (hph *hostPostHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 }
 
 func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	hostModel := &model.SpawnHost{}
 	user := MustHaveUser(ctx)
 
 	intentHost, err := sc.NewIntentHost(hph.Distro, hph.KeyName, user)
@@ -270,6 +308,7 @@ func (hph *hostPostHandler) Execute(ctx context.Context, sc data.Connector) (Res
 		return ResponseData{}, err
 	}
 
+	hostModel := &model.APIHost{}
 	err = hostModel.BuildFromService(intentHost)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {

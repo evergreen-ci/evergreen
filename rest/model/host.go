@@ -1,7 +1,6 @@
 package model
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -12,13 +11,14 @@ import (
 type APIHost struct {
 	Id          APIString  `json:"host_id"`
 	HostURL     APIString  `json:"host_url"`
-	Distro      distroInfo `json:"distro"`
+	Distro      DistroInfo `json:"distro"`
 	Provisioned bool       `json:"provisioned"`
 	StartedBy   APIString  `json:"started_by"`
 	Type        APIString  `json:"host_type"`
 	User        APIString  `json:"user"`
 	Status      APIString  `json:"status"`
 	RunningTask taskInfo   `json:"running_task"`
+	UserHost    bool       `json:"user_host"`
 }
 
 // HostPostRequest is a struct that holds the format of a POST request to /hosts
@@ -27,24 +27,7 @@ type HostPostRequest struct {
 	KeyName  string `json:"keyname"`
 }
 
-// SpawnHost is many fields from the host.Host object that is returned in the response
-// to POST /hosts
-type SpawnHost struct {
-	HostID         APIString `json:"host_id"`
-	DistroID       APIString `json:"distro_id"`
-	Type           APIString `json:"host_type"`
-	ExpirationTime APITime   `json:"expiration_time"`
-	CreationTime   APITime   `json:"creation_time"`
-	Status         APIString `json:"status"`
-	StartedBy      APIString `json:"started_by"`
-	Tag            APIString `json:"tag"`
-	Project        APIString `json:"project"`
-	Zone           APIString `json:"zone"`
-	UserHost       bool      `json:"user_host"`
-	Provisioned    bool      `json:"provisioned"`
-}
-
-type distroInfo struct {
+type DistroInfo struct {
 	Id       APIString `json:"distro_id"`
 	Provider APIString `json:"provider"`
 }
@@ -62,20 +45,8 @@ type taskInfo struct {
 // a service layer task, which are each loaded into the data structure.
 func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
-	case host.Host:
-		apiHost.Id = APIString(v.Id)
-		apiHost.HostURL = APIString(v.Host)
-		apiHost.Provisioned = v.Provisioned
-		apiHost.StartedBy = APIString(v.StartedBy)
-		apiHost.Type = APIString(v.InstanceType)
-		apiHost.User = APIString(v.User)
-		apiHost.Status = APIString(v.Status)
-
-		di := distroInfo{
-			Id:       APIString(v.Distro.Id),
-			Provider: APIString(v.Distro.Provider),
-		}
-		apiHost.Distro = di
+	case host.Host, *host.Host:
+		return apiHost.buildFromHostStruct(h)
 	case task.Task:
 		rt := taskInfo{
 			Id:           APIString(v.Id),
@@ -91,6 +62,34 @@ func (apiHost *APIHost) BuildFromService(h interface{}) error {
 	return nil
 }
 
+func (apiHost *APIHost) buildFromHostStruct(h interface{}) error {
+	var v *host.Host
+	switch h.(type) {
+	case host.Host:
+		t := h.(host.Host)
+		v = &t
+	case *host.Host:
+		v = h.(*host.Host)
+	default:
+		return fmt.Errorf("incorrect type when fetching converting host type")
+	}
+	apiHost.Id = APIString(v.Id)
+	apiHost.HostURL = APIString(v.Host)
+	apiHost.Provisioned = v.Provisioned
+	apiHost.StartedBy = APIString(v.StartedBy)
+	apiHost.Type = APIString(v.InstanceType)
+	apiHost.User = APIString(v.User)
+	apiHost.Status = APIString(v.Status)
+	apiHost.UserHost = v.UserHost
+
+	di := DistroInfo{
+		Id:       APIString(v.Distro.Id),
+		Provider: APIString(v.Distro.Provider),
+	}
+	apiHost.Distro = di
+	return nil
+}
+
 // ToService returns a service layer host using the data from the APIHost.
 func (apiHost *APIHost) ToService() (interface{}, error) {
 	h := host.Host{
@@ -102,29 +101,4 @@ func (apiHost *APIHost) ToService() (interface{}, error) {
 		Status:       string(apiHost.Status),
 	}
 	return interface{}(h), nil
-}
-
-// BuildFromService takes the intent host passed in by the service and creates a spawnHost struct
-func (spawnHost *SpawnHost) BuildFromService(h interface{}) error {
-	host := h.(*host.Host)
-
-	spawnHost.HostID = APIString(host.Id)
-	spawnHost.DistroID = APIString(host.Distro.Id)
-	spawnHost.Type = APIString(host.Provider)
-	spawnHost.ExpirationTime = APITime(host.ExpirationTime)
-	spawnHost.CreationTime = APITime(host.CreationTime)
-	spawnHost.Status = APIString(host.Status)
-	spawnHost.StartedBy = APIString(host.StartedBy)
-	spawnHost.Tag = APIString(host.Tag)
-	spawnHost.Project = APIString(host.Project)
-	spawnHost.Zone = APIString(host.Zone)
-	spawnHost.UserHost = host.UserHost
-	spawnHost.Provisioned = host.Provisioned
-
-	return nil
-}
-
-// ToService extracts the intent host part of a spawn host
-func (spawnHost *SpawnHost) ToService() (interface{}, error) {
-	return nil, errors.New("ToService not implemented for /hosts")
 }

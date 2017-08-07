@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/artifact"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -221,6 +223,14 @@ func (*Mock) GetHostByID() {
 	return
 }
 
+// GetHostsByUser will return an array with a single mock host
+func (c *Mock) GetHostsByUser(ctx context.Context, user string) ([]*model.APIHost, error) {
+	hosts := make([]*model.APIHost, 1)
+	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key")
+	hosts = append(hosts, host)
+	return hosts, nil
+}
+
 // SetHostStatus ...
 func (*Mock) SetHostStatus() {
 	return
@@ -232,27 +242,33 @@ func (*Mock) SetHostStatuses() {
 }
 
 // CreateSpawnHost will return a mock host that would have been intended
-func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.SpawnHost, error) {
-	mockHost := &model.SpawnHost{
-		HostID:         model.APIString("mock_host_id"),
-		DistroID:       model.APIString("mock_distro_id"),
-		Type:           model.APIString("mock_type"),
-		ExpirationTime: model.APITime(time.Now()),
-		CreationTime:   model.APITime(time.Now()),
-		Status:         model.APIString("starting"),
-		StartedBy:      model.APIString("mock_user"),
-		Tag:            model.APIString("mock_tag"),
-		Project:        model.APIString("mock_project"),
-		Zone:           model.APIString("mock_zone"),
-		UserHost:       true,
-		Provisioned:    true,
+func (*Mock) CreateSpawnHost(ctx context.Context, distroID string, keyName string) (*model.APIHost, error) {
+	mockHost := &model.APIHost{
+		Id:      model.APIString("mock_host_id"),
+		HostURL: model.APIString("mock_url"),
+		Distro: model.DistroInfo{
+			Id:       model.APIString(distroID),
+			Provider: mock.ProviderName,
+		},
+		Type:        model.APIString("mock_type"),
+		Status:      model.APIString(evergreen.HostUninitialized),
+		StartedBy:   model.APIString("mock_user"),
+		UserHost:    true,
+		Provisioned: false,
 	}
 	return mockHost, nil
 }
 
-// GetSpawnHosts ...
-func (*Mock) GetSpawnHosts() {
-	return
+// GetHosts will return an array with a single mock host
+func (c *Mock) GetHosts(ctx context.Context, f func([]*model.APIHost) error) error {
+	hosts := make([]*model.APIHost, 1)
+	host, _ := c.CreateSpawnHost(ctx, "mock_distro", "mock_key")
+	hosts = append(hosts, host)
+	err := f(hosts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetTaskByID ...
