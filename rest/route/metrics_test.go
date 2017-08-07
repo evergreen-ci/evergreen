@@ -80,7 +80,7 @@ func (s *TaskMetricsSuite) TestInvalidTimesAsKeyShouldError() {
 
 	for _, i := range inputs {
 		for limit := 0; limit < 20; limit++ {
-			a, b, err := s.paginator(i, limit, &taskMetricsArgs{}, s.sc)
+			a, b, err := s.paginator(i, limit, taskMetricsArgs{}, s.sc)
 			s.Len(a, 0)
 			s.Nil(b)
 			s.Error(err)
@@ -95,7 +95,7 @@ func (s *TaskMetricsSuite) TestPaginatorShouldErrorIfNoResults() {
 	// the mock errors if there isn't a matching test. the DB may
 	// not error in this case.
 
-	a, b, err := s.paginator(s.timestamp, 10, &taskMetricsArgs{}, s.sc)
+	a, b, err := s.paginator(s.timestamp, 10, taskMetricsArgs{}, s.sc)
 	s.Len(a, 0)
 	s.Nil(b)
 	s.Error(err)
@@ -103,7 +103,7 @@ func (s *TaskMetricsSuite) TestPaginatorShouldErrorIfNoResults() {
 }
 
 func (s *TaskMetricsSuite) TestPaginatorShouldReturnResultsIfDataExists() {
-	a, b, err := s.paginator(s.timestamp, 100, &taskMetricsArgs{"one"}, s.sc)
+	a, b, err := s.paginator(s.timestamp, 100, taskMetricsArgs{"one"}, s.sc)
 
 	s.True(len(a) > 1, "%d", len(a))
 	s.NotNil(b)
@@ -114,7 +114,7 @@ func (s *TaskMetricsSuite) TestPaginatorShouldReturnResultsIfDataExists() {
 }
 
 func (s *TaskMetricsSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() {
-	a, b, err := s.paginator(s.timestamp, 10, &taskMetricsArgs{"two"}, s.sc)
+	a, b, err := s.paginator(s.timestamp, 10, taskMetricsArgs{"two"}, s.sc)
 
 	s.True(len(a) == 0)
 	s.NotNil(b)
@@ -126,7 +126,7 @@ func (s *TaskMetricsSuite) TestPaginatorShouldReturnEmptyResultsIfDataIsEmpty() 
 
 func (s *TaskMetricsSuite) TestPaginatorShouldHavePreviousPaginatedResultsWithLaterTimeStamp() {
 	for i := 1; i < 3; i++ {
-		a, b, err := s.paginator(s.timestamp, i, &taskMetricsArgs{"one"}, s.sc)
+		a, b, err := s.paginator(s.timestamp, i, taskMetricsArgs{"one"}, s.sc)
 
 		s.True(len(a) == i, "%d", len(a))
 		s.NoError(err, "%+v", err)
