@@ -34,8 +34,8 @@ distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templa
 distContents := $(clientBuildDir) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
-srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" )
-testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*")
+srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
+testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
 ldFlags := "-w -s -X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
 # static rules for rule for building artifacts

@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"time"
 
@@ -17,7 +15,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"golang.org/x/net/context"
-	"gopkg.in/tylerb/graceful.v1"
 )
 
 var (
@@ -56,23 +53,6 @@ func main() {
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	tlsConfig, err := util.MakeTlsConfig(settings.Api.HttpsCert, settings.Api.HttpsKey)
-	if err != nil {
-		grip.EmergencyFatalf("Failed to make TLS config: %+v", err)
-	}
-
-	nonSSL, err := service.GetListener(settings.Api.HttpListenAddr)
-	if err != nil {
-		grip.EmergencyFatalf("Failed to get HTTP listener: %+v", err)
-	}
-
-	ssl, err := service.GetTLSListener(settings.Api.HttpsListenAddr, tlsConfig)
-	if err != nil {
-		grip.EmergencyFatalf("Failed to get HTTPS listener: %+v", err)
-	}
-
-	// Start SSL and non-SSL servers in independent goroutines, but exit
-	// the process if either one fails
 	as, err := service.NewAPIServer(settings)
 	if err != nil {
 		grip.EmergencyFatalf("Failed to create API server: %+v", err)
@@ -83,46 +63,5 @@ func main() {
 		grip.EmergencyFatalf("Failed to get API route handlers: %+v", err)
 	}
 
-	server := &http.Server{Handler: handler}
-
-	errChan := make(chan error, 2)
-
-	go func() {
-		grip.Info("Starting non-SSL API server")
-		err := graceful.Serve(server, nonSSL, requestTimeout)
-		if err != nil {
-			if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
-				grip.Warningf("non-SSL API server error: %+v", err)
-			} else {
-				err = nil
-			}
-		}
-		grip.Info("non-SSL API server cleanly terminated")
-		errChan <- err
-	}()
-
-	go func() {
-		grip.Info("Starting SSL API server")
-		err := graceful.Serve(server, ssl, requestTimeout)
-		if err != nil {
-			if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
-				grip.Warningf("SSL API server error: %+v", err)
-			} else {
-				err = nil
-			}
-		}
-		grip.Info("SSL API server cleanly terminated")
-		errChan <- err
-	}()
-
-	exitCode := 0
-
-	for i := 0; i < 2; i++ {
-		if err := <-errChan; err != nil {
-			grip.Errorf("Error returned from API server: %+v", err)
-			exitCode = 1
-		}
-	}
-
-	os.Exit(exitCode)
+	grip.CatchEmergencyFatal(service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, handler))
 }

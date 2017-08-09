@@ -85,8 +85,8 @@ imports:
     version: 6e7f843663477789fac7c02def0d0909e969b4e5
   - name: github.com/sabhiram/go-git-ignore
     version: 228fcfa2a06e870a3ef238d54c45ea847f492a37
-  - name: gopkg.in/tylerb/graceful.v1
-    version: 49b853e77ab58c31be0d3ee87db62909b90ac93e
+  - name: github.com/tylerb/graceful
+    version: d72b0151351a13d0421b763b88f791469c4f5dc7
   - name: github.com/dustin/go-humanize
     version: f3565c9525600a911af3bd34f8b535ea81b2a9e0
   - name: github.com/mitchellh/go-homedir

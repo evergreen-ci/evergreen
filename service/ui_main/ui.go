@@ -20,7 +20,6 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"golang.org/x/net/context"
-	"gopkg.in/tylerb/graceful.v1"
 )
 
 var (
@@ -102,6 +101,8 @@ func main() {
 	n.Use(service.NewLogger())
 	n.Use(negroni.HandlerFunc(service.UserMiddleware(uis.UserManager)))
 	n.UseHandler(router)
-	graceful.Run(settings.Ui.HttpListenAddr, requestTimeout, n)
+
+	grip.CatchEmergencyFatal(service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, n))
+
 	grip.Info("UI server cleanly terminated")
 }

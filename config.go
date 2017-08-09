@@ -84,13 +84,10 @@ type ClientConfig struct {
 	LatestRevision string         `yaml:"latest_revision"`
 }
 
-// APIConfig holds relevant encryption and log settings for the API server.
+// APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	LogFile         string
-	HttpListenAddr  string
-	HttpsListenAddr string
-	HttpsKey        string
-	HttpsCert       string
+	LogFile        string
+	HttpListenAddr string
 }
 
 // UIConfig holds relevant settings for the UI server.

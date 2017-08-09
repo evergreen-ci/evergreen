@@ -45,7 +45,7 @@ import:
   - package: github.com/jessevdk/go-flags
   - package: github.com/kardianos/osext
   - package: github.com/sabhiram/go-git-ignore
-  - package: gopkg.in/tylerb/graceful.v1
+  - package: github.com/tylerb/graceful
   - package: github.com/dustin/go-humanize
   - package: github.com/mitchellh/go-homedir
   - package: github.com/go-ini/ini
