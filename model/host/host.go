@@ -475,7 +475,6 @@ func (h *Host) UpdateReachability(reachable bool) error {
 }
 
 func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
-
 	return UpsertOne(
 		bson.M{
 			IdKey: h.Id,
@@ -489,7 +488,6 @@ func (h *Host) Upsert() (*mgo.ChangeInfo, error) {
 				StartedByKey:             h.StartedBy,
 				ExpirationTimeKey:        h.ExpirationTime,
 				ProviderKey:              h.Provider,
-				SecretKey:                h.Secret,
 				TagKey:                   h.Tag,
 				PidKey:                   h.Pid,
 				TaskDispatchTimeKey:      h.TaskDispatchTime,
