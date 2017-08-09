@@ -68,6 +68,9 @@ db.tasks.ensureIndex({ "version" : 1, "display_name" : 1 })
 db.tasks.ensureIndex({ "order" : 1, "display_name" : 1 })
 db.tasks.ensureIndex({ "status": 1, "start_time" : 1, "finish_time" : 1})
 db.tasks.ensureIndex({ "branch": 1, "status": 1, "test_results.test_file" : 1, "test_results.status": 1}, {partialFilterExpression: {"branch": "mongodb-mongo-master"}})
+db.tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
+db.tasks.ensureIndex({ "branch": 1, "r" : 1, "status" : 1})
+db.tasks.ensureIndex({ "branch": 1, "r" : 1, "build_variant" : 1})
 
 //======old_tasks======//
 db.old_tasks.ensureIndex({ "branch": 1, "r" : 1, "display_name" : 1})
