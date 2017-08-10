@@ -51,6 +51,7 @@ var (
 // HostInit is responsible for running setup scripts on Evergreen hosts.
 type HostInit struct {
 	Settings *evergreen.Settings
+	GUID     string
 }
 
 func (init *HostInit) startHosts() error {
@@ -63,30 +64,40 @@ func (init *HostInit) startHosts() error {
 	}
 
 	for _, h := range hostsToStart {
+		grip.Info(message.Fields{
+			"GUID":    init.GUID,
+			"message": "attempting to start host",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+			"tag":     h.Tag,
+		})
 		cloudManager, err := providers.GetCloudManager(h.Provider, init.Settings)
 		if err != nil {
-			return errors.Wrap(err, "error getting cloud provider")
+			return errors.Wrapf(err, "error getting cloud provider for host %s", h.Id)
 		}
 
 		err = h.Remove()
 		if err != nil {
-			return errors.Wrap(err, "error removing intent host")
+			return errors.Wrapf(err, "error removing intent host %s", h.Id)
 		}
 
 		_, err = cloudManager.SpawnHost(&h)
 		if err != nil {
-			return errors.Wrap(err, "error spawning host")
+			return errors.Wrapf(err, "error spawning host %s", h.Id)
 		}
 
 		h.Status = evergreen.HostStarting
 
 		_, err = h.Upsert()
 		if err != nil {
-			return errors.Wrap(err, "error updating host")
+			return errors.Wrapf(err, "error updating host %v", h.Id)
 		}
+
+		grip.Infof("successfully started host %s", h.Id)
 	}
 
 	grip.Info(message.Fields{
+		"GUID":    init.GUID,
 		"runner":  RunnerName,
 		"method":  "startHosts",
 		"runtime": time.Since(startTime),
@@ -118,6 +129,13 @@ func (init *HostInit) setupReadyHosts() error {
 	wg := &sync.WaitGroup{}
 
 	for _, h := range uninitializedHosts {
+		grip.Info(message.Fields{
+			"GUID":    init.GUID,
+			"message": "attempting to setup host",
+			"host":    h.Id,
+			"distro":  h.Distro.Id,
+			"tag":     h.Tag,
+		})
 
 		// check whether or not the host is ready for its setup script to be run
 		ready, err := init.IsHostReady(&h)
@@ -163,6 +181,7 @@ func (init *HostInit) setupReadyHosts() error {
 	wg.Wait()
 
 	grip.Info(message.Fields{
+		"GUID":    init.GUID,
 		"runner":  RunnerName,
 		"method":  "setupReadyHosts",
 		"runtime": time.Since(startTime),

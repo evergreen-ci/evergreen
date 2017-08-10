@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -28,18 +29,24 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
+
+	init := &HostInit{
+		Settings: config,
+		GUID:     util.RandomString(),
+	}
+
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
 		"time":    startTime,
 		"message": "starting runner process",
+		"GUID":    init.GUID,
 	})
-
-	init := &HostInit{config}
 
 	if err := init.startHosts(); err != nil {
 		err = errors.Wrap(err, "Error starting hosts")
 		grip.Error(message.Fields{
+			"GUID":    init.GUID,
 			"runner":  RunnerName,
 			"error":   err.Error(),
 			"status":  "failed",
@@ -53,6 +60,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	if err := init.setupReadyHosts(); err != nil {
 		err = errors.Wrap(err, "Error provisioning hosts")
 		grip.Error(message.Fields{
+			"GUID":    init.GUID,
 			"runner":  RunnerName,
 			"error":   err.Error(),
 			"status":  "failed",
@@ -67,6 +75,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	}
 
 	grip.Info(message.Fields{
+		"GUID":    init.GUID,
 		"runner":  RunnerName,
 		"runtime": time.Since(startTime),
 		"span":    time.Since(startTime).String(),

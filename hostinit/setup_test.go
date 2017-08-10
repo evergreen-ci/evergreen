@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/util"
 	"github.com/pkg/errors"
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -24,7 +25,8 @@ func TestSetupReadyHosts(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestSetupReadyHosts")
 
 	hostInit := &HostInit{
-		testutil.TestConfig(),
+		Settings: testutil.TestConfig(),
+		GUID:     util.RandomString(),
 	}
 
 	Convey("When hosts are spawned but not running", t, func() {
@@ -108,7 +110,8 @@ func TestHostIsReady(t *testing.T) {
 	testutil.ConfigureIntegrationTest(t, testutil.TestConfig(), "TestHostIsReady")
 
 	hostInit := &HostInit{
-		testutil.TestConfig(),
+		Settings: testutil.TestConfig(),
+		GUID:     util.RandomString(),
 	}
 
 	Convey("When hosts are spawned", t, func() {
