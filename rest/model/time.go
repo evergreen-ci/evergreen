@@ -14,6 +14,9 @@ const (
 
 type APITime time.Time
 
+// Represents duration in milliseconds
+type APIDuration uint64
+
 var APIZeroTime APITime = APITime(util.ZeroTime.UTC())
 
 // NewTime creates a new APITime from an existing time.Time. It handles changing
@@ -51,4 +54,12 @@ func (at APITime) MarshalJSON() ([]byte, error) {
 
 func (at APITime) String() string {
 	return time.Time(at).Format(APITimeFormat)
+}
+
+func NewAPIDuration(d time.Duration) APIDuration {
+	return APIDuration(d / time.Millisecond)
+}
+
+func (i APIDuration) ToDuration() time.Duration {
+	return time.Duration(i) * time.Millisecond
 }

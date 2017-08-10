@@ -40,8 +40,8 @@ type APITask struct {
 	Status           APIString        `json:"status"`
 	Details          apiTaskEndDetail `json:"status_details"`
 	Logs             logLinks         `json:"logs"`
-	TimeTaken        time.Duration    `json:"time_taken_ms"`
-	ExpectedDuration time.Duration    `json:"expected_duration_ms"`
+	TimeTaken        APIDuration      `json:"time_taken_ms"`
+	ExpectedDuration APIDuration      `json:"expected_duration_ms"`
 }
 
 type logLinks struct {
@@ -91,8 +91,8 @@ func (at *APITask) BuildFromService(t interface{}) error {
 				TimedOut:    v.Details.TimedOut,
 			},
 			Status:           APIString(v.Status),
-			TimeTaken:        v.TimeTaken,
-			ExpectedDuration: v.ExpectedDuration,
+			TimeTaken:        NewAPIDuration(v.TimeTaken),
+			ExpectedDuration: NewAPIDuration(v.ExpectedDuration),
 		}
 
 		if len(v.DependsOn) > 0 {
@@ -148,8 +148,8 @@ func (ad *APITask) ToService() (interface{}, error) {
 			TimedOut:    ad.Details.TimedOut,
 		},
 		Status:           string(ad.Status),
-		TimeTaken:        ad.TimeTaken,
-		ExpectedDuration: ad.ExpectedDuration,
+		TimeTaken:        ad.TimeTaken.ToDuration(),
+		ExpectedDuration: ad.ExpectedDuration.ToDuration(),
 	}
 	dependsOn := make([]task.Dependency, len(ad.DependsOn))
 
@@ -164,12 +164,12 @@ func (ad *APITask) ToService() (interface{}, error) {
 // APITaskCost is the model to be returned by the API whenever tasks
 // for the cost route are fetched.
 type APITaskCost struct {
-	Id           APIString     `json:"task_id"`
-	DisplayName  APIString     `json:"display_name"`
-	DistroId     APIString     `json:"distro"`
-	BuildVariant APIString     `json:"build_variant"`
-	TimeTaken    time.Duration `json:"time_taken"`
-	Githash      APIString     `json:"githash"`
+	Id           APIString   `json:"task_id"`
+	DisplayName  APIString   `json:"display_name"`
+	DistroId     APIString   `json:"distro"`
+	BuildVariant APIString   `json:"build_variant"`
+	TimeTaken    APIDuration `json:"time_taken"`
+	Githash      APIString   `json:"githash"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -182,7 +182,7 @@ func (atc *APITaskCost) BuildFromService(t interface{}) error {
 		atc.DisplayName = APIString(v.DisplayName)
 		atc.DistroId = APIString(v.DistroId)
 		atc.BuildVariant = APIString(v.BuildVariant)
-		atc.TimeTaken = v.TimeTaken
+		atc.TimeTaken = NewAPIDuration(v.TimeTaken)
 		atc.Githash = APIString(v.Revision)
 	default:
 		return errors.New("Incorrect type when unmarshalling task")

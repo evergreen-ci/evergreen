@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/build"
@@ -11,7 +10,7 @@ import (
 
 var (
 	commitOrigin = "commit"
-	patchOrigin = "patch"
+	patchOrigin  = "patch"
 )
 
 // APIBuild is the model to be returned by the API whenever builds are fetched.
@@ -31,10 +30,10 @@ type APIBuild struct {
 	ActivatedTime       APITime       `json:"activated_time"`
 	RevisionOrderNumber int           `json:"order"`
 	Tasks               []string      `json:"tasks"`
-	TimeTaken           time.Duration `json:"time_taken_ms"`
+	TimeTaken           APIDuration `json:"time_taken_ms"`
 	DisplayName         APIString     `json:"display_name"`
-	PredictedMakespan   time.Duration `json:"predicted_makespan_ms"`
-	ActualMakespan      time.Duration `json:"actual_makespan_ms"`
+	PredictedMakespan   APIDuration `json:"predicted_makespan_ms"`
+	ActualMakespan      APIDuration `json:"actual_makespan_ms"`
 	Origin              APIString     `json:"origin"`
 }
 
@@ -61,10 +60,10 @@ func (apiBuild *APIBuild) BuildFromService(h interface{}) error {
 	for _, t := range v.Tasks {
 		apiBuild.Tasks = append(apiBuild.Tasks, t.Id)
 	}
-	apiBuild.TimeTaken = v.TimeTaken
+	apiBuild.TimeTaken = NewAPIDuration(v.TimeTaken)
 	apiBuild.DisplayName = APIString(v.DisplayName)
-	apiBuild.PredictedMakespan = v.PredictedMakespan
-	apiBuild.ActualMakespan = v.ActualMakespan
+	apiBuild.PredictedMakespan = NewAPIDuration(v.PredictedMakespan)
+	apiBuild.ActualMakespan = NewAPIDuration(v.ActualMakespan)
 	var origin string
 	if v.Requester == evergreen.RepotrackerVersionRequester {
 		origin = commitOrigin

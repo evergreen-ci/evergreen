@@ -25,9 +25,9 @@ func TestVersionCostSuite(t *testing.T) {
 }
 
 func (s *VersionCostSuite) SetupSuite() {
-	testTask1 := task.Task{Id: "task1", Version: "version1", TimeTaken: time.Duration(1)}
-	testTask2 := task.Task{Id: "task2", Version: "version2", TimeTaken: time.Duration(1)}
-	testTask3 := task.Task{Id: "task3", Version: "version2", TimeTaken: time.Duration(1)}
+	testTask1 := task.Task{Id: "task1", Version: "version1", TimeTaken: time.Millisecond}
+	testTask2 := task.Task{Id: "task2", Version: "version2", TimeTaken: time.Millisecond}
+	testTask3 := task.Task{Id: "task3", Version: "version2", TimeTaken: time.Millisecond}
 	s.data = data.MockVersionConnector{
 		CachedTasks: []task.Task{testTask1, testTask2, testTask3},
 	}
@@ -52,7 +52,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdSingle() {
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.APIString("version1"), h.VersionId)
-	s.Equal(time.Duration(1), h.SumTimeTaken)
+	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 }
 
 // TestFindCostByVersionIdMany tests the handler where information is aggregated on
@@ -71,7 +71,7 @@ func (s *VersionCostSuite) TestFindCostByVersionIdMany() {
 	h, ok := (versionCost).(*model.APIVersionCost)
 	s.True(ok)
 	s.Equal(model.APIString("version2"), h.VersionId)
-	s.Equal(time.Duration(2), h.SumTimeTaken)
+	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 }
 
 // TestFindCostByVersionFail tests that the handler correctly returns error when
@@ -99,14 +99,14 @@ func (s *DistroCostSuite) SetupSuite() {
 	s.starttime = time.Now()
 
 	testTask1 := task.Task{Id: "task1", DistroId: "distro1",
-		TimeTaken: time.Duration(1), StartTime: s.starttime,
-		FinishTime: s.starttime.Add(time.Duration(1))}
+		TimeTaken: time.Millisecond, StartTime: s.starttime,
+		FinishTime: s.starttime.Add(time.Millisecond)}
 	testTask2 := task.Task{Id: "task2", DistroId: "distro2",
-		TimeTaken: time.Duration(1), StartTime: s.starttime,
-		FinishTime: s.starttime.Add(time.Duration(1))}
+		TimeTaken: time.Millisecond, StartTime: s.starttime,
+		FinishTime: s.starttime.Add(time.Millisecond)}
 	testTask3 := task.Task{Id: "task3", DistroId: "distro2",
-		TimeTaken: time.Duration(1), StartTime: s.starttime,
-		FinishTime: s.starttime.Add(time.Duration(1))}
+		TimeTaken: time.Millisecond, StartTime: s.starttime,
+		FinishTime: s.starttime.Add(time.Millisecond)}
 
 	var settings1 = make(map[string]interface{})
 	var settings2 = make(map[string]interface{})
@@ -164,7 +164,7 @@ func TestParseAndValidate(t *testing.T) {
 func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	// Test that the handler executes properly
 	handler := &costByDistroHandler{distroId: "distro1", startTime: s.starttime,
-		duration: time.Duration(1)}
+		duration: time.Millisecond}
 	res, err := handler.Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -176,7 +176,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.APIString("distro1"), h.DistroId)
-	s.Equal(time.Duration(1), h.SumTimeTaken)
+	s.Equal(model.APIDuration(1), h.SumTimeTaken)
 	s.Equal(model.APIString("ec2"), h.Provider)
 	s.Equal(model.APIString("type"), h.InstanceType)
 }
@@ -186,7 +186,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdSingle() {
 func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	// Test that the handler executes properly
 	handler := &costByDistroHandler{distroId: "distro2", startTime: s.starttime,
-		duration: time.Duration(1)}
+		duration: time.Millisecond}
 	res, err := handler.Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -198,7 +198,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.APIString("distro2"), h.DistroId)
-	s.Equal(time.Duration(2), h.SumTimeTaken)
+	s.Equal(model.APIDuration(2), h.SumTimeTaken)
 	s.Equal(model.APIString("gce"), h.Provider)
 	s.Equal(model.APIString(""), h.InstanceType)
 }
@@ -207,7 +207,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdMany() {
 // no information when a valid distroId contains no tasks of the given time range.
 func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	handler := &costByDistroHandler{distroId: "distro2",
-		startTime: time.Now().AddDate(0, -1, 0), duration: time.Duration(1)}
+		startTime: time.Now().AddDate(0, -1, 0), duration: time.Millisecond}
 	res, err := handler.Execute(nil, s.sc)
 	s.NoError(err)
 	s.NotNil(res)
@@ -217,7 +217,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 	h, ok := (distroCost).(*model.APIDistroCost)
 	s.True(ok)
 	s.Equal(model.APIString("distro2"), h.DistroId)
-	s.Equal(time.Duration(0), h.SumTimeTaken)
+	s.Equal(model.APIDuration(0), h.SumTimeTaken)
 	s.Equal(model.APIString(""), h.Provider)
 	s.Equal(model.APIString(""), h.InstanceType)
 }
@@ -226,7 +226,7 @@ func (s *DistroCostSuite) TestFindCostByDistroIdNoResult() {
 // incorrect query is passed in
 func (s *DistroCostSuite) TestFindCostByDistroIdFail() {
 	handler := &costByDistroHandler{distroId: "fake_distro", startTime: s.starttime,
-		duration: time.Duration(1)}
+		duration: 1}
 	res, ok := handler.Execute(nil, s.sc)
 	s.Nil(res.Result)
 	s.Error(ok)

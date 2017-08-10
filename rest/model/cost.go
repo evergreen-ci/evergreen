@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/pkg/errors"
@@ -10,8 +8,8 @@ import (
 
 // APIVersionCost is the model to be returned by the API whenever cost data is fetched by version id.
 type APIVersionCost struct {
-	VersionId    APIString     `json:"version_id"`
-	SumTimeTaken time.Duration `json:"sum_time_taken"`
+	VersionId    APIString   `json:"version_id"`
+	SumTimeTaken APIDuration `json:"sum_time_taken"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -20,7 +18,7 @@ func (apiVersionCost *APIVersionCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.VersionCost:
 		apiVersionCost.VersionId = APIString(v.VersionId)
-		apiVersionCost.SumTimeTaken = v.SumTimeTaken
+		apiVersionCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 	default:
 		return errors.Errorf("incorrect type when fetching converting version cost type")
 	}
@@ -34,10 +32,10 @@ func (apiVersionCost *APIVersionCost) ToService() (interface{}, error) {
 
 // APIDistroCost is the model to be returned by the API whenever cost data is fetched by distro id.
 type APIDistroCost struct {
-	DistroId     APIString     `json:"distro_id"`
-	SumTimeTaken time.Duration `json:"sum_time_taken"`
-	Provider     APIString     `json:"provider"`
-	InstanceType APIString     `json:"instance_type,omitempty"`
+	DistroId     APIString   `json:"distro_id"`
+	SumTimeTaken APIDuration `json:"sum_time_taken"`
+	Provider     APIString   `json:"provider"`
+	InstanceType APIString   `json:"instance_type,omitempty"`
 }
 
 // BuildFromService converts from a service level task by loading the data
@@ -46,7 +44,7 @@ func (apiDistroCost *APIDistroCost) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *task.DistroCost:
 		apiDistroCost.DistroId = APIString(v.DistroId)
-		apiDistroCost.SumTimeTaken = v.SumTimeTaken
+		apiDistroCost.SumTimeTaken = NewAPIDuration(v.SumTimeTaken)
 		apiDistroCost.Provider = APIString(v.Provider)
 
 		// InstanceType field is only set if the provider is ec2 or ec2-spot.
