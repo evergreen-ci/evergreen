@@ -380,6 +380,7 @@ func SystemInfoCollector(ctx context.Context) {
 			return
 		case <-timer.C:
 			grip.Info(message.CollectSystemInfo())
+			grip.Info(message.CollectGoStats())
 			timer.Reset(sysInfoLoggingInterval)
 		}
 	}

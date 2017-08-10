@@ -107,6 +107,7 @@ func TestDataCollecterComposerConstructors(t *testing.T) {
 		CollectProcessInfo(int32(1)):                             "",
 		CollectProcessInfoSelf():                                 "",
 		CollectSystemInfo():                                      "",
+		CollectGoStats():                                         "",
 	}
 
 	for msg, prefix := range cases {
