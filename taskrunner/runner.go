@@ -43,7 +43,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 			"span":    time.Since(startTime).String(),
 		})
 
-		return errors.Wrap(err, "problem running repotracker")
+		return errors.Wrap(err, "problem running taskrunner")
 	}
 
 	if err := model.SetProcessRuntimeCompleted(RunnerName, time.Since(startTime)); err != nil {
