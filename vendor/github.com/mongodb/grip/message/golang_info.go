@@ -16,7 +16,7 @@ func CollectGoStats() Composer {
 	m := runtime.MemStats{}
 	runtime.ReadMemStats(&m)
 
-	lastGC := time.Now().Add(-time.Duration(m.LastGC))
+	lastGC := time.Unix(0, int64(m.LastGC))
 
 	return MakeFields(Fields{
 		"memory.objects.HeapObjects": m.HeapObjects,
