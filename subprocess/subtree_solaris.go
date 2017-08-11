@@ -46,19 +46,18 @@ func getEnv(pid int) ([]string, error) {
 	return results, nil
 }
 
-func cleanup(key string, logger grip.Journaler) error {
+func cleanup(_ string, logger grip.Journaler) error {
 	pids, err := listProc()
 	if err != nil {
 		return err
 	}
-	pidMarker := fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid())
-	taskMarker := fmt.Sprintf("EVR_TASK_ID=%v", key)
+
 	for _, pid := range pids {
 		env, err := getEnv(pid)
 		if err != nil {
 			continue
 		}
-		if envHasMarkers(env, pidMarker, taskMarker) {
+		if envHasMarkers(env) {
 			p := os.Process{}
 			p.Pid = pid
 

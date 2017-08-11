@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/plugin"
@@ -22,6 +23,9 @@ const (
 	ShellExecCmd    = "exec"
 	CleanupCmd      = "cleanup"
 	TrackCmd        = "track"
+
+	MarkerTaskID   = "EVR_TASK_ID"
+	MarkerAgentPID = "EVR_AGENT_PID"
 )
 
 // ShellPlugin runs arbitrary shell code on the agent's machine.
@@ -242,19 +246,15 @@ func (sec *ShellExecCommand) Execute(pluginLogger plugin.Logger,
 	return nil
 }
 
-// envHasMarkers returns a bool indicating if both marker vars are found in an environment var list
-func envHasMarkers(env []string, pidMarker, taskMarker string) bool {
-	hasPidMarker := false
-	hasTaskMarker := false
+// envHasMarkers returns a bool indicating if either marker vars is found in an environment var list
+func envHasMarkers(env []string) bool {
 	for _, envVar := range env {
-		if envVar == pidMarker {
-			hasPidMarker = true
-		}
-		if envVar == taskMarker {
-			hasTaskMarker = true
+		if strings.HasPrefix(envVar, MarkerTaskID) || strings.HasPrefix(envVar, MarkerAgentPID) {
+			return true
 		}
 	}
-	return hasPidMarker && hasTaskMarker
+
+	return false
 }
 
 // KillSpawnedProcs cleans up any tasks that were spawned by the given task.

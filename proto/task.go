@@ -78,6 +78,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext, complete chan<- st
 		return
 	}
 
+	a.killProcs(tc)
 	if taskConfig.Project.Pre != nil {
 		tc.logger.Execution().Info("Running pre-task commands.")
 		ctx, cancel := a.withCallbackTimeout(ctx, tc)

@@ -8,7 +8,7 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {
 	// tracking post-facto
 }
 
-func cleanup(key string, logger grip.Journaler) error {
+func cleanup(_ string, logger grip.Journaler) error {
 	logger.Alert("process cleanup is not implemented on freebsd")
 
 	return nil

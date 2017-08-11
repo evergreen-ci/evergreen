@@ -42,14 +42,13 @@ func cleanup(key string, log plugin.Logger) error {
 	if err != nil {
 		return err
 	}
-	pidMarker := fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid())
-	taskMarker := fmt.Sprintf("EVR_TASK_ID=%v", key)
+
 	for _, pid := range pids {
 		env, err := getEnv(pid)
 		if err != nil {
 			continue
 		}
-		if envHasMarkers(env, pidMarker, taskMarker) {
+		if envHasMarkers(env) {
 			p := os.Process{}
 			p.Pid = pid
 			if err := p.Kill(); err != nil {

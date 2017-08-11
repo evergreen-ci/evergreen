@@ -111,7 +111,8 @@ func (c *shellExec) Execute(ctx context.Context,
 	go func() {
 		var err error
 		env := os.Environ()
-		env = append(env, fmt.Sprintf("EVR_TASK_ID=%v", conf.Task.Id), fmt.Sprintf("EVR_AGENT_PID=%v", os.Getpid()))
+		env = append(env, fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
+			fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
 		localCmd.Environment = env
 		err = localCmd.Start()
 

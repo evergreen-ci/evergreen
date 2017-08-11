@@ -623,6 +623,8 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 		return agt.finishAndAwaitCleanup(evergreen.TaskFailed)
 	}
 
+	agt.logger.LogExecution(slogger.INFO, "cleaning up lingering tasks.")
+	agt.cleanup(agt.getCurrentTaskDir())
 	if taskConfig.Project.Pre != nil {
 		agt.logger.LogExecution(slogger.INFO, "Running pre-task commands.")
 		err = agt.RunCommands(taskConfig.Project.Pre.List(), false, agt.callbackTimeoutSignal())
