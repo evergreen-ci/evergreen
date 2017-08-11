@@ -48,13 +48,13 @@ imports:
     version: af8e7d560364b90f732a1d119d17b5506e50447d
 
   - name: github.com/davecgh/go-spew
-    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+    version: adab96458c51a58dc1783b3335dcce5461522e75
   - name: github.com/stretchr/objx
-    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+    version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
   - name: github.com/stretchr/testify
-    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+    version: 890a5c3458b43e6104ff5da8dfa139d013d77544
   - name: github.com/pmezard/go-difflib
-    version: 260b7a32dd8770eb5ba41da17d125914ae064ef8
+    version: 792786c7400a136282c1664665ae0a8db921c6c2
 
   - name: github.com/jacobsa/oglematchers
     version: 4fc24f97b5b74022c2a3f4ca7eed57ca29083d3e
