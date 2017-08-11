@@ -90,7 +90,7 @@ func testPaginator(key string, limit int, args interface{}, sc data.Connector) (
 
 	// Make the previous page
 	prevTests, err := sc.FindTestsByTaskId(tghArgs.taskId, key, tghArgs.testStatus, limit, -1)
-	if err != nil {
+	if err != nil && tests == nil { // don't error if we already found valid results
 		if apiErr, ok := err.(*rest.APIError); !ok || apiErr.StatusCode != http.StatusNotFound {
 			err = errors.Wrap(err, "Database error")
 		}
