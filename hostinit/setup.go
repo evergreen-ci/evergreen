@@ -67,7 +67,7 @@ func (init *HostInit) startHosts() error {
 		grip.Info(message.Fields{
 			"GUID":    init.GUID,
 			"message": "attempting to start host",
-			"host":    h.Id,
+			"hostid":  h.Id,
 			"distro":  h.Distro.Id,
 			"tag":     h.Tag,
 		})
@@ -132,7 +132,7 @@ func (init *HostInit) setupReadyHosts() error {
 		grip.Info(message.Fields{
 			"GUID":    init.GUID,
 			"message": "attempting to setup host",
-			"host":    h.Id,
+			"hostid":  h.Id,
 			"distro":  h.Distro.Id,
 			"tag":     h.Tag,
 		})
