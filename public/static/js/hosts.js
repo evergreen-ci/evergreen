@@ -27,7 +27,12 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     },
     {
       name: 'Uptime',
-      by: 'creation_time',
+      by: 'uptime_raw',
+      order: false,
+    },
+    {
+      name: 'Idle Time',
+      by: 'idle_time',
       order: false,
     },
     {
@@ -87,10 +92,13 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     host.started_by = hostDoc.started_by;
     host.task = "";
     host.running_task = hostObj.RunningTask;
+    host.idle_time = hostObj.IdleTime
+    host.idle_time_readable = moment.duration(hostObj.IdleTime, 'seconds').humanize()
 
     if (hostDoc.host_type !== "static") {
       var uptime = moment().diff(hostDoc.creation_time, 'seconds');
-      host.uptime = moment.duration(uptime, 'seconds').humanize();
+      host.uptime_raw = moment.duration(uptime, 'seconds')
+      host.uptime = host.uptime_raw.humanize();
     } else {
       host.creation_time = "N/A";
       host.uptime = "N/A";
@@ -132,7 +140,7 @@ mciModule.controller('HostsCtrl', function($scope, $filter, $window, $location) 
     $scope.selectAll = !$scope.selectAll;
     $scope.setCheckBoxes($scope.selectAll);
   };
-    
+
   $scope.clearSelectAll = function() {
     $scope.selectAll = false;
     $scope.setCheckBoxes($scope.selectAll);

@@ -60,6 +60,7 @@ type uiPatch struct {
 type uiHost struct {
 	Host        host.Host
 	RunningTask *task.Task
+	IdleTime    float64 // idle time in seconds
 }
 
 type uiBuild struct {
@@ -359,6 +360,7 @@ func getHostsData(includeSpawnedHosts bool) (*hostsData, error) {
 				dbHost.RunningTask, dbHost.Id)
 			uiHosts[idx].RunningTask = task
 		}
+		uiHosts[idx].IdleTime = host.Host.IdleTime().Seconds()
 	}
 	data.Hosts = uiHosts
 	return data, nil
