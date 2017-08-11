@@ -517,68 +517,68 @@ Objects
    :widths: 25 10 55
    :header-rows: 1
 
-      * - Name
-        - Type
-        - Description
-      * - patch_id
-        - string
-        - Unique identifier of a specific patch
-      * - description
-        - string
-        - Description of the patch
-      * - project_id
-        - string
-        - Name of the project
-      * - branch
-        - string
-        - The branch on which the patch was initiated
-      * - git_hash
-        - string
-        - Hash of commit off which the patch was initiated
-      * - patch_number
-        - int
-        - Incrementing counter of user's patches
-      * - author
-        - string
-        - Author of the patch
-      * - status
-        - string
-        - Status of patch
-      * - create_time
-        - time
-        - Time patch was created
-      * - start_time
-        - time
-        - Time patch started to run
-      * - finish_time
-        - time
-        - Time at patch completion
-      * - build_variants
-        - string[]
-        - List of identifiers of builds to run for this patch
-      * - tasks
-        - string[]
-        - List of identifiers of tasks used in this patch
-      * - variants_tasks
-        - variant_task[]
-        - List of documents of available tasks and associated build variant
-      * - activated
-        - bool
-        - Whether the patch has been finalized and activated
+   * - Name
+     - Type
+     - Description
+   * - patch_id
+     - string
+     - Unique identifier of a specific patch
+   * - description
+     - string
+     - Description of the patch
+   * - project_id
+     - string
+     - Name of the project
+   * - branch
+     - string
+     - The branch on which the patch was initiated
+   * - git_hash
+     - string
+     - Hash of commit off which the patch was initiated
+   * - patch_number
+     - int
+     - Incrementing counter of user's patches
+   * - author
+     - string
+     - Author of the patch
+   * - status
+     - string
+     - Status of patch
+   * - create_time
+     - time
+     - Time patch was created
+   * - start_time
+     - time
+     - Time patch started to run
+   * - finish_time
+     - time
+     - Time at patch completion
+   * - build_variants
+     - string[]
+     - List of identifiers of builds to run for this patch
+   * - tasks
+     - string[]
+    - List of identifiers of tasks used in this patch
+   * - variants_tasks
+     - variant_task[]
+     - List of documents of available tasks and associated build variant
+   * - activated
+     - bool
+     - Whether the patch has been finalized and activated
 
 .. list-table:: **Variant Task**
    :widths: 25 10 55
    :header-rows: 1
 
-      * - Name
-        - Type
-        - Description
-      * - name
-        - string
-        - Name of build variant
-      * - tasks
-        - string[]
-        - All tasks available to run on this build variant
+   * - Name
+     - Type
+     - Description
+   * - name
+     - string
+     - Name of build variant
+   * - tasks
+     - string[]
+     - All tasks available to run on this build variant
 
 Endpoints
 ~~~~~~~~~
@@ -596,15 +596,15 @@ Fetch Patches By Project
    :widths: 25 10 55
    :header-rows: 1
 
-      * - Name
-        - Type
-        - Description
-      * - start_at
-        - string
-        - Optional. The create_time of the patch to start at in the pagination. Defaults to now
-      * - limit
-        - int
-        - Optional. The number of patches to be returned per page of pagination. Defaults to 100
+   * - Name
+     - Type
+     - Description
+   * - start_at
+     - string
+     - Optional. The create_time of the patch to start at in the pagination. Defaults to now
+   * - limit
+     - int
+     - Optional. The number of patches to be returned per page of pagination. Defaults to 100
 
 Fetch Patches By User
 `````````````````````
@@ -616,18 +616,18 @@ Fetch Patches By User
  Returns a paginated list of all patches associated with a specific user
 
 .. list-table:: **Parameters**
-:widths: 25 10 55
-   :header-rows: 1
+  :widths: 25 10 55
+  :header-rows: 1
 
-         * - Name
-           - Type
-           - Description
-         * - start_at
-           - string
-           - Optional. The create_time of the patch to start at in the pagination. Defaults to now
-         * - limit
-           - int
-           - Optional. The number of patches to be returned per page of pagination. Defaults to 100
+   * - Name
+     - Type
+     - Description
+   * - start_at
+     - string
+     - Optional. The create_time of the patch to start at in the pagination. Defaults to now
+   * - limit
+     - int
+     - Optional. The number of patches to be returned per page of pagination. Defaults to 100
 
 Fetch Patch By Id
 `````````````````
@@ -669,15 +669,15 @@ Change Patch Status
    :widths: 25 10 55
    :header-rows: 1
 
-      * - Name
-        - Type
-        - Description
-      * - priority
-        - int
-        - Optional. The priority to set the patch to
-      * - status
-        - bool
-        - Optional. The activation status to set the patch to
+   * - Name
+     - Type
+     - Description
+   * - priority
+     - int
+     - Optional. The priority to set the patch to
+   * - status
+     - bool
+     - Optional. The activation status to set the patch to
 
 Build
 -----
@@ -795,18 +795,18 @@ Change Build Status
  Sets the priority and activation status of a single build to the input values
 
 .. list-table:: **Parameters**
-:widths: 25 10 55
-   :header-rows: 1
+  :widths: 25 10 55
+  :header-rows: 1
 
-         * - Name
-           - Type
-           - Description
-         * - priority
-           - int
-           - Optional. The priority to set the build to
-         * - status
-           - bool
-           - Optional. The activation status to set the build to
+   * - Name
+     - Type
+     - Description
+   * - priority
+     - int
+     - Optional. The priority to set the build to
+   * - status
+     - bool
+     - Optional. The activation status to set the build to
 
 Version
 -------
@@ -905,68 +905,68 @@ Objects
 ~~~~~~~
 
 .. list-table:: **Project**
-:widths: 25 10 55
-   :header-rows: 1
+  :widths: 25 10 55
+  :header-rows: 1
 
-         * - Name
-           - Type
-           - Description
-         * - batch_time
-           - int
-           - Unique identifier of a specific patch
-         * - branch_name
-           - string
-           - Name of branch
-         * - display_name
-           - string
-           - Project name displayed to users
-         * - enabled
-           - bool
-           - Whether evergreen is enabled for this project
-         * - identifier
-           - string
-           - Internal evergreen identifier for project
-         * - owner_name
-           - string
-           - Owner of project repository
-         * - private
-           - bool
-           - A user must be logged in to view private projects
-         * - remote_path
-           - string
-           - Path to config file in repo
-         * - repo_name
-           - string
-           - Repository name
-         * - tracked
-           - bool
-           - Whether the project is discoverable in the UI
-         * - alert_settings
-           - map[string][]alertConfig
-           - Map of alert triggers to list of corresponding configs
-         * - deactivate_previous
-           - bool
-           - List of identifiers of tasks used in this patch
-         * - admins
-           - []string
-           - Usernames of project admins
-         * - vars
-           - map[string][string]
-           - Map of project variables
+   * - Name
+     - Type
+     - Description
+   * - batch_time
+     - int
+     - Unique identifier of a specific patch
+   * - branch_name
+     - string
+     - Name of branch
+   * - display_name
+     - string
+     - Project name displayed to users
+   * - enabled
+     - bool
+     - Whether evergreen is enabled for this project
+   * - identifier
+     - string
+     - Internal evergreen identifier for project
+   * - owner_name
+     - string
+     - Owner of project repository
+   * - private
+     - bool
+     - A user must be logged in to view private projects
+   * - remote_path
+     - string
+     - Path to config file in repo
+   * - repo_name
+     - string
+     - Repository name
+   * - tracked
+     - bool
+     - Whether the project is discoverable in the UI
+   * - alert_settings
+     - map[string][]alertConfig
+     - Map of alert triggers to list of corresponding configs
+   * - deactivate_previous
+     - bool
+     - List of identifiers of tasks used in this patch
+   * - admins
+     - []string
+     - Usernames of project admins
+   * - vars
+     - map[string][string]
+     - Map of project variables
 
 .. list-table:: **Alert Config**
-:widths: 25 10 55
-   :header-rows: 1
+  :widths: 25 10 55
+  :header-rows: 1
 
-         * - Name
-           - Type
-           - Description
-         * - provider
-           - string
-           - Name of alert provider
-         * - settings
-           - map[string]string
-           - Settings defined for this alert config
+   * - Name
+     - Type
+     - Description
+   * - provider
+     - string
+     - Name of alert provider
+   * - settings
+     - map[string]string
+     - Settings defined for this alert config
 
 Endpoints
 ~~~~~~~~~
@@ -981,18 +981,18 @@ Fetch all Projects
  Returns a paginated list of all projects
 
 .. list-table:: **Parameters**
-:widths: 25 10 55
-   :header-rows: 1
+  :widths: 25 10 55
+  :header-rows: 1
 
-         * - Name
-           - Type
-           - Description
-         * - start_at
-           - string
-           - Optional. The id of the project to start at in the pagination. Defaults to empty string
-         * - limit
-           - int
-           - Optional. The number of projects to be returned per page of pagination. Defaults to 100
+   * - Name
+     - Type
+     - Description
+   * - start_at
+     - string
+     - Optional. The id of the project to start at in the pagination. Defaults to empty string
+   * - limit
+     - int
+     - Optional. The number of projects to be returned per page of pagination. Defaults to 100
 
 DistroCost
 ----------
@@ -1147,3 +1147,4 @@ Fetch Version Cost By VersionID
  GET /cost/version/<version_id>
 
  Fetches version cost associated with the specific version
+
