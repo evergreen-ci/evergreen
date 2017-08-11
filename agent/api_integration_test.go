@@ -70,21 +70,8 @@ func (*NoopSignalHandler) HandleSignals(_ *Agent) {}
 
 func setupTlsConfigs(t *testing.T) {
 	if tlsConfigs == nil {
-		tlsConfig := &tls.Config{}
-		tlsConfig.NextProtos = []string{"http/1.1"}
-
-		var err error
-		tlsConfig.Certificates = make([]tls.Certificate, 1)
-		tlsConfig.Certificates[0], err =
-			tls.X509KeyPair([]byte(testConfig.Api.HttpsCert),
-				[]byte(testConfig.Api.HttpsKey))
-		if err != nil {
-			testutil.HandleTestingErr(err, t, "X509KeyPair failed during test initialization: %v", err)
-		}
 		tlsConfigs = map[string]*tls.Config{
 			"http": nil,
-			// TODO: do tests over SSL, see EVG-1512
-			// "https": tlsConfig,
 		}
 	}
 }
@@ -94,7 +81,6 @@ func createAgent(testServer *service.TestServer, testHost *host.Host) (*Agent, e
 		APIURL:      testServer.URL,
 		HostId:      testHost.Id,
 		HostSecret:  testHost.Secret,
-		Certificate: testConfig.Api.HttpsCert,
 	})
 
 	if err != nil {
