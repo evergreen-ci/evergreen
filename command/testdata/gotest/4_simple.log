@@ -1,0 +1,39 @@
+=== RUN   TestClientSuite
+=== RUN   TestClientSuite/TestClientGetter
+=== RUN   TestClientSuite/TestCopyeConstructorUsesDifferentHTTPClient
+=== RUN   TestClientSuite/TestCorrectedNewClientSettings
+=== RUN   TestClientSuite/TestNewClientConstructorPropogatesErrorStateForHost
+=== RUN   TestClientSuite/TestNewClientFromExistingUsesExistinHTTPClient
+=== RUN   TestClientSuite/TestNewClientFromExistingWithNilClientReturnsError
+=== RUN   TestClientSuite/TestNewClientPropogatesValidValuesToCreatedValues
+=== RUN   TestClientSuite/TestPortSetterDisallowsPortsToBeZero
+=== RUN   TestClientSuite/TestPortSetterDisallowsTooBigPorts
+=== RUN   TestClientSuite/TestPortSetterRoundTripsValidPortsWithGetter
+=== RUN   TestClientSuite/TestSetHostRequiresHttpURL
+=== RUN   TestClientSuite/TestSetHostRoundTripsValidHostWithGetter
+=== RUN   TestClientSuite/TestSetHostStripsTrailingSlash
+=== RUN   TestClientSuite/TestSetPrefixRemovesTrailingAndLeadingSlashes
+=== RUN   TestClientSuite/TestSetPrefixRoundTripsThroughGetter
+=== RUN   TestClientSuite/TestURLGenerationWithEmptyPrefix
+=== RUN   TestClientSuite/TestURLGenerationWithNonDefaultPort
+=== RUN   TestClientSuite/TestURLGeneratiorWithoutDefaultPortInResult
+--- PASS: TestClientSuite (0.01s)
+    --- PASS: TestClientSuite/TestClientGetter (0.00s)
+    --- PASS: TestClientSuite/TestCopyeConstructorUsesDifferentHTTPClient (0.00s)
+    --- PASS: TestClientSuite/TestCorrectedNewClientSettings (0.00s)
+    --- PASS: TestClientSuite/TestNewClientConstructorPropogatesErrorStateForHost (0.00s)
+    --- PASS: TestClientSuite/TestNewClientFromExistingUsesExistinHTTPClient (0.00s)
+    --- PASS: TestClientSuite/TestNewClientFromExistingWithNilClientReturnsError (0.00s)
+    --- PASS: TestClientSuite/TestNewClientPropogatesValidValuesToCreatedValues (0.00s)
+    --- PASS: TestClientSuite/TestPortSetterDisallowsPortsToBeZero (0.00s)
+    --- PASS: TestClientSuite/TestPortSetterDisallowsTooBigPorts (0.00s)
+    --- PASS: TestClientSuite/TestPortSetterRoundTripsValidPortsWithGetter (0.00s)
+    --- PASS: TestClientSuite/TestSetHostRequiresHttpURL (0.00s)
+    --- PASS: TestClientSuite/TestSetHostRoundTripsValidHostWithGetter (0.00s)
+    --- PASS: TestClientSuite/TestSetHostStripsTrailingSlash (0.00s)
+    --- PASS: TestClientSuite/TestSetPrefixRemovesTrailingAndLeadingSlashes (0.00s)
+    --- PASS: TestClientSuite/TestSetPrefixRoundTripsThroughGetter (0.00s)
+    --- PASS: TestClientSuite/TestURLGenerationWithEmptyPrefix (0.00s)
+    --- PASS: TestClientSuite/TestURLGenerationWithNonDefaultPort (0.00s)
+    --- PASS: TestClientSuite/TestURLGeneratiorWithoutDefaultPortInResult (0.00s)
+PASS

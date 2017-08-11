@@ -147,7 +147,19 @@ func TestParserFunctionality(t *testing.T) {
 		So(results[0].Name, ShouldEqual, "TestFailures")
 		So(results[0].Status, ShouldEqual, FAIL)
 	})
+	Convey("testify suites with leading spaces", t, func() {
+		logdata, err := ioutil.ReadFile(filepath.Join(cwd, "testdata", "gotest", "4_simple.log"))
+		So(err, ShouldBeNil)
 
+		parser := &goTestParser{Suite: "testify test"}
+		err = parser.Parse(bytes.NewBuffer(logdata))
+		So(err, ShouldBeNil)
+
+		results := parser.Results()
+		So(len(results), ShouldEqual, 19)
+		So(results[18].Name, ShouldEqual, "TestClientSuite/TestURLGeneratiorWithoutDefaultPortInResult")
+		So(results[18].Status, ShouldEqual, PASS)
+	})
 }
 
 func matchResultWithLog(tr *goTestResult, logs []string) {
