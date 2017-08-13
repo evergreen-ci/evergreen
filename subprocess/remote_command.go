@@ -89,12 +89,16 @@ func (rc *RemoteCommand) Start() error {
 
 	cmdArray = append(cmdArray, cmdString)
 
+	cmdString := fmt.Sprintf("ssh %s", strings.Join(cmdArray, " "))
+	cmdString = strings.Replace(cmdString, "%!h(MISSING)", "%h")
+	cmdString = strings.Replace(cmdString, "%!p(MISSING)", "%p")
+
 	grip.InfoWhen(!rc.LoggingDisabled,
 		message.Fields{
 			"message":    rc.Id,
 			"host":       rc.RemoteHostName,
 			"user":       rc.User,
-			"cmd":        fmt.Sprintf("ssh %s", strings.Join(cmdArray, " ")),
+			"cmd":        cmdString,
 			"background": rc.Background,
 		})
 
