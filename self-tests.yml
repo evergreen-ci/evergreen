@@ -353,6 +353,9 @@ tasks:
     tags: ["db", "test"]
     name: test-plugin-builtin-keyval
   - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test"]
+    name: test-plugin-builtin-buildbaron
+  - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "test", "agent"]
     name: test-plugin-builtin-git
   - <<: *run-go-test-suite-with-mongodb
@@ -505,6 +508,9 @@ tasks:
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-plugin-builtin-keyval
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race", "agent"]
+    name: race-plugin-builtin-buildbaron
   - <<: *run-go-test-suite-with-mongodb
     tags: ["db", "race", "agent"]
     name: race-plugin-builtin-gotest
