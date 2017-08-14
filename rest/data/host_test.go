@@ -37,17 +37,32 @@ func TestHostConnectorSuite(t *testing.T) {
 		StartedBy: "user2",
 		Status:    evergreen.HostTerminated,
 	}
+	host3 := &host.Host{
+		Id:        "host3",
+		StartedBy: "user3",
+		Status:    evergreen.HostTerminated,
+	}
+	host4 := &host.Host{
+		Id:        "host4",
+		StartedBy: "user4",
+		Status:    evergreen.HostTerminated,
+	}
 
 	assert.NoError(t, host1.Insert())
 	assert.NoError(t, host2.Insert())
+	assert.NoError(t, host3.Insert())
+	assert.NoError(t, host4.Insert())
 	suite.Run(t, s)
 }
 
 func TestMockHostConnectorSuite(t *testing.T) {
 	s := new(HostConnectorSuite)
 	s.ctx = &MockConnector{MockHostConnector: MockHostConnector{
-		CachedHosts: []host.Host{{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning},
-			{Id: "host2", StartedBy: "user2", Status: evergreen.HostRunning}},
+		CachedHosts: []host.Host{
+			{Id: "host1", StartedBy: testUser, Status: evergreen.HostRunning},
+			{Id: "host2", StartedBy: "user2", Status: evergreen.HostTerminated},
+			{Id: "host3", StartedBy: "user3", Status: evergreen.HostTerminated},
+			{Id: "host4", StartedBy: "user4", Status: evergreen.HostTerminated}},
 	}}
 	suite.Run(t, s)
 }
@@ -75,7 +90,7 @@ func (s *HostConnectorSuite) TestFindByIdLast() {
 }
 
 func (s *HostConnectorSuite) TestFindByIdFail() {
-	h, ok := s.ctx.FindHostById("host3")
+	h, ok := s.ctx.FindHostById("host5")
 	s.Error(ok)
 	s.Nil(h)
 }
@@ -102,6 +117,22 @@ func (s *HostConnectorSuite) TestStatusFiltering() {
 		}
 		s.True(statusFound)
 	}
+}
+
+func (s *HostConnectorSuite) TestLimitAndSort() {
+	hosts, err := s.ctx.FindHostsById("", evergreen.HostTerminated, "", 2, 1)
+	s.NoError(err)
+	s.NotNil(hosts)
+	s.Equal(2, len(hosts))
+	s.Equal("host2", hosts[0].Id)
+	s.Equal("host3", hosts[1].Id)
+
+	hosts, err = s.ctx.FindHostsById("host4", evergreen.HostTerminated, "", 2, -1)
+	s.NoError(err)
+	s.NotNil(hosts)
+	s.Equal(2, len(hosts))
+	s.Equal("host4", hosts[0].Id)
+	s.Equal("host3", hosts[1].Id)
 }
 
 func (s *HostConnectorSuite) TestSpawnHost() {

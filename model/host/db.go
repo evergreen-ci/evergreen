@@ -9,6 +9,7 @@ import (
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/pkg/errors"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -385,45 +386,34 @@ func UpsertOne(query interface{}, update interface{}) (*mgo.ChangeInfo, error) {
 }
 
 func GetHostsByFromIdWithStatus(id, status, user string, limit, sortDir int) ([]Host, error) {
-	pipeline := geHostsFromIdWithStatusPipeline(id, status, user, limit, sortDir)
-	hostRes := []Host{}
-	err := db.Aggregate(Collection, pipeline, &hostRes)
-	if err != nil {
-		return nil, err
-	}
-	return hostRes, nil
-}
-
-func geHostsFromIdWithStatusPipeline(id, status, user string, limit, sortDir int) []bson.M {
+	sort := []string{IdKey}
 	sortOperator := "$gte"
 	if sortDir < 0 {
 		sortOperator = "$lte"
+		sort = []string{"-" + IdKey}
 	}
-	pipeline := []bson.M{
-		{"$match": bson.M{IdKey: bson.M{sortOperator: id}}},
-	}
+	var statusMatch interface{}
 	if status != "" {
-		statusMatch := bson.M{
-			"$match": bson.M{StatusKey: status},
-		}
-		pipeline = append(pipeline, statusMatch)
+		statusMatch = status
 	} else {
-		statusMatch := bson.M{
-			"$match": bson.M{StatusKey: bson.M{"$in": evergreen.UphostStatus}},
-		}
-		pipeline = append(pipeline, statusMatch)
+		statusMatch = bson.M{"$in": evergreen.UphostStatus}
+	}
+
+	filter := bson.M{
+		IdKey:     bson.M{sortOperator: id},
+		StatusKey: statusMatch,
 	}
 	if user != "" {
-		userMatch := bson.M{
-			"$match": bson.M{StartedByKey: user},
-		}
-		pipeline = append(pipeline, userMatch)
+		filter[StartedByKey] = user
 	}
-	if limit > 0 {
-		limitStage := bson.M{
-			"$limit": limit,
-		}
-		pipeline = append(pipeline, limitStage)
+	query := db.Q{}
+	query = query.Filter(filter)
+	query = query.Sort(sort)
+	query = query.Limit(limit)
+
+	hosts, err := Find(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error querying database")
 	}
-	return pipeline
+	return hosts, nil
 }
