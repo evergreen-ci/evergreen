@@ -15,7 +15,7 @@ type goStatsData struct {
 	current  int64
 }
 
-func (d goStatsData) diff() float64 { float64(d.current - d.previous) }
+func (d goStatsData) diff() float64 { return float64(d.current - d.previous) }
 
 type goStats struct {
 	cgoCalls               goStatsData
@@ -54,7 +54,7 @@ func (s *goStats) update() *runtime.MemStats {
 	s.secondsSinceLastUpdate = now.Sub(s.lastCollection).Seconds()
 	s.lastCollection = now
 
-	return m
+	return &m
 }
 
 func (s *goStats) changePerSecond(stat float64) float64 {
