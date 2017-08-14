@@ -23,13 +23,13 @@ imports:
   - oleutil
 
 - name: github.com/davecgh/go-spew
-  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
-- name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  version: adab96458c51a58dc1783b3335dcce5461522e75
 - name: github.com/stretchr/objx
   version: 1a9d0bb9f541897e62256577b352fdbc1fb4fd94
 - name: github.com/stretchr/testify
-  version: d77da356e56a7428ad25149ca77381849a6a5232
+  version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+- name: github.com/pmezard/go-difflib
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
 
 - name: github.com/fuyufjh/splunk-hec-go
   version: 69956d6a6cbd511dade209563c3256c204c9ae51
