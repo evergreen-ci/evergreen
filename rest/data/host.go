@@ -98,8 +98,10 @@ func (hc *MockHostConnector) FindHostsById(id, status, user string, limit int, s
 			h = hc.CachedHosts[ix]
 		}
 
-		if id != "" && h.Id != id {
-			continue
+		if id != "" {
+			if (sort < 1 && h.Id > id) || (sort > 1 && h.Id < id) {
+				continue
+			}
 		}
 		if user != "" && h.StartedBy != user {
 			continue
