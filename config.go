@@ -20,7 +20,7 @@ var (
 	BuildRevision = ""
 
 	// Commandline Version String; used to control auto-updating.
-	ClientVersion = "2017-06-29"
+	ClientVersion = "2017-08-15"
 )
 
 const (
