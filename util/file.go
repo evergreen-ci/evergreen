@@ -10,8 +10,7 @@ import (
 )
 
 // FileExists returns true if 'path' exists.
-func FileExists(elem ...string) (bool, error) {
-	path := filepath.Join(elem...)
+func FileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		return true, nil
