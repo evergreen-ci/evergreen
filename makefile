@@ -26,7 +26,6 @@ clientBinaries := $(foreach platform,$(unixPlatforms) freebsd_amd64,$(clientBuil
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
-raceBinaries := $(foreach bin,$(binaries),$(bin).race)
 
 clientSource := cli/main/cli.go
 
@@ -86,21 +85,14 @@ $(buildDir)/.plugins:Plugins install_plugins.sh
 	@touch $@
 evergreen_api_server:$(buildDir)/evergreen_api_server
 $(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -directory=$(buildDir) -source=$<
+	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(buildDir) -source=$<
 evergreen_ui_server:$(buildDir)/evergreen_ui_server
 $(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -directory=$(buildDir) -source=$<
+	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(buildDir) -source=$<
 evergreen_runner:$(buildDir)/evergreen_runner
 $(buildDir)/evergreen_runner:runner/main/runner.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -directory=$(buildDir) -source=$<
-#   build the server binaries with the race detector:
-$(buildDir)/evergreen_api_server.race:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -race -directory=$(buildDir) -source=$<
-$(buildDir)/evergreen_runner.race:runner/main/runner.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -race -directory=$(buildDir) -source=$<
-$(buildDir)/evergreen_ui_server.race:service/ui_main/ui.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -race -directory=$(buildDir) -source=$<
-phony += $(binaries) $(raceBinaries)
+	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(buildDir) -source=$<
+phony += $(binaries)
 # end rules for building server binaries
 
 
@@ -112,7 +104,7 @@ cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) -directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 $(clientBuildDir)/version:
 	@mkdir -p $(dir $@)
 	git rev-parse HEAD >| $@
@@ -171,12 +163,9 @@ $(buildDir)/make-tarball:scripts/make-tarball.go $(buildDir)/render-gopath
 	$(vendorGopath) go build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
-dist-race: $(buildDir)/dist-race.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries) $(clientBuildDir)/version
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
-$(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(clientBinaries)
-	./$< -name $@ --prefix $(name)-race $(foreach item,$(raceBinaries) $(distContents),--item $(item))
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(distTestContents) # $(binaries) #(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
@@ -186,7 +175,6 @@ $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFil
 
 # userfacing targets for basic build and development operations
 build:$(binaries) cli
-build-race:$(raceBinaries)
 lint:$(buildDir)/output.lint
 test:$(foreach target,$(packages),test-$(target))
 race:$(foreach target,$(packages),race-$(target))
@@ -293,12 +281,12 @@ testArgs += -testify.m='$(RUN_CASE)'
 endif
 #  targets to compile
 $(buildDir)/test.%:$(testSrcFiles)
-	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./$(subst -,/,$*)
+	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./$(subst -,/,$*)
 $(buildDir)/race.%:$(testSrcFiles)
 	$(vendorGopath) go test -ldflags=$(ldFlags) -race -c -o $@ ./$(subst -,/,$*)
 #  targets to run any tests in the top-level package
 $(buildDir)/test.$(name):$(testSrcFiles)
-	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count) -c -o $@ ./
+	$(vendorGopath) go test -ldflags=$(ldFlags) $(if $(DISABLE_COVERAGE),,-covermode=count )-c -o $@ ./
 $(buildDir)/race.$(name):$(testSrcFiles)
 	$(vendorGopath) go test -ldflags=$(ldFlags) -race -c -o $@ ./
 #  targets to run the tests and report the output
