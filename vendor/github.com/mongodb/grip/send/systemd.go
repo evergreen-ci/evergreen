@@ -3,6 +3,7 @@
 package send
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -22,12 +23,21 @@ type systemdJournal struct {
 // error with the sending to the journald, messages fallback to
 // writing to standard output.
 func NewSystemdLogger(name string, l LevelInfo) (Sender, error) {
-	return setup(MakeSystemdLogger(), name, l)
+	s, err := MakeSystemdLogger()
+	if err != nil {
+		return nil, err
+	}
+
+	return setup(s, name, l)
 }
 
 // MakeSystemdLogger constructs an unconfigured systemd journald
 // logger. Pass to Journaler.SetSender or call SetName before using.
-func MakeSystemdLogger() Sender {
+func MakeSystemdLogger() (Sender, error) {
+	if !journal.Enabled() {
+		return nil, errors.New("systemd journal logging is not available on this platform")
+	}
+
 	s := &systemdJournal{
 		options: make(map[string]string),
 		Base:    NewBase(""),
@@ -40,7 +50,7 @@ func MakeSystemdLogger() Sender {
 		fallback.SetPrefix(fmt.Sprintf("[%s]", s.Name()))
 	}
 
-	return s
+	return s, nil
 }
 
 func (s *systemdJournal) Send(m message.Composer) {

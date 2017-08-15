@@ -348,14 +348,19 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 		}
 	}
 
-	if fileName != "" {
+	if fileName == "" {
+		sender, err := send.MakeSystemdLogger()
+		if err != nil {
+			senders = append(senders, send.MakeNative())
+		} else {
+			senders = append(senders, sender)
+		}
+	} else {
 		sender, err = send.MakeFileLogger(fileName)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
 		senders = append(senders, sender)
-	} else {
-		senders = append(senders, send.MakeNative())
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil
