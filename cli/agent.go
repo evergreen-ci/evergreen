@@ -22,7 +22,7 @@ func (c *AgentCommand) Execute(_ []string) error {
 	}
 
 	existingSender := grip.GetSender()
-	sender, err := agent.GetSender("agent-startup", "init")
+	sender, err := agent.GetSender(c.LogPrefix, "init")
 	if err != nil {
 		return errors.Wrap(err, "problem configuring logging")
 	}

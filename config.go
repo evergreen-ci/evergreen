@@ -323,14 +323,37 @@ func GetSettingsOrExit() *Settings {
 
 func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	var (
-		sender  send.Sender
-		err     error
-		senders []send.Sender
+		sender   send.Sender
+		fallback send.Sender
+		err      error
+		senders  []send.Sender
 	)
+
+	fallback = send.MakeErrorLogger()
+
+	if fileName == LocalLoggingOverride {
+		senders = append(senders, send.MakeNative())
+	} else if fileName == "" {
+		sender, err := send.MakeSystemdLogger()
+		if err != nil {
+			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+			senders = append(senders, send.MakeNative())
+		} else {
+			senders = append(senders, sender)
+		}
+	} else {
+		sender, err = send.MakeFileLogger(fileName)
+		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+		if err != nil {
+			return nil, errors.Wrap(err, "could not configure file logger")
+		}
+		senders = append(senders, sender)
+	}
 
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
+			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
 			senders = append(senders,
 				send.NewBufferedSender(sender,
 					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
@@ -341,26 +364,12 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	if s.Splunk.Populated() {
 		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
 		if err == nil {
+			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
 			senders = append(senders,
 				send.NewBufferedSender(sender,
 					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
 					s.LogBuffering.BufferCount))
 		}
-	}
-
-	if fileName == "" {
-		sender, err := send.MakeSystemdLogger()
-		if err != nil {
-			senders = append(senders, send.MakeNative())
-		} else {
-			senders = append(senders, sender)
-		}
-	} else {
-		sender, err = send.MakeFileLogger(fileName)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not configure file logger")
-		}
-		senders = append(senders, sender)
 	}
 
 	return send.NewConfiguredMultiSender(senders...), nil

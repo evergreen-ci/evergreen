@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
@@ -55,7 +56,7 @@ func GetSender(prefix, taskId string) (send.Sender, error) {
 
 	if prefix == "" {
 		// pass
-	} else if prefix == "LOCAL" || prefix == "--" {
+	} else if prefix == evergreen.LocalLoggingOverride || prefix == "--" {
 		sender, err = send.NewNativeLogger("evergreen-agent", level)
 		if err != nil {
 			return nil, errors.Wrap(err, "problem creating a native console logger")
