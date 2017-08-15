@@ -38,16 +38,15 @@ func TestCommunicatorServerDown(t *testing.T) {
 		downServer.Close()
 
 		agentCommunicator := HTTPCommunicator{
-			ServerURLRoot:   downServer.URL,         // root URL of api server
-			TaskId:          "mocktaskid",           // task ID
-			TaskSecret:      "mocktasksecret",       // task Secret
-			MaxAttempts:     3,                      // max # of retries for each API call
-			RetrySleep:      100 * time.Millisecond, // sleep time between API call retries
-			SignalChan:      make(chan Signal),      // channel for agent signals
-			Logger:          logger,                 // logger to use for logging retry attempts
-			HttpsCert:       "",                     // cert
-			httpClient:      &http.Client{},
-			heartbeatClient: &http.Client{},
+			ServerURLRoot: downServer.URL,         // root URL of api server
+			TaskId:        "mocktaskid",           // task ID
+			TaskSecret:    "mocktasksecret",       // task Secret
+			MaxAttempts:   3,                      // max # of retries for each API call
+			RetrySleep:    100 * time.Millisecond, // sleep time between API call retries
+			SignalChan:    make(chan Signal),      // channel for agent signals
+			Logger:        logger,                 // logger to use for logging retry attempts
+			HttpsCert:     "",                     // cert
+			httpClient:    &http.Client{},
 		}
 		Convey("Calling start() should return err after max retries", func() {
 			So(agentCommunicator.Start(), ShouldNotBeNil)
@@ -71,16 +70,15 @@ func TestCommunicatorServerUp(t *testing.T) {
 		}
 
 		agentCommunicator := HTTPCommunicator{
-			ServerURLRoot:   ts.URL,
-			TaskId:          "mocktaskid",
-			TaskSecret:      "mocktasksecret",
-			MaxAttempts:     3,
-			RetrySleep:      100 * time.Millisecond,
-			SignalChan:      make(chan Signal),
-			Logger:          logger,
-			HttpsCert:       "",
-			httpClient:      &http.Client{},
-			heartbeatClient: &http.Client{},
+			ServerURLRoot: ts.URL,
+			TaskId:        "mocktaskid",
+			TaskSecret:    "mocktasksecret",
+			MaxAttempts:   3,
+			RetrySleep:    100 * time.Millisecond,
+			SignalChan:    make(chan Signal),
+			Logger:        logger,
+			HttpsCert:     "",
+			httpClient:    &http.Client{},
 		}
 
 		Convey("Calls to start() or end() should not return err", func() {

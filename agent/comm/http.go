@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -44,8 +45,6 @@ type HTTPCommunicator struct {
 	Logger        *slogger.Logger
 	HttpsCert     string
 	httpClient    *http.Client
-	// TODO only use one Client after global locking is removed
-	heartbeatClient *http.Client
 }
 
 // NewHTTPCommunicator returns an initialized HTTPCommunicator.
@@ -60,19 +59,26 @@ func NewHTTPCommunicator(serverURL, hostId, hostSecret, cert string) (*HTTPCommu
 		HttpsCert:     cert,
 	}
 
+	tr := &http.Transport{
+		Proxy:             http.ProxyFromEnvironment,
+		DisableKeepAlives: true,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+	}
+
 	if agentCommunicator.HttpsCert != "" {
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM([]byte(agentCommunicator.HttpsCert)) {
 			return nil, errors.New("failed to append HttpsCert to new cert pool")
 		}
-		tc := &tls.Config{RootCAs: pool}
-		tr := &http.Transport{TLSClientConfig: tc}
-		agentCommunicator.httpClient = &http.Client{Transport: tr}
-		agentCommunicator.heartbeatClient = &http.Client{Transport: tr, Timeout: HeartbeatTimeout}
-	} else {
-		agentCommunicator.httpClient = &http.Client{}
-		agentCommunicator.heartbeatClient = &http.Client{Timeout: HeartbeatTimeout}
+		tr.TLSClientConfig = &tls.Config{RootCAs: pool}
 	}
+
+	agentCommunicator.httpClient = &http.Client{Transport: tr, Timeout: HeartbeatTimeout}
+
 	return agentCommunicator, nil
 }
 
@@ -179,7 +185,7 @@ func (h *HTTPCommunicator) Log(messages []apimodels.LogMessage) error {
 	)
 	retryFail, err := util.Retry(retriableLog, h.MaxAttempts, h.RetrySleep)
 	if retryFail {
-		return errors.Wrapf(err, "logging failed after %vtries: %v", h.MaxAttempts)
+		return errors.Wrapf(err, "logging failed after %v tries: %v", h.MaxAttempts)
 	}
 	return err
 }
@@ -382,7 +388,7 @@ func (h *HTTPCommunicator) GetVersion() (*version.Version, error) {
 func (h *HTTPCommunicator) Heartbeat() (bool, error) {
 	h.Logger.Logf(slogger.INFO, "Sending heartbeat.")
 	data := interface{}("heartbeat")
-	resp, err := h.tryRequestWithClient(h.getTaskPath("heartbeat"), "POST", h.heartbeatClient, &data)
+	resp, err := h.tryRequestWithClient(h.getTaskPath("heartbeat"), "POST", h.httpClient, &data)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
