@@ -1,9 +1,8 @@
 package main
 
 import (
-	"strings"
-
 	"github.com/evergreen-ci/evergreen/cli"
+	"github.com/evergreen-ci/evergreen/util"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/mongodb/grip"
 )
@@ -37,7 +36,7 @@ func main() {
 	cmd.AddCommand("status", "return the status of a host", "", hosts.GetSubCommand("status", &opts))
 
 	args, err := parser.Parse()
-	if len(args) > 0 && strings.Contains(args[0], "help") {
+	if util.SliceContains(args, "--help") || util.SliceContains(args, "-h") {
 		return
 	}
 
