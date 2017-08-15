@@ -170,10 +170,14 @@ $(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
 $(buildDir)/make-tarball:scripts/make-tarball.go $(buildDir)/render-gopath
 	$(vendorGopath) go build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
+# don't cross-compile agents for a single-architecture environment, like in testing
+dist-single-arch:$(buildDir)/dist-single-arch.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-race: $(buildDir)/dist-race.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries) $(clientBuildDir)/version
+	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
+$(buildDir)/dist-single-arch.tar.gz:$(buildDir)/make-tarball plugins cli $(binaries) $(clientBuildDir)/version
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
 $(buildDir)/dist-race.tar.gz:$(buildDir)/make-tarball plugins makefile $(raceBinaries) $(clientBinaries)
 	./$< -name $@ --prefix $(name)-race $(foreach item,$(raceBinaries) $(distContents),--item $(item))
