@@ -20,6 +20,8 @@ func RunGracefully(addr string, timeout time.Duration, n http.Handler) error {
 		Server: &http.Server{
 			Addr:         addr,
 			Handler:      n,
+			IdleTimeout:  30 * time.Second,
+			ReadTimeout:  time.Minute,
 			WriteTimeout: time.Minute,
 		},
 		ShutdownInitiated: func() {
