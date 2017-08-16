@@ -1,0 +1,3 @@
+#!/bin/bash
+
+/srv/evergreen/current/clients/linux_amd64/evergreen service web --ui $*

@@ -1,10 +1,7 @@
 package evergreen
 
 import (
-	"flag"
-	"fmt"
 	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/mongodb/grip"
@@ -21,11 +18,6 @@ var (
 
 	// Commandline Version String; used to control auto-updating.
 	ClientVersion = "2017-08-15"
-)
-
-const (
-	// DefaultConfFile is the default config file path for Evergreen.
-	DefaultConfFile = "/etc/mci_settings.yml"
 )
 
 // AuthUser configures a user for our Naive authentication setup.
@@ -309,18 +301,6 @@ func (settings *Settings) Validate() error {
 	return nil
 }
 
-// GetSettingsOrExit loads the evergreen settings file,
-// or exits with a non-0 code if any errors occur.
-func GetSettingsOrExit() *Settings {
-	settings, err := GetSettings()
-	if err != nil {
-		// don't use the logger here, since it needs settings to initialize
-		fmt.Fprintf(os.Stderr, "Error reading config file: %v", err)
-		os.Exit(1)
-	}
-	return settings
-}
-
 func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	var (
 		sender   send.Sender
@@ -397,21 +377,6 @@ func SystemInfoCollector(ctx context.Context) {
 			timer.Reset(sysInfoLoggingInterval)
 		}
 	}
-}
-
-// GetSettings returns Evergreen Settings or an error.
-func GetSettings() (*Settings, error) {
-	var settingsPath = flag.String("conf", DefaultConfFile, "path to config file")
-	flag.Parse()
-	settings, err := NewSettings(*settingsPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = settings.Validate(); err != nil {
-		return nil, err
-	}
-	return settings, nil
 }
 
 // ConfigValidator is a type of function that checks the settings

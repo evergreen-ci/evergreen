@@ -62,7 +62,7 @@ func main() {
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
 	cmd.Args = append(cmd.Args, ldf)
 
-	if race {
+	if race && arch == "amd64" {
 		cmd.Args = append(cmd.Args, "-race")
 	}
 

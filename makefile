@@ -19,6 +19,7 @@ unixPlatforms := linux_amd64 linux_386 linux_s390x linux_arm64 linux_ppc64le sol
 windowsPlatforms := windows_amd64 windows_386
 goos := $(shell go env GOOS)
 goarch := $(shell go env GOARCH)
+gobin := $(shell which go)
 
 clientBuildDir := clients
 
@@ -37,10 +38,6 @@ srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -n
 testSrcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -path "*\#*")
 currentHash := $(shell git rev-parse HEAD)
 ldFlags := "-w -s -X=github.com/evergreen-ci/evergreen.BuildRevision=$(currentHash)"
-# static rules for rule for building artifacts
-define crossCompile
-	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="`which go`" -output=$@
-endef
 # end evergreen specific configuration
 
 
@@ -78,21 +75,16 @@ lintArgs += --exclude="error return value not checked \(defer .* \(errcheck\)$$"
 
 
 # start rules for services and clients
-#   build the server binaries:
 plugins:$(buildDir)/.plugins
 $(buildDir)/.plugins:Plugins install_plugins.sh
 	./install_plugins.sh
 	@touch $@
-evergreen_api_server:$(buildDir)/evergreen_api_server
-$(buildDir)/evergreen_api_server:service/api_main/apiserver.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(buildDir) -source=$<
-evergreen_ui_server:$(buildDir)/evergreen_ui_server
-$(buildDir)/evergreen_ui_server:service/ui_main/ui.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(buildDir) -source=$<
-evergreen_runner:$(buildDir)/evergreen_runner
-$(buildDir)/evergreen_runner:runner/main/runner.go $(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(buildDir) -source=$<
-phony += $(binaries)
+$(buildDir)/evergreen_runner:scripts/evergreen_runner
+	cp $< $@
+$(buildDir)/evergreen_api_server:scripts/evergreen_api_server
+	cp $< $@
+$(buildDir)/evergreen_ui_server:scripts/evergreen_ui_server
+	cp $< $@
 # end rules for building server binaries
 
 
@@ -104,7 +96,7 @@ cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
-	$(crossCompile) $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
+	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 $(clientBuildDir)/version:
 	@mkdir -p $(dir $@)
 	git rev-parse HEAD >| $@

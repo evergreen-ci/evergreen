@@ -8,25 +8,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// HostCommand is the parent command for the host subcommands
-type HostCommand struct {
-}
-
-// GetSubCommand returns the correct subcommand struct for a given input
-func (hc *HostCommand) GetSubCommand(subcommand string, opts *Options) interface{} {
-	switch subcommand {
-	case "create":
-		return &HostCreateCommand{GlobalOpts: opts}
-	case "list":
-		return &HostListCommand{GlobalOpts: opts}
-	case "status":
-		return &HostStatusCommand{GlobalOpts: opts}
-	case "terminate":
-		return &HostTerminateCommand{GlobalOpts: opts}
-	}
-	return nil
-}
-
 // HostCreateCommand is the subcommand to spawn a host
 type HostCreateCommand struct {
 	GlobalOpts *Options `no-flag:"true"`

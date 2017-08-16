@@ -2,7 +2,6 @@ package cli
 
 import (
 	"github.com/evergreen-ci/evergreen/agent"
-	_ "github.com/evergreen-ci/evergreen/plugin/config"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
