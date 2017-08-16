@@ -149,9 +149,8 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		}
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
-
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.KeyName, authedUser)
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, opts.PublicKey, authedUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))
