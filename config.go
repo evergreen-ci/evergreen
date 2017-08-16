@@ -331,25 +331,24 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 
 	fallback = send.MakeErrorLogger()
 
+	// configure default, local logging services
 	if fileName == LocalLoggingOverride {
-		senders = append(senders, send.MakeNative())
+		sender = send.MakeNative()
 	} else if fileName == "" {
-		sender, err := send.MakeSystemdLogger()
-		if err != nil {
-			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-			senders = append(senders, send.MakeNative())
-		} else {
-			senders = append(senders, sender)
-		}
+		// log directly to systemd if possible, and log to
+		// standard output otherwise.
+		sender = getSystemLogger()
+		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
 	} else {
 		sender, err = send.MakeFileLogger(fileName)
 		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
-		senders = append(senders, sender)
 	}
+	senders = append(senders, sender)
 
+	// set up external log aggregation services:
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
