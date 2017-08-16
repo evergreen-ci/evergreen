@@ -28,27 +28,17 @@ func TestAdminSuite(t *testing.T) {
 func (s *AdminSuite) TestBanner() {
 	const bannerText = "hello evergreen users!"
 
-	_, err := SetBanner(bannerText)
+	err := SetBanner(bannerText)
 	s.NoError(err)
 	settings, err := GetSettingsFromDB()
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(bannerText, settings.GetBanner())
+	s.Equal(bannerText, settings.Banner)
 }
 
-func (s *AdminSuite) TestTaskDispatchDisabling() {
-	const dispatchDisabled = true
-
-	_, err := SetTaskDispatchDisabled(dispatchDisabled)
-	s.NoError(err)
-	settings, err := GetSettingsFromDB()
-	s.NoError(err)
-	s.NotNil(settings)
-	s.Equal(dispatchDisabled, settings.GetTaskDispatchDisabled())
-}
-
-func (s *AdminSuite) TestRunnerFlags() {
-	testFlags := &RunnerFlags{
+func (s *AdminSuite) TestServiceFlags() {
+	testFlags := ServiceFlags{
+		TaskDispatchDisabled:  true,
 		HostinitDisabled:      true,
 		MonitorDisabled:       true,
 		NotificationsDisabled: true,
@@ -58,20 +48,22 @@ func (s *AdminSuite) TestRunnerFlags() {
 		SchedulerDisabled:     true,
 	}
 
-	_, err := SetRunnerFlags(testFlags)
+	err := SetRunnerFlags(testFlags)
 	s.NoError(err)
 	settings, err := GetSettingsFromDB()
 	s.NoError(err)
 	s.NotNil(settings)
-	s.Equal(testFlags, settings.GetRunnerFlags())
+	s.Equal(testFlags, settings.ServiceFlags)
 }
 
 func (s *AdminSuite) TestUpsert() {
+	db.Clear(Collection)
 	settings := &AdminSettings{
-		Id:                   SystemSettingsID,
-		Banner:               "",
-		TaskDispatchDisabled: false,
-		RunnerFlags: &RunnerFlags{
+		Id:     systemSettingsID,
+		Banner: "",
+
+		ServiceFlags: ServiceFlags{
+			TaskDispatchDisabled:  false,
 			HostinitDisabled:      false,
 			MonitorDisabled:       false,
 			NotificationsDisabled: false,
@@ -81,7 +73,7 @@ func (s *AdminSuite) TestUpsert() {
 			SchedulerDisabled:     false,
 		},
 	}
-	_, err := Upsert(settings)
+	err := Upsert(settings)
 	s.NoError(err)
 
 	settingsFromDB, err := GetSettingsFromDB()
@@ -90,15 +82,13 @@ func (s *AdminSuite) TestUpsert() {
 	s.Equal(settings, settingsFromDB)
 
 	settings.Banner = "test"
-	settings.TaskDispatchDisabled = true
-	settings.RunnerFlags.HostinitDisabled = true
-	_, err = Upsert(settings)
+	settings.ServiceFlags.HostinitDisabled = true
+	err = Upsert(settings)
 	s.NoError(err)
 
 	settingsFromDB, err = GetSettingsFromDB()
 	s.NoError(err)
 	s.NotNil(settingsFromDB)
-	s.Equal(settings.GetBanner(), settingsFromDB.Banner)
-	s.Equal(settings.GetTaskDispatchDisabled(), settingsFromDB.TaskDispatchDisabled)
-	s.Equal(settings.GetRunnerFlags().HostinitDisabled, settingsFromDB.RunnerFlags.HostinitDisabled)
+	s.Equal(settings.Banner, settingsFromDB.Banner)
+	s.Equal(settings.ServiceFlags.HostinitDisabled, settingsFromDB.ServiceFlags.HostinitDisabled)
 }
