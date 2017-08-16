@@ -334,13 +334,8 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	if fileName == LocalLoggingOverride {
 		senders = append(senders, send.MakeNative())
 	} else if fileName == "" {
-		sender, err := send.MakeSystemdLogger()
-		if err != nil {
-			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-			senders = append(senders, send.MakeNative())
-		} else {
-			senders = append(senders, sender)
-		}
+		sender = getSystemLogger()
+		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
 	} else {
 		sender, err = send.MakeFileLogger(fileName)
 		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
