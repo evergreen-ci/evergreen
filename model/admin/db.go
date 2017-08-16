@@ -4,35 +4,35 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/pkg/errors"
-	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 const (
 	Collection       = "admin"
-	SystemSettingsID = "0"
+	systemSettingsID = "0"
 )
 
 var (
-	IdKey            = bsonutil.MustHaveTag(AdminSettings{}, "Id")
-	BannerKey        = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
-	TaskDispatchKey  = bsonutil.MustHaveTag(AdminSettings{}, "TaskDispatchDisabled")
-	RunnerFlagsKey   = bsonutil.MustHaveTag(AdminSettings{}, "RunnerFlags")
-	HostinitKey      = bsonutil.MustHaveTag(RunnerFlags{}, "HostinitDisabled")
-	MonitorKey       = bsonutil.MustHaveTag(RunnerFlags{}, "MonitorDisabled")
-	NotificationsKey = bsonutil.MustHaveTag(RunnerFlags{}, "NotificationsDisabled")
-	AlertsKey        = bsonutil.MustHaveTag(RunnerFlags{}, "AlertsDisabled")
-	TaskrunnerKey    = bsonutil.MustHaveTag(RunnerFlags{}, "TaskrunnerDisabled")
-	RepotrackerKey   = bsonutil.MustHaveTag(RunnerFlags{}, "RepotrackerDisabled")
-	SchedulerKey     = bsonutil.MustHaveTag(RunnerFlags{}, "SchedulerDisabled")
+	IdKey     = bsonutil.MustHaveTag(AdminSettings{}, "Id")
+	BannerKey = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
+
+	ServiceFlagsKey  = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
+	TaskDispatchKey  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
+	HostinitKey      = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
+	MonitorKey       = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
+	NotificationsKey = bsonutil.MustHaveTag(ServiceFlags{}, "NotificationsDisabled")
+	AlertsKey        = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
+	TaskrunnerKey    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskrunnerDisabled")
+	RepotrackerKey   = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")
+	SchedulerKey     = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
 )
 
-var SettingsQuery = db.Query(bson.M{IdKey: SystemSettingsID})
+var settingsQuery = db.Query(bson.M{IdKey: systemSettingsID})
 
 func GetSettingsFromDB() (*AdminSettings, error) {
 	settings := &AdminSettings{}
 	query := db.Q{}
-	query = query.Filter(SettingsQuery)
+	query = query.Filter(settingsQuery)
 	err := db.FindOneQ(Collection, query, settings)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error retrieving admin settings from DB")
@@ -43,47 +43,51 @@ func GetSettingsFromDB() (*AdminSettings, error) {
 	return settings, nil
 }
 
-func SetBanner(bannerText string) (*mgo.ChangeInfo, error) {
-	return db.Upsert(
+func SetBanner(bannerText string) error {
+	_, err := db.Upsert(
 		Collection,
-		SettingsQuery,
+		settingsQuery,
 		bson.M{
-			"$set": bson.M{IdKey: SystemSettingsID, BannerKey: bannerText},
+			"$set": bson.M{IdKey: systemSettingsID, BannerKey: bannerText},
 		},
 	)
+
+	return err
 }
 
-func SetTaskDispatchDisabled(disableTasks bool) (*mgo.ChangeInfo, error) {
-	return db.Upsert(
+func SetTaskDispatchDisabled(disableTasks bool) error {
+	_, err := db.Upsert(
 		Collection,
-		SettingsQuery,
+		settingsQuery,
 		bson.M{
-			"$set": bson.M{IdKey: SystemSettingsID, TaskDispatchKey: disableTasks},
+			"$set": bson.M{IdKey: systemSettingsID, TaskDispatchKey: disableTasks},
 		},
 	)
+
+	return err
 }
 
-func SetRunnerFlags(flags *RunnerFlags) (*mgo.ChangeInfo, error) {
-	if flags == nil {
-		return nil, errors.New("Runner flags are nil")
-	}
-	return db.Upsert(
+func SetRunnerFlags(flags ServiceFlags) error {
+	_, err := db.Upsert(
 		Collection,
-		SettingsQuery,
+		settingsQuery,
 		bson.M{
-			"$set": bson.M{IdKey: SystemSettingsID, RunnerFlagsKey: flags},
+			"$set": bson.M{IdKey: systemSettingsID, ServiceFlagsKey: flags},
 		},
 	)
+
+	return err
 }
 
-func Upsert(settings *AdminSettings) (*mgo.ChangeInfo, error) {
+func Upsert(settings *AdminSettings) error {
 	update := bson.M{
 		"$set": bson.M{
-			IdKey:           SystemSettingsID,
-			BannerKey:       settings.GetBanner(),
-			TaskDispatchKey: settings.GetTaskDispatchDisabled(),
-			RunnerFlagsKey:  settings.GetRunnerFlags(),
+			IdKey:           systemSettingsID,
+			BannerKey:       settings.Banner,
+			ServiceFlagsKey: settings.ServiceFlags,
 		},
 	}
-	return db.Upsert(Collection, SettingsQuery, update)
+	_, err := db.Upsert(Collection, settingsQuery, update)
+
+	return err
 }
