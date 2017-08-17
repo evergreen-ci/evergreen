@@ -12,6 +12,7 @@ import (
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/taskrunner"
@@ -279,6 +280,16 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 	h := MustHaveHost(r)
 	response := apimodels.NextTaskResponse{
 		ShouldExit: false,
+	}
+
+	adminSettings, err := admin.GetSettingsFromDB()
+	if err != nil {
+		grip.Error(errors.Wrap(err, "error retrieving admin settings"))
+	}
+	if adminSettings != nil && adminSettings.ServiceFlags.TaskDispatchDisabled {
+		grip.Info("task dispatch is disabled, returning no task")
+		as.WriteJSON(w, http.StatusOK, response)
+		return
 	}
 
 	taskRunnerInstance := taskrunner.NewTaskRunner(&as.Settings)

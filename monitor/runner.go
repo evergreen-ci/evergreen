@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -27,6 +28,21 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
+	adminSettings, err := admin.GetSettingsFromDB()
+	if err != nil {
+		grip.Error(errors.Wrap(err, "error retrieving admin settings"))
+	}
+	if adminSettings != nil && adminSettings.ServiceFlags.MonitorDisabled {
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"status":  "success",
+			"runtime": time.Since(startTime),
+			"span":    time.Since(startTime).String(),
+			"message": "monitor is disabled, exiting",
+		})
+		return nil
+	}
+
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
