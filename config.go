@@ -286,6 +286,11 @@ func NewSettings(filename string) (*Settings, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if err := settings.Validate(); err != nil {
+		return nil, err
+	}
+
 	return settings, nil
 }
 

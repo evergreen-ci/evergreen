@@ -18,6 +18,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/slogger"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -422,7 +423,6 @@ func (agt *Agent) Setup() error {
 	agt.KillChan = make(chan bool)
 	agt.metricsCollector = &metricsCollector{
 		comm: agt.TaskCommunicator,
-		stop: agt.KillChan,
 	}
 	agt.endChan = make(chan *apimodels.TaskEndDetail, 1)
 	return nil
@@ -606,6 +606,11 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 		grip.Debugf("stopping simple stats collector for task:", agt.GetCurrentTaskId())
 	}()
 
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	grip.CatchError(agt.metricsCollector.start(ctx))
+
 	// start the heartbeater, timeout watcher, system stats collector, and signal listener
 	agt.StartBackgroundActions(agt.signalHandler)
 
@@ -635,7 +640,7 @@ func (agt *Agent) RunTask() (*apimodels.EndTaskResponse, error) {
 	}
 
 	taskStatus := agt.RunTaskCommands()
-
+	cancel()
 	return agt.finishAndAwaitCleanup(taskStatus)
 }
 
@@ -792,8 +797,6 @@ func (agt *Agent) callbackTimeoutSignal() chan bool {
 func (agt *Agent) StartBackgroundActions(signalHandler TerminateHandler) {
 	agt.heartbeater.StartHeartbeating()
 	agt.idleTimeoutWatcher.NotifyTimeouts(agt.signalHandler.idleTimeoutChan)
-
-	grip.CatchError(agt.metricsCollector.start())
 
 	if agt.maxExecTimeoutWatcher != nil {
 		// default action is not to include a master timeout
