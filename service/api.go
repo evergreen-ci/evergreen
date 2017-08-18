@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"runtime/debug"
 	"strings"
 
 	"github.com/codegangsta/negroni"
@@ -661,7 +660,6 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		"url":    r.URL,
 		"err":    err,
 		"code":   code,
-		"stack":  string(debug.Stack()),
 	})
 
 	// if JSON is the preferred content type for the request, reply with a json message
