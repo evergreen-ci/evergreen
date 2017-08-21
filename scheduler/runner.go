@@ -31,14 +31,12 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
 	adminSettings, err := admin.GetSettingsFromDB()
 	if err != nil {
-		grip.Error(errors.Wrap(err, "error retrieving admin settings"))
+		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings != nil && adminSettings != nil && adminSettings.ServiceFlags.SchedulerDisabled {
 		grip.Info(message.Fields{
 			"runner":  RunnerName,
-			"status":  "success",
-			"runtime": time.Since(startTime),
-			"span":    time.Since(startTime).String(),
+			"status":  "disabled",
 			"message": "scheduler is disabled, exiting",
 		})
 		return nil

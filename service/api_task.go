@@ -284,7 +284,9 @@ func (as *APIServer) NextTask(w http.ResponseWriter, r *http.Request) {
 
 	adminSettings, err := admin.GetSettingsFromDB()
 	if err != nil {
-		grip.Error(errors.Wrap(err, "error retrieving admin settings"))
+		err = errors.Wrap(err, "error retrieving admin settings")
+		grip.Error(err)
+		as.WriteJSON(w, http.StatusInternalServerError, err)
 	}
 	if adminSettings != nil && adminSettings.ServiceFlags.TaskDispatchDisabled {
 		grip.Info("task dispatch is disabled, returning no task")

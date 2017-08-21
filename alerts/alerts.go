@@ -276,14 +276,12 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
 	adminSettings, err := admin.GetSettingsFromDB()
 	if err != nil {
-		grip.Error(errors.Wrap(err, "error retrieving admin settings"))
+		return errors.Wrap(err, "error retrieving admin settings")
 	}
 	if adminSettings != nil && adminSettings.ServiceFlags.AlertsDisabled {
 		grip.Info(message.Fields{
 			"runner":  qp.Name(),
-			"status":  "success",
-			"runtime": time.Since(startTime),
-			"span":    time.Since(startTime).String(),
+			"status":  "disabled",
 			"message": "alerts are disabled, exiting",
 		})
 		return nil
