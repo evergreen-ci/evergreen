@@ -659,7 +659,7 @@ func (as *APIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	errorFields := message.Fields{
 		"method": r.Method,
 		"url":    r.URL,
-		"err":    err,
+		"err":    err.Error(),
 		"code":   code,
 	}
 	if code >= 500 {
