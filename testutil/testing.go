@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	// EnvAll is an environment variable to set in order to run integration tests.
-	EnvAll      = "EVERGREEN_ALL"
+	envAll      = "EVERGREEN_ALL"
 	envOverride = "SETTINGS_OVERRIDE"
 )
 
@@ -56,7 +55,7 @@ func SkipTestUnlessAll(t *testing.T, testName string) {
 	// Note: in the future we could/should be able to eliminate
 	// the testName arg by using runtime.Caller(1)
 
-	if !(*RunAllTests) && os.Getenv(EnvAll) == "" {
+	if !(*RunAllTests) && os.Getenv(envAll) == "" {
 		t.Skip(fmt.Sprintf("skipping %v because 'evergreen.all' is not specified...",
 			testName))
 	}

@@ -114,7 +114,7 @@ func (s *AgentTestSuite) TestAbort() {
 	s.mockCommunicator.HeartbeatShouldAbort = true
 	err := s.a.startNextTask(context.Background(), s.tc)
 	s.NoError(err)
-	s.Equal("failed", s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
 	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
 }
 

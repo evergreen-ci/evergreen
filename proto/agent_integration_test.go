@@ -52,9 +52,6 @@ func (s *AgentIntegrationSuite) SetupSuite() {
 	dbutil.SetGlobalSessionProvider(dbutil.SessionFactoryFromConfig(s.testConfig))
 }
 
-func (s *AgentIntegrationSuite) SetupTest() {
-}
-
 func (s *AgentIntegrationSuite) TearDownTest() {
 	if s.testServer != nil {
 		s.testServer.Close()
