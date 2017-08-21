@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/mongodb/grip"
 )
 
 // createTaskDirectory makes a directory for the agent to execute
@@ -48,20 +49,20 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskConfig *model.TaskConfi
 // exits.
 func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	if tc.taskDirectory == "" {
-		tc.logger.Execution().Critical("Task directory is not set")
+		grip.Critical("Task directory is not set")
 	}
-	tc.logger.Execution().Info("Changing directory back to distro working directory.")
+	grip.Info("Changing directory back to distro working directory.")
 	if tc.taskConfig == nil {
-		tc.logger.Execution().Critical("No taskConfig in taskContext")
+		grip.Critical("No taskConfig in taskContext")
 		return
 	}
 	if err := os.Chdir(tc.taskConfig.Distro.WorkDir); err != nil {
-		tc.logger.Execution().Criticalf("Error changing directory out of task directory: %v", err)
+		grip.Criticalf("Error changing directory out of task directory: %v", err)
 	}
 
-	tc.logger.Execution().Info("Deleting directory for completed task.")
+	grip.Info("Deleting directory for completed task.")
 
 	if err := os.RemoveAll(tc.taskDirectory); err != nil {
-		tc.logger.Execution().Criticalf("Error removing working directory for the task: %v", err)
+		grip.Criticalf("Error removing working directory for the task: %v", err)
 	}
 }

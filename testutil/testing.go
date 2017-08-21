@@ -12,13 +12,14 @@ import (
 )
 
 const (
-	envAll      = "EVERGREEN_ALL"
+	// EnvAll is an environment variable to set in order to run integration tests.
+	EnvAll      = "EVERGREEN_ALL"
 	envOverride = "SETTINGS_OVERRIDE"
 )
 
 var (
-	// run the integration tests
-	runAllTests = flag.Bool("evergreen.all", false, "Run integration tests")
+	// RunAllTests is a booloean flag to set in order to run the integration tests.
+	RunAllTests = flag.Bool("evergreen.all", false, "Run integration tests")
 	// path to an mci settings file containing sensitive information
 	settingsOverride = flag.String("evergreen.settingsOverride", "", "Settings file"+
 		" to be used to override sensitive info in the testing mci settings"+
@@ -55,7 +56,7 @@ func SkipTestUnlessAll(t *testing.T, testName string) {
 	// Note: in the future we could/should be able to eliminate
 	// the testName arg by using runtime.Caller(1)
 
-	if !(*runAllTests) && os.Getenv(envAll) == "" {
+	if !(*RunAllTests) && os.Getenv(EnvAll) == "" {
 		t.Skip(fmt.Sprintf("skipping %v because 'evergreen.all' is not specified...",
 			testName))
 	}

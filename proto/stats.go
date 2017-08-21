@@ -7,6 +7,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"golang.org/x/net/context"
 )
@@ -61,7 +62,7 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 		for {
 			select {
 			case <-ctx.Done():
-				sc.logger.System().Info("StatsCollector ticker stopping.")
+				grip.Info("StatsCollector ticker stopping.")
 				return
 			case <-timer.C:
 				for _, cmd := range sc.Cmds {

@@ -43,6 +43,8 @@ type taskContext struct {
 // New creates a new Agent with some Options and a client.Communicator. Call the
 // Agent's Start method to begin listening for tasks to run.
 func New(opts Options, comm client.Communicator) *Agent {
+	comm.SetHostID(opts.HostID)
+	comm.SetHostSecret(opts.HostSecret)
 	agent := &Agent{
 		opts: opts,
 		comm: comm,
@@ -103,19 +105,15 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 	ctx, cancel := context.WithCancel(ctx)
 	tc.logger = a.comm.GetLoggerProducer(tc.task)
 
-	// Defers are LIFO. We cancel any agent procs, then any OS procs, then remove the task directory.
-	defer a.removeTaskDirectory(tc)
-	defer a.killProcs(tc)
-	defer cancel()
+	// TODO: This is commenting out pending investigation of races caused by the metrics collector (EVG-1948).
+	// metrics := &metricsCollector{
+	// 	comm:     a.comm,
+	// 	taskData: tc.task,
+	// }
 
-	metrics := &metricsCollector{
-		comm:     a.comm,
-		taskData: tc.task,
-	}
-
-	if err := metrics.start(ctx); err != nil {
-		return errors.Wrap(err, "problem setting up metrics collection")
-	}
+	// if err := metrics.start(ctx); err != nil {
+	// 	return errors.Wrap(err, "problem setting up metrics collection")
+	// }
 
 	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
 	if err != nil {
@@ -132,6 +130,11 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 		"task_id":     tc.task.ID,
 		"task_secret": tc.task.Secret,
 	})
+
+	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
+	defer a.removeTaskDirectory(tc)
+	defer a.killProcs(tc)
+	defer cancel()
 
 	heartbeat := make(chan struct{})
 	go a.startHeartbeat(ctx, tc, heartbeat)
@@ -188,6 +191,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	a.runPostTaskCommands(ctx, tc)
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
+	tc.logger.Close()
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem marking task complete")
