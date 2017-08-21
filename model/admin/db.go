@@ -8,27 +8,28 @@ import (
 )
 
 const (
-	Collection       = "admin"
-	systemSettingsID = "0"
+	Collection          = "admin"
+	systemSettingsDocID = "0"
 )
 
 var (
-	IdKey     = bsonutil.MustHaveTag(AdminSettings{}, "Id")
-	BannerKey = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
-
-	ServiceFlagsKey  = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
-	TaskDispatchKey  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
-	HostinitKey      = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
-	MonitorKey       = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
-	NotificationsKey = bsonutil.MustHaveTag(ServiceFlags{}, "NotificationsDisabled")
-	AlertsKey        = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
-	TaskrunnerKey    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskrunnerDisabled")
-	RepotrackerKey   = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")
-	SchedulerKey     = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
+	idKey            = bsonutil.MustHaveTag(AdminSettings{}, "Id")
+	bannerKey        = bsonutil.MustHaveTag(AdminSettings{}, "Banner")
+	serviceFlagsKey  = bsonutil.MustHaveTag(AdminSettings{}, "ServiceFlags")
+	taskDispatchKey  = bsonutil.MustHaveTag(ServiceFlags{}, "TaskDispatchDisabled")
+	hostinitKey      = bsonutil.MustHaveTag(ServiceFlags{}, "HostinitDisabled")
+	monitorKey       = bsonutil.MustHaveTag(ServiceFlags{}, "MonitorDisabled")
+	notificationsKey = bsonutil.MustHaveTag(ServiceFlags{}, "NotificationsDisabled")
+	alertsKey        = bsonutil.MustHaveTag(ServiceFlags{}, "AlertsDisabled")
+	taskrunnerKey    = bsonutil.MustHaveTag(ServiceFlags{}, "TaskrunnerDisabled")
+	repotrackerKey   = bsonutil.MustHaveTag(ServiceFlags{}, "RepotrackerDisabled")
+	schedulerKey     = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
 )
 
-var settingsQuery = db.Query(bson.M{IdKey: systemSettingsID})
+var settingsQuery = db.Query(bson.M{idKey: systemSettingsDocID})
 
+// GetSettingsFromDB retrieves the admin settings document. If no document is
+// present in the DB, it will return the defaults
 func GetSettingsFromDB() (*AdminSettings, error) {
 	settings := &AdminSettings{}
 	query := db.Q{}
@@ -42,54 +43,43 @@ func GetSettingsFromDB() (*AdminSettings, error) {
 			return nil, errors.Wrap(err, "Error retrieving admin settings from DB")
 		}
 	}
-	if settings == nil {
-		return nil, errors.New("Settings are nil")
-	}
 	return settings, nil
 }
 
+// SetBanner sets the text of the Evergreen site-wide banner. Setting a blank
+// string here means that there is no banner
 func SetBanner(bannerText string) error {
 	_, err := db.Upsert(
 		Collection,
 		settingsQuery,
 		bson.M{
-			"$set": bson.M{IdKey: systemSettingsID, BannerKey: bannerText},
+			"$set": bson.M{idKey: systemSettingsDocID, bannerKey: bannerText},
 		},
 	)
 
 	return err
 }
 
-func SetTaskDispatchDisabled(disableTasks bool) error {
+// SetServiceFlags sets whether each of the runner/API server processes is enabled
+func SetServiceFlags(flags ServiceFlags) error {
 	_, err := db.Upsert(
 		Collection,
 		settingsQuery,
 		bson.M{
-			"$set": bson.M{IdKey: systemSettingsID, TaskDispatchKey: disableTasks},
+			"$set": bson.M{idKey: systemSettingsDocID, serviceFlagsKey: flags},
 		},
 	)
 
 	return err
 }
 
-func SetRunnerFlags(flags ServiceFlags) error {
-	_, err := db.Upsert(
-		Collection,
-		settingsQuery,
-		bson.M{
-			"$set": bson.M{IdKey: systemSettingsID, ServiceFlagsKey: flags},
-		},
-	)
-
-	return err
-}
-
+// Upsert will update/insert the admin settings document
 func Upsert(settings *AdminSettings) error {
 	update := bson.M{
 		"$set": bson.M{
-			IdKey:           systemSettingsID,
-			BannerKey:       settings.Banner,
-			ServiceFlagsKey: settings.ServiceFlags,
+			idKey:           systemSettingsDocID,
+			bannerKey:       settings.Banner,
+			serviceFlagsKey: settings.ServiceFlags,
 		},
 	}
 	_, err := db.Upsert(Collection, settingsQuery, update)

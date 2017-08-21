@@ -48,7 +48,7 @@ func (s *AdminSuite) TestServiceFlags() {
 		SchedulerDisabled:     true,
 	}
 
-	err := SetRunnerFlags(testFlags)
+	err := SetServiceFlags(testFlags)
 	s.NoError(err)
 	settings, err := GetSettingsFromDB()
 	s.NoError(err)
@@ -59,7 +59,7 @@ func (s *AdminSuite) TestServiceFlags() {
 func (s *AdminSuite) TestUpsert() {
 	db.Clear(Collection)
 	settings := &AdminSettings{
-		Id:     systemSettingsID,
+		Id:     systemSettingsDocID,
 		Banner: "",
 
 		ServiceFlags: ServiceFlags{

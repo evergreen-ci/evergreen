@@ -1,11 +1,14 @@
 package admin
 
+// AdminSettings currently holds settings related to degraded mode. It is intended
+// to hold all configurable Evergreen-wide settings
 type AdminSettings struct {
-	Id           string       `bson:"_id" json:"id"`
+	Id           string       `bson:"_id"`
 	Banner       string       `bson:"banner" json:"banner"`
 	ServiceFlags ServiceFlags `bson:"service_flags" json:"service_flags"`
 }
 
+// ServiceFlags holds the state of each of the runner/API processes
 type ServiceFlags struct {
 	TaskDispatchDisabled  bool `bson:"task_dispatch_disabled" json:"task_dispatch_disabled"`
 	HostinitDisabled      bool `bson:"hostinit_disabled" json:"hostinit_disabled"`
