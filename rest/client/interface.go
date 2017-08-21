@@ -34,6 +34,10 @@ type Communicator interface {
 	SetHostID(string)
 	// SetHostSecret sets the host secret.
 	SetHostSecret(string)
+	// GetHostID returns the host ID.
+	GetHostID() string
+	// GetHostSecret returns the host secret.
+	GetHostSecret() string
 
 	// Agent Operations
 	//

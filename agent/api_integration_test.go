@@ -78,9 +78,9 @@ func setupTlsConfigs(t *testing.T) {
 
 func createAgent(testServer *service.TestServer, testHost *host.Host) (*Agent, error) {
 	testAgent, err := New(Options{
-		APIURL:      testServer.URL,
-		HostId:      testHost.Id,
-		HostSecret:  testHost.Secret,
+		APIURL:     testServer.URL,
+		HostId:     testHost.Id,
+		HostSecret: testHost.Secret,
 	})
 
 	if err != nil {

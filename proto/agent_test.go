@@ -109,3 +109,17 @@ func (s *AgentTestSuite) TestEndTaskResponse() {
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 }
+
+func (s *AgentTestSuite) TestAbort() {
+	s.mockCommunicator.HeartbeatShouldAbort = true
+	err := s.a.startNextTask(context.Background(), s.tc)
+	s.NoError(err)
+	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
+}
+
+func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {
+	agent := New(Options{HostID: "host_id", HostSecret: "host_secret"}, client.NewMock("url"))
+	s.Equal("host_id", agent.comm.GetHostID())
+	s.Equal("host_secret", agent.comm.GetHostSecret())
+}

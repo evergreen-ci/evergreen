@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -18,9 +19,14 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext, complete chan<- st
 	}
 	a.checkIn(ctx, tc, initialSetupCommand, initialSetupTimeout, idleTimeout)
 
-	tc.logger.Task().Infof("Task logger initialized (agent revision: %s).", evergreen.BuildRevision)
-	tc.logger.Execution().Info("Execution logger initialized.")
-	tc.logger.System().Info("System logger initialized.")
+	if ctx.Err() != nil {
+		grip.Info("task canceled")
+		return
+	} else {
+		tc.logger.Task().Infof("Task logger initialized (agent revision: %s).", evergreen.BuildRevision)
+		tc.logger.Execution().Info("Execution logger initialized.")
+		tc.logger.System().Info("System logger initialized.")
+	}
 
 	taskConfig, err := a.getTaskConfig(ctx, tc)
 	if err != nil {
@@ -30,7 +36,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext, complete chan<- st
 	}
 
 	if ctx.Err() != nil {
-		tc.logger.Task().Info("task canceled")
+		grip.Info("task canceled")
 		return
 	}
 	tc.logger.Task().Infof("Starting task %v, execution %v.", taskConfig.Task.Id, taskConfig.Task.Execution)

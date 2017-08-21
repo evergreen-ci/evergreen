@@ -80,6 +80,16 @@ func (c *communicatorImpl) SetHostSecret(hostSecret string) {
 	c.hostSecret = hostSecret
 }
 
+// GetHostID returns the host ID.
+func (c *communicatorImpl) GetHostID() string {
+	return c.hostID
+}
+
+// GetHostSecret returns the host secret.
+func (c *communicatorImpl) GetHostSecret() string {
+	return c.hostSecret
+}
+
 // SetAPIUser sets the API user.
 func (c *communicatorImpl) SetAPIUser(apiUser string) {
 	c.apiUser = apiUser

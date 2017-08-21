@@ -45,6 +45,7 @@ type Mock struct {
 	EndTaskShouldFail      bool
 	EndTaskResult          endTaskResult
 	ShellExecFilename      string
+	HeartbeatShouldAbort   bool
 
 	// metrics collection
 	ProcInfo map[string][]*message.ProcessInfo
@@ -145,6 +146,9 @@ func (c *Mock) GetVersion(ctx context.Context, taskData TaskData) (*version.Vers
 
 // Heartbeat returns false, which indicates the heartbeat has succeeded.
 func (c *Mock) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
+	if c.HeartbeatShouldAbort {
+		return true, nil
+	}
 	return false, nil
 }
 
@@ -509,6 +513,16 @@ func (c *Mock) SetHostID(hostID string) {
 // SetHostSecret sets the host secret.
 func (c *Mock) SetHostSecret(hostSecret string) {
 	c.hostSecret = hostSecret
+}
+
+// GetHostID returns the host ID.
+func (c *Mock) GetHostID() string {
+	return c.hostID
+}
+
+// GetHostSecret returns the host secret.
+func (c *Mock) GetHostSecret() string {
+	return c.hostSecret
 }
 
 // SetAPIUser sets the API user.

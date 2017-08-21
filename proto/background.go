@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/mongodb/grip"
+
 	"golang.org/x/net/context"
 )
 
@@ -20,25 +22,25 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 		case <-ticker.C:
 			abort, err := a.comm.Heartbeat(ctx, tc.task)
 			if abort {
-				tc.logger.Execution().Info("Task aborted")
+				grip.Info("Task aborted")
+				close(heartbeat)
 				return
 			}
 			if err != nil {
 				failed++
-				tc.logger.Execution().Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
+				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
 			} else {
-				tc.logger.Execution().Debug("Sent heartbeat")
+				grip.Debug("Sent heartbeat")
 				failed = 0
 			}
 			if failed > maxHeartbeats {
 				err := errors.New("Exceeded max heartbeats")
 				tc.logger.Execution().Error(err)
-				a.killProcs(tc)
-				heartbeat <- struct{}{}
+				close(heartbeat)
 				return
 			}
 		case <-ctx.Done():
-			tc.logger.Execution().Info("Heartbeat ticker canceled")
+			grip.Info("Heartbeat ticker canceled")
 			return
 		}
 	}
@@ -51,7 +53,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idle
 		select {
 		case <-timer.C:
 			tc.logger.Execution().Error("Hit idle timeout")
-			idleTimeout <- struct{}{}
+			close(idleTimeout)
 			return
 		case d := <-resetIdleTimeout:
 			if !timer.Stop() {
@@ -59,7 +61,7 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idle
 			}
 			timer.Reset(d)
 		case <-ctx.Done():
-			tc.logger.Execution().Info("Idle timeout watch canceled")
+			grip.Info("Idle timeout watch canceled")
 			return
 		}
 	}
@@ -72,10 +74,10 @@ func (a *Agent) startMaxExecTimeoutWatch(ctx context.Context, tc *taskContext, d
 		select {
 		case <-timer.C:
 			tc.logger.Execution().Error("Hit exec timeout")
-			execTimeout <- struct{}{}
+			close(execTimeout)
 			return
 		case <-ctx.Done():
-			tc.logger.Execution().Info("Exec timeout watch canceled")
+			grip.Info("Exec timeout watch canceled")
 			return
 		}
 	}
