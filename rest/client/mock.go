@@ -55,7 +55,8 @@ type Mock struct {
 	logMessages map[string][]apimodels.LogMessage
 	PatchFiles  map[string]string
 	keyVal      map[string]*serviceModel.KeyVal
-	mu          sync.Mutex
+
+	Mu sync.Mutex
 }
 
 type endTaskResult struct {
@@ -182,8 +183,8 @@ func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []ap
 		return errors.New("logging failed")
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.Mu.Lock()
+	defer c.Mu.Unlock()
 	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
 
 	return nil
@@ -581,11 +582,15 @@ func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, d
 }
 
 func (c *Mock) SendProcessInfo(ctx context.Context, td TaskData, procs []*message.ProcessInfo) error {
+	c.Mu.Lock()
 	c.ProcInfo[td.ID] = procs
+	c.Mu.Unlock()
 	return nil
 }
 
 func (c *Mock) SendSystemInfo(ctx context.Context, td TaskData, sysinfo *message.SystemInfo) error {
+	c.Mu.Lock()
 	c.SysInfo[td.ID] = sysinfo
+	c.Mu.Unlock()
 	return nil
 }
