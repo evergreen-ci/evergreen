@@ -18,7 +18,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     var nsPerMs = 1000000;
 
     var initialHash = $locationHash.get();
-    // TODO do we keep this? 
+    // TODO do we keep this?
     if (initialHash.buildVariant) {
         for (var i = 0; i < $scope.currentProject.build_variants.length; ++i) {
             if ($scope.currentProject.build_variants[i].name === initialHash.buildVariant) {
@@ -32,14 +32,14 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         }
     }
 
-    // try to get the task from the current build variant, 
-    // if there isn't one then get the first task 
+    // try to get the task from the current build variant,
+    // if there isn't one then get the first task
     if(initialHash.taskName){
         $scope.currentTask = initialHash.taskName
     } else {
         if ($scope.currentProject.task_names != []) {
             if ($scope.currentBV.task_names != []) {
-                $scope.currentTask = $scope.currentBV.task_names[0]; 
+                $scope.currentTask = $scope.currentBV.task_names[0];
             } else {
                 $scope.currentTask = $scope.currentProject.task_names[0];
             }
@@ -74,7 +74,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         $scope.currentRequest = $scope.requestViewOptions[1];
       }
     }  else {
-      $scope.currentRequest = $scope.requestViewOptions[0]; 
+      $scope.currentRequest = $scope.requestViewOptions[0];
     }
 
     $scope.setCurrentRequest = function(requestView) {
@@ -82,7 +82,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         $scope.load()
     }
 
-    // normal task options 
+    // normal task options
     $scope.timeDiffOptions = [
         {
             name: "Start \u21E2 Finish",
@@ -106,7 +106,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         $scope.load();
     }
 
-    // options for the all tasks functionality 
+    // options for the all tasks functionality
     $scope.allTasksOptions = [
         {
             name: "Makespan",
@@ -133,7 +133,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     if (initialHash.limit) {
       $scope.numTasks = initialHash.limit;
     } else {
-      $scope.numTasks = 50; 
+      $scope.numTasks = 50;
     }
     $scope.numTasksOptions = [25, 50, 100, 200, 500, 1000, 2000];
 
@@ -273,10 +273,16 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     }
 
     // isValidDate checks that none of the start, finish or scheduled times are zero
+    // and that the span from start-end is >= 1 sec in order to reduce noise
     var isValidDate = function(task){
-        return nonZeroTimeFilter(+new Date(task.start_time)) && nonZeroTimeFilter(+new Date(task.finish_time)) && nonZeroTimeFilter(+new Date(task.scheduled_time)) 
-    }
+      var start = moment(task.start_time);
+      var end = moment(task.finish_time);
 
+      return nonZeroTimeFilter(start) &&
+             nonZeroTimeFilter(end) &&
+             nonZeroTimeFilter(+new Date(task.scheduled_time)) &&
+             end.diff(start, 'seconds') !== 0; // moment.diff will round toward 0 so this discards tasks that took <1 sec
+    }
 
     $scope.load = function(before) {
       $scope.hoverInfo.hidden = true;
@@ -294,7 +300,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
             encodeURIComponent($scope.currentProject.name) + '/' +
             encodeURIComponent($scope.currentBV.name) + '/' +
             encodeURIComponent($scope.currentRequest.requester) + '/' +
-            encodeURIComponent($scope.currentTask) 
+            encodeURIComponent($scope.currentTask)
         $http.get(
         url + '?' + query).
         success(function(data) {
@@ -318,7 +324,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         }($scope.currentProject.name, $scope.currentBV.name, $scope.currentTask, $scope.currentRequest.requester, $scope.numTasks), 0)
     };
 
-    // formatting function for the way the y values should show up. 
+    // formatting function for the way the y values should show up.
     // TODO: figure out how to make this look better...
     var formatDuration = function(d) {
         if (d == 0) {
@@ -328,7 +334,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
     }
 
     $scope.drawDetailGraph = function(){
-        var graphId = "#tt-graph" 
+        var graphId = "#tt-graph"
         $(graphId).empty();
 
         // get the width of the column div for the width of the graph
@@ -364,7 +370,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
         .domain([0, $scope.taskData.length - 1 ])
         .range([0, width])
 
-        var yAxis = d3.svg.axis()                                       
+        var yAxis = d3.svg.axis()
         .scale(yScale)
         .orient("left")
         .tickFormat(formatDuration)
@@ -438,7 +444,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
             return task.status == 'success' ? 'green' : 'red';
         })
 
-        // create a focus circle 
+        // create a focus circle
         var focus = svg.append("circle")
         .attr("r", radius + 1);
 
@@ -480,7 +486,7 @@ mciModule.controller('TaskTimingController', function($scope, $http, $window, $f
             focus.attr("cx", scaledX($scope.taskData[i], i))
             .attr("cy", scaledY($scope.taskData[i]));
             $scope.$digest();
-        });          
+        });
     }
 
     $scope.load();
