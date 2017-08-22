@@ -9,7 +9,7 @@ import (
 
 const (
 	Collection          = "admin"
-	systemSettingsDocID = "0"
+	systemSettingsDocID = "global"
 )
 
 var (
@@ -28,9 +28,9 @@ var (
 
 var settingsQuery = db.Query(bson.M{idKey: systemSettingsDocID})
 
-// GetSettingsFromDB retrieves the admin settings document. If no document is
+// GetSettings retrieves the admin settings document. If no document is
 // present in the DB, it will return the defaults
-func GetSettingsFromDB() (*AdminSettings, error) {
+func GetSettings() (*AdminSettings, error) {
 	settings := &AdminSettings{}
 	query := db.Q{}
 	query = query.Filter(settingsQuery)

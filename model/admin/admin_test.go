@@ -30,7 +30,7 @@ func (s *AdminSuite) TestBanner() {
 
 	err := SetBanner(bannerText)
 	s.NoError(err)
-	settings, err := GetSettingsFromDB()
+	settings, err := GetSettings()
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(bannerText, settings.Banner)
@@ -50,7 +50,7 @@ func (s *AdminSuite) TestServiceFlags() {
 
 	err := SetServiceFlags(testFlags)
 	s.NoError(err)
-	settings, err := GetSettingsFromDB()
+	settings, err := GetSettings()
 	s.NoError(err)
 	s.NotNil(settings)
 	s.Equal(testFlags, settings.ServiceFlags)
@@ -76,7 +76,7 @@ func (s *AdminSuite) TestUpsert() {
 	err := Upsert(settings)
 	s.NoError(err)
 
-	settingsFromDB, err := GetSettingsFromDB()
+	settingsFromDB, err := GetSettings()
 	s.NoError(err)
 	s.NotNil(settingsFromDB)
 	s.Equal(settings, settingsFromDB)
@@ -86,7 +86,7 @@ func (s *AdminSuite) TestUpsert() {
 	err = Upsert(settings)
 	s.NoError(err)
 
-	settingsFromDB, err = GetSettingsFromDB()
+	settingsFromDB, err = GetSettings()
 	s.NoError(err)
 	s.NotNil(settingsFromDB)
 	s.Equal(settings.Banner, settingsFromDB.Banner)
