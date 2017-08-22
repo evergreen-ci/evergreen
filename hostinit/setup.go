@@ -706,7 +706,8 @@ func (init *HostInit) fetchRemoteTaskData(ctx context.Context, taskId, cliPath, 
 	}
 
 	// run the make shell command with a timeout
-	ctx, cancel := context.WithTimeout(context.TODO(), 15*time.Minute)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
 	return errors.WithStack(makeShellCmd.Run(ctx))
 }
