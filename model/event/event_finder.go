@@ -111,6 +111,14 @@ func RecentSchedulerEvents(distroId string, n int) db.Q {
 	return SchedulerEventsForId(distroId).Sort([]string{"-" + TimestampKey}).Limit(n)
 }
 
+// Admin Events
+// RecentAdminEvents returns the N most recent admin events
+func RecentAdminEvents(n int) db.Q {
+	return db.Query(bson.D{
+		{DataKey + "." + ResourceTypeKey, ResourceTypeAdmin},
+	}).Sort([]string{"-" + TimestampKey}).Limit(n)
+}
+
 // TaskSystemInfoEvents builds a query for system info,
 // (e.g. aggregate information about the system as a whole) collected
 // during a task.
