@@ -32,32 +32,24 @@ func (s *MetricsTestSuite) SetupTest() {
 }
 
 func (s *MetricsTestSuite) TestRunForIntervalAndSendMessages() {
-	s.comm.Mu.Lock()
-	s.Zero(len(s.comm.ProcInfo[s.id]))
-	s.comm.Mu.Unlock()
+	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go s.collector.processInfoCollector(ctx, 750*time.Millisecond, time.Second, 2)
 	time.Sleep(time.Second)
 	cancel()
 
-	s.comm.Mu.Lock()
-	firstLen := len(s.comm.ProcInfo[s.id])
-	s.comm.Mu.Unlock()
+	firstLen := s.comm.GetProcessInfoLength(s.id)
 	s.True(firstLen >= 1)
 
 	// after stopping it shouldn't continue to collect stats
 	time.Sleep(time.Second)
 
-	s.comm.Mu.Lock()
-	s.Equal(firstLen, len(s.comm.ProcInfo[s.id]))
-	s.comm.Mu.Unlock()
+	s.Equal(firstLen, s.comm.GetProcessInfoLength(s.id))
 }
 
 func (s *MetricsTestSuite) TestCollectSubProcesses() {
-	s.comm.Mu.Lock()
-	s.Zero(len(s.comm.ProcInfo[s.id]))
-	s.comm.Mu.Unlock()
+	s.Zero(s.comm.GetProcessInfoLength(s.id))
 	cmd := exec.Command("bash", "-c", "'start'; sleep 100; echo 'finish'")
 	s.NoError(cmd.Start())
 
@@ -70,34 +62,22 @@ func (s *MetricsTestSuite) TestCollectSubProcesses() {
 	s.NoError(cmd.Process.Kill())
 
 	if runtime.GOOS == "windows" {
-		s.comm.Mu.Lock()
-		s.True(len(s.comm.ProcInfo[s.id]) >= 1)
-		s.comm.Mu.Unlock()
+		s.True(s.comm.GetProcessInfoLength(s.id) >= 1)
 	} else {
-		s.comm.Mu.Lock()
-		s.True(len(s.comm.ProcInfo[s.id]) >= 2)
-		s.comm.Mu.Unlock()
+		s.True(s.comm.GetProcessInfoLength(s.id) >= 2)
 	}
 }
 
 func (s *MetricsTestSuite) TestPersistSystemStats() {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	s.comm.Mu.Lock()
-	s.Nil(s.comm.SysInfo[s.id])
-	s.comm.Mu.Unlock()
-
 	go s.collector.sysInfoCollector(ctx, 750*time.Millisecond)
 	time.Sleep(time.Second)
 	cancel()
 
-	s.comm.Mu.Lock()
-	s.True(len(s.comm.SysInfo) >= 1)
-	s.comm.Mu.Unlock()
+	s.True(s.comm.GetSystemInfoLength() >= 1)
 
 	time.Sleep(time.Second)
 
-	s.comm.Mu.Lock()
-	s.True(len(s.comm.SysInfo) >= 1)
-	s.comm.Mu.Unlock()
+	s.True(s.comm.GetSystemInfoLength() >= 1)
 }

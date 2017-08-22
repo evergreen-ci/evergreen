@@ -56,7 +56,7 @@ type Mock struct {
 	PatchFiles  map[string]string
 	keyVal      map[string]*serviceModel.KeyVal
 
-	Mu sync.Mutex
+	mu sync.RWMutex
 }
 
 type endTaskResult struct {
@@ -183,8 +183,8 @@ func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []ap
 		return errors.New("logging failed")
 	}
 
-	c.Mu.Lock()
-	defer c.Mu.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
 
 	return nil
@@ -582,15 +582,28 @@ func (c *Mock) GetJSONHistory(ctx context.Context, td TaskData, tags bool, tn, d
 }
 
 func (c *Mock) SendProcessInfo(ctx context.Context, td TaskData, procs []*message.ProcessInfo) error {
-	c.Mu.Lock()
+	c.mu.Lock()
 	c.ProcInfo[td.ID] = procs
-	c.Mu.Unlock()
+	c.mu.Unlock()
 	return nil
 }
 
+func (c *Mock) GetProcessInfoLength(id string) int {
+	c.mu.RLock()
+	length := len(c.ProcInfo[id])
+	c.mu.RUnlock()
+	return length
+}
+
 func (c *Mock) SendSystemInfo(ctx context.Context, td TaskData, sysinfo *message.SystemInfo) error {
-	c.Mu.Lock()
+	c.mu.Lock()
 	c.SysInfo[td.ID] = sysinfo
-	c.Mu.Unlock()
+	c.mu.Unlock()
 	return nil
+}
+
+func (c *Mock) GetSystemInfoLength() int {
+	c.mu.RLock()
+	length := len(c.SysInfo)
+	c.mu.RUnlock()
 }
