@@ -606,4 +606,5 @@ func (c *Mock) GetSystemInfoLength() int {
 	c.mu.RLock()
 	length := len(c.SysInfo)
 	c.mu.RUnlock()
+	return length
 }
