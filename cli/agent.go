@@ -2,9 +2,12 @@ package cli
 
 import (
 	"github.com/evergreen-ci/evergreen/agent"
+	"github.com/evergreen-ci/evergreen/proto"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type AgentCommand struct {
@@ -13,6 +16,7 @@ type AgentCommand struct {
 	ServiceURL string `long:"api_server" description:"URL of API server"`
 	LogPrefix  string `long:"log_prefix" default:"evg-agent" description:"prefix for the agent's log filename"`
 	StatusPort int    `long:"status_part" default:"2285" description:"port to run the status server on"`
+	NewAgent   bool   `long:"new_agent" description:"run new agent (defaults to legacy agent)"`
 }
 
 func (c *AgentCommand) Execute(_ []string) error {
@@ -36,7 +40,20 @@ func (c *AgentCommand) Execute(_ []string) error {
 	grip.SetThreshold(level.Debug)
 	grip.SetName("evg-agent")
 
-	// all we need is the host id and host secret
+	if c.NewAgent {
+		initialOptions := proto.Options{
+			APIURL:     c.ServiceURL,
+			HostID:     c.HostID,
+			HostSecret: c.HostSecret,
+			StatusPort: c.StatusPort,
+			LogPrefix:  c.LogPrefix,
+		}
+
+		agt := proto.New(initialOptions, client.NewCommunicator(c.ServiceURL))
+		ctx := context.Background()
+		return errors.WithStack(agt.Start(ctx))
+	}
+
 	initialOptions := agent.Options{
 		APIURL:     c.ServiceURL,
 		HostId:     c.HostID,
