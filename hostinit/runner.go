@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
@@ -29,10 +30,22 @@ func (r *Runner) Description() string {
 
 func (r *Runner) Run(config *evergreen.Settings) error {
 	startTime := time.Now()
-
 	init := &HostInit{
 		Settings: config,
 		GUID:     util.RandomString(),
+	}
+
+	adminSettings, err := admin.GetSettingsFromDB()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving admin settings")
+	}
+	if adminSettings.ServiceFlags.HostinitDisabled {
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"message": "hostinit is disabled, exiting",
+			"GUID":    init.GUID,
+		})
+		return nil
 	}
 
 	grip.Info(message.Fields{
