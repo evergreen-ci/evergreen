@@ -300,10 +300,10 @@ mciModule.controller('SpawnedHostsCtrl', ['$scope','$window', '$timeout', 'mciSp
         case 'unreachable':
         case 'quarantined':
         case 'provision failed':
-          return 'label block-status-cancelled';
+          return 'block-status-cancelled';
           break;
         case 'terminated':
-          return 'label block-status-failed';
+          return 'block-status-failed';
           break;
         default:
           return '';
