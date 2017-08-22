@@ -39,10 +39,9 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if adminSettings != nil && adminSettings.ServiceFlags.HostinitDisabled {
+	if adminSettings.ServiceFlags.HostinitDisabled {
 		grip.Info(message.Fields{
 			"runner":  RunnerName,
-			"status":  "disabled",
 			"message": "hostinit is disabled, exiting",
 			"GUID":    init.GUID,
 		})

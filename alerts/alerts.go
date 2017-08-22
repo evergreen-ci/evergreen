@@ -278,10 +278,9 @@ func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if adminSettings != nil && adminSettings.ServiceFlags.AlertsDisabled {
+	if adminSettings.ServiceFlags.AlertsDisabled {
 		grip.Info(message.Fields{
 			"runner":  qp.Name(),
-			"status":  "disabled",
 			"message": "alerts are disabled, exiting",
 		})
 		return nil

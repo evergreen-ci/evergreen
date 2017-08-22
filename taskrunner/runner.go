@@ -32,10 +32,9 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if adminSettings != nil && adminSettings.ServiceFlags.TaskrunnerDisabled {
+	if adminSettings.ServiceFlags.TaskrunnerDisabled {
 		grip.Info(message.Fields{
 			"runner":  RunnerName,
-			"status":  "disabled",
 			"message": "taskrunner is disabled, exiting",
 		})
 		return nil

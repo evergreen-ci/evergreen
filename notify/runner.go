@@ -32,10 +32,9 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 	if err != nil {
 		return errors.Wrap(err, "error retrieving admin settings")
 	}
-	if adminSettings != nil && adminSettings.ServiceFlags.NotificationsDisabled {
+	if adminSettings.ServiceFlags.NotificationsDisabled {
 		grip.Info(message.Fields{
 			"runner":  RunnerName,
-			"status":  "disabled",
 			"message": "notify is disabled, exiting",
 		})
 		return nil
