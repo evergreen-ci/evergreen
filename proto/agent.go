@@ -212,7 +212,6 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, timeout bool) *a
 		detail.Status = evergreen.TaskSucceeded
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 	} else {
-		detail.Status = evergreen.TaskFailed
 		tc.logger.Task().Info("Task completed - FAILURE.")
 	}
 	return detail
