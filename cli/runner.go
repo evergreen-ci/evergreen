@@ -46,6 +46,10 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 		return errors.Wrap(err, "problem getting settings")
 	}
 
+	if err = settings.Validate(); err != nil {
+		return errors.Wrap(err, "problem validating settings")
+	}
+
 	sender, err := settings.GetSender(settings.Runner.LogFile)
 	grip.CatchEmergencyFatal(err)
 	defer sender.Close()

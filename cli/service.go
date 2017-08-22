@@ -41,6 +41,11 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
 	}
+
+	if err = settings.Validate(); err != nil {
+		return errors.Wrap(err, "problem validating settings")
+	}
+
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
 	var (
