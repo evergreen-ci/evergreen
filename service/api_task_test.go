@@ -15,6 +15,7 @@ import (
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -234,11 +235,14 @@ func TestAssignNextAvailableTask(t *testing.T) {
 
 func TestNextTask(t *testing.T) {
 	Convey("with tasks, a host, a build, and a task queue", t, func() {
-		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection); err != nil {
+		if err := db.ClearCollections(host.Collection, task.Collection, model.TaskQueuesCollection, build.Collection, admin.Collection); err != nil {
 			t.Fatalf("clearing db: %v", err)
 		}
 		if err := modelUtil.AddTestIndexes(host.Collection, true, true, host.RunningTaskKey); err != nil {
 			t.Fatalf("adding test indexes %v", err)
+		}
+		if err := admin.Upsert(&admin.AdminSettings{}); err != nil {
+			t.Fatalf("unable to create admin settings: %v", err)
 		}
 
 		as, err := NewAPIServer(testutil.TestConfig())
@@ -308,6 +312,23 @@ func TestNextTask(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(nextTask.Status, ShouldEqual, evergreen.TaskDispatched)
 				})
+			})
+			Convey("with degraded mode set", func() {
+				serviceFlags := admin.ServiceFlags{
+					TaskDispatchDisabled: true,
+				}
+				So(admin.SetServiceFlags(serviceFlags), ShouldBeNil)
+				resp = getNextTaskEndpoint(t, as, sampleHost.Id)
+				So(resp, ShouldNotBeNil)
+				Convey("then the response should not contain a task", func() {
+					So(resp.Code, ShouldEqual, http.StatusOK)
+					taskResp := apimodels.NextTaskResponse{}
+					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
+					So(taskResp.TaskId, ShouldEqual, "")
+					So(taskResp.ShouldExit, ShouldEqual, false)
+				})
+				serviceFlags.TaskDispatchDisabled = false // unset degraded mode
+				So(admin.SetServiceFlags(serviceFlags), ShouldBeNil)
 			})
 			Convey("with a host that already has a running task", func() {
 				h2 := host.Host{

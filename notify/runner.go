@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
@@ -22,6 +23,17 @@ func (r *Runner) Name() string { return RunnerName }
 
 func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
+	adminSettings, err := admin.GetSettings()
+	if err != nil {
+		return errors.Wrap(err, "error retrieving admin settings")
+	}
+	if adminSettings.ServiceFlags.NotificationsDisabled {
+		grip.Info(message.Fields{
+			"runner":  RunnerName,
+			"message": "notify is disabled, exiting",
+		})
+		return nil
+	}
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
 		"status":  "starting",
