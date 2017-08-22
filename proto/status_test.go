@@ -21,7 +21,7 @@ type StatusTestSuite struct {
 }
 
 func TestStatusTestSuite(t *testing.T) {
-	suite.Run(t, new(AgentTestSuite))
+	suite.Run(t, new(StatusTestSuite))
 }
 
 func (s *StatusTestSuite) SetupTest() {
