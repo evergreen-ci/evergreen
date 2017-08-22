@@ -35,8 +35,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 				failed = 0
 			}
 			if failed > maxHeartbeats {
-				err := errors.New("Exceeded max heartbeats")
-				grip.Error(err)
+				grip.Error(errors.New("Exceeded max heartbeats"))
 				heartbeat <- evergreen.TaskFailed
 				return
 			}
