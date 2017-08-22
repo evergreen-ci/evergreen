@@ -10,6 +10,7 @@ import (
 
 	// import the plugins here so that they're loaded for use in
 	// the repotracker which needs them to do command validation.
+	"github.com/evergreen-ci/evergreen/model/task"
 	_ "github.com/evergreen-ci/evergreen/plugin/config"
 
 	"github.com/evergreen-ci/evergreen"
@@ -67,6 +68,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go evergreen.SystemInfoCollector(ctx)
+	go taskStatsCollector(ctx)
 	defer util.RecoverAndLogStackTrace()
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
@@ -81,6 +83,30 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 	startRunners(ctx, settings)
 
 	return nil
+}
+
+func taskStatsCollector(ctx context.Context) {
+	const interval = time.Minute
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			grip.Info("system logging operation canceled")
+			return
+		case <-timer.C:
+			tasks, err := task.GetRecentTasks(interval)
+			if err != nil {
+				grip.Warningf("problem getting recent tasks for task status update: %s", err.Error())
+				timer.Reset(interval)
+				continue
+			}
+
+			grip.Info(task.GetResultCounts(tasks))
+			timer.Reset(interval)
+		}
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////

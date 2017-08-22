@@ -248,5 +248,5 @@ func (as *APIServer) recentTaskStatuses(w http.ResponseWriter, r *http.Request) 
 		as.LoggedError(w, r, http.StatusInternalServerError, err)
 	}
 
-	as.WriteJSON(w, http.StatusOK, task.GetTaskResultCounts(tasks))
+	as.WriteJSON(w, http.StatusOK, task.GetResultCounts(tasks))
 }
