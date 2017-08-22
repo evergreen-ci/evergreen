@@ -4,12 +4,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
 
 	"golang.org/x/net/context"
 )
 
-func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- struct{}) {
+func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat chan<- string) {
 	heartbeatInterval := defaultHeartbeatInterval
 	if a.opts.HeartbeatInterval != 0 {
 		heartbeatInterval = a.opts.HeartbeatInterval
@@ -23,7 +24,7 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 			abort, err := a.comm.Heartbeat(ctx, tc.task)
 			if abort {
 				grip.Info("Task aborted")
-				close(heartbeat)
+				heartbeat <- evergreen.TaskUndispatched
 				return
 			}
 			if err != nil {
@@ -34,9 +35,8 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 				failed = 0
 			}
 			if failed > maxHeartbeats {
-				err := errors.New("Exceeded max heartbeats")
-				tc.logger.Execution().Error(err)
-				close(heartbeat)
+				grip.Error(errors.New("Exceeded max heartbeats"))
+				heartbeat <- evergreen.TaskFailed
 				return
 			}
 		case <-ctx.Done():

@@ -135,7 +135,7 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 	defer a.killProcs(tc)
 	defer cancel()
 
-	heartbeat := make(chan struct{})
+	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
 
 	idleTimeout := make(chan struct{})
@@ -153,7 +153,7 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 		grip.Infof("task complete: %s", tc.task.ID)
 	case <-execTimeout:
 		grip.Infof("recevied signal from execTimeout channel: %s", tc.task.ID)
-	case <-heartbeat:
+	case status = <-heartbeat:
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
 	case <-idleTimeout:
 		grip.Infof("received signal on idleTimeout channel: %s", tc.task.ID)
@@ -212,7 +212,6 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, timeout bool) *a
 		detail.Status = evergreen.TaskSucceeded
 		tc.logger.Task().Info("Task completed - SUCCESS.")
 	} else {
-		detail.Status = evergreen.TaskFailed
 		tc.logger.Task().Info("Task completed - FAILURE.")
 	}
 	return detail
