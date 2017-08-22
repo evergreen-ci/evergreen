@@ -3,6 +3,8 @@ package scheduler
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/mock"
 	"github.com/evergreen-ci/evergreen/db"
@@ -129,6 +131,8 @@ func TestUpdateVersionBuildVarMap(t *testing.T) {
 }
 
 func TestSpawnHosts(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When spawning hosts", t, func() {
 
@@ -151,7 +155,7 @@ func TestSpawnHosts(t *testing.T) {
 				distroIds[2]: 0,
 			}
 
-			newHostsSpawned, err := schedulerInstance.spawnHosts(newHostsNeeded)
+			newHostsSpawned, err := schedulerInstance.spawnHosts(ctx, newHostsNeeded)
 			So(err, ShouldBeNil)
 			So(len(newHostsSpawned[distroIds[0]]), ShouldEqual, 0)
 			So(len(newHostsSpawned[distroIds[1]]), ShouldEqual, 0)
@@ -173,7 +177,7 @@ func TestSpawnHosts(t *testing.T) {
 				So(d.Insert(), ShouldBeNil)
 			}
 
-			newHostsSpawned, err := schedulerInstance.spawnHosts(newHostsNeeded)
+			newHostsSpawned, err := schedulerInstance.spawnHosts(ctx, newHostsNeeded)
 			So(err, ShouldBeNil)
 			distroZeroHosts := newHostsSpawned[distroIds[0]]
 			distroOneHosts := newHostsSpawned[distroIds[1]]

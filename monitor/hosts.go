@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -29,29 +31,32 @@ type HostMonitor struct {
 
 // run through the list of host monitoring functions. returns any errors that
 // occur while running the monitoring functions
-func (hm *HostMonitor) RunMonitoringChecks(settings *evergreen.Settings) []error {
+func (hm *HostMonitor) RunMonitoringChecks(ctx context.Context, settings *evergreen.Settings) []error {
 	grip.Info("Running host monitoring checks...")
 
 	// used to store any errors that occur
-	var errors []error
+	var errs []error
 
 	for _, f := range hm.monitoringFuncs {
+		if ctx.Err() != nil {
+			return append(errs, errors.New("host monitor canceled"))
+		}
 
 		// continue on error to allow the other monitoring functions to run
-		if errs := f(settings); errs != nil {
-			errors = append(errors, errs...)
+		if flagErrs := f(settings); errs != nil {
+			errs = append(errs, flagErrs...)
 		}
 	}
 
 	grip.Info("Finished running host monitoring checks")
 
-	return errors
+	return errs
 
 }
 
 // run through the list of host flagging functions, finding all hosts that
 // need to be terminated and terminating them
-func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen.Settings) []error {
+func (hm *HostMonitor) CleanupHosts(ctx context.Context, distros []distro.Distro, settings *evergreen.Settings) []error {
 
 	grip.Info("Running host cleanup...")
 
@@ -59,6 +64,10 @@ func (hm *HostMonitor) CleanupHosts(distros []distro.Distro, settings *evergreen
 	var errs []error
 
 	for idx, flagger := range hm.flaggingFuncs {
+		if ctx.Err() != nil {
+			return append(errs, errors.New("host monitor canceled"))
+		}
+
 		grip.Infoln("Searching for flagged hosts under criteria:", flagger.Reason)
 		// find the next batch of hosts to terminate
 		hostsToTerminate, err := flagger.hostFlaggingFunc(distros, settings)

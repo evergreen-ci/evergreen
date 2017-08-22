@@ -11,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 var (
@@ -46,7 +47,7 @@ var (
 )
 
 // run all monitoring functions
-func RunAllMonitoring(settings *evergreen.Settings) error {
+func RunAllMonitoring(ctx context.Context, settings *evergreen.Settings) error {
 
 	// load in all of the distros
 	distros, err := distro.Find(db.Q{})
@@ -69,6 +70,11 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 		if !ref.Enabled {
 			continue
 		}
+
+		if ctx.Err() != nil {
+			return errors.New("monitor canceled")
+		}
+
 		project, err = model.FindProject("", &ref)
 
 		// continue on error to stop the whole monitoring process from
@@ -93,9 +99,13 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 
 	// clean up any necessary tasks
 	errs := withGlobalLock("task cleanup",
-		func() []error { return taskMonitor.CleanupTasks(projects) })
+		func() []error { return taskMonitor.CleanupTasks(ctx, projects) })
 	for _, err := range errs {
 		grip.Error(errors.Wrap(err, "Error cleaning up tasks"))
+	}
+
+	if ctx.Err() != nil {
+		return errors.New("monitor canceled")
 	}
 
 	// initialize the host monitor
@@ -106,17 +116,25 @@ func RunAllMonitoring(settings *evergreen.Settings) error {
 
 	// clean up any necessary hosts
 	errs = withGlobalLock("host cleanup",
-		func() []error { return hostMonitor.CleanupHosts(distros, settings) })
+		func() []error { return hostMonitor.CleanupHosts(ctx, distros, settings) })
 
 	for _, err := range errs {
 		grip.Error(errors.Wrap(err, "Error cleaning up hosts"))
 	}
 
+	if ctx.Err() != nil {
+		return errors.New("monitor canceled")
+	}
+
 	// run monitoring checks
 	errs = withGlobalLock("host monitoring",
-		func() []error { return hostMonitor.RunMonitoringChecks(settings) })
+		func() []error { return hostMonitor.RunMonitoringChecks(ctx, settings) })
 	for _, err := range errs {
 		grip.Error(errors.Wrap(err, "Error running host monitoring checks"))
+	}
+
+	if ctx.Err() != nil {
+		return errors.New("monitor canceled")
 	}
 
 	// initialize the notifier

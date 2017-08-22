@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
@@ -16,23 +18,18 @@ import (
 type Runner struct{}
 
 const (
-	RunnerName  = "repotracker"
-	Description = "poll version control for new commits"
+	// the repotracker polls version control (github) for new commits
+	RunnerName = "repotracker"
+
 	// githubAPILimitCeiling is arbitrary but corresponds to when we start logging errors in
 	// thirdparty/github.go/getGithubRateLimit
 	githubAPILimitCeiling = 20
 	githubCredentialsKey  = "github"
 )
 
-func (r *Runner) Name() string {
-	return RunnerName
-}
+func (r *Runner) Name() string { return RunnerName }
 
-func (r *Runner) Description() string {
-	return Description
-}
-
-func (r *Runner) Run(config *evergreen.Settings) error {
+func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
 	grip.Info(message.Fields{
 		"runner":  RunnerName,

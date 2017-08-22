@@ -9,25 +9,20 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // Runner executes the hostinit process.
 type Runner struct{}
 
 const (
-	RunnerName  = "hostinit"
-	Description = "initialize new Evergreen hosts"
+	RunnerName = "hostinit"
 )
 
-func (r *Runner) Name() string {
-	return RunnerName
-}
+// host init "starts and initializes new Evergreen hosts"
+func (r *Runner) Name() string { return RunnerName }
 
-func (r *Runner) Description() string {
-	return Description
-}
-
-func (r *Runner) Run(config *evergreen.Settings) error {
+func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
 
 	init := &HostInit{
@@ -43,7 +38,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		"GUID":    init.GUID,
 	})
 
-	if err := init.startHosts(); err != nil {
+	if err := init.startHosts(ctx); err != nil {
 		err = errors.Wrap(err, "Error starting hosts")
 		grip.Error(message.Fields{
 			"GUID":    init.GUID,
@@ -57,7 +52,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		return err
 	}
 
-	if err := init.setupReadyHosts(); err != nil {
+	if err := init.setupReadyHosts(ctx); err != nil {
 		err = errors.Wrap(err, "Error provisioning hosts")
 		grip.Error(message.Fields{
 			"GUID":    init.GUID,
