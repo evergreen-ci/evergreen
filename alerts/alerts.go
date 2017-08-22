@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/alert"
@@ -27,7 +29,9 @@ const (
 	JiraProvider  = "jira"
 )
 
-// QueueProcessor handles looping over any unprocessed alerts in the queue and delivers them
+// QueueProcessor handles looping over any unprocessed alerts in the queue and delivers them.
+//
+// This runner is used for build and enqueue failure notifications
 type QueueProcessor struct {
 	config            *evergreen.Settings
 	superUsersConfigs []model.AlertConfig
@@ -55,13 +59,7 @@ type AlertContext struct {
 	Settings     *evergreen.Settings
 }
 
-func (qp *QueueProcessor) Name() string {
-	return "alerter"
-}
-
-func (qp *QueueProcessor) Description() string {
-	return "build and enqueue failure notifications"
-}
+func (qp *QueueProcessor) Name() string { return "alerter" }
 
 // loadAlertContext fetches details from the database for all documents that are associated with the
 // AlertRequest. For example, it populates the task/build/version/project using the
@@ -271,7 +269,7 @@ func (qp *QueueProcessor) Deliver(req *alert.AlertRequest, ctx *AlertContext) er
 }
 
 // Run loops while there are any unprocessed alerts and attempts to deliver them.
-func (qp *QueueProcessor) Run(config *evergreen.Settings) error {
+func (qp *QueueProcessor) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
 	grip.Info(message.Fields{
 		"runner":  qp.Name(),

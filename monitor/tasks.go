@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // responsible for cleaning up any tasks that need to be stopped
@@ -21,13 +22,17 @@ type TaskMonitor struct {
 // run through the list of task flagging functions, finding all tasks that
 // need to be cleaned up and taking appropriate action. takes in a map
 // of project name -> project info
-func (tm *TaskMonitor) CleanupTasks(projects map[string]model.Project) []error {
+func (tm *TaskMonitor) CleanupTasks(ctx context.Context, projects map[string]model.Project) []error {
 	grip.Info("Cleaning up tasks...")
 
 	// used to store any errors that occur
 	var errs []error
 
 	for _, f := range tm.flaggingFuncs {
+		if ctx.Err() != nil {
+			return append(errs, errors.New("task monitor canceled"))
+		}
+
 		// find the next batch of tasks to be cleaned up
 		tasksToCleanUp, err := f()
 

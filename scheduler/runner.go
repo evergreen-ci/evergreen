@@ -8,25 +8,20 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // Runner runs the scheduler process.
 type Runner struct{}
 
 const (
-	RunnerName  = "scheduler"
-	Description = "queue tasks for execution and allocate hosts"
+	// builds per-distro queues of tasks for execution and creates host intents
+	RunnerName = "scheduler"
 )
 
-func (r *Runner) Name() string {
-	return RunnerName
-}
+func (r *Runner) Name() string { return RunnerName }
 
-func (r *Runner) Description() string {
-	return Description
-}
-
-func (r *Runner) Run(config *evergreen.Settings) error {
+func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
 	grip.Info(message.Fields{
 		"runner":  RunnerName,
@@ -44,7 +39,7 @@ func (r *Runner) Run(config *evergreen.Settings) error {
 		&DurationBasedHostAllocator{},
 	}
 
-	if err := schedulerInstance.Schedule(); err != nil {
+	if err := schedulerInstance.Schedule(ctx); err != nil {
 		grip.Error(message.Fields{
 			"runner":  RunnerName,
 			"error":   err.Error(),

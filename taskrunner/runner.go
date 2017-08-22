@@ -8,24 +8,18 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 type Runner struct{}
 
 const (
-	RunnerName  = "taskrunner"
-	Description = "dispatch agents to free hosts"
+	// "dispatch starts agents on free hosts"
+	RunnerName = "taskrunner"
 )
 
-func (r *Runner) Name() string {
-	return RunnerName
-}
-
-func (r *Runner) Description() string {
-	return Description
-}
-
-func (r *Runner) Run(config *evergreen.Settings) error {
+func (r *Runner) Name() string { return RunnerName }
+func (r *Runner) Run(ctx context.Context, config *evergreen.Settings) error {
 	startTime := time.Now()
 	grip.Info(message.Fields{
 		"runner":  RunnerName,

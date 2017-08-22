@@ -19,6 +19,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"golang.org/x/net/context"
 )
 
 // Responsible for prioritizing and scheduling tasks to be run, on a per-distro
@@ -42,7 +43,7 @@ type versionBuildVariant struct {
 // are ready to be run, splitting them by distro, prioritizing them, and saving
 // the per-distro queues.  Then determines the number of new hosts to spin up
 // for each distro, and spins them up.
-func (s *Scheduler) Schedule() error {
+func (s *Scheduler) Schedule(ctx context.Context) error {
 	// make sure the correct static hosts are in the database
 	grip.Info("Updating static hosts...")
 
@@ -95,6 +96,10 @@ func (s *Scheduler) Schedule() error {
 
 	}
 
+	if ctx.Err() != nil {
+		return errors.New("scheduling run canceled.")
+	}
+
 	// close the channel to signal that the loop reading from it can terminate
 	close(distroInputChan)
 	workers := runtime.NumCPU()
@@ -118,6 +123,9 @@ func (s *Scheduler) Schedule() error {
 					grip.Error(err)
 				}
 
+				if ctx.Err() != nil {
+					return
+				}
 				// write the results out to a results channel
 				distroSchedulerResultChan <- res
 				grip.Info(message.Fields{
@@ -147,11 +155,18 @@ func (s *Scheduler) Schedule() error {
 				errResult = errors.Wrapf(err, "error scheduling tasks on distro %v", res.distroId)
 				return
 			}
+			if ctx.Err() != nil {
+				return
+			}
 			schedulerEvents[res.distroId] = res.schedulerEvent
 			taskQueueItems[res.distroId] = res.taskQueueItem
 		}
 	}()
 
+	if ctx.Err() != nil {
+		return errors.New("scheduling operations canceled")
+
+	}
 	// wait for the distro scheduler goroutines to complete to complete
 	wg.Wait()
 
@@ -208,7 +223,7 @@ func (s *Scheduler) Schedule() error {
 	}
 
 	// spawn up the hosts
-	hostsSpawned, err := s.spawnHosts(newHostsNeeded)
+	hostsSpawned, err := s.spawnHosts(ctx, newHostsNeeded)
 	if err != nil {
 		return errors.Wrap(err, "Error spawning new hosts")
 	}
@@ -223,6 +238,10 @@ func (s *Scheduler) Schedule() error {
 			hostList := make([]string, len(hosts))
 			for idx, host := range hosts {
 				hostList[idx] = host.Id
+			}
+
+			if ctx.Err() != nil {
+				return errors.New("scheduling run canceled")
 			}
 
 			grip.Info(message.Fields{
@@ -422,7 +441,7 @@ func (s *Scheduler) splitTasksByDistro(tasksToSplit []task.Task) (
 // Call out to the embedded CloudManager to spawn hosts.  Takes in a map of
 // distro -> number of hosts to spawn for the distro.
 // Returns a map of distro -> hosts spawned, and an error if one occurs.
-func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host.Host, error) {
+func (s *Scheduler) spawnHosts(ctx context.Context, newHostsNeeded map[string]int) (map[string][]host.Host, error) {
 	startTime := time.Now()
 
 	// loop over the distros, spawning up the appropriate number of hosts
@@ -437,6 +456,10 @@ func (s *Scheduler) spawnHosts(newHostsNeeded map[string]int) (map[string][]host
 
 		hostsSpawnedPerDistro[distroId] = make([]host.Host, 0, numHostsToSpawn)
 		for i := 0; i < numHostsToSpawn; i++ {
+			if ctx.Err() != nil {
+				return nil, errors.New("scheduling run canceled.")
+			}
+
 			d, err := distro.FindOne(distro.ById(distroId))
 			if err != nil {
 				err = errors.Wrapf(err, "Failed to find distro '%s'", distroId)

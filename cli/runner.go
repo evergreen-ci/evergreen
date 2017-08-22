@@ -72,7 +72,7 @@ func (c *ServiceRunnerCommand) Execute(_ []string) error {
 
 	// just run a single runner if only one was passed in.
 	if c.Single != "" {
-		return runProcessByName(c.Single, settings)
+		return runProcessByName(ctx, c.Single, settings)
 	}
 
 	// start and schedule runners
@@ -92,7 +92,7 @@ type processRunner interface {
 	Name() string
 
 	// Run executes the process runner with the supplied configuration.
-	Run(*evergreen.Settings) error
+	Run(context.Context, *evergreen.Settings) error
 }
 
 var backgroundRunners = []processRunner{
@@ -149,11 +149,11 @@ func listenForSIGTERM(cancel context.CancelFunc) {
 
 // runProcessByName runs a single process given its name and evergreen Settings.
 // Returns an error if the process does not exist.
-func runProcessByName(name string, settings *evergreen.Settings) error {
+func runProcessByName(ctx context.Context, name string, settings *evergreen.Settings) error {
 	for _, r := range backgroundRunners {
 		if r.Name() == name {
 			grip.Infof("Running standalone %s process", name)
-			if err := r.Run(settings); err != nil {
+			if err := r.Run(ctx, settings); err != nil {
 				grip.Error(err)
 			}
 			return nil
@@ -175,7 +175,7 @@ func runnerBackgroundWorker(ctx context.Context, r processRunner, s *evergreen.S
 			grip.Infoln("Cleanly terminated runner process:", r.Name())
 			return
 		case <-timer.C:
-			if err := r.Run(s); err != nil {
+			if err := r.Run(ctx, s); err != nil {
 				subject := fmt.Sprintf("%s failure", r.Name())
 				grip.Error(err)
 				if err = notify.NotifyAdmins(subject, err.Error(), s); err != nil {

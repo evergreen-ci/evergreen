@@ -107,12 +107,12 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 
 	// TODO: This is commenting out pending investigation of races caused by the metrics collector (EVG-1948).
 	// metrics := &metricsCollector{
-	// 	comm:     a.comm,
-	// 	taskData: tc.task,
+	//	comm:     a.comm,
+	//	taskData: tc.task,
 	// }
 
 	// if err := metrics.start(ctx); err != nil {
-	// 	return errors.Wrap(err, "problem setting up metrics collection")
+	//	return errors.Wrap(err, "problem setting up metrics collection")
 	// }
 
 	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)

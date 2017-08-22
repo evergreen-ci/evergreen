@@ -3,6 +3,8 @@ package hostinit
 import (
 	"testing"
 
+	"golang.org/x/net/context"
+
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud"
 	"github.com/evergreen-ci/evergreen/cloud/providers"
@@ -28,6 +30,8 @@ func TestSetupReadyHosts(t *testing.T) {
 		Settings: testutil.TestConfig(),
 		GUID:     util.RandomString(),
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	Convey("When hosts are spawned but not running", t, func() {
 		testutil.HandleTestingErr(
@@ -46,7 +50,7 @@ func TestSetupReadyHosts(t *testing.T) {
 			h := hostsForTest[i]
 			So(h.Status, ShouldNotEqual, evergreen.HostRunning)
 		}
-		err := hostInit.startHosts()
+		err := hostInit.startHosts(ctx)
 		So(err, ShouldBeNil)
 		Convey("and all of the hosts have failed", func() {
 			for id := range mock.MockInstances {
@@ -57,7 +61,7 @@ func TestSetupReadyHosts(t *testing.T) {
 				mock.MockInstances[id] = instance
 			}
 			Convey("when running setup", func() {
-				err := hostInit.setupReadyHosts()
+				err := hostInit.setupReadyHosts(ctx)
 				So(err, ShouldBeNil)
 
 				Convey("then all of the hosts should be terminated", func() {
@@ -84,7 +88,7 @@ func TestSetupReadyHosts(t *testing.T) {
 				mock.MockInstances[id] = instance
 			}
 			Convey("when running setup", func() {
-				err := hostInit.setupReadyHosts()
+				err := hostInit.setupReadyHosts(ctx)
 				So(err, ShouldBeNil)
 
 				Convey("then all of the 'OnUp' functions should have been run and "+
