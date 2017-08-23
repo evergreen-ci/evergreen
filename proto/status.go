@@ -36,7 +36,6 @@ func (agt *Agent) startStatusServer(port int) {
 type statusResponse struct {
 	BuildId     string                 `json:"agent_revision"`
 	AgentPid    int                    `json:"pid"`
-	APIServer   string                 `json:"api_url"`
 	HostId      string                 `json:"host_id"`
 	SystemInfo  *message.SystemInfo    `json:"sys_info"`
 	ProcessTree []*message.ProcessInfo `json:"ps_info"`
@@ -96,7 +95,6 @@ func buildResponse(opts Options) statusResponse {
 	out := statusResponse{
 		BuildId:    evergreen.BuildRevision,
 		AgentPid:   os.Getpid(),
-		APIServer:  opts.APIURL,
 		HostId:     opts.HostID,
 		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
 	}

@@ -26,7 +26,6 @@ func TestStatusTestSuite(t *testing.T) {
 
 func (s *StatusTestSuite) SetupTest() {
 	s.testOpts = Options{
-		APIURL:     "http://evergreen.example.net",
 		HostID:     "none",
 		StatusPort: 2286,
 	}

@@ -24,7 +24,6 @@ func TestAgentTestSuite(t *testing.T) {
 func (s *AgentTestSuite) SetupTest() {
 	s.a = Agent{
 		opts: Options{
-			APIURL:     "url",
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,

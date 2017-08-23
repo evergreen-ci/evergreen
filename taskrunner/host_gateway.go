@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -212,7 +213,7 @@ func (agbh *AgentHostGateway) prepRemoteHost(hostObj host.Host, sshOptions []str
 
 const logAggregationEnabled = false
 
-// Start the agent process on the specified remote host, and have it run the specified task.
+// Start the agent process on the specified remote host.
 func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOptions []string) error {
 	// the path to the agent binary on the remote machine
 	pathToExecutable := filepath.Join(hostObj.Distro.WorkDir, "evergreen")
@@ -227,6 +228,10 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--host_id='%s'", hostObj.Id),
 		fmt.Sprintf("--host_secret='%s'", hostObj.Secret),
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
+	}
+
+	if os.Getenv("NEW_AGENT") != "" {
+		agentCmdParts = append(agentCmdParts, "--new_agent")
 	}
 
 	// build the command to run on the remote machine

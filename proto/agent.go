@@ -23,7 +23,6 @@ type Agent struct {
 
 // Options contains startup options for the Agent.
 type Options struct {
-	APIURL            string
 	HostID            string
 	HostSecret        string
 	StatusPort        int

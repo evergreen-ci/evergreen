@@ -22,7 +22,6 @@ type testConfigPath struct {
 
 func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
 	initialOptions := Options{
-		APIURL:            testServer.URL,
 		HostID:            testHost.Id,
 		HostSecret:        testHost.Secret,
 		StatusPort:        2285,
