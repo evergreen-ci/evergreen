@@ -191,7 +191,8 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	grip.Info("Finished running post task commands")
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
-	tc.logger.Close()
+	err := tc.logger.Close()
+	grip.Errorf("Error closing logger: %v", err)
 	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
 	grip.Infof("Sent final status as: %v", detail.Status)

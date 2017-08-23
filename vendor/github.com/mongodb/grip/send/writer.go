@@ -93,5 +93,5 @@ func (s *WriterSender) Close() error {
 		s.buffer = []byte{}
 	}
 
-	return s.Sender.Close()
+	return nil
 }
