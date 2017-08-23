@@ -42,7 +42,6 @@ func (c *AgentCommand) Execute(_ []string) error {
 
 	if c.NewAgent {
 		initialOptions := proto.Options{
-			APIURL:     c.ServiceURL,
 			HostID:     c.HostID,
 			HostSecret: c.HostSecret,
 			StatusPort: c.StatusPort,
