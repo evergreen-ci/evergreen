@@ -35,7 +35,7 @@ func (s *AdminEventSuite) TestBannerEvent() {
 
 	// test that events log the old and new val correctly
 	s.NoError(LogBannerChanged(oldText, newText))
-	events, err := Find(AllLogCollection, RecentAdminEvents(1))
+	events, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok := events[0].Data.Data.(*AdminEventData)
 	s.True(ok)
@@ -46,7 +46,7 @@ func (s *AdminEventSuite) TestBannerEvent() {
 	// test that calling the logger without a change does not log
 	time.Sleep(10 * time.Millisecond) // sleep between logging so that timestamps are different
 	s.NoError(LogBannerChanged(newText, newText))
-	newEvents, err := Find(AllLogCollection, RecentAdminEvents(1))
+	newEvents, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
 }
@@ -63,7 +63,7 @@ func (s *AdminEventSuite) TestFlagsEvent() {
 
 	// test that events log the old and new val correctly
 	s.NoError(LogServiceChanged(oldFlags, newFlags))
-	events, err := Find(AllLogCollection, RecentAdminEvents(1))
+	events, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok := events[0].Data.Data.(*AdminEventData)
 	s.True(ok)
@@ -74,7 +74,7 @@ func (s *AdminEventSuite) TestFlagsEvent() {
 	// test that calling the logger without a change does not log
 	time.Sleep(10 * time.Millisecond)
 	s.NoError(LogServiceChanged(newFlags, newFlags))
-	newEvents, err := Find(AllLogCollection, RecentAdminEvents(1))
+	newEvents, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
 }
