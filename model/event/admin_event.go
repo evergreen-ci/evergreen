@@ -35,7 +35,7 @@ func logAdminEventBase(eventType string, eventData AdminEventData) error {
 	eventData.ResourceType = ResourceTypeAdmin
 	event := Event{
 		Timestamp:  time.Now(),
-		ResourceId: admin.SystemSettingsDocID,
+		ResourceId: "",
 		EventType:  eventType,
 		Data:       DataWrapper{eventData},
 	}

@@ -9,7 +9,7 @@ import (
 
 const (
 	Collection          = "admin"
-	SystemSettingsDocID = "global"
+	systemSettingsDocID = "global"
 )
 
 var (
@@ -26,7 +26,7 @@ var (
 	schedulerKey     = bsonutil.MustHaveTag(ServiceFlags{}, "SchedulerDisabled")
 )
 
-var settingsQuery = db.Query(bson.M{idKey: SystemSettingsDocID})
+var settingsQuery = db.Query(bson.M{idKey: systemSettingsDocID})
 
 // GetSettings retrieves the admin settings document. If no document is
 // present in the DB, it will return the defaults
@@ -53,7 +53,7 @@ func SetBanner(bannerText string) error {
 		Collection,
 		settingsQuery,
 		bson.M{
-			"$set": bson.M{idKey: SystemSettingsDocID, bannerKey: bannerText},
+			"$set": bson.M{idKey: systemSettingsDocID, bannerKey: bannerText},
 		},
 	)
 
@@ -66,7 +66,7 @@ func SetServiceFlags(flags ServiceFlags) error {
 		Collection,
 		settingsQuery,
 		bson.M{
-			"$set": bson.M{idKey: SystemSettingsDocID, serviceFlagsKey: flags},
+			"$set": bson.M{idKey: systemSettingsDocID, serviceFlagsKey: flags},
 		},
 	)
 
@@ -77,7 +77,7 @@ func SetServiceFlags(flags ServiceFlags) error {
 func Upsert(settings *AdminSettings) error {
 	update := bson.M{
 		"$set": bson.M{
-			idKey:           SystemSettingsDocID,
+			idKey:           systemSettingsDocID,
 			bannerKey:       settings.Banner,
 			serviceFlagsKey: settings.ServiceFlags,
 		},

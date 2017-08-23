@@ -59,7 +59,7 @@ func (s *AdminSuite) TestServiceFlags() {
 func (s *AdminSuite) TestUpsert() {
 	db.Clear(Collection)
 	settings := &AdminSettings{
-		Id:     SystemSettingsDocID,
+		Id:     systemSettingsDocID,
 		Banner: "",
 
 		ServiceFlags: ServiceFlags{
