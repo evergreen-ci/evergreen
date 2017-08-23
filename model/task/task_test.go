@@ -757,7 +757,7 @@ func TestTaskResultOutcome(t *testing.T) {
 		{Status: evergreen.TaskFailed, Details: apimodels.TaskEndDetail{TimedOut: true, Description: "heartbeat"}},                 // 8
 	}
 
-	out := GetTaskResultCounts(tasks)
+	out := GetResultCounts(tasks)
 	assert.Equal(len(tasks), out.Total)
 	assert.Equal(1, out.Inactive)
 	assert.Equal(1, out.Unstarted)
@@ -771,14 +771,13 @@ func TestTaskResultOutcome(t *testing.T) {
 
 	//
 
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[0]}).Inactive)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[1]}).Unstarted)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[2]}).Started)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[3]}).Succeeded)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[4]}).Failed)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[5]}).SystemFailed)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[6]}).SystemTimedOut)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[7]}).SystemUnresponsive)
-	assert.Equal(1, GetTaskResultCounts([]Task{tasks[8]}).TestTimedOut)
-
+	assert.Equal(1, GetResultCounts([]Task{tasks[0]}).Inactive)
+	assert.Equal(1, GetResultCounts([]Task{tasks[1]}).Unstarted)
+	assert.Equal(1, GetResultCounts([]Task{tasks[2]}).Started)
+	assert.Equal(1, GetResultCounts([]Task{tasks[3]}).Succeeded)
+	assert.Equal(1, GetResultCounts([]Task{tasks[4]}).Failed)
+	assert.Equal(1, GetResultCounts([]Task{tasks[5]}).SystemFailed)
+	assert.Equal(1, GetResultCounts([]Task{tasks[6]}).SystemTimedOut)
+	assert.Equal(1, GetResultCounts([]Task{tasks[7]}).SystemUnresponsive)
+	assert.Equal(1, GetResultCounts([]Task{tasks[8]}).TestTimedOut)
 }
