@@ -186,11 +186,15 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 // finishTask sends the returned TaskEndResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(tc, status, timeout)
+	grip.Info("Running post task commands")
 	a.runPostTaskCommands(ctx, tc)
+	grip.Info("Finished running post task commands")
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
 	tc.logger.Close()
+	grip.Infof("Sending final status as: %v", detail.Status)
 	resp, err := a.comm.EndTask(ctx, detail, tc.task)
+	grip.Infof("Sent final status as: %v", detail.Status)
 	if err != nil {
 		return nil, errors.Wrap(err, "problem marking task complete")
 	}

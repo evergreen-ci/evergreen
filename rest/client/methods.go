@@ -18,6 +18,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/util"
+	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -25,6 +26,11 @@ import (
 
 // StartTask marks the task as started.
 func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) error {
+	grip.Info(message.Fields{
+		"message":     "started StartTask",
+		"task_id":     taskData.ID,
+		"task_secret": taskData.Secret,
+	})
 	pidStr := strconv.Itoa(os.Getpid())
 	taskStartRequest := &apimodels.TaskStartRequest{Pid: pidStr}
 	info := requestInfo{
@@ -39,11 +45,21 @@ func (c *communicatorImpl) StartTask(ctx context.Context, taskData TaskData) err
 		return err
 	}
 	defer resp.Body.Close()
+	grip.Info(message.Fields{
+		"message":     "finished StartTask",
+		"task_id":     taskData.ID,
+		"task_secret": taskData.Secret,
+	})
 	return nil
 }
 
 // EndTask marks the task as finished with the given status
 func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, taskData TaskData) (*apimodels.EndTaskResponse, error) {
+	grip.Info(message.Fields{
+		"message":     "started EndTask",
+		"task_id":     taskData.ID,
+		"task_secret": taskData.Secret,
+	})
 	taskEndResp := &apimodels.EndTaskResponse{}
 	info := requestInfo{
 		method:   post,
@@ -61,6 +77,11 @@ func (c *communicatorImpl) EndTask(ctx context.Context, detail *apimodels.TaskEn
 		message := fmt.Sprintf("Error unmarshalling task end response: %v", err)
 		return nil, errors.New(message)
 	}
+	grip.Info(message.Fields{
+		"message":     "finished EndTask",
+		"task_id":     taskData.ID,
+		"task_secret": taskData.Secret,
+	})
 	return taskEndResp, nil
 }
 
