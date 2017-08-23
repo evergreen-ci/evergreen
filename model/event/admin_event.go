@@ -34,10 +34,9 @@ func (evt AdminEventData) IsValid() bool {
 func logAdminEventBase(eventType string, eventData AdminEventData) error {
 	eventData.ResourceType = ResourceTypeAdmin
 	event := Event{
-		Timestamp:  time.Now(),
-		ResourceId: "",
-		EventType:  eventType,
-		Data:       DataWrapper{eventData},
+		Timestamp: time.Now(),
+		EventType: eventType,
+		Data:      DataWrapper{eventData},
 	}
 
 	logger := NewDBEventLogger(AllLogCollection)
