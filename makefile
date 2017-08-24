@@ -23,6 +23,12 @@ gobin := $(shell which go)
 
 clientBuildDir := clients
 
+ifeq ($(OS),Windows_NT)
+clientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+else
+clientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
+endif
+
 clientBinaries := $(foreach platform,$(unixPlatforms) freebsd_amd64,$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
@@ -89,11 +95,7 @@ $(buildDir)/evergreen_ui_server:scripts/evergreen_ui_server
 
 
 # start rules for building services and clients
-ifeq ($(OS),Windows_NT)
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
-else
-cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
-endif
+cli:$(clientBinary)
 clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
@@ -154,10 +156,13 @@ $(buildDir)/build-cross-compile:scripts/build-cross-compile.go makefile
 $(buildDir)/make-tarball:scripts/make-tarball.go $(buildDir)/render-gopath
 	$(vendorGopath) go build -o $@ $<
 dist:$(buildDir)/dist.tar.gz
+dist-no-cross-compile:$(buildDir)/dist-no-cross-compile.tar.gz
 dist-test:$(buildDir)/dist-test.tar.gz
 dist-source:$(buildDir)/dist-source.tar.gz
 $(buildDir)/dist.tar.gz:$(buildDir)/make-tarball plugins clis $(binaries) $(clientBuildDir)/version
 	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(distContents),--item $(item))
+$(buildDir)/dist-no-cross-compile.tar.gz:$(buildDir)/make-tarball plugins cli $(binaries) $(clientBuildDir)/version
+	./$< --name $@ --prefix $(name) $(foreach item,$(binaries) $(clientBinary) $(distArtifacts),--item $(item))
 $(buildDir)/dist-test.tar.gz:$(buildDir)/make-tarball plugins makefile $(distTestContents) # $(binaries) #(distTestRaceContents)
 	./$< -name $@ --prefix $(name)-tests $(foreach item,$(distContents) $(distTestContents),--item $(item)) $(foreach item,,--item $(item))
 $(buildDir)/dist-source.tar.gz:$(buildDir)/make-tarball $(srcFiles) $(testSrcFiles) makefile
