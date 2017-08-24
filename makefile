@@ -25,7 +25,7 @@ clientBuildDir := clients
 clientSource := cli/main/cli.go
 
 ifeq ($(OS),Windows_NT)
-clientBinary := :$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+clientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
 else
 clientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
 endif
