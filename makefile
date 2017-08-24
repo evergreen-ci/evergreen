@@ -2,7 +2,7 @@
 name := evergreen
 buildDir := bin
 packages := $(name) agent agent-comm db cli remote subprocess taskrunner util plugin hostinit
-packages += command plugin-builtin-keyval plugin-builtin-git
+packages += command plugin-builtin-keyval plugin-builtin-git proto
 packages += plugin-builtin-gotest plugin-builtin-attach plugin-builtin-manifest plugin-builtin-archive
 packages += plugin-builtin-shell plugin-builtin-s3copy plugin-builtin-expansions plugin-builtin-s3
 packages += notify thirdparty alerts auth scheduler model hostutil validator service monitor repotracker
