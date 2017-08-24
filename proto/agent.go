@@ -186,6 +186,15 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 // finishTask sends the returned TaskEndResponse and error
 func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
 	detail := a.endTaskResponse(tc, status, timeout)
+	switch detail.Status {
+	case evergreen.TaskSucceeded:
+		tc.logger.Task().Info("Task completed - SUCCESS.")
+	case evergreen.TaskFailed:
+		tc.logger.Task().Info("Task completed - FAILURE.")
+	case evergreen.TaskUndispatched:
+		tc.logger.Task().Info("Task completed - ABORTED.")
+	}
+
 	grip.Info("Running post task commands")
 	a.runPostTaskCommands(ctx, tc)
 	grip.Info("Finished running post task commands")
@@ -207,17 +216,12 @@ func (a *Agent) endTaskResponse(tc *taskContext, status string, timeout bool) *a
 	detail := &apimodels.TaskEndDetail{
 		Description: tc.currentCommand.GetDisplayName(),
 		TimedOut:    timeout,
+		Status:      status,
 	}
 	if tc.taskConfig != nil {
 		detail.Type = tc.currentCommand.GetType(tc.taskConfig.Project)
 	}
 
-	if status == evergreen.TaskSucceeded {
-		detail.Status = evergreen.TaskSucceeded
-		tc.logger.Task().Info("Task completed - SUCCESS.")
-	} else {
-		tc.logger.Task().Info("Task completed - FAILURE.")
-	}
 	return detail
 }
 
