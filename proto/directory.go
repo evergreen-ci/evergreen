@@ -35,11 +35,11 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskConfig *model.TaskConfi
 	}
 
 	tc.logger.Execution().Infof("Changing into task directory: %v", newDir)
-	err = os.Chdir(newDir)
 	if err != nil {
 		tc.logger.Execution().Errorf("Error changing into task directory: %v", err)
 		return "", err
 	}
+	taskConfig.WorkDir = newDir
 	return newDir, nil
 }
 
@@ -51,15 +51,10 @@ func (a *Agent) removeTaskDirectory(tc *taskContext) {
 	if tc.taskDirectory == "" {
 		grip.Critical("Task directory is not set")
 	}
-	grip.Info("Changing directory back to distro working directory.")
 	if tc.taskConfig == nil {
 		grip.Critical("No taskConfig in taskContext")
 		return
 	}
-	if err := os.Chdir(tc.taskConfig.Distro.WorkDir); err != nil {
-		grip.Criticalf("Error changing directory out of task directory: %v", err)
-	}
-
 	grip.Info("Deleting directory for completed task.")
 
 	if err := os.RemoveAll(tc.taskDirectory); err != nil {
