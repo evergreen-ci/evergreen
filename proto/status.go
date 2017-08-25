@@ -39,6 +39,7 @@ type statusResponse struct {
 	HostId      string                 `json:"host_id"`
 	SystemInfo  *message.SystemInfo    `json:"sys_info"`
 	ProcessTree []*message.ProcessInfo `json:"ps_info"`
+	NewAgent    bool                   `json:"new_agent"`
 }
 
 // statusHandler is a function that produces the status handler.
@@ -69,7 +70,7 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	msg := map[string]interface{}{
-		"message": "terminating agent triggered ",
+		"message": "terminating agent triggered",
 		"host":    r.Host,
 	}
 	grip.Info(msg)
@@ -82,6 +83,9 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 	_, err = w.Write(out)
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
 	grip.CatchError(err)
 
 	// need to use os.exit rather than a panic because the panic
@@ -97,6 +101,7 @@ func buildResponse(opts Options) statusResponse {
 		AgentPid:   os.Getpid(),
 		HostId:     opts.HostID,
 		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
+		NewAgent:   true,
 	}
 
 	psTree := message.CollectProcessInfoSelfWithChildren()

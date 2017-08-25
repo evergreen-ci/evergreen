@@ -41,6 +41,7 @@ type statusResponse struct {
 	SystemInfo  *message.SystemInfo    `json:"sys_info"`
 	ProcessTree []*message.ProcessInfo `json:"ps_info"`
 	TaskId      string                 `json:"task_id"`
+	NewAgent    bool                   `json:"new_agent"`
 
 	// TODO (EVG-1440) include the current task ID when the service is part
 	// of the agent itself.
@@ -74,7 +75,7 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	msg := map[string]interface{}{
-		"message": "terminating agent triggered ",
+		"message": "terminating agent triggered",
 		"host":    r.Host,
 	}
 	grip.Info(msg)
@@ -87,6 +88,9 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 	_, err = w.Write(out)
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
+	}
 	grip.CatchError(err)
 
 	// need to use os.exit rather than a panic because the panic
@@ -104,6 +108,7 @@ func buildResponse(opts Options, taskId string) statusResponse {
 		HostId:     opts.HostId,
 		TaskId:     taskId,
 		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
+		NewAgent:   false,
 	}
 
 	psTree := message.CollectProcessInfoSelfWithChildren()
