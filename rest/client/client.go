@@ -1,6 +1,7 @@
 package client
 
 import (
+	"net"
 	"net/http"
 	"time"
 
@@ -50,7 +51,18 @@ func NewCommunicator(serverURL string) Communicator {
 		timeoutStart: defaultTimeoutStart,
 		timeoutMax:   defaultTimeoutMax,
 		serverURL:    serverURL,
-		httpClient:   &http.Client{},
+	}
+	evergreen.httpClient = &http.Client{
+		Transport: &http.Transport{
+			Proxy:             http.ProxyFromEnvironment,
+			DisableKeepAlives: true,
+			Dial: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+			TLSHandshakeTimeout: 10 * time.Second,
+		},
+		Timeout: heartbeatTimeout,
 	}
 	return evergreen
 }
