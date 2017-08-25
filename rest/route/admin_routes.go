@@ -92,14 +92,15 @@ func (h *adminPostHandler) ParseAndValidate(ctx context.Context, r *http.Request
 }
 
 func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	settings, err := h.model.ToService()
+	settingsModel, err := h.model.ToService()
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
 		}
 		return ResponseData{}, err
 	}
-	err = sc.SetAdminSettings(settings.(admin.AdminSettings))
+	settings := settingsModel.(admin.AdminSettings)
+	err = sc.SetAdminSettings(&settings)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -180,15 +181,7 @@ func getServiceFlagsRouteManager(route string, version int) *RouteManager {
 }
 
 type flagsPostHandler struct {
-	TaskDispatchDisabled  bool `json:"task_dispatch_disabled"`
-	HostinitDisabled      bool `json:"hostinit_disabled"`
-	MonitorDisabled       bool `json:"monitor_disabled"`
-	NotificationsDisabled bool `json:"notifications_disabled"`
-	AlertsDisabled        bool `json:"alerts_disabled"`
-	TaskrunnerDisabled    bool `json:"taskrunner_disabled"`
-	RepotrackerDisabled   bool `json:"repotracker_disabled"`
-	SchedulerDisabled     bool `json:"scheduler_disabled"`
-	model                 model.APIServiceFlags
+	Flags model.APIServiceFlags `json:"service_flags"`
 }
 
 func (h *flagsPostHandler) Handler() RequestHandler {
@@ -199,21 +192,11 @@ func (h *flagsPostHandler) ParseAndValidate(ctx context.Context, r *http.Request
 	if err := util.ReadJSONInto(r.Body, h); err != nil {
 		return err
 	}
-	h.model = model.APIServiceFlags{
-		TaskDispatchDisabled:  h.TaskDispatchDisabled,
-		HostinitDisabled:      h.HostinitDisabled,
-		MonitorDisabled:       h.MonitorDisabled,
-		NotificationsDisabled: h.NotificationsDisabled,
-		AlertsDisabled:        h.AlertsDisabled,
-		TaskrunnerDisabled:    h.TaskrunnerDisabled,
-		RepotrackerDisabled:   h.RepotrackerDisabled,
-		SchedulerDisabled:     h.SchedulerDisabled,
-	}
 	return nil
 }
 
 func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
-	flags, err := h.model.ToService()
+	flags, err := h.Flags.ToService()
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "API model error")
@@ -228,6 +211,6 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 	return ResponseData{
-		Result: []model.Model{&h.model},
+		Result: []model.Model{&h.Flags},
 	}, nil
 }

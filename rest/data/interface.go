@@ -131,7 +131,7 @@ type Connector interface {
 
 	// GetAdminSettings/SetAdminSettings retrieves/sets the system-wide settings document
 	GetAdminSettings() (*admin.AdminSettings, error)
-	SetAdminSettings(admin.AdminSettings) error
+	SetAdminSettings(*admin.AdminSettings) error
 	// SetAdminBanner sets set the banner in the system-wide settings document
 	SetAdminBanner(string) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document

@@ -42,9 +42,13 @@ func (s *AdminFlagsRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
 
 	// test parsing the POST body
-	body := model.APIServiceFlags{
-		HostinitDisabled:   true,
-		TaskrunnerDisabled: true,
+	body := struct {
+		Flags model.APIServiceFlags `json:"service_flags"`
+	}{
+		Flags: model.APIServiceFlags{
+			HostinitDisabled:   true,
+			TaskrunnerDisabled: true,
+		},
 	}
 	jsonBody, err := json.Marshal(&body)
 	s.NoError(err)
@@ -53,9 +57,7 @@ func (s *AdminFlagsRouteSuite) TestAdminRoute() {
 	s.NoError(err)
 	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
 	h := s.postHandler.RequestHandler.(*flagsPostHandler)
-	s.Equal(body.HostinitDisabled, h.HostinitDisabled)
-	s.Equal(body.TaskrunnerDisabled, h.TaskrunnerDisabled)
-	s.Equal(body.RepotrackerDisabled, h.RepotrackerDisabled)
+	s.Equal(body.Flags, h.Flags)
 
 	// test executing the POST request
 	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
@@ -63,7 +65,7 @@ func (s *AdminFlagsRouteSuite) TestAdminRoute() {
 	s.NotNil(resp)
 	settings, err := s.sc.GetAdminSettings()
 	s.NoError(err)
-	s.Equal(body.HostinitDisabled, settings.ServiceFlags.HostinitDisabled)
-	s.Equal(body.TaskrunnerDisabled, settings.ServiceFlags.TaskrunnerDisabled)
-	s.Equal(body.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
+	s.Equal(body.Flags.HostinitDisabled, settings.ServiceFlags.HostinitDisabled)
+	s.Equal(body.Flags.TaskrunnerDisabled, settings.ServiceFlags.TaskrunnerDisabled)
+	s.Equal(body.Flags.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
 }

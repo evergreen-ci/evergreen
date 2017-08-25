@@ -83,8 +83,11 @@ func (s *AdminRouteSuite) TestAdminRoute() {
 	s.Equal(body.ServiceFlags.RepotrackerDisabled, settings.ServiceFlags.RepotrackerDisabled)
 }
 
-func (s *AdminRouteSuite) TestAuthentication() {
+func (s *AdminRouteSuite) TestGetAuthentication() {
 	s.DoAuthenticationTests(s.getHandler.Authenticate)
+}
+
+func (s *AdminRouteSuite) TestPostAuthentication() {
 	s.DoAuthenticationTests(s.postHandler.Authenticate)
 }
 

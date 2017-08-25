@@ -30,7 +30,7 @@ func TestMockConnectorSuite(t *testing.T) {
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
-	settings := admin.AdminSettings{
+	settings := &admin.AdminSettings{
 		Banner: "test banner",
 		ServiceFlags: admin.ServiceFlags{
 			NotificationsDisabled: true,
