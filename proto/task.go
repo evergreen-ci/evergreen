@@ -10,9 +10,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-// runTask manages the process of running a task. It returns a response
-// indicating the end result of the task.
-func (a *Agent) runTask(ctx context.Context, tc *taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
+func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
 	initialSetupCommand := model.PluginCommandConf{
 		DisplayName: initialSetupCommandDisplayName,
 		Type:        initialSetupCommandType,

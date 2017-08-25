@@ -88,7 +88,7 @@ func (a *Agent) loop(ctx context.Context) error {
 						Secret: nextTask.TaskSecret,
 					},
 				}
-				if err := a.startNextTask(ctx, tc); err != nil {
+				if err := a.runTask(ctx, tc); err != nil {
 					return err
 				}
 				timer.Reset(0)
@@ -100,7 +100,7 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
-func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
+func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	ctx, cancel := context.WithCancel(ctx)
 	tc.logger = a.comm.GetLoggerProducer(tc.task)
 
@@ -143,7 +143,7 @@ func (a *Agent) startNextTask(ctx context.Context, tc *taskContext) error {
 
 	complete := make(chan string)
 	execTimeout := make(chan struct{})
-	go a.runTask(ctx, tc, complete, execTimeout, resetIdleTimeout)
+	go a.startTask(ctx, tc, complete, execTimeout, resetIdleTimeout)
 
 	status := evergreen.TaskFailed
 	timeout := false

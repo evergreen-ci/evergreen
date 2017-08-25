@@ -56,7 +56,7 @@ func (s *AgentCommandSuite) TestShellExec() {
 			Secret: taskSecret,
 		},
 	}
-	err = s.a.startNextTask(ctx, tc)
+	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -104,7 +104,7 @@ func (s *AgentCommandSuite) TestS3Copy() {
 			Secret: taskSecret,
 		},
 	}
-	err := s.a.startNextTask(ctx, tc)
+	err := s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
