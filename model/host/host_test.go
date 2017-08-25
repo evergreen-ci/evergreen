@@ -10,6 +10,7 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/testutil"
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -798,4 +799,53 @@ func TestFindByLCT(t *testing.T) {
 		})
 
 	})
+}
+
+func TestHostUpsert(t *testing.T) {
+	assert := assert.New(t)
+	const hostID = "upsertTest"
+	testHost := &Host{
+		Id:             hostID,
+		Host:           "dns",
+		User:           "user",
+		Distro:         distro.Distro{Id: "distro1"},
+		Provisioned:    true,
+		StartedBy:      "started_by",
+		ExpirationTime: time.Now().Round(time.Second),
+		Provider:       "provider",
+		Tag:            "tag",
+		InstanceType:   "instance",
+		Zone:           "zone",
+		Project:        "project",
+		ProvisionOptions: &ProvisionOptions{
+			LoadCLI: true,
+			TaskId:  "task_id",
+		},
+	}
+
+	// test inserting new host
+	_, err := testHost.Upsert()
+	assert.NoError(err)
+	hostFromDB, err := FindOne(ById(hostID))
+	assert.NoError(err)
+	assert.NotNil(hostFromDB)
+	assert.Equal(testHost, hostFromDB)
+
+	// test updating the same host
+	testHost.User = "user2"
+	_, err = testHost.Upsert()
+	assert.NoError(err)
+	hostFromDB, err = FindOne(ById(hostID))
+	assert.NoError(err)
+	assert.NotNil(hostFromDB)
+	assert.Equal(testHost.User, hostFromDB.User)
+
+	// test updating a field that is not upserted
+	testHost.Secret = "secret"
+	_, err = testHost.Upsert()
+	assert.NoError(err)
+	hostFromDB, err = FindOne(ById(hostID))
+	assert.NoError(err)
+	assert.NotNil(hostFromDB)
+	assert.NotEqual(testHost.Secret, hostFromDB.Secret)
 }

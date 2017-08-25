@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/cloud/providers/static"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/distro"
@@ -107,16 +108,44 @@ func TestHostDocumentConsistency(t *testing.T) {
 	assert.NoError(referenceHost.Insert())
 	assert.NoError(UpdateStaticHosts())
 
-	host, err := host.FindOne(host.ById(hostName))
+	hostFromDB, err := host.FindOne(host.ById(hostName))
 	assert.NoError(err)
-	assert.NotNil(host)
+	assert.NotNil(hostFromDB)
 
-	assert.Equal(hostName, host.Id)
-	assert.Equal(hostName, host.Host)
-	assert.Equal(staticProvider, host.Provider)
-	assert.Equal(distroName, host.Distro.Id)
-	assert.Equal(secret, host.Secret)
-	assert.Equal(agentRevision, host.AgentRevision)
-	assert.WithinDuration(now, host.LastCommunicationTime, 1*time.Millisecond)
-	assert.False(host.UserHost)
+	assert.Equal(hostName, hostFromDB.Id)
+	assert.Equal(hostName, hostFromDB.Host)
+	assert.Equal(staticProvider, hostFromDB.Provider)
+	assert.Equal(distroName, hostFromDB.Distro.Id)
+	assert.Equal(secret, hostFromDB.Secret)
+	assert.Equal(agentRevision, hostFromDB.AgentRevision)
+	assert.WithinDuration(now, hostFromDB.LastCommunicationTime, 1*time.Millisecond)
+	assert.False(hostFromDB.UserHost)
+
+	// test that upserting a host does not clear out fields not set by UpdateStaticHosts
+	const staticHostName = "staticHost"
+	staticReferenceHost := host.Host{
+		Id:           staticHostName,
+		User:         "user",
+		Host:         staticHostName,
+		Distro:       *staticTestDistro,
+		CreationTime: time.Now(),
+		Provider:     evergreen.HostTypeStatic,
+		StartedBy:    evergreen.User,
+		Status:       evergreen.HostRunning,
+		Provisioned:  true,
+	}
+	staticTestHost := staticReferenceHost
+	staticReferenceHost.Secret = "secret"
+	staticReferenceHost.LastCommunicationTime = time.Now()
+	staticReferenceHost.AgentRevision = "agent_rev"
+	assert.NoError(staticReferenceHost.Insert())
+	_, err = staticTestHost.Upsert()
+	assert.NoError(err)
+	hostFromDB, err = host.FindOne(host.ById(staticHostName))
+	assert.NoError(err)
+	assert.NotNil(hostFromDB)
+	assert.Equal(staticHostName, hostFromDB.Id)
+	assert.Equal(staticReferenceHost.Secret, hostFromDB.Secret)
+	assert.WithinDuration(staticReferenceHost.LastCommunicationTime, hostFromDB.LastCommunicationTime, 1*time.Second)
+	assert.Equal(staticReferenceHost.AgentRevision, hostFromDB.AgentRevision)
 }
