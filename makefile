@@ -22,21 +22,16 @@ goarch := $(shell go env GOARCH)
 gobin := $(shell which go)
 
 clientBuildDir := clients
-clientSource := cli/main/cli.go
-
-ifeq ($(OS),Windows_NT)
-clientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
-else
-clientBinary := $(clientBuildDir)/$(goos)_$(goarch)/evergreen
-endif
 
 clientBinaries := $(foreach platform,$(unixPlatforms) freebsd_amd64,$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
 
+clientSource := cli/main/cli.go
+
 distArtifacts :=  ./public ./service/templates ./service/plugins ./alerts/templates ./notify/templates
-distContents := $(if $(DISABLE_CROSS_COMPILE),$(clientBinary),$(clientBinaries)) $(distArtifacts)
+distContents := $(clientBuildDir) $(distArtifacts)
 distTestContents := $(foreach pkg,$(packages),$(buildDir)/test.$(pkg))
 distTestRaceContents := $(foreach pkg,$(packages),$(buildDir)/race.$(pkg))
 srcFiles := makefile $(shell find . -name "*.go" -not -path "./$(buildDir)/*" -not -name "*_test.go" -not -path "./scripts/*" -not -path "*\#*")
@@ -94,8 +89,12 @@ $(buildDir)/evergreen_ui_server:scripts/evergreen_ui_server
 
 
 # start rules for building services and clients
-cli:$(clientBinary)
-clis:$(if $(DISABLE_CROSS_COMPILE),$(clientBinary),$(clientBinaries))
+ifeq ($(OS),Windows_NT)
+cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen.exe
+else
+cli:$(clientBuildDir)/$(goos)_$(goarch)/evergreen
+endif
+clis:$(clientBinaries)
 $(clientBuildDir)/%/evergreen $(clientBuildDir)/%/evergreen.exe:$(buildDir)/build-cross-compile $(srcFiles)
 	@$(vendorGopath) ./$(buildDir)/build-cross-compile -buildName=$* -ldflags=$(ldFlags) -goBinary="$(gobin)" $(if $(RACE_ENABLED),-race ,)-directory=$(clientBuildDir) -source=$(clientSource) -output=$@
 $(clientBuildDir)/version:
