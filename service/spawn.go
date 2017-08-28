@@ -118,23 +118,6 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	opts := spawn.Options{
-		TaskId:    putParams.Task,
-		Distro:    putParams.Distro,
-		UserName:  authedUser.Username(),
-		PublicKey: putParams.PublicKey,
-		UserData:  putParams.UserData,
-	}
-
-	if err := spawn.Validate(opts); err != nil {
-		errCode := http.StatusBadRequest
-		if _, ok := err.(spawn.BadOptionsErr); !ok {
-			errCode = http.StatusInternalServerError
-		}
-		uis.LoggedError(w, r, errCode, err)
-		return
-	}
-
 	// save the supplied public key if needed
 	if putParams.SaveKey {
 		dbuser, err := user.FindOne(user.ById(authedUser.Username()))
@@ -150,7 +133,7 @@ func (uis *UIServer) requestNewHost(w http.ResponseWriter, r *http.Request) {
 		PushFlash(uis.CookieStore, r, w, NewSuccessFlash("Public key successfully saved."))
 	}
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(putParams.Distro, opts.PublicKey, authedUser)
+	spawnHost, err := hc.NewIntentHost(putParams.Distro, putParams.PublicKey, putParams.Task, putParams.UserData, authedUser)
 
 	if err != nil {
 		uis.LoggedError(w, r, http.StatusInternalServerError, errors.Wrap(err, "Error spawning host"))

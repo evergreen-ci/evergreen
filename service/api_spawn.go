@@ -64,7 +64,7 @@ func (as *APIServer) requestHost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hc := &data.DBHostConnector{}
-	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, user)
+	spawnHost, err := hc.NewIntentHost(hostRequest.Distro, hostRequest.PublicKey, "", hostRequest.UserData, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

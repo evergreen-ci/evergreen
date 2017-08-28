@@ -50,7 +50,7 @@ func (hc *DBHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to insert an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *DBHostConnector) NewIntentHost(distroID string, keyNameOrVal string, user *user.DBUser) (*host.Host, error) {
+func (hc *DBHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, user *user.DBUser) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -63,6 +63,8 @@ func (hc *DBHostConnector) NewIntentHost(distroID string, keyNameOrVal string, u
 		Distro:    distroID,
 		UserName:  user.Username(),
 		PublicKey: keyVal,
+		TaskId:    taskID,
+		UserData:  userData,
 	}
 
 	if err = spawn.Validate(spawnOptions); err != nil {
@@ -171,7 +173,7 @@ func (hc *MockHostConnector) FindHostById(id string) (*host.Host, error) {
 
 // NewIntentHost is a method to mock "insert" an intent host given a distro and a public key
 // The public key can be the name of a saved key or the actual key string
-func (hc *MockHostConnector) NewIntentHost(distroID string, keyNameOrVal string, user *user.DBUser) (*host.Host, error) {
+func (hc *MockHostConnector) NewIntentHost(distroID, keyNameOrVal, taskID, userData string, user *user.DBUser) (*host.Host, error) {
 	keyVal, err := user.GetPublicKey(keyNameOrVal)
 	if err != nil {
 		keyVal = keyNameOrVal
@@ -184,6 +186,8 @@ func (hc *MockHostConnector) NewIntentHost(distroID string, keyNameOrVal string,
 		Distro:    distroID,
 		UserName:  user.Username(),
 		PublicKey: keyVal,
+		TaskId:    taskID,
+		UserData:  userData,
 	}
 
 	if err = spawn.Validate(spawnOptions); err != nil {
