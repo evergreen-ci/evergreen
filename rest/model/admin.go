@@ -1,9 +1,8 @@
 package model
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/pkg/errors"
 )
 
 // APIAdminSettings is the structure of a response to the admin route
@@ -34,36 +33,25 @@ func (as *APIAdminSettings) BuildFromService(h interface{}) error {
 	switch v := h.(type) {
 	case *admin.AdminSettings:
 		as.Banner = APIString(v.Banner)
-		as.ServiceFlags = APIServiceFlags{
-			TaskDispatchDisabled:  v.ServiceFlags.TaskDispatchDisabled,
-			HostinitDisabled:      v.ServiceFlags.HostinitDisabled,
-			MonitorDisabled:       v.ServiceFlags.MonitorDisabled,
-			NotificationsDisabled: v.ServiceFlags.NotificationsDisabled,
-			AlertsDisabled:        v.ServiceFlags.AlertsDisabled,
-			TaskrunnerDisabled:    v.ServiceFlags.TaskrunnerDisabled,
-			RepotrackerDisabled:   v.ServiceFlags.RepotrackerDisabled,
-			SchedulerDisabled:     v.ServiceFlags.SchedulerDisabled,
+		err := as.ServiceFlags.BuildFromService(v.ServiceFlags)
+		if err != nil {
+			return err
 		}
 	default:
-		return errors.New("Incorrect type when unmarshalling admin settings")
+		return errors.Errorf("%T is not a supported admin settings type", h)
 	}
 	return nil
 }
 
 // ToService returns a service model from an API model
 func (as *APIAdminSettings) ToService() (interface{}, error) {
+	flags, err := as.ServiceFlags.ToService()
+	if err != nil {
+		return nil, err
+	}
 	settings := admin.AdminSettings{
-		Banner: string(as.Banner),
-		ServiceFlags: admin.ServiceFlags{
-			TaskDispatchDisabled:  as.ServiceFlags.TaskDispatchDisabled,
-			HostinitDisabled:      as.ServiceFlags.HostinitDisabled,
-			MonitorDisabled:       as.ServiceFlags.MonitorDisabled,
-			NotificationsDisabled: as.ServiceFlags.NotificationsDisabled,
-			AlertsDisabled:        as.ServiceFlags.AlertsDisabled,
-			TaskrunnerDisabled:    as.ServiceFlags.TaskrunnerDisabled,
-			RepotrackerDisabled:   as.ServiceFlags.RepotrackerDisabled,
-			SchedulerDisabled:     as.ServiceFlags.SchedulerDisabled,
-		},
+		Banner:       string(as.Banner),
+		ServiceFlags: flags.(admin.ServiceFlags),
 	}
 	return settings, nil
 }
@@ -74,7 +62,7 @@ func (ab *APIBanner) BuildFromService(h interface{}) error {
 	case string:
 		ab.Text = APIString(h.(string))
 	default:
-		return errors.New("Incorrect type when unmarshalling banner")
+		return errors.Errorf("%T is not a supported admin banner type", h)
 	}
 	return nil
 }
@@ -97,7 +85,7 @@ func (as *APIServiceFlags) BuildFromService(h interface{}) error {
 		as.RepotrackerDisabled = v.RepotrackerDisabled
 		as.SchedulerDisabled = v.SchedulerDisabled
 	default:
-		return errors.New("Incorrect type when unmarshalling service flags")
+		return errors.Errorf("%T is not a supported service flags type", h)
 	}
 	return nil
 }

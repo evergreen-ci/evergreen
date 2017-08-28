@@ -6,12 +6,14 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
 )
 
 var (
 	testConfig = testutil.TestConfig()
+	u          = user.DBUser{Id: "user"}
 )
 
 type AdminEventSuite struct {
@@ -20,7 +22,6 @@ type AdminEventSuite struct {
 
 func TestAdminEventSuite(t *testing.T) {
 	s := new(AdminEventSuite)
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestAdminEventSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	suite.Run(t, s)
 }
@@ -34,7 +35,7 @@ func (s *AdminEventSuite) TestBannerEvent() {
 	const newText = "changed text"
 
 	// test that events log the old and new val correctly
-	s.NoError(LogBannerChanged(oldText, newText))
+	s.NoError(LogBannerChanged(oldText, newText, u))
 	events, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok := events[0].Data.Data.(*AdminEventData)
@@ -45,7 +46,7 @@ func (s *AdminEventSuite) TestBannerEvent() {
 
 	// test that calling the logger without a change does not log
 	time.Sleep(10 * time.Millisecond) // sleep between logging so that timestamps are different
-	s.NoError(LogBannerChanged(newText, newText))
+	s.NoError(LogBannerChanged(newText, newText, u))
 	newEvents, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
@@ -62,7 +63,7 @@ func (s *AdminEventSuite) TestFlagsEvent() {
 	}
 
 	// test that events log the old and new val correctly
-	s.NoError(LogServiceChanged(oldFlags, newFlags))
+	s.NoError(LogServiceChanged(oldFlags, newFlags, u))
 	events, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok := events[0].Data.Data.(*AdminEventData)
@@ -73,7 +74,7 @@ func (s *AdminEventSuite) TestFlagsEvent() {
 
 	// test that calling the logger without a change does not log
 	time.Sleep(10 * time.Millisecond)
-	s.NoError(LogServiceChanged(newFlags, newFlags))
+	s.NoError(LogServiceChanged(newFlags, newFlags, u))
 	newEvents, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)

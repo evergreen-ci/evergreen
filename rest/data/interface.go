@@ -131,11 +131,11 @@ type Connector interface {
 
 	// GetAdminSettings/SetAdminSettings retrieves/sets the system-wide settings document
 	GetAdminSettings() (*admin.AdminSettings, error)
-	SetAdminSettings(*admin.AdminSettings) error
+	SetAdminSettings(*admin.AdminSettings, user.DBUser) error
 	// SetAdminBanner sets set the banner in the system-wide settings document
-	SetAdminBanner(string) error
+	SetAdminBanner(string, user.DBUser) error
 	// SetAdminBanner sets set the service flags in the system-wide settings document
-	SetServiceFlags(admin.ServiceFlags) error
+	SetServiceFlags(admin.ServiceFlags, user.DBUser) error
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 }

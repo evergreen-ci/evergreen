@@ -5,7 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/admin"
-	"github.com/evergreen-ci/evergreen/testutil"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -17,7 +17,6 @@ type AdminDataSuite struct {
 func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
-	testutil.ConfigureIntegrationTest(t, testConfig, "TestDataConnectorSuite")
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	db.Clear(admin.Collection)
 	suite.Run(t, s)
@@ -30,6 +29,7 @@ func TestMockConnectorSuite(t *testing.T) {
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
+	u := user.DBUser{Id: "user"}
 	settings := &admin.AdminSettings{
 		Banner: "test banner",
 		ServiceFlags: admin.ServiceFlags{
@@ -38,7 +38,7 @@ func (s *AdminDataSuite) TestSetAndGetSettings() {
 		},
 	}
 
-	err := s.ctx.SetAdminSettings(settings)
+	err := s.ctx.SetAdminSettings(settings, u)
 	s.NoError(err)
 
 	settingsFromConnector, err := s.ctx.GetAdminSettings()

@@ -44,6 +44,7 @@ func TestAdminRouteSuite(t *testing.T) {
 
 func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user"})
 
 	// test parsing the POST body
 	body := admin.AdminSettings{

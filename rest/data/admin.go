@@ -3,6 +3,7 @@ package data
 import (
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/event"
+	"github.com/evergreen-ci/evergreen/model/user"
 )
 
 type DBAdminConnector struct{}
@@ -13,16 +14,16 @@ func (ac *DBAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
 }
 
 // SetAdminSettings sets the admin settings document in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings) error {
-	err := ac.SetAdminBanner(settings.Banner)
+func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u user.DBUser) error {
+	err := ac.SetAdminBanner(settings.Banner, u)
 	if err != nil {
 		return err
 	}
-	return ac.SetServiceFlags(settings.ServiceFlags)
+	return ac.SetServiceFlags(settings.ServiceFlags, u)
 }
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminBanner(text string) error {
+func (ac *DBAdminConnector) SetAdminBanner(text string, u user.DBUser) error {
 	oldSettings, err := admin.GetSettings()
 	if err != nil {
 		return err
@@ -33,7 +34,7 @@ func (ac *DBAdminConnector) SetAdminBanner(text string) error {
 		return err
 	}
 
-	err = event.LogBannerChanged(oldSettings.Banner, text)
+	err = event.LogBannerChanged(oldSettings.Banner, text, u)
 	if err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func (ac *DBAdminConnector) SetAdminBanner(text string) error {
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
-func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags) error {
+func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u user.DBUser) error {
 	oldSettings, err := admin.GetSettings()
 	if err != nil {
 		return err
@@ -53,7 +54,7 @@ func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags) error {
 		return err
 	}
 
-	err = event.LogServiceChanged(oldSettings.ServiceFlags, flags)
+	err = event.LogServiceChanged(oldSettings.ServiceFlags, flags, u)
 	if err != nil {
 		return err
 	}
@@ -71,13 +72,13 @@ func (ac *MockAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
 }
 
 // SetAdminSettings sets the admin settings document in the mock connector
-func (ac *MockAdminConnector) SetAdminSettings(settings *admin.AdminSettings) error {
+func (ac *MockAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u user.DBUser) error {
 	ac.MockSettings = settings
 	return nil
 }
 
 // SetAdminBanner sets the admin banner in the mock connector
-func (ac *MockAdminConnector) SetAdminBanner(text string) error {
+func (ac *MockAdminConnector) SetAdminBanner(text string, u user.DBUser) error {
 	if ac.MockSettings == nil {
 		ac.MockSettings = &admin.AdminSettings{}
 	}
@@ -86,7 +87,7 @@ func (ac *MockAdminConnector) SetAdminBanner(text string) error {
 }
 
 // SetServiceFlags sets the service flags in the mock connector
-func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags) error {
+func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u user.DBUser) error {
 	if ac.MockSettings == nil {
 		ac.MockSettings = &admin.AdminSettings{}
 	}

@@ -6,23 +6,16 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
 	"golang.org/x/net/context"
 )
 
-type AdminBannerRouteSuite struct {
-	sc data.Connector
-	suite.Suite
-	postHandler MethodHandler
-}
-
-func TestAdminBannerRouteSuite(t *testing.T) {
+func TestAdminBannerRoute(t *testing.T) {
 	assert := assert.New(t)
-	s := new(AdminBannerRouteSuite)
-	s.sc = &data.MockConnector{}
+	sc := &data.MockConnector{}
 
 	// test getting the route handler
 	const route = "/admin/banner"
@@ -31,34 +24,31 @@ func TestAdminBannerRouteSuite(t *testing.T) {
 	assert.NotNil(routeManager)
 	assert.Equal(route, routeManager.Route)
 	assert.Equal(version, routeManager.Version)
-	s.postHandler = routeManager.Methods[0]
-	assert.IsType(&bannerPostHandler{}, s.postHandler.RequestHandler)
+	postHandler := routeManager.Methods[0]
+	assert.IsType(&bannerPostHandler{}, postHandler.RequestHandler)
 
-	// run the rest of the tests
-	suite.Run(t, s)
-}
-
-func (s *AdminBannerRouteSuite) TestAdminRoute() {
+	// run the route
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user"})
 
 	// test parsing the POST body
 	body := model.APIBanner{
 		Text: "hello evergreen users!",
 	}
 	jsonBody, err := json.Marshal(&body)
-	s.NoError(err)
+	assert.NoError(err)
 	buffer := bytes.NewBuffer(jsonBody)
 	request, err := http.NewRequest("POST", "/admin/banner", buffer)
-	s.NoError(err)
-	s.NoError(s.postHandler.RequestHandler.ParseAndValidate(ctx, request))
-	h := s.postHandler.RequestHandler.(*bannerPostHandler)
-	s.Equal(body.Text, h.Banner)
+	assert.NoError(err)
+	assert.NoError(postHandler.RequestHandler.ParseAndValidate(ctx, request))
+	h := postHandler.RequestHandler.(*bannerPostHandler)
+	assert.Equal(body.Text, h.Banner)
 
 	// test executing the POST request
-	resp, err := s.postHandler.RequestHandler.Execute(ctx, s.sc)
-	s.NoError(err)
-	s.NotNil(resp)
-	settings, err := s.sc.GetAdminSettings()
-	s.NoError(err)
-	s.Equal(string(body.Text), settings.Banner)
+	resp, err := postHandler.RequestHandler.Execute(ctx, sc)
+	assert.NoError(err)
+	assert.NotNil(resp)
+	settings, err := sc.GetAdminSettings()
+	assert.NoError(err)
+	assert.Equal(string(body.Text), settings.Banner)
 }
