@@ -48,6 +48,7 @@ var (
 	UserHostKey              = bsonutil.MustHaveTag(Host{}, "UserHost")
 	ZoneKey                  = bsonutil.MustHaveTag(Host{}, "Zone")
 	ProjectKey               = bsonutil.MustHaveTag(Host{}, "Project")
+	ProvisionOptionsKey      = bsonutil.MustHaveTag(Host{}, "ProvisionOptions")
 )
 
 // === Queries ===
