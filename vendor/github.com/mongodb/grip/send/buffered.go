@@ -59,7 +59,7 @@ func NewBufferedSender(sender Sender, duration time.Duration, number int) Sender
 func (s *bufferedSender) backgroundDispatcher() {
 	buffer := []message.Composer{}
 	timer := time.NewTimer(s.duration)
-	work := make(chan []message.Composer, 2)
+	work := make(chan []message.Composer)
 	complete := make(chan struct{})
 
 	go s.backgroundWorker(work, complete)

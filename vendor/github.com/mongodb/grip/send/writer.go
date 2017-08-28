@@ -76,9 +76,7 @@ func (s *WriterSender) Write(p []byte) (int, error) {
 
 func (s *WriterSender) doSend(l level.Priority, buf []byte) {
 	for _, val := range bytes.Split(buf, newLine) {
-		if len(bytes.Trim(val, " \t")) != 0 {
-			s.Send(message.NewBytesMessage(l, val))
-		}
+		s.Send(message.NewBytesMessage(l, val))
 	}
 }
 
