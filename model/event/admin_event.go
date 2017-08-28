@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/pkg/errors"
 )
 
@@ -19,6 +20,7 @@ const (
 // AdminEventData holds all potential data properties of a logged admin event
 type AdminEventData struct {
 	ResourceType string             `bson:"r_type" json:"resource_type"`
+	User         string             `bson:"user" json:"user"`
 	OldVal       string             `bson:"old_val,omitempty" json:"old_val,omitempty"`
 	NewVal       string             `bson:"new_val,omitempty" json:"new_val,omitempty"`
 	OldFlags     admin.ServiceFlags `bson:"old_flags,omitempty" json:"old_flags,omitempty"`
@@ -47,17 +49,17 @@ func logAdminEventBase(eventType string, eventData AdminEventData) error {
 }
 
 // LogBannerChanged will log a change to the banner field
-func LogBannerChanged(oldText, newText string) error {
+func LogBannerChanged(oldText, newText string, u *user.DBUser) error {
 	if oldText == newText {
 		return nil
 	}
-	return logAdminEventBase(BannerChanged, AdminEventData{OldVal: oldText, NewVal: newText})
+	return logAdminEventBase(BannerChanged, AdminEventData{OldVal: oldText, NewVal: newText, User: u.Username()})
 }
 
 // LogServiceChanged will log a change to the service flags
-func LogServiceChanged(oldFlags, newFlags admin.ServiceFlags) error {
+func LogServiceChanged(oldFlags, newFlags admin.ServiceFlags, u *user.DBUser) error {
 	if reflect.DeepEqual(oldFlags, newFlags) {
 		return nil
 	}
-	return logAdminEventBase(ServiceChanged, AdminEventData{OldFlags: oldFlags, NewFlags: newFlags})
+	return logAdminEventBase(ServiceChanged, AdminEventData{OldFlags: oldFlags, NewFlags: newFlags, User: u.Username()})
 }

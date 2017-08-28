@@ -5,6 +5,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
+	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -127,6 +128,14 @@ type Connector interface {
 	// SetPatchPriority and SetPatchActivated change the status of the input patch
 	SetPatchPriority(string, int64) error
 	SetPatchActivated(string, string, bool) error
+
+	// GetAdminSettings/SetAdminSettings retrieves/sets the system-wide settings document
+	GetAdminSettings() (*admin.AdminSettings, error)
+	SetAdminSettings(*admin.AdminSettings, *user.DBUser) error
+	// SetAdminBanner sets set the banner in the system-wide settings document
+	SetAdminBanner(string, *user.DBUser) error
+	// SetAdminBanner sets set the service flags in the system-wide settings document
+	SetServiceFlags(admin.ServiceFlags, *user.DBUser) error
 
 	FindCostTaskByProject(string, string, time.Time, time.Time, int, int) ([]task.Task, error)
 }

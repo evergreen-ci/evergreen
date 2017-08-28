@@ -25,9 +25,12 @@ func AttachHandler(root *mux.Router, superUsers []string, URL, prefix string) ht
 func GetHandler(r *mux.Router, sc data.Connector) http.Handler {
 	routes := map[string]routeManagerFactory{
 		"/":                                                    getPlaceHolderManger,
+		"/admin":                                               getAdminSettingsManager,
+		"/admin/banner":                                        getBannerRouteManager,
+		"/admin/service_flags":                                 getServiceFlagsRouteManager,
 		"/builds/{build_id}":                                   getBuildByIdRouteManager,
 		"/builds/{build_id}/abort":                             getBuildAbortRouteManager,
-		"/builds/{build_id}/restart":							getBuildRestartManager,
+		"/builds/{build_id}/restart":                           getBuildRestartManager,
 		"/builds/{build_id}/tasks":                             getTasksByBuildRouteManager,
 		"/distros":                                             getDistroRouteManager,
 		"/hosts":                                               getHostRouteManager,
