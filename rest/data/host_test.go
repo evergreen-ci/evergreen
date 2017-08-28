@@ -159,7 +159,7 @@ func (s *HostConnectorSuite) TestSpawnHost() {
 	s.NoError(testUser.Insert())
 
 	//note this is the real DB host connector, not the mock
-	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, testUser)
+	intentHost, err := (&DBHostConnector{}).NewIntentHost(testDistroID, testPublicKeyName, "", "", testUser)
 	s.NotNil(intentHost)
 	s.NoError(err)
 	foundHost, err := host.FindOne(host.ById(intentHost.Id))
