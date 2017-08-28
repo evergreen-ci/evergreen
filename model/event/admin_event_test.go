@@ -13,16 +13,17 @@ import (
 
 var (
 	testConfig = testutil.TestConfig()
-	u          = user.DBUser{Id: "user"}
 )
 
 type AdminEventSuite struct {
 	suite.Suite
+	u *user.DBUser
 }
 
 func TestAdminEventSuite(t *testing.T) {
 	s := new(AdminEventSuite)
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
+	s.u = &user.DBUser{Id: "user"}
 	suite.Run(t, s)
 }
 
@@ -35,7 +36,7 @@ func (s *AdminEventSuite) TestBannerEvent() {
 	const newText = "changed text"
 
 	// test that events log the old and new val correctly
-	s.NoError(LogBannerChanged(oldText, newText, u))
+	s.NoError(LogBannerChanged(oldText, newText, s.u))
 	events, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok := events[0].Data.Data.(*AdminEventData)
@@ -46,7 +47,7 @@ func (s *AdminEventSuite) TestBannerEvent() {
 
 	// test that calling the logger without a change does not log
 	time.Sleep(10 * time.Millisecond) // sleep between logging so that timestamps are different
-	s.NoError(LogBannerChanged(newText, newText, u))
+	s.NoError(LogBannerChanged(newText, newText, s.u))
 	newEvents, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)
@@ -63,7 +64,7 @@ func (s *AdminEventSuite) TestFlagsEvent() {
 	}
 
 	// test that events log the old and new val correctly
-	s.NoError(LogServiceChanged(oldFlags, newFlags, u))
+	s.NoError(LogServiceChanged(oldFlags, newFlags, s.u))
 	events, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	eventData, ok := events[0].Data.Data.(*AdminEventData)
@@ -74,7 +75,7 @@ func (s *AdminEventSuite) TestFlagsEvent() {
 
 	// test that calling the logger without a change does not log
 	time.Sleep(10 * time.Millisecond)
-	s.NoError(LogServiceChanged(newFlags, newFlags, u))
+	s.NoError(LogServiceChanged(newFlags, newFlags, s.u))
 	newEvents, err := Find(AllLogCollection, recentAdminEvents(1))
 	s.NoError(err)
 	s.Equal(events[0].Timestamp, newEvents[0].Timestamp)

@@ -29,7 +29,7 @@ func TestMockConnectorSuite(t *testing.T) {
 }
 
 func (s *AdminDataSuite) TestSetAndGetSettings() {
-	u := user.DBUser{Id: "user"}
+	u := &user.DBUser{Id: "user"}
 	settings := &admin.AdminSettings{
 		Banner: "test banner",
 		ServiceFlags: admin.ServiceFlags{

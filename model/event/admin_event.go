@@ -49,7 +49,7 @@ func logAdminEventBase(eventType string, eventData AdminEventData) error {
 }
 
 // LogBannerChanged will log a change to the banner field
-func LogBannerChanged(oldText, newText string, u user.DBUser) error {
+func LogBannerChanged(oldText, newText string, u *user.DBUser) error {
 	if oldText == newText {
 		return nil
 	}
@@ -57,7 +57,7 @@ func LogBannerChanged(oldText, newText string, u user.DBUser) error {
 }
 
 // LogServiceChanged will log a change to the service flags
-func LogServiceChanged(oldFlags, newFlags admin.ServiceFlags, u user.DBUser) error {
+func LogServiceChanged(oldFlags, newFlags admin.ServiceFlags, u *user.DBUser) error {
 	if reflect.DeepEqual(oldFlags, newFlags) {
 		return nil
 	}

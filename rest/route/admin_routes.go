@@ -101,7 +101,7 @@ func (h *adminPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		return ResponseData{}, err
 	}
 	settings := settingsModel.(admin.AdminSettings)
-	err = sc.SetAdminSettings(&settings, *u)
+	err = sc.SetAdminSettings(&settings, u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -152,7 +152,7 @@ func (h *bannerPostHandler) ParseAndValidate(ctx context.Context, r *http.Reques
 
 func (h *bannerPostHandler) Execute(ctx context.Context, sc data.Connector) (ResponseData, error) {
 	u := MustHaveUser(ctx)
-	err := sc.SetAdminBanner(string(h.Banner), *u)
+	err := sc.SetAdminBanner(string(h.Banner), u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")
@@ -206,7 +206,7 @@ func (h *flagsPostHandler) Execute(ctx context.Context, sc data.Connector) (Resp
 		}
 		return ResponseData{}, err
 	}
-	err = sc.SetServiceFlags(flags.(admin.ServiceFlags), *u)
+	err = sc.SetServiceFlags(flags.(admin.ServiceFlags), u)
 	if err != nil {
 		if _, ok := err.(*rest.APIError); !ok {
 			err = errors.Wrap(err, "Database error")

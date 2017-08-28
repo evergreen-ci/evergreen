@@ -14,7 +14,7 @@ func (ac *DBAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
 }
 
 // SetAdminSettings sets the admin settings document in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u user.DBUser) error {
+func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u *user.DBUser) error {
 	err := ac.SetAdminBanner(settings.Banner, u)
 	if err != nil {
 		return err
@@ -23,7 +23,7 @@ func (ac *DBAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u us
 }
 
 // SetAdminBanner sets the admin banner in the DB and event logs it
-func (ac *DBAdminConnector) SetAdminBanner(text string, u user.DBUser) error {
+func (ac *DBAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
 	oldSettings, err := admin.GetSettings()
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func (ac *DBAdminConnector) SetAdminBanner(text string, u user.DBUser) error {
 }
 
 // SetServiceFlags sets the service flags in the DB and event logs it
-func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u user.DBUser) error {
+func (ac *DBAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DBUser) error {
 	oldSettings, err := admin.GetSettings()
 	if err != nil {
 		return err
@@ -72,13 +72,13 @@ func (ac *MockAdminConnector) GetAdminSettings() (*admin.AdminSettings, error) {
 }
 
 // SetAdminSettings sets the admin settings document in the mock connector
-func (ac *MockAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u user.DBUser) error {
+func (ac *MockAdminConnector) SetAdminSettings(settings *admin.AdminSettings, u *user.DBUser) error {
 	ac.MockSettings = settings
 	return nil
 }
 
 // SetAdminBanner sets the admin banner in the mock connector
-func (ac *MockAdminConnector) SetAdminBanner(text string, u user.DBUser) error {
+func (ac *MockAdminConnector) SetAdminBanner(text string, u *user.DBUser) error {
 	if ac.MockSettings == nil {
 		ac.MockSettings = &admin.AdminSettings{}
 	}
@@ -87,7 +87,7 @@ func (ac *MockAdminConnector) SetAdminBanner(text string, u user.DBUser) error {
 }
 
 // SetServiceFlags sets the service flags in the mock connector
-func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u user.DBUser) error {
+func (ac *MockAdminConnector) SetServiceFlags(flags admin.ServiceFlags, u *user.DBUser) error {
 	if ac.MockSettings == nil {
 		ac.MockSettings = &admin.AdminSettings{}
 	}
