@@ -20,11 +20,10 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
 		return
-	} else {
-		tc.logger.Task().Infof("Task logger initialized (agent revision: %s).", evergreen.BuildRevision)
-		tc.logger.Execution().Info("Execution logger initialized.")
-		tc.logger.System().Info("System logger initialized.")
 	}
+	tc.logger.Task().Infof("Task logger initialized (agent revision: %s).", evergreen.BuildRevision)
+	tc.logger.Execution().Info("Execution logger initialized.")
+	tc.logger.System().Info("System logger initialized.")
 
 	taskConfig, err := a.getTaskConfig(ctx, tc)
 	if err != nil {
@@ -83,16 +82,7 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 
 	a.killProcs(tc)
-	if taskConfig.Project.Pre != nil {
-		tc.logger.Execution().Info("Running pre-task commands.")
-		ctx, cancel := a.withCallbackTimeout(ctx, tc)
-		defer cancel()
-		err = a.runCommands(ctx, tc, taskConfig.Project.Pre.List(), false, nil)
-		if err != nil {
-			tc.logger.Execution().Errorf("Running pre-task script failed: %v", err)
-		}
-		tc.logger.Execution().Info("Finished running pre-task commands.")
-	}
+	a.runPreTaskCommands(ctx, tc)
 
 	taskStatus := a.runTaskCommands(ctx, tc, idleTimeout)
 	if taskStatus != nil {
@@ -100,6 +90,19 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 	}
 	complete <- evergreen.TaskSucceeded
 	return
+}
+
+func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
+	if tc.taskConfig.Project.Pre != nil {
+		tc.logger.Execution().Info("Running pre-task commands.")
+		ctx, cancel := a.withCallbackTimeout(ctx, tc)
+		defer cancel()
+		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false, nil)
+		if err != nil {
+			tc.logger.Execution().Errorf("Running pre-task script failed: %v", err)
+		}
+		tc.logger.Execution().Info("Finished running pre-task commands.")
+	}
 }
 
 // CheckIn updates the agent's execution stage and current timeout duration,

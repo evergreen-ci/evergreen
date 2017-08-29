@@ -47,7 +47,11 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 }
 
 func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idleTimeout chan<- struct{}, resetIdleTimeout <-chan time.Duration) {
-	timer := time.NewTimer(defaultIdleTimeout)
+	idleTimeoutInterval := defaultIdleTimeout
+	if a.opts.IdleTimeoutInterval != 0 {
+		idleTimeoutInterval = a.opts.IdleTimeoutInterval
+	}
+	timer := time.NewTimer(idleTimeoutInterval)
 	defer timer.Stop()
 	for {
 		select {

@@ -41,11 +41,13 @@ type Mock struct {
 	GetPatchFileShouldFail bool
 	loggingShouldFail      bool
 	NextTaskResponse       *apimodels.NextTaskResponse
+	NextTaskIsNil          bool
 	EndTaskResponse        *apimodels.EndTaskResponse
 	EndTaskShouldFail      bool
 	EndTaskResult          endTaskResult
 	ShellExecFilename      string
 	HeartbeatShouldAbort   bool
+	HeartbeatShouldErr     bool
 
 	// metrics collection
 	ProcInfo map[string][]*message.ProcessInfo
@@ -150,6 +152,9 @@ func (c *Mock) Heartbeat(ctx context.Context, taskData TaskData) (bool, error) {
 	if c.HeartbeatShouldAbort {
 		return true, nil
 	}
+	if c.HeartbeatShouldErr {
+		return false, errors.New("mock heartbeat error")
+	}
 	return false, nil
 }
 
@@ -162,7 +167,13 @@ func (c *Mock) FetchExpansionVars(ctx context.Context, taskData TaskData) (*apim
 
 // GetNextTask returns a mock NextTaskResponse.
 func (c *Mock) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, error) {
-	if c.NextTaskShouldFail == true {
+	if c.NextTaskIsNil {
+		return &apimodels.NextTaskResponse{
+				TaskId: "",
+			},
+			nil
+	}
+	if c.NextTaskShouldFail {
 		return nil, errors.New("NextTaskShouldFail is true")
 	}
 	if c.NextTaskResponse != nil {

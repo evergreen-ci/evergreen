@@ -9,7 +9,7 @@ import (
 const (
 	// agentSleepInterval is the amount of time an agent sleeps in between
 	// polling for a new task if no new task is found
-	agentSleepInterval = 30 * time.Second
+	defaultAgentSleepInterval = 30 * time.Second
 
 	// defaultCmdTimeout specifies the duration after which agent sends
 	// an IdleTimeout signal if a task's command does not run to completion.
