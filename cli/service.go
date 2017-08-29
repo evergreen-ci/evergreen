@@ -138,7 +138,7 @@ func getHandlerUI(settings *evergreen.Settings) (http.Handler, error) {
 	functionOptions := service.FuncOptions{
 		WebHome:  webHome,
 		HelpHome: settings.Ui.HelpUrl,
-		IsProd:   true,
+		IsProd:   settings.IsProd,
 		Router:   router,
 	}
 
