@@ -34,11 +34,6 @@ func (a *Agent) createTaskDirectory(tc *taskContext, taskConfig *model.TaskConfi
 		return "", err
 	}
 
-	tc.logger.Execution().Infof("Changing into task directory: %v", newDir)
-	if err != nil {
-		tc.logger.Execution().Errorf("Error changing into task directory: %v", err)
-		return "", err
-	}
 	taskConfig.WorkDir = newDir
 	return newDir, nil
 }

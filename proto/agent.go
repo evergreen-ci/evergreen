@@ -23,11 +23,13 @@ type Agent struct {
 
 // Options contains startup options for the Agent.
 type Options struct {
-	HostID            string
-	HostSecret        string
-	StatusPort        int
-	LogPrefix         string
-	HeartbeatInterval time.Duration
+	HostID              string
+	HostSecret          string
+	StatusPort          int
+	LogPrefix           string
+	HeartbeatInterval   time.Duration
+	IdleTimeoutInterval time.Duration
+	AgentSleepInterval  time.Duration
 }
 
 type taskContext struct {
@@ -62,6 +64,11 @@ func (a *Agent) Start(ctx context.Context) error {
 }
 
 func (a *Agent) loop(ctx context.Context) error {
+	agentSleepInterval := defaultAgentSleepInterval
+	if a.opts.AgentSleepInterval != 0 {
+		agentSleepInterval = a.opts.AgentSleepInterval
+	}
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 	for {
@@ -144,6 +151,22 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	execTimeout := make(chan struct{})
 	go a.startTask(ctx, tc, complete, execTimeout, resetIdleTimeout)
 
+	status, timeout := a.wait(ctx, tc, heartbeat, idleTimeout, complete, execTimeout)
+
+	resp, err := a.finishTask(ctx, tc, status, timeout)
+	if err != nil {
+		return errors.Wrap(err, "exiting due to error marking task complete")
+	}
+	if resp == nil {
+		return errors.New("received nil response from API server")
+	}
+	if resp.ShouldExit {
+		return errors.New("task response indicates that agent should exit")
+	}
+	return nil
+}
+
+func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, idleTimeout chan struct{}, complete chan string, execTimeout chan struct{}) (string, bool) {
 	status := evergreen.TaskFailed
 	timeout := false
 	select {
@@ -168,18 +191,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	case <-ctx.Done():
 		grip.Infof("task canceled: %s", tc.task.ID)
 	}
-
-	resp, err := a.finishTask(ctx, tc, status, timeout)
-	if err != nil {
-		return errors.Wrap(err, "exiting due to error marking task complete")
-	}
-	if resp == nil {
-		return errors.New("received nil response from API server")
-	}
-	if resp.ShouldExit {
-		return errors.New("task response indicates that agent should exit")
-	}
-	return nil
+	return status, timeout
 }
 
 // finishTask sends the returned TaskEndResponse and error
