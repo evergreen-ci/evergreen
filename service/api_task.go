@@ -144,8 +144,7 @@ func (as *APIServer) EndTask(w http.ResponseWriter, r *http.Request) {
 		message := fmt.Sprintf("task %v has been aborted and will not run", t.Id)
 		grip.Infof(message)
 		endTaskResp = &apimodels.EndTaskResponse{
-			ShouldExit: true,
-			Message:    message,
+			Message: message,
 		}
 		as.WriteJSON(w, http.StatusOK, endTaskResp)
 		return
