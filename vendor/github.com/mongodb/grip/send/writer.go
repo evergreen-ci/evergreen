@@ -59,12 +59,9 @@ func (s *WriterSender) Write(p []byte) (int, error) {
 	if err != nil {
 		return n, err
 	}
+	s.writer.Flush()
 
-	if s.writer.Buffered() > 80 {
-		s.writer.Flush()
-	}
-
-	if s.buffer.Len() > 160 {
+	if s.buffer.Len() > 80 {
 		err = s.doSend()
 	}
 

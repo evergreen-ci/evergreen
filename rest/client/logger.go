@@ -27,8 +27,8 @@ type LoggerProducer interface {
 	// The writer functions return an io.Writer for use with
 	// exec.Cmd operations for capturing standard output and standard
 	// error from sbprocesses.
-	TaskWriter(level.Priority) io.Writer
-	SystemWriter(level.Priority) io.Writer
+	TaskWriter(level.Priority) io.WriteCloser
+	SystemWriter(level.Priority) io.WriteCloser
 
 	// Close releases all resources by calling Close on all underlying senders.
 	Close() error
@@ -52,7 +52,7 @@ func (l *logHarness) Execution() grip.Journaler { return l.execution }
 func (l *logHarness) Task() grip.Journaler      { return l.task }
 func (l *logHarness) System() grip.Journaler    { return l.system }
 
-func (l *logHarness) TaskWriter(p level.Priority) io.Writer {
+func (l *logHarness) TaskWriter(p level.Priority) io.WriteCloser {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -61,7 +61,7 @@ func (l *logHarness) TaskWriter(p level.Priority) io.Writer {
 	return w
 }
 
-func (l *logHarness) SystemWriter(p level.Priority) io.Writer {
+func (l *logHarness) SystemWriter(p level.Priority) io.WriteCloser {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -118,7 +118,7 @@ func (l *singleChannelLogHarness) Execution() grip.Journaler { return l.logger }
 func (l *singleChannelLogHarness) Task() grip.Journaler      { return l.logger }
 func (l *singleChannelLogHarness) System() grip.Journaler    { return l.logger }
 
-func (l *singleChannelLogHarness) TaskWriter(p level.Priority) io.Writer {
+func (l *singleChannelLogHarness) TaskWriter(p level.Priority) io.WriteCloser {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -127,7 +127,7 @@ func (l *singleChannelLogHarness) TaskWriter(p level.Priority) io.Writer {
 	return w
 }
 
-func (l *singleChannelLogHarness) SystemWriter(p level.Priority) io.Writer {
+func (l *singleChannelLogHarness) SystemWriter(p level.Priority) io.WriteCloser {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 

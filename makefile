@@ -24,7 +24,7 @@ gobin := $(shell which go)
 
 clientBuildDir := clients
 
-clientBinaries := $(foreach platform,$(unixPlatforms) freebsd_amd64,$(clientBuildDir)/$(platform)/evergreen)
+clientBinaries := $(foreach platform,$(unixPlatforms) $(if $(STAGING_ONLY),,freebsd_amd64),$(clientBuildDir)/$(platform)/evergreen)
 clientBinaries += $(foreach platform,$(windowsPlatforms),$(clientBuildDir)/$(platform)/evergreen.exe)
 
 binaries := $(buildDir)/evergreen_ui_server $(buildDir)/evergreen_runner $(buildDir)/evergreen_api_server
