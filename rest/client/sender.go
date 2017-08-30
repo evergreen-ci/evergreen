@@ -23,6 +23,8 @@ type logSender struct {
 	comm        Communicator
 	cancel      context.CancelFunc
 	pipe        chan message.Composer
+	lastBatch   chan struct{}
+	singalEnd   chan struct{}
 	*send.Base
 }
 
@@ -33,6 +35,8 @@ func newLogSender(ctx context.Context, comm Communicator, channel string, taskDa
 		logTaskData: taskData,
 		Base:        send.NewBase(taskData.ID),
 		pipe:        make(chan message.Composer, bufferCount/2),
+		lastBatch:   make(chan struct{}),
+		signalEnd:   make(chan struct{}),
 	}
 
 	ctx, s.cancel = context.WithCancel(ctx)
@@ -42,7 +46,12 @@ func newLogSender(ctx context.Context, comm Communicator, channel string, taskDa
 	return s
 }
 
-func (s *logSender) Close() error { s.cancel(); return s.Base.Close() }
+func (s *logSender) Close() error {
+	close(s.singalEnd)
+	<-s.lastBatch
+	s.cancel()
+	return s.Base.Close()
+}
 
 func (s *logSender) startBackgroundSender(ctx context.Context) {
 	timer := time.NewTimer(bufferTime)
@@ -51,11 +60,10 @@ func (s *logSender) startBackgroundSender(ctx context.Context) {
 	defer cancel()
 	defer timer.Stop()
 
+backgroundSender:
 	for {
 		select {
 		case <-ctx.Done():
-			grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
-			buffer = []apimodels.LogMessage{}
 			return
 		case <-timer.C:
 			grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
@@ -66,9 +74,28 @@ func (s *logSender) startBackgroundSender(ctx context.Context) {
 			if len(buffer) >= bufferCount/2 {
 				grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
 				buffer = []apimodels.LogMessage{}
+				timer.Reset(bufferTime)
 			}
+		case <-s.singalEnd:
+			break backgroundSender
 		}
 	}
+
+	// set the level really high, (which is mutexed) so that we
+	// never send another message
+	s.SetLevel(send.LevelInfo{Threshold: leve.Priority(200)})
+	// close the pipe so we can drain things
+	close(s.pipe)
+	// drain the pipe
+	for msg := range s.pipe {
+		buffer = append(buffer, s.convertMessage(msg))
+	}
+
+	// send the final batch
+	grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+
+	// let close return
+	close(s.lastBatch)
 }
 
 func (s *logSender) Send(m message.Composer) {

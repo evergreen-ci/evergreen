@@ -16,7 +16,8 @@ var newLine = []byte{'\n'}
 // io.WriteCloser.
 type WriterSender struct {
 	Sender
-	buffer   []byte
+	buffer   bytes.Buffer
+	writer bufio.
 	priority level.Priority
 	mu       sync.Mutex
 }
@@ -37,7 +38,11 @@ type WriterSender struct {
 // If there are any bytes in the buffer when the Close method is
 // called, this sender flushes the buffer before closing the underlying sender.
 func NewWriterSender(s Sender) *WriterSender {
-	return &WriterSender{Sender: s, priority: s.Level().Default}
+	return &WriterSender{
+		Sender: s,
+		priority: s.Level().Default,
+
+	}
 }
 
 // MakeWriterSender returns an sender interface that also implements
@@ -76,7 +81,9 @@ func (s *WriterSender) Write(p []byte) (int, error) {
 }
 
 func (s *WriterSender) doSend(l level.Priority, msg string) {
-	s.Send(message.NewDefaultMessage(l, strings.Trim(msg, "\t\n ")))
+	for _, ln := range strings.Split(msg, "\n") {
+		s.Send(message.NewDefaultMessage(l, strings.Trim(ln, "\t ")))
+	}
 }
 
 // Close writes any buffered messages to the underlying Sender before
@@ -90,5 +97,5 @@ func (s *WriterSender) Close() error {
 		s.buffer = []byte{}
 	}
 
-	return nil
+	return s.Sender.Close()
 }

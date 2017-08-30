@@ -103,7 +103,6 @@ func (a *Agent) loop(ctx context.Context) error {
 func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	ctx, cancel := context.WithCancel(ctx)
 	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
-
 	metrics := &metricsCollector{
 		comm:     a.comm,
 		taskData: tc.task,
