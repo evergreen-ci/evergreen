@@ -13,61 +13,51 @@ Admin Settings
 {{define "content"}}
 <div ng-controller="AdminSettingsController" ng-cloak>
   <md-content class="md-padding" >
+    <div class="admin-columnLayout">
 
-    <div class="container-fluid row" ng-controller="AdminSettingsController" ng-hide="isSuperUser">
-      <div class="row" style="text-align: center; margin-top:50px;" ng-cloak>
-        <h1>Looks like you're not an admin... awkward.</h1>
-        <h2> If you need access, please contact your Evergreen administrator. </h2>
-      </div>
+      <md-card>
+        <md-card-title>
+          <i class="fa fa-gears"></i>
+          <md-card-title-text>
+            <span>Services</span>
+          </md-card-title-text>
+        </md-card-title>
+        <md-card-content>
+          Placeholder content
+          <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+        </md-card-content>
+      </md-card>
+
+      <md-card>
+        <md-card-title>
+          <i class="fa fa-bullhorn"></i>
+          <md-card-title-text>
+            <span>Announcements</span>
+          </md-card-title-text>
+        </md-card-title>
+        <md-card-content>
+          Placeholder content
+          <br/><br/><br/>
+        </md-card-content>
+      </md-card>
+
     </div>
 
-    <div ng-show="isSuperUser">
-      <div class="admin-columnLayout">
+    <div class="admin-columnLayout">
 
-        <md-card>
-          <md-card-title>
-            <i class="fa fa-gears"></i>
-            <md-card-title-text>
-              <span>Services</span>
-            </md-card-title-text>
-          </md-card-title>
-          <md-card-content>
-            Placeholder content
-            <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
-          </md-card-content>
-        </md-card>
+      <md-card>
+        <md-card-title>
+          <i class="fa fa-refresh"></i>
+          <md-card-title-text>
+            <span>Restart Tasks</span>
+          </md-card-title-text>
+        </md-card-title>
+        <md-card-content>
+          Placeholder content
+          <br/><br/><br/><br/><br/>
+        </md-card-content>
+      </md-card>
 
-        <md-card>
-          <md-card-title>
-            <i class="fa fa-bullhorn"></i>
-            <md-card-title-text>
-              <span>Announcements</span>
-            </md-card-title-text>
-          </md-card-title>
-          <md-card-content>
-            Placeholder content
-            <br/><br/><br/>
-          </md-card-content>
-        </md-card>
-
-      </div>
-
-      <div class="admin-columnLayout">
-
-        <md-card>
-          <md-card-title>
-            <i class="fa fa-refresh"></i>
-            <md-card-title-text>
-              <span>Restart Tasks</span>
-            </md-card-title-text>
-          </md-card-title>
-          <md-card-content>
-            Placeholder content
-            <br/><br/><br/><br/><br/>
-          </md-card-content>
-        </md-card>
-
-      </div>
     </div>
   </md-content>
 </div>

@@ -8,9 +8,14 @@ import (
 
 func (uis *UIServer) adminSettings(w http.ResponseWriter, r *http.Request) {
 	projCtx := MustHaveProjectContext(r)
+	DBUser := GetUser(r)
+	template := "not_admin.html"
+	if uis.isSuperUser(DBUser) {
+		template = "admin.html"
+	}
 	data := struct {
 		ProjectData projectContext
 		User        *user.DBUser
-	}{projCtx, GetUser(r)}
-	uis.WriteHTML(w, http.StatusOK, data, "base", "admin.html", "base_angular.html", "menu.html")
+	}{projCtx, DBUser}
+	uis.WriteHTML(w, http.StatusOK, data, "base", template, "base_angular.html", "menu.html")
 }
