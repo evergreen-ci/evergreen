@@ -35,7 +35,7 @@ type WriterSender struct {
 // buffered messages) is only whitespace, then it is not sent.
 //
 // If there are any bytes in the buffer when the Close method is
-// called, this sender flushes the buffer before closing the underlying sender.
+// called, this sender flushes the buffer.
 func NewWriterSender(s Sender) *WriterSender { return MakeWriterSender(s, s.Level().Default) }
 
 // MakeWriterSender returns an sender interface that also implements
@@ -60,19 +60,23 @@ func (s *WriterSender) Write(p []byte) (int, error) {
 		return n, err
 	}
 
-	if s.buffer.Len() > 256 {
-		s.doSend()
+	if s.writer.Buffered() > 80 {
+		s.writer.Flush()
+	}
+
+	if s.buffer.Len() > 160 {
+		err = s.doSend()
 	}
 
 	return n, err
 }
 
-func (s *WriterSender) doSend() {
+func (s *WriterSender) doSend() error {
 	for {
 		line, err := s.buffer.ReadBytes('\n')
 		if err == io.EOF {
 			s.buffer.Write(line)
-			return
+			return nil
 		}
 
 		if err == nil {
@@ -81,7 +85,7 @@ func (s *WriterSender) doSend() {
 		}
 
 		s.Send(message.NewBytesMessage(s.priority, bytes.Trim(line, "\n\t ")))
-		return
+		return err
 	}
 }
 
