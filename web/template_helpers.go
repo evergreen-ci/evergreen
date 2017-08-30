@@ -108,7 +108,7 @@ func MakeCommonFunctionMap(settings *evergreen.Settings) (template.FuncMap,
 	funcs["Trunc"] = util.Truncate
 
 	funcs["IsProd"] = func() bool {
-		return settings.IsProd
+		return !settings.IsNonProd
 	}
 
 	/* Unpleasant hack to make Go's templating language support assignments */
