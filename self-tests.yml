@@ -247,8 +247,8 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "test", "agent"]
     name: test-subprocess
-  - <<: *run-go-test-suite
-    tags: ["nodb", "test", "agent"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "test", "agent"]
     name: test-proto
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
@@ -400,8 +400,8 @@ tasks:
   - <<: *run-go-test-suite
     tags: ["nodb", "race", "agent"]
     name: race-agent-comm
-  - <<: *run-go-test-suite
-    tags: ["nodb", "race", "agent"]
+  - <<: *run-go-test-suite-with-mongodb
+    tags: ["db", "race", "agent"]
     name: race-proto
   - <<: *run-go-test-suite-with-mongodb
     tags: ["race", "agent"]

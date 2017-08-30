@@ -94,9 +94,18 @@ func (c *Mock) EndTask(ctx context.Context, detail *apimodels.TaskEndDetail, tas
 	if c.EndTaskResponse != nil {
 		return c.EndTaskResponse, nil
 	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.EndTaskResult.Detail = detail
 	c.EndTaskResult.TaskData = taskData
 	return &apimodels.EndTaskResponse{}, nil
+}
+
+// GetEndTaskDetail returns the task end detail saved in the mock.
+func (c *Mock) GetEndTaskDetail() *apimodels.TaskEndDetail {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.EndTaskResult.Detail
 }
 
 // GetTask returns a mock Task.

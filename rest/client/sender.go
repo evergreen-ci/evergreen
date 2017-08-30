@@ -99,6 +99,10 @@ backgroundSender:
 }
 
 func (s *logSender) Send(m message.Composer) {
+	defer func() {
+		// A command may call Send() after the agent has closed the logSender
+		recover()
+	}()
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m
 	}

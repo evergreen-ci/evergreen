@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	envAll      = "EVERGREEN_ALL"
+	EnvAll      = "EVERGREEN_ALL"
 	envOverride = "SETTINGS_OVERRIDE"
 )
 
@@ -55,7 +55,7 @@ func SkipTestUnlessAll(t *testing.T, testName string) {
 	// Note: in the future we could/should be able to eliminate
 	// the testName arg by using runtime.Caller(1)
 
-	if !(*RunAllTests) && os.Getenv(envAll) == "" {
+	if !(*RunAllTests) && os.Getenv(EnvAll) == "" {
 		t.Skip(fmt.Sprintf("skipping %v because 'evergreen.all' is not specified...",
 			testName))
 	}
