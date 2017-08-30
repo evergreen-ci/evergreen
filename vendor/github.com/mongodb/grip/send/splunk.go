@@ -72,7 +72,6 @@ func (s *splunkLogger) Send(m message.Composer) {
 		e := hec.NewEvent(m.Raw())
 		e.SetHost(s.hostname)
 		if err := s.client.WriteEvent(e); err != nil {
-			fmt.Println(s.info.ServerURL)
 			s.errHandler(err, m)
 		}
 	}

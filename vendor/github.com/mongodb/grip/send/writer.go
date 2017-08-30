@@ -92,7 +92,6 @@ func (s *WriterSender) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.writer.Flush()
-
 	s.Send(message.NewBytesMessage(s.priority, bytes.Trim(s.buffer.Bytes(), "\n\t ")))
 	return nil
 }
