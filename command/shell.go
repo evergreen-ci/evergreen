@@ -42,6 +42,16 @@ type shellExec struct {
 	// task logs. This can be used to collect diagnostic data in the background of a running task.
 	SystemLog bool `mapstructure:"system_log"`
 
+	// IgnoreStandardOutput and IgnoreStandardError allow users to
+	// elect to ignore either standard out and/or standard output.
+	IgnoreStandardOutput bool `mapstructure:"ignore_standard_out"`
+	IgnoreStandardError  bool `mapstructure:"ignore_standard_error"`
+
+	// RedirectStandardErrorToOutput allows you to capture
+	// standard error in the same stream as standard output. This
+	// improves the synchronization of these streams.
+	RedirectStandardErrorToOutput bool `mapstructure:"redirect_standard_error_to_output"`
+
 	// ContinueOnError determines whether or not a failed return code
 	// should cause the task to be marked as failed. Setting this to true
 	// allows following commands to execute even if this shell command fails.
@@ -57,6 +67,11 @@ func (c *shellExec) ParseParams(params map[string]interface{}) error {
 	if err != nil {
 		return errors.Wrapf(err, "error decoding %v params", c.Name())
 	}
+
+	if c.IgnoreStandardOutput && c.RedirectStandardErrorToOutput {
+		return errors.New("cannot ignore standard out, and redirect standard error to it")
+	}
+
 	return nil
 }
 
@@ -85,6 +100,16 @@ func (c *shellExec) Execute(ctx context.Context,
 		Stdout:     logWriterInfo,
 		Stderr:     logWriterErr,
 		ScriptMode: true,
+	}
+
+	if c.IgnoreStandardError {
+		localCmd.Stderr = nil
+	}
+	if c.IgnoreStandardOutput {
+		localCmd.Stdout = nil
+	}
+	if c.RedirectStandardErrorToOutput {
+		localCmd.Stderr = logWriterInfo
 	}
 
 	if c.WorkingDir != "" {
