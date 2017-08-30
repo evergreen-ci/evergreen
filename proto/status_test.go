@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"context"
 	"net/http"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 type StatusTestSuite struct {
@@ -53,10 +53,14 @@ func (s *StatusTestSuite) TestProcessTreeInfo() {
 
 func (s *StatusTestSuite) TestAgentStartsStatusServer() {
 	agt := New(s.testOpts, client.NewMock("url"))
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	mockCommunicator := agt.comm.(*client.Mock)
+	mockCommunicator.NextTaskIsNil = true
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_ = agt.Start(ctx)
-
+	go func() {
+		_ = agt.Start(ctx)
+	}()
+	time.Sleep(100 * time.Millisecond)
 	resp, err := http.Get("http://127.0.0.1:2286/status")
 	s.NoError(err)
 	s.Equal(200, resp.StatusCode)

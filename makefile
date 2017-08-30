@@ -104,6 +104,7 @@ $(clientBuildDir)/version:
 phony += $(clientBuildDir)/version cli clis
 $(buildDir)/test.service $(buildDir)/race.service:$(clientBuildDir)/version
 $(buildDir)/test.agent $(buildDir)/race.agent:$(clientBuildDir)/version
+$(buildDir)/test.proto $(buildDir)/race.proto:$(clientBuildDir)/version
 # end client build directives
 
 

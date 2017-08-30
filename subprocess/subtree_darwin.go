@@ -16,7 +16,7 @@ func TrackProcess(key string, pid int, logger grip.Journaler) {
 	// cleanup() and we don't need to do any special bookkeeping up-front.
 }
 
-func cleanup(_ string, logger grip.Journaler) error {
+func cleanup(key string, logger grip.Journaler) error {
 	/*
 		Usage of ps on OSX for extracting environment variables:
 		-E: print the environment of the process (VAR1=FOO VAR2=BAR ...)
@@ -48,7 +48,7 @@ func cleanup(_ string, logger grip.Journaler) error {
 		pid := splitLine[0]
 		env := splitLine[2:]
 
-		if pid != myPid && envHasMarkers(env) {
+		if pid != myPid && envHasMarkers(key, env) {
 			// add it to the list of processes to clean up
 			pidAsInt, err := strconv.Atoi(pid)
 			if err != nil {

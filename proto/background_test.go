@@ -38,7 +38,7 @@ func (s *BackgroundTestSuite) SetupTest() {
 	s.tc.taskConfig = &model.TaskConfig{}
 	s.tc.taskConfig.Project = &model.Project{}
 	s.tc.taskConfig.Project.CallbackTimeout = 0
-	s.tc.logger = s.a.comm.GetLoggerProducer(s.tc.task)
+	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 }
 
 func (s *BackgroundTestSuite) TestWithCallbackTimeoutDefault() {
@@ -98,6 +98,7 @@ func (s *BackgroundTestSuite) TestIdleTimeoutWatch() {
 	idleTimeout := make(chan struct{})
 	resetIdleTimeout := make(chan time.Duration)
 	s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
+	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Len(msgs, 1)
 	for _, v := range msgs {
@@ -110,6 +111,7 @@ func (s *BackgroundTestSuite) TestExecTimeoutWatch() {
 	defer cancel()
 	execTimeout := make(chan struct{})
 	s.a.startMaxExecTimeoutWatch(ctx, s.tc, time.Millisecond, execTimeout)
+	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()
 	s.Len(msgs, 1)
 	for _, v := range msgs {

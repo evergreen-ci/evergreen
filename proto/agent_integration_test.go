@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/evergreen-ci/evergreen/service"
 	"github.com/evergreen-ci/evergreen/testutil"
 	"github.com/stretchr/testify/suite"
+	"golang.org/x/net/context"
 )
 
 type testConfigPath struct {
@@ -61,14 +61,12 @@ func (s *AgentIntegrationSuite) TestRunTask() {
 	var err error
 	s.testDirectory = testutil.GetDirectoryOfFile()
 	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "print_dir_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
-	if err != nil {
-		panic(err)
-	}
+	testutil.HandleTestingErr(err, s.T(), "Couldn't make test data: %v", err)
 	testServer, err := service.CreateTestServer(s.testConfig, nil)
-	if err != nil {
-		panic(err)
-	}
+	testutil.HandleTestingErr(err, s.T(), "Couldn't create apiserver: %v", err)
+	defer testServer.Close()
 	s.testServer = testServer
+
 	s.a = createAgent(testServer, s.modelData.Host)
 	s.tc = &taskContext{
 		task: client.TaskData{
@@ -79,6 +77,8 @@ func (s *AgentIntegrationSuite) TestRunTask() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	err = s.a.resetLogging(ctx, s.tc)
+	s.NoError(err)
 	err = s.a.runTask(ctx, s.tc)
 	s.NoError(err)
 }
@@ -87,14 +87,12 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	var err error
 	s.testDirectory = testutil.GetDirectoryOfFile()
 	s.modelData, err = modelutil.SetupAPITestData(s.testConfig, "very_slow_task", "linux-64", filepath.Join(s.testDirectory, "testdata/agent-integration.yml"), modelutil.NoPatch)
-	if err != nil {
-		panic(err)
-	}
+	testutil.HandleTestingErr(err, s.T(), "Couldn't make test data: %v", err)
 	testServer, err := service.CreateTestServer(s.testConfig, nil)
-	if err != nil {
-		panic(err)
-	}
+	testutil.HandleTestingErr(err, s.T(), "Couldn't create apiserver: %v", err)
+	defer testServer.Close()
 	s.testServer = testServer
+
 	s.a = createAgent(testServer, s.modelData.Host)
 	s.tc = &taskContext{
 		task: client.TaskData{
@@ -106,6 +104,11 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	errChan := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
+		err = s.a.resetLogging(ctx, s.tc)
+		if err != nil {
+			errChan <- err
+			return
+		}
 		err = s.a.runTask(ctx, s.tc)
 		errChan <- err
 	}()
