@@ -24,7 +24,7 @@ type logSender struct {
 	cancel      context.CancelFunc
 	pipe        chan message.Composer
 	lastBatch   chan struct{}
-	singalEnd   chan struct{}
+	signalEnd   chan struct{}
 	*send.Base
 }
 
@@ -47,7 +47,7 @@ func newLogSender(ctx context.Context, comm Communicator, channel string, taskDa
 }
 
 func (s *logSender) Close() error {
-	close(s.singalEnd)
+	close(s.signalEnd)
 	<-s.lastBatch
 	s.cancel()
 	return s.Base.Close()
@@ -76,14 +76,14 @@ backgroundSender:
 				buffer = []apimodels.LogMessage{}
 				timer.Reset(bufferTime)
 			}
-		case <-s.singalEnd:
+		case <-s.signalEnd:
 			break backgroundSender
 		}
 	}
 
 	// set the level really high, (which is mutexed) so that we
 	// never send another message
-	s.SetLevel(send.LevelInfo{Threshold: leve.Priority(200)})
+	s.SetLevel(send.LevelInfo{Threshold: level.Priority(200)})
 	// close the pipe so we can drain things
 	close(s.pipe)
 	// drain the pipe
