@@ -18,7 +18,10 @@ func TestDataConnectorSuite(t *testing.T) {
 	s := new(AdminDataSuite)
 	s.ctx = &DBConnector{}
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
-	db.Clear(admin.Collection)
+	err := db.Clear(admin.Collection)
+	if err != nil {
+		panic(err)
+	}
 	suite.Run(t, s)
 }
 

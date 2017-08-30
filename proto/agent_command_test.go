@@ -40,7 +40,7 @@ func (s *AgentCommandSuite) TestShellExec() {
 	}
 	tmpFile := f.Name()
 	s.mockCommunicator.ShellExecFilename = tmpFile
-	if err := f.Close(); err != nil {
+	if err = f.Close(); err != nil {
 		panic(err)
 	}
 

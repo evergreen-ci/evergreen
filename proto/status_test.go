@@ -55,7 +55,7 @@ func (s *StatusTestSuite) TestAgentStartsStatusServer() {
 	agt := New(s.testOpts, client.NewMock("url"))
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
-	agt.Start(ctx)
+	_ = agt.Start(ctx)
 
 	resp, err := http.Get("http://127.0.0.1:2286/status")
 	s.NoError(err)

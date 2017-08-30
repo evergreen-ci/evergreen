@@ -71,7 +71,10 @@ func (s *HostConnectorSuite) TearDownSuite() {
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(testConfig))
 	session, _, _ := db.GetGlobalSessionFactory().GetSession()
 	if session != nil {
-		session.DB(testConfig.Database.DB).DropDatabase()
+		err := session.DB(testConfig.Database.DB).DropDatabase()
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 

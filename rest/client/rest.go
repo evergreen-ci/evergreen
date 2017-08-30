@@ -44,7 +44,10 @@ func (c *communicatorImpl) GetHostsByUser(ctx context.Context, user string) ([]*
 		temp := []*model.APIHost{}
 		err = util.ReadJSONInto(resp.Body, &temp)
 		if err != nil {
-			resp.Body.Close()
+			err = resp.Body.Close()
+			if err != nil {
+				return nil, errors.Wrap(err, "error closing response body")
+			}
 			return nil, err
 		}
 

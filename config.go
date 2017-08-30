@@ -319,12 +319,18 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
-		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting error handler")
+		}
 	} else {
 		sender, err = send.MakeFileLogger(fileName)
-		sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
+		}
+		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting error handler")
 		}
 	}
 	senders = append(senders, sender)
@@ -333,7 +339,10 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	if endpoint, ok := s.Credentials["sumologic"]; ok {
 		sender, err = send.NewSumo("", endpoint)
 		if err == nil {
-			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+			err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+			if err != nil {
+				return nil, errors.Wrap(err, "problem setting error handler")
+			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
 					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,
@@ -344,7 +353,10 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 	if s.Splunk.Populated() {
 		sender, err = send.NewSplunkLogger("", s.Splunk, grip.GetSender().Level())
 		if err == nil {
-			sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+			err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+			if err != nil {
+				return nil, errors.Wrap(err, "problem setting error handler")
+			}
 			senders = append(senders,
 				send.NewBufferedSender(sender,
 					time.Duration(s.LogBuffering.DurationSeconds)*time.Second,

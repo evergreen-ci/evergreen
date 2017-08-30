@@ -57,7 +57,8 @@ func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 	sc.expandCommands(exp)
 
 	go func() {
-		ctx, cancel := context.WithCancel(ctx)
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()
 		for {
 			select {

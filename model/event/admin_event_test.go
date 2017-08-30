@@ -28,7 +28,8 @@ func TestAdminEventSuite(t *testing.T) {
 }
 
 func (s *AdminEventSuite) SetupTest() {
-	db.Clear(AllLogCollection)
+	err := db.Clear(AllLogCollection)
+	s.Require().NoError(err)
 }
 
 func (s *AdminEventSuite) TestBannerEvent() {

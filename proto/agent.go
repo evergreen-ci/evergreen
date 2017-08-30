@@ -126,8 +126,18 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 		return err
 	}
 	existingSender := grip.GetSender()
-	grip.SetSender(sender)
-	existingSender.Close()
+	err = grip.SetSender(sender)
+	if err != nil {
+		err = errors.Wrap(err, "problem setting up logging")
+		grip.Error(err)
+		return err
+	}
+	err = existingSender.Close()
+	if err != nil {
+		err = errors.Wrap(err, "problem setting up logging")
+		grip.Error(err)
+		return err
+	}
 
 	grip.Info(message.Fields{
 		"message":     "running task",
@@ -153,7 +163,8 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 
 	status, timeout := a.wait(ctx, tc, heartbeat, idleTimeout, complete, execTimeout)
 
-	resp, err := a.finishTask(ctx, tc, status, timeout)
+	var resp *apimodels.EndTaskResponse
+	resp, err = a.finishTask(ctx, tc, status, timeout)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
@@ -241,7 +252,8 @@ func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
 		a.killProcs(tc)
 		tc.logger.Task().Info("Running post-task commands.")
 		start := time.Now()
-		ctx, cancel := a.withCallbackTimeout(ctx, tc)
+		var cancel context.CancelFunc
+		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Post.List(), false, nil)
 		if err != nil {
