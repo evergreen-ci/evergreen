@@ -28,7 +28,10 @@ func TestAdminEventSuite(t *testing.T) {
 }
 
 func (s *AdminEventSuite) SetupTest() {
-	db.Clear(AllLogCollection)
+	err := db.Clear(AllLogCollection)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (s *AdminEventSuite) TestBannerEvent() {

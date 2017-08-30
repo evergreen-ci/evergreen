@@ -78,7 +78,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	}
 	defer sender.Close()
 
-	if err := grip.SetSender(sender); err != nil {
+	if err = grip.SetSender(sender); err != nil {
 		return errors.Wrap(err, "problem setting up logger")
 	}
 

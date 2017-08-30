@@ -1,10 +1,9 @@
 package cli
 
 import (
-	"errors"
-
 	"github.com/evergreen-ci/evergreen/rest/model"
 	"github.com/mongodb/grip"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -68,7 +67,10 @@ func (cmd *HostListCommand) Execute(_ []string) error {
 		}
 
 		grip.Infof("%d hosts started by '%s':", len(hosts), settings.User)
-		printHosts(hosts)
+		err = printHosts(hosts)
+		if err != nil {
+			return errors.Wrap(err, "problem printing hosts")
+		}
 
 	} else if cmd.All {
 		err = client.GetHosts(ctx, printHosts)

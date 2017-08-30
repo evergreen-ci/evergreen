@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/util"
@@ -89,7 +88,7 @@ func (rua *RequireUserAuthenticator) Authenticate(ctx context.Context, sc data.C
 	return nil
 }
 
-func validPriority(priority int64, user *user.DBUser, sc data.Connector) bool {
+func validPriority(priority int64, user auth.User, sc data.Connector) bool {
 	if priority > evergreen.MaxTaskPriority {
 		return auth.IsSuperUser(sc.GetSuperUsers(), user)
 	}

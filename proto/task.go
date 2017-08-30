@@ -95,7 +95,8 @@ func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- 
 func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 	if tc.taskConfig.Project.Pre != nil {
 		tc.logger.Execution().Info("Running pre-task commands.")
-		ctx, cancel := a.withCallbackTimeout(ctx, tc)
+		var cancel context.CancelFunc
+		ctx, cancel = a.withCallbackTimeout(ctx, tc)
 		defer cancel()
 		err := a.runCommands(ctx, tc, tc.taskConfig.Project.Pre.List(), false, nil)
 		if err != nil {

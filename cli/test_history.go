@@ -175,7 +175,7 @@ func (thc *TestHistoryCommand) Execute(_ []string) error {
 		TaskRequestType: thc.Request,
 	}
 
-	if err := testHistoryParameters.SetDefaultsAndValidate(); err != nil {
+	if err = testHistoryParameters.SetDefaultsAndValidate(); err != nil {
 		return err
 	}
 	isCSV := false

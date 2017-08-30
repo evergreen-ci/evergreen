@@ -66,7 +66,7 @@ func (agt *Agent) statusHandler() http.HandlerFunc {
 
 func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 	defer func() {
-		grip.GetSender().Close()
+		_ = grip.GetSender().Close()
 	}()
 
 	msg := map[string]interface{}{
