@@ -2,6 +2,7 @@ package send
 
 import (
 	"bytes"
+	"strings"
 	"sync"
 
 	"github.com/mongodb/grip/level"
@@ -65,19 +66,17 @@ func (s *WriterSender) Write(p []byte) (int, error) {
 	// if we had something in the buffer, we should prepend it to
 	// the current message, and clear the buffer.
 	if len(s.buffer) >= 1 {
-		p = append(s.buffer, p...)
-		s.buffer = []byte{}
+		s.buffer = append(s.buffer, p...)
 	}
 
 	// Now send each log message:
-	s.doSend(s.priority, p)
+	s.doSend(s.priority, string(s.buffer))
+	s.buffer = []byte{}
 	return n, nil
 }
 
-func (s *WriterSender) doSend(l level.Priority, buf []byte) {
-	for _, val := range bytes.Split(buf, newLine) {
-		s.Send(message.NewBytesMessage(l, val))
-	}
+func (s *WriterSender) doSend(l level.Priority, msg string) {
+	s.Send(message.NewDefaultMessage(l, strings.Trim(msg, "\t\n ")))
 }
 
 // Close writes any buffered messages to the underlying Sender before
@@ -87,7 +86,7 @@ func (s *WriterSender) Close() error {
 	defer s.mu.Unlock()
 
 	if len(s.buffer) >= 1 {
-		s.doSend(s.Level().Default, s.buffer)
+		s.doSend(s.Level().Default, string(s.buffer))
 		s.buffer = []byte{}
 	}
 

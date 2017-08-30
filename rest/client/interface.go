@@ -62,7 +62,7 @@ type Communicator interface {
 	GetNextTask(context.Context) (*apimodels.NextTaskResponse, error)
 
 	// Constructs a new LogProducer instance for use by tasks.
-	GetLoggerProducer(TaskData) LoggerProducer
+	GetLoggerProducer(context.Context, TaskData) LoggerProducer
 
 	// Sends a group of log messages to the API Server
 	SendLogMessages(context.Context, TaskData, []apimodels.LogMessage) error

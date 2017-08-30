@@ -41,13 +41,11 @@ type LoggerProducer interface {
 // logHarness provides a straightforward implementation of the
 // plugin.LoggerProducer interface.
 type logHarness struct {
-	execution        grip.Journaler
-	task             grip.Journaler
-	system           grip.Journaler
-	taskWriterBase   send.Sender
-	systemWriterBase send.Sender
-	mu               sync.Mutex
-	writers          []io.WriteCloser
+	execution grip.Journaler
+	task      grip.Journaler
+	system    grip.Journaler
+	mu        sync.Mutex
+	writers   []io.WriteCloser
 }
 
 func (l *logHarness) Execution() grip.Journaler { return l.execution }
@@ -58,7 +56,7 @@ func (l *logHarness) TaskWriter(p level.Priority) io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.MakeWriterSender(l.taskWriterBase, p)
+	w := send.MakeWriterSender(l.task.GetSender(), p)
 	l.writers = append(l.writers, w)
 	return w
 }
@@ -67,7 +65,7 @@ func (l *logHarness) SystemWriter(p level.Priority) io.Writer {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	w := send.MakeWriterSender(l.systemWriterBase, p)
+	w := send.MakeWriterSender(l.system.GetSender(), p)
 	l.writers = append(l.writers, w)
 	return w
 }

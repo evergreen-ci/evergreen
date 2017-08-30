@@ -196,8 +196,8 @@ func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
 }
 
 // GetLoggerProducer constructs a single channel log producer.
-func (c *Mock) GetLoggerProducer(taskData TaskData) LoggerProducer {
-	return NewSingleChannelLogHarness(taskData.ID, newLogSender(c, apimodels.AgentLogPrefix, taskData))
+func (c *Mock) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
+	return NewSingleChannelLogHarness(taskData.ID, newLogSender(ctx, c, apimodels.AgentLogPrefix, taskData))
 }
 
 func (c *Mock) GetPatchFile(ctx context.Context, td TaskData, patchFileID string) (string, error) {
