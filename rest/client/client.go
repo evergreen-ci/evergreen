@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/net/context"
+
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/logging"
@@ -113,7 +115,7 @@ func (c *communicatorImpl) SetAPIKey(apiKey string) {
 }
 
 // GetLogProducer
-func (c *communicatorImpl) GetLoggerProducer(taskData TaskData) LoggerProducer {
+func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
 	const (
 		bufferTime  = 15 * time.Second
 		bufferCount = 100
@@ -121,34 +123,21 @@ func (c *communicatorImpl) GetLoggerProducer(taskData TaskData) LoggerProducer {
 
 	local := grip.GetSender()
 
-	exec := newLogSender(c, apimodels.AgentLogPrefix, taskData)
+	exec := newLogSender(ctx, c, apimodels.AgentLogPrefix, taskData)
 	grip.CatchWarning(exec.SetFormatter(send.MakeDefaultFormatter()))
-	exec = send.NewBufferedSender(exec, bufferTime, bufferCount)
 	exec = send.NewConfiguredMultiSender(local, exec)
 
-	task := newLogSender(c, apimodels.TaskLogPrefix, taskData)
+	task := newLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
 	grip.CatchWarning(task.SetFormatter(send.MakeDefaultFormatter()))
-	task = send.NewBufferedSender(task, bufferTime, bufferCount)
 	task = send.NewConfiguredMultiSender(local, task)
 
-	system := newLogSender(c, apimodels.SystemLogPrefix, taskData)
+	system := newLogSender(ctx, c, apimodels.SystemLogPrefix, taskData)
 	grip.CatchWarning(system.SetFormatter(send.MakeDefaultFormatter()))
-	system = send.NewBufferedSender(system, bufferTime, bufferCount)
 	system = send.NewConfiguredMultiSender(local, system)
 
-	taskWriter := newLogSender(c, apimodels.TaskLogPrefix, taskData)
-	taskWriter = send.NewBufferedSender(taskWriter, bufferTime, bufferCount)
-	taskWriter = send.NewConfiguredMultiSender(local, taskWriter)
-
-	systemWriter := newLogSender(c, apimodels.SystemLogPrefix, taskData)
-	systemWriter = send.NewBufferedSender(systemWriter, bufferTime, bufferCount)
-	systemWriter = send.NewConfiguredMultiSender(local, systemWriter)
-
 	return &logHarness{
-		execution:        &logging.Grip{Sender: exec},
-		task:             &logging.Grip{Sender: task},
-		system:           &logging.Grip{Sender: system},
-		taskWriterBase:   taskWriter,
-		systemWriterBase: systemWriter,
+		execution: &logging.Grip{Sender: exec},
+		task:      &logging.Grip{Sender: task},
+		system:    &logging.Grip{Sender: system},
 	}
 }

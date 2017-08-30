@@ -81,11 +81,15 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 	cmdsJoined := strings.Join(gitCommands, "\n")
 
+	stdOut := logger.TaskWriter(level.Info)
+	stdErr := logger.TaskWriter(level.Error)
+	defer stdOut.Close()
+	defer stdErr.Close()
 	fetchSourceCmd := &subprocess.LocalCommand{
 		CmdString:        cmdsJoined,
 		WorkingDirectory: conf.WorkDir,
-		Stdout:           logger.TaskWriter(level.Info),
-		Stderr:           logger.TaskWriter(level.Error),
+		Stdout:           stdOut,
+		Stderr:           stdErr,
 		ScriptMode:       true,
 	}
 
@@ -165,8 +169,8 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		moduleFetchCmd := &subprocess.LocalCommand{
 			CmdString:        strings.Join(moduleCmds, "\n"),
 			WorkingDirectory: filepath.ToSlash(filepath.Join(conf.WorkDir, c.Directory)),
-			Stdout:           logger.TaskWriter(level.Info),
-			Stderr:           logger.TaskWriter(level.Error),
+			Stdout:           stdOut,
+			Stderr:           stdErr,
 			ScriptMode:       true,
 		}
 
@@ -283,6 +287,11 @@ func getPatchCommands(modulePatch patch.ModulePatch, dir, patchPath string) []st
 func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerProducer,
 	conf *model.TaskConfig, p *patch.Patch) error {
 
+	stdOut := logger.TaskWriter(level.Info)
+	stdErr := logger.TaskWriter(level.Error)
+	defer stdOut.Close()
+	defer stdErr.Close()
+
 	// patch sets and contain multiple patches, some of them for modules
 	for _, patchPart := range p.Patches {
 		if ctx.Err() != nil {
@@ -335,8 +344,8 @@ func (c *gitFetchProject) applyPatch(ctx context.Context, logger client.LoggerPr
 		patchCmd := &subprocess.LocalCommand{
 			CmdString:        cmdsJoined,
 			WorkingDirectory: conf.WorkDir,
-			Stdout:           logger.TaskWriter(level.Info),
-			Stderr:           logger.TaskWriter(level.Error),
+			Stdout:           stdOut,
+			Stderr:           stdErr,
 			ScriptMode:       true,
 		}
 

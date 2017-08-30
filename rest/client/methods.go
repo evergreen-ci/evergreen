@@ -277,6 +277,10 @@ func (c *communicatorImpl) GetNextTask(ctx context.Context) (*apimodels.NextTask
 
 // SendLogMessages posts a group of log messages for a task.
 func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
+	if len(msgs) == 0 {
+		return nil
+	}
+
 	payload := apimodels.TaskLog{
 		TaskId:       taskData.ID,
 		Timestamp:    time.Now(),
@@ -291,8 +295,7 @@ func (c *communicatorImpl) SendLogMessages(ctx context.Context, taskData TaskDat
 	}
 	info.setTaskPathSuffix("log")
 	if _, err := c.retryRequest(ctx, info, &payload); err != nil {
-		err = errors.Wrapf(err, "problem sending %s log messages for task %s", len(msgs), taskData.ID)
-		return err
+		return errors.Wrapf(err, "problem sending %d log messages for task %s", len(msgs), taskData.ID)
 	}
 
 	return nil
@@ -311,8 +314,7 @@ func (c *communicatorImpl) SendTaskResults(ctx context.Context, taskData TaskDat
 	}
 	info.setTaskPathSuffix("results")
 	if _, err := c.retryRequest(ctx, info, r); err != nil {
-		err = errors.Wrapf(err, "problem adding %d results to task %s", len(r.Results), taskData.ID)
-		return err
+		return errors.Wrapf(err, "problem adding %d results to task %s", len(r.Results), taskData.ID)
 	}
 
 	return nil

@@ -12,65 +12,105 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	bufferTime  = 15 * time.Second
+	bufferCount = 100
+)
+
 type logSender struct {
 	logTaskData TaskData
 	logChannel  string
 	comm        Communicator
+	cancel      context.CancelFunc
+	pipe        chan message.Composer
+	lastBatch   chan struct{}
+	signalEnd   chan struct{}
 	*send.Base
 }
 
-func newLogSender(comm Communicator, channel string, taskData TaskData) send.Sender {
+func newLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData) send.Sender {
 	s := &logSender{
 		comm:        comm,
 		logChannel:  channel,
 		logTaskData: taskData,
 		Base:        send.NewBase(taskData.ID),
+		pipe:        make(chan message.Composer, bufferCount/2),
+		lastBatch:   make(chan struct{}),
+		signalEnd:   make(chan struct{}),
 	}
 
-	_ = s.Base.SetErrorHandler(send.ErrorHandlerFromSender(grip.GetSender()))
+	ctx, s.cancel = context.WithCancel(ctx)
+
+	go s.startBackgroundSender(ctx)
 
 	return s
 }
 
+func (s *logSender) Close() error {
+	close(s.signalEnd)
+	<-s.lastBatch
+	s.cancel()
+	return s.Base.Close()
+}
+
+func (s *logSender) startBackgroundSender(ctx context.Context) {
+	timer := time.NewTimer(bufferTime)
+	buffer := []apimodels.LogMessage{}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	defer timer.Stop()
+
+backgroundSender:
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-timer.C:
+			grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+			buffer = []apimodels.LogMessage{}
+			timer.Reset(bufferTime)
+		case m := <-s.pipe:
+			buffer = append(buffer, s.convertMessage(m))
+			if len(buffer) >= bufferCount/2 {
+				grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+				buffer = []apimodels.LogMessage{}
+				timer.Reset(bufferTime)
+			}
+		case <-s.signalEnd:
+			break backgroundSender
+		}
+	}
+
+	// set the level really high, (which is mutexed) so that we
+	// never send another message
+	s.SetLevel(send.LevelInfo{Threshold: level.Priority(200)})
+	// close the pipe so we can drain things
+	close(s.pipe)
+	// drain the pipe
+	for msg := range s.pipe {
+		buffer = append(buffer, s.convertMessage(msg))
+	}
+
+	// send the final batch
+	grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+
+	// let close return
+	close(s.lastBatch)
+}
+
 func (s *logSender) Send(m message.Composer) {
 	if s.Level().ShouldLog(m) {
-		err := s.comm.SendLogMessages(
-			context.TODO(),
-			s.logTaskData,
-			s.convertMessages(m))
-
-		if err != nil {
-			s.ErrorHandler(err, m)
-		}
+		s.pipe <- m
 	}
 }
 
-func (s *logSender) convertMessages(m message.Composer) []apimodels.LogMessage {
-	g, ok := m.(*message.GroupComposer)
-	if ok {
-		out := []apimodels.LogMessage{}
-
-		for _, msg := range g.Messages() {
-			out = append(out, s.convertMessages(msg)...)
-		}
-
-		return out
-	}
-
-	msg, err := s.Formatter(m)
-
-	if err != nil {
-		msg = m.String()
-	}
-
-	return []apimodels.LogMessage{
-		{
-			Type:      s.logChannel,
-			Severity:  priorityToString(m.Priority()),
-			Message:   msg,
-			Timestamp: time.Now(),
-			Version:   evergreen.LogmessageCurrentVersion,
-		},
+func (s *logSender) convertMessage(m message.Composer) apimodels.LogMessage {
+	return apimodels.LogMessage{
+		Type:      s.logChannel,
+		Severity:  priorityToString(m.Priority()),
+		Message:   m.String(),
+		Timestamp: time.Now(),
+		Version:   evergreen.LogmessageCurrentVersion,
 	}
 }
 

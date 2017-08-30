@@ -5,45 +5,51 @@ import (
 
 	"github.com/mongodb/grip/level"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSenderWriter(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
 	sink, err := NewInternalLogger("sink", LevelInfo{level.Debug, level.Debug})
 	assert.NoError(err)
 
 	ws := NewWriterSender(sink)
-	assert.Len(ws.buffer, 0)
+	assert.Equal(ws.buffer.Len(), 0)
 
 	// writing something without a new line character will cause it to not send.
 	msg := []byte("hello world")
 	n, err := ws.Write(msg)
 	assert.NoError(err)
 	assert.Equal(n, len(msg))
-	assert.Len(ws.buffer, n)
+	assert.Equal(ws.buffer.Len(), n)
 	assert.False(sink.HasMessage())
 
+	newLine := []byte{'\n'}
 	// if we add a new line character, then it'll flush
 	n, err = ws.Write(newLine)
 	assert.NoError(err)
 	assert.Equal(n, len(newLine))
-	assert.Len(ws.buffer, 0)
+	assert.Equal(ws.buffer.Len(), 12)
 
-	assert.True(sink.HasMessage())
+	ws.doSend()
+
+	require.True(sink.HasMessage())
 	m := sink.GetMessage()
 	assert.True(m.Logged)
 	assert.Equal(m.Message.String(), "hello world")
-
 	// the above trimmed the final new line off, which is correct,
-	// given how senders will actually newline delimit messages anyway.
+	// given how senders will actually newline deelimit messages anyway.
 	//
 	// at the same time, we should make sure that we preserve newlines internally
 	msg = []byte("hello world\nhello grip\n")
 	n, err = ws.Write(msg)
 	assert.NoError(err)
 	assert.Equal(n, len(msg))
-	assert.Len(ws.buffer, 0)
+	assert.Equal(ws.buffer.Len(), len(msg))
+
+	ws.doSend()
 
 	assert.True(sink.HasMessage())
 	assert.Equal(sink.Len(), 2)
@@ -59,7 +65,7 @@ func TestSenderWriter(t *testing.T) {
 	n, err = ws.Write(msg)
 	assert.NoError(err)
 	assert.Equal(n, len(msg))
-	assert.Len(ws.buffer, n)
+	assert.Equal(ws.buffer.Len(), n)
 	assert.False(sink.HasMessage())
 
 	assert.NoError(ws.Close())

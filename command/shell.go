@@ -66,8 +66,8 @@ func (c *shellExec) Execute(ctx context.Context,
 
 	logger.Execution().Debug("Preparing script...")
 
-	var logWriterInfo io.Writer
-	var logWriterErr io.Writer
+	var logWriterInfo io.WriteCloser
+	var logWriterErr io.WriteCloser
 
 	if c.SystemLog {
 		logWriterInfo = logger.SystemWriter(level.Info)
@@ -76,6 +76,9 @@ func (c *shellExec) Execute(ctx context.Context,
 		logWriterInfo = logger.TaskWriter(level.Info)
 		logWriterErr = logger.TaskWriter(level.Error)
 	}
+
+	defer logWriterInfo.Close()
+	defer logWriterErr.Close()
 
 	localCmd := &subprocess.LocalCommand{
 		CmdString:  c.Script,
