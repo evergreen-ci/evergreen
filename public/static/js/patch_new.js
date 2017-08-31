@@ -2,10 +2,14 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   $scope.userTz = $window.userTz;
   $scope.canEdit = $window.canEdit;
   $scope.enabledTasks = _.pluck($window.tasks, "Name");
+  if (window.hasBanner) {
+    $("#drawer").addClass("bannerMargin");
+    $("#content").addClass("bannerMargin");
+  }
 
   var checkedProp = _.property("checked");
 
-  // Event handler for when the user clicks on one of the variants 
+  // Event handler for when the user clicks on one of the variants
   // in the left panel. Also accounts for special toggle behavior when the user
   // is holding shift/meta/ctrl when clicking.
   $scope.selectVariant = function($event, index){
@@ -14,7 +18,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       // Ctrl/Meta+Click: Toggle just the variant being clicked.
       $scope.variants[index].checked = !$scope.variants[index].checked;
     } else if ($event.shiftKey) {
-      // Shift+Click: Select everything between the first element 
+      // Shift+Click: Select everything between the first element
       // that's already selected element and the element being clicked on.
       var firstCheckedIndex = _.findIndex($scope.variants, checkedProp);
       firstCheckedIndex = Math.max(firstCheckedIndex, 0); // if nothing selected yet, start at 0.
@@ -57,7 +61,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     return navigator.platform.toUpperCase().indexOf('MAC')>=0;
   }
 
-    
+
 
   // Gets the list of tasks that are active across all the list of currently
   // selected variants, sorted by name. Used to populate the field of
@@ -94,7 +98,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
       "description": $scope.patch.Description,
       "variants_tasks": _.filter(_.map($scope.variants, function(v){
         return {
-          variant: v.id, 
+          variant: v.id,
           tasks: _.keys(_.omit(v.tasks, function(v){return !v.checked})),
         };
       }), function(v){return v.tasks.length > 0})
@@ -118,7 +122,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
     })
     $scope.variants = _.sortBy(_.map(variantsFilteredTasks, function(v, variantId){
       return {
-        id: variantId, 
+        id: variantId,
         checked:false,
         name: v.DisplayName,
         tasks : _.object(_.map(_.pluck(v.Tasks, "Name"), function(t){
@@ -150,7 +154,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
         }
 
         var selectedVariantNames = _.object(_.map(_.pluck(selectedVariants, "id"), function(id){return [id, true]}));
-        
+
         // act as a setter
         for(var i=0;i<$scope.variants.length;i++){
           var v = $scope.variants[i];
@@ -169,7 +173,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   // Older patches may only have the fields "Variants" and "Tasks" but newer patches
   // have a VariantsTasks field that has all pairs grouped together by variant.
   // This function backfills the VariantsTasks field for older patches that were created
-  // before the schema change. 
+  // before the schema change.
   if(!patch.VariantsTasks && (patch.Tasks || []).length > 0 && (patch.BuildVariants || []).length > 0){
     patch.VariantsTasks = _.map(patch.BuildVariants, function(v){
       // The _intersection limits the set of tasks to be included

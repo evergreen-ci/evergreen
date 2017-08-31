@@ -10,6 +10,12 @@ mciModule.controller('TaskHistoryDrawerCtrl', function($scope, $window, $locatio
     return revision.revision === $scope.task.gitspec;
   }
 
+  if (window.hasBanner) {
+    $("#drawer").addClass("bannerMargin");
+    $("#page-content").addClass("bannerMargin");
+    $("#content").addClass("bannerMargin");
+  }
+
   // helper to convert the history fetched from the backend into revisions,
   // grouped by date, for front-end display
   function groupHistory(history) {

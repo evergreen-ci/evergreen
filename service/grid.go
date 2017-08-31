@@ -6,7 +6,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/grid"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -98,11 +97,10 @@ func (uis *UIServer) grid(w http.ResponseWriter, r *http.Request) {
 		revisionFailures = make(grid.RevisionFailures, 0)
 	}
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData      projectContext
 		Versions         map[string]version.Version
 		GridCells        grid.Grid
 		Failures         grid.Failures
 		RevisionFailures grid.RevisionFailures
-		User             *user.DBUser
-	}{projCtx, versions, cells, failures, revisionFailures, GetUser(r)}, "base", "grid.html", "base_angular.html", "menu.html")
+		ViewData
+	}{versions, cells, failures, revisionFailures, uis.GetCommonViewData(w, r, false, true)}, "base", "grid.html", "base_angular.html", "menu.html")
 }

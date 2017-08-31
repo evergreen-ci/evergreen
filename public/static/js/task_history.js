@@ -1,6 +1,11 @@
 mciModule.factory('taskHistoryFilter', function($http, $window, $filter) {
   var ret = {};
 
+  if (window.hasBanner) {
+    $("#content").addClass("bannerMargin");
+    $("#filters").addClass("bannerMargin");
+  }
+
   /* Getter/setter wrapper around the URL hash */
   ret.locationHash = {
     get: function() {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -13,13 +12,11 @@ import (
 
 func (uis *UIServer) getSchedulerPage(w http.ResponseWriter, r *http.Request) {
 	distroId := mux.Vars(r)["distro_id"]
-	projCtx := MustHaveProjectContext(r)
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		DistroId    string
-	}{projCtx, GetUser(r), distroId}, "base", "scheduler_events.html", "base_angular.html", "menu.html")
+		DistroId string
+		ViewData
+	}{distroId, uis.GetCommonViewData(w, r, false, true)}, "base", "scheduler_events.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSchedulerLogs(w http.ResponseWriter, r *http.Request) {
@@ -35,12 +32,7 @@ func (uis *UIServer) getSchedulerLogs(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) schedulerStatsPage(w http.ResponseWriter, r *http.Request) {
 
-	projCtx := MustHaveProjectContext(r)
-
-	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-	}{projCtx, GetUser(r)}, "base", "scheduler_stats.html", "base_angular.html", "menu.html")
+	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "scheduler_stats.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) schedulerHostUtilization(w http.ResponseWriter, r *http.Request) {

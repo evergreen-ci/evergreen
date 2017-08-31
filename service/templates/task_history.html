@@ -9,6 +9,7 @@
   var exhaustedBefore = {{.Data.ExhaustedBefore}}
   var exhaustedAfter = {{.Data.ExhaustedAfter}}
   var selectedRevision = {{.Data.SelectedRevision}}
+  window.hasBanner = {{ne .Banner ""}}
 </script>
 {{end}}
 
@@ -89,7 +90,7 @@ Evergreen - Task History
           </div>
         </div>
       </div>
-      <div class="filter-table">
+      <div class="filter-table" id="filters">
         <div style="position: relative">
           <div>
             <h3>Filter</h3>
@@ -104,7 +105,7 @@ Evergreen - Task History
                 style="cursor: pointer"
                 ng-click="taskHistoryFilter.filterTest(taskHistoryFilter.testsSearchString, 'fail')"></i>
             <div  class="autocomplete-container" ng-show="taskHistoryFilter.testsSearchDisplay">
-              <div  class="autocomplete-element"                  
+              <div  class="autocomplete-element"
                     ng-repeat="testName in taskHistoryFilter.testsSearchResults"
                     ng-click="taskHistoryFilter.filterTest(testName, 'fail')">
                 [[ testName ]]
@@ -121,7 +122,7 @@ Evergreen - Task History
                                   taskHistoryFilter.queryServer();"></select>
             </div>
 
-            <h3> Options <span class="small"> ([[tasksByVariantByCommit.length]] Versions)</span></h3> 
+            <h3> Options <span class="small"> ([[tasksByVariantByCommit.length]] Versions)</span></h3>
 
             <div class="checkbox">
               <label>
@@ -150,7 +151,7 @@ Evergreen - Task History
                 ng-click="taskHistoryFilter.filterBuildVariant(taskHistoryFilter.buildVariantSearchString)"></i>
             <div  class="autocomplete-container"
                   ng-show="taskHistoryFilter.buildVariantSearchDisplay">
-              <div  class="autocomplete-element"                  
+              <div  class="autocomplete-element"
                     ng-repeat="variant in taskHistoryFilter.buildVariantSearchResults"
                     ng-click="taskHistoryFilter.filterBuildVariant(variant)">
                 [[ variant ]]
@@ -183,4 +184,3 @@ Evergreen - Task History
   <div class="row">&nbsp;</div>
 </div>
 {{end}}
-

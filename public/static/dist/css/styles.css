@@ -507,6 +507,22 @@ button.alert-close {
 .label.unlabel {
   text-transform: none;
 }
+html {
+  background-color: white;
+}
+md-card {
+  background-color: white;
+}
+md-card-title {
+  font-size: 20px;
+}
+md-card-title-text {
+  padding-left: 10px;
+  margin-top: -4px;
+}
+.bannerMargin {
+  margin-top: 65px;
+}
 .remove-version {
   margin: 10px;
 }
@@ -1632,7 +1648,6 @@ textarea {
   float: left !important;
 }
 .task-history-title-header {
-  position: fixed;
   z-index: 1000;
   top: 75px;
   text-align: center;
@@ -1939,7 +1954,6 @@ pre {
  background-color: #f3f3f3;
 } FIXME after we remove old waterfall */
 #root.waterfall-2 {
-  background-color: #f5f6f7;
   min-height: 100%;
 }
 .build-cells {
@@ -2197,14 +2211,33 @@ path {
   display: inline-table;
   width: 49%;
 }
-md-card {
-  background-color: white;
+.banner-container {
+  height: 50px;
+  margin: 8px;
 }
-md-card-title {
-  font-size: 20px;
+.banner-contents {
+  background-color: rgba(89, 243, 10, 0.25);
+  height: 50px;
+  color: #262626;
+  font-size: 18px;
+  z-index: 100;
+  border-radius: 4px;
 }
-md-card-title-text {
-  padding-left: 10px;
-  margin-top: -4px;
+.bannerIcon {
+  float: left;
+  background-color: rgba(61, 195, 4, 0.62);
+  height: 50px;
+  width: 33px;
+  text-align: center;
+  padding-top: 12px;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.bannerText {
+  padding-left: 22px;
+  padding-top: 12px;
+  overflow: scroll;
+  max-height: 45px;
+  padding-right: 10px;
 }
 /*# sourceMappingURL=/static/dist/less.map */

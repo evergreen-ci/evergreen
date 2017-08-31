@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
@@ -50,6 +52,14 @@ type UIServer struct {
 	PluginTemplates map[string]*htmlTemplate.Template
 	clientConfig    *evergreen.ClientConfig
 	plugin.PanelManager
+}
+
+type ViewData struct {
+	// shared data that will be provided to all views
+	User        *user.DBUser
+	ProjectData projectContext
+	Flashes     []interface{}
+	Banner      string
 }
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
@@ -311,4 +321,28 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		// Not a JSON request, so write plaintext.
 		http.Error(w, err.Error(), code)
 	}
+}
+
+func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
+	viewData := ViewData{}
+	userCtx := GetUser(r)
+	if needsUser && userCtx == nil {
+		grip.Error("no user attached to request")
+		return viewData
+	}
+	projectCtx, err := GetProjectContext(r)
+	if needsProject && err != nil {
+		grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
+		return viewData
+	}
+	settings, err := admin.GetSettings()
+	if err != nil {
+		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
+		return viewData
+	}
+	viewData.Banner = settings.Banner
+	viewData.User = userCtx
+	viewData.ProjectData = projectCtx
+	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
+	return viewData
 }

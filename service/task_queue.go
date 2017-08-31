@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 )
@@ -58,7 +57,6 @@ type uiHostStatistics struct {
 }
 
 func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
 
 	taskQueues, err := model.FindAllTaskQueues()
 	if err != nil {
@@ -215,10 +213,8 @@ func (uis *UIServer) allTaskQueues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Flashes     []interface{}
-		Data        uiResourceInfo
-	}{projCtx, GetUser(r), []interface{}{}, uiResourceInfo{uiTaskQueues, hostStats, distroIds}},
+		Data uiResourceInfo
+		ViewData
+	}{uiResourceInfo{uiTaskQueues, hostStats, distroIds}, uis.GetCommonViewData(w, r, false, true)},
 		"base", "task_queues.html", "base_angular.html", "menu.html")
 }

@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -32,10 +31,7 @@ func (uis *UIServer) timeline(w http.ResponseWriter, r *http.Request) {
 		uis.ProjectNotFound(projCtx, w, r)
 		return
 	}
-	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-	}{projCtx, GetUser(r)}, "base", "timeline.html", "base_angular.html", "menu.html")
+	uis.WriteHTML(w, http.StatusOK, uis.GetCommonViewData(w, r, false, true), "base", "timeline.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimeline(w http.ResponseWriter, r *http.Request) {
@@ -61,10 +57,9 @@ func (uis *UIServer) patchTimelineWrapper(author string, w http.ResponseWriter, 
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Author      string
-	}{projCtx, GetUser(r), author}, "base", "patches.html", "base_angular.html", "menu.html")
+		Author string
+		ViewData
+	}{author, uis.GetCommonViewData(w, r, false, true)}, "base", "patches.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) patchTimelineJson(w http.ResponseWriter, r *http.Request) {

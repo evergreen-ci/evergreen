@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model/event"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/gorilla/mux"
 )
 
@@ -15,7 +14,6 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	resourceType := strings.ToUpper(mux.Vars(r)["resource_type"])
 	resourceId := mux.Vars(r)["resource_id"]
 	u := GetUser(r)
-	projCtx := MustHaveProjectContext(r)
 
 	var eventQuery db.Q
 	switch resourceType {
@@ -35,6 +33,12 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		eventQuery = event.MostRecentDistroEvents(resourceId, 200)
+	case event.ResourceTypeAdmin:
+		if u == nil {
+			uis.RedirectToLogin(w, r)
+			return
+		}
+		eventQuery = event.RecentAdminEvents(100)
 	default:
 		http.Error(w, fmt.Sprintf("Unknown resource: %v", resourceType), http.StatusBadRequest)
 		return
@@ -47,8 +51,7 @@ func (uis *UIServer) fullEventLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Data        []event.Event
-	}{projCtx, u, loggedEvents}, "base", "event_log.html", "base_angular.html")
+		Data []event.Event
+		ViewData
+	}{loggedEvents, uis.GetCommonViewData(w, r, false, false)}, "base", "event_log.html", "base_angular.html")
 }

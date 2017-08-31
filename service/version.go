@@ -9,7 +9,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -133,17 +132,14 @@ func (uis *UIServer) versionPage(w http.ResponseWriter, r *http.Request) {
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.VersionPage, pluginContext)
 
-	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData   projectContext
-		User          *user.DBUser
-		Flashes       []interface{}
 		Version       *uiVersion
 		PluginContent pluginData
 		CanEdit       bool
 		JiraHost      string
-	}{projCtx, currentUser, flashes, &versionAsUI, pluginContent, canEditPatch,
-		uis.Settings.Jira.Host}, "base", "version.html", "base_angular.html", "menu.html")
+		ViewData
+	}{&versionAsUI, pluginContent, canEditPatch,
+		uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "version.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyVersion(w http.ResponseWriter, r *http.Request) {
