@@ -271,7 +271,7 @@ type Settings struct {
 	TaskRunner          TaskRunnerConfig          `yaml:"taskrunner"`
 	Expansions          map[string]string         `yaml:"expansions"`
 	Plugins             PluginConfig              `yaml:"plugins"`
-	IsProd              bool                      `yaml:"isprod"`
+	IsNonProd           bool                      `yaml:"isnonprod"`
 	LogBuffering        LogBuffering              `yaml:"log_buffering"`
 }
 

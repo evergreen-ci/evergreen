@@ -231,6 +231,9 @@ func (uis *UIServer) NewRouter() (*mux.Router, error) {
 	r.HandleFunc("/project/{project_id}", uis.loadCtx(uis.requireAdmin(uis.addProject))).Methods("PUT")
 	r.HandleFunc("/project/{project_id}/repo_revision", uis.loadCtx(uis.requireAdmin(uis.setRevision))).Methods("PUT")
 
+	// Admin routes
+	r.HandleFunc("/admin", requireLogin(uis.loadCtx(uis.adminSettings))).Methods("GET")
+
 	// REST API V1
 	AttachRESTHandler(r, uis)
 

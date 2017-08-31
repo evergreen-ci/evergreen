@@ -28,26 +28,26 @@
         <li><a ng-href="/hosts">Hosts</a></li>
         <li ng-show="appPlugins.length > 0" class="dropdown">
         <a href="#" class="dropdown-toggle" data-toggle="dropdown"> Plugins </a>
-        <ul class="dropdown-menu"> 
+        <ul class="dropdown-menu">
           <li ng-repeat="plugin in appPlugins"> <a ng-href="/plugin/[[plugin]]/app"> [[plugin]] </a> </li>
-        </ul> 
+        </ul>
         </li>
         {{end}}
       </ul>
 
       <ul class="nav navbar-nav navbar-right">
         <li class="dropdown" ng-show="!!allProjects" ng-cloak>
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a> 
+        <a href="#" class="dropdown-toggle" data-toggle="dropdown">[[projectName ? projectName : project]] <b class="caret"></b></a>
         <ul class="dropdown-menu project-dropdown">
           <input class="form-control input-sm" type="text" ng-click="$event.stopPropagation()" ng-model="filter.projects" placeholder="Filter projects" />
           <span ng-repeat-start="kv in groupedProjects | orderBy:getGroupName"></span>
           <li ng-repeat="p in kv[1] | filter:filter.projects | orderBy:getName">
           <b ng-show="$index == 0 && kv[1].length > 1">&nbsp;[[ kv[0] ]]</b>
           <a href="/waterfall/[[p.identifier]]"><span ng-show="kv[1].length>1">&nbsp;&nbsp;&nbsp;</span>
-            <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i> 
+            <i ng-show="p.repotracker_error.exists" style= "color:red" class="fa fa-exclamation-circle"></i>
             [[getName(p)]]
           </a>
-          </li> 
+          </li>
           <li class="repo-div" ng-show="[[!$last]]"></li>
           <span ng-repeat-end></span>
         </ul>
@@ -70,7 +70,10 @@
           <li><a href="/spawn">Hosts</a></li>
           <li><a href="/patches/mine">Patches</a></li>
           <li class="divider"></li>
-          <li><a href="/settings">Settings</a></li>
+          <li><a href="/settings">User Settings</a></li>
+          {{if IsSuperUser .User.Id}}
+          <li><a href="/admin">Admin Settings</a></li>
+          {{end}}
           <li><a href="/logout">Logout</a></li>
         </ul>
         </li>

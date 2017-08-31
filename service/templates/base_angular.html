@@ -10,6 +10,7 @@
 
         <!-- mongostrap (Bootstrap + MongoDB Theme) -->
         <link href="/static/css/mongostrap.min.css?hash={{ StaticsMD5 }}" rel="stylesheet" />
+        <link href="/static/css/angular-material{{if IsProd }}.min{{end}}.css" rel="stylesheet" />
 
         <!-- fontawesome icons -->
         <link href="/static/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
@@ -23,6 +24,10 @@
         <!-- angular.js v1.2.18 js -->
         <script type="text/javascript" src="/static/js/angular.min.js"></script>
         <script type="text/javascript" src="/static/js/angular-sanitize.min.js"></script>
+        <script type="text/javascript" src="/static/js/angular-aria{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/js/angular-messages{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/js/angular-animate{{if IsProd }}.min{{end}}.js"></script>
+        <script type="text/javascript" src="/static/js/angular-material{{if IsProd }}.min{{end}}.js"></script>
         <script type="text/javascript" src="/static/js/ansi_up.js"></script>
         <script type="text/javascript" src="/static/js/angular-md5.js?hash={{ StaticsMD5 }}"></script>
         <script type="text/javascript" src="/static/js/filters/filters.common.js?hash={{ StaticsMD5 }}"></script>

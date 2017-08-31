@@ -2193,4 +2193,18 @@ path {
   float: left;
   border-bottom-width: 0;
 }
+.admin-columnLayout {
+  display: inline-table;
+  width: 49%;
+}
+md-card {
+  background-color: white;
+}
+md-card-title {
+  font-size: 20px;
+}
+md-card-title-text {
+  padding-left: 10px;
+  margin-top: -4px;
+}
 /*# sourceMappingURL=/static/dist/less.map */
