@@ -1,7 +1,7 @@
 {{define "scripts"}}
 <script src="{{Static "js" "admin.js"}}?hash={{ StaticsMD5 }}"></script>
 <style type="text/css">
-  body{ background: #f5f6f7; }
+  body{ background-color: rgb(250,250,250); }
 </style>
 {{end}}
 
@@ -11,7 +11,7 @@ Admin Settings
 
 
 {{define "content"}}
-<div ng-controller="AdminSettingsController" ng-cloak>
+<div ng-controller="AdminSettingsController" style="{height: 100%}" ng-cloak>
   <md-content class="md-padding" >
     <div class="admin-columnLayout">
 
