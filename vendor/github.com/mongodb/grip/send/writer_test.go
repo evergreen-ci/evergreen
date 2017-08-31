@@ -68,9 +68,20 @@ func TestSenderWriter(t *testing.T) {
 	assert.Equal(ws.buffer.Len(), n)
 	assert.False(sink.HasMessage())
 
+	assert.NotEqual(ws.buffer.Len(), 0)
 	assert.NoError(ws.Close())
 	assert.True(sink.HasMessage())
 	m = sink.GetMessage()
 	assert.True(m.Logged)
 	assert.Equal(m.Message.String(), "hello world")
+	numMessages := sink.Len()
+	assert.Equal(ws.buffer.Len(), 0)
+	assert.Equal(numMessages, sink.Len())
+
+	for i := 0; i < 10; i++ {
+		assert.NoError(ws.Close())
+		assert.False(sink.GetMessage().Logged)
+	}
+
+	assert.Equal(ws.buffer.Len(), 0)
 }
