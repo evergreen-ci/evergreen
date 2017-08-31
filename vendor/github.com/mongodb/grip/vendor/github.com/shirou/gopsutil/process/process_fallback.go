@@ -11,17 +11,17 @@ import (
 )
 
 type MemoryMapsStat struct {
-	Path         string `json:"path" bson:"path"`
-	Rss          uint64 `json:"rss" bson:"rss"`
-	Size         uint64 `json:"size" bson:"size"`
-	Pss          uint64 `json:"pss" bson:"pss"`
-	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean"`
-	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty"`
-	PrivateClean uint64 `json:"privateClean" bson:"privateClean"`
-	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty"`
-	Referenced   uint64 `json:"referenced" bson:"referenced"`
-	Anonymous    uint64 `json:"anonymous" bson:"anonymous"`
-	Swap         uint64 `json:"swap" bson:"swap"`
+	Path         string `json:"path" bson:"path,omitempty"`
+	Rss          uint64 `json:"rss" bson:"rss,omitempty"`
+	Size         uint64 `json:"size" bson:"size,omitempty"`
+	Pss          uint64 `json:"pss" bson:"pss,omitempty"`
+	SharedClean  uint64 `json:"sharedClean" bson:"sharedClean,omitempty"`
+	SharedDirty  uint64 `json:"sharedDirty" bson:"sharedDirty,omitempty"`
+	PrivateClean uint64 `json:"privateClean" bson:"privateClean,omitempty"`
+	PrivateDirty uint64 `json:"privateDirty" bson:"privateDirty,omitempty"`
+	Referenced   uint64 `json:"referenced" bson:"referenced,omitempty"`
+	Anonymous    uint64 `json:"anonymous" bson:"anonymous,omitempty"`
+	Swap         uint64 `json:"swap" bson:"swap,omitempty"`
 }
 
 type MemoryInfoExStat struct {
