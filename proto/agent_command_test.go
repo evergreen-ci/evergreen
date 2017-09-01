@@ -10,17 +10,17 @@ import (
 	"golang.org/x/net/context"
 )
 
-type AgentCommandSuite struct {
+type CommandTestSuite struct {
 	suite.Suite
 	a                Agent
 	mockCommunicator *client.Mock
 }
 
-func TestAgentCommandSuite(t *testing.T) {
-	suite.Run(t, new(AgentCommandSuite))
+func TestCommandTestSuite(t *testing.T) {
+	suite.Run(t, new(CommandTestSuite))
 }
 
-func (s *AgentCommandSuite) SetupTest() {
+func (s *CommandTestSuite) SetupTest() {
 	s.a = Agent{
 		opts: Options{
 			HostID:     "host",
@@ -33,7 +33,7 @@ func (s *AgentCommandSuite) SetupTest() {
 	s.mockCommunicator = s.a.comm.(*client.Mock)
 }
 
-func (s *AgentCommandSuite) TestShellExec() {
+func (s *CommandTestSuite) TestShellExec() {
 	f, err := ioutil.TempFile("/tmp", "shell-exec-")
 	if err != nil {
 		panic(err)
@@ -56,6 +56,8 @@ func (s *AgentCommandSuite) TestShellExec() {
 			Secret: taskSecret,
 		},
 	}
+	err = s.a.resetLogging(ctx, tc)
+	s.NoError(err)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
@@ -74,7 +76,7 @@ func (s *AgentCommandSuite) TestShellExec() {
 	s.True(foundSuccessLogMessage)
 	s.True(foundShellLogMessage)
 
-	detail := s.mockCommunicator.EndTaskResult.Detail
+	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal("success", detail.Status)
 	s.Equal("test", detail.Type)
 	s.Equal("shell.exec", detail.Description)
@@ -91,9 +93,8 @@ func (s *AgentCommandSuite) TestShellExec() {
 	s.Equal(taskSecret, taskData.Secret)
 }
 
-func (s *AgentCommandSuite) TestS3Copy() {
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+func (s *CommandTestSuite) TestS3Copy() {
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	taskID := "s3copy"
@@ -104,7 +105,9 @@ func (s *AgentCommandSuite) TestS3Copy() {
 			Secret: taskSecret,
 		},
 	}
-	err := s.a.runTask(ctx, tc)
+	err := s.a.resetLogging(ctx, tc)
+	s.NoError(err)
+	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
 
 	messages := s.mockCommunicator.GetMockMessages()
@@ -122,7 +125,7 @@ func (s *AgentCommandSuite) TestS3Copy() {
 	s.True(foundSuccessLogMessage)
 	s.True(foundS3CopyLogMessage)
 
-	detail := s.mockCommunicator.EndTaskResult.Detail
+	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal("success", detail.Status)
 	s.Equal("test", detail.Type)
 	s.Equal("s3Copy.copy", detail.Description)

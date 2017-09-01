@@ -142,6 +142,9 @@ func (c *shellExec) Execute(ctx context.Context,
 		env = append(env, fmt.Sprintf("%s=%s", subprocess.MarkerTaskID, conf.Task.Id),
 			fmt.Sprintf("%s=%d", subprocess.MarkerAgentPID, os.Getpid()))
 		localCmd.Environment = env
+		if ctx.Err() != nil {
+			return
+		}
 		err = localCmd.Start()
 
 		if err != nil {

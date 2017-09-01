@@ -45,7 +45,7 @@ func (s *AgentTestSuite) SetupTest() {
 			Project: &model.Project{},
 		},
 	}
-	s.tc.logger = s.a.comm.GetLoggerProducer(s.tc.task)
+	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 }
 
 func (s *AgentTestSuite) TestNextTaskResponseShouldExit() {
@@ -155,6 +155,7 @@ func (s *AgentTestSuite) TestRunPreTaskCommands() {
 	}
 	s.a.runPreTaskCommands(context.Background(), s.tc)
 
+	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running pre-task commands.", msgs[0].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
@@ -181,6 +182,7 @@ func (s *AgentTestSuite) TestRunPostTaskCommands() {
 		},
 	}
 	s.a.runPostTaskCommands(context.Background(), s.tc)
+	_ = s.tc.logger.Close()
 	msgs := s.mockCommunicator.GetMockMessages()["task_id"]
 	s.Equal("Running post-task commands.", msgs[0].Message)
 	s.Equal("Running command 'shell.exec' (step 1 of 1)", msgs[1].Message)
@@ -294,7 +296,7 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 			},
 		},
 	}
-	s.tc.logger = s.a.comm.GetLoggerProducer(s.tc.task)
+	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
 
 	heartbeat := make(chan string)
 	idleTimeout := make(chan struct{})

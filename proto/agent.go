@@ -57,7 +57,6 @@ func New(opts Options, comm client.Communicator) *Agent {
 // at interval agentSleepInterval and runs them.
 func (a *Agent) Start(ctx context.Context) error {
 	a.startStatusServer(a.opts.StatusPort)
-	defer grip.GetSender().Close()
 	err := errors.Wrap(a.loop(ctx), "error in agent loop, exiting")
 	grip.Emergency(err)
 	return err
@@ -95,6 +94,9 @@ func (a *Agent) loop(ctx context.Context) error {
 						Secret: nextTask.TaskSecret,
 					},
 				}
+				if err := a.resetLogging(ctx, tc); err != nil {
+					return err
+				}
 				if err := a.runTask(ctx, tc); err != nil {
 					return err
 				}
@@ -107,9 +109,32 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
+func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+	tc.logger = a.comm.GetLoggerProducer(context.TODO(), tc.task)
+
+	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
+	if err != nil {
+		err = errors.Wrap(err, "problem getting sender")
+		grip.Error(err)
+		return err
+	}
+	err = grip.SetSender(sender)
+	if err != nil {
+		err = errors.Wrap(err, "problem setting sender")
+		grip.Error(err)
+		return err
+	}
+	return nil
+}
+
 func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	ctx, cancel := context.WithCancel(ctx)
-	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
+	grip.Info(message.Fields{
+		"message":     "running task",
+		"task_id":     tc.task.ID,
+		"task_secret": tc.task.Secret,
+	})
+
 	metrics := &metricsCollector{
 		comm:     a.comm,
 		taskData: tc.task,
@@ -118,32 +143,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	if err := metrics.start(ctx); err != nil {
 		return errors.Wrap(err, "problem setting up metrics collection")
 	}
-
-	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
-	if err != nil {
-		err = errors.Wrap(err, "problem setting up logging")
-		grip.Error(err)
-		return err
-	}
-	existingSender := grip.GetSender()
-	err = grip.SetSender(sender)
-	if err != nil {
-		err = errors.Wrap(err, "problem setting up logging")
-		grip.Error(err)
-		return err
-	}
-	err = existingSender.Close()
-	if err != nil {
-		err = errors.Wrap(err, "problem setting up logging")
-		grip.Error(err)
-		return err
-	}
-
-	grip.Info(message.Fields{
-		"message":     "running task",
-		"task_id":     tc.task.ID,
-		"task_secret": tc.task.Secret,
-	})
 
 	// Defers are LIFO. We cancel all agent task threads, then any procs started by the agent, then remove the task directory.
 	defer a.removeTaskDirectory(tc)
@@ -163,8 +162,7 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 
 	status, timeout := a.wait(ctx, tc, heartbeat, idleTimeout, complete, execTimeout)
 
-	var resp *apimodels.EndTaskResponse
-	resp, err = a.finishTask(ctx, tc, status, timeout)
+	resp, err := a.finishTask(ctx, tc, status, timeout)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
