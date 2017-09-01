@@ -54,8 +54,8 @@ type UIServer struct {
 	plugin.PanelManager
 }
 
+// ViewData contains common data that is provided to all Evergreen pages
 type ViewData struct {
-	// shared data that will be provided to all views
 	User        *user.DBUser
 	ProjectData projectContext
 	Flashes     []interface{}
@@ -323,22 +323,23 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 	}
 }
 
+// GetCommonViewData returns a struct that can supplement the struct used to provide data to
+// views. It contains data that is used for most/all Evergreen pages.
+// The needsUser and needsProject params will cause an error to be logged if there is no
+// user/project, but other data will still be returned
 func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
 	viewData := ViewData{}
 	userCtx := GetUser(r)
 	if needsUser && userCtx == nil {
 		grip.Error("no user attached to request")
-		return viewData
 	}
 	projectCtx, err := GetProjectContext(r)
 	if needsProject && err != nil {
 		grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
-		return viewData
 	}
 	settings, err := admin.GetSettings()
 	if err != nil {
 		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
-		return viewData
 	}
 	viewData.Banner = settings.Banner
 	viewData.User = userCtx
