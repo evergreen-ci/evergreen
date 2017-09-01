@@ -3,6 +3,7 @@ package route
 import (
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/user"
@@ -107,7 +108,7 @@ func (s *BuildChangeStatusSuite) SetupSuite() {
 
 func (s *BuildChangeStatusSuite) TestSetActivation() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
@@ -127,7 +128,7 @@ func (s *BuildChangeStatusSuite) TestSetActivation() {
 
 func (s *BuildChangeStatusSuite) TestSetActivationFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "zzz"
@@ -141,7 +142,7 @@ func (s *BuildChangeStatusSuite) TestSetActivationFail() {
 
 func (s *BuildChangeStatusSuite) TestSetPriority() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
@@ -158,7 +159,7 @@ func (s *BuildChangeStatusSuite) TestSetPriority() {
 
 func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildByIdRouteManager("", 2)
 	(rm.Methods[1].RequestHandler).(*buildChangeStatusHandler).buildId = "build1"
@@ -172,7 +173,7 @@ func (s *BuildChangeStatusSuite) TestSetPriorityManualFail() {
 
 func (s *BuildChangeStatusSuite) TestSetPriorityPrivilegeFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	s.sc.SetSuperUsers([]string{"admin"})
 
@@ -219,7 +220,7 @@ func (s *BuildAbortSuite) SetupSuite() {
 
 func (s *BuildAbortSuite) TestAbort() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildAbortRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
@@ -245,7 +246,7 @@ func (s *BuildAbortSuite) TestAbort() {
 
 func (s *BuildAbortSuite) TestAbortFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildAbortRouteManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildAbortHandler).buildId = "build1"
@@ -284,7 +285,7 @@ func (s *BuildRestartSuite) SetupSuite() {
 
 func (s *BuildRestartSuite) TestRestart() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildRestartManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"
@@ -306,7 +307,7 @@ func (s *BuildRestartSuite) TestRestart() {
 
 func (s *BuildRestartSuite) TestRestartFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getBuildRestartManager("", 2)
 	(rm.Methods[0].RequestHandler).(*buildRestartHandler).buildId = "build1"

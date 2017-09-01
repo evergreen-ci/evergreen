@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/admin"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -44,7 +45,7 @@ func TestAdminRouteSuite(t *testing.T) {
 
 func (s *AdminRouteSuite) TestAdminRoute() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
 
 	// test parsing the POST body
 	body := admin.AdminSettings{
@@ -100,8 +101,8 @@ func (s *AdminRouteSuite) DoAuthenticationTests(authFunc func(context.Context, d
 		Id: "normal_user",
 	}
 	s.sc.SetSuperUsers([]string{"super_user"})
-	superCtx := context.WithValue(context.Background(), RequestUser, &superUser)
-	normalCtx := context.WithValue(context.Background(), RequestUser, &normalUser)
+	superCtx := context.WithValue(context.Background(), evergreen.RequestUser, &superUser)
+	normalCtx := context.WithValue(context.Background(), evergreen.RequestUser, &normalUser)
 
 	s.NoError(authFunc(superCtx, s.sc))
 	s.Error(authFunc(normalCtx, s.sc))

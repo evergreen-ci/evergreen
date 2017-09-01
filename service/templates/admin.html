@@ -12,6 +12,7 @@ Admin Settings
 
 {{define "content"}}
 <div ng-controller="AdminSettingsController" style="{height: 100%}" ng-cloak>
+  <notify-box ng-init="destination='errorHeader'"></notify-box>
   <md-content class="md-padding" >
     <div class="admin-columnLayout">
 
@@ -36,9 +37,14 @@ Admin Settings
           </md-card-title-text>
         </md-card-title>
         <md-card-content>
-          Placeholder content
-          <br/><br/><br/>
+          <md-input-container class="control">
+            <label>Site-wide banner:</label>
+            <input type="text" ng-model="Settings.banner" placeholder="(Leave blank to remove banner)">
+          </md-input-container>
         </md-card-content>
+        <md-card-footer>
+          <md-button class="md-raised" ng-click="saveSettings()">Save Changes</md-button>
+        </md-card-footer>
       </md-card>
 
     </div>
@@ -59,6 +65,7 @@ Admin Settings
       </md-card>
 
     </div>
+
   </md-content>
 </div>
 {{end}}

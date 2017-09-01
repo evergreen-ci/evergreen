@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
@@ -41,7 +42,7 @@ func (s *TaskAbortSuite) SetupSuite() {
 
 func (s *TaskAbortSuite) TestAbort() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getTaskAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*taskAbortHandler).taskId = "task1"
@@ -67,7 +68,7 @@ func (s *TaskAbortSuite) TestAbort() {
 
 func (s *TaskAbortSuite) TestAbortFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getTaskAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*taskAbortHandler).taskId = "task1"

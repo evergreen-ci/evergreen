@@ -3,6 +3,7 @@ package route
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest"
@@ -12,15 +13,13 @@ import (
 )
 
 type (
-	// custom types used to attach specific values to request contexts, to prevent collisions.
-	requestUserKey    int
+	// custom type used to attach specific values to request contexts, to prevent collisions.
 	requestContextKey int
 )
 
 const (
-	// Key values used to map user and project data to request context.
+	// Key value used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
-	RequestUser    requestUserKey    = 0
 	RequestContext requestContextKey = 0
 )
 
@@ -55,7 +54,7 @@ func PrefetchUser(ctx context.Context, sc data.Connector, r *http.Request) (cont
 				}
 			}
 
-			ctx = context.WithValue(ctx, RequestUser, apiUser)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, apiUser)
 		}
 	}
 
@@ -101,7 +100,7 @@ func PrefetchProjectContext(ctx context.Context, sc data.Connector, r *http.Requ
 
 // GetUser returns the user associated with a given http request.
 func GetUser(ctx context.Context) *user.DBUser {
-	u, _ := ctx.Value(RequestUser).(*user.DBUser)
+	u, _ := ctx.Value(evergreen.RequestUser).(*user.DBUser)
 	return u
 }
 

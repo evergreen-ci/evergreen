@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -39,7 +40,7 @@ func setRestContext(r *http.Request, c *model.Context) *http.Request {
 	return r
 }
 func setRequestUser(r *http.Request, u auth.User) *http.Request {
-	context.Set(r, RequestUser, u)
+	context.Set(r, evergreen.RequestUser, u)
 	return r
 }
 
@@ -78,7 +79,7 @@ func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
 // GetUser returns a user if one is attached to the request. Returns nil if the user is not logged
 // in, assuming that the middleware to lookup user information is enabled on the request handler.
 func GetUser(r *http.Request) *user.DBUser {
-	if rv := context.Get(r, RequestUser); rv != nil {
+	if rv := context.Get(r, evergreen.RequestUser); rv != nil {
 		return rv.(*user.DBUser)
 	}
 	return nil

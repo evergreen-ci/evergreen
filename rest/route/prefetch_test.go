@@ -39,7 +39,7 @@ func TestPrefetchUser(t *testing.T) {
 				ctx, err = PrefetchUser(ctx, serviceContext, req)
 				So(err, ShouldBeNil)
 
-				So(ctx.Value(RequestUser), ShouldBeNil)
+				So(ctx.Value(evergreen.RequestUser), ShouldBeNil)
 			})
 
 			Convey("When just API-Key is set, should not set anything", func() {
@@ -50,7 +50,7 @@ func TestPrefetchUser(t *testing.T) {
 					ctx, err = PrefetchUser(ctx, serviceContext, req)
 					So(err, ShouldBeNil)
 
-					So(ctx.Value(RequestUser), ShouldBeNil)
+					So(ctx.Value(evergreen.RequestUser), ShouldBeNil)
 				}
 			})
 			Convey("When API-User and API-Key is set,"+
@@ -68,7 +68,7 @@ func TestPrefetchUser(t *testing.T) {
 						APIKey: apiKey,
 					}
 
-					So(ctx.Value(RequestUser), ShouldResemble, &u)
+					So(ctx.Value(evergreen.RequestUser), ShouldResemble, &u)
 				}
 			})
 			Convey("When API-User and API-Key is set incorrectly,"+
@@ -88,7 +88,7 @@ func TestPrefetchUser(t *testing.T) {
 					}
 
 					So(err, ShouldResemble, errToResemble)
-					So(ctx.Value(RequestUser), ShouldBeNil)
+					So(ctx.Value(evergreen.RequestUser), ShouldBeNil)
 				}
 			})
 		})
@@ -135,7 +135,7 @@ func TestPrefetchProject(t *testing.T) {
 				opCtx.ProjectRef = &model.ProjectRef{
 					Private: true,
 				}
-				ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "test_user"})
+				ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "test_user"})
 				serviceContext.MockContextConnector.CachedContext = opCtx
 				ctx, err = PrefetchProjectContext(ctx, serviceContext, req)
 				So(err, ShouldBeNil)

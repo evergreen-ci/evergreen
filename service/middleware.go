@@ -20,10 +20,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Keys used for storing variables in request context with type safety.
+// Key used for storing variables in request context with type safety.
 type (
-	RequestUserKey int
-	RequestCtxKey  int
+	RequestCtxKey int
 )
 
 type (
@@ -48,7 +47,6 @@ type (
 
 type (
 	// custom types used to attach specific values to request contexts, to prevent collisions.
-	reqUserKey           int
 	reqTaskKey           int
 	reqProjectContextKey int
 )
@@ -56,7 +54,6 @@ type (
 const (
 	// Key values used to map user and project data to request context.
 	// These are private custom types to avoid key collisions.
-	RequestUser           reqUserKey           = 0
 	RequestTask           reqTaskKey           = 0
 	RequestProjectContext reqProjectContextKey = 0
 )

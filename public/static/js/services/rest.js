@@ -2,6 +2,10 @@ var mciServices = mciServices || {};
 
 mciServices.rest = angular.module('mciServices.rest', []);
 
+mciServices.rest.RestV2Resource = function(resource) {
+  return 'rest/v2/' + resource;
+}
+
 mciServices.rest.factory('mciBaseRestService', ['$http', function($http) {
     // private vars
     var baseUrl = '';
@@ -310,6 +314,25 @@ mciServices.rest.factory('mciDistroRestService', ['mciBaseRestService', function
             }
         };
         baseSvc.deleteResource(resource, [distroId], config, callbacks);
+    }
+
+    return service;
+}]);
+
+mciServices.rest.factory('mciAdminRestService', ['mciBaseRestService', function(baseSvc) {
+    var resource = mciServices.rest.RestV2Resource("admin");
+
+    var service = {};
+
+    service.getSettings = function(callbacks) {
+      baseSvc.getResource(resource, [], {}, callbacks);
+    }
+
+    service.saveSettings = function(settings, callbacks) {
+      var config = {
+          data: settings
+      };
+      baseSvc.postResource(resource, [], config, callbacks)
     }
 
     return service;

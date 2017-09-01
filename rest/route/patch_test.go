@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
@@ -209,7 +210,7 @@ func (s *PatchAbortSuite) SetupSuite() {
 
 func (s *PatchAbortSuite) TestAbort() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getPatchAbortManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchAbortHandler).patchId = s.objIds[0].Hex()
@@ -242,7 +243,7 @@ func (s *PatchAbortSuite) TestAbort() {
 
 func (s *PatchAbortSuite) TestAbortFail() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getPatchAbortManager("", 2)
 	new_id := bson.NewObjectId()
@@ -290,7 +291,7 @@ func (s *PatchesChangeStatusSuite) SetupSuite() {
 
 func (s *PatchesChangeStatusSuite) TestChangeStatus() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getPatchByIdManager("", 2)
 	(rm.Methods[1].RequestHandler).(*patchChangeStatusHandler).patchId = s.objIds[0].Hex()
@@ -351,7 +352,7 @@ func (s *PatchRestartSuite) SetupSuite() {
 
 func (s *PatchRestartSuite) TestRestart() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user1"})
 
 	rm := getPatchRestartManager("", 2)
 	(rm.Methods[0].RequestHandler).(*patchRestartHandler).patchId = s.objIds[0].Hex()

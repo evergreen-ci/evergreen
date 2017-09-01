@@ -87,6 +87,14 @@ const (
 	APIRoutePrefix  = "api"
 
 	AgentAPIVersion = 2
+
+	// Key used to store user information in request contexts
+	RequestUser reqUserKey = 0
+)
+
+type (
+	// custom type used to attach specific values to request contexts, to prevent collisions.
+	reqUserKey int
 )
 
 // evergreen package names
