@@ -7,6 +7,7 @@
 {{end}}
 </script>
 
+<!-- menu toolbar -->
 <div id="nav" class="navbar navbar-inverse navbar-fixed-top">
   <div class="container-fluid">
     <div class="navbar-header">
@@ -86,4 +87,14 @@
     </div>
   </div>
 </div>
+
+<!-- banner -->
+{{if ne .Banner ""}}
+<div class="banner-container">
+  <div class="banner-contents">
+    <div class="bannerIcon"><i class="fa fa-bullhorn"></i></div>
+    <div class="bannerText">{{.Banner}}</div>
+  </div>
+</div>
+{{end}}
 {{end}}

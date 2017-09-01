@@ -11,6 +11,8 @@ import (
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/model/admin"
+	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/rest/route"
 	"github.com/evergreen-ci/evergreen/util"
@@ -50,6 +52,14 @@ type UIServer struct {
 	PluginTemplates map[string]*htmlTemplate.Template
 	clientConfig    *evergreen.ClientConfig
 	plugin.PanelManager
+}
+
+// ViewData contains common data that is provided to all Evergreen pages
+type ViewData struct {
+	User        *user.DBUser
+	ProjectData projectContext
+	Flashes     []interface{}
+	Banner      string
 }
 
 func NewUIServer(settings *evergreen.Settings, home string) (*UIServer, error) {
@@ -311,4 +321,29 @@ func (uis *UIServer) LoggedError(w http.ResponseWriter, r *http.Request, code in
 		// Not a JSON request, so write plaintext.
 		http.Error(w, err.Error(), code)
 	}
+}
+
+// GetCommonViewData returns a struct that can supplement the struct used to provide data to
+// views. It contains data that is used for most/all Evergreen pages.
+// The needsUser and needsProject params will cause an error to be logged if there is no
+// user/project, but other data will still be returned
+func (uis *UIServer) GetCommonViewData(w http.ResponseWriter, r *http.Request, needsUser, needsProject bool) ViewData {
+	viewData := ViewData{}
+	userCtx := GetUser(r)
+	if needsUser && userCtx == nil {
+		grip.Error("no user attached to request")
+	}
+	projectCtx, err := GetProjectContext(r)
+	if needsProject && err != nil {
+		grip.Errorf(errors.Wrap(err, "no project attached to request").Error())
+	}
+	settings, err := admin.GetSettings()
+	if err != nil {
+		grip.Errorf(errors.Wrap(err, "unable to retrieve admin settings").Error())
+	}
+	viewData.Banner = settings.Banner
+	viewData.User = userCtx
+	viewData.ProjectData = projectCtx
+	viewData.Flashes = PopFlashes(uis.CookieStore, r, w)
+	return viewData
 }

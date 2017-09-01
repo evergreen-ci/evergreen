@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/pkg/errors"
 )
@@ -627,9 +626,8 @@ func (uis *UIServer) waterfallPage(w http.ResponseWriter, r *http.Request) {
 	finalData.CurrentTime = time.Now().UnixNano()
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Data        waterfallData
-		JiraHost    string
-	}{projCtx, GetUser(r), finalData, uis.Settings.Jira.Host}, "base", "waterfall.html", "base_angular.html", "menu.html")
+		Data     waterfallData
+		JiraHost string
+		ViewData
+	}{finalData, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "waterfall.html", "base_angular.html", "menu.html")
 }

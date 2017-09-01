@@ -29,8 +29,6 @@ const (
 )
 
 func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
-	flashes := PopFlashes(uis.CookieStore, r, w)
-	projCtx := MustHaveProjectContext(r)
 
 	var spawnDistro *distro.Distro
 	var spawnTask *task.Task
@@ -53,13 +51,11 @@ func (uis *UIServer) spawnPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData     projectContext
-		User            *user.DBUser
-		Flashes         []interface{}
 		Distro          *distro.Distro
 		Task            *task.Task
 		MaxHostsPerUser int
-	}{projCtx, GetUser(r), flashes, spawnDistro, spawnTask, spawn.MaxPerUser}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
+		ViewData
+	}{spawnDistro, spawnTask, spawn.MaxPerUser, uis.GetCommonViewData(w, r, false, true)}, "base", "spawned_hosts.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) getSpawnedHosts(w http.ResponseWriter, r *http.Request) {

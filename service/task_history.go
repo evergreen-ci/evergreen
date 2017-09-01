@@ -13,7 +13,6 @@ import (
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
@@ -136,11 +135,9 @@ func (uis *UIServer) taskHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	default:
 		uis.WriteHTML(w, http.StatusOK, struct {
-			ProjectData projectContext
-			User        *user.DBUser
-			Flashes     []interface{}
-			Data        taskHistoryPageData
-		}{projCtx, GetUser(r), []interface{}{}, data}, "base",
+			Data taskHistoryPageData
+			ViewData
+		}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
 			"task_history.html", "base_angular.html", "menu.html")
 	}
 }
@@ -201,11 +198,9 @@ func (uis *UIServer) variantHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Flashes     []interface{}
-		Data        interface{}
-	}{projCtx, GetUser(r), []interface{}{}, data}, "base",
+		Data interface{}
+		ViewData
+	}{data, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"build_variant_history.html", "base_angular.html", "menu.html")
 }
 

@@ -10,14 +10,12 @@ import (
 	"github.com/evergreen-ci/evergreen/model/distro"
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/evergreen-ci/evergreen/validator"
 	"github.com/gorilla/mux"
 )
 
 func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
 	distros, err := distro.Find(distro.All)
 
 	if err != nil {
@@ -30,12 +28,10 @@ func (uis *UIServer) distrosPage(w http.ResponseWriter, r *http.Request) {
 	sort.Sort(&sortableDistro{distros})
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Distros     []distro.Distro
-		Keys        map[string]string
-		User        *user.DBUser
-		ProjectData projectContext
-		Flashes     []interface{}
-	}{distros, uis.Settings.Keys, GetUser(r), projCtx, PopFlashes(uis.CookieStore, r, w)},
+		Distros []distro.Distro
+		Keys    map[string]string
+		ViewData
+	}{distros, uis.Settings.Keys, uis.GetCommonViewData(w, r, false, true)},
 		"base", "distros.html", "base_angular.html", "menu.html")
 }
 

@@ -84,10 +84,7 @@ func (uis *UIServer) newAPIKey(w http.ResponseWriter, r *http.Request) {
 
 func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	currentUser := MustHaveUser(r)
-	projCtx := MustHaveProjectContext(r)
-
 	settingsData := currentUser.Settings
-	flashes := PopFlashes(uis.CookieStore, r, w)
 
 	type confFile struct {
 		User    string `json:"user"`
@@ -98,14 +95,11 @@ func (uis *UIServer) userSettingsPage(w http.ResponseWriter, r *http.Request) {
 	exampleConf := confFile{currentUser.Id, currentUser.APIKey, uis.Settings.ApiUrl + "/api", uis.Settings.Ui.Url}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		Data        user.UserSettings
-		User        *user.DBUser
-		Config      confFile
-		Binaries    []evergreen.ClientBinary
-		Flashes     []interface{}
-	}{projCtx, settingsData, currentUser, exampleConf,
-		uis.clientConfig.ClientBinaries, flashes},
+		Data     user.UserSettings
+		Config   confFile
+		Binaries []evergreen.ClientBinary
+		ViewData
+	}{settingsData, exampleConf, uis.clientConfig.ClientBinaries, uis.GetCommonViewData(w, r, true, true)},
 		"base", "settings.html", "base_angular.html", "menu.html")
 }
 

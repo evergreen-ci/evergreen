@@ -257,20 +257,16 @@ func (uis *UIServer) taskPage(w http.ResponseWriter, r *http.Request) {
 		task.PatchInfo = taskPatch
 	}
 
-	flashes := PopFlashes(uis.CookieStore, r, w)
-
 	pluginContext := projCtx.ToPluginContext(uis.Settings, GetUser(r))
 	pluginContent := getPluginDataAndHTML(uis, plugin.TaskPage, pluginContext)
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData   projectContext
-		User          *user.DBUser
-		Flashes       []interface{}
 		Task          uiTaskData
 		Host          *host.Host
 		PluginContent pluginData
 		JiraHost      string
-	}{projCtx, GetUser(r), flashes, task, taskHost, pluginContent, uis.Settings.Jira.Host}, "base",
+		ViewData
+	}{task, taskHost, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base",
 		"task.html", "base_angular.html", "menu.html")
 }
 

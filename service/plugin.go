@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"path/filepath"
 
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/plugin"
 )
 
@@ -85,10 +84,9 @@ func (uis *UIServer) GetPluginHandler(uiPage *plugin.UIPage, pluginName string) 
 			return
 		}
 		data := struct {
-			Data        interface{}
-			User        *user.DBUser
-			ProjectData projectContext
-		}{pluginData, u, projCtx}
+			Data interface{}
+			ViewData
+		}{pluginData, uis.GetCommonViewData(w, r, false, true)}
 
 		pluginTemplatePath := filepath.Join(plugin.TemplateRoot(pluginName), uiPage.TemplatePath)
 		uis.PluginWriteHTML(w, http.StatusOK, data, "base", pluginName, pluginTemplatePath, "base_angular.html", "menu.html")

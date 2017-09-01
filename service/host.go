@@ -11,7 +11,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/event"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -40,8 +39,6 @@ type uiParams struct {
 }
 
 func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
 	vars := mux.Vars(r)
 	id := vars["host_id"]
 
@@ -70,21 +67,16 @@ func (uis *UIServer) hostPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Flashes     []interface{}
 		Events      []event.Event
 		Host        *host.Host
 		RunningTask *task.Task
-		User        *user.DBUser
-		ProjectData projectContext
-	}{flashes, events, h, runningTask, GetUser(r), projCtx},
+		ViewData
+	}{events, h, runningTask, uis.GetCommonViewData(w, r, false, true)},
 		"base", "host.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
-	projCtx := MustHaveProjectContext(r)
-
 	includeSpawnedHosts, _ := strconv.ParseBool(r.FormValue(IncludeSpawnedHosts))
 	hosts, err := getHostsData(includeSpawnedHosts)
 	if err != nil {
@@ -92,14 +84,11 @@ func (uis *UIServer) hostsPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	flashes := PopFlashes(uis.CookieStore, r, w)
 	uis.WriteHTML(w, http.StatusOK, struct {
-		Flashes             []interface{}
 		Hosts               *hostsData
 		IncludeSpawnedHosts bool
-		User                *user.DBUser
-		ProjectData         projectContext
-	}{flashes, hosts, includeSpawnedHosts, GetUser(r), projCtx},
+		ViewData
+	}{hosts, includeSpawnedHosts, uis.GetCommonViewData(w, r, false, true)},
 		"base", "hosts.html", "base_angular.html", "menu.html")
 }
 

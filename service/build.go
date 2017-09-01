@@ -12,7 +12,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/evergreen-ci/evergreen/plugin"
 	"github.com/evergreen-ci/evergreen/util"
@@ -50,9 +49,6 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 		uis.LoggedError(w, r, http.StatusNotFound, errors.New("not found"))
 		return
 	}
-
-	flashes := PopFlashes(uis.CookieStore, r, w)
-
 	buildAsUI := &uiBuild{
 		Build:       *projCtx.Build,
 		CurrentTime: time.Now().UnixNano(),
@@ -96,13 +92,11 @@ func (uis *UIServer) buildPage(w http.ResponseWriter, r *http.Request) {
 	pluginContent := getPluginDataAndHTML(uis, plugin.BuildPage, pluginContext)
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData   projectContext
-		User          *user.DBUser
-		Flashes       []interface{}
 		Build         *uiBuild
 		PluginContent pluginData
 		JiraHost      string
-	}{projCtx, GetUser(r), flashes, buildAsUI, pluginContent, uis.Settings.Jira.Host}, "base", "build.html", "base_angular.html", "menu.html")
+		ViewData
+	}{buildAsUI, pluginContent, uis.Settings.Jira.Host, uis.GetCommonViewData(w, r, false, true)}, "base", "build.html", "base_angular.html", "menu.html")
 }
 
 func (uis *UIServer) modifyBuild(w http.ResponseWriter, r *http.Request) {

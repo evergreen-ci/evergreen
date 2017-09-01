@@ -6,6 +6,7 @@
   var variants = {{.Variants}}
   var tasks = {{.Tasks}}
   var patch= {{.ProjectData.Patch}}
+  window.hasBanner = {{ne .Banner ""}}
 </script>
 {{end}}
 
@@ -15,7 +16,7 @@ Evergreen - Configure Patch
 
 {{define "content"}}
 <div ng-controller="PatchController">
-<div class="variants-drawer">
+<div class="variants-drawer" id="drawer">
   <div class="col-xs-3 variants-list-panel">
     <div class="list-group small noselect variants-list-container">
       <a ng-click="selectVariant($event, $index)" ng-repeat="variant in variants"  ng-class="{active:variant.checked}" class="list-group-item noselect">
@@ -93,5 +94,3 @@ Evergreen - Configure Patch
 </div>
 </span>
 {{end}}
-
-

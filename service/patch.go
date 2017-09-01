@@ -7,7 +7,6 @@ import (
 
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/patch"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/util"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -69,13 +68,12 @@ func (uis *UIServer) patchPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uis.WriteHTML(w, http.StatusOK, struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Version     *uiVersion
-		Variants    map[string]model.BuildVariant
-		Tasks       []interface{}
-		CanEdit     bool
-	}{projCtx, currentUser, versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch)}, "base",
+		Version  *uiVersion
+		Variants map[string]model.BuildVariant
+		Tasks    []interface{}
+		CanEdit  bool
+		ViewData
+	}{versionAsUI, variantMappings, tasksList, uis.canEditPatch(currentUser, projCtx.Patch), uis.GetCommonViewData(w, r, true, true)}, "base",
 		"patch_version.html", "base_angular.html", "menu.html")
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/evergreen-ci/evergreen/model/build"
 	"github.com/evergreen-ci/evergreen/model/patch"
 	"github.com/evergreen-ci/evergreen/model/task"
-	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/model/version"
 	"github.com/gorilla/mux"
 	"github.com/pkg/errors"
@@ -85,10 +84,9 @@ func (uis *UIServer) taskTimingPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := struct {
-		ProjectData projectContext
-		User        *user.DBUser
-		Project     UIProject
-	}{projCtx, GetUser(r), currentProject}
+		Project UIProject
+		ViewData
+	}{currentProject, uis.GetCommonViewData(w, r, false, true)}
 
 	uis.WriteHTML(w, http.StatusOK, data, "base", "task_timing.html", "base_angular.html", "menu.html")
 }
