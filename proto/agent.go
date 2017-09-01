@@ -17,9 +17,8 @@ import (
 
 // Agent manages the data necessary to run tasks on a host.
 type Agent struct {
-	comm          client.Communicator
-	opts          Options
-	cancelLogging context.CancelFunc
+	comm client.Communicator
+	opts Options
 }
 
 // Options contains startup options for the Agent.
@@ -95,13 +94,12 @@ func (a *Agent) loop(ctx context.Context) error {
 						Secret: nextTask.TaskSecret,
 					},
 				}
-				if err := a.setupLogging(ctx, tc); err != nil {
+				if err := a.resetLogging(ctx, tc); err != nil {
 					return err
 				}
 				if err := a.runTask(ctx, tc); err != nil {
 					return err
 				}
-				a.cancelLogging()
 				timer.Reset(0)
 				continue
 			}
@@ -111,10 +109,8 @@ func (a *Agent) loop(ctx context.Context) error {
 	}
 }
 
-func (a *Agent) setupLogging(ctx context.Context, tc *taskContext) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	a.cancelLogging = cancel
-	tc.logger = a.comm.GetLoggerProducer(ctx, tc.task)
+func (a *Agent) resetLogging(ctx context.Context, tc *taskContext) error {
+	tc.logger = a.comm.GetLoggerProducer(context.TODO(), tc.task)
 
 	sender, err := getSender(a.opts.LogPrefix, tc.task.ID)
 	if err != nil {

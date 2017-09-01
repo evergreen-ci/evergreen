@@ -77,7 +77,7 @@ func (s *AgentIntegrationSuite) TestRunTask() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = s.a.setupLogging(ctx, s.tc)
+	err = s.a.resetLogging(ctx, s.tc)
 	s.NoError(err)
 	err = s.a.runTask(ctx, s.tc)
 	s.NoError(err)
@@ -104,7 +104,7 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	errChan := make(chan error)
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		err = s.a.setupLogging(ctx, s.tc)
+		err = s.a.resetLogging(ctx, s.tc)
 		if err != nil {
 			errChan <- err
 			return
