@@ -46,7 +46,7 @@ func getEnv(pid int) ([]string, error) {
 	return results, nil
 }
 
-func cleanup(_ string, logger grip.Journaler) error {
+func cleanup(key string, logger grip.Journaler) error {
 	pids, err := listProc()
 	if err != nil {
 		return err
@@ -57,7 +57,7 @@ func cleanup(_ string, logger grip.Journaler) error {
 		if err != nil {
 			continue
 		}
-		if envHasMarkers(env) {
+		if envHasMarkers(key, env) {
 			p := os.Process{}
 			p.Pid = pid
 
