@@ -56,7 +56,7 @@ func (s *CommandTestSuite) TestShellExec() {
 			Secret: taskSecret,
 		},
 	}
-	err = s.a.resetLogging(ctx, tc)
+	err = s.a.setupLogging(ctx, tc)
 	s.NoError(err)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
@@ -105,7 +105,7 @@ func (s *CommandTestSuite) TestS3Copy() {
 			Secret: taskSecret,
 		},
 	}
-	err := s.a.resetLogging(ctx, tc)
+	err := s.a.setupLogging(ctx, tc)
 	s.NoError(err)
 	err = s.a.runTask(ctx, tc)
 	s.NoError(err)
