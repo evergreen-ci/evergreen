@@ -308,8 +308,8 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 					So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 				})
 				Convey("the $project and $unwind bson.M should project the correct fields", func() {
-					So(pipeline[2], ShouldContainKey, "$project")
-					So(pipeline[2]["$project"], ShouldResemble, bson.M{
+					So(pipeline[1], ShouldContainKey, "$project")
+					So(pipeline[1]["$project"], ShouldResemble, bson.M{
 						task.DisplayNameKey:         1,
 						task.BuildVariantKey:        1,
 						task.ProjectKey:             1,
@@ -323,15 +323,15 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 						task.StartTimeKey:           1,
 						task.DetailsKey:             1,
 					})
-					So(pipeline[3], ShouldContainKey, "$unwind")
-					So(pipeline[3]["$unwind"], ShouldResemble, "$"+task.TestResultsKey)
+					So(pipeline[2], ShouldContainKey, "$unwind")
+					So(pipeline[2]["$unwind"], ShouldResemble, "$"+task.TestResultsKey)
 				})
 				Convey("the $match test query should only have a status query", func() {
-					So(pipeline[4], ShouldContainKey, "$match")
+					So(pipeline[3], ShouldContainKey, "$match")
 					testMatchQuery := bson.M{
 						task.TestResultsKey + "." + task.TestResultStatusKey: bson.M{"$in": []string{evergreen.TestFailedStatus}},
 					}
-					So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+					So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 				})
 				Convey("the $sort and $project stages should have the correct fields", func() {
 					So(pipeline[5], ShouldContainKey, "$sort")
@@ -386,12 +386,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 						So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 					})
 					Convey("the $match test query should have the test names included", func() {
-						So(pipeline[4], ShouldContainKey, "$match")
+						So(pipeline[3], ShouldContainKey, "$match")
 						testMatchQuery := bson.M{
 							task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 						}
-						So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+						So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 					})
 
 				})
@@ -421,12 +421,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 						So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 					})
 					Convey("the $match test query should have the test names included", func() {
-						So(pipeline[4], ShouldContainKey, "$match")
+						So(pipeline[3], ShouldContainKey, "$match")
 						testMatchQuery := bson.M{
 							task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 						}
-						So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+						So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 					})
 
 				})
@@ -458,12 +458,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 						So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 					})
 					Convey("the $match test query should have the test names included", func() {
-						So(pipeline[4], ShouldContainKey, "$match")
+						So(pipeline[3], ShouldContainKey, "$match")
 						testMatchQuery := bson.M{
 							task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 							task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 						}
-						So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+						So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 					})
 
 				})
@@ -494,12 +494,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[4], ShouldContainKey, "$match")
+							So(pipeline[3], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
 								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 						})
 
 					})
@@ -532,12 +532,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[4], ShouldContainKey, "$match")
+							So(pipeline[3], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
 								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 						})
 
 					})
@@ -571,12 +571,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[4], ShouldContainKey, "$match")
+							So(pipeline[3], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
 								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 						})
 
 					})
@@ -610,12 +610,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[4], ShouldContainKey, "$match")
+							So(pipeline[3], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
 								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 						})
 
 					})
@@ -649,12 +649,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[4], ShouldContainKey, "$match")
+							So(pipeline[3], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
 								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 						})
 
 					})
@@ -689,12 +689,12 @@ func TestBuildTestHistoryQuery(t *testing.T) {
 							So(pipeline[0]["$match"], ShouldResemble, taskMatchQuery)
 						})
 						Convey("the $match test query should have the test names included", func() {
-							So(pipeline[4], ShouldContainKey, "$match")
+							So(pipeline[3], ShouldContainKey, "$match")
 							testMatchQuery := bson.M{
 								task.TestResultsKey + "." + task.TestResultStatusKey:   bson.M{"$in": []string{evergreen.TestFailedStatus}},
 								task.TestResultsKey + "." + task.TestResultTestFileKey: bson.M{"$in": []string{"test1"}},
 							}
-							So(pipeline[4]["$match"], ShouldResemble, testMatchQuery)
+							So(pipeline[3]["$match"], ShouldResemble, testMatchQuery)
 						})
 
 					})

@@ -562,8 +562,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 		}
 
 		pipeline = append(pipeline,
-			bson.M{"$match": taskMatchQuery},
-			bson.M{"$limit": testHistoryParameters.Limit})
+			bson.M{"$match": taskMatchQuery})
 	} else {
 		//  add in revision to task query if necessary
 
@@ -595,9 +594,7 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 
 		pipeline = append(pipeline, bson.M{"$match": taskMatchQuery})
 
-		if testHistoryParameters.Limit > 0 {
-			pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
-		} else if len(revisionOrderNumberClause) != 2 {
+		if testHistoryParameters.Limit == 0 && len(revisionOrderNumberClause) != 2 {
 			grip.Notice("task history query contains a potentially unbounded range of revisions")
 		}
 	}
@@ -618,7 +615,11 @@ func buildTestHistoryQuery(testHistoryParameters *TestHistoryParameters) ([]bson
 			task.DetailsKey:             1,
 		}},
 		bson.M{"$unwind": "$" + task.TestResultsKey},
-		bson.M{"$match": testMatchQuery},
+		bson.M{"$match": testMatchQuery})
+	if testHistoryParameters.Limit > 0 {
+		pipeline = append(pipeline, bson.M{"$limit": testHistoryParameters.Limit})
+	}
+	pipeline = append(pipeline,
 		bson.M{"$sort": bson.D{
 			{task.RevisionOrderNumberKey, testHistoryParameters.Sort},
 			{task.TestResultsKey + "." + task.TestResultTestFileKey, testHistoryParameters.Sort},
