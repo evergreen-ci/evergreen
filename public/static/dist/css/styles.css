@@ -510,6 +510,9 @@ button.alert-close {
 html {
   background-color: white;
 }
+.bannerMargin {
+  margin-top: 65px;
+}
 md-card {
   background-color: white;
 }
@@ -520,8 +523,20 @@ md-card-title-text {
   padding-left: 10px;
   margin-top: -4px;
 }
-.bannerMargin {
-  margin-top: 65px;
+.md-button {
+  text-transform: none;
+}
+md-card-footer button {
+  float: right;
+}
+.md-input-focused,
+.md-input-focused label,
+.md-input-focused input {
+  color: rgba(0, 0, 0, 0.82) !important;
+  border-color: rgba(0, 0, 0, 0.82) !important;
+}
+md-input-container label {
+  font-size: medium;
 }
 .remove-version {
   margin: 10px;
@@ -2210,6 +2225,9 @@ path {
 .admin-columnLayout {
   display: inline-table;
   width: 49%;
+}
+.control {
+  width: 85%;
 }
 .banner-container {
   height: 50px;

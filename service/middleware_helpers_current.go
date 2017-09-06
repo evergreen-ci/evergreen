@@ -5,6 +5,7 @@ package service
 import (
 	"net/http"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/auth"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
@@ -33,7 +34,7 @@ func setRestContext(r *http.Request, c *model.Context) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), RestContext, c))
 }
 func setRequestUser(r *http.Request, u auth.User) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), RequestUser, u))
+	return r.WithContext(context.WithValue(r.Context(), evergreen.RequestUser, u))
 }
 
 // GetTask loads the task attached to a request.
@@ -73,7 +74,7 @@ func GetProject(r *http.Request) (*model.ProjectRef, *model.Project) {
 // GetUser returns a user if one is attached to the request. Returns nil if the user is not logged
 // in, assuming that the middleware to lookup user information is enabled on the request handler.
 func GetUser(r *http.Request) *user.DBUser {
-	if rv := r.Context().Value(RequestUser); rv != nil {
+	if rv := r.Context().Value(evergreen.RequestUser); rv != nil {
 		return rv.(*user.DBUser)
 	}
 	return nil

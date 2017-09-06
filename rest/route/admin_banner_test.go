@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/model/user"
 	"github.com/evergreen-ci/evergreen/rest/data"
 	"github.com/evergreen-ci/evergreen/rest/model"
@@ -29,7 +30,7 @@ func TestAdminBannerRoute(t *testing.T) {
 
 	// run the route
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "user"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "user"})
 
 	// test parsing the POST body
 	body := model.APIBanner{

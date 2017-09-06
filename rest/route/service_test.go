@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/evergreen-ci/evergreen"
 	serviceModel "github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/host"
 	"github.com/evergreen-ci/evergreen/model/task"
@@ -769,7 +770,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 		Convey("then should error on empty body", func() {
 			req, err := http.NewRequest("PATCH", "task/testTaskId", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -792,7 +793,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -814,7 +815,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -838,7 +839,7 @@ func TestTaskExecutionPatchPrepare(t *testing.T) {
 
 			req, err := http.NewRequest("PATCH", "task/testTaskId", buf)
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = tep.ParseAndValidate(ctx, req)
 			So(err, ShouldBeNil)
@@ -912,7 +913,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			projCtx.Project = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)
@@ -923,7 +924,7 @@ func TestTaskResetPrepare(t *testing.T) {
 			projCtx.Task = nil
 			req, err := http.NewRequest("POST", "task/testTaskId/restart", &bytes.Buffer{})
 			So(err, ShouldBeNil)
-			ctx = context.WithValue(ctx, RequestUser, &u)
+			ctx = context.WithValue(ctx, evergreen.RequestUser, &u)
 			ctx = context.WithValue(ctx, RequestContext, &projCtx)
 			err = trh.ParseAndValidate(ctx, req)
 			So(err, ShouldNotBeNil)

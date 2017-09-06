@@ -178,7 +178,7 @@ func (s *VersionSuite) TestAbortVersion() {
 // TestRestartVersion tests the route for restarting a version.
 func (s *VersionSuite) TestRestartVersion() {
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, RequestUser, &user.DBUser{Id: "caller1"})
+	ctx = context.WithValue(ctx, evergreen.RequestUser, &user.DBUser{Id: "caller1"})
 
 	handler := &versionRestartHandler{versionId: "versionId"}
 

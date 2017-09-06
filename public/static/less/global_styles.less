@@ -686,7 +686,12 @@ html { // used to suppress angular material background theming
   background-color: white;
 }
 
-// angular material controls
+// added to pages that have absolute positioning
+.bannerMargin {
+	margin-top: 65px;
+}
+
+// angular material overrides
 md-card {
   background-color: white;
 }
@@ -697,6 +702,16 @@ md-card-title-text {
   padding-left: 10px;
   margin-top: -4px;
 }
-.bannerMargin { // added to pages that have absolute positioning
-	margin-top: 65px;
+.md-button {
+  text-transform: none;
+}
+md-card-footer button {
+  float: right;
+}
+.md-input-focused,.md-input-focused label, .md-input-focused input {
+  color: rgba(0,0,0,0.82) !important;
+  border-color: rgba(0,0,0,0.82) !important;
+}
+md-input-container label {
+  font-size: medium;
 }
