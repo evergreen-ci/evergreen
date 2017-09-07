@@ -330,7 +330,7 @@ func (c *communicatorImpl) GetTaskPatch(ctx context.Context, taskData TaskData) 
 		taskData: &taskData,
 		version:  v1,
 	}
-	info.setTaskPathSuffix("patch")
+	info.setTaskPathSuffix("git/patch")
 	resp, err := c.retryRequest(ctx, info, nil)
 
 	if err != nil {
@@ -352,7 +352,7 @@ func (c *communicatorImpl) GetPatchFile(ctx context.Context, taskData TaskData, 
 		taskData: &taskData,
 		version:  v1,
 	}
-	info.setTaskPathSuffix("patch/patchfile")
+	info.setTaskPathSuffix("git/patchfile/" + patchFileID)
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
 		return "", errors.Wrapf(err, "could not get file %s for patch %ss", patchFileID, taskData.ID)
@@ -479,7 +479,7 @@ func (c *communicatorImpl) KeyValInc(ctx context.Context, taskData TaskData, kv 
 		version:  v1,
 	}
 	info.setTaskPathSuffix("keyval/inc")
-	resp, err := c.retryRequest(ctx, info, kv)
+	resp, err := c.retryRequest(ctx, info, kv.Key)
 	if err != nil {
 		return errors.Wrapf(err, "problem with keyval increment operation for %s", taskData.ID)
 	}
