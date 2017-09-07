@@ -534,9 +534,9 @@ func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, t
 }
 
 func (c *communicatorImpl) GetJSONHistory(ctx context.Context, taskData TaskData, tags bool, taskName, dataName string) ([]byte, error) {
-	path := "history/"
+	path := "json/history/"
 	if tags {
-		path = "tags/"
+		path = "json/tags/"
 	}
 
 	path += fmt.Sprintf("%s/%s", taskName, dataName)
