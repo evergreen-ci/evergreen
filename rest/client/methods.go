@@ -462,7 +462,7 @@ func (c *communicatorImpl) S3Copy(ctx context.Context, taskData TaskData, req *a
 		taskData: &taskData,
 		version:  v1,
 	}
-	info.setTaskPathSuffix("s3copy/s3copy")
+	info.setTaskPathSuffix("s3Copy/s3Copy")
 	resp, err := c.retryRequest(ctx, info, req)
 	if err != nil {
 		return errors.Wrapf(err, "problem with s3copy for %s", taskData.ID)
@@ -498,10 +498,10 @@ func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, 
 		taskData: &taskData,
 		version:  v1,
 	}
-	info.setTaskPathSuffix(fmt.Sprintf("data/%s", path))
+	info.setTaskPathSuffix(fmt.Sprintf("json/data/%s", path))
 	resp, err := c.retryRequest(ctx, info, data)
 	if err != nil {
-		return errors.Wrapf(err, "problem with keyval increment operation for %s", taskData.ID)
+		return errors.Wrapf(err, "problem with post json data operation for %s", taskData.ID)
 	}
 	defer resp.Body.Close()
 
@@ -509,7 +509,7 @@ func (c *communicatorImpl) PostJSONData(ctx context.Context, taskData TaskData, 
 }
 
 func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, taskName, dataName, variantName string) ([]byte, error) {
-	pathParts := []string{"data", taskName, dataName}
+	pathParts := []string{"json", "data", taskName, dataName}
 	if variantName != "" {
 		pathParts = append(pathParts, variantName)
 	}
@@ -521,7 +521,7 @@ func (c *communicatorImpl) GetJSONData(ctx context.Context, taskData TaskData, t
 	info.setTaskPathSuffix(strings.Join(pathParts, "/"))
 	resp, err := c.retryRequest(ctx, info, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem with keyval increment operation for %s", taskData.ID)
+		return nil, errors.Wrapf(err, "problem with get json data operation for %s", taskData.ID)
 	}
 	defer resp.Body.Close()
 
