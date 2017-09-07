@@ -103,8 +103,31 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	return r, nil
 }
 
+func (c *communicatorImpl) bumpLastSentTime() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.lastMessageSent = time.Now()
+}
+
+func (c *communicatorImpl) LastMessage() time.Time {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	return c.lastMessageSent
+}
+
 func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *http.Request) (*http.Response, error) {
-	response, err := ctxhttp.Do(ctx, c.httpClient, r)
+	var (
+		err      error
+		response *http.Response
+	)
+	defer func() {
+		if err == nil {
+			c.bumpLastSent()
+		}
+	}()
+
+	response, err = ctxhttp.Do(ctx, c.httpClient, r)
 	if err != nil {
 		return nil, err
 	}
@@ -115,6 +138,7 @@ func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *h
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)

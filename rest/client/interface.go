@@ -39,6 +39,7 @@ type Communicator interface {
 	// GetHostSecret returns the host secret.
 	GetHostSecret() string
 
+	LastMessageAt() time.Time
 	// Agent Operations
 	//
 	// StartTask marks the task as started.

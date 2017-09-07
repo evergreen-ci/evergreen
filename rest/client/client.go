@@ -3,6 +3,7 @@ package client
 import (
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"golang.org/x/net/context"
@@ -35,6 +36,9 @@ type communicatorImpl struct {
 	hostSecret string
 	apiUser    string
 	apiKey     string
+
+	lastMessageSent time.Time
+	mutex           sync.RWMutex
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.

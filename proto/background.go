@@ -52,13 +52,19 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idle
 		idleTimeoutInterval = a.opts.IdleTimeoutInterval
 	}
 	timer := time.NewTimer(idleTimeoutInterval)
+
 	defer timer.Stop()
 	for {
 		select {
 		case <-timer.C:
-			tc.logger.Execution().Error("Hit idle timeout")
-			close(idleTimeout)
-			return
+			// check the time of the last successful
+			// request against the API. if i'
+			if time.Now().Sub(a.comm.LastMessageAt()) > idleTimeoutInterval {
+				tc.logger.Execution().Error("Hit idle timeout")
+				close(idleTimeout)
+				return
+			}
+			resetIdleTimeout <- idleTimeoutInterval
 		case d := <-resetIdleTimeout:
 			if !timer.Stop() {
 				<-timer.C
