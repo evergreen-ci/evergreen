@@ -47,7 +47,7 @@ func (c *keyValInc) Execute(ctx context.Context,
 	keyVal := model.KeyVal{Key: c.Key}
 	err := comm.KeyValInc(ctx, td, &keyVal) //.TaskPostJSON(IncRoute, c.Key)
 	if err != nil {
-		return errors.Wrapf(err, "problem incriminating key %s", c.Key)
+		return errors.Wrapf(err, "problem incrementing key %s", c.Key)
 	}
 
 	conf.Expansions.Put(c.Destination, strconv.FormatInt(keyVal.Value, 10))
