@@ -638,7 +638,7 @@ func TestEndTaskEndpoint(t *testing.T) {
 				Convey("task should exist with the existing task id and be dispatched", func() {
 					taskResp := apimodels.EndTaskResponse{}
 					So(json.NewDecoder(resp.Body).Decode(&taskResp), ShouldBeNil)
-					So(taskResp.ShouldExit, ShouldBeTrue)
+					So(taskResp.ShouldExit, ShouldBeFalse)
 				})
 			})
 		})
