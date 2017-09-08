@@ -149,6 +149,14 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	defer a.killProcs(tc)
 	defer cancel()
 
+	// If the heartbeat aborts the task immediately, we should report that
+	// the task failed during initial task setup, even though checkIn, which
+	// will set tc.currentCommand in startTask has not yet run.
+	tc.currentCommand = model.PluginCommandConf{
+		DisplayName: defaultSetupCommandDisplayName,
+		Type:        defaultSetupCommandType,
+	}
+
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
 
@@ -160,9 +168,9 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	execTimeout := make(chan struct{})
 	go a.startTask(ctx, tc, complete, execTimeout, resetIdleTimeout)
 
-	status, timeout := a.wait(ctx, tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, lastCommandType, timeout := a.wait(ctx, tc, heartbeat, idleTimeout, complete, execTimeout)
 
-	resp, err := a.finishTask(ctx, tc, status, timeout)
+	resp, err := a.finishTask(ctx, tc, status, lastCommandType, timeout)
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
@@ -175,18 +183,23 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	return nil
 }
 
-func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, idleTimeout chan struct{}, complete chan string, execTimeout chan struct{}) (string, bool) {
+func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string, idleTimeout chan struct{}, complete chan string, execTimeout chan struct{}) (string, string, bool) {
 	status := evergreen.TaskFailed
 	timeout := false
+	var lastCommandType string
 	select {
 	case status = <-complete:
 		grip.Infof("task complete: %s", tc.task.ID)
+		lastCommandType = a.getCurrentCommandType(tc)
 	case <-execTimeout:
 		grip.Infof("recevied signal from execTimeout channel: %s", tc.task.ID)
+		lastCommandType = a.getCurrentCommandType(tc)
 	case status = <-heartbeat:
 		grip.Infof("received signal from heartbeat channel: %s", tc.task.ID)
+		lastCommandType = a.getCurrentCommandType(tc)
 	case <-idleTimeout:
 		grip.Infof("received signal on idleTimeout channel: %s", tc.task.ID)
+		lastCommandType = a.getCurrentCommandType(tc)
 		timeout = true
 		if tc.taskConfig.Project.Timeout != nil {
 			tc.logger.Task().Info("Running task-timeout commands.")
@@ -200,12 +213,12 @@ func (a *Agent) wait(ctx context.Context, tc *taskContext, heartbeat chan string
 	case <-ctx.Done():
 		grip.Infof("task canceled: %s", tc.task.ID)
 	}
-	return status, timeout
+	return status, lastCommandType, timeout
 }
 
 // finishTask sends the returned TaskEndResponse and error
-func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, timeout bool) (*apimodels.EndTaskResponse, error) {
-	detail := a.endTaskResponse(tc, status, timeout)
+func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, lastCommandType string, timeout bool) (*apimodels.EndTaskResponse, error) {
+	detail := a.endTaskResponse(tc, status, lastCommandType, timeout)
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
@@ -232,17 +245,20 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	return resp, nil
 }
 
-func (a *Agent) endTaskResponse(tc *taskContext, status string, timeout bool) *apimodels.TaskEndDetail {
-	detail := &apimodels.TaskEndDetail{
+func (a *Agent) getCurrentCommandType(tc *taskContext) string {
+	if tc.taskConfig != nil {
+		return tc.currentCommand.GetType(tc.taskConfig.Project)
+	}
+	return model.DefaultCommandType
+}
+
+func (a *Agent) endTaskResponse(tc *taskContext, status string, lastCommandType string, timeout bool) *apimodels.TaskEndDetail {
+	return &apimodels.TaskEndDetail{
 		Description: tc.currentCommand.GetDisplayName(),
 		TimedOut:    timeout,
 		Status:      status,
+		Type:        lastCommandType,
 	}
-	if tc.taskConfig != nil {
-		detail.Type = tc.currentCommand.GetType(tc.taskConfig.Project)
-	}
-
-	return detail
 }
 
 func (a *Agent) runPostTaskCommands(ctx context.Context, tc *taskContext) {
