@@ -56,7 +56,7 @@ Evergreen - Configure Patch
         </div>
         <div class="col-xs-4">
           <div class="row">
-            <div class="btn btn-lg btn-primary" ng-class="[[patch.Version.length > 0 ? 'btn-xs' :'btn-lg']]" ng-click="save()" ng-disabled="selectionCount().numTasks==0 || disableSubmit">
+            <div class="btn btn-lg btn-primary" ng-class="[[patch.Version.length > 0 ? 'btn-xs' :'btn-lg']]" ng-click="save()" ng-disabled="disableSubmit || selectionCount().numTasks==0">
               [[patch.Version.length > 0 ? "Update Patch" : "Schedule Patch"]]
             </div>
           </div>
