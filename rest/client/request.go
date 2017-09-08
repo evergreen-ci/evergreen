@@ -117,17 +117,7 @@ func (c *communicatorImpl) LastMessage() time.Time {
 }
 
 func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *http.Request) (*http.Response, error) {
-	var (
-		err      error
-		response *http.Response
-	)
-	defer func() {
-		if err == nil {
-			c.bumpLastSent()
-		}
-	}()
-
-	response, err = ctxhttp.Do(ctx, c.httpClient, r)
+	response, err := ctxhttp.Do(ctx, c.httpClient, r)
 	if err != nil {
 		return nil, err
 	}
