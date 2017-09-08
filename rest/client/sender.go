@@ -60,6 +60,14 @@ func (s *logSender) Close() error {
 	return s.Base.Close()
 }
 
+func (s *logSender) flush(ctx context.Context, buffer []apimodels.LogMessage) {
+	grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+
+	if s.updateTimeout {
+		s.comm.UpdateLastMessageTime()
+	}
+}
+
 func (s *logSender) startBackgroundSender(ctx context.Context) {
 	timer := time.NewTimer(bufferTime)
 	buffer := []apimodels.LogMessage{}
@@ -73,21 +81,15 @@ backgroundSender:
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+			s.flush(ctx, buffer)
 			buffer = []apimodels.LogMessage{}
 			timer.Reset(bufferTime)
-			if s.updateTimeout {
-				s.comm.UpdateLastMessageTime()
-			}
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= bufferCount/2 {
-				grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+				s.flush(ctx, buffer)
 				buffer = []apimodels.LogMessage{}
 				timer.Reset(bufferTime)
-				if s.updateTimeout {
-					s.comm.UpdateLastMessageTime()
-				}
 			}
 		case <-s.signalEnd:
 			break backgroundSender
@@ -105,10 +107,7 @@ backgroundSender:
 	}
 
 	// send the final batch
-	grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
-	if s.updateTimeout {
-		s.comm.UpdateLastMessageTime()
-	}
+	s.flush(ctx, buffer)
 
 	// let close return
 	close(s.lastBatch)
