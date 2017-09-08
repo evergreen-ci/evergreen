@@ -145,7 +145,7 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 	grip.CatchWarning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewConfiguredMultiSender(local, exec)
 
-	task := newLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
+	task := newTimeoutLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
 	grip.CatchWarning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewConfiguredMultiSender(local, task)
 

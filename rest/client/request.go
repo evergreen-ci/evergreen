@@ -103,19 +103,6 @@ func (c *communicatorImpl) createRequest(info requestInfo, data interface{}) (*h
 	return r, nil
 }
 
-func (c *communicatorImpl) bumpLastSentTime() {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	c.lastMessageSent = time.Now()
-}
-
-func (c *communicatorImpl) LastMessage() time.Time {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
-
-	return c.lastMessageSent
-}
-
 func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *http.Request) (*http.Response, error) {
 	response, err := ctxhttp.Do(ctx, c.httpClient, r)
 	if err != nil {
