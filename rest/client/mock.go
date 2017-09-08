@@ -58,6 +58,8 @@ type Mock struct {
 	PatchFiles  map[string]string
 	keyVal      map[string]*serviceModel.KeyVal
 
+	LastMessageSent time.Time
+
 	mu sync.RWMutex
 }
 
@@ -80,6 +82,9 @@ func NewMock(serverURL string) *Mock {
 		serverURL:    serverURL,
 	}
 }
+
+func (c *Mock) LastMessageAt() time.Time { return c.LastMessageSent }
+func (c *Mock) UpdateLastMessageTime()   { c.LastMessageSent = time.Now() }
 
 // StartTask returns nil.
 func (c *Mock) StartTask(ctx context.Context, taskData TaskData) error {

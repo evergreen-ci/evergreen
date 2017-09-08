@@ -111,15 +111,18 @@ func (c *communicatorImpl) doRequest(ctx context.Context, data interface{}, r *h
 	if response == nil {
 		return nil, errors.New("received nil response")
 	}
+
 	return response, nil
 }
 
 func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, data interface{}) (*http.Response, error) {
+
 	if info.taskData != nil && !info.taskData.OverrideValidation && info.taskData.Secret == "" {
 		err := errors.New("no task secret provided")
 		grip.Error(err)
 		return nil, err
 	}
+
 	r, err := c.createRequest(info, data)
 	if err != nil {
 		return nil, err

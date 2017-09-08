@@ -3,6 +3,7 @@ package client
 import (
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"golang.org/x/net/context"
@@ -35,6 +36,9 @@ type communicatorImpl struct {
 	hostSecret string
 	apiUser    string
 	apiKey     string
+
+	lastMessageSent time.Time
+	mutex           sync.RWMutex
 }
 
 // TaskData contains the taskData.ID and taskData.Secret. It must be set for some client methods.
@@ -114,6 +118,20 @@ func (c *communicatorImpl) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
+func (c *communicatorImpl) UpdateLastMessageTime() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.lastMessageSent = time.Now()
+}
+
+func (c *communicatorImpl) LastMessageAt() time.Time {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	return c.lastMessageSent
+}
+
 // GetLogProducer
 func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
 	const (
@@ -127,7 +145,7 @@ func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskD
 	grip.CatchWarning(exec.SetFormatter(send.MakeDefaultFormatter()))
 	exec = send.NewConfiguredMultiSender(local, exec)
 
-	task := newLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
+	task := newTimeoutLogSender(ctx, c, apimodels.TaskLogPrefix, taskData)
 	grip.CatchWarning(task.SetFormatter(send.MakeDefaultFormatter()))
 	task = send.NewConfiguredMultiSender(local, task)
 

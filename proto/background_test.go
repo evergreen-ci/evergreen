@@ -106,6 +106,35 @@ func (s *BackgroundTestSuite) TestIdleTimeoutWatch() {
 	}
 }
 
+func (s *BackgroundTestSuite) TestIdleTimeoutWatchMessageTimeout() {
+	s.a.opts.IdleTimeoutInterval = time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	idleTimeout := make(chan struct{})
+	resetIdleTimeout := make(chan time.Duration)
+	s.a.comm.(*client.Mock).LastMessageSent = time.Now().Add(-time.Minute)
+	s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
+	_, ok := <-idleTimeout
+	s.False(ok)
+	s.Panics(func() { close(idleTimeout) })
+}
+
+func (s *BackgroundTestSuite) TestIdleTimeoutWatchWithoutMessageTimeout() {
+	s.a.opts.IdleTimeoutInterval = time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	idleTimeout := make(chan struct{})
+	resetIdleTimeout := make(chan time.Duration)
+
+	s.a.comm.(*client.Mock).LastMessageSent = time.Now().Add(time.Second)
+
+	s.a.startIdleTimeoutWatch(ctx, s.tc, idleTimeout, resetIdleTimeout)
+	s.NotPanics(func() { close(idleTimeout) })
+	s.Panics(func() { close(idleTimeout) })
+	_, ok := <-idleTimeout
+	s.False(ok)
+}
+
 func (s *BackgroundTestSuite) TestExecTimeoutWatch() {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()

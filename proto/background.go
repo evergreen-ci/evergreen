@@ -1,12 +1,11 @@
 package proto
 
 import (
-	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
-
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -46,19 +45,26 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 	}
 }
 
-func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idleTimeout chan<- struct{}, resetIdleTimeout <-chan time.Duration) {
+func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idleTimeout chan<- struct{}, resetIdleTimeout chan time.Duration) {
 	idleTimeoutInterval := defaultIdleTimeout
 	if a.opts.IdleTimeoutInterval != 0 {
 		idleTimeoutInterval = a.opts.IdleTimeoutInterval
 	}
 	timer := time.NewTimer(idleTimeoutInterval)
+
 	defer timer.Stop()
 	for {
 		select {
 		case <-timer.C:
-			tc.logger.Execution().Error("Hit idle timeout")
-			close(idleTimeout)
-			return
+			// check the last time the idle timeout was updated.
+			nextTimeout := idleTimeoutInterval - time.Now().Sub(a.comm.LastMessageAt())
+			if nextTimeout <= 0 {
+				tc.logger.Execution().Error("Hit idle timeout")
+				close(idleTimeout)
+				return
+			}
+
+			a.checkIn(ctx, tc, tc.currentCommand, nextTimeout, resetIdleTimeout)
 		case d := <-resetIdleTimeout:
 			if !timer.Stop() {
 				<-timer.C

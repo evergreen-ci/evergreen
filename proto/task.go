@@ -112,10 +112,16 @@ func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command model.Plug
 	if ctx.Err() != nil {
 		return
 	}
-	tc.currentCommand = command
-	if idleTimeout != nil {
-		idleTimeout <- duration
+
+	if idleTimeout == nil {
+		return
+	}
+
+	select {
+	case idleTimeout <- duration:
+		tc.currentCommand = command
 		tc.logger.Execution().Infof("Command timeout set to %v", duration.String())
+	default:
 	}
 }
 
