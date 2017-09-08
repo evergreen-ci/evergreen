@@ -230,7 +230,7 @@ func startAgentOnRemote(settings *evergreen.Settings, hostObj *host.Host, sshOpt
 		fmt.Sprintf("--log_prefix='%s'", filepath.Join(hostObj.Distro.WorkDir, agentFile)),
 	}
 
-	if os.Getenv("NEW_AGENT") != "false" {
+	if os.Getenv("LEGACY_AGENT") == "" {
 		agentCmdParts = append(agentCmdParts, "--new_agent")
 	}
 
