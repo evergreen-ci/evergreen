@@ -63,7 +63,6 @@ func (a *Agent) startIdleTimeoutWatch(ctx context.Context, tc *taskContext, idle
 				close(idleTimeout)
 				return
 			}
-
 			a.checkIn(ctx, tc, tc.currentCommand, nextTimeout, resetIdleTimeout)
 		case d := <-resetIdleTimeout:
 			if !timer.Stop() {

@@ -2,61 +2,65 @@ package client
 
 import (
 	"testing"
+	"time"
 
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
-func TestRestClientLogSnder(t *testing.T) {
+func TestRestClientLogSenderMessageContents(t *testing.T) {
+	t.Parallel()
+
 	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	comm := NewMock("url")
 	td := TaskData{ID: "task", Secret: "secret"}
-	s := newLogSender(comm, "testStream", td)
+	s, ok := newLogSender(ctx, comm, "testStream", td).(*logSender)
+	assert.True(ok)
 
-	assert.Len(comm.logMessages, 0)
-	assert.Len(comm.logMessages["task"], 0)
+	msgs := comm.GetMockMessages()
+	assert.Len(msgs, 0)
+	assert.Len(msgs["task"], 0)
 
 	s.Send(message.NewDefaultMessage(level.Error, "hello world"))
-	assert.Len(comm.logMessages, 1)
-	assert.Len(comm.logMessages["task"], 1)
+	time.Sleep(bufferTime + time.Second)
+	msgs = comm.GetMockMessages()
+	assert.Len(msgs, 1)
+	assert.Len(msgs["task"], 1)
 
-	// test that we don't log in error conditions
+	m := msgs["task"]
+	assert.Equal("testStream", m[0].Type)
+	assert.Equal(apimodels.LogErrorPrefix, m[0].Severity)
+	assert.Equal("hello world", m[0].Message)
+}
+
+func TestRestClientLogSenderDoesNotLogInErrorConditions(t *testing.T) {
+	t.Parallel()
+	assert := assert.New(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	comm := NewMock("url")
 	comm.loggingShouldFail = true
+	td := TaskData{ID: "task", Secret: "secret"}
+	s, ok := newLogSender(ctx, comm, "testStream", td).(*logSender)
+	assert.True(ok)
+
 	s.Send(message.NewDefaultMessage(level.Error, "hello world!!"))
-	assert.Len(comm.logMessages, 1)
-	assert.Len(comm.logMessages["task"], 1)
-	comm.loggingShouldFail = false
+	time.Sleep(bufferTime + time.Second)
 
-	// test the contents of the message
-	m := comm.logMessages["task"][0]
-	assert.Equal("testStream", m.Type)
-	assert.Equal(apimodels.LogErrorPrefix, m.Severity)
-	assert.Equal("hello world", m.Message)
-
-	// test composer conversionss
-	cs := []message.Composer{
-		message.NewString("hello"),
-		message.NewString("hello"),
-		message.MakeGroupComposer(message.NewString("hello"), message.NewString("hello"),
-			message.MakeGroupComposer(message.NewString("hello"), message.NewString("hello"))),
-	}
-
-	lsender := s.(*logSender)
-
-	assert.Len(cs, 3)
-	lms := lsender.convertMessages(message.NewGroupComposer(cs))
-	assert.Len(lms, 6)
-
-	lsender.Send(message.NewGroupComposer(cs))
-	assert.Len(comm.logMessages, 1)
-	assert.Len(comm.logMessages["task"], 7)
-
+	msgs := comm.GetMockMessages()
+	assert.Len(msgs, 0)
+	assert.Len(msgs["task"], 0)
 }
 
 func TestLevelrConverters(t *testing.T) {
+	t.Parallel()
 	assert := assert.New(t)
 
 	assert.Equal("UNKNOWN", priorityToString(level.Invalid))

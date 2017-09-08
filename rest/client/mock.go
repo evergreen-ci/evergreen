@@ -204,12 +204,13 @@ func (c *Mock) GetNextTask(ctx context.Context) (*apimodels.NextTaskResponse, er
 
 // SendTaskLogMessages posts tasks messages to the api server
 func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []apimodels.LogMessage) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.loggingShouldFail {
 		return errors.New("logging failed")
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	c.logMessages[taskData.ID] = append(c.logMessages[taskData.ID], msgs...)
 
 	return nil
@@ -217,7 +218,25 @@ func (c *Mock) SendLogMessages(ctx context.Context, taskData TaskData, msgs []ap
 
 // GetMockMessages returns the mock's logs.
 func (c *Mock) GetMockMessages() map[string][]apimodels.LogMessage {
-	return c.logMessages
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	out := map[string][]apimodels.LogMessage{}
+	for k, v := range c.logMessages {
+		out[k] = []apimodels.LogMessage{}
+		for _, i := range v {
+			new := apimodels.LogMessage{
+				Type:      i.Type,
+				Severity:  i.Severity,
+				Message:   i.Message,
+				Timestamp: i.Timestamp,
+				Version:   i.Version,
+			}
+			out[k] = append(out[k], new)
+		}
+	}
+
+	return out
 }
 
 // GetLoggerProducer constructs a single channel log producer.
