@@ -81,7 +81,7 @@ func TestTarGzCommandMakeArchive(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 	Convey("With a targz pack command", t, func() {
 		testDataDir := filepath.Join(testutil.GetDirectoryOfFile(), "testdata", "archive")

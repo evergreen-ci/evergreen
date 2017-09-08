@@ -40,7 +40,7 @@ func TestManifestLoad(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
 		taskConfig := modelData.TaskConfig
-		logger := comm.GetLoggerProducer(client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret})
+		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: taskConfig.Task.Id, Secret: taskConfig.Task.Secret})
 
 		Convey("the manifest load command should execute successfully", func() {
 			for _, task := range taskConfig.Project.Tasks {

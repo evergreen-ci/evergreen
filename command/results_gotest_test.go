@@ -36,7 +36,7 @@ func TestGotestPluginOnFailingTests(t *testing.T) {
 		modelData, err := modelutil.SetupAPITestData(testConfig, "test", "rhel55", configPath, modelutil.NoPatch)
 		testutil.HandleTestingErr(err, t, "failed to setup test data")
 		conf := modelData.TaskConfig
-		logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()
@@ -96,7 +96,7 @@ func TestGotestPluginOnPassingTests(t *testing.T) {
 
 		conf := modelData.TaskConfig
 		comm := client.NewMock("http://localhost.com")
-		logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		Convey("all commands in test project should execute successfully", func() {
 			curWD, err := os.Getwd()

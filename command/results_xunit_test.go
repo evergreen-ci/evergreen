@@ -36,7 +36,7 @@ func runTest(t *testing.T, configPath string, customTests func(string)) {
 
 		conf := modelData.TaskConfig
 		conf.WorkDir = "."
-		logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+		logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 		Convey("all commands in test project should execute successfully", func() {
 			for _, projTask := range conf.Project.Tasks {

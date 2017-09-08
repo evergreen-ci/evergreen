@@ -49,7 +49,7 @@ func TestExpansionsPluginWExecution(t *testing.T) {
 	defer cancel()
 	comm := client.NewMock("http://localhost.com")
 	conf := &model.TaskConfig{Expansions: &util.Expansions{}, Task: &task.Task{}, Project: &model.Project{}}
-	logger := comm.GetLoggerProducer(client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
+	logger := comm.GetLoggerProducer(ctx, client.TaskData{ID: conf.Task.Id, Secret: conf.Task.Secret})
 
 	Convey("When running Update commands", t, func() {
 		Convey("if there is no expansion, the file name is not changed", func() {
