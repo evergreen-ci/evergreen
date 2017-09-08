@@ -1,12 +1,11 @@
 package proto
 
 import (
-	"errors"
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip"
-
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
