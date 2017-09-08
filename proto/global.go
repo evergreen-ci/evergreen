@@ -44,6 +44,6 @@ const (
 	// relevant information - for running a task - from the API server.
 	initialSetupTimeout = 20 * time.Minute
 
-	initialSetupCommandDisplayName = "initial task setup"
-	initialSetupCommandType        = model.SystemCommandType
+	defaultSetupCommandDisplayName = "initial task setup"
+	defaultSetupCommandType        = model.SystemCommandType
 )

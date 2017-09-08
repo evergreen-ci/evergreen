@@ -12,8 +12,8 @@ import (
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
 	initialSetupCommand := model.PluginCommandConf{
-		DisplayName: initialSetupCommandDisplayName,
-		Type:        initialSetupCommandType,
+		DisplayName: defaultSetupCommandDisplayName,
+		Type:        defaultSetupCommandType,
 	}
 	a.checkIn(ctx, tc, initialSetupCommand, initialSetupTimeout, idleTimeout)
 

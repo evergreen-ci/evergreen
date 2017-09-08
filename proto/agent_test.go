@@ -212,6 +212,7 @@ func (s *AgentTestSuite) TestAbort() {
 	err := s.a.runTask(context.Background(), s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
+	s.Equal(defaultSetupCommandDisplayName, s.mockCommunicator.EndTaskResult.Detail.Description)
 }
 
 func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {

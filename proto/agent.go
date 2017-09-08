@@ -149,6 +149,14 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	defer a.killProcs(tc)
 	defer cancel()
 
+	// If the heartbeat aborts the task immediately, we should report that
+	// the task failed during initial task setup, even though checkIn, which
+	// will set tc.currentCommand in startTask has not yet run.
+	tc.currentCommand = model.PluginCommandConf{
+		DisplayName: defaultSetupCommandDisplayName,
+		Type:        defaultSetupCommandType,
+	}
+
 	heartbeat := make(chan string)
 	go a.startHeartbeat(ctx, tc, heartbeat)
 
@@ -241,7 +249,7 @@ func (a *Agent) getCurrentCommandType(tc *taskContext) string {
 	if tc.taskConfig != nil {
 		return tc.currentCommand.GetType(tc.taskConfig.Project)
 	}
-	return ""
+	return model.DefaultCommandType
 }
 
 func (a *Agent) endTaskResponse(tc *taskContext, status string, lastCommandType string, timeout bool) *apimodels.TaskEndDetail {
