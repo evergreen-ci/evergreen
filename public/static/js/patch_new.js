@@ -2,6 +2,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
   $scope.userTz = $window.userTz;
   $scope.canEdit = $window.canEdit;
   $scope.enabledTasks = _.pluck($window.tasks, "Name");
+  $scope.disableSubmit = false;
   if (window.hasBanner) {
     $("#drawer").addClass("bannerMargin");
     $("#content").addClass("bannerMargin");
@@ -94,6 +95,7 @@ mciModule.controller('PatchController', function($scope, $filter, $window, notif
 
   // Sends the current patch config to the server to save.
   $scope.save = function(){
+    $scope.disableSubmit = true;
     var data = {
       "description": $scope.patch.Description,
       "variants_tasks": _.filter(_.map($scope.variants, function(v){
