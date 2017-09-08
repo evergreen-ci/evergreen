@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -136,18 +135,6 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 		}
 
 		moduleBase := filepath.Join(module.Prefix, module.Name)
-		moduleDir := filepath.Join(conf.WorkDir, moduleBase, "/_")
-
-		err = os.MkdirAll(moduleDir, 0755)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		// clear the destination
-		err = os.RemoveAll(moduleDir)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
 		revision := c.Revisions[moduleName]
 
 		// if there is no revision, then use the revision from the module, then branch name

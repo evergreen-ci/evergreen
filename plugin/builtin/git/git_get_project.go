@@ -2,7 +2,6 @@ package git
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -133,18 +132,6 @@ func (ggpc *GitGetProjectCommand) Execute(pluginLogger plugin.Logger,
 		}
 
 		moduleBase := filepath.Join(module.Prefix, module.Name)
-		moduleDir := filepath.Join(conf.WorkDir, moduleBase, "/_")
-
-		err = os.MkdirAll(moduleDir, 0755)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		// clear the destination
-		err = os.RemoveAll(moduleDir)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
 		revision := ggpc.Revisions[moduleName]
 
 		// if there is no revision, then use the revision from the module, then branch name
