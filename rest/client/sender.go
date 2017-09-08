@@ -18,14 +18,21 @@ const (
 )
 
 type logSender struct {
-	logTaskData TaskData
-	logChannel  string
-	comm        Communicator
-	cancel      context.CancelFunc
-	pipe        chan message.Composer
-	lastBatch   chan struct{}
-	signalEnd   chan struct{}
+	logTaskData   TaskData
+	logChannel    string
+	comm          Communicator
+	cancel        context.CancelFunc
+	pipe          chan message.Composer
+	lastBatch     chan struct{}
+	signalEnd     chan struct{}
+	updateTimeout bool
 	*send.Base
+}
+
+func newTimeoutLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData) send.Sender {
+	s := newLogSender(ctx, comm, channel, taskData).(*logSender)
+	s.updateTimeout = true
+	return s
 }
 
 func newLogSender(ctx context.Context, comm Communicator, channel string, taskData TaskData) send.Sender {
@@ -69,12 +76,18 @@ backgroundSender:
 			grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
 			buffer = []apimodels.LogMessage{}
 			timer.Reset(bufferTime)
+			if s.updateTimeout {
+				s.comm.UpdateLastMessageTime()
+			}
 		case m := <-s.pipe:
 			buffer = append(buffer, s.convertMessage(m))
 			if len(buffer) >= bufferCount/2 {
 				grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
 				buffer = []apimodels.LogMessage{}
 				timer.Reset(bufferTime)
+				if s.updateTimeout {
+					s.comm.UpdateLastMessageTime()
+				}
 			}
 		case <-s.signalEnd:
 			break backgroundSender
@@ -93,6 +106,9 @@ backgroundSender:
 
 	// send the final batch
 	grip.CatchAlert(s.comm.SendLogMessages(ctx, s.logTaskData, buffer))
+	if s.updateTimeout {
+		s.comm.UpdateLastMessageTime()
+	}
 
 	// let close return
 	close(s.lastBatch)

@@ -39,6 +39,9 @@ type Communicator interface {
 	// GetHostSecret returns the host secret.
 	GetHostSecret() string
 
+	// Updates the clients local concept of it's last updated
+	// time; used by agents to determine timeouts.
+	UpdateLastMessageTime()
 	LastMessageAt() time.Time
 	// Agent Operations
 	//

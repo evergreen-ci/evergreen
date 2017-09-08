@@ -118,6 +118,20 @@ func (c *communicatorImpl) SetAPIKey(apiKey string) {
 	c.apiKey = apiKey
 }
 
+func (c *communicatorImpl) UpdateLastMessageTime() {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.lastMessageSent = time.Now()
+}
+
+func (c *communicatorImpl) LastMessageAt() time.Time {
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	return c.lastMessageSent
+}
+
 // GetLogProducer
 func (c *communicatorImpl) GetLoggerProducer(ctx context.Context, taskData TaskData) LoggerProducer {
 	const (
