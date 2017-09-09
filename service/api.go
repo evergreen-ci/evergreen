@@ -797,7 +797,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	n := negroni.New()
 	n.Use(NewLogger())
-	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
+	n.Use(UserMiddleware(as.UserManager))
 	n.UseHandler(root)
 	return n, nil
 }
