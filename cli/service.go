@@ -33,10 +33,6 @@ type ServiceWebCommand struct {
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
-	if c.APIService == c.UIService {
-		return errors.New("Must specify exactly one of --api or --ui")
-	}
-
 	settings, err := evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
@@ -60,13 +56,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	}
 	n.UseHandler(handler)
 
-	var logFile string
-	if c.APIService {
-		logFile = settings.Api.LogFile
-	} else if c.APIService {
-		logFile = settings.Ui.LogFile
-	}
-	sender, err := settings.GetSender(logFile)
+	sender, err := settings.GetSender(settings.Api.LogFile)
 	if err != nil {
 		return errors.WithStack(err)
 	}
