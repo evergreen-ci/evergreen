@@ -7,7 +7,6 @@ import (
 	textTemplate "text/template"
 	"time"
 
-	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/service"
@@ -17,6 +16,7 @@ import (
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/urfave/negroni"
 	"golang.org/x/net/context"
 )
 
@@ -33,6 +33,10 @@ type ServiceWebCommand struct {
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
+	if c.APIService == c.UIService {
+		return errors.New("Must specify exactly one of --api or --ui")
+	}
+
 	settings, err := evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
@@ -50,13 +54,19 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 		return errors.WithStack(err)
 	}
 	n.UseHandler(handler)
-	handler, err := getHandlerUI(settings)
+	handler, err = getHandlerUI(settings)
 	if err != nil {
 		return errors.WithStack(err)
 	}
 	n.UseHandler(handler)
 
-	sender, err := settings.GetSender(logFileName)
+	var logFile string
+	if c.APIService {
+		logFile = settings.Api.LogFile
+	} else if c.APIService {
+		logFile = settings.Ui.LogFile
+	}
+	sender, err := settings.GetSender(logFile)
 	if err != nil {
 		return errors.WithStack(err)
 	}

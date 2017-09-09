@@ -39,7 +39,7 @@ import:
   - package: golang.org/x/tools
     subpackages:
       - cmd/cover
-  - package: github.com/codegangsta/negroni
+  - package: github.com/urfave/negroni
   - package: github.com/evergreen-ci/render
   - package: github.com/evergreen-ci/crowd
   - package: github.com/jessevdk/go-flags

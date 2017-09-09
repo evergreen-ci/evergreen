@@ -9,7 +9,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
 	"github.com/evergreen-ci/evergreen/auth"
@@ -29,6 +28,7 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/pkg/errors"
+	"github.com/urfave/negroni"
 )
 
 type (
@@ -797,7 +797,7 @@ func (as *APIServer) Handler() (http.Handler, error) {
 
 	n := negroni.New()
 	n.Use(NewLogger())
-	n.Use(UserMiddleware(as.UserManager))
+	n.Use(negroni.HandlerFunc(UserMiddleware(as.UserManager)))
 	n.UseHandler(root)
 	return n, nil
 }
