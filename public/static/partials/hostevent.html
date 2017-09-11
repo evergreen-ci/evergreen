@@ -5,8 +5,8 @@
     <span ng-switch-when="HOST_STATUS_CHANGED">Status changed from <b class="status">[[eventLogObj.data.old_status]]</b> to <b>[[eventLogObj.data.new_status]]</b> </span>
     <span ng-switch-when="HOST_DNS_NAME_SET">DNS Name set to <b>[[eventLogObj.data.hostname]]</b></span>
     <span ng-switch-when="HOST_PROVISIONED">Marked as <b>provisioned</b></span>
-    <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
-    <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
+    <span ng-switch-when="HOST_RUNNING_TASK_SET">Assigned to run task <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
+    <span ng-switch-when="HOST_RUNNING_TASK_CLEARED">Current running task cleared (was: <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:' ...']]</a></span>
     <span ng-switch-when="HOST_TASK_PID_SET">PID of running task set to <b>[[eventLogObj.data.task_pid]]</b></span>
     <span ng-switch-when="HOST_MONITOR_FLAG">Flagged for termination because:
       <span ng-switch="eventLogObj.data.monitor">
@@ -36,7 +36,7 @@
         <pre>[[eventLogObj.data.logs]]</pre>
       </div>
     </span>
-    <span ng-switch-when="HOST_TASK_FINISHED">Task <a href="/task/[[eventLogObj.data.task_id]]">[[eventLogObj.data.task_id | shortenString:false:50:'...']]</a> completed with status: <b>[[eventLogObj.data.task_status]]</b></span>
+    <span ng-switch-when="HOST_TASK_FINISHED">Task <a href="/task/[[eventLogObj.data.task_id]]/[[eventLogObj.data.execution]]">[[eventLogObj.data.task_id | shortenString:false:50:'...']]</a> completed with status: <b>[[eventLogObj.data.task_status]]</b></span>
   </div>
   <div class="clearfix"></div>
 </div>

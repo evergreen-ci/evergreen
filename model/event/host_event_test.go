@@ -147,6 +147,21 @@ func TestLoggingHostEvents(t *testing.T) {
 			So(eventData.Hostname, ShouldBeBlank)
 			So(eventData.TaskId, ShouldBeBlank)
 			So(eventData.TaskPid, ShouldEqual, taskPid)
+
+			// test logging multiple executions of the same task
+			err = UpdateExecutions(hostId, taskId, 0)
+			So(err, ShouldBeNil)
+
+			eventsForHost, err = Find(AllLogCollection, HostEventsInOrder(hostId))
+			So(err, ShouldBeNil)
+			for _, event = range eventsForHost {
+				eventData = event.Data.Data.(*HostEventData)
+				if eventData.TaskId != "" {
+					So(eventData.Execution, ShouldEqual, "0")
+				} else {
+					So(eventData.Execution, ShouldEqual, "")
+				}
+			}
 		})
 	})
 }
