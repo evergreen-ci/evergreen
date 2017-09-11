@@ -209,9 +209,11 @@ func (s3pc *s3put) putWithRetry(ctx context.Context,
 		err           error
 		uploadedFiles []string
 	)
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
+retryLoop:
 	for i := 1; i <= maxs3putAttempts; i++ {
 		logger.Task().Infof("performing s3 put to %s of %s [%d of %d]",
 			s3pc.Bucket, s3pc.RemoteFile,
@@ -222,9 +224,6 @@ func (s3pc *s3put) putWithRetry(ctx context.Context,
 			return errors.New("s3 put operation canceled")
 		case <-timer.C:
 			filesList := []string{s3pc.LocalFile}
-			// reset to avoid duplicated uploaded references
-
-			uploadedFiles = []string{}
 
 			if s3pc.isMulti() {
 				filesList, err = util.BuildFileList(".", s3pc.LocalFilesIncludeFilter...)
@@ -234,6 +233,10 @@ func (s3pc *s3put) putWithRetry(ctx context.Context,
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 			}
+
+			// reset to avoid duplicated uploaded references
+			uploadedFiles = []string{}
+
 			for _, fpath := range filesList {
 				if ctx.Err() != nil {
 					return errors.New("s3 put operation canceled")
@@ -262,13 +265,13 @@ func (s3pc *s3put) putWithRetry(ctx context.Context,
 
 					grip.Error(err)
 					timer.Reset(backoffCounter.Duration())
+					continue retryLoop
 				}
 
 				uploadedFiles = append(uploadedFiles, fpath)
 			}
 
-			logger.Execution().Errorf("retrying after error during putting to s3 bucket: %v", err)
-			timer.Reset(backoffCounter.Duration())
+			break retryLoop
 		}
 	}
 
