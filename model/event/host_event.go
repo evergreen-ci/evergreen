@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/mongodb/grip"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -119,17 +120,15 @@ func LogMonitorOperation(hostId string, op string) {
 
 // UpdateExecutions updates host events to track multiple executions of the same task
 func UpdateExecutions(hostId, taskId string, execution int) error {
-	const ResourceIdKey = "r_id"
-	const TaskIdKey = "t_id"
-	const DataKey = "data"
-	const ExecutionKey = "execution"
+	taskIdKey := bsonutil.MustHaveTag(HostEventData{}, "TaskId")
+	executionKey := bsonutil.MustHaveTag(HostEventData{}, "Execution")
 	query := bson.M{
 		"r_id": hostId,
-		DataKey + "." + TaskIdKey: taskId,
+		DataKey + "." + taskIdKey: taskId,
 	}
 	update := bson.M{
 		"$set": bson.M{
-			DataKey + "." + ExecutionKey: strconv.Itoa(execution),
+			DataKey + "." + executionKey: strconv.Itoa(execution),
 		},
 	}
 	_, err := db.UpdateAll(AllLogCollection, query, update)

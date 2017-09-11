@@ -154,6 +154,7 @@ func TestLoggingHostEvents(t *testing.T) {
 
 			eventsForHost, err = Find(AllLogCollection, HostEventsInOrder(hostId))
 			So(err, ShouldBeNil)
+			So(len(eventsForHost), ShouldBeGreaterThan, 0)
 			for _, event = range eventsForHost {
 				eventData = event.Data.Data.(*HostEventData)
 				if eventData.TaskId != "" {
