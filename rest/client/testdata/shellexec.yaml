@@ -1,11 +1,19 @@
+command_type: system
+
+functions:
+  "foo":
+    - command: shell.exec
+      type: test
+      params:
+        shell: bash
+        script: |
+          echo "shell.exec test message" > "${shellexec_fn}"
+
+
 tasks:
   - name: build
     commands:
-      - command: shell.exec
-        params:
-          shell: bash
-          script: |
-            echo "shell.exec test message" > "${shellexec_fn}"
+      - func: "foo"
 
 
 buildvariants:
