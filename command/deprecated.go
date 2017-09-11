@@ -7,7 +7,7 @@ import (
 )
 
 // gitApplyPatch is deprecated. Its functionality is now a part of GitGetProjectCommand.
-type gitApplyPatch struct{}
+type gitApplyPatch struct{ base }
 
 func gitApplyPatchFactory() Command                                    { return &gitApplyPatch{} }
 func (*gitApplyPatch) Name() string                                    { return "git.apply_patch" }
@@ -20,7 +20,7 @@ func (*gitApplyPatch) Execute(ctx context.Context,
 }
 
 // the fetchVars command is deprecated.
-type fetchVars struct{}
+type fetchVars struct{ base }
 
 func fetchVarsFactory() Command                                      { return &fetchVars{} }
 func (c *fetchVars) Name() string                                    { return "expansions.fetch_vars" }
@@ -32,7 +32,7 @@ func (c *fetchVars) Execute(ctx context.Context,
 	return nil
 }
 
-type shellCleanup struct{}
+type shellCleanup struct{ base }
 
 func shellCleanupFactory() Command                                       { return &shellCleanup{} }
 func (cc *shellCleanup) Name() string                                    { return "shell.cleanup" }
@@ -44,7 +44,7 @@ func (cc *shellCleanup) Execute(ctx context.Context,
 	return nil
 }
 
-type shellTrack struct{}
+type shellTrack struct{ base }
 
 func shellTrackFactory() Command                                       { return &shellTrack{} }
 func (cc *shellTrack) Name() string                                    { return "shell.track" }

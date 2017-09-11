@@ -1,6 +1,8 @@
 package command
 
 import (
+	"sync"
+
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/rest/client"
 	"golang.org/x/net/context"
@@ -22,4 +24,28 @@ type Command interface {
 
 	// A string name for the command
 	Name() string
+
+	Type() string
+	SetType(string)
+}
+
+// base contains a basic implementation of functionality that is
+// common to all command implementations.
+type base struct {
+	typeName string
+	mu       sync.RWMutex
+}
+
+func (b *base) Type() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.typeName
+}
+
+func (b *base) SetType(n string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.typeName = n
 }

@@ -19,6 +19,7 @@ type attachResults struct {
 	// FileLoc describes the relative path of the file to be sent.
 	// Note that this can also be described via expansions.
 	FileLoc string `mapstructure:"file_location" plugin:"expand"`
+	base
 }
 
 func attachResultsFactory() Command   { return &attachResults{} }

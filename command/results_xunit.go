@@ -20,6 +20,7 @@ type xunitResults struct {
 	// Note that this can also be described via expansions.
 	File  string   `mapstructure:"file" plugin:"expand"`
 	Files []string `mapstructure:"files" plugin:"expand"`
+	base
 }
 
 func xunitResultsFactory() Command   { return &xunitResults{} }

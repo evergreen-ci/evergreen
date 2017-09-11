@@ -29,6 +29,8 @@ type gitFetchProject struct {
 	// Revisions are the optional revisions associated with the modules of a project.
 	// Note: If a module does not have a revision it will use the module's branch to get the project.
 	Revisions map[string]string `plugin:"expand"`
+
+	base
 }
 
 func gitFetchProjectFactory() Command   { return &gitFetchProject{} }

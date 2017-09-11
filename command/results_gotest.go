@@ -20,6 +20,7 @@ type goTestResults struct {
 	// a list of filename blobs to include
 	// e.g. "monitor.suite", "output/*"
 	Files []string `mapstructure:"files" plugin:"expand"`
+	base
 }
 
 func goTestFactory() Command          { return &goTestResults{} }

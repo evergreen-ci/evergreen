@@ -14,6 +14,7 @@ import (
 type keyValInc struct {
 	Key         string `mapstructure:"key"`
 	Destination string `mapstructure:"destination"`
+	base
 }
 
 func keyValIncFactory() Command   { return &keyValInc{} }

@@ -48,6 +48,8 @@ type s3get struct {
 	// downloaded to the specified directory.
 	LocalFile string `mapstructure:"local_file" plugin:"expand"`
 	ExtractTo string `mapstructure:"extract_to" plugin:"expand"`
+
+	base
 }
 
 func s3GetFactory() Command   { return &s3get{} }

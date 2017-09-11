@@ -10,7 +10,7 @@ import (
 )
 
 // manifestLoad
-type manifestLoad struct{}
+type manifestLoad struct{ base }
 
 func manifestLoadFactory() Command   { return &manifestLoad{} }
 func (c *manifestLoad) Name() string { return "manifest.load" }

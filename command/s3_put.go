@@ -75,6 +75,7 @@ type s3put struct {
 	Optional bool `mapstructure:"optional"`
 
 	taskdata client.TaskData
+	base
 }
 
 func s3PutFactory() Command      { return &s3put{} }

@@ -23,6 +23,7 @@ type s3copy struct {
 
 	// An array of file copy configurations
 	S3CopyFiles []*s3CopyFile `mapstructure:"s3_copy_files" plugin:"expand"`
+	base
 }
 
 type s3CopyFile struct {

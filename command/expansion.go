@@ -21,6 +21,8 @@ type update struct {
 	// in the form of
 	//   "expansion_key: expansions_value"
 	YamlFile string `mapstructure:"file"`
+
+	base
 }
 
 // updateParams are pairings of expansion names

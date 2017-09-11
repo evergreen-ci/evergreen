@@ -17,6 +17,7 @@ type taskDataHistory struct {
 	File     string `mapstructure:"file" plugin:"expand"`
 	DataName string `mapstructure:"name" plugin:"expand"`
 	TaskName string `mapstructure:"task" plugin:"expand"`
+	base
 }
 
 func taskDataHistoryFactory() Command   { return &taskDataHistory{} }

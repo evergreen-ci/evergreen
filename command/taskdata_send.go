@@ -15,6 +15,7 @@ import (
 type taskDataSend struct {
 	File     string `mapstructure:"file" plugin:"expand"`
 	DataName string `mapstructure:"name" plugin:"expand"`
+	base
 }
 
 func taskDataSendFactory() Command   { return &taskDataSend{} }

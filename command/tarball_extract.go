@@ -17,6 +17,8 @@ type tarballExtract struct {
 	Source string `mapstructure:"source" plugin:"expand"`
 	// the directory that the unpacked contents should be put into
 	DestDir string `mapstructure:"dest_dir" plugin:"expand"`
+
+	base
 }
 
 func tarballExtractFactory() Command   { return &tarballExtract{} }

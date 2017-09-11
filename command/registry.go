@@ -154,6 +154,7 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 			errs = append(errs, "problem parsing input of %s (%s)", c.Command, c.DisplayName)
 			continue
 		}
+		cmd.SetType(c.Type)
 
 		out = append(out, cmd)
 	}

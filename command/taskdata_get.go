@@ -17,6 +17,7 @@ type taskDataGet struct {
 	DataName string `mapstructure:"name" plugin:"expand"`
 	TaskName string `mapstructure:"task" plugin:"expand"`
 	Variant  string `mapstructure:"variant" plugin:"expand"`
+	base
 }
 
 func taskDataGetFactory() Command   { return &taskDataGet{} }

@@ -29,6 +29,8 @@ type tarballCreate struct {
 	// a list of filename blobs to exclude,
 	// e.g. "*.zip", "results.out", "ignore/**"
 	ExcludeFiles []string `mapstructure:"exclude_files" plugin:"expand"`
+
+	base
 }
 
 func tarballCreateFactory() Command   { return &tarballCreate{} }

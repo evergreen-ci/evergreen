@@ -56,6 +56,8 @@ type shellExec struct {
 	// should cause the task to be marked as failed. Setting this to true
 	// allows following commands to execute even if this shell command fails.
 	ContinueOnError bool `mapstructure:"continue_on_err"`
+
+	base
 }
 
 func shellExecFactory() Command { return &shellExec{} }
