@@ -2,6 +2,7 @@ package task
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/mongodb/grip/message"
@@ -96,6 +97,7 @@ func GetResultCounts(tasks []Task) *ResultCounts {
 		out.loggable = true
 	}
 
+	out.Time = time.Now()
 	return &out
 }
 
