@@ -56,7 +56,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	}
 	n.UseHandler(handler)
 
-	sender, err := settings.GetSender(settings.Api.LogFile)
+	sender, err := settings.GetSender()
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -87,7 +87,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	uiWait := make(chan struct{})
 	go func() {
-		err = service.RunGracefully(settings.Ui.LogFile, requestTimeout, handler)
+		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, handler)
 		close(uiWait)
 	}()
 
