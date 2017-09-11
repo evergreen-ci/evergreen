@@ -79,7 +79,7 @@ func (s *CommandTestSuite) TestShellExec() {
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal("success", detail.Status)
 	s.Equal("test", detail.Type)
-	s.Equal("shell.exec", detail.Description)
+	s.Contains(detail.Description, "shell.exec")
 	s.False(detail.TimedOut)
 
 	data, err := ioutil.ReadFile(tmpFile)
@@ -127,8 +127,6 @@ func (s *CommandTestSuite) TestS3Copy() {
 
 	detail := s.mockCommunicator.GetEndTaskDetail()
 	s.Equal("success", detail.Status)
-	s.Equal("test", detail.Type)
-	s.Equal("s3Copy.copy", detail.Description)
 	s.False(detail.TimedOut)
 
 	taskData := s.mockCommunicator.EndTaskResult.TaskData

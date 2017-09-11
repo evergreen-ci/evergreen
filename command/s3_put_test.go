@@ -195,7 +195,7 @@ func TestS3PutValidateParams(t *testing.T) {
 				So(cmd.RemoteFile, ShouldEqual, params["remote_file"])
 				So(cmd.Bucket, ShouldEqual, params["bucket"])
 				So(cmd.Permissions, ShouldEqual, params["permissions"])
-				So(cmd.DisplayName, ShouldEqual, params["display_name"])
+				So(cmd.ResourceDisplayName, ShouldEqual, params["display_name"])
 
 			})
 		})
@@ -225,7 +225,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				cmd.RemoteFile = "${remote_file}"
 				cmd.Bucket = "${bucket}"
 				cmd.ContentType = "${content_type}"
-				cmd.DisplayName = "${display_name}"
+				cmd.ResourceDisplayName = "${display_name}"
 				cmd.Visibility = "${visibility}"
 
 				conf.Expansions.Update(
@@ -246,7 +246,7 @@ func TestExpandS3PutParams(t *testing.T) {
 				So(cmd.RemoteFile, ShouldEqual, "remote")
 				So(cmd.Bucket, ShouldEqual, "bck")
 				So(cmd.ContentType, ShouldEqual, "ct")
-				So(cmd.DisplayName, ShouldEqual, "file")
+				So(cmd.ResourceDisplayName, ShouldEqual, "file")
 				So(cmd.Visibility, ShouldEqual, "private")
 
 			})

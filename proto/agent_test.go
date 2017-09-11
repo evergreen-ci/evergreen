@@ -6,6 +6,7 @@ import (
 
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/apimodels"
+	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/evergreen-ci/evergreen/model/task"
 	"github.com/evergreen-ci/evergreen/rest/client"
@@ -46,6 +47,11 @@ func (s *AgentTestSuite) SetupTest() {
 		},
 	}
 	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+
+	factory, ok := command.GetCommandFactory("setup.initial")
+	s.True(ok)
+	s.tc.currentCommand = factory()
+
 }
 
 func (s *AgentTestSuite) TestNextTaskResponseShouldExit() {
@@ -90,14 +96,15 @@ func (s *AgentTestSuite) TestAgentEndTaskShouldExit() {
 func (s *AgentTestSuite) TestFinishTaskReturnsEndTaskResponse() {
 	endTaskResponse := &apimodels.EndTaskResponse{Message: "end task response"}
 	s.mockCommunicator.EndTaskResponse = endTaskResponse
-	resp, err := s.a.finishTask(context.Background(), s.tc, evergreen.TaskSucceeded, model.TestCommandType, true)
+	resp, err := s.a.finishTask(context.Background(), s.tc, evergreen.TaskSucceeded, true)
 	s.Equal(endTaskResponse, resp)
 	s.NoError(err)
 }
 
 func (s *AgentTestSuite) TestFinishTaskEndTaskError() {
+
 	s.mockCommunicator.EndTaskShouldFail = true
-	resp, err := s.a.finishTask(context.Background(), s.tc, evergreen.TaskSucceeded, model.TestCommandType, true)
+	resp, err := s.a.finishTask(context.Background(), s.tc, evergreen.TaskSucceeded, true)
 	s.Nil(resp)
 	s.Error(err)
 }
@@ -190,19 +197,23 @@ func (s *AgentTestSuite) TestRunPostTaskCommands() {
 }
 
 func (s *AgentTestSuite) TestEndTaskResponse() {
-	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, model.TestCommandType, true)
+	factory, ok := command.GetCommandFactory("setup.initial")
+	s.True(ok)
+	s.tc.currentCommand = factory()
+
+	detail := s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, true)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, model.TestCommandType, false)
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskSucceeded, false)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskSucceeded, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, model.TestCommandType, true)
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, true)
 	s.True(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 
-	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, model.TestCommandType, false)
+	detail = s.a.endTaskResponse(s.tc, evergreen.TaskFailed, false)
 	s.False(detail.TimedOut)
 	s.Equal(evergreen.TaskFailed, detail.Status)
 }
@@ -212,7 +223,7 @@ func (s *AgentTestSuite) TestAbort() {
 	err := s.a.runTask(context.Background(), s.tc)
 	s.NoError(err)
 	s.Equal(evergreen.TaskFailed, s.mockCommunicator.EndTaskResult.Detail.Status)
-	s.Equal(defaultSetupCommandDisplayName, s.mockCommunicator.EndTaskResult.Detail.Description)
+	s.Equal("initial task setup", s.mockCommunicator.EndTaskResult.Detail.Description)
 }
 
 func (s *AgentTestSuite) TestAgentConstructorSetsHostData() {
@@ -229,9 +240,8 @@ func (s *AgentTestSuite) TestWaitCompleteSuccess() {
 	go func() {
 		complete <- evergreen.TaskSucceeded
 	}()
-	status, lastCommandType, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
 	s.Equal(evergreen.TaskSucceeded, status)
-	s.Equal(model.TestCommandType, lastCommandType)
 	s.False(timeout)
 }
 
@@ -243,9 +253,8 @@ func (s *AgentTestSuite) TestWaitCompleteFailure() {
 	go func() {
 		complete <- evergreen.TaskFailed
 	}()
-	status, lastCommandType, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
 	s.Equal(evergreen.TaskFailed, status)
-	s.Equal(model.TestCommandType, lastCommandType)
 	s.False(timeout)
 }
 
@@ -255,9 +264,8 @@ func (s *AgentTestSuite) TestWaitExecTimeout() {
 	complete := make(chan string)
 	execTimeout := make(chan struct{})
 	close(execTimeout)
-	status, lastCommandType, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
 	s.Equal(evergreen.TaskFailed, status)
-	s.Equal(model.TestCommandType, lastCommandType)
 	s.False(timeout)
 }
 
@@ -269,9 +277,8 @@ func (s *AgentTestSuite) TestWaitHeartbeatTimeout() {
 	go func() {
 		heartbeat <- evergreen.TaskUndispatched
 	}()
-	status, lastCommandType, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
 	s.Equal(evergreen.TaskUndispatched, status)
-	s.Equal(model.TestCommandType, lastCommandType)
 	s.False(timeout)
 }
 
@@ -301,14 +308,16 @@ func (s *AgentTestSuite) TestWaitIdleTimeout() {
 		},
 	}
 	s.tc.logger = s.a.comm.GetLoggerProducer(context.Background(), s.tc.task)
+	factory, ok := command.GetCommandFactory("setup.initial")
+	s.True(ok)
+	s.tc.currentCommand = factory()
 
 	heartbeat := make(chan string)
 	idleTimeout := make(chan struct{})
 	complete := make(chan string)
 	execTimeout := make(chan struct{})
 	close(idleTimeout)
-	status, lastCommandType, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
+	status, timeout := s.a.wait(context.Background(), s.tc, heartbeat, idleTimeout, complete, execTimeout)
 	s.Equal(evergreen.TaskFailed, status)
-	s.Equal(model.TestCommandType, lastCommandType)
 	s.True(timeout)
 }

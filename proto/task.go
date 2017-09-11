@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/command"
 	"github.com/evergreen-ci/evergreen/model"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
@@ -11,11 +12,14 @@ import (
 )
 
 func (a *Agent) startTask(ctx context.Context, tc *taskContext, complete chan<- string, execTimeout chan<- struct{}, idleTimeout chan<- time.Duration) {
-	initialSetupCommand := model.PluginCommandConf{
-		DisplayName: defaultSetupCommandDisplayName,
-		Type:        defaultSetupCommandType,
+	factory, ok := command.GetCommandFactory("setup.initial")
+	if !ok {
+		tc.logger.Execution().Error("problem during configuring initial state")
+		complete <- evergreen.TaskSystemFailed
+		return
 	}
-	a.checkIn(ctx, tc, initialSetupCommand, initialSetupTimeout, idleTimeout)
+
+	a.checkIn(ctx, tc, factory(), initialSetupTimeout, idleTimeout)
 
 	if ctx.Err() != nil {
 		grip.Info("task canceled")
@@ -108,7 +112,7 @@ func (a *Agent) runPreTaskCommands(ctx context.Context, tc *taskContext) {
 
 // CheckIn updates the agent's execution stage and current timeout duration,
 // and resets its timer back to zero.
-func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command model.PluginCommandConf, duration time.Duration, idleTimeout chan<- time.Duration) {
+func (a *Agent) checkIn(ctx context.Context, tc *taskContext, command command.Command, duration time.Duration, idleTimeout chan<- time.Duration) {
 	if ctx.Err() != nil {
 		return
 	}

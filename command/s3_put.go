@@ -57,9 +57,9 @@ type s3put struct {
 	// If the list is empty, it runs for all build variants.
 	BuildVariants []string `mapstructure:"build_variants"`
 
-	// DisplayName stores the name of the file that is linked. Is a prefix when
+	// ResourceDisplayName stores the name of the file that is linked. Is a prefix when
 	// to the matched file name when multiple files are uploaded.
-	DisplayName string `mapstructure:"display_name" plugin:"expand"`
+	ResourceDisplayName string `mapstructure:"display_name" plugin:"expand"`
 
 	// Visibility determines who can see file links in the UI.
 	// Visibility can be set to either
@@ -291,9 +291,9 @@ func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, lo
 
 		fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
 
-		displayName := s3pc.DisplayName
+		displayName := s3pc.ResourceDisplayName
 		if s3pc.isMulti() || displayName == "" {
-			displayName = fmt.Sprintf("%s %s", s3pc.DisplayName, filepath.Base(fn))
+			displayName = fmt.Sprintf("%s %s", s3pc.ResourceDisplayName, filepath.Base(fn))
 		}
 
 		files = append(files, &artifact.File{

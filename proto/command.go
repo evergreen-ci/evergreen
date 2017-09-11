@@ -27,7 +27,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			continue
 		}
 
-		for j, cmd := range cmds {
+		for idx, cmd := range cmds {
 			if ctx.Err() != nil {
 				grip.Error("task canceled")
 				return errors.New("runCommands canceled")
@@ -45,7 +45,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 				tc.logger.Task().Infof("Running command %s (step %d of %d)", fullCommandName, i+1, len(commands))
 			} else {
 				// for functions with more than one command
-				tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, i+1, j+1, len(commands))
+				tc.logger.Task().Infof("Running command %v (step %d.%d of %d)", fullCommandName, i+1, idx+1, len(commands))
 			}
 
 			timeoutPeriod := a.getTimeout(&commandInfo)
@@ -60,7 +60,7 @@ func (a *Agent) runCommands(ctx context.Context, tc *taskContext, commands []mod
 			}
 
 			if idleTimeout != nil {
-				a.checkIn(ctx, tc, commandInfo, timeoutPeriod, idleTimeout)
+				a.checkIn(ctx, tc, cmd, timeoutPeriod, idleTimeout)
 			}
 
 			start := time.Now()

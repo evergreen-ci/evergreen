@@ -27,13 +27,16 @@ type Command interface {
 
 	Type() string
 	SetType(string)
+	DisplayName() string
+	SetDisplayName(string)
 }
 
 // base contains a basic implementation of functionality that is
 // common to all command implementations.
 type base struct {
-	typeName string
-	mu       sync.RWMutex
+	typeName    string
+	displayName string
+	mu          sync.RWMutex
 }
 
 func (b *base) Type() string {
@@ -48,4 +51,18 @@ func (b *base) SetType(n string) {
 	defer b.mu.Unlock()
 
 	b.typeName = n
+}
+
+func (b *base) DisplayName() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
+	return b.displayName
+}
+
+func (b *base) SetDisplayName(n string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.displayName = n
 }

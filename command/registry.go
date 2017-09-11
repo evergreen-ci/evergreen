@@ -37,6 +37,7 @@ func init() {
 		"shell.cleanup":         shellCleanupFactory,
 		"shell.exec":            shellExecFactory,
 		"shell.track":           shellTrackFactory,
+		"setup.initial":         initialSetupFactory,
 	}
 
 	for name, factory := range cmds {
@@ -155,6 +156,7 @@ func (r *commandRegistry) renderCommands(cmd model.PluginCommandConf,
 			continue
 		}
 		cmd.SetType(c.Type)
+		cmd.SetDisplayName(c.DisplayName)
 
 		out = append(out, cmd)
 	}

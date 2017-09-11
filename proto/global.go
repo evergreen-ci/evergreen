@@ -2,8 +2,6 @@ package proto
 
 import (
 	"time"
-
-	"github.com/evergreen-ci/evergreen/model"
 )
 
 const (
@@ -43,7 +41,4 @@ const (
 	// initialSetupTimeout indicates the time allowed for the agent to collect
 	// relevant information - for running a task - from the API server.
 	initialSetupTimeout = 20 * time.Minute
-
-	defaultSetupCommandDisplayName = "initial task setup"
-	defaultSetupCommandType        = model.SystemCommandType
 )
