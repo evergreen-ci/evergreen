@@ -262,6 +262,7 @@ type Settings struct {
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
 	LogBuffering        LogBuffering              `yaml:"log_buffering"`
+	LogPath             string                    `yaml:"log_buffering"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -301,12 +302,23 @@ func (s *Settings) GetSender() (send.Sender, error) {
 
 	fallback = send.MakeErrorLogger()
 
-	// log directly to systemd if possible, and log to
-	// standard output otherwise.
-	sender = getSystemLogger()
-	err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
-	if err != nil {
-		return nil, errors.Wrap(err, "problem setting error handler")
+	if s.LogPath == LocalLoggingOverride {
+		// log directly to systemd if possible, and log to
+		// standard output otherwise.
+		sender = getSystemLogger()
+		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting error handler")
+		}
+	} else {
+		sender, err = send.MakeFileLogger(s.LogPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not configure file logger")
+		}
+		err = sender.SetErrorHandler(send.ErrorHandlerFromSender(fallback))
+		if err != nil {
+			return nil, errors.Wrap(err, "problem setting error handler")
+		}
 	}
 	senders = append(senders, sender)
 
@@ -394,6 +406,12 @@ var configValidationRules = []configValidator{
 			settings.ClientBinariesDir = ClientDirectory
 		}
 		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.LogPath == "" {
+			settings.LogPath = LocalLoggingOverride
+		}
 	},
 
 	func(settings *Settings) error {
