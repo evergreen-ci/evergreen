@@ -1,9 +1,13 @@
 package event
 
 import (
+	"strconv"
 	"time"
 
+	"github.com/evergreen-ci/evergreen/db"
+	"github.com/evergreen-ci/evergreen/db/bsonutil"
 	"github.com/mongodb/grip"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -37,6 +41,7 @@ type HostEventData struct {
 	TaskId     string        `bson:"t_id,omitempty" json:"task_id,omitempty"`
 	TaskPid    string        `bson:"t_pid,omitempty" json:"task_pid,omitempty"`
 	TaskStatus string        `bson:"t_st,omitempty" json:"task_status,omitempty"`
+	Execution  string        `bson:"execution,omitempty" json:"execution,omitempty"`
 	MonitorOp  string        `bson:"monitor_op,omitempty" json:"monitor,omitempty"`
 	Successful bool          `bson:"successful,omitempty" json:"successful"`
 	Duration   time.Duration `bson:"duration,omitempty" json:"duration"`
@@ -111,4 +116,21 @@ func LogHostTeardown(hostId, teardownLogs string, success bool, duration time.Du
 
 func LogMonitorOperation(hostId string, op string) {
 	LogHostEvent(hostId, EventHostMonitorFlag, HostEventData{MonitorOp: op})
+}
+
+// UpdateExecutions updates host events to track multiple executions of the same task
+func UpdateExecutions(hostId, taskId string, execution int) error {
+	taskIdKey := bsonutil.MustHaveTag(HostEventData{}, "TaskId")
+	executionKey := bsonutil.MustHaveTag(HostEventData{}, "Execution")
+	query := bson.M{
+		"r_id": hostId,
+		DataKey + "." + taskIdKey: taskId,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			DataKey + "." + executionKey: strconv.Itoa(execution),
+		},
+	}
+	_, err := db.UpdateAll(AllLogCollection, query, update)
+	return err
 }

@@ -786,6 +786,10 @@ func (t *Task) Archive() error {
 	if err != nil {
 		return errors.Wrap(err, "task.Archive() failed")
 	}
+	err = event.UpdateExecutions(t.HostId, t.Id, t.Execution)
+	if err != nil {
+		return errors.Wrap(err, "unable to update host event logs")
+	}
 	return nil
 }
 
