@@ -199,7 +199,17 @@ func (s3pc *s3put) putWithRetry(ctx context.Context,
 		Factor: 2,
 		Jitter: true,
 	}
-	var err error
+
+	auth := &aws.Auth{
+		AccessKey: s3pc.AwsKey,
+		SecretKey: s3pc.AwsSecret,
+	}
+
+	var (
+		err           error
+		uploadedFiles []string
+	)
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -223,6 +233,10 @@ retryLoop:
 						strings.Join(s3pc.LocalFilesIncludeFilter, " "))
 				}
 			}
+
+			// reset to avoid duplicated uploaded references
+			uploadedFiles = []string{}
+
 			for _, fpath := range filesList {
 				if ctx.Err() != nil {
 					return errors.New("s3 put operation canceled")
@@ -234,10 +248,6 @@ retryLoop:
 					remoteName = fmt.Sprintf("%s%s", s3pc.RemoteFile, fname)
 				}
 
-				auth := &aws.Auth{
-					AccessKey: s3pc.AwsKey,
-					SecretKey: s3pc.AwsSecret,
-				}
 				s3URL := url.URL{
 					Scheme: "s3",
 					Host:   s3pc.Bucket,
@@ -258,47 +268,46 @@ retryLoop:
 					continue retryLoop
 				}
 
-				err = s3pc.attachFiles(ctx, comm, logger, fpath, s3pc.RemoteFile)
-				if err != nil {
-					return errors.Wrapf(err, "problem attaching file: %s to %s", fpath, s3pc.RemoteFile)
-				}
+				uploadedFiles = append(uploadedFiles, fpath)
 			}
 
-			logger.Execution().Errorf("retrying after error during putting to s3 bucket: %v", err)
-			timer.Reset(backoffCounter.Duration())
+			break retryLoop
 		}
 	}
 
-	return nil
+	return errors.WithStack(s3pc.attachFiles(ctx, comm, logger, uploadedFiles, s3pc.RemoteFile))
 }
 
 // attachTaskFiles is responsible for sending the
 // specified file to the API Server. Does not support multiple file putting.
-func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator,
-	logger client.LoggerProducer, localFile, remoteFile string) error {
+func (s3pc *s3put) attachFiles(ctx context.Context, comm client.Communicator, logger client.LoggerProducer, localFiles []string, remoteFile string) error {
+	files := []*artifact.File{}
 
-	remoteFileName := filepath.ToSlash(remoteFile)
-	if s3pc.isMulti() {
-		remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(localFile))
+	for _, fn := range localFiles {
+		remoteFileName := filepath.ToSlash(remoteFile)
+		if s3pc.isMulti() {
+			remoteFileName = fmt.Sprintf("%s%s", remoteFile, filepath.Base(fn))
+		}
+
+		fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
+
+		displayName := s3pc.DisplayName
+		if s3pc.isMulti() || displayName == "" {
+			displayName = fmt.Sprintf("%s %s", s3pc.DisplayName, filepath.Base(fn))
+		}
+
+		files = append(files, &artifact.File{
+			Name:       displayName,
+			Link:       fileLink,
+			Visibility: s3pc.Visibility,
+		})
 	}
 
-	fileLink := s3baseURL + s3pc.Bucket + "/" + remoteFileName
-
-	displayName := s3pc.DisplayName
-	if s3pc.isMulti() || displayName == "" {
-		displayName = fmt.Sprintf("%s %s", s3pc.DisplayName, filepath.Base(localFile))
-	}
-
-	file := &artifact.File{
-		Name:       displayName,
-		Link:       fileLink,
-		Visibility: s3pc.Visibility,
-	}
-
-	err := comm.AttachFiles(ctx, s3pc.taskdata, []*artifact.File{file})
+	err := comm.AttachFiles(ctx, s3pc.taskdata, files)
 	if err != nil {
 		return errors.Wrap(err, "Attach files failed")
 	}
+
 	logger.Execution().Info("API attach files call succeeded")
 	return nil
 }
