@@ -258,7 +258,6 @@ retryLoop:
 				if err != nil {
 					if !s3pc.isMulti() {
 						if s3pc.Optional && os.IsNotExist(err) {
-							// important to *not* wrap this error.
 							return errors.Wrapf(err, "missing file %s", fpath)
 						}
 					}
