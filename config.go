@@ -412,6 +412,7 @@ var configValidationRules = []configValidator{
 		if settings.LogPath == "" {
 			settings.LogPath = LocalLoggingOverride
 		}
+		return nil
 	},
 
 	func(settings *Settings) error {
