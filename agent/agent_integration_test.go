@@ -1,4 +1,4 @@
-package proto
+package agent
 
 import (
 	"path/filepath"
@@ -20,7 +20,7 @@ type testConfigPath struct {
 	testSpec string
 }
 
-func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
+func createAgent(testServer *service.TestServer, testHost *host.Host) (*Agent, error) {
 	initialOptions := Options{
 		HostID:            testHost.Id,
 		HostSecret:        testHost.Secret,
@@ -28,6 +28,7 @@ func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
 		LogPrefix:         evergreen.LocalLoggingOverride,
 		HeartbeatInterval: 5 * time.Second,
 	}
+
 	return New(initialOptions, client.NewCommunicator(testServer.URL))
 }
 
@@ -67,7 +68,8 @@ func (s *AgentIntegrationSuite) TestRunTask() {
 	defer testServer.Close()
 	s.testServer = testServer
 
-	s.a = createAgent(testServer, s.modelData.Host)
+	s.a, err = createAgent(testServer, s.modelData.Host)
+	s.NoError(err)
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     s.modelData.Task.Id,
@@ -93,7 +95,8 @@ func (s *AgentIntegrationSuite) TestAbortTask() {
 	defer testServer.Close()
 	s.testServer = testServer
 
-	s.a = createAgent(testServer, s.modelData.Host)
+	s.a, err = createAgent(testServer, s.modelData.Host)
+	s.NoError(err)
 	s.tc = &taskContext{
 		task: client.TaskData{
 			ID:     s.modelData.Task.Id,

@@ -36,22 +36,17 @@ func (agt *Agent) startStatusServer(port int) {
 type statusResponse struct {
 	BuildId     string                 `json:"agent_revision"`
 	AgentPid    int                    `json:"pid"`
-	APIServer   string                 `json:"api_url"`
 	HostId      string                 `json:"host_id"`
 	SystemInfo  *message.SystemInfo    `json:"sys_info"`
 	ProcessTree []*message.ProcessInfo `json:"ps_info"`
-	TaskId      string                 `json:"task_id"`
 	LegacyAgent bool                   `json:"legacy_agent"`
-
-	// TODO (EVG-1440) include the current task ID when the service is part
-	// of the agent itself.
 }
 
 // statusHandler is a function that produces the status handler.
 func (agt *Agent) statusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		grip.Debug("preparing status response")
-		resp := buildResponse(agt.opts, agt.GetCurrentTaskId())
+		resp := buildResponse(agt.opts)
 
 		// in the future we may want to use the same render
 		// package used in the service, but doing this
@@ -100,15 +95,12 @@ func terminateAgentHandler(w http.ResponseWriter, r *http.Request) {
 
 // buildResponse produces the response document for the current
 // process, and is separate to facilitate testing.
-func buildResponse(opts Options, taskId string) statusResponse {
+func buildResponse(opts Options) statusResponse {
 	out := statusResponse{
-		BuildId:     evergreen.BuildRevision,
-		AgentPid:    os.Getpid(),
-		APIServer:   opts.APIURL,
-		HostId:      opts.HostId,
-		TaskId:      taskId,
-		SystemInfo:  message.CollectSystemInfo().(*message.SystemInfo),
-		LegacyAgent: true,
+		BuildId:    evergreen.BuildRevision,
+		AgentPid:   os.Getpid(),
+		HostId:     opts.HostID,
+		SystemInfo: message.CollectSystemInfo().(*message.SystemInfo),
 	}
 
 	psTree := message.CollectProcessInfoSelfWithChildren()

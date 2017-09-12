@@ -4,33 +4,30 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/evergreen-ci/evergreen/subprocess"
 	"github.com/evergreen-ci/evergreen/util"
-	"github.com/mongodb/grip/slogger"
+	"github.com/mongodb/grip"
+	"github.com/mongodb/grip/level"
 	"golang.org/x/net/context"
 )
 
 // StatsCollector samples machine statistics and logs them
 // back to the API server at regular intervals.
 type StatsCollector struct {
-	logger *slogger.Logger
+	logger client.LoggerProducer
 	Cmds   []string
 	// indicates the sampling frequency
 	Interval time.Duration
-	// when closed this stops stats collector ticker
-	stop <-chan struct{}
 }
 
 // NewSimpleStatsCollector creates a StatsCollector that runs the given commands
 // at the given interval and sends the results to the given logger.
-func NewSimpleStatsCollector(logger *slogger.Logger, interval time.Duration,
-	stop <-chan struct{}, cmds ...string) *StatsCollector {
+func NewSimpleStatsCollector(logger client.LoggerProducer, interval time.Duration, cmds ...string) *StatsCollector {
 	return &StatsCollector{
 		logger:   logger,
 		Cmds:     cmds,
 		Interval: interval,
-		stop:     stop,
 	}
 }
 
@@ -39,7 +36,7 @@ func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 	for _, cmd := range sc.Cmds {
 		expanded, err := exp.ExpandString(cmd)
 		if err != nil {
-			sc.logger.Logf(slogger.WARN, "Couldn't expand '%v': %v", cmd, err)
+			sc.logger.System().Warningf("Couldn't expand '%s': %v", cmd, err)
 			continue
 		}
 		expandedCmds = append(expandedCmds, expanded)
@@ -47,9 +44,7 @@ func (sc *StatsCollector) expandCommands(exp *util.Expansions) {
 	sc.Cmds = expandedCmds
 }
 
-func (sc *StatsCollector) LogStats(exp *util.Expansions) {
-	sc.expandCommands(exp)
-
+func (sc *StatsCollector) logStats(ctx context.Context, exp *util.Expansions) {
 	if sc.Interval < 0 {
 		panic(fmt.Sprintf("Illegal interval: %v", sc.Interval))
 	}
@@ -57,30 +52,32 @@ func (sc *StatsCollector) LogStats(exp *util.Expansions) {
 		sc.Interval = 60 * time.Second
 	}
 
-	sysloggerInfoWriter := evergreen.NewInfoLoggingWriter(sc.logger)
-	sysloggerErrWriter := evergreen.NewErrorLoggingWriter(sc.logger)
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+	sc.expandCommands(exp)
 
 	go func() {
-		ctx, cancel := context.WithCancel(context.TODO())
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithCancel(ctx)
 		defer cancel()
 		for {
 			select {
-			case <-sc.stop:
-				sc.logger.Logf(slogger.INFO, "StatsCollector ticker stopping.")
+			case <-ctx.Done():
+				grip.Info("StatsCollector ticker stopping.")
 				return
-			default:
+			case <-timer.C:
 				for _, cmd := range sc.Cmds {
-					sc.logger.Logf(slogger.INFO, "Running %v", cmd)
+					sc.logger.System().Infof("Running %v", cmd)
 					command := &subprocess.LocalCommand{
 						CmdString: cmd,
-						Stdout:    sysloggerInfoWriter,
-						Stderr:    sysloggerErrWriter,
+						Stdout:    sc.logger.SystemWriter(level.Info),
+						Stderr:    sc.logger.SystemWriter(level.Error),
 					}
 					if err := command.Run(ctx); err != nil {
-						sc.logger.Logf(slogger.ERROR, "error running '%v': %v", cmd, err)
+						sc.logger.System().Errorf("error running '%v': %v", cmd, err)
 					}
 				}
-				time.Sleep(sc.Interval)
+				timer.Reset(sc.Interval)
 			}
 		}
 	}()
