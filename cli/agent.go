@@ -2,10 +2,7 @@ package cli
 
 import (
 	"github.com/evergreen-ci/evergreen/agent"
-	"github.com/evergreen-ci/evergreen/proto"
 	"github.com/evergreen-ci/evergreen/rest/client"
-	"github.com/mongodb/grip"
-	"github.com/mongodb/grip/level"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -24,47 +21,20 @@ func (c *AgentCommand) Execute(_ []string) error {
 		return errors.New("cannot start agent without a service url and host ID")
 	}
 
-	existingSender := grip.GetSender()
-	sender, err := agent.GetSender(c.LogPrefix, "init")
-	if err != nil {
-		return errors.Wrap(err, "problem configuring logging")
-	}
-	if err = grip.SetSender(sender); err != nil {
-		return errors.Wrap(err, "problem re-configuring logger")
-	}
-	if err = existingSender.Close(); err != nil {
-		return errors.Wrap(err, "problem closing previous logger")
-	}
-
-	grip.SetDefaultLevel(level.Info)
-	grip.SetThreshold(level.Debug)
-	grip.SetName("evg-agent")
-
-	if c.NewAgent {
-		initialOptions := proto.Options{
-			HostID:     c.HostID,
-			HostSecret: c.HostSecret,
-			StatusPort: c.StatusPort,
-			LogPrefix:  c.LogPrefix,
-		}
-
-		agt := proto.New(initialOptions, client.NewCommunicator(c.ServiceURL))
-		ctx := context.Background()
-		return errors.WithStack(agt.Start(ctx))
-	}
-
-	initialOptions := agent.Options{
-		APIURL:     c.ServiceURL,
-		HostId:     c.HostID,
+	opts := agent.Options{
+		HostID:     c.HostID,
 		HostSecret: c.HostSecret,
 		StatusPort: c.StatusPort,
 		LogPrefix:  c.LogPrefix,
 	}
 
-	agt, err := agent.New(initialOptions)
+	agt, err := agent.New(opts, client.NewCommunicator(c.ServiceURL))
 	if err != nil {
-		return errors.Wrap(err, "could not create new agent")
+		return errors.Wrap(err, "problem configuring logging")
 	}
 
-	return errors.WithStack(agt.Run())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	return errors.WithStack(agt.Start(ctx))
 }

@@ -3,7 +3,7 @@ package agent
 import (
 	"time"
 
-	"github.com/evergreen-ci/evergreen/agent/comm"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/message"
 	"github.com/mongodb/grip/sometimes"
@@ -25,11 +25,16 @@ const (
 // metricsCollector holds the functionality for running two system
 // information (metrics) collecting go-routines. The structure holds a TaskCommunicator object
 type metricsCollector struct {
-	comm comm.TaskCommunicator
+	comm     client.Communicator
+	taskData client.TaskData
 }
 
 // start validates the struct and launches two go routines.
 func (c *metricsCollector) start(ctx context.Context) error {
+	if c.taskData.ID == "" || c.taskData.Secret == "" {
+		return errors.New("invalid or incomplete task metadata specified")
+	}
+
 	if c.comm == nil {
 		return errors.New("no task communicator specified")
 	}
@@ -65,8 +70,7 @@ func (c *metricsCollector) processInfoCollector(ctx context.Context,
 			return
 		case <-timer.C:
 			msgs := message.CollectProcessInfoSelfWithChildren()
-			_, err := c.comm.TryTaskPost("process_info", msgs)
-			grip.CatchNotice(err)
+			grip.CatchNotice(c.comm.SendProcessInfo(ctx, c.taskData, convertProcInfo(msgs)))
 			grip.DebugWhen(sometimes.Fifth(), msgs)
 
 			if count <= numFirstIterations {
@@ -78,6 +82,20 @@ func (c *metricsCollector) processInfoCollector(ctx context.Context,
 			count++
 		}
 	}
+}
+
+func convertProcInfo(messages []message.Composer) []*message.ProcessInfo {
+	out := []*message.ProcessInfo{}
+	for _, msg := range messages {
+		proc, ok := msg.(*message.ProcessInfo)
+		if !ok {
+			continue
+		}
+
+		out = append(out, proc)
+	}
+
+	return out
 }
 
 // sysInfoCollector collects aggregated system stats on the specified
@@ -101,9 +119,7 @@ func (c *metricsCollector) sysInfoCollector(ctx context.Context, interval time.D
 				return
 			}
 
-			_, err := c.comm.TryTaskPost("system", sysinfo)
-			grip.CatchNotice(err)
-
+			grip.CatchNotice(c.comm.SendSystemInfo(ctx, c.taskData, sysinfo))
 			grip.DebugWhen(sometimes.Fifth(), msg)
 
 			timer.Reset(interval)
