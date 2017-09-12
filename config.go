@@ -62,7 +62,6 @@ type RepoTrackerConfig struct {
 	NumNewRepoRevisionsToFetch int
 	MaxRepoRevisionsToSearch   int
 	MaxConcurrentRequests      int
-	LogFile                    string
 }
 
 type ClientBinary struct {
@@ -78,7 +77,6 @@ type ClientConfig struct {
 
 // APIConfig holds relevant log and listener settings for the API server.
 type APIConfig struct {
-	LogFile        string
 	HttpListenAddr string
 }
 
@@ -88,8 +86,7 @@ type UIConfig struct {
 	HelpUrl        string
 	HttpListenAddr string
 	// Secret to encrypt session storage
-	Secret  string
-	LogFile string
+	Secret string
 	// Default project to assume when none specified, e.g. when using
 	// the /waterfall route use this project, while /waterfall/other-project
 	// then use `other-project`
@@ -105,26 +102,21 @@ type UIConfig struct {
 }
 
 // MonitorConfig holds logging settings for the monitor process.
-type MonitorConfig struct {
-	LogFile string
-}
+type MonitorConfig struct{}
 
 // RunnerConfig holds logging and timing settings for the runner process.
 type RunnerConfig struct {
-	LogFile         string
 	IntervalSeconds int64
 }
 
 // HostInitConfig holds logging settings for the hostinit process.
 type HostInitConfig struct {
-	LogFile           string
 	SSHTimeoutSeconds int64
 }
 
 // NotifyConfig hold logging and email settings for the notify package.
 type NotifyConfig struct {
-	LogFile string
-	SMTP    *SMTPConfig `yaml:"smtp"`
+	SMTP *SMTPConfig `yaml:"smtp"`
 }
 
 // SMTPConfig holds SMTP email settings.
@@ -140,13 +132,11 @@ type SMTPConfig struct {
 
 // SchedulerConfig holds relevant settings for the scheduler process.
 type SchedulerConfig struct {
-	LogFile     string
 	MergeToggle int
 }
 
 // TaskRunnerConfig holds logging settings for the scheduler process.
 type TaskRunnerConfig struct {
-	LogFile string
 }
 
 // CloudProviders stores configuration settings for the supported cloud host providers.
@@ -221,8 +211,7 @@ type JiraConfig struct {
 type PluginConfig map[string]map[string]interface{}
 
 type AlertsConfig struct {
-	LogFile string
-	SMTP    *SMTPConfig `yaml:"smtp"`
+	SMTP *SMTPConfig `yaml:"smtp"`
 }
 type WriteConcern struct {
 	W        int    `yaml:"w"`
@@ -273,6 +262,7 @@ type Settings struct {
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
 	LogBuffering        LogBuffering              `yaml:"log_buffering"`
+	LogPath             string                    `yaml:"log_buffering"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
@@ -302,7 +292,7 @@ func (settings *Settings) Validate() error {
 	return nil
 }
 
-func (s *Settings) GetSender(fileName string) (send.Sender, error) {
+func (s *Settings) GetSender() (send.Sender, error) {
 	var (
 		sender   send.Sender
 		fallback send.Sender
@@ -312,10 +302,7 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 
 	fallback = send.MakeErrorLogger()
 
-	// configure default, local logging services
-	if fileName == LocalLoggingOverride {
-		sender = send.MakeNative()
-	} else if fileName == "" {
+	if s.LogPath == LocalLoggingOverride {
 		// log directly to systemd if possible, and log to
 		// standard output otherwise.
 		sender = getSystemLogger()
@@ -324,7 +311,7 @@ func (s *Settings) GetSender(fileName string) (send.Sender, error) {
 			return nil, errors.Wrap(err, "problem setting error handler")
 		}
 	} else {
-		sender, err = send.MakeFileLogger(fileName)
+		sender, err = send.MakeFileLogger(s.LogPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not configure file logger")
 		}
@@ -417,6 +404,13 @@ var configValidationRules = []configValidator{
 	func(settings *Settings) error {
 		if settings.ClientBinariesDir == "" {
 			settings.ClientBinariesDir = ClientDirectory
+		}
+		return nil
+	},
+
+	func(settings *Settings) error {
+		if settings.LogPath == "" {
+			settings.LogPath = LocalLoggingOverride
 		}
 		return nil
 	},

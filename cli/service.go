@@ -7,7 +7,6 @@ import (
 	textTemplate "text/template"
 	"time"
 
-	"github.com/codegangsta/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/evergreen-ci/evergreen/db"
 	"github.com/evergreen-ci/evergreen/service"
@@ -16,8 +15,8 @@ import (
 	"github.com/mongodb/grip"
 	"github.com/mongodb/grip/level"
 	"github.com/mongodb/grip/message"
-	"github.com/mongodb/grip/send"
 	"github.com/pkg/errors"
+	"github.com/urfave/negroni"
 	"golang.org/x/net/context"
 )
 
@@ -34,9 +33,6 @@ type ServiceWebCommand struct {
 }
 
 func (c *ServiceWebCommand) Execute(_ []string) error {
-	if c.APIService == c.UIService {
-		return errors.New("Must specify exactly one of --api or --ui")
-	}
 	settings, err := evergreen.NewSettings(c.ConfigPath)
 	if err != nil {
 		return errors.Wrap(err, "problem getting settings")
@@ -48,33 +44,21 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 
 	db.SetGlobalSessionProvider(db.SessionFactoryFromConfig(settings))
 
-	var (
-		loggerName  string
-		logFileName string
-		handler     http.Handler
-		listenAddr  string
-		sender      send.Sender
-	)
-
-	if c.APIService {
-		loggerName = "evg-api-server"
-		logFileName = settings.Api.LogFile
-		handler, err = getHandlerAPI(settings)
-		listenAddr = settings.Api.HttpListenAddr
-	} else if c.UIService {
-		loggerName = "evg-ui-server"
-		logFileName = settings.Ui.LogFile
-		handler, err = getHandlerUI(settings)
-		listenAddr = settings.Ui.HttpListenAddr
-	}
-
+	n := negroni.New()
+	handler, err := getHandlerAPI(settings)
 	if err != nil {
-		return errors.Wrap(err, "problem setting up service")
+		return errors.WithStack(err)
 	}
-
-	sender, err = settings.GetSender(logFileName)
+	n.UseHandler(handler)
+	handler, err = getHandlerUI(settings)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
+	}
+	n.UseHandler(handler)
+
+	sender, err := settings.GetSender()
+	if err != nil {
+		return errors.WithStack(err)
 	}
 	defer sender.Close()
 
@@ -85,7 +69,7 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	defer util.RecoverAndLogStackTrace()
 
 	evergreen.SetLegacyLogger()
-	grip.SetName(loggerName)
+	grip.SetName("evergreen.service")
 	grip.SetDefaultLevel(level.Info)
 	grip.SetThreshold(level.Debug)
 
@@ -95,9 +79,21 @@ func (c *ServiceWebCommand) Execute(_ []string) error {
 	defer cancel()
 	go evergreen.SystemInfoCollector(ctx)
 
-	err = errors.Wrap(service.RunGracefully(listenAddr, requestTimeout, handler),
-		"problem running service")
-	grip.Alert(err)
+	apiWait := make(chan struct{})
+	go func() {
+		err = service.RunGracefully(settings.Api.HttpListenAddr, requestTimeout, handler)
+		close(apiWait)
+	}()
+
+	uiWait := make(chan struct{})
+	go func() {
+		err = service.RunGracefully(settings.Ui.HttpListenAddr, requestTimeout, handler)
+		close(uiWait)
+	}()
+
+	<-apiWait
+	<-uiWait
+
 	return err
 }
 

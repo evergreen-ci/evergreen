@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/codegangsta/negroni"
+	"github.com/urfave/negroni"
 	"github.com/evergreen-ci/evergreen"
 	"github.com/gorilla/mux"
 	"github.com/mongodb/grip"
