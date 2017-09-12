@@ -176,6 +176,9 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
+	if resp == nil {
+		return nil
+	}
 	if resp.ShouldExit {
 		return errors.New("task response indicates that agent should exit")
 	}
@@ -227,7 +230,7 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
 	case evergreen.TaskConflict:
-		tc.logger.Task().Error("Task completed - 409 FROM API SERVER")
+		tc.logger.Task().Error("Task completed - CANCELED.")
 		// If we receive a 409, return control to the loop (ask for a new task)
 		return nil, nil
 	}
