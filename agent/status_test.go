@@ -52,7 +52,9 @@ func (s *StatusTestSuite) TestProcessTreeInfo() {
 }
 
 func (s *StatusTestSuite) TestAgentStartsStatusServer() {
-	agt := New(s.testOpts, client.NewMock("url"))
+	agt, err := New(s.testOpts, client.NewMock("url"))
+	s.NoError(err)
+
 	mockCommunicator := agt.comm.(*client.Mock)
 	mockCommunicator.NextTaskIsNil = true
 	ctx, cancel := context.WithCancel(context.Background())
