@@ -29,7 +29,10 @@ type apiVersion string
 
 const (
 	apiVersion1 apiVersion = "/api/2"
-	apiVersion2            = "/rest/v2"
+	apiVersion2 apiVersion = "/rest/v2"
+
+	// HTTPConflictError indicates the client received a 409 status from the API.
+	HTTPConflictError = "Received status code 409"
 )
 
 // Method is an "enum" for the supported HTTP methods
@@ -143,9 +146,10 @@ func (c *communicatorImpl) retryRequest(ctx context.Context, info requestInfo, d
 				grip.Warningf("error response from api server: %v (attempt %d of %d)", err, i, c.maxAttempts)
 			} else if resp.StatusCode == http.StatusOK {
 				return resp, nil
-			} else {
-				grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
+			} else if resp.StatusCode == http.StatusConflict {
+				return nil, errors.New(HTTPConflictError)
 			}
+			grip.Warningf("unexpected status code: %d (attempt %d of %d)", resp.StatusCode, i, c.maxAttempts)
 			dur = backoff.Duration()
 			timer.Reset(dur)
 		}
