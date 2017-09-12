@@ -98,7 +98,7 @@ backgroundSender:
 
 	// set the level really high, (which is mutexed) so that we
 	// never send another message
-	s.SetLevel(send.LevelInfo{Threshold: level.Priority(200)})
+	_ = s.SetLevel(send.LevelInfo{Threshold: level.Priority(200)})
 	// close the pipe so we can drain things
 	close(s.pipe)
 	// drain the pipe
@@ -116,7 +116,7 @@ backgroundSender:
 func (s *logSender) Send(m message.Composer) {
 	defer func() {
 		// A command may call Send() after the agent has closed the logSender
-		recover()
+		grip.Alert(recover())
 	}()
 	if s.Level().ShouldLog(m) {
 		s.pipe <- m

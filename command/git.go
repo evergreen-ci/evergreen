@@ -220,7 +220,7 @@ func (c *gitFetchProject) Execute(ctx context.Context,
 
 // getPatchContents() dereferences any patch files that are stored externally, fetching them from
 // the API server, and setting them into the patch object.
-func (c gitFetchProject) getPatchContents(ctx context.Context, comm client.Communicator,
+func (c *gitFetchProject) getPatchContents(ctx context.Context, comm client.Communicator,
 	logger client.LoggerProducer, conf *model.TaskConfig, patch *patch.Patch) error {
 
 	if patch == nil {
