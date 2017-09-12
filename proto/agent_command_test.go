@@ -26,7 +26,7 @@ func (s *CommandTestSuite) SetupTest() {
 			HostID:     "host",
 			HostSecret: "secret",
 			StatusPort: 2286,
-			LogPrefix:  "prefix",
+			LogPrefix:  "LOCAL",
 		},
 		comm: client.NewMock("url"),
 	}

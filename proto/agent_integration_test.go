@@ -25,7 +25,7 @@ func createAgent(testServer *service.TestServer, testHost *host.Host) *Agent {
 		HostID:            testHost.Id,
 		HostSecret:        testHost.Secret,
 		StatusPort:        2285,
-		LogPrefix:         "log_prefix",
+		LogPrefix:         "LOCAL",
 		HeartbeatInterval: 5 * time.Second,
 	}
 	return New(initialOptions, client.NewCommunicator(testServer.URL))
