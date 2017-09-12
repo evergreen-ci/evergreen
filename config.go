@@ -262,7 +262,7 @@ type Settings struct {
 	Plugins             PluginConfig              `yaml:"plugins"`
 	IsNonProd           bool                      `yaml:"isnonprod"`
 	LogBuffering        LogBuffering              `yaml:"log_buffering"`
-	LogPath             string                    `yaml:"log_buffering"`
+	LogPath             string                    `yaml:"log_path"`
 }
 
 // NewSettings builds an in-memory representation of the given settings file.
