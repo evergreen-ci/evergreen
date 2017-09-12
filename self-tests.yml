@@ -224,8 +224,6 @@ tasks:
         make_args: "-k"
   - <<: *run-build
     name: dist
-  - <<: *run-build
-    name: dist-race
   - <<: *run-go-test-suite
     tags: ["nodb", "test"]
     name: test-hostutil
@@ -555,10 +553,10 @@ buildvariants:
       - archlinux-test
       - archlinux-build
     expansions:
-      build_env: "EVERGREEN_ALL=true"
+      build_env: "EVERGREEN_ALL=true RACE_ENABLED=true"
       mongodb_url: http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-3.2.9.tgz
     tasks:
-      - name: "dist-race"
+      - name: "dist"
       - name: ".race"
       - name: ".report"
   - name: osx

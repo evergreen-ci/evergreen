@@ -9,6 +9,20 @@ import (
 	"strings"
 )
 
+func supportsRaceDetector(arch, system string) bool {
+	if arch != "amd64" {
+		return false
+	}
+
+	for _, platform := range []string{"freebsd", "linux", "darwin", "windows"} {
+		if runtime.GOOS == platform && system == platform {
+			return true
+		}
+	}
+
+	return false
+}
+
 func main() {
 	var (
 		arch      string
@@ -53,6 +67,7 @@ func main() {
 	} else {
 		buildName = fmt.Sprintf("%s_%s", system, arch)
 	}
+
 	if runtime.GOOS == "windows" && goBin == "/cygdrive/c/go/bin/go" {
 		goBin = `c:\\go\\bin\\go`
 	}
@@ -62,18 +77,15 @@ func main() {
 	ldfQuoted := fmt.Sprintf("-ldflags=\"%s\"", ldFlags)
 	cmd.Args = append(cmd.Args, ldf)
 
-	if race && arch == "amd64" {
-		cmd.Args = append(cmd.Args, "-race")
-	}
-
-	cmd.Args = append(cmd.Args, "-o", output)
-	cmd.Args = append(cmd.Args, source)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	cmd.Env = []string{
 		"PATH=" + strings.Replace(os.Getenv("PATH"), `\`, `\\`, -1),
 		"GOPATH=" + strings.Replace(os.Getenv("GOPATH"), `\`, `\\`, -1),
 		"GOROOT=" + runtime.GOROOT(),
+	}
+
+	if race && supportsRaceDetector(arch, system) {
+		cmd.Args = append(cmd.Args, "-race")
+		cmd.Env = append(cmd.Env, "CGO_ENABLED=1")
 	}
 
 	if runtime.Compiler != "gccgo" {
@@ -81,6 +93,11 @@ func main() {
 			"GOOS="+system,
 			"GOARCH="+arch)
 	}
+
+	cmd.Args = append(cmd.Args, "-o", output)
+	cmd.Args = append(cmd.Args, source)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	cmdString := strings.Join(cmd.Args, " ")
 	fmt.Println(strings.Join(cmd.Env[1:], " "), strings.Replace(cmdString, ldf, ldfQuoted, -1))

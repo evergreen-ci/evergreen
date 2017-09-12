@@ -36,17 +36,13 @@ func (s *CommandTestSuite) SetupTest() {
 
 func (s *CommandTestSuite) TestShellExec() {
 	f, err := ioutil.TempFile("/tmp", "shell-exec-")
-	if err != nil {
-		panic(err)
-	}
+	s.Require().NoError(err)
+
 	tmpFile := f.Name()
 	s.mockCommunicator.ShellExecFilename = tmpFile
-	if err = f.Close(); err != nil {
-		panic(err)
-	}
+	s.Require().NoError(f.Close())
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	taskID := "shellexec"
