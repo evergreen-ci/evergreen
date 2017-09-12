@@ -176,9 +176,6 @@ func (a *Agent) runTask(ctx context.Context, tc *taskContext) error {
 	if err != nil {
 		return errors.Wrap(err, "exiting due to error marking task complete")
 	}
-	if resp == nil {
-		return errors.New("received nil response from API server")
-	}
 	if resp.ShouldExit {
 		return errors.New("task response indicates that agent should exit")
 	}
@@ -219,15 +216,21 @@ func (a *Agent) finishTask(ctx context.Context, tc *taskContext, status string, 
 	switch detail.Status {
 	case evergreen.TaskSucceeded:
 		tc.logger.Task().Info("Task completed - SUCCESS.")
+		grip.Info("Running post task commands")
+		a.runPostTaskCommands(ctx, tc)
+		grip.Info("Finished running post task commands")
 	case evergreen.TaskFailed:
 		tc.logger.Task().Info("Task completed - FAILURE.")
+		grip.Info("Running post task commands")
+		a.runPostTaskCommands(ctx, tc)
+		grip.Info("Finished running post task commands")
 	case evergreen.TaskUndispatched:
 		tc.logger.Task().Info("Task completed - ABORTED.")
+	case evergreen.TaskConflict:
+		tc.logger.Task().Error("Task completed - 409 FROM API SERVER")
+		// If we receive a 409, return control to the loop (ask for a new task)
+		return nil, nil
 	}
-
-	grip.Info("Running post task commands")
-	a.runPostTaskCommands(ctx, tc)
-	grip.Info("Finished running post task commands")
 
 	tc.logger.Execution().Infof("Sending final status as: %v", detail.Status)
 	err := tc.logger.Close()

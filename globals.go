@@ -42,6 +42,7 @@ const (
 	TaskSystemUnresponse = "system-unresponsive"
 	TaskSystemTimedOut   = "system-timed-out"
 	TaskTestTimedOut     = "test-timed-out"
+	TaskConflict         = "task-conflict"
 
 	TestFailedStatus         = "fail"
 	TestSilentlyFailedStatus = "silentfail"

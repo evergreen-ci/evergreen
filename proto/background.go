@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/evergreen-ci/evergreen"
+	"github.com/evergreen-ci/evergreen/rest/client"
 	"github.com/mongodb/grip"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -27,6 +28,10 @@ func (a *Agent) startHeartbeat(ctx context.Context, tc *taskContext, heartbeat c
 				return
 			}
 			if err != nil {
+				if err.Error() == client.HTTPConflictError {
+					heartbeat <- evergreen.TaskConflict
+					return
+				}
 				failed++
 				grip.Errorf("Error sending heartbeat (%d failed attempts): %s", failed, err)
 			} else {
